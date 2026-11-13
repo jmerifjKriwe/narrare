@@ -132,8 +132,8 @@ the language is not.
 ## Changing the Schema
 
 The models — `app/kernel/contracts/models.py`, `app/kernel/jobs/models.py`,
-`app/kernel/llm/models.py`, `app/kernel/prompts/models.py`, and each
-capability's `models.py`, all registered on the `Base` in
+`app/kernel/llm/models.py`, `app/kernel/prompts/models.py`, and a capability's
+`models.py` when that capability owns tables, all registered on the `Base` in
 `app/kernel/db/base.py` — are the single declaration of the schema, and
 the migration history is how a model change reaches a database that already
 holds data (the decision:

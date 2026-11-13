@@ -127,6 +127,34 @@ def test_migrations_have_one_head() -> None:
     assert head_revision().count(",") == 0 and head_revision()
 
 
+def test_head_revision_refuses_zero_or_multiple_heads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # head_revision() must refuse anything but exactly one head, so a branch
+    # that slipped in (or an empty history) cannot be upgraded against
+    # silently (issue #488).
+    class _FakeScriptDirectory:
+        @classmethod
+        def from_config(cls, config: Any) -> _FakeScriptDirectory:
+
+            return cls()
+
+        def get_heads(self) -> list[str]:
+            return []
+
+    monkeypatch.setattr(migrate_module, "ScriptDirectory", _FakeScriptDirectory)
+    with pytest.raises(MigrationRefused):
+        head_revision()
+
+    class _MultiHead(_FakeScriptDirectory):
+        def get_heads(self) -> list[str]:
+            return ["a", "b"]
+
+    monkeypatch.setattr(migrate_module, "ScriptDirectory", _MultiHead)
+    with pytest.raises(MigrationRefused):
+        head_revision()
+
+
 def test_head_revision_is_found_from_any_working_directory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -261,6 +289,79 @@ async def test_the_provider_fk_restricts_and_the_marks_index_sits(url: str) -> N
 SNAPSHOT = Path(__file__).parent / "fixtures" / "schema_0.2.0.sql"
 
 
+def _split_sql_statements(script: str) -> list[str]:
+    statements: list[str] = []
+    current: list[str] = []
+    i = 0
+    n = len(script)
+    in_single = False
+    dollar_tag: str | None = None
+    in_comment = False
+    while i < n:
+        if in_comment:
+            current.append(script[i])
+            if script[i] == "\n":
+                in_comment = False
+            i += 1
+            continue
+        if not in_single and dollar_tag is None and script.startswith("--", i):
+            in_comment = True
+            current.append(script[i])
+            i += 1
+            continue
+        if in_single:
+            current.append(script[i])
+            if script[i] == "'":
+                if i + 1 < n and script[i + 1] == "'":
+                    current.append(script[i + 1])
+                    i += 2
+                    continue
+                in_single = False
+            i += 1
+            continue
+        if dollar_tag is not None:
+            if script.startswith(dollar_tag, i):
+                current.append(dollar_tag)
+                i += len(dollar_tag)
+                dollar_tag = None
+                continue
+            current.append(script[i])
+            i += 1
+            continue
+        if script[i] == "'":
+            in_single = True
+            current.append(script[i])
+            i += 1
+            continue
+        if script[i] == "$":
+            j = script.find("$", i + 1)
+            if j != -1:
+                tag = script[i : j + 1]
+                if tag == "$$" or (
+                    len(tag) > 2
+                    and tag[1:-1].isidentifier()
+                    and tag.startswith("$")
+                    and tag.endswith("$")
+                ):
+                    dollar_tag = tag
+                    current.append(tag)
+                    i = j + 1
+                    continue
+        if script[i] == ";" and i + 1 < n and script[i + 1] == "\n":
+            statement = "".join(current).strip()
+            if statement:
+                statements.append(statement)
+            current = []
+            i += 2
+            continue
+        current.append(script[i])
+        i += 1
+    tail = "".join(current).strip()
+    if tail:
+        statements.append(tail)
+    return statements
+
+
 async def _load_snapshot(database_url: str, snapshot: Path) -> None:
     """The snapshot's DDL, statement by statement, in one transaction.
 
@@ -273,9 +374,10 @@ async def _load_snapshot(database_url: str, snapshot: Path) -> None:
     """
     script = snapshot.read_text(encoding="utf-8")
     engine = create_async_engine(database_url)
+    engine = create_async_engine(database_url)
     try:
         async with engine.begin() as connection:
-            for chunk in script.split(";\n"):
+            for chunk in _split_sql_statements(script):
                 statement = "\n".join(
                     line for line in chunk.splitlines() if not line.lstrip().startswith("--")
                 ).strip()
@@ -1167,24 +1269,30 @@ async def test_dump_and_restore_round_trip(url: str, tmp_path: Path) -> None:
     if shutil.which("pg_dump") is None or shutil.which("pg_restore") is None:
         pytest.fail("pg_dump/pg_restore are not on PATH — install postgresql-client-17")
 
-    await reset_schema(url)
-    user_id, novel_id = uuid4(), uuid4()
-    title = "Die Prüfung"
+    # The toolchain must match the server's major version, not merely exist:
+    # a wrong-major pg_dump passes `which()` and dies only at runtime (#491).
+    import re
+
+    pg_dump_path = shutil.which("pg_dump")
+    assert pg_dump_path is not None
+    dump_version = subprocess.run(  # noqa: S603  fixed argv, resolved path
+        [pg_dump_path, "--version"], capture_output=True, text=True, check=True
+    ).stdout
     engine = create_async_engine(url)
     try:
-        async with engine.begin() as connection:
-            await connection.execute(
-                text("INSERT INTO users (id, created_at) VALUES (:id, now())"), {"id": user_id}
-            )
-            await connection.execute(
-                text(
-                    "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
-                    "VALUES (:id, :user_id, :title, now(), now())"
-                ),
-                {"id": novel_id, "user_id": user_id, "title": title},
-            )
+        async with engine.connect() as connection:
+            server_version = str(await connection.scalar(text("SHOW server_version")))
     finally:
         await engine.dispose()
+    _match = re.search(r"(\d+)", dump_version)
+    assert _match is not None
+    assert int(_match.group(1)) == int(server_version.split(".")[0]), (
+        dump_version,
+        server_version,
+    )
+
+    await reset_schema(url)
+    novel_id, _chapter_id, title, _body = await _seed_prose(url)
 
     dump = await dump_database(url, tmp_path)
     assert dump.read_bytes()[:5] == b"PGDMP"
@@ -1399,14 +1507,23 @@ async def test_garbage_dump_file_is_refused_and_removed(
     required on whichever file the run left, and nothing survives.
     """
     monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
-    monkeypatch.setenv("NARRE_BACKUP_COMMAND", "sh -c 'printf not-a-dump > {file}'")
+    monkeypatch.setenv(
+        "NARRE_BACKUP_COMMAND",
+        "sh -c 'printf not-a-dump > {file}; printf ran > {file}.ran'",
+    )
     await reset_schema(url)  # tables: since 2026-10-31 an empty database attempts no dump
 
     with pytest.raises(MigrationRefused) as refused:
         await prepare_database(url, backup_dir=tmp_path)
 
     assert isinstance(refused.value.__cause__, BackupFailed)
-    assert list(tmp_path.iterdir()) == []  # the fake-good dump did not survive
+    # The sentinel proves the {file} placeholder was really substituted and
+    # the command ran (issue #496); only the sentinel survives, no dump.
+    ran_files = list(tmp_path.glob("*.ran"))
+    assert len(ran_files) == 1 and ran_files[0].read_text() == "ran"
+    assert not any(p.suffix in {".dump", ".partial"} for p in tmp_path.iterdir())
+    for path in ran_files:
+        path.unlink()
     # Nothing migrated: the version table never came into existence.
     with pytest.raises(ProgrammingError) as missing:
         await _version_row(url)

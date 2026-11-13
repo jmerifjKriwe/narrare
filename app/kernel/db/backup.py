@@ -19,6 +19,7 @@ refusal, not a startup that never returns.
 import asyncio
 import shlex
 import subprocess  # nosec B404
+import sys
 from datetime import UTC, datetime
 from os import environ, replace
 from typing import TYPE_CHECKING, cast
@@ -315,6 +316,9 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
                 "it must contain the {url} and {file} placeholders, and quote any path "
                 "that has spaces"
             ) from exc
+        # A dump that was just written is never its own victim, so "keep" can
+        # never drop below one (issue #490: the clamp is deliberate, not a
+        # silent default).
         keep = max(keep, 1)
         file_existed_before = file.exists()  # the name is unique per run; it never does
         # The timeout is resolved before the sink is opened: a bad
@@ -347,5 +351,19 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
         # Retention, on both paths — the --file form's dump ages just the same.
         _retain_dumps(directory, database, file, keep)
         return file
+    except OSError as exc:
+        # ENOSPC, permission and other filesystem failures during the accept/
+        # rename/retention steps must not escape as raw tracebacks: the
+        # module's contract is BackupFailed for every way a dump cannot be
+        # produced (issue #489).
+        raise BackupFailed(f"could not finalise the dump {file}: {exc}") from exc
     finally:
-        partial.unlink(missing_ok=True)
+        # Cleanup must not escape as a raw OSError and mask the original
+        # failure (issue #489 / review). FileNotFoundError is already
+        # tolerated by missing_ok=True; any other failure is converted
+        # only when nothing else is propagating.
+        try:
+            partial.unlink(missing_ok=True)
+        except OSError as exc:
+            if sys.exc_info()[0] is None:
+                raise BackupFailed(f"could not remove the partial dump {partial}: {exc}") from exc

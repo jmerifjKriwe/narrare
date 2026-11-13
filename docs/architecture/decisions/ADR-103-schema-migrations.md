@@ -14,10 +14,12 @@
 The schema had one source and no history: the models registered on the `Base`
 in `app/kernel/db/base.py` — the kernel modules `app/kernel/contracts/models.py`,
 `app/kernel/jobs/models.py`, `app/kernel/llm/models.py` and
-`app/kernel/prompts/models.py`, plus each capability's `models.py` — are the
+`app/kernel/prompts/models.py`, plus a capability's `models.py` when that
+capability owns tables — are the
 single declaration, and `app/kernel/db/init.py` created the database with
 `metadata.create_all`. `create_all` creates missing tables and never alters an
-existing one, and the only way to apply a model change was `just db-reset` — drop the
+existing one, so additive changes (new tables) reached a database that way while
+any alteration of an existing table required `just db-reset` — drop the
 database, recreate it. That is correct while nobody holds data, and wrong the moment
 someone does: Narrare is local-first (ADR-101) and the user's own Postgres holds the
 manuscripts. On the first installation that keeps prose, the schema was frozen — no
