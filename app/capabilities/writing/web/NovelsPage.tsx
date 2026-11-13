@@ -123,12 +123,12 @@ export function NovelsPage() {
   // when their search index does (the row's own follow-up).
   const genres = [...new Set(list.map((novel) => novel.genre).filter((g): g is string => g !== null))];
   const needle = search.trim().toLowerCase();
-  const filtered = list.filter(
+  const visible = list.filter(
     (novel) =>
+      novel.id !== hero?.id &&
       (genre === null || novel.genre === genre) &&
       (needle === "" || novel.title.toLowerCase().includes(needle)),
   );
-  const visible = filtered.filter((novel) => novel.id !== hero?.id);
 
   // The page asks before it shows: a named loading state, never a blank
   // page, and never an empty library that has not heard yet. The wait
@@ -209,7 +209,7 @@ export function NovelsPage() {
                   {t("novels.refreshFailed")}
                 </Notice>
               ) : null}
-              {hero ? <HeroCard key={hero.id} novel={hero} /> : null}
+              {hero ? <HeroCard novel={hero} /> : null}
               <div className="space-y-4">
                 <ShelfToolbar
                   search={search}
@@ -227,7 +227,7 @@ export function NovelsPage() {
                     ))}
                   </ul>
                 ) : (
-                  <BookList novels={filtered} />
+                  <BookList novels={visible} />
                 )}
               </div>
             </>

@@ -39,9 +39,7 @@ class NovelRepository(ScopedRepository[Novel]):
     model = Novel
 
     async def list(self) -> Sequence[Novel]:
-        result = await self.session.scalars(
-            self.query().order_by(Novel.created_at.desc(), Novel.id)
-        )
+        result = await self.session.scalars(self.query().order_by(Novel.created_at.desc()))
         return result.all()
 
     async def counts(self, novel_id: UUID | None = None) -> dict[UUID, tuple[int, int]]:
