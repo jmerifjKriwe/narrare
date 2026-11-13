@@ -493,8 +493,8 @@ async def check_consistency(
         # A re-run must not inherit the previous run's percentage.
         await report(0)
     for group in groups:
-        # Same chain render as the extraction: the cut lives in the grouping
-        # (a group is under BODY_LIMIT), a refusal fails the row by name.
+        # Render through the effective chain so a saved override that includes
+        # another registered key resolves instead of being refused include-missing.
         prompt = await render(
             session,
             job.user_id,

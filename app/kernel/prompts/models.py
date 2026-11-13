@@ -105,12 +105,28 @@ class PromptTemplateRepository(ScopedRepository[PromptTemplate]):
         return await self.session.scalar(statement)
 
     async def effective(self, prompt_key: str, novel_id: UUID | None) -> PromptTemplate | None:
-        """The override in force for the scope: the novel's row, else the global one."""
-        if novel_id is not None:
-            novel_row = await self._row(prompt_key, novel_id)
-            if novel_row is not None:
-                return novel_row
-        return await self._row(prompt_key, None)
+        """The override in force for the scope: the novel's row, else the global one.
+
+        Both tiers are read in a single statement so a concurrent save cannot
+        make the novel-tier and global-tier reads disagree on the snapshot.
+        """
+        if novel_id is None:
+            return await self._row(prompt_key, None)
+        # One statement for both tiers; pick the novel row when it exists.
+        from sqlalchemy import or_
+
+        statement = self.query().where(
+            PromptTemplate.prompt_key == prompt_key,
+            or_(
+                PromptTemplate.novel_id == novel_id,
+                PromptTemplate.novel_id.is_(None),
+            ),
+        )
+        rows = (await self.session.scalars(statement)).all()
+        novel_row = next((row for row in rows if row.novel_id == novel_id), None)
+        if novel_row is not None:
+            return novel_row
+        return next((row for row in rows if row.novel_id is None), None)
 
     async def save(self, prompt_key: str, content: str, novel_id: UUID | None) -> PromptTemplate:
         """Write the override for the scope, replacing its row in place.

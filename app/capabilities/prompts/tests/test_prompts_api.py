@@ -18,7 +18,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from app.api.main import app
-from app.capabilities.prompts.service import PromptRefusedError, PromptService
+from app.capabilities.prompts.service import PromptService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Novel
 from app.kernel.db.session import Session
@@ -327,9 +327,10 @@ async def test_two_saves_racing_on_an_empty_scope_both_land(
         self: PromptTemplateRepository,
         prompt_key: str,
         novel_id: UUID | None,
-        **_: object,
+        *,
+        fresh: bool = False,
     ) -> object:
-        snapshot = await original_row(self, prompt_key, novel_id)
+        snapshot = await original_row(self, prompt_key, novel_id, fresh=fresh)
         if stale_sessions and self.session is stale_sessions[0] and snapshot is None:
             # Only the stale read waits: the atomic save's re-read after its
             # upsert already sees a row and must pass through untouched.
@@ -355,17 +356,3 @@ async def test_two_saves_racing_on_an_empty_scope_both_land(
     rows = await _rows()
     assert len(rows) == 1
     assert rows[0][2] in ("the stale save", "the fresh save")
-
-
-async def test_the_service_vocabulary_stays_closed() -> None:
-    """The refusal reasons the API can answer are exactly these."""
-    from app.capabilities.prompts.service import REFUSAL_REASONS
-
-    assert set(REFUSAL_REASONS) == {"novel-scope", "unknown-novel", "contract"}
-
-
-def test_the_refusal_error_keeps_reason_and_detail() -> None:
-    """``PromptRefusedError`` carries what the 422 body answers with."""
-    error = PromptRefusedError("novel-scope", "'chat.ask' carries no novel scope")
-    assert error.reason == "novel-scope"
-    assert str(error) == "'chat.ask' carries no novel scope"

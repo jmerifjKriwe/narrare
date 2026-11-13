@@ -1,4 +1,10 @@
-/** One aligned pair of the side-by-side diff: a side without a line has none. */
+/**
+ * One aligned pair of the side-by-side diff: a side without a line has none.
+ *
+ * A changed line renders as a removal row followed by an addition row (a gap
+ * in each column) rather than a paired row — the LCS stays dependency-free by
+ * design (WP4 follow-up #397). Pairing would need a smarter diff.
+ */
 export type DiffRow = { left: string | null; right: string | null };
 
 /**

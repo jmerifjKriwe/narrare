@@ -48,6 +48,7 @@ export function PromptsPage() {
     key: string;
     scope: PromptScope;
     novelId: string;
+    novelTitle: string | null;
   } | null>(null);
   // Bumped when a save or reset lands, and by the page-level retry: the list
   // refetches through the effect instead of a handler patching rows by hand.
@@ -55,6 +56,7 @@ export function PromptsPage() {
   // The open editor's words, reported up: re-targeting or leaving the page
   // must ask before they are thrown away. One ask stands at a time.
   const [editorDirty, setEditorDirty] = useState(false);
+  const [focusNonce, setFocusNonce] = useState(0);
   const [guardOpen, setGuardOpen] = useState(false);
   const guardAnswer = useRef<((leave: boolean) => void) | null>(null);
 
@@ -83,7 +85,12 @@ export function PromptsPage() {
 
   async function openEditor(key: string, scope: PromptScope): Promise<void> {
     if (editor !== null && editorDirty && !(await askToLeave())) return;
-    setEditor({ key, scope, novelId });
+    setEditor({
+      key,
+      scope,
+      novelId,
+      novelTitle: novels.find((novel) => novel.id === novelId)?.title ?? null,
+    });
     setEditorDirty(false);
   }
 
@@ -151,7 +158,7 @@ export function PromptsPage() {
           live="alert"
           className="mt-4"
           action={
-            <Button variant="secondary" onClick={() => setRefresh((current) => current + 1)}>
+            <Button variant="secondary" onClick={() => { setFocusNonce((n) => n + 1); setRefresh((current) => current + 1); }}>
               {t("prompts.retry")}
             </Button>
           }
@@ -180,13 +187,13 @@ export function PromptsPage() {
                 key={summary.key}
                 summary={summary}
                 novelSelected={novelId !== ""}
+                focusNonce={focusNonce}
                 editor={
                   editor?.key === summary.key
                     ? {
                         scope: editor.scope,
                         novelId: editor.novelId,
-                        novelTitle:
-                          novels.find((novel) => novel.id === editor.novelId)?.title ?? null,
+                        novelTitle: editor.novelTitle,
                       }
                     : null
                 }

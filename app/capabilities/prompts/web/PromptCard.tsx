@@ -25,6 +25,7 @@ function Chip({ children }: { children: string }) {
 export function PromptCard(props: {
   summary: PromptSummary;
   novelSelected: boolean;
+  focusNonce?: number;
   editor: { scope: PromptScope; novelId: string; novelTitle: string | null } | null;
   onEdit: (scope: PromptScope) => void;
   onClose: () => void;
@@ -32,7 +33,7 @@ export function PromptCard(props: {
   onDirtyChange: (dirty: boolean) => void;
 }) {
   const t = useTranslation();
-  const { summary, novelSelected, editor, onEdit, onClose, onSaved, onDirtyChange } = props;
+  const { summary, novelSelected, focusNonce, editor, onEdit, onClose, onSaved, onDirtyChange } = props;
   const label = keyLabelOf(summary.key, t);
   return (
     <li className="border-b border-rule py-3 first:pt-0 last:border-b-0 last:pb-0">
@@ -52,7 +53,7 @@ export function PromptCard(props: {
           </p>
           <div className="mt-2">
             <Button variant="secondary" onClick={() => onEdit("global")}>
-              {t("prompts.edit")}
+              {summary.override_global ? t("prompts.edit") : t("prompts.createGlobal")}
             </Button>
           </div>
         </div>
@@ -90,6 +91,7 @@ export function PromptCard(props: {
           scope={editor.scope}
           novelId={editor.novelId}
           novelTitle={editor.novelTitle}
+          focusNonce={focusNonce}
           onClose={onClose}
           onSaved={onSaved}
           onDirtyChange={onDirtyChange}

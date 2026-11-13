@@ -19,6 +19,7 @@ wrote, not a spy on the provider.
 """
 
 import json
+import re
 import shutil
 import time
 from pathlib import Path
@@ -129,7 +130,7 @@ def _latest_continuation(title: str) -> tuple[str, str]:
     The audit is the only writer of llm_calls, so what a test asserts here is
     what the request really carried. The row is written by the stream's
     finalizer, which commits a moment after the ghost is taken, so the read
-    retries briefly instead of assuming the row is already visible.
+    retries for up to 10 s instead of assuming the row is already visible.
     """
     deadline = time.monotonic() + 10.0
     while time.monotonic() < deadline:
@@ -146,12 +147,22 @@ def _latest_continuation(title: str) -> tuple[str, str]:
     raise AssertionError(f"no continuation audit row for {title!r} within 10 s")
 
 
-def _override_count(novel_id: str) -> int:
-    """How many override rows the novel's id carries — the archive's boundary."""
-    [row] = _rows(
-        "SELECT count(*) FROM prompt_templates WHERE novel_id = :novel_id",
-        {"novel_id": novel_id},
-    )
+def _override_count(novel_id: str, prompt_key: str | None = None) -> int:
+    """How many override rows the novel's id carries — the archive's boundary.
+
+    ``prompt_key`` narrows the count to one key, so a mis-scoped global write
+    cannot hide behind a novel-id-only count.
+    """
+    if prompt_key is None:
+        query = "SELECT count(*) FROM prompt_templates WHERE novel_id = :novel_id"
+        params: dict[str, object] = {"novel_id": novel_id}
+    else:
+        query = (
+            "SELECT count(*) FROM prompt_templates "
+            "WHERE novel_id = :novel_id AND prompt_key = :prompt_key"
+        )
+        params = {"novel_id": novel_id, "prompt_key": prompt_key}
+    [row] = _rows(query, params)
     count = row[0]
     assert isinstance(count, int)
     return count
@@ -210,7 +221,7 @@ def _prompts_for_novel(page: Page, title: str) -> Locator:
     return _continuation_card(page)
 
 
-def _save_override(page: Page, card: Locator, content: str) -> None:
+def _save_override(card: Locator, content: str) -> None:
     """Fill the open editor and save; the editor closing is the save landing."""
     card.get_by_label("Vorlage").fill(content)
     card.get_by_role("button", name="Speichern").click()
@@ -301,7 +312,7 @@ def test_a_novel_override_reaches_the_continuation_prompt(page: Page, stack: Sta
 
     card = _prompts_for_novel(page, title)
     card.get_by_role("button", name="Überschreibung für diesen Roman anlegen").click()
-    _save_override(page, card, OVERRIDE_TEMPLATE)
+    _save_override(card, OVERRIDE_TEMPLATE)
     # The refetched list names the novel tier's state: the row is in force.
     expect(card.get_by_text("Eine Überschreibung dieses Romans ist in Kraft.")).to_be_visible()
     assert_accessible(page)
@@ -337,7 +348,7 @@ def test_a_broken_template_is_refused_by_name_and_stores_nothing(page: Page, sta
     assert_accessible(page)
 
     # Refused means stored nothing: this novel's id carries no row at all.
-    assert _override_count(_novel_id(title)) == 0
+    assert _override_count(_novel_id(title), CONTINUATION) == 0
 
 
 def test_a_chat_override_without_the_sources_is_refused_by_the_contract(
@@ -346,7 +357,7 @@ def test_a_chat_override_without_the_sources_is_refused_by_the_contract(
     """A re-voice that drops the marked sources fails the contract, named."""
     page.goto(BASE + "/settings/prompts")
     card = page.get_by_role("listitem").filter(has_text=CHAT)
-    card.get_by_role("button", name="Überschreibung bearbeiten", exact=True).click()
+    card.get_by_role("button", name=re.compile(r"Überschreibung (bearbeiten|anlegen)")).click()
     card.get_by_label("Vorlage").fill("Question only: {{ question }}")
     card.get_by_role("button", name="Speichern").click()
 
@@ -371,7 +382,7 @@ def test_resetting_the_novel_scope_returns_the_bundled_prompt(page: Page, stack:
 
     card = _prompts_for_novel(page, title)
     card.get_by_role("button", name="Überschreibung für diesen Roman anlegen").click()
-    _save_override(page, card, OVERRIDE_TEMPLATE)
+    _save_override(card, OVERRIDE_TEMPLATE)
 
     # The override bites before the reset means anything: the marker rode.
     before = _continuation_count(title)
@@ -392,7 +403,7 @@ def test_resetting_the_novel_scope_returns_the_bundled_prompt(page: Page, stack:
     assert_accessible(page)
 
     # The row is gone — the reset deleted the novel's own tier, nothing else.
-    assert _override_count(_novel_id(title)) == 0
+    assert _override_count(_novel_id(title), CONTINUATION) == 0
 
     before = _continuation_count(title)
     page.goto(BASE + "/")
@@ -425,7 +436,7 @@ def test_an_export_carries_the_closed_surface_and_no_override(
     # An override stored before the export: the boundary has something to hold.
     card = _prompts_for_novel(page, title)
     card.get_by_role("button", name="Überschreibung für diesen Roman anlegen").click()
-    _save_override(page, card, OVERRIDE_TEMPLATE)
+    _save_override(card, OVERRIDE_TEMPLATE)
 
     export = tmp_path / "export"
     page.goto(BASE + "/")
@@ -475,7 +486,9 @@ def test_closing_a_dirty_prompt_editor_asks_first(page: Page, stack: Stack) -> N
     """Typed words the server does not hold are not thrown away by a click:
     the editor's cancel asks, and an untouched editor never does."""
     page.goto(f"{BASE}/settings/prompts")
-    page.get_by_role("button", name="Überschreibung bearbeiten").first.click()
+    page.get_by_role(
+        "button", name=re.compile(r"Überschreibung (bearbeiten|anlegen)")
+    ).first.click()
     template = page.get_by_label("Vorlage")
     expect(template).to_be_visible()
 
@@ -484,7 +497,9 @@ def test_closing_a_dirty_prompt_editor_asks_first(page: Page, stack: Stack) -> N
     expect(page.get_by_role("dialog", name="Ungespeicherter Text")).to_have_count(0)
     expect(template).to_have_count(0)
 
-    page.get_by_role("button", name="Überschreibung bearbeiten").first.click()
+    page.get_by_role(
+        "button", name=re.compile(r"Überschreibung (bearbeiten|anlegen)")
+    ).first.click()
     template = page.get_by_label("Vorlage")
     expect(template).to_be_visible()
     template.fill(template.input_value() + " ")
@@ -507,7 +522,9 @@ def test_leaving_the_page_with_a_dirty_editor_asks_first(page: Page, stack: Stac
     """The third door: a route change with typed words asks too; Stay keeps
     the editor, Leave follows the link."""
     page.goto(f"{BASE}/settings/prompts")
-    page.get_by_role("button", name="Überschreibung bearbeiten").first.click()
+    page.get_by_role(
+        "button", name=re.compile(r"Überschreibung (bearbeiten|anlegen)")
+    ).first.click()
     template = page.get_by_label("Vorlage")
     expect(template).to_be_visible()
     template.fill(template.input_value() + " ")
