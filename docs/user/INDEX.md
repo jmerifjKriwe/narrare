@@ -10,16 +10,13 @@ documentation grows around this index, never inside it.
 
 | Capability | Path | Navigation | Needs |
 | --- | --- | --- | --- |
-| Welcome to Narrare | /setup | — | — |
 
 ## Deutsch
 
 | Funktion | Pfad | Navigation | Benötigt |
 | --- | --- | --- | --- |
-| Willkommen bei Narrare | /setup | — | — |
 
 ## Français
 
 | Fonction | Chemin | Navigation | Nécessite |
 | --- | --- | --- | --- |
-| Bienvenue dans Narrare | /setup | — | — |
