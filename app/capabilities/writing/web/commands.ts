@@ -20,6 +20,7 @@ export const commands = [
       if (ctx.novelId === null) return;
       const novelId = ctx.novelId;
       void (async () => {
+        try {
         // An explicit empty title: the placeholder is a display concern, and
         // storing a title would freeze one locale's wording into the
         // database. The server treats an empty title exactly like an
@@ -56,6 +57,12 @@ export const commands = [
           params: { id: novelId },
           search: (prev) => ({ ...prev, chapter: chapter.id }),
         });
+        } catch {
+          // An outage here must not surface as an unhandled rejection:
+          // the palette closes onto nothing. The rail's own button names
+          // the failure (`chapters.errorCreate`); the palette path stays
+          // silent rather than half-running.
+        }
       })();
     },
     enabled: (ctx) => ctx.novelId !== null,

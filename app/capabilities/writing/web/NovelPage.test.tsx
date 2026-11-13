@@ -330,7 +330,9 @@ describe("the workbench's four cache states", () => {
     // carries the fix, so the message is asserted as a part, not the whole.
     expect(alert.textContent).toContain(t("chapters.errorLoad"));
     expect(screen.queryByText(t("chapters.refreshFailed"))).toBeNull();
-    expect(screen.queryByRole("heading")).toBeNull();
+    // The outage names itself in a heading so a screen reader can jump to
+    // the state by structure — the name is the error, never an empty title.
+    expect(screen.getByRole("heading").textContent).toContain(t("chapters.errorLoad"));
     // The empty-rail copy is a loaded book's truth, not a missing one's.
     expect(screen.queryByRole("button", { name: t("chapters.new") })).toBeNull();
   });

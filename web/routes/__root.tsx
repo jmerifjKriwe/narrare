@@ -39,7 +39,15 @@ function useChromeless(): boolean {
 
 /** A dialog owns the stage; the palette refuses to open over one. */
 function paletteCanOpen(): boolean {
-  return document.querySelector('[role="dialog"]') === null;
+  // A modal dialog (the shell's Dialog, RAC Modal) owns the stage. A
+  // React Aria popover (ComboBox, Menu) also carries role="dialog" but is
+  // non-modal — it must not swallow ⌘K (#436). A dialog that is not
+  // contained in a `.react-aria-Popover` is the modal case.
+  const dialogs = document.querySelectorAll('[role="dialog"]');
+  for (const dialog of dialogs) {
+    if (dialog.closest(".react-aria-Popover") === null) return false;
+  }
+  return true;
 }
 
 /** The one shell: every route renders inside it. */
@@ -110,11 +118,9 @@ function Shell() {
           // the first: typing would drive a page the dialog shadows, and
           // the dialog would survive onto whatever route the palette then
           // jumps to. A dialog owns the stage, ⌘K refuses to open — its own
-          // closing is untouched. The installed React Aria deliberately
-          // omits aria-modal on the dialog element (a documented Safari
-          // workaround; modality comes from aria-hidden outside), so the
-          // check reads the role alone — and every modal in the app is a
-          // React Aria dialog, wherever it was opened from.
+          // closing is untouched. A modal dialog (not contained in a
+          // `.react-aria-Popover`) owns the stage; a ComboBox popover is
+          // non-modal and must not swallow ⌘K (#436).
           if (!value && !paletteCanOpen()) {
             return value;
           }
