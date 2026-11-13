@@ -15,6 +15,7 @@ from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.context import ContextBudgets
 from app.kernel.contracts.models import Chapter, Entity, Novel
 from app.kernel.db.session import Session
+from app.kernel.prompts import PromptRenderError, no_includes, render_source
 
 BUDGETS = ContextBudgets(
     immediate_text=2000, referenced_entities=500, recent_chapters=400, style_hints=200
@@ -157,7 +158,6 @@ async def test_a_huge_frame_shrinks_the_tail_and_holds_the_total() -> None:
     measured frame, the sections stay whole, and the result never exceeds the
     four slices together."""
     from app.capabilities.writing.prompts import render_continuation
-    from app.kernel.prompts import render_source
     from app.kernel.prompts.models import PromptTemplateRepository
 
     instruction = "W" * 900
@@ -166,9 +166,6 @@ async def test_a_huge_frame_shrinks_the_tail_and_holds_the_total() -> None:
         "Text so far:\n{{ tail }}\n\n"
         "{{ entities_section }}{{ predecessors_section }}{{ style_section }}" + instruction
     )
-
-    def no_includes(key: str) -> str:
-        raise KeyError(key)
 
     empty = {
         "novel_title": NOVEL_TITLE,
@@ -219,7 +216,6 @@ async def test_glue_that_grows_as_the_tail_shrinks_is_refused_by_name() -> None:
     """A frame that only fits while the tail is long cannot be truncated into
     fitting: the render is refused `budget`, the sections untouched."""
     from app.capabilities.writing.prompts import render_continuation
-    from app.kernel.prompts import PromptRenderError
     from app.kernel.prompts.models import PromptTemplateRepository
 
     grow = (
@@ -255,7 +251,6 @@ async def test_the_tail_shrinks_by_the_frame_the_override_measures() -> None:
     """A 500-character instruction and a full chapter: the slice stays filled,
     the tail is what the measured frame leaves of it — never the body's front."""
     from app.capabilities.writing.prompts import render_continuation
-    from app.kernel.prompts import render_source
     from app.kernel.prompts.models import PromptTemplateRepository
 
     instruction = "Y" * 500
@@ -264,9 +259,6 @@ async def test_the_tail_shrinks_by_the_frame_the_override_measures() -> None:
         "Text so far:\n{{ tail }}\n\n"
         "{{ entities_section }}{{ predecessors_section }}{{ style_section }}" + instruction
     )
-
-    def no_includes(key: str) -> str:
-        raise KeyError(key)
 
     empty = {
         "novel_title": NOVEL_TITLE,
@@ -344,3 +336,38 @@ async def test_a_refused_override_ends_the_stream_with_the_one_error_frame() -> 
     # The refusal is logged by the router branch that handled it (budget or
     # prompt); the caplog fixture does not reliably capture it across the ASGI
     # transport, so the response text above is the contract.
+
+
+async def test_a_stable_oversized_override_is_refused_by_name() -> None:
+    """A frame that never fits — even with an empty tail — is refused `budget`,
+    pinned through a direct override (not only the bundled template)."""
+    from app.capabilities.writing.prompts import render_continuation
+    from app.kernel.context import BudgetImpossibleError
+    from app.kernel.prompts.models import PromptTemplateRepository
+
+    instruction = "W" * 2500
+    override = (
+        "Novel: {{ novel_title }}\nChapter: {{ chapter_title }}\n\n"
+        "Text so far:\n{{ tail }}\n\n"
+        "{{ entities_section }}{{ predecessors_section }}{{ style_section }}" + instruction
+    )
+
+    async with Session() as session:
+        await PromptTemplateRepository(session, LOCAL_USER_ID).save(
+            "writing.continuation", override, None
+        )
+        await session.commit()
+        with pytest.raises(BudgetImpossibleError):
+            await render_continuation(
+                session,
+                LOCAL_USER_ID,
+                None,
+                budgets=BUDGETS,
+                novel_title=NOVEL_TITLE,
+                chapter_title=CHAPTER_TITLE,
+                body="Z" * 5000,
+                entities=ENTITIES,
+                predecessors=PREDECESSORS,
+                genre=GENRE,
+                blurb=BLURB,
+            )

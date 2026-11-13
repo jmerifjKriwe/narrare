@@ -1,8 +1,9 @@
 {
   "prompts.create": "Create an override for this novel",
+  "prompts.createGlobal": "Create a global override",
   "prompts.diff.bundled": "Bundled",
   "prompts.diff.none": "No override is in force — the bundled template stands.",
-  "prompts.diff.override": "Override",
+  "prompts.diff.override": "Override in force",
   "prompts.edit": "Edit override",
   "prompts.editNovel": "Edit this novel's override",
   "prompts.editor.cancel": "Cancel",

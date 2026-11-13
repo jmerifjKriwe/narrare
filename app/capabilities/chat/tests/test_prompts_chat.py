@@ -13,6 +13,7 @@ from uuid import uuid4
 from app.capabilities.chat.prompts import chat_prompt
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.llm import SOURCE_PREFIX
+from app.kernel.prompts import get_registry, no_includes, render, render_source
 from app.kernel.retrieval import Passage
 
 if TYPE_CHECKING:
@@ -58,7 +59,6 @@ async def test_the_bundled_chain_renders_the_pinned_prompt() -> None:
     """No override at either tier: the registry render is the pinned prompt."""
     from app.capabilities.chat.prompts import CHAT_KEY, sources_block
     from app.kernel.db.session import Session
-    from app.kernel.prompts import render
 
     async with Session() as session:
         prompt = await render(
@@ -73,7 +73,6 @@ async def test_the_bundled_chain_renders_the_pinned_prompt() -> None:
 def test_the_key_is_registered_global_only() -> None:
     """chat.ask carries no novel scope; the contract rides the spec."""
     from app.capabilities.chat.prompts import CHAT_KEY, chat_contract
-    from app.kernel.prompts import get_registry
 
     spec = get_registry().spec(CHAT_KEY)
     assert spec.novel_scopable is False
@@ -125,7 +124,9 @@ async def test_a_global_override_revoices_the_frame_and_the_fake_still_quotes_th
     assert prompt.startswith("Answer strictly from the sources.")
     assert SOURCE_PREFIX + FIRST_PASSAGE in prompt
     # The accept side of the contract pair: the override as rendered passes
-    # the gate it saved under, not only GOLDEN and the sample.
+    # the gate it saved under, not only GOLDEN and the sample. FIRST_PASSAGE
+    # equals _SAMPLE_PASSAGE deliberately (the sample payload), so this pins
+    # the bundled render; a distinct re-voice is exercised by the save tests.
     assert chat_contract(prompt) is True
     assert [passage.text for passage in passages] == [FIRST_PASSAGE]
     events = [event async for event in FakeProvider().stream(CompletionRequest.user(prompt))]
@@ -136,10 +137,6 @@ async def test_a_global_override_revoices_the_frame_and_the_fake_still_quotes_th
 def test_the_contract_refuses_a_render_without_the_source_marker() -> None:
     """A render that lost the marked sources is refused; the pinned one passes."""
     from app.capabilities.chat.prompts import chat_contract
-    from app.kernel.prompts import render_source
-
-    def no_includes(key: str) -> str:
-        raise KeyError(key)
 
     dropped = render_source("Asked: {{ question }}", {"question": QUESTION}, include=no_includes)
     assert chat_contract(dropped) is False
@@ -180,10 +177,6 @@ def test_the_marker_mentioned_in_prose_alone_does_not_pass_the_contract() -> Non
 def test_the_sample_renders_through_the_contract() -> None:
     """The sample the editor's legend renders is a valid prompt by the contract."""
     from app.capabilities.chat.prompts import CHAT_TEMPLATE, chat_contract, sample_variables
-    from app.kernel.prompts import render_source
-
-    def no_includes(key: str) -> str:
-        raise KeyError(key)
 
     rendered = render_source(CHAT_TEMPLATE, sample_variables(), include=no_includes)
     assert "Question: Wo war der Leuchtturm?" in rendered
@@ -213,13 +206,31 @@ async def test_a_refused_override_ends_the_stream_with_the_one_error_frame(
         await PromptTemplateRepository(session, LOCAL_USER_ID).save(CHAT_KEY, override, None)
         await session.commit()
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.post("/api/chat/ask", json={"question": QUESTION})
+    import logging
+    from logging import Handler, LogRecord, getLogger
+
+    logger = getLogger("narrare")
+    captured: list[LogRecord] = []
+
+    class _Capture(Handler):
+        def emit(self, record: LogRecord) -> None:
+            captured.append(record)
+
+    handler = _Capture(level=logging.ERROR)
+    logger.addHandler(handler)
+    try:
+        with caplog.at_level(logging.ERROR, logger="narrare"):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post("/api/chat/ask", json={"question": QUESTION})
+    finally:
+        logger.removeHandler(handler)
 
     assert response.status_code == 200
     assert response.text == 'event: error\ndata: {"code": "prompt-refused"}\n\n'
     async with Session() as session:
         assert await session.scalar(sql_text("SELECT count(*) FROM llm_calls")) == 0
-    refusals = [record for record in caplog.records if record.getMessage() == "chat prompt refused"]
+    refusals = [record for record in captured if record.getMessage() == "chat prompt refused"]
     assert len(refusals) == 1
     assert refusals[0].exc_info is not None

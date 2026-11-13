@@ -326,6 +326,22 @@ def test_over_long_relation_type_is_refused_by_name() -> None:
     assert "80" in raised.value.reason
 
 
+def test_over_long_entity_name_is_refused_by_name() -> None:
+    """An entity name past the column width refuses at parse, naming the kb
+    file that carries it — the shared helper's own coverage."""
+    files = {
+        "metadata.json": b'{"title": "X"}',
+        "kb/lang.md": ("---\ntype: character\nname: " + "x" * 201 + "\n---\n\nText.\n").encode(),
+    }
+
+    with pytest.raises(ArchiveError) as raised:
+        parse_archive(open_zip(zip_bytes(files)))
+
+    assert raised.value.path == "kb/lang.md"
+    assert "name" in raised.value.reason
+    assert "200" in raised.value.reason
+
+
 def test_blank_entity_name_is_refused_by_name() -> None:
     """A nameless entity has nothing other rows can point at: a present-but-
     blank `name` refuses at parse, naming the file and the field — while an
@@ -589,3 +605,73 @@ def test_write_into_an_existing_empty_target_succeeds(tmp_path: Path) -> None:
 
     assert (target / "metadata.json").read_bytes() == b"{}"
     assert list(tmp_path.iterdir()) == [target]
+
+
+def test_write_directory_refuses_traversal_and_absolute_keys(tmp_path: Path) -> None:
+    """A relpath key that escapes the staging root refuses by name instead of
+    writing outside the target (follow-up #343)."""
+    for bad in ("../escape.md", "a/../b.md", "/abs.md"):
+        target = tmp_path / f"t-{bad.replace('/', '_')}"
+        with pytest.raises(ArchiveError):
+            write_directory(target, {bad: b"x"})
+
+
+def test_write_directory_overwrites_symlinked_empty_target(tmp_path: Path) -> None:
+    """A symlink to an empty directory is replaced instead of crashing on
+    rmdir (follow-up #348)."""
+    target = tmp_path / "link"
+    real = tmp_path / "real"
+    real.mkdir()
+    target.symlink_to(real, target_is_directory=True)
+    files = {"metadata.json": b"{}"}
+
+    write_directory(target, files)
+
+    assert not target.is_symlink()
+    assert (target / "metadata.json").read_bytes() == b"{}"
+
+
+def test_open_directory_ignores_nested_chapter_files(tmp_path: Path) -> None:
+    """Only `chapters/*.md` (direct) is read; nested files are ignored, matching
+    the docstring and ZIP parity (follow-up #368)."""
+    root = tmp_path / "archive"
+    (root / "chapters" / "drafts").mkdir(parents=True)
+    (root / "chapters" / "01-top.md").write_text("---\ntitle: Top\nposition: 1\n---\n\nBody.\n")
+    (root / "chapters" / "drafts" / "nested.md").write_text("---\ntitle: Nested\n---\n\nNope.\n")
+    (root / "metadata.json").write_text('{"title": "X"}')
+
+    archive = parse_archive(open_directory(root))
+
+    assert [chapter.title for chapter in archive.chapters] == ["Top"]
+
+
+def test_slug_assignment_stable_for_duplicate_keys() -> None:
+    """Repeated serialization of identical-key entries yields the same files,
+    and reordering equivalent inputs does not swap their slugs (follow-up
+    #345)."""
+    archive = NovelArchive(
+        title="S",
+        chapters=[
+            ChapterFile(title="K", position=1, body="First."),
+            ChapterFile(title="K", position=1, body="Second."),
+        ],
+    )
+    first = serialize_archive(archive)
+    second = serialize_archive(archive)
+    assert first == second
+
+    reordered = NovelArchive(
+        title="S",
+        chapters=[
+            ChapterFile(title="K", position=1, body="Second."),
+            ChapterFile(title="K", position=1, body="First."),
+        ],
+    )
+    reordered_files = serialize_archive(reordered)
+    # The chapter files (names and bytes) are identical regardless of input
+    # order: the body-derived discriminator keeps slugs from swapping.
+    chapter_files_first = {k: v for k, v in first.items() if k.startswith("chapters/")}
+    chapter_files_reordered = {
+        k: v for k, v in reordered_files.items() if k.startswith("chapters/")
+    }
+    assert chapter_files_first == chapter_files_reordered

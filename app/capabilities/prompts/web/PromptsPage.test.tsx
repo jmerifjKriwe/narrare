@@ -520,7 +520,7 @@ describe("the dirty editor", () => {
     await userEvent.type(box, "x");
 
     const other = cardOf(t("settings.task.chat.ask"));
-    await userEvent.click(within(other).getByRole("button", { name: t("prompts.edit") }));
+    await userEvent.click(within(other).getByRole("button", { name: t("prompts.createGlobal") }));
 
     expect(screen.getByRole("dialog", { name: t("save.leaveTitle") })).toBeTruthy();
   });

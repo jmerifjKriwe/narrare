@@ -2,7 +2,7 @@
 
 The registry (:mod:`app.kernel.prompts.registry`) holds every bundled prompt
 spec — key, Jinja template, sample-variable factory, contract, novel scope —
-the sandboxed render (:mod:`app.kernel.prompts.render`) turns a source into
+the sandboxed render (:mod:`app.kernel.prompts.rendering`) turns a source into
 text, refusing every failure by name, and :func:`render` walks the effective
 chain (novel row → user-global row → bundled) to pick that source, includes
 following. Later work docks the four bundled prompts and the user-facing
@@ -16,7 +16,13 @@ from app.kernel.prompts.registry import (
     PromptSpec,
     get_registry,
 )
-from app.kernel.prompts.render import MAX_INCLUDE_DEPTH, render, render_source
+from app.kernel.prompts.rendering import MAX_INCLUDE_DEPTH, render, render_source
+
+
+def no_includes(key: str) -> str:
+    """The include chain for a bundled-only render: every include is missing."""
+    raise KeyError(key)
+
 
 __all__ = [
     "MAX_INCLUDE_DEPTH",

@@ -1,8 +1,9 @@
 {
   "prompts.create": "Überschreibung für diesen Roman anlegen",
+  "prompts.createGlobal": "Globale Überschreibung anlegen",
   "prompts.diff.bundled": "Mitgeliefert",
   "prompts.diff.none": "Keine Überschreibung in Kraft — die mitgelieferte Vorlage gilt.",
-  "prompts.diff.override": "Überschreibung",
+  "prompts.diff.override": "Überschreibung in Kraft",
   "prompts.edit": "Überschreibung bearbeiten",
   "prompts.editNovel": "Überschreibung dieses Romans bearbeiten",
   "prompts.editor.cancel": "Abbrechen",

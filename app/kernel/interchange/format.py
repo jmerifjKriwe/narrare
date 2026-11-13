@@ -15,7 +15,12 @@ archive twice, or exporting what was just parsed, yields byte-identical files:
 frontmatter keys ride in a fixed order through `yaml.safe_dump`
 (`sort_keys=False`), lists keep their order, `metadata.json` sorts its keys in
 writing order, file names are slugs with a numeric suffix on collision and a
-zero-padded position prefix on chapters.
+zero-padded position prefix on chapters. The prefix is the chapter's
+position written verbatim (`<nn>`): exports carry the database's 0-based
+positions, bundled demos use 1-based positions, and `<nn>` is at least
+two digits, so bare (frontmatter-less) archives order correctly only
+up to 99 chapters — exports are unaffected because their order rides on
+`metadata.json`.
 
 Frontmatter parsing is strict where lying would corrupt a novel (a non-string
 title, a non-integer position, a present-but-blank entity name or type, a
@@ -185,7 +190,10 @@ def _assign_slugs[K](keys: list[tuple[K, ...]]) -> list[str]:
     `anna-2.md` sorts before `anna.md`), and a swapped input list produces
     the same files.
     """
-    order = sorted(range(len(keys)), key=keys.__getitem__)
+    # Tie-break on the original index so identical keys never swap slugs
+    # across re-serialization (see follow-up #345): the key set alone
+    # cannot distinguish them, so input order is the last resort.
+    order = sorted(range(len(keys)), key=lambda index: (keys[index], index))
     slugs: list[str] = [""] * len(keys)
     taken: set[str] = set()
     for index in order:
@@ -549,15 +557,28 @@ def _decode(raw: bytes, relpath: str) -> str:
 def serialize_archive(archive: NovelArchive) -> dict[str, bytes]:
     """The archive's files, `metadata.json` first, everything deterministic."""
     files: dict[str, bytes] = {}
+    # The discriminator (id, then body) keeps slug assignment a pure function
+    # of the key set rather than of list arrival: two chapters/entities that
+    # share a title/position/name but differ in payload no longer swap files
+    # when their input order changes (see follow-up #345 and the Codacy
+    # review). Truly identical keys keep the original index as the last
+    # resort, which never affects distinguishable entries.
     chapter_keys = [
-        (slugify(chapter.title), chapter.title, chapter.position) for chapter in archive.chapters
+        (
+            slugify(chapter.title),
+            chapter.title,
+            chapter.position,
+            str(chapter.id) if chapter.id is not None else "",
+            chapter.body,
+        )
+        for chapter in archive.chapters
     ]
     chapter_slugs = _assign_slugs(chapter_keys)
     chapter_names = [
         f"chapters/{chapter.position:02d}-{slug}.md"
         for chapter, slug in zip(archive.chapters, chapter_slugs, strict=True)
     ]
-    entity_keys = [(slugify(entity.name), entity.name) for entity in archive.entities]
+    entity_keys = [(slugify(entity.name), entity.name, entity.body) for entity in archive.entities]
     entity_slugs = _assign_slugs(entity_keys)
     entity_names = [f"kb/{slug}.md" for slug in entity_slugs]
 
