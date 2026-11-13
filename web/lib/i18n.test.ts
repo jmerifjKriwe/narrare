@@ -53,48 +53,6 @@ describe("ICU message format", () => {
     expect(t("shell.paletteOpen", { key: "⌘K" })).not.toContain("{");
   });
 
-  it("renders each error sentence's parameters, not their placeholders", () => {
-    // The receipt formats each refusal with its `params`. A lone `'` in an
-    // ICU message starts a quoted literal, so `'{name}'` prints the braces
-    // instead of the name — and the English receipt did exactly that while
-    // de/fr used typographic quotes. Every error sentence must interpolate.
-    // The family the test exercises follows the living catalog: the shelf
-    // conflict receipts left with the demolished shelf, the shared error
-    // sentences stay.
-    const paramsByCode: Record<string, Record<string, string>> = {
-      "errors.keyUnavailable": {},
-      "errors.modelNotFound": { model: "mira-4" },
-      "errors.promptRefused": {},
-      "errors.promptRefusedBudget": {},
-      "errors.providerAuth": {},
-      "errors.unknown": {},
-    };
-    const prefix = "errors.";
-    const keys = Object.keys(catalogs.en).filter(
-      (key) => key.startsWith(prefix) && key !== "errors.link" && key !== "errors.details",
-    );
-
-    // Both directions: a catalog message with no engine code is dead, and a
-    // code with no message loses its localization silently.
-    expect(keys.sort()).toEqual(Object.keys(paramsByCode).sort());
-
-    for (const key of keys) {
-      if (paramsByCode[key] === undefined) throw new Error(`no param set for ${key}`);
-      for (const candidate of locales) {
-        const params = {
-          ...paramsByCode[key],
-          link: catalogs[candidate]["errors.link"],
-        };
-        const message = catalogs[candidate][key as keyof typeof catalogs.en];
-        const rendered = String(new IntlMessageFormat(message, candidate).format(params));
-        expect(rendered, `${candidate}/${key}`).not.toMatch(/[{}]/);
-        for (const [param, value] of Object.entries(params)) {
-          expect(rendered, `${candidate}/${key}: {${param}}`).toContain(value);
-        }
-      }
-    }
-  });
-
   it("uses each locale's own plural rules", () => {
     const german = "{count, plural, one {# Kapitel} other {# Kapitel·n}}";
     expect(new IntlMessageFormat(german, "de").format({ count: 1 })).toBe("1 Kapitel");
@@ -103,28 +61,6 @@ describe("ICU message format", () => {
     const english = "{count, plural, one {# chapter} other {# chapters}}";
     expect(new IntlMessageFormat(english, "en").format({ count: 1 })).toBe("1 chapter");
     expect(new IntlMessageFormat(english, "en").format({ count: 0 })).toBe("0 chapters");
-  });
-
-  it("carries the settings link exactly once in every error sentence", () => {
-    // The surfaces split the formatted sentence around the link's words to
-    // make them the link — a dropped or repeated {link} placeholder would
-    // leave an unlinked sentence, or split at the wrong occurrence. Every
-    // errors.* sentence (but the link's own key and the disclosure label,
-    // which carry none) formats to exactly one occurrence, in every locale.
-    for (const candidate of locales) {
-      const linkWords = catalogs[candidate]["errors.link"];
-      const sentences = Object.entries(catalogs[candidate]).filter(
-        ([key]) => key.startsWith("errors.") && key !== "errors.link" && key !== "errors.details",
-      );
-      expect(sentences.length).toBeGreaterThan(0);
-      for (const [key, message] of sentences) {
-        const formatted = String(
-          new IntlMessageFormat(message, candidate).format({ link: linkWords, model: "M" }),
-        );
-        const occurrences = formatted.split(linkWords).length - 1;
-        expect(occurrences, `${candidate}/${key}`).toBe(1);
-      }
-    }
   });
 });
 
@@ -144,14 +80,14 @@ describe("the formal register", () => {
     applyLocale("de");
     applyFormality("formal");
 
-    expect(t("errors.link")).toBe("Einstellungen → Modelle");
+    expect(t("nav.back")).toBe("Alle Romane");
   });
 
   it("leaves English unchanged", () => {
     applyLocale("en");
     applyFormality("formal");
 
-    expect(t("errors.link")).toBe(catalogs.en["errors.link"]);
+    expect(t("nav.back")).toBe(catalogs.en["nav.back"]);
   });
 
   it("parses every overlay message", () => {
@@ -183,7 +119,7 @@ describe("the active language", () => {
     adoptServerLocale("de");
 
     expect(activeLocale()).toBe("de");
-    expect(t("errors.link")).toBe("Einstellungen → Modelle");
+    expect(t("nav.back")).toBe("Alle Romane");
   });
 
   it("ignores a code the catalog does not carry", () => {

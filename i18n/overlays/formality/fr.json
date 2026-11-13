@@ -1,17 +1,1 @@
-{
-  "knowledge.deleteBody": "Supprimer {title} ? Cette action est définitive — le fichier d'origine reste là où vous l'avez téléversé.",
-  "knowledge.entityDeleteText": "Voulez-vous vraiment supprimer {name} ? Cette action est irréversible.",
-  "knowledge.entitySaved": "Vos modifications de {name} ont été enregistrées.",
-  "knowledge.errorDocuments": "Impossible de charger vos documents. Le service local est-il démarré ?",
-  "knowledge.errorFindings": "Impossible de charger vos incohérences. Le service local est-il démarré ?",
-  "knowledge.errorLoad": "Impossible de charger vos entités. Le service local est-il démarré ?",
-  "knowledge.errorQueue": "Impossible de charger vos suggestions. Le service local est-il démarré ?",
-  "knowledge.errorRelations": "Impossible de charger vos relations. Le service local est-il démarré ?",
-  "knowledge.relationDeleteText": "Voulez-vous vraiment supprimer la relation vers {name} ? Elle ne peut pas être annulée.",
-  "prompts.pickNovel": "Choisissez un roman ci-dessus pour voir et modifier ce périmètre.",
-  "settings.appearance.hint": "Système suit votre appareil.",
-  "settings.formality.hint": "Comment Narrare s'adresse à vous.",
-  "settings.profiles.taskAuditOnly": "Le test des paramètres vérifie le profil que vous choisissez",
-  "setup.demo.blankHint": "Un roman vide, prêt pour votre premier chapitre.",
-  "setup.intro": "Créez votre premier roman."
-}
+{}
