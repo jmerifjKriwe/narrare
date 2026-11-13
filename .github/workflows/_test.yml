@@ -29,7 +29,7 @@ permissions: {}
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     timeout-minutes: 20
@@ -77,7 +77,7 @@ jobs:
       - run: |
           sudo install -d /usr/share/postgresql-common/pgdg
           sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail --retry 5 --retry-all-errors --retry-delay 2 https://www.postgresql.org/media/keys/ACCC4CF8.asc
-          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "${VERSION_CODENAME}")-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client-17
       # One suite, run once. A PR keeps `just test`, so nothing instruments a
       # PR; the covered recipe below replaces the plain one on a main push,
