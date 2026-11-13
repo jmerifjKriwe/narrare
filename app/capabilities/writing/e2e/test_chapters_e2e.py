@@ -895,7 +895,11 @@ def test_deleting_a_chapter_opens_its_neighbour(page: Page, stack: Stack) -> Non
     # name, the rail has one row fewer, the address names the neighbour,
     # and no failed save was named for the deletion the user asked for.
     expect(page.get_by_label("Kapiteltitel")).to_have_value("Drittes")
-    expect(page.get_by_text("Nicht gespeichert", exact=True)).to_have_count(0, timeout=10000)
+    # Wait for the autosave debounce window to elapse before asserting:
+    # a failure that lands after the immediate empty poll must still be
+    # caught (#689).
+    page.wait_for_timeout(1200)
+    expect(page.get_by_text("Nicht gespeichert", exact=True)).to_have_count(0)
     rows = page.get_by_role("complementary").get_by_role(
         "button", name=re.compile(r"^(Erstes|Drittes)\b")
     )

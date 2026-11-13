@@ -214,9 +214,11 @@ async def test_a_delete_holds_the_books_lock_against_an_append(
                     )
                 # the refusal is a block, not a stalled loop: B's
                 # statement reached the server and waits on the row lock,
-                # proven by the TimeoutError above (the stronger proof
-                # #668 asks for); `in_transaction()` alone would be true
-                # for any wrapped read.
+                # proven by the TimeoutError above. A connection-level
+                # stall (acquire timeout) would not raise inside
+                # `next_chapter_position`'s first statement; only a lock
+                # wait blocks there. `in_transaction()` alone would be true
+                # for any wrapped read, so it is deliberately not asserted.
         finally:
             release.set()
             await delete
