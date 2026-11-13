@@ -743,3 +743,52 @@ async def test_missing_or_foreign_novel_is_a_lookup_error(a_user: None) -> None:
             await import_archive(session, OWNER, chapter_tree, foreign_id)  # another user's
 
     assert await _novel_count() == 1  # this user's one novel; nothing was created
+
+
+async def test_relations_only_archive_refused_on_new_novel_path(a_user: None) -> None:
+    """A relations-only archive on the new-novel path refuses instead of
+    creating a title-only novel whose every edge conflicts (#347)."""
+    archive = NovelArchive(
+        title="Der Wanderer",
+        relations=[
+            RelationEdge(from_name="Mira", relation_type="knows", to_name="Émile", note=None),
+        ],
+    )
+    tree = ArchiveTree(serialize_archive(archive))
+
+    with pytest.raises(ArchiveError):
+        await _import(tree, None)
+
+
+async def test_id_bearing_entity_file_runs_before_id_less(a_user: None) -> None:
+    """An id-less file spelling an old name cannot revise a row that a later
+    rename then overwrites silently (#346): id-bearing files run first."""
+    novel_id = await _seed_novel()
+    # Rename Mira -> Mira2 via an id-bearing file, carrying a body change.
+    mira_id = (await _entities(novel_id))[0].id  # Mira is first
+    archive = NovelArchive(
+        title="Der Wanderer",
+        entities=[
+            EntityFile(
+                name="Mira2",
+                type="character",
+                aliases=[],
+                tags=[],
+                body="Renamed.\n",
+                id=mira_id,
+            ),
+            # id-less file still spelling the old name: must NOT fold into Mira.
+            EntityFile(name="Mira", type="character", aliases=[], tags=[], body="Stale spell.\n"),
+        ],
+    )
+    report = await _import(ArchiveTree(serialize_archive(archive)), novel_id)
+
+    names = [entity.name for entity in (await _entities(novel_id))]
+    assert "Mira2" in names
+    # The id-less "Mira" is a new entity, not a silent overwrite of Mira2.
+    assert names.count("Mira") == 1
+    assert report.entities_renamed == 1
+    assert report.entities_new == 1
+
+
+# (uses the existing _entities helper above)

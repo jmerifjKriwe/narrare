@@ -57,6 +57,8 @@ async def test_create_without_metadata_leaves_it_null() -> None:
         assert created.status_code == 201
         assert created.json()["genre"] is None
         assert created.json()["blurb"] is None
+        assert created.json()["author"] is None
+        assert created.json()["language"] is None
 
 
 async def test_another_users_novel_is_not_listed() -> None:
