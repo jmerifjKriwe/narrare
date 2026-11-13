@@ -270,9 +270,10 @@ generate, new-capability
 
 `check` is the fast gate on changed files; `verify` is the full gate and composes it.
 `test-file` runs one file, because that is the loop a developer lives in.
-`db-init` creates the schema directly from the models — there are no migrations
-while the product is not live; a schema change lands in the models and the
-database is recreated.
+`db-init` creates the schema directly from the models. Schema changes now ship as
+reviewed Alembic revisions applied on startup (ADR-103, 2026-10-31); the
+statement above is superseded for the live product, and `db-init` remains the
+test/development path.
 
 Removed: eval-nightly, mutation-testing, warnings-summary, budget-report, the
 architecture CI job, and the changes-detection maze. Corrected 2026-11-09: the

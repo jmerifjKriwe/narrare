@@ -178,7 +178,11 @@ def register_models() -> None:
 
     The four kernel model modules first, then each capability's models
     module via the generated registry (the kernel may not name a
-    capability). The imports exist for their registration side effect: the
+    capability). Capability models modules are imported for their
+    registration side effect and must stay import-free at top level — a
+    module that imports capability code on import drags it into every
+    schema comparison and reset (issue #497). The imports exist for their
+    registration side effect: the
     metadata ``diff_against_models`` compares against is the full table set
     only once every registering module has been imported, and which modules
     a process imported for other reasons is not a fact a schema comparison
