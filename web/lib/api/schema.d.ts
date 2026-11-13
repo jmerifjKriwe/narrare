@@ -1397,10 +1397,7 @@ export interface components {
         DocumentRead: {
             /** Byte Size */
             byte_size: number | null;
-            /**
-             * Chunk Count
-             * @default 0
-             */
+            /** Chunk Count */
             chunk_count: number;
             /**
              * Created At
@@ -1860,6 +1857,23 @@ export interface components {
             language?: string | null;
             /** Title */
             title?: string | null;
+        };
+        /** OrderMismatchDetail */
+        OrderMismatchDetail: {
+            /** Chapter Ids */
+            chapter_ids: string[];
+            /**
+             * Code
+             * @default order_mismatch
+             */
+            code: string;
+        };
+        /**
+         * OrderMismatchRead
+         * @description The 409 body for a chapter-order mismatch: the stored ids in position order.
+         */
+        OrderMismatchRead: {
+            detail: components["schemas"]["OrderMismatchDetail"];
         };
         /**
          * PlanningErrorRead
@@ -5092,18 +5106,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "detail": {
-                     *         "chapter_ids": [
-                     *           "0e2e6d64-2f68-4b6e-9a76-6a41e0f30f6b",
-                     *           "3d9a1c02-9c74-4c0f-9d0e-0f0e6c58a2f1"
-                     *         ],
-                     *         "code": "order_mismatch"
-                     *       }
-                     *     }
-                     */
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OrderMismatchRead"];
                 };
             };
             /** @description Validation Error */
