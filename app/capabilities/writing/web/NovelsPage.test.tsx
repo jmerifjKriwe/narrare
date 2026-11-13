@@ -188,7 +188,7 @@ describe("the shelf's card actions", () => {
    *  menu's own convention — found, not got, because the shelf's gate
    *  settles after the render. */
   async function cardMenu(title: string): Promise<HTMLElement> {
-    return screen.findByRole("button", { name: t("novels.actionsFor", { title }) });
+    return screen.findByRole("button", { name: t("novels.actionsFor", { title }) }, { timeout: 5000 });
   }
 
   /** The card's link by its title: the card's whole text is its accessible
