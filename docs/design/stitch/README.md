@@ -136,3 +136,12 @@ its HTML and screenshot, and `download_file` returns their content. The same
 project is editable at <https://stitch.withgoogle.com>. Re-export into the folder
 that matches the screen's area, keep the file name stable, and update the table
 above when a screen is added or renamed.
+
+## Comparisons
+
+Side-by-side composites of an implemented surface beside its draft, one pair
+per wave, produced by `scripts/side_by_side.py`:
+
+| Wave | Pair |
+|---|---|
+| W3 workspace (2026-11-13) | [`workspace light`](comparisons/2026-11-13-w3-workspace-light.png) · [`zen focus`](comparisons/2026-11-13-w3-zen-focus.png) |
