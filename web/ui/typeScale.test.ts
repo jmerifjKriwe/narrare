@@ -369,7 +369,8 @@ describe("the paper's utilities", () => {
     expect(ghost["font-style"]).toBe("italic");
     // The drafted 70%, carried by the document's ink: alpha over the card
     // measures 3.18:1 (light) / 3.75:1 (dark) — below AA; this mix keeps
-    // the hue's strength and reads 8.25:1 / 7.65:1.
+    // the hue's strength and reads 8.25:1 / 7.50:1 (the dark area hue is
+    // `#E28659` since the shelf's screen-wins decision, spec §5.9).
     expect(ghost["color"]).toBe(
       "color-mix(in srgb, var(--area-writing) 70%, var(--foreground))",
     );

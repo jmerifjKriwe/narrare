@@ -181,7 +181,7 @@ const PAIRS: Record<string, [string, string]> = {
   warning: ["#9A6100", "#E5A84B"],
   danger: ["#AC3031", "#F27474"],
   // The five areas' identity marks.
-  "area-writing": ["#914F2F", "#D88D68"],
+  "area-writing": ["#914F2F", "#E28659"],
   "area-knowledge": ["#606127", "#B4B65B"],
   "area-chat": ["#3A637B", "#72A5C3"],
   "area-planning": ["#834D7E", "#C686C0"],

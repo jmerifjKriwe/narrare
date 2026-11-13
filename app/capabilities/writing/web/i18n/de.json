@@ -189,6 +189,8 @@
   "shelf.season.winter": "Winter",
   "shelf.session": "{season}-Session {year}",
   "shelf.statusDraft": "Entwurf",
+  "shelf.statusPlanning": "Planung",
+  "shelf.statusReview": "Lektorat",
   "shelf.streakNone": "—",
   "shelf.subtitle": "Verwalte deine Manuskripte, Buchstrukturen und schriftstellerischen Entwürfe.",
   "shelf.title": "Das Bücherregal",

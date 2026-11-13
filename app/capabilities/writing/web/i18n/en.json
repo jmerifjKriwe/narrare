@@ -189,6 +189,8 @@
   "shelf.season.winter": "Winter",
   "shelf.session": "{season} session {year}",
   "shelf.statusDraft": "Draft",
+  "shelf.statusPlanning": "Planning",
+  "shelf.statusReview": "Review",
   "shelf.streakNone": "—",
   "shelf.subtitle": "Manage your manuscripts, book structures and literary drafts.",
   "shelf.title": "The bookshelf",

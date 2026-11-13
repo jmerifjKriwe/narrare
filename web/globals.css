@@ -102,11 +102,31 @@
    * a progress fill, a status pill's text — an accent inside the area's own
    * surfaces, never a control's fill. Each clears 3:1 on the panel and on
    * the card in both halves. */
-  --area-writing: light-dark(#914F2F, #D88D68);
+  --area-writing: light-dark(#914F2F, #E28659);
   --area-knowledge: light-dark(#606127, #B4B65B);
   --area-chat: light-dark(#3A637B, #72A5C3);
   --area-planning: light-dark(#834D7E, #C686C0);
   --area-settings: light-dark(#5A5549, #ABA391);
+
+  /* The status pills the shelf draws (spec §5.9): the four states' own
+   * ground/ink/rule triples. The light halves are `shelf.html`'s pill
+   * classes through the shell's tokens; the drafted light pill draws no
+   * border, so its rule is transparent, while the dark halves are
+   * `shelf-dark.html`'s literal values — the screen binds over the token
+   * card's tolerated deltas (D-6). Every ink clears AA on its ground in
+   * both themes; the measured ratios live in `web/ui/StatusPill.test.tsx`. */
+  --pill-active-ground: light-dark(#FED8CA, #1B3520);
+  --pill-active-ink: light-dark(#795C52, #66BB6A);
+  --pill-active-rule: light-dark(transparent, #25502C);
+  --pill-draft-ground: light-dark(#FED8CA, #192D3E);
+  --pill-draft-ink: light-dark(#795C52, #64B5F6);
+  --pill-draft-rule: light-dark(transparent, #234561);
+  --pill-planning-ground: light-dark(#EEE7DF, #2C2C28);
+  --pill-planning-ink: light-dark(#53433D, #E0E0E0);
+  --pill-planning-rule: light-dark(transparent, #3D3D37);
+  --pill-review-ground: light-dark(#EEE7DF, #3A2814);
+  --pill-review-ink: light-dark(#606127, #FFB74D);
+  --pill-review-rule: light-dark(transparent, #5A3C1C);
 
   /* The book object's own grounds and inks: a cover is an object surface,
    * not an action. The grounds are raised where the midnight canvas would
@@ -251,6 +271,20 @@ body {
   --color-area-chat: var(--area-chat);
   --color-area-planning: var(--area-planning);
   --color-area-settings: var(--area-settings);
+  /* The status pills' triples, as utilities: `bg-pill-<kind>-ground`,
+   * `text-pill-<kind>-ink`, `border-pill-<kind>-rule`. */
+  --color-pill-active-ground: var(--pill-active-ground);
+  --color-pill-active-ink: var(--pill-active-ink);
+  --color-pill-active-rule: var(--pill-active-rule);
+  --color-pill-draft-ground: var(--pill-draft-ground);
+  --color-pill-draft-ink: var(--pill-draft-ink);
+  --color-pill-draft-rule: var(--pill-draft-rule);
+  --color-pill-planning-ground: var(--pill-planning-ground);
+  --color-pill-planning-ink: var(--pill-planning-ink);
+  --color-pill-planning-rule: var(--pill-planning-rule);
+  --color-pill-review-ground: var(--pill-review-ground);
+  --color-pill-review-ink: var(--pill-review-ink);
+  --color-pill-review-rule: var(--pill-review-rule);
   --color-focus: var(--focus);
   --color-success: var(--success);
   --color-sync-badge: var(--sync-badge);
@@ -646,7 +680,7 @@ body {
  * drafted 70%, carried by the document's ink rather than watered to 70%
  * alpha — alpha over the card reads 3.18:1 in the light half and 3.75:1 in
  * the dark one, below AA; this mix keeps the hue's strength and reads
- * 8.25:1 / 7.65:1. Italic, as the draft draws it: tentative words, not set
+ * 8.25:1 / 7.50:1. Italic, as the draft draws it: tentative words, not set
  * type.
  */
 .ProseMirror .ghost {

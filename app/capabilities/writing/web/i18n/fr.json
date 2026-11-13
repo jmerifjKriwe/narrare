@@ -189,6 +189,8 @@
   "shelf.season.winter": "d'hiver",
   "shelf.session": "Session {season} {year}",
   "shelf.statusDraft": "Brouillon",
+  "shelf.statusPlanning": "Planification",
+  "shelf.statusReview": "Relecture",
   "shelf.streakNone": "—",
   "shelf.subtitle": "Gérez vos manuscrits, vos structures de livre et vos ébauches littéraires.",
   "shelf.title": "La bibliothèque",
