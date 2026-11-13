@@ -452,12 +452,19 @@ body {
 
 /* The editor's prose: the one place long-form text is read, so it gets the
  * brand serif and a comfortable measure. TipTap manages the DOM; the surface
- * and the document structure it writes are styled here. */
+ * and the document structure it writes are styled here. The manuscript is
+ * set justified with automatic hyphenation (the drafts' article wears
+ * `text-justify`); hyphenation needs the document language, and the locale
+ * store writes `html lang` on every adoption (locale.ts's announce), so the
+ * browser hyphenates to the language the reader chose. CSS only: the stored
+ * Markdown and the editor's roundtrip never see either declaration. */
 .ProseMirror {
   font-family: "EB Garamond", Georgia, "Times New Roman", serif;
   font-size: 1.125rem;
   line-height: 1.75;
   max-width: 34rem;
+  text-align: justify;
+  hyphens: auto;
 }
 
 .ProseMirror:focus {

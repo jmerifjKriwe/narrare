@@ -270,6 +270,16 @@ describe("the scale's steps", () => {
 });
 
 describe("the prose's own headings", () => {
+  it("sets the manuscript justified with automatic hyphenation", () => {
+    // The drafts' article is `text-justify`; hyphenation rides with it
+    // because justification at this measure needs it, and the document's
+    // `lang` (locale.test pins the store's write) is what the browser
+    // hyphenates to. CSS only — the stored Markdown never sees either.
+    const prose = rule(".ProseMirror");
+    expect(prose["text-align"]).toBe("justify");
+    expect(prose["hyphens"]).toBe("auto");
+  });
+
   it("lands the chapter headings on 26/34 and 21/28 px", () => {
     // The manuscript's body is 18 px; the rhythm rules are in `em`, so a
     // heading's size is its em step over the body and its leading the norm's
