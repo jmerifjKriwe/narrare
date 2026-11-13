@@ -48,6 +48,11 @@ declares a language twice. Fourteen views, none hand-edited, all committed:
 * ``docs/user/help-coverage.md`` — which capabilities ship help, in which
   languages, one table per capability the help scan found.
 
+A capability without a ``web/`` directory has no UI: it contributes no nav
+row, no route import, no INDEX row, no catalog import, no dock, command,
+settings or help entry. Its facts stay in the backend registry — the routers
+still mount it.
+
 Adding a language is therefore one central file plus one file per capability
 that owns text, then ``just generate``. A field no view reads is deleted from
 the Facts schema; a view no consumer reads is deleted with it. ``just generate``
@@ -66,6 +71,11 @@ from app.capabilities.planning.structures import STRUCTURES
 from app.kernel.interchange import parse_archive
 from app.kernel.interchange.demos import DEMOS as KERNEL_DEMOS
 from app.kernel.interchange.demos import demo_tree
+
+# The capability whose registry STRUCTURES is: the structures view is that
+# capability's UI contribution — the switcher offers its rows — so it emits
+# rows only while the capability owns a web/ directory too.
+STRUCTURES_OWNER = "planning"
 
 # The source language leads the docs and the switcher; the rest follow in a
 # stable order so the generated diff does not shuffle when a file appears.
@@ -214,10 +224,14 @@ def catalogs(root: Path, known: tuple[str, ...]) -> dict[str, dict[str, str]]:
     return loaded
 
 
-def facts(
-    root: Path, known: tuple[str, ...], loaded: dict[str, dict[str, str]]
-) -> tuple[Facts, ...]:
-    """Load every capability.yaml, validating what the views rely on."""
+def facts(root: Path) -> tuple[Facts, ...]:
+    """Load every capability.yaml, validating what the views rely on.
+
+    The registry reads every capability: the backend mounts a router for
+    each one, ``web/`` or not. The facts' title key is the UI rows' concern
+    — the views that render it skip a key their catalog does not resolve
+    (see ``ui_facts``).
+    """
     entries: list[Facts] = []
     for folder in sorted((root / "app" / "capabilities").iterdir()):
         source = folder / "capability.yaml"
@@ -239,15 +253,40 @@ def facts(
         unknown_needs = set(entry.needs) - {"llm", "embeddings"}
         if unknown_needs:
             raise SystemExit(f"{source}: unknown needs {sorted(unknown_needs)}")
-        for locale in known:
-            if entry.title not in loaded[locale]:
-                raise SystemExit(
-                    f"{source}: title key {entry.title!r} missing from the merged {locale} catalog"
-                )
         entries.append(entry)
     if not entries:
         raise SystemExit("no capability.yaml found under app/capabilities/")
     return tuple(entries)
+
+
+def web_ids(root: Path) -> frozenset[str]:
+    """The capabilities that own a ``web/`` directory — the ones with a UI.
+
+    This is the one rule the UI views share: a capability without the
+    directory contributes no nav row, no INDEX row, no help row, no
+    structures rows, while its facts stay in the backend registry.
+    """
+    capabilities = root / "app" / "capabilities"
+    if not capabilities.is_dir():
+        return frozenset()
+    return frozenset(folder.name for folder in capabilities.iterdir() if (folder / "web").is_dir())
+
+
+def ui_facts(
+    entries: tuple[Facts, ...], root: Path, loaded: dict[str, dict[str, str]]
+) -> tuple[Facts, ...]:
+    """The facts the UI views render rows for.
+
+    A row needs two things: a capability that owns a ``web/`` directory
+    (the one rule, ``web_ids``) and a title key the source catalog
+    resolves — a row's words come from the catalog, and an interim page
+    whose catalog carries no facts title has no row to render until the
+    rebuilt screens bring the title back.
+    """
+    present = web_ids(root)
+    return tuple(
+        entry for entry in entries if entry.id in present and entry.title in loaded[SOURCE_LOCALE]
+    )
 
 
 def python_locales(known: tuple[str, ...]) -> str:
@@ -318,7 +357,7 @@ def typescript_catalogs(root: Path, known: tuple[str, ...]) -> str:
 def overlay_sources(
     root: Path, known: tuple[str, ...], loaded: dict[str, dict[str, str]]
 ) -> dict[str, dict[str, str]]:
-    """The sparse formal variants, checked against the merged catalogs.
+    """The sparse formal variants, emitted against the merged catalogs.
 
     A key absent from an overlay falls through to the base catalog, so the
     overlay is opt-in and a new base string works in both registers until
@@ -326,6 +365,12 @@ def overlay_sources(
     language has no formality distinction. There is no de/fr key parity —
     French already speaks the neutral register in its base catalog, so a
     parity rule would force it to repeat strings it already has.
+
+    A variant whose base string the merged catalog no longer carries is
+    dead copy, not an error: its capability catalog left with the
+    capability's ``web/`` directory, and the shared-catalog cleanup removes
+    the row from the overlay file in its own task. Skipping it keeps the
+    view emitting only live variants without demanding the cleanup first.
     """
     directory = root / "i18n" / "overlays" / "formality"
     if not directory.is_dir():
@@ -345,26 +390,31 @@ def overlay_sources(
         if not source.is_file():
             continue
         overlay = load_catalog(source)
-        unknown = [key for key in overlay if key not in loaded[locale]]
-        if unknown:
-            raise SystemExit(f"{source}: keys not in the {locale} catalog: {unknown}")
+        overlay = {key: value for key, value in overlay.items() if key in loaded[locale]}
         empty = [key for key, value in overlay.items() if not value.strip()]
         if empty:
             raise SystemExit(f"{source}: empty values {empty}")
-        overlays[locale] = overlay
+        if overlay:
+            overlays[locale] = overlay
     return overlays
 
 
 def typescript_overlays(known: tuple[str, ...], overlays: dict[str, dict[str, str]]) -> str:
-    """The web-side view: one sparse overlay import per language that has one."""
+    """The web-side view: one sparse overlay import per language that has one.
+
+    A locale whose variants all went dead emits no import at all — an empty
+    mapping would be a second, quieter way of saying nothing.
+    """
     imports = "".join(
         f"import {_identifier(locale)}_overlay from"
         f' "../../../i18n/overlays/formality/{locale}.json";\n'
         for locale in known
-        if locale in overlays
+        if overlays.get(locale)
     )
     mapping = "".join(
-        f'  "{locale}": {_identifier(locale)}_overlay,\n' for locale in known if locale in overlays
+        f'  "{locale}": {_identifier(locale)}_overlay,\n'
+        for locale in known
+        if overlays.get(locale)
     )
     return (
         "// Generated by scripts/generate_capabilities.py from\n"
@@ -1011,7 +1061,11 @@ def help_coverage(root: Path) -> str:
             for topic in capability.topics
         )
         blocks.append(f"## {capability.capability}\n\n| Topic | {columns} |\n| {rule} |\n{rows}")
-    missing = [name for name in capabilities if name not in helped]
+    # The debt list counts capabilities with a UI only: a capability whose
+    # web/ directory is gone owes no help — it is absent from this report
+    # entirely, not listed as missing.
+    present = web_ids(root)
+    missing = [name for name in capabilities if name not in helped and name in present]
     if missing:
         bullets = "".join(f"- {name}\n" for name in missing)
         blocks.append(f"## Capabilities without help\n\n{bullets}")
@@ -1317,19 +1371,28 @@ def typescript_commands(root: Path) -> str:
     )
 
 
-def typescript_structures(loaded: dict[str, dict[str, str]]) -> str:
-    """The web-side view: the storyboard structure registry the switcher offers."""
-    for structure_id in sorted(STRUCTURES):
-        title_key = f"storyboard.structure.{structure_id}"
-        if title_key not in loaded[SOURCE_LOCALE]:
-            raise SystemExit(
-                f"app/capabilities/planning/structures.py: structure {structure_id!r}"
-                f" has no {title_key!r} in the merged {SOURCE_LOCALE} catalog"
-            )
-    rows = "".join(
-        f'  {{ id: "{structure_id}", titleKey: "storyboard.structure.{structure_id}" }},\n'
-        for structure_id in sorted(STRUCTURES)
-    )
+def typescript_structures(root: Path, loaded: dict[str, dict[str, str]]) -> str:
+    """The web-side view: the storyboard structure registry the switcher offers.
+
+    The registry is the storyboard capability's UI contribution, so the
+    one rule applies through ``STRUCTURES_OWNER``: rows are emitted only
+    while that capability owns a ``web/`` directory. Without it the
+    switcher is gone and the table comes out empty; the backend registry
+    ``STRUCTURES`` is untouched either way.
+    """
+    rows = ""
+    if STRUCTURES_OWNER in web_ids(root):
+        for structure_id in sorted(STRUCTURES):
+            title_key = f"storyboard.structure.{structure_id}"
+            if title_key not in loaded[SOURCE_LOCALE]:
+                raise SystemExit(
+                    f"app/capabilities/planning/structures.py: structure {structure_id!r}"
+                    f" has no {title_key!r} in the merged {SOURCE_LOCALE} catalog"
+                )
+        rows = "".join(
+            f'  {{ id: "{structure_id}", titleKey: "storyboard.structure.{structure_id}" }},\n'
+            for structure_id in sorted(STRUCTURES)
+        )
     table = (
         f"export const structures = [\n{rows}] as const"
         if rows
@@ -1355,9 +1418,19 @@ def typescript_structures(loaded: dict[str, dict[str, str]]) -> str:
 
 
 def docs_index(
-    entries: tuple[Facts, ...], known: tuple[str, ...], loaded: dict[str, dict[str, str]]
+    entries: tuple[Facts, ...],
+    known: tuple[str, ...],
+    loaded: dict[str, dict[str, str]],
+    root: Path,
 ) -> str:
-    """The reader-side view: one row per capability per locale."""
+    """The reader-side view: one row per UI capability per locale.
+
+    The rows come from ``ui_facts``: a capability without a ``web/``
+    directory has no row, and neither has an interim page whose facts
+    title the catalog does not resolve — the table waits for the rebuilt
+    screens to carry a title key again.
+    """
+    entries = ui_facts(entries, root, loaded)
     sections: list[str] = []
     for locale in known:
         catalog = loaded[locale]
@@ -1386,7 +1459,7 @@ def docs_index(
         "\n"
         "# Narrare — the app's surfaces\n"
         "\n"
-        "One row per capability, from each capability's facts file. Long-form user\n"
+        "One row per capability with a UI, from each capability's facts file. Long-form user\n"
         "documentation grows around this index, never inside it.\n"
         "\n" + "\n".join(sections)
     )
@@ -1428,11 +1501,11 @@ def main() -> None:
     known = locales(root)
     loaded = catalogs(root, known)
     overlays = overlay_sources(root, known, loaded)
-    loaded_facts: tuple[Facts, ...] = facts(root, known, loaded)
+    loaded_facts: tuple[Facts, ...] = facts(root)
     outputs: dict[str, str] = {
         "app/generated/capabilities.py": python_registry(loaded_facts),
         "app/generated/locales.py": python_locales(known),
-        "web/lib/generated/capabilities.ts": typescript_nav(loaded_facts),
+        "web/lib/generated/capabilities.ts": typescript_nav(ui_facts(loaded_facts, root, loaded)),
         "web/lib/generated/catalogs.ts": typescript_catalogs(root, known),
         "web/lib/generated/overlays.ts": typescript_overlays(known, overlays),
         "web/lib/generated/routes.ts": typescript_routes(root),
@@ -1440,10 +1513,10 @@ def main() -> None:
         "web/lib/generated/docks.ts": typescript_docks(root),
         "web/lib/generated/settingsPages.ts": typescript_settings_pages(root),
         "web/lib/generated/commands.ts": typescript_commands(root),
-        "web/lib/generated/structures.ts": typescript_structures(loaded),
+        "web/lib/generated/structures.ts": typescript_structures(root, loaded),
         "web/lib/generated/help.ts": typescript_help(root),
         "web/lib/generated/demos.ts": typescript_demos(root),
-        "docs/user/INDEX.md": docs_index(loaded_facts, known, loaded),
+        "docs/user/INDEX.md": docs_index(loaded_facts, known, loaded, root),
         "docs/user/help-coverage.md": help_coverage(root),
     }
     for target, content in outputs.items():

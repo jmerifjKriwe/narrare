@@ -3,41 +3,23 @@
 
 # Narrare — the app's surfaces
 
-One row per capability, from each capability's facts file. Long-form user
+One row per capability with a UI, from each capability's facts file. Long-form user
 documentation grows around this index, never inside it.
 
 ## English
 
 | Capability | Path | Navigation | Needs |
 | --- | --- | --- | --- |
-| Chat | /chat | ✓ | an embedding model, a text model |
-| Knowledge | /knowledge | ✓ | an embedding model |
-| Planning | /planning | ✓ | — |
-| Prompts | /settings/prompts | — | — |
-| Settings | /settings | — | — |
 | Welcome to Narrare | /setup | — | — |
-| Novels | / | — | a text model |
 
 ## Deutsch
 
 | Funktion | Pfad | Navigation | Benötigt |
 | --- | --- | --- | --- |
-| Chat | /chat | ✓ | ein Embedding-Modell, ein Textmodell |
-| Wissen | /knowledge | ✓ | ein Embedding-Modell |
-| Planung | /planning | ✓ | — |
-| Prompts | /settings/prompts | — | — |
-| Einstellungen | /settings | — | — |
 | Willkommen bei Narrare | /setup | — | — |
-| Romane | / | — | ein Textmodell |
 
 ## Français
 
 | Fonction | Chemin | Navigation | Nécessite |
 | --- | --- | --- | --- |
-| Discussion | /chat | ✓ | un modèle d'embeddings, un modèle de texte |
-| Savoir | /knowledge | ✓ | un modèle d'embeddings |
-| Planification | /planning | ✓ | — |
-| Prompts | /settings/prompts | — | — |
-| Paramètres | /settings | — | — |
 | Bienvenue dans Narrare | /setup | — | — |
-| Romans | / | — | un modèle de texte |

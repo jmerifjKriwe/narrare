@@ -11,16 +11,5 @@
 // missing from the English catalog is a build error here.
 import type { Command } from "../commands";
 
-import { commands as writingCommands } from "../../../app/capabilities/writing/web/commands";
-import { commands as settingsCommands } from "../../../app/capabilities/settings/web/commands";
-import { commands as promptsCommands } from "../../../app/capabilities/prompts/web/commands";
-import { commands as knowledgeCommands } from "../../../app/capabilities/knowledge/web/commands";
-import { commands as planningCommands } from "../../../app/capabilities/planning/web/commands";
 
-export const commands = [
-  ...writingCommands,
-  ...settingsCommands,
-  ...promptsCommands,
-  ...knowledgeCommands,
-  ...planningCommands,
-] as const satisfies ReadonlyArray<Command>;
+export const commands = [] as const satisfies ReadonlyArray<Command>;

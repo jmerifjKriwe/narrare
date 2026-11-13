@@ -9,11 +9,7 @@
 // title keys are checked against the merged English catalog by the compiler.
 import { catalogs } from "./catalogs";
 
-export const docks = [
-  { id: "chat", path: "/novels/$id/chat", titleKey: "chat.dockTitle" },
-  { id: "knowledge", path: "/novels/$id/knowledge", titleKey: "knowledge.dockTitle" },
-  { id: "planning", path: "/novels/$id/planning", titleKey: "planning.dockTitle" },
-] as const satisfies ReadonlyArray<{
+export const docks = [] as const satisfies ReadonlyArray<{
   id: string;
   path: string;
   titleKey: keyof typeof catalogs.en;
