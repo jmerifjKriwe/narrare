@@ -699,20 +699,28 @@ describe("the drafted shelf (Task 10)", () => {
     mockShelfList([
       shelfNovel({ title: "Der Sturm", updated_at: "2026-11-01T08:00:00Z" }),
       secondNovel({ updated_at: "2026-11-02T09:00:00Z" }),
+      shelfNovel({
+        id: "7e2f3b01-4c5d-4e6f-9a0b-1c2d3e4f5a6b",
+        title: "Die Andere",
+        updated_at: "2026-11-01T07:00:00Z",
+      }),
     ]);
     renderShelf();
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     expect(await cardLink("Der Sturm")).toBeTruthy();
+    expect(await cardLink("Die Andere")).toBeTruthy();
 
     const search = screen.getByRole("textbox", { name: t("shelf.searchLabel") });
     await user.type(search, "sturm");
 
-    // The matching title stands; the match is case-insensitive.
+    // Only the matching title stands; the match is case-insensitive.
     expect(screen.getByRole("link", { name: /Der Sturm/ })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Die Andere/ })).toBeNull();
 
     // Clearing the box brings the whole shelf back.
     await user.clear(search);
     expect(screen.getByRole("link", { name: /Der Sturm/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Die Andere/ })).toBeTruthy();
   });
 
   it("the_toggle_switches_views", { timeout: 10_000 }, async () => {
@@ -735,7 +743,9 @@ describe("the drafted shelf (Task 10)", () => {
     expect(document.querySelector("[data-shelf-card]")).toBeNull();
     expect(document.querySelector("[data-shelf-row]")).toBeTruthy();
     // The row is still the book: its link opens what the card's did.
-    expect(screen.getByRole("link", { name: /Das Zählwerk/ })).toBeTruthy();
+    const rows = Array.from(document.querySelectorAll("[data-shelf-row]"));
+    expect(rows.some((r) => r.textContent?.includes("Das Zählwerk"))).toBe(true);
+    expect(screen.getAllByRole("link", { name: /Das Zählwerk/ }).length).toBeGreaterThan(0);
 
     await user.click(grid);
     expect(document.querySelector("[data-shelf-card]")).toBeTruthy();
