@@ -126,6 +126,7 @@ duplicated here:
 | [`17-structure-dark.png`](../../../assets/screenshots/17-structure-dark.png) | Structure view, dark |
 | [`18-shortcuts.png`](../../../assets/screenshots/18-shortcuts.png) | Keyboard shortcuts, light |
 | [`19-shortcuts-dark.png`](../../../assets/screenshots/19-shortcuts-dark.png) | Keyboard shortcuts, dark |
+| [`20-workspace-zen.png`](../../../assets/screenshots/20-workspace-zen.png) | Workspace, focus depth 2 — the zen canvas with the ghost's Tab keycap |
 
 ## Refreshing the archive
 

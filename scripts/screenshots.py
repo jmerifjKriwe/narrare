@@ -109,6 +109,7 @@ SHOTS = (
     "17-structure-dark.png",
     "18-shortcuts.png",
     "19-shortcuts-dark.png",
+    "20-workspace-zen.png",
 )
 
 
@@ -414,12 +415,53 @@ def _capture(
         }"""
     )
     vendor.set_answer(CONTINUATION)
-    page.get_by_role("button", name="Continue writing").click()
+    # The runhead's trigger: `.first` because the floating prompt bar
+    # repeats the same words below the card (the bar augments the button,
+    # not replaces — the continuation suites' own helper's rule).
+    page.get_by_role("button", name="Continue writing").first.click()
     ghost = page.locator(".ProseMirror .ghost")
     expect(ghost).to_contain_text("relay clicked")
     # The caret sits at the end of a long chapter; bring the offer into frame.
     ghost.scroll_into_view_if_needed()
     shot(SHOTS[0])
+
+    # 1b. The zen canvas (focus depth 2): the paper alone on the calm
+    #     canvas, the ghost and its Tab keycap the only offer left in it —
+    #     the state the draft's zen-focus screen draws. Entered by the URL,
+    #     because the rail that would click the chapter is chrome this
+    #     depth yields; the chapter is the one shot 1 opened, the server's
+    #     last-touched choice. The transient Esc hint rides the centered
+    #     group for a few seconds, so the frame waits out its retraction
+    #     and captures the quiet canvas the depth promises, not a timing
+    #     sample. The draft's zen page shows the offer standing in the
+    #     text, so the continuation is triggered once more, at the same
+    #     caret the first shot chose.
+    page.keyboard.press("Escape")
+    page.goto(f"{WEB}/novels/{novel_id}?focus=2")
+    expect(page.locator(".ProseMirror")).to_be_visible()
+    expect(page.get_by_role("status")).to_have_count(0, timeout=8_000)
+    page.evaluate(
+        """() => {
+            const paragraph = document.querySelector(".ProseMirror p");
+            if (!paragraph) return;
+            const range = document.createRange();
+            range.selectNodeContents(paragraph);
+            range.collapse(false);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }"""
+    )
+    vendor.set_answer(CONTINUATION)
+    page.get_by_role("button", name="Continue writing").first.click()
+    ghost = page.locator(".ProseMirror .ghost")
+    expect(ghost).to_contain_text("relay clicked")
+    shot(SHOTS[19])
+
+    # Back to the workbench: the depth lives in the URL, so the flows after
+    # this one find their chrome (rail, docks) only at the plain URL.
+    page.goto(f"{WEB}/novels/{novel_id}")
+    expect(page.locator(".ProseMirror")).to_be_visible()
 
     # 2. The chat dock beside the chapter: a streamed answer with its sources.
     page.keyboard.press("Escape")

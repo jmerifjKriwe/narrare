@@ -33,9 +33,10 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 # a11y sampling (audit 2026-11-11): axe runs once per distinct view state in
 # this file, not once per test. States still scanned here: empty book, default
 # editor, rail collapsed, outage (default + 360), 404 shelf, create failure,
-# refused-switch dialog, long rail (1280 + 360), renaming flow. Other tests
-# share one of these states; their UI assertions remain, only the axe scan
-# is dropped. Re-add a scan when a new distinct state is introduced.
+# refused-switch dialog, long rail (1280 + 360), renaming flow, the chosen
+# dark. Other tests share one of these states; their UI assertions remain,
+# only the axe scan is dropped. Re-add a scan when a new distinct state is
+# introduced.
 
 # How long a settled navigation is watched for a late write. The address is
 # already correct; this window is the negative half — the chapter param must
@@ -962,3 +963,25 @@ def test_renaming_a_chapter_carries_to_the_rail_and_the_shelf(page: Page, stack:
     expect(page.get_by_role("link", name=re.compile(r"Der stille Hof"))).to_be_visible()
 
     assert_accessible(page)
+
+
+def test_the_workbench_passes_the_floor_in_the_chosen_dark(page: Page, stack: Stack) -> None:
+    """The dark the reader stores, not the OS's, is a distinct view state of
+    this wave: the paper's ghost tint and the runhead were re-inked for it
+    (deviation #3), so the workbench owes the floor its own scan on that
+    ground — the shelf's theme pair does not stand in for it. The stored
+    choice beats the system here exactly as the dark frames claim."""
+    _create_book(page, "Die dunkle Druckerei")
+    # The floor scans the workbench, and the workbench is the editor: the
+    # empty book mounts no prose surface, so a chapter comes first.
+    new_chapter(page)
+
+    page.request.patch(f"{API_URL}/api/settings/theme", data={"theme": "dark"})
+    page.goto(page.url)
+    expect(page.locator(".ProseMirror")).to_be_visible()
+    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+    assert_accessible(page)
+
+    # Back to the default, so the module's shared database hands the next
+    # test the light workbench it has always read.
+    page.request.patch(f"{API_URL}/api/settings/theme", data={"theme": None})
