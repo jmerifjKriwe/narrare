@@ -362,6 +362,8 @@ function UserBlock({ author }: { author: string | null }) {
           {author ?? t("shell.railUserFallback")}
         </span>
         <span className="block truncate text-meta text-muted">
+          {/* interim: static copy — the app holds no user/tier row to read
+              this from (follow-up: user/tier row) */}
           {t("shell.railUserTier")}
         </span>
       </span>
