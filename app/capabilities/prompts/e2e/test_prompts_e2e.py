@@ -19,6 +19,7 @@ wrote, not a spy on the provider.
 """
 
 import json
+import re
 import shutil
 import time
 from pathlib import Path
@@ -356,7 +357,7 @@ def test_a_chat_override_without_the_sources_is_refused_by_the_contract(
     """A re-voice that drops the marked sources fails the contract, named."""
     page.goto(BASE + "/settings/prompts")
     card = page.get_by_role("listitem").filter(has_text=CHAT)
-    card.get_by_role("button", name="Überschreibung bearbeiten", exact=True).click()
+    card.get_by_role("button", name=re.compile(r"Überschreibung (bearbeiten|anlegen)")).click()
     card.get_by_label("Vorlage").fill("Question only: {{ question }}")
     card.get_by_role("button", name="Speichern").click()
 
@@ -485,7 +486,9 @@ def test_closing_a_dirty_prompt_editor_asks_first(page: Page, stack: Stack) -> N
     """Typed words the server does not hold are not thrown away by a click:
     the editor's cancel asks, and an untouched editor never does."""
     page.goto(f"{BASE}/settings/prompts")
-    page.get_by_role("button", name="Überschreibung bearbeiten").first.click()
+    page.get_by_role(
+        "button", name=re.compile(r"Überschreibung (bearbeiten|anlegen)")
+    ).first.click()
     template = page.get_by_label("Vorlage")
     expect(template).to_be_visible()
 
@@ -494,7 +497,9 @@ def test_closing_a_dirty_prompt_editor_asks_first(page: Page, stack: Stack) -> N
     expect(page.get_by_role("dialog", name="Ungespeicherter Text")).to_have_count(0)
     expect(template).to_have_count(0)
 
-    page.get_by_role("button", name="Überschreibung bearbeiten").first.click()
+    page.get_by_role(
+        "button", name=re.compile(r"Überschreibung (bearbeiten|anlegen)")
+    ).first.click()
     template = page.get_by_label("Vorlage")
     expect(template).to_be_visible()
     template.fill(template.input_value() + " ")
@@ -517,7 +522,9 @@ def test_leaving_the_page_with_a_dirty_editor_asks_first(page: Page, stack: Stac
     """The third door: a route change with typed words asks too; Stay keeps
     the editor, Leave follows the link."""
     page.goto(f"{BASE}/settings/prompts")
-    page.get_by_role("button", name="Überschreibung bearbeiten").first.click()
+    page.get_by_role(
+        "button", name=re.compile(r"Überschreibung (bearbeiten|anlegen)")
+    ).first.click()
     template = page.get_by_label("Vorlage")
     expect(template).to_be_visible()
     template.fill(template.input_value() + " ")
