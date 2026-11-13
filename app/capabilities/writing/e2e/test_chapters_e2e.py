@@ -976,12 +976,16 @@ def test_the_workbench_passes_the_floor_in_the_chosen_dark(page: Page, stack: St
     # empty book mounts no prose surface, so a chapter comes first.
     new_chapter(page)
 
+    # The stored dark is a module-wide write on the shared database, so the
+    # restoration cannot depend on the leg succeeding: a failure between
+    # the write and the scan lands in the finally all the same.
     page.request.patch(f"{API_URL}/api/settings/theme", data={"theme": "dark"})
-    page.goto(page.url)
-    expect(page.locator(".ProseMirror")).to_be_visible()
-    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
-    assert_accessible(page)
-
-    # Back to the default, so the module's shared database hands the next
-    # test the light workbench it has always read.
-    page.request.patch(f"{API_URL}/api/settings/theme", data={"theme": None})
+    try:
+        page.goto(page.url)
+        expect(page.locator(".ProseMirror")).to_be_visible()
+        expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+        assert_accessible(page)
+    finally:
+        # Back to the default, so the module's shared database hands the
+        # next test the light workbench it has always read.
+        page.request.patch(f"{API_URL}/api/settings/theme", data={"theme": None})
