@@ -81,7 +81,8 @@ def _drain_on_the_portal(portal: BlockingPortal | None) -> None:
         await stop_worker(app)
         await engine.dispose()
 
-    assert portal is not None  # a completed __enter__ always left one
+    if portal is None:  # nothing to drain: startup never completed
+        return
     portal.call(stop_and_drain)
 
 
