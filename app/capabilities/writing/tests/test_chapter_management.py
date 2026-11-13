@@ -213,9 +213,12 @@ async def test_a_delete_holds_the_books_lock_against_an_append(
                         timeout=0.5,
                     )
                 # the refusal is a block, not a stalled loop: B's
-                # statement reached the server and its transaction is
-                # open, waiting on the row
-                assert b.in_transaction()
+                # statement reached the server and waits on the row lock,
+                # proven by the TimeoutError above. A connection-level
+                # stall (acquire timeout) would not raise inside
+                # `next_chapter_position`'s first statement; only a lock
+                # wait blocks there. `in_transaction()` alone would be true
+                # for any wrapped read, so it is deliberately not asserted.
         finally:
             release.set()
             await delete
@@ -407,6 +410,13 @@ async def test_reorder_advances_the_novel_timestamp() -> None:
 async def test_reorder_refuses_a_missing_id() -> None:
     async with _client() as client:
         novel_id, chapters = await _three_chapters(client)
+        # reorder once so the stored order differs from creation order (#671)
+        reordered = await client.put(
+            f"/api/writing/novels/{novel_id}/chapter-order",
+            json={"chapter_ids": [chapters[2]["id"], chapters[0]["id"], chapters[1]["id"]]},
+        )
+        assert reordered.status_code == 204
+        stored = [chapters[2]["id"], chapters[0]["id"], chapters[1]["id"]]
 
         # a second tab created a chapter the body does not know: the body is
         # the old rail, one id short of the book
@@ -420,7 +430,7 @@ async def test_reorder_refuses_a_missing_id() -> None:
         assert refused.json() == {
             "detail": {
                 "code": "order_mismatch",
-                "chapter_ids": [chapter["id"] for chapter in chapters],
+                "chapter_ids": stored,
             }
         }
 
@@ -533,3 +543,36 @@ async def test_reorder_leaves_the_order_untouched_on_refusal() -> None:
     assert [chapter["title"] for chapter in listed] == ["Ankunft", "Nacht", "Abfahrt"]
     assert [chapter["position"] for chapter in listed] == [0, 1, 2]
     assert novel_after["updated_at"] == novel_before["updated_at"]
+
+
+async def test_reorder_answers_404_for_a_never_known_novel() -> None:
+    async with _client() as client:
+        refused = await client.put(
+            f"/api/writing/novels/{uuid4()}/chapter-order",
+            json={"chapter_ids": []},
+        )
+        assert refused.status_code == 404
+        assert refused.json()["detail"] == "novel not found"
+
+
+async def test_reorder_answers_404_for_a_foreign_novel() -> None:
+    await seed_user(OTHER_USER)
+    foreign_novel = uuid4()
+    async with Session() as session:
+        await session.execute(
+            text(
+                "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                "VALUES (:id, :user_id, :title, now(), now())"
+            ),
+            {"id": foreign_novel, "user_id": OTHER_USER, "title": "Fremd"},
+        )
+        await session.commit()
+
+    async with _client() as client:
+        _, chapters = await _three_chapters(client)
+        refused = await client.put(
+            f"/api/writing/novels/{foreign_novel}/chapter-order",
+            json={"chapter_ids": [chapters[0]["id"]]},
+        )
+        assert refused.status_code == 404
+        assert refused.json()["detail"] == "novel not found"

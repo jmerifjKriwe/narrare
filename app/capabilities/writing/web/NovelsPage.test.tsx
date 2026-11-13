@@ -565,6 +565,30 @@ describe("the shelf's card actions", () => {
     ).length;
     expect(rowReads).toBe(2);
   });
+  it("a_transport_failure_keeps_the_workbench_open", { timeout: 10_000 }, async () => {
+    const novel = shelfNovel();
+    mockShelf(novel);
+    mockUpdate(novel);
+    renderShelf();
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    await user.click(await cardMenu(novel.title));
+    await user.click(screen.getByRole("menuitem", { name: t("novels.details") }));
+    const dialog = await screen.findByRole("dialog");
+    const title = within(dialog).getByLabelText(t("novels.titleLabel")) as HTMLInputElement;
+    await user.clear(title);
+    await user.type(title, "Das neue Zählwerk");
+
+    api.PATCH.mockRejectedValueOnce(new Error("network down"));
+    await user.click(within(dialog).getByRole("button", { name: t("novels.save") }));
+
+    await waitFor(() => expect(within(dialog).getByText(t("novels.errorUpdate"))).toBeTruthy());
+    expect(screen.queryByRole("dialog")).toBeTruthy();
+    expect((within(dialog).getByLabelText(t("novels.titleLabel")) as HTMLInputElement).value).toBe(
+      "Das neue Zählwerk",
+    );
+  });
+
 });
 
 describe("the drafted shelf (Task 10)", () => {
