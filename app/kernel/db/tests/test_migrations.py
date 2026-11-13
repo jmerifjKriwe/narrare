@@ -221,6 +221,8 @@ async def test_empty_database_migrated_equals_the_models(url: str) -> None:
     # INITIALLY DEFERRED (the deferrable-positions revision), the form a
     # renumber needs. A history that rebuilt it plain would pass the diff
     # while every upgraded database refused reorders.
+    # Red-first proof (2026-11-06): standing on the revision before
+    # 10cb78d699b7, the catalog assertion below failed with its own message.
     engine = create_async_engine(url)
     try:
         async with engine.connect() as connection:
