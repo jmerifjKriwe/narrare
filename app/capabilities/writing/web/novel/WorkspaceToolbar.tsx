@@ -39,7 +39,7 @@ export function WorkspaceToolbar({
 }) {
   const t = useTranslation();
   return (
-    <div className="mt-6 flex flex-wrap items-center gap-2">
+    <div className="mt-6 flex flex-wrap items-center gap-2" data-testid="chapter-filter-band">
       {/* The band wraps before it overflows: a phone's 328 px content
           box cannot hold four icon buttons and an input's automatic
           minimum on one line, and the field is `min-w-0` so it shrinks
