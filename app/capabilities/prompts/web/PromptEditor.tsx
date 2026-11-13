@@ -80,8 +80,8 @@ export function PromptEditor(props: {
   const [attempt, setAttempt] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
-    if (focusNonce) textareaRef.current?.focus();
-  }, [focusNonce]);
+    if (focusNonce || attempt) textareaRef.current?.focus();
+  }, [focusNonce, attempt]);
 
   // The detail load fills the editor's words: the text starts as the source
   // this scope would render with — the fork from an inherited tier happens on
