@@ -1099,7 +1099,7 @@ describe("ChapterEditor's paper", () => {
     );
 
     // The draft's "FOLIO 12" and "Seite 1 von 8" name pages the app does
-    // not have: interim: no pagination — follow-up filed in W3's index.
+    // not have: interim: no pagination — #820.
     expect(screen.queryByText(/FOLIO/i)).toBeNull();
     expect(document.querySelector("[data-paper-folio]")).toBeNull();
     expect(document.querySelector("[data-paper-page]")).toBeNull();

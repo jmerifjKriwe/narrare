@@ -219,10 +219,10 @@ describe("the meta header", () => {
       "utf8",
     );
     expect(source).toContain(
-      "// interim: no version field — follow-up filed in W3's index",
+      "// interim: no version field — #816",
     );
     expect(source).toContain(
-      "// interim: no scenes view — follow-up filed in W3's index",
+      "// interim: no scenes view — #819",
     );
   });
 });

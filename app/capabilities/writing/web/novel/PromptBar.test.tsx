@@ -161,7 +161,7 @@ describe("the prompt bar", () => {
   it("names no style yet — the trigger chip is the neutral placeholder, not a control", () => {
     render(<BarHarness />);
 
-    // interim: no style presets — follow-up filed in W3's index
+    // interim: no style presets — #821
     const chip = document.querySelector("[data-prompt-style]")!;
     expect(chip.tagName).toBe("SPAN");
     expect(chip.textContent).toBe(t("chapters.promptStyle"));
@@ -180,7 +180,7 @@ describe("the prompt bar", () => {
     expect(field.getAttribute("aria-label")).toBe(t("chapters.promptLabel"));
     expect(field.getAttribute("placeholder")).toBe(t("chapters.promptPlaceholder"));
 
-    // interim: no prompt parameter on the continuation endpoint — follow-up filed in W3's index
+    // interim: no prompt parameter on the continuation endpoint — #822
     const pills = within(document.querySelector("[data-prompt-quicks]") as HTMLElement).getAllByRole(
       "button",
     );

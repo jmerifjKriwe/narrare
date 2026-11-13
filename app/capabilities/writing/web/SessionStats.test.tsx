@@ -36,6 +36,6 @@ describe("the drafted session card", () => {
 
   it("carries the interim comment with its follow-up anchor", () => {
     const source = readFileSync("../app/capabilities/writing/web/novel/SessionStats.tsx", "utf8");
-    expect(source).toContain("// interim: no session tracking — follow-up filed in W3's index");
+    expect(source).toContain("// interim: no session tracking — #818");
   });
 });

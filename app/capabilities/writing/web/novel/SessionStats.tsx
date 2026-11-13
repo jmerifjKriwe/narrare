@@ -16,7 +16,7 @@ export function SessionStats() {
       <div className="flex items-center justify-between gap-2 rounded-[var(--radius-control)] bg-surface-container-lowest p-3 shadow-sm">
         <span className="text-meta text-muted">{t("workspace.railSessionLabel")}</span>
         <span
-          // interim: no session tracking — follow-up filed in W3's index
+          // interim: no session tracking — #818
           // (the drafted "+412 Wörter", the goal bar and the "82 % erreicht"
           // line all need a session and a goal the app does not hold; the
           // bar and the goal line stay out, the neutral wears the value's

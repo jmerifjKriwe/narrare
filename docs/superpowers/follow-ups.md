@@ -31,6 +31,7 @@ still resolve; a closed id is in the table the Archive section points to.
 | WP6 chapter and novel management | #635 |
 | Provider presets and model profiles (2026-11) | #732 |
 | Literary Modernism shelf pilot (2026-11) | #780 |
+| Literary Modernism workspace W3 (2026-11) | #815 |
 
 A new wave opens its index and adds a row here. A fix closes its issue from the
 commit that lands it: `Closes #<n>`. Nothing is dropped for being minor:

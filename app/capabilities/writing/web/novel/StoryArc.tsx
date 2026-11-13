@@ -81,7 +81,7 @@ export function StoryArc({ position, total }: { position: number; total: number 
         <div className="mb-2 flex items-center justify-between gap-2">
           <span className="text-eyebrow uppercase text-muted">{t("workspace.railArcLabel")}</span>
           <span
-            // interim: no plot data — follow-up filed in W3's index
+            // interim: no plot data — #817
             // (the draft's meta reads "Akt I - Höhepunkt"; the app holds
             // no acts or beats, so the slot says so in words instead of
             // inventing a phase).

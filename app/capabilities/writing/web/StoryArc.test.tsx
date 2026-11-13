@@ -92,6 +92,6 @@ describe("the drafted arc", () => {
 
   it("carries the interim comment with its follow-up anchor", () => {
     const source = readFileSync("../app/capabilities/writing/web/novel/StoryArc.tsx", "utf8");
-    expect(source).toContain("// interim: no plot data — follow-up filed in W3's index");
+    expect(source).toContain("// interim: no plot data — #817");
   });
 });

@@ -240,7 +240,7 @@ export function WorkspaceToolbar({
           label={t("workspace.historyPending")}
           title={t("workspace.historyPending")}
           aria-disabled="true"
-          // interim: no version-history capability yet — follow-up filed in W3's index
+          // interim: no version-history capability yet — #823
           className="opacity-50"
         />
         {onExport !== undefined ? (

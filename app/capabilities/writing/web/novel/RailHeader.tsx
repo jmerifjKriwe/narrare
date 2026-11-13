@@ -79,7 +79,7 @@ export function RailHeader({
             hold (spec §6's interim rule), so the badge keeps the neutral
             word alone. */}
         <span
-          // interim: no version field — follow-up filed in W3's index
+          // interim: no version field — #816
           className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-meta text-secondary"
         >
           {t("workspace.railDraft")}
@@ -198,7 +198,7 @@ export function RailScenesEmpty({ novelId }: { novelId: string }) {
       <Link
         to="/planning"
         search={{ novel: novelId }}
-        // interim: no scenes view — follow-up filed in W3's index
+        // interim: no scenes view — #819
         className={`${buttonClass("secondary", "sm")} inline-flex w-full items-center justify-center gap-2 no-underline`}
       >
         <Icon name="planning" size={16} />

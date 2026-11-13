@@ -381,7 +381,7 @@ export function ChapterEditor({
             names are the row's, nothing stored here. Without an author the
             head names the book alone, without a dangling dash. The drafted
             folio stays off until the app has pages to count:
-            interim: no pagination — follow-up filed in W3's index */}
+            interim: no pagination — #820 */}
         {focusDepth < 2 && bookTitle !== undefined ? (
           <p data-paper-runhead className="paper-runhead mb-4 select-none text-body">
             {bookAuthor ? `${bookTitle} — ${bookAuthor}` : bookTitle}
@@ -445,7 +445,7 @@ export function ChapterEditor({
                   named once, beside the text. No live region here: the
                   runhead's indicator is the state's announcement. The
                   draft's page marker stays off:
-                  interim: no pagination — follow-up filed in W3's index */}
+                  interim: no pagination — #820 */}
               {status === "idle" || status === "saved" ? (
                 <span data-paper-foot-state className="flex items-center gap-1.5">
                   <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-success" />

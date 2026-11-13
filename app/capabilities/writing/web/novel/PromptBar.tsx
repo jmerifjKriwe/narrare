@@ -49,7 +49,7 @@ export function PromptBar({
         {/* The context trigger (the draft's neurology chip): what the
             continuation would read. It names no style, because there is
             none to name:
-            interim: no style presets — follow-up filed in W3's index */}
+            interim: no style presets — #821 */}
         <span
           data-prompt-style
           className="flex shrink-0 items-center gap-1.5 rounded-full bg-surface-container-low py-1 pr-3 pl-2.5 text-label text-muted"
@@ -64,7 +64,7 @@ export function PromptBar({
             continuation, which takes no prompt parameter. Readonly keeps
             the field in the tab order, so the title's reason is one Tab
             away for a keyboard or screen reader.
-            interim: no prompt parameter on the continuation endpoint — follow-up filed in W3's index */}
+            interim: no prompt parameter on the continuation endpoint — #822 */}
         <input
           type="text"
           data-prompt-input
@@ -93,7 +93,7 @@ export function PromptBar({
       {/* The quick prompts (the draft's suggestion pills): real copy in
           the band's chip clothes — and as unable to send as the field
           above them.
-          interim: no prompt parameter on the continuation endpoint — follow-up filed in W3's index */}
+          interim: no prompt parameter on the continuation endpoint — #822 */}
       <div data-prompt-quicks className="flex flex-wrap items-center justify-center gap-2">
         {QUICK_PROMPTS.map((key) => (
           <button

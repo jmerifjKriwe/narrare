@@ -232,7 +232,7 @@ describe("the interim target pill", () => {
       "utf8",
     );
     expect(source).toContain(
-      "// interim: no version-history capability yet — follow-up filed in W3's index",
+      "// interim: no version-history capability yet — #823",
     );
     expect(source).toContain(
       "// interim: per-chapter target field missing, shares shelf follow-up #783",
