@@ -206,7 +206,11 @@ def _prompts_for_novel(page: Page, title: str) -> Locator:
     proof the refetch landed, so a click never reaches a stale global view.
     """
     page.goto(BASE + "/settings/prompts")
-    page.get_by_label("Roman").select_option(label=title)
+    # Scoped to the page's main: the shell rail's book-switcher names itself
+    # "Roman wechseln", so a page-wide label match resolves two elements and
+    # Playwright's strict mode refuses it. The filter is the prompts page's
+    # own, which lives inside main.
+    page.get_by_role("main").get_by_label("Roman").select_option(label=title)
     return _continuation_card(page)
 
 

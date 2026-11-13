@@ -315,7 +315,11 @@ def _create_fake_profile(page: Page) -> None:
 
 def _save_novel_override(page: Page) -> None:
     """The prompts page's novel tier: the override saved, the card in force."""
-    page.get_by_label("Roman").select_option(label=NOVEL)
+    # Scoped to the page's main: the shell rail's book-switcher names itself
+    # "Roman wechseln", so a page-wide label match resolves two elements and
+    # Playwright's strict mode refuses it. The select this helper means is
+    # the prompts page's own tier filter, which lives inside main.
+    page.get_by_role("main").get_by_label("Roman").select_option(label=NOVEL)
     card = page.get_by_role("listitem").filter(has_text=CONTINUATION)
     card.get_by_role("button", name="Überschreibung für diesen Roman anlegen").click()
     card.get_by_label("Vorlage").fill(OVERRIDE_TEMPLATE)
@@ -560,13 +564,19 @@ def test_the_writer_s_day_holds_together_end_to_end(
 
     page.goto(f"{BASE}/settings/prompts")
     expect(page.get_by_role("heading", name="Prompts")).to_be_visible()
-    page.get_by_label("Novel").select_option(label=NOVEL)
+    # Scoped to main like the German twin above: the rail's switcher carries
+    # the word too in English ("Switch novel"), and the filter this flow
+    # means is the prompts page's own.
+    page.get_by_role("main").get_by_label("Novel").select_option(label=NOVEL)
     card = page.get_by_role("listitem").filter(has_text=CONTINUATION)
     expect(card.get_by_text("An override of this novel is in force.")).to_be_visible()
     # Back to German, on the page the switch left: the stored choice drives
     # every surface, and the flow hands the sweep a German app again.
     page.get_by_role("banner").locator('select[name="locale"]').select_option("de")
-    expect(page.get_by_label("Roman")).to_be_visible()
+    # The visibility witness is the prompts page's own select, scoped to
+    # main for the same reason as above: the rail's "Roman wechseln" would
+    # make the page-wide match ambiguous.
+    expect(page.get_by_role("main").get_by_label("Roman")).to_be_visible()
     expect(page.get_by_text("Eine Überschreibung dieses Romans ist in Kraft.")).to_be_visible()
     assert_accessible(page)
 
