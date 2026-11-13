@@ -31,13 +31,15 @@ _INHERITED_E2E_KEYS = (
     "NARRE_E2E_WEB_PORT",
     "NARRE_E2E_ATTACH",
     "NARRE_DATABASE_URL",
+    "NARRE_E2E_WORKTREE_SLOT",
     "PYTEST_XDIST_WORKER",
 )
 
 
 def _env(**values: str) -> dict[str, str]:
     inherited = {key: value for key, value in os.environ.items() if key not in _INHERITED_E2E_KEYS}
-    return {**inherited, **values}
+    # Pin slot 0 in tests so the default-port expectations stay deterministic.
+    return {"NARRE_E2E_WORKTREE_SLOT": "0", **inherited, **values}
 
 
 def _read(source: str, env: dict[str, str]) -> subprocess.CompletedProcess[str]:

@@ -36,6 +36,7 @@ from collections.abc import Generator  # noqa: TC003
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
+from hashlib import blake2s
 from os import environ
 from pathlib import Path
 from urllib.error import URLError
@@ -85,10 +86,48 @@ neighbouring port another service happens to hold is less likely to be in the
 way.
 """
 
-_WORKER_INDEX = _worker_index()
+WORKTREE_PORT_SPACING = 100
+"""How far apart two worktrees' port bases sit.
 
-API_PORT = int(environ.get("NARRE_E2E_API_PORT", "8000")) + _WORKER_INDEX * WORKER_PORT_SPACING
-WEB_PORT = int(environ.get("NARRE_E2E_WEB_PORT", "3100")) + _WORKER_INDEX * WORKER_PORT_SPACING
+A worktree owns a whole slice of the port space (base + up to nine workers of
+ten ports each) so two worktrees never bind the same port. The slice is
+derived from the worktree's path, the same way its test database name is:
+deterministic per checkout, so a second run of the same worktree lands on the
+same ports.
+"""
+
+
+def _worktree_slot() -> int:
+    """This worktree's slot, deterministically derived from its path.
+
+    ``NARRE_E2E_WORKTREE_SLOT`` overrides it (tests pin slot 0).
+    """
+    raw = environ.get("NARRE_E2E_WORKTREE_SLOT", "")
+    if raw.isdigit():
+        return int(raw)
+    return int(blake2s(str(ROOT).encode(), digest_size=2).hexdigest(), 16) % 20
+
+
+_WORKER_INDEX = _worker_index()
+_WORKTREE_SLOT = _worktree_slot()
+
+# An explicit port overrides the worktree slot: a developer (or a test) that
+# names a port wants exactly that port, without a hidden offset on top.
+_api_base_env = environ.get("NARRE_E2E_API_PORT")
+_api_base = (
+    int(_api_base_env)
+    if _api_base_env is not None
+    else 8000 + _WORKTREE_SLOT * WORKTREE_PORT_SPACING
+)
+_web_base_env = environ.get("NARRE_E2E_WEB_PORT")
+_web_base = (
+    int(_web_base_env)
+    if _web_base_env is not None
+    else 3100 + _WORKTREE_SLOT * WORKTREE_PORT_SPACING
+)
+
+API_PORT = _api_base + _WORKER_INDEX * WORKER_PORT_SPACING
+WEB_PORT = _web_base + _WORKER_INDEX * WORKER_PORT_SPACING
 
 _ATTACH_URL = environ.get("NARRE_E2E_ATTACH", "").strip().rstrip("/")
 

@@ -28,6 +28,9 @@ const e2eNoHttpCache = process.env.NARRE_E2E_NO_HTTP_CACHE === "1";
 // process. In production FastAPI serves the built files itself, so this proxy
 // exists only while developing.
 export default defineConfig({
+  // Per-port cache dir: two Vite instances on different worktrees (different
+  // ports) must not share one optimise-deps cache, or they corrupt it.
+  cacheDir: `node_modules/.vite-${webPort}`,
   plugins: [react()],
   // Component tests live beside the components they drive, in the capability
   // folders outside web/; the default include (this directory only) would
