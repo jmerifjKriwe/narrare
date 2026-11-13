@@ -1001,6 +1001,9 @@ describe("ChapterEditor's chapter headline", () => {
     expect(badge.className).toContain("font-mono");
     expect(badge.className).toContain("tabular-nums");
     expect(badge.className).toContain("bg-secondary-container");
+    // The draft's badge is a tight mono stamp: the size stays the eyebrow
+    // token (the scale rule), the tracking is the badge's own.
+    expect(badge.className).toContain("tracking-tight");
     // The badge is runhead chrome: it yields with the frame, never rides
     // the card's focus ring.
     const card = document.querySelector("[data-editor-card]")!;

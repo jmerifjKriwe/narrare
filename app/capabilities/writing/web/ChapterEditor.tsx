@@ -330,10 +330,15 @@ export function ChapterEditor({
             {chapterNumber !== undefined ? (
               // The drafted chapter code ("KAP-01"): the catalog supplies
               // the prefix (de KAP, en/fr CH) and the position is
-              // zero-padded — never a hard-coded string. Mono face,
-              // tabular figures; chrome of the runhead line, outside the
-              // paper the code names.
-              <span className="ml-2 shrink-0 rounded-[var(--radius)] bg-secondary-container px-1.5 py-0.5 font-mono text-eyebrow tabular-nums text-secondary-container-foreground">
+              // zero-padded — never a hard-coded string. The draft's badge
+              // is a tight mono stamp (10 px, tracking-tight): the size
+              // stays the eyebrow token the scale rule pins (no off-token
+              // step), and the tight tracking with the mono, tabular face
+              // is the badge's own look — tracking-tight compiles after
+              // the token utility, so its -0.025em wins the cascade.
+              // Chrome of the runhead line, outside the paper the code
+              // names.
+              <span className="ml-2 shrink-0 rounded-[var(--radius)] bg-secondary-container px-1.5 py-0.5 font-mono text-eyebrow tracking-tight tabular-nums text-secondary-container-foreground">
                 {t("chapters.chapterCode", { n: String(chapterNumber).padStart(2, "0") })}
               </span>
             ) : null}
