@@ -10,11 +10,13 @@ name: Screenshots
 
 on:
   workflow_dispatch:
-  schedule:
-    # Weekly, Sunday 06:00 UTC — catches drift without per-PR cost.
-    - cron: "0 6 * * 0"
-  push:
-    branches: [main]
+  # Paused by the frontend rebuild (W0): the script drives the real UI, which
+  # is an interim placeholder until the shelf and workspace screens return.
+  # Re-enable schedule and push when those screens are rebuilt (W3+).
+  # schedule:
+  #   - cron: "0 6 * * 0"
+  # push:
+  #   branches: [main]
 
 concurrency:
   group: screenshots
