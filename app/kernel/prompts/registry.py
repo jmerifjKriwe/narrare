@@ -19,6 +19,7 @@ import sys
 from collections.abc import Callable  # noqa: TC003  the dataclass fields evaluate
 from dataclasses import dataclass
 from importlib import import_module
+from logging import getLogger
 from pathlib import Path
 from threading import RLock
 
@@ -154,10 +155,16 @@ def get_registry() -> PromptRegistry:
                             # nosemgrep
                             import_module(name)
                             imported.append(name)
-                        except Exception:  # noqa: S112
+                        except Exception:
                             # A single prompt module that fails to import contributes
                             # nothing rather than taking the process down; the smoke
-                            # suite catches a registration gone missing.
+                            # suite catches a registration gone missing. Log so the
+                            # skip is diagnosable instead of silent.
+                            getLogger("narrare").warning(
+                                "prompt module %s failed to import and was skipped",
+                                name,
+                                exc_info=True,
+                            )
                             continue
         except BaseException:
             # Absolute rollback: a scan/iterdir/BaseException failure mid-discovery
