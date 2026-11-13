@@ -14,8 +14,7 @@ decide.
 Each screen is a pair in `screens/<area>/`:
 
 - `<name>.webp` — the rendered draft, 2560 px wide (2× the 1280 px canvas), WebP
-  quality 82. Opens offline and in the browser. (The 2026-11-13 onboarding drafts
-  are 1600 px `.png` — `cwebp` was unavailable when they were archived.)
+  quality 82. Opens offline and in the browser.
 - `<name>.html` — the generated source, as Stitch produced it. It loads Tailwind
   and Google Fonts from CDNs, so it needs a network connection to render; the
   preview is the offline view. The source is the editable form: change it in
@@ -62,12 +61,12 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`shelf-states`](screens/library/shelf-states.webp) | Bücherregal — Zustände: laden, Fehler, viele Bücher, langer Titel (G-4) | 1024 px |
 |  | [`welcome-onboarding`](screens/library/welcome-onboarding.webp) | Willkommen & Autoren-Onboarding | 2570 px |
 |  | [`integrated-suite`](screens/library/integrated-suite.webp) | Narrare — Integrierte Gesamtsuite (Regal, Workspace & KI-Dock) | 3664 px |
-| Library and entry | [`welcome-atelier`](screens/library/welcome-atelier.png) | Willkommen im Atelier | 1500 px (PNG; cwebp unavailable) |
-|  | [`setup-step1-basis-vorlage`](screens/library/setup-step1-basis-vorlage.png) | Projekt-Setup — Start oder Demo-Vorlage wählen | 1559 px (PNG; cwebp unavailable) |
-|  | [`setup-step2-dramaturgie-struktur`](screens/library/setup-step2-dramaturgie-struktur.png) | Projekt-Setup — Dramaturgie & Struktur | 1280 px (PNG; cwebp unavailable) |
-|  | [`setup-step3-ki-regeln-tonalitaet`](screens/library/setup-step3-ki-regeln-tonalitaet.png) | Projekt-Setup — KI-Regeln & Tonalität | 1600 px (PNG; cwebp unavailable) |
-|  | [`setup-step4-bereitstellung-start`](screens/library/setup-step4-bereitstellung-start.png) | Projekt-Setup — Bereitstellung & Start | 1350 px (PNG; cwebp unavailable) |
-|  | [`shelf-filter-open`](screens/library/shelf-filter-open.png) | Bücherregal — Filter geöffnet | 1546 px (PNG; cwebp unavailable) |
+| Library and entry | [`welcome-atelier`](screens/library/welcome-atelier.webp) | Willkommen im Atelier | 1500 px |
+|  | [`setup-step1-basis-vorlage`](screens/library/setup-step1-basis-vorlage.webp) | Projekt-Setup — Start oder Demo-Vorlage wählen | 1559 px |
+|  | [`setup-step2-dramaturgie-struktur`](screens/library/setup-step2-dramaturgie-struktur.webp) | Projekt-Setup — Dramaturgie & Struktur | 1280 px |
+|  | [`setup-step3-ki-regeln-tonalitaet`](screens/library/setup-step3-ki-regeln-tonalitaet.webp) | Projekt-Setup — KI-Regeln & Tonalität | 1600 px |
+|  | [`setup-step4-bereitstellung-start`](screens/library/setup-step4-bereitstellung-start.webp) | Projekt-Setup — Bereitstellung & Start | 1350 px |
+|  | [`shelf-filter-open`](screens/library/shelf-filter-open.webp) | Bücherregal — Filter geöffnet | 1546 px |
 | Writing | [`workspace`](screens/writing/workspace.webp) | Schreib-Workspace | 3434 px |
 |  | [`workspace-ai-dock`](screens/writing/workspace-ai-dock.webp) | Schreib-Workspace & KI-Dock | 4410 px |
 |  | [`workspace-lore-dock`](screens/writing/workspace-lore-dock.webp) | Schreib-Workspace & Lore-Dock (Kausalitäts-Konflikt gelöst) | 4104 px |
