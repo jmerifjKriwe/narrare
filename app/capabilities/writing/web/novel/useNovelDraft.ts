@@ -20,6 +20,9 @@ export function useNovelDraft(novelId: string, current: Chapter | null) {
     chapterId: null,
     draft: { title: "", body: "" },
   });
+  // remember runs only on a successful save (onSaved), so the cache patch
+  // reflects a confirmed write; the invalidation that follows reconciles
+  // any later rename (#687/#688) instead of an optimistic guess (Sourcery).
   const remember = useCallback(
     (chapterId: string, draft: DocumentDraft) => {
       const held = latestDraft.current;
