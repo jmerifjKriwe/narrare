@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The icon set: forty-three line glyphs on one 16×16 grid, drawn for the
+ * The icon set: forty-five line glyphs on one 16×16 grid, drawn for the
  * stroke they run on — `currentColor` at 1.5, round caps and joins, no
  * fills — so a glyph wears the ink of whatever it sits beside and carries
  * no color of its own. The whole presentation contract lives on the
@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
  */
 
 /**
- * The forty-three drawings. Each stays inside the 2.35–13.65 envelope —
+ * The forty-five drawings. Each stays inside the 2.35–13.65 envelope —
  * knowledge's stack sets both extremes; on the x axis the ink never leaves
  * 2.5–13.5 — so the 1.5 stroke, reaching half its width past the ink, never
  * clips the viewBox. Each is a single-stroke metaphor: detail that
@@ -218,6 +218,16 @@ export const icons = {
       <circle cx="12" cy="8" r="1.05" />
     </>
   ),
+  /** The assistant's mind: a brain's bumpy outline and the one line
+   *  between its hemispheres — the drafted `neurology` on the prompt
+   *  bar's style chip. The circuit lines the Material glyph carries are
+   *  detail that disappears at 16 px: left out. */
+  neurology: (
+    <>
+      <path d="M8 3.3C7.4 2.8 6.4 2.7 5.8 3.3C5 3.1 4.1 3.6 3.9 4.4C3.1 4.9 2.8 5.9 3.2 6.7C2.7 7.4 2.8 8.4 3.4 9C3.3 10 4.1 10.8 5.1 10.8C5.4 11.9 6.6 12.5 8 12.5C9.4 12.5 10.6 11.9 10.9 10.8C11.9 10.8 12.7 10 12.6 9C13.2 8.4 13.3 7.4 12.8 6.7C13.2 5.9 12.9 4.9 12.1 4.4C11.9 3.6 11 3.1 10.2 3.3C9.6 2.7 8.6 2.8 8 3.3Z" />
+      <path d="M8 3.6V12.2" />
+    </>
+  ),
   /** A person: the head over the shoulders. */
   person: (
     <>
@@ -240,6 +250,13 @@ export const icons = {
       <path d="M2.6 6.6H13.4" />
       <path d="M8 6.6V12.4" />
     </>
+  ),
+  /** The ask: a four-pointed spark, concave sides — the drafted `spark`
+   *  on the prompt bar's Weiterschreiben trigger. Distinct from
+   *  `autoStories`' corner spark: that one marks a title, this one the
+   *  continuation itself. */
+  spark: (
+    <path d="M8 2.6C8.6 5.3 10.7 7.4 13.4 8C10.7 8.6 8.6 10.7 8 13.4C7.4 10.7 5.3 8.6 2.6 8C5.3 7.4 7.4 5.3 8 2.6Z" />
   ),
   /** The theme: a moon, its dark side cut away. The outer edge is one
    *  arc of a circle whose centre the box can bound; the cut is a curve,

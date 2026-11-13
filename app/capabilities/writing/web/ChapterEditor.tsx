@@ -56,6 +56,7 @@ export function ChapterEditor({
   chapterTotal,
   focusDepth = 0,
   actions,
+  promptBar,
 }: {
   chapterId: string;
   body: string;
@@ -89,6 +90,13 @@ export function ChapterEditor({
    *  passed as a node because the actions are the page's story, not the
    *  editor's. Yields with the frame at depth 2. */
   actions?: ReactNode;
+  /** The floating prompt bar, mounted by the column below the card. A
+   *  render prop, because both of the bar's inputs live here: the trigger
+   *  is this component's own continuation stream, and `disabled` is that
+   *  stream's in-flight state. Chrome, like the frame — it yields at
+   *  focus depth 2. `undefined` mounts nothing (the editor's own tests
+   *  stay bar-free unless they ask). */
+  promptBar?: (controls: { onContinue: () => void; disabled: boolean }) => ReactNode;
 }) {
   const t = useTranslation();
   // The eyebrow's number words follow the catalog's language; the
@@ -448,6 +456,13 @@ export function ChapterEditor({
           </footer>
         ) : null}
       </div>
+      {/* The drafted floating prompt bar stands below the card, in the
+          column's flow — whatever the column mounted through the slot,
+          fed from the one continuation this component owns. Chrome, like
+          the frame: at depth 2 only the writing surface remains. */}
+      {focusDepth < 2 && promptBar !== undefined ? (
+        <>{promptBar({ onContinue: continueWriting, disabled: continuing })}</>
+      ) : null}
     </div>
   );
 }

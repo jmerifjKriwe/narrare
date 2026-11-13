@@ -8,6 +8,7 @@ import { Notice } from "@shell/ui/Notice";
 
 import { ChapterEditor } from "../ChapterEditor";
 import type { FocusStep } from "../routes";
+import { PromptBar } from "./PromptBar";
 
 export function EditorColumn({
   railOverlay,
@@ -151,6 +152,10 @@ export function EditorColumn({
                 chapterNumber={current.position + 1}
                 chapterTotal={chapterTotal}
                 focusDepth={focus}
+                // The drafted floating prompt bar, below the card: the
+                // editor's slot hands the column the trigger and the
+                // stream's busy state, the bar is the column's to mount.
+                promptBar={(controls) => <PromptBar {...controls} />}
                 actions={
                   <ActionMenu
                     label={t("chapters.actions")}

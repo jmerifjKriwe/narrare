@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The icon set's contract, pinned as records rather than single samples:
- * `icons` carries exactly the forty-three names (the wave's whole vocabulary
+ * `icons` carries exactly the forty-five names (the wave's whole vocabulary
  * — a name that drifts in or out breaks a P9 consumer), and every one of
  * them renders through `Icon` as the same hidden 16×16 svg — stroked in
  * the ink around it, filled with nothing, sized by `size` alone. The
@@ -18,7 +18,7 @@ import { Icon, icons, type IconName } from "./icons";
  *
  * The first eighteen are the app's own vocabulary (the library, the
  * editor, the knowledge base, the chat, the settings, the shell's
- * rails and their marks). The twenty-five that follow are the drafted
+ * rails and their marks). The twenty-seven that follow are the drafted
  * concepts the Literary Modernism screens introduce — deviation #1
  * (spec §6.9): the drafts speak in Material Symbols, the app keeps its
  * own hand-drawn faces, and a Material name pins only the *concept*.
@@ -60,9 +60,11 @@ const THE_SET = [
   "localFire",
   "menuBook",
   "moreHoriz",
+  "neurology",
   "person",
   "radar",
   "schema",
+  "spark",
   "theme",
   "tune",
   "unfoldMore",
@@ -268,7 +270,7 @@ function geometryValues(svg: SVGSVGElement): number[] {
 afterEach(cleanup);
 
 describe("icons", () => {
-  it("carries exactly the forty-three names of the set, verbatim", () => {
+  it("carries exactly the forty-five names of the set, verbatim", () => {
     expect(Object.keys(icons).sort()).toEqual([...THE_SET].sort());
   });
 
@@ -303,11 +305,26 @@ describe("icons", () => {
     ).toEqual([]);
   });
 
-  it("keeps all forty-three drawings distinct — cross dismisses, close folds a panel", () => {
+  it("keeps all forty-five drawings distinct — cross dismisses, close folds a panel", () => {
     // cross and close must never converge on the same ✕: a dismissal drops
     // content, a close folds a panel away — and no two names may share a drawing.
-    expect(new Set(THE_SET.map((name) => JSON.stringify(icons[name]))).size).toBe(43);
+    expect(new Set(THE_SET.map((name) => JSON.stringify(icons[name]))).size).toBe(45);
     expect(icons.close).not.toEqual(icons.cross);
+  });
+
+  it("draws the prompt bar's drafted concepts — the spark asks, the brain advises", () => {
+    // Task 9's pair: the drafted `spark` on the Weiterschreiben trigger is
+    // one closed four-pointed star, concave sides — pinned as data, like
+    // the rail's grip. The drafted `neurology` on the style chip reads by
+    // its cleft: the bumpy outline and the one line between hemispheres.
+    const spark = svgOf("spark");
+    expect(spark.querySelector("path")!.getAttribute("d")).toBe(
+      "M8 2.6C8.6 5.3 10.7 7.4 13.4 8C10.7 8.6 8.6 10.7 8 13.4C7.4 10.7 5.3 8.6 2.6 8C5.3 7.4 7.4 5.3 8 2.6Z",
+    );
+    const brain = svgOf("neurology");
+    const paths = brain.querySelectorAll("path");
+    expect(paths.length).toBe(2);
+    expect(paths[1]!.getAttribute("d")).toBe("M8 3.6V12.2");
   });
 
   it("draws the rail's grip as the drafted six dots, moved out of the row", () => {

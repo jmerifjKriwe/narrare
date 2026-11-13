@@ -458,7 +458,9 @@ def test_the_writer_s_day_holds_together_end_to_end(
     expect(page.get_by_role("heading", name=NOVEL)).to_be_visible()
     page.get_by_role("button", name=re.compile(rf"^{re.escape(CHAPTER_ONE)}\b")).click()
     expect(page.locator(PROSE)).to_be_visible()
-    page.get_by_role("button", name="Weiterschreiben").click()
+    # The runhead's trigger: `.first` because the prompt bar repeats the
+    # same words below the card.
+    page.get_by_role("button", name="Weiterschreiben").first.click()
     ghost = page.locator(f"{PROSE} .ghost")
     expect(ghost).to_contain_text("über die Straße.")
     page.keyboard.press("Tab")

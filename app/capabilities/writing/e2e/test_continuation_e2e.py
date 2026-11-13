@@ -87,7 +87,9 @@ def test_the_ghost_is_committed_by_tab_and_survives_reload(page: Page, stack: St
     """Verify Tab accepts the streamed ghost, autosave persists it, and the call is audited."""
     _write_a_line(page, "Die Windrose", "Die Windrose stand offen.")
 
-    page.get_by_role("button", name="Weiterschreiben").click()
+    # The floating prompt bar's trigger: the drafted launcher starts the
+    # same continuation the runhead's button above the card does.
+    page.locator("[data-prompt-bar]").get_by_role("button", name="Weiterschreiben").click()
 
     # The stream becomes a ghost: visible at the caret, decorative until
     # taken. Waiting for the final words proves the whole stream arrived.
@@ -131,7 +133,9 @@ def test_the_ghost_is_discarded_by_escape_and_leaves_no_trace(page: Page, stack:
     """Verify Escape discards the ghost without persisting text or disrupting focus controls."""
     _write_a_line(page, "Die Barkasse", "Die Barkasse legte ab.")
 
-    page.get_by_role("button", name="Weiterschreiben").click()
+    # The runhead's trigger: `.first` because the prompt bar repeats the
+    # same words below the card (the bar augments the button, not replaces).
+    page.get_by_role("button", name="Weiterschreiben").first.click()
     ghost = page.locator(".ProseMirror .ghost")
     expect(ghost).to_contain_text("über die Straße.")
 

@@ -335,7 +335,9 @@ def _accept_mira_and_file_alias(page: Page) -> None:
 
 def _continue_and_take(page: Page) -> None:
     """Run the continuation, wait for the whole ghost, take it with Tab."""
-    page.get_by_role("button", name="Weiterschreiben").click()
+    # The runhead's trigger: `.first` because the prompt bar repeats the
+    # same words below the card.
+    page.get_by_role("button", name="Weiterschreiben").first.click()
     # The stream becomes a ghost at the caret; waiting for its last words
     # proves the whole answer arrived before the row is read.
     ghost = page.locator(".ProseMirror .ghost")
@@ -430,7 +432,9 @@ def test_a_zero_room_pair_is_refused(page: Page, stack: Stack) -> None:
     _create_novel(page, REFUSED_NOVEL)
     _write_chapter(page, "Die stille Boje lag im Schilf.")
 
-    page.get_by_role("button", name="Weiterschreiben").click()
+    # The runhead's trigger: `.first` because the prompt bar repeats the
+    # same words below the card.
+    page.get_by_role("button", name="Weiterschreiben").first.click()
 
     # The refusal is the stream's one coded error frame, named where the
     # button sits: the prompt-refused sentence, with the settings door linked
