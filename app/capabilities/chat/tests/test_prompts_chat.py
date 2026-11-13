@@ -206,8 +206,20 @@ async def test_a_refused_override_ends_the_stream_with_the_one_error_frame(
         await PromptTemplateRepository(session, LOCAL_USER_ID).save(CHAT_KEY, override, None)
         await session.commit()
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.post("/api/chat/ask", json={"question": QUESTION})
+    import logging
+    from logging import getLogger
+
+    logger = getLogger("narrare")
+    previous_propagate = logger.propagate
+    logger.propagate = True
+    try:
+        with caplog.at_level(logging.ERROR, logger="narrare"):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post("/api/chat/ask", json={"question": QUESTION})
+    finally:
+        logger.propagate = previous_propagate
 
     assert response.status_code == 200
     assert response.text == 'event: error\ndata: {"code": "prompt-refused"}\n\n'
