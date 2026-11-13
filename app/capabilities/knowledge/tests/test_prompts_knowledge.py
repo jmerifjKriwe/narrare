@@ -16,6 +16,7 @@ from app.api.main import app
 from app.capabilities.knowledge.prompts import consistency_prompt, extraction_prompt
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.llm import PURPOSE_PREFIX
+from app.kernel.prompts import get_registry, no_includes, render, render_source
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -81,11 +82,6 @@ CONSISTENCY_GOLDEN = (
 def _render(source: str, variables: dict[str, object]) -> str:
     """The offline render the contract tests drive; the bundled template includes nothing."""
 
-    from app.kernel.prompts import render_source
-
-    def no_includes(key: str) -> str:
-        raise KeyError(key)
-
     return render_source(source, variables, include=no_includes)
 
 
@@ -145,7 +141,6 @@ async def test_the_bundled_chain_renders_the_pinned_extraction_prompt() -> None:
     """No override at either tier: the registry render is the pinned prompt."""
     from app.capabilities.knowledge.prompts import EXTRACTION_KEY, extraction_variables
     from app.kernel.db.session import Session
-    from app.kernel.prompts import render
 
     async with Session() as session:
         prompt = await render(
@@ -161,7 +156,6 @@ async def test_the_bundled_chain_renders_the_pinned_consistency_prompt() -> None
     """No override at either tier: the registry render is the pinned prompt."""
     from app.capabilities.knowledge.prompts import CONSISTENCY_KEY, consistency_variables
     from app.kernel.db.session import Session
-    from app.kernel.prompts import render
 
     async with Session() as session:
         prompt = await render(
@@ -181,7 +175,6 @@ def test_both_keys_are_registered_novel_scopable() -> None:
         consistency_contract,
         extraction_contract,
     )
-    from app.kernel.prompts import get_registry
 
     registry = get_registry()
     extraction = registry.spec(EXTRACTION_KEY)
@@ -199,7 +192,6 @@ async def test_a_novel_override_revoices_the_consistency_frame_and_keeps_the_cha
     from app.capabilities.knowledge.prompts import CONSISTENCY_KEY, consistency_variables
     from app.kernel.contracts.models import Novel
     from app.kernel.db.session import Session
-    from app.kernel.prompts import render
     from app.kernel.prompts.models import PromptTemplateRepository
 
     novel_override = (

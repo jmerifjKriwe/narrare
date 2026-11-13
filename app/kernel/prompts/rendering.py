@@ -171,6 +171,25 @@ class _GuardedTemplate:
     ) -> Context:
         return self._inner.new_context(vars, shared, locals)
 
+    def make_module(
+        self,
+        vars: dict[str, Any] | None = None,  # pylint: disable=redefined-builtin
+        shared: bool = False,
+        locals: Mapping[str, Any] | None = None,  # pylint: disable=redefined-builtin
+    ) -> TemplateModule:
+        # Delegate so {% import … with context %} does not surface the
+        # internal wrapper class name in a runtime refusal. Import is not a
+        # promoted path today; see #389.
+        return self._inner.make_module(vars, shared, locals)
+
+    async def make_module_async(
+        self,
+        vars: dict[str, Any] | None = None,  # pylint: disable=redefined-builtin
+        shared: bool = False,
+        locals: Mapping[str, Any] | None = None,  # pylint: disable=redefined-builtin
+    ) -> TemplateModule:
+        return await self._inner.make_module_async(vars, shared, locals)
+
     def root_render_func(self, *args: Any, **kwargs: Any) -> Iterator[str]:
         self._guard.enter(self._key)
         try:
@@ -337,6 +356,9 @@ async def render(
             try:
                 await asyncio.shield(inner)
             except asyncio.CancelledError:
+                # A cancelling scope may re-deliver cancellation while we wait;
+                # yield control so the retry does not busy-spin.
+                await asyncio.sleep(0)
                 continue
             except Exception:
                 break  # the render failed on its own; the cancellation wins

@@ -26,9 +26,9 @@ def _bundled(name: str) -> str:
 # Today's sample renders — the bundled template against its sample factory —
 # captured when the prompts docked. Provenance: writing's literal is the
 # capability suite's own GOLDEN string; chat's sample rides that suite's
-# QUESTION and first passage; the knowledge samples are the factories'
-# shorter inputs over the same chapter texts. A drift in either tier —
-# template or factory — rots here first.
+# QUESTION and first passage; the knowledge extract sample's body is the
+# writing suite's BODY (not a shortened knowledge CHAPTER_BODY). A drift in
+# either tier — template or factory — rots here first.
 GOLDENS: dict[str, str] = {
     "chat.ask": (
         "Answer the question using only the sources below. Quote the passage that "

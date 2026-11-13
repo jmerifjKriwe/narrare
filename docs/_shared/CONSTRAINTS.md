@@ -22,6 +22,16 @@ budget — is the [v2 architecture spec](../superpowers/specs/2026-10-21-narrare
    the plural categories its copy needs (`other` is ICU's fallback); a missing
    key is a build error.
 
+## Flakes
+
+A failing or flaky test is never ignored, skipped or re-rolled. The root cause
+is found and fixed — a flaky assertion is a real defect in the code or the
+test's assumptions, not a CI inconvenience. Skipping, `xit`, `@pytest.mark.skip`,
+re-rolling snapshots or raising timeouts without understanding why counts as a
+review finding. A follow-up issue is opened for any flake that cannot be fixed
+in the same change, hung under its wave's index, and closed from the commit that
+lands the fix.
+
 ## The shape of a capability
 
 - Its facts are in `capability.yaml` — `id`, `title`, `path`, `needs`, `nav` — and

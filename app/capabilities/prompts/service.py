@@ -109,7 +109,14 @@ class PromptService:
             )
 
     def _refuse_scope(self, spec: PromptSpec, novel_id: UUID | None) -> None:
-        """A ``novel_id`` is only legal where the key carries the scope."""
+        """A ``novel_id`` is only legal where the key carries the scope.
+
+        Deliberate asymmetry (WP4 follow-up #392): ``detail`` and ``diff`` accept
+        a ``novel_id`` for any key and fall back to the global tier when the key
+        is not novel-scopable, so a page can render in a novel context; ``save``
+        and ``delete`` refuse a novel scope for such a key, because there is no
+        per-novel row to write or remove. No override leaks either way.
+        """
         if novel_id is not None and not spec.novel_scopable:
             raise PromptRefusedError(
                 "novel-scope",
@@ -118,6 +125,14 @@ class PromptService:
 
     async def validate(self, key: str, content: str, novel_id: UUID | None) -> None:
         """The save-time gate: refuse by name, store nothing.
+
+        Design note (WP4 follow-up #389): the gate resolves ``{% include %}``
+        for this key to the content being saved and every other key to its
+        bundled template, so an override that includes another key validates
+        against that key's bundled (sample) variables. A hand-set template can
+        include another key, and call-time render walks the full chain;
+        chain-resolved validation at save time is deferred — the bundled target
+        is the contract the gate checks.
 
         The unknown key is the 404; ``novel_id`` is checked for scope and
         ownership; the content renders through the sandbox at sample scope —

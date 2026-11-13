@@ -28,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.kernel.context import BudgetImpossibleError, ContextBudgets
 from app.kernel.contracts.models import Chapter, Entity  # noqa: TC001
-from app.kernel.prompts import PromptRenderError, get_registry, render, render_source
+from app.kernel.prompts import PromptRenderError, get_registry, no_includes, render, render_source
 
 CONTINUATION_KEY: Final = "writing.continuation"
 
@@ -131,11 +131,20 @@ async def _fit_tail(
     variables["tail"] = candidate
     rendered = await render_one(variables)
 
-    sections = sum(len(value) for key, value in variables.items() if key.endswith("_section"))
+    def _rendered_sections(text: str) -> int:
+        # Count only the sections the template actually rendered, using their
+        # original (unwrapped) text, so an override that drops a section does
+        # not donate that section's length to the tail's room. No sentinel
+        # overhead is measured.
+        total = 0
+        for key, value in variables.items():
+            if key.endswith("_section") and value and value in text:
+                total += len(value)
+        return total
 
     def frame(text: str) -> int:
         """The glue one render added: everything beyond the sections and the tail."""
-        return len(text) - sections - len(variables["tail"])
+        return len(text) - _rendered_sections(text) - len(variables["tail"])
 
     measured = frame(rendered)
     # The fixed scaffolding (header, Text-so-far, instruction) is uncuttable:
@@ -167,11 +176,6 @@ async def _fit_tail(
     return rendered
 
 
-def _bundled_only(key: str) -> str:
-    """The offline render's include chain: the bundled template includes nothing."""
-    raise KeyError(key)
-
-
 def scaffold_length(novel_title: str, chapter_title: str) -> int:
     """The bundled template's fixed frame for an empty tail and no sections.
 
@@ -188,7 +192,7 @@ def scaffold_length(novel_title: str, chapter_title: str) -> int:
         "predecessors_section": "",
         "style_section": "",
     }
-    return len(render_source(CONTINUATION_TEMPLATE, variables, include=_bundled_only))
+    return len(render_source(CONTINUATION_TEMPLATE, variables, include=no_includes))
 
 
 def continuation_prompt(
@@ -203,6 +207,10 @@ def continuation_prompt(
     blurb: str | None = None,
 ) -> str:
     """The bundled continuation prompt, rendered offline inside the four budgets.
+
+    Offline-only: this sync entry point raises RuntimeError under a running
+    event loop (it uses asyncio.run); it is the golden subject for the bundled
+    template and is not the service method of the same name.
 
     Scaffolding counts: the ``Novel:``/``Chapter:`` header, the ``Text so
     far:`` tail and the instruction share the immediate-text slice; each
@@ -220,7 +228,7 @@ def continuation_prompt(
     """
 
     async def bundled(variables: dict[str, str]) -> str:
-        return render_source(CONTINUATION_TEMPLATE, variables, include=_bundled_only)
+        return render_source(CONTINUATION_TEMPLATE, variables, include=no_includes)
 
     return asyncio.run(
         _fit_tail(

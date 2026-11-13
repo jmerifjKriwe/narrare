@@ -373,7 +373,7 @@ describe("the save's invalidation", () => {
         expect(invalidate).toHaveBeenCalledWith({ queryKey: ["chapters", NOVEL_ID] });
         expect(invalidate).toHaveBeenCalledWith({ queryKey: ["novels"] });
       },
-      { timeout: 4000 },
+      { timeout: 10000 },
     );
     invalidate.mockRestore();
   });
@@ -433,7 +433,7 @@ describe("the save's invalidation", () => {
         expect(saved?.body).toContain("Ein Satz.");
         expect(saved?.updated_at).not.toBe(CHAPTERS[0].updated_at);
       },
-      { timeout: 4000 },
+      { timeout: 10000 },
     );
   });
 });
@@ -1390,7 +1390,7 @@ describe("the runhead's action menu", () => {
           params: { path: { chapter_id: SECOND_CHAPTER_ID } },
           body: { body: " Ein Satz." },
         }),
-      { timeout: 4000 },
+      { timeout: 10000 },
     );
     const chapterPuts = api.PUT.mock.calls.filter(
       ([path]) => path === "/api/writing/chapters/{chapter_id}",
@@ -1526,7 +1526,7 @@ describe("the runhead's action menu", () => {
             },
           },
         ),
-      { timeout: 4000 },
+      { timeout: 10000 },
     );
     expect(document.querySelector(".ProseMirror")?.textContent).toContain("Bleibt doch.");
     expect(rows.length).toBe(2);

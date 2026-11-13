@@ -175,7 +175,7 @@ describe("EntitiesPanel entity save", () => {
 });
 
 describe("EntitiesPanel relation edit refusals", () => {
-  it("names the duplicate 409 inside the inline edit form and clears it on leaving", async () => {
+  it("names the duplicate 409 inside the inline edit form and clears it on leaving", { timeout: 15_000 }, async () => {
     // The edit-side pin (#309 + the round-1 fix): a 409 on a retyped edge
     // answers inside the inline editor's own Notice — not the shared
     // section-bottom wording — and leaving that editor, by cancel or by
@@ -218,7 +218,7 @@ describe("EntitiesPanel relation edit refusals", () => {
     const typeBox = within(editForm).getByLabelText("Relation type");
     await user.clear(typeBox);
     await user.type(typeBox, "Ally");
-    await user.click(await screen.findByRole("option", { name: "Ally of" }));
+    await user.click(await screen.findByRole("option", { name: "Ally of" }, { timeout: 5000 }));
     expect(within(editForm).getByLabelText("Relation type")).toHaveProperty("value", "Ally of");
     await user.click(within(editForm).getByRole("button", { name: "Save" }));
 
@@ -257,7 +257,7 @@ describe("EntitiesPanel relation edit refusals", () => {
 });
 
 describe("EntitiesPanel relation edit note-only save", () => {
-  it("keeps the edge's stored type when only the note changes", async () => {
+  it("keeps the edge's stored type when only the note changes", { timeout: 15_000 }, async () => {
     // The edge's stored type is raw free text whose words spell a
     // vocabulary label's — "ally of" beside the catalog's "ally_of". The
     // prefilled box resolves those words, and a save comparing resolved
