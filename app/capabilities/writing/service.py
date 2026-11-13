@@ -400,8 +400,21 @@ class WritingService:
             # name). Both are the request's fault and come back named.
             reason = error.strerror if isinstance(error, OSError) and error.strerror else str(error)
             raise FieldRefusedError(("path",), f"{path}: {reason}") from None
-        await self.novels.touch_exported(novel_id)
-        await self.session.commit()
+        # Stamp and commit after the directory landed. If the commit fails
+        # (disk full on the stamp, a constraint violation), the directory
+        # written above would otherwise strand on disk un-stamped and untraced
+        # — the next export would meet its own debris. Roll back the stamp and
+        # remove the just-written tree so a retry starts from a clean target
+        # (#678).
+        try:
+            await self.novels.touch_exported(novel_id)
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            import shutil as _shutil
+
+            _shutil.rmtree(Path(path), ignore_errors=True)
+            raise
         tree = ArchiveTree(files)
         return ExportDone(
             # The directory actually written: a relative target is resolved so

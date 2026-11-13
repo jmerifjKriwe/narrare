@@ -898,6 +898,10 @@ describe("the rail's reorder", () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     await editorElement();
 
+    const chapterGetsBefore = api.GET.mock.calls.filter(
+      ([path]) => path === "/api/writing/novels/{novel_id}/chapters",
+    ).length;
+
     titledRow("Erstes").focus();
     await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
 
@@ -909,6 +913,11 @@ describe("the rail's reorder", () => {
     const cached = queryClient.getQueryData<Array<Chapter>>(["chapters", NOVEL_ID]);
     expect(cached?.map((row) => row.id)).toEqual([CHAPTER_ID, SECOND_CHAPTER_ID]);
     expect(cached?.map((row) => row.position)).toEqual([0, 1]);
+    // no refetch followed the lone failure (#691)
+    const chapterGetsAfter = api.GET.mock.calls.filter(
+      ([path]) => path === "/api/writing/novels/{novel_id}/chapters",
+    ).length;
+    expect(chapterGetsAfter).toBe(chapterGetsBefore);
   });
 
   it("a_drag_and_drop_moves_the_chapter", { timeout: 10_000 }, async () => {
