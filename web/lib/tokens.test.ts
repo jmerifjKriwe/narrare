@@ -20,7 +20,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const WEB = new URL("..", import.meta.url).pathname;
-const REPO = new URL("../..", import.meta.url).pathname;
 const CSS = readFileSync(join(WEB, "globals.css"), "utf8");
 
 /** The `:root` block's body — the shell's one token surface. */
@@ -310,17 +309,6 @@ describe("the shell's tokens", () => {
       parts(painted(tokens, "shadow-card", theme)).filter((layer) => !/transparent$/i.test(layer));
     expect(layers("light")).toEqual(SHADOW_CARD.light);
     expect(layers("dark")).toEqual(SHADOW_CARD.dark);
-  });
-
-  it("gives the dock its twenty-one rem", () => {
-    // Tailwind's spacing unit is a quarter rem, so `w-84` is 21 rem — the
-    // design's `dock-width`, and the width the workbench arithmetic reads.
-    const dock = readFileSync(
-      join(REPO, "app/capabilities/writing/web/novel/DockColumn.tsx"),
-      "utf8",
-    );
-    expect(dock).toContain("w-84");
-    expect(dock).not.toContain("w-88");
   });
 });
 

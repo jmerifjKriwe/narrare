@@ -44,47 +44,47 @@ describe("ICU message format", () => {
   });
 
   it("fills a placeholder from the catalog the app actually renders", () => {
-    // chapters.defaultTitle is the one message with a parameter today. The
-    // expected value comes from the active catalog, so the test survives a
-    // locale change; a formatter that never ran would return the raw "{n}".
-    const message = catalogs[activeLocale()]["chapters.defaultTitle"];
-    expect(t("chapters.defaultTitle", { n: 7 })).toBe(message.replace("{n}", "7"));
-    expect(t("chapters.defaultTitle", { n: 7 })).not.toContain("{");
+    // shell.paletteOpen is the one central message with a parameter while
+    // the rebuilt screens bring their copy back. The expected value comes
+    // from the active catalog, so the test survives a locale change; a
+    // formatter that never ran would return the raw "{key}".
+    const message = catalogs[activeLocale()]["shell.paletteOpen"];
+    expect(t("shell.paletteOpen", { key: "⌘K" })).toBe(message.replace("{key}", "⌘K"));
+    expect(t("shell.paletteOpen", { key: "⌘K" })).not.toContain("{");
   });
 
-  it("renders the receipt's conflict details, not their placeholders", () => {
-    // The receipt formats each refusal with that code's `params`. A lone `'`
-    // in an ICU message starts a quoted literal, so `'{name}'` prints the
-    // braces instead of the name — and the English receipt did exactly that
-    // while de/fr used typographic quotes. Every locale must interpolate.
+  it("renders each error sentence's parameters, not their placeholders", () => {
+    // The receipt formats each refusal with its `params`. A lone `'` in an
+    // ICU message starts a quoted literal, so `'{name}'` prints the braces
+    // instead of the name — and the English receipt did exactly that while
+    // de/fr used typographic quotes. Every error sentence must interpolate.
+    // The family the test exercises follows the living catalog: the shelf
+    // conflict receipts left with the demolished shelf, the shared error
+    // sentences stay.
     const paramsByCode: Record<string, Record<string, string>> = {
-      stale_revision: {
-        file_updated: "2026-01-01T00:00:00+00:00",
-        stock_updated: "2026-10-28T10:00:00+00:00",
-      },
-      type_discrepancy: { file_type: "character", stock_type: "place" },
-      edge_note_differs: { edge: "Mira -knows-> Toma" },
-      edge_target_missing: { name: "Mira" },
-      metadata_differs: { field: "genre" },
-      position_disagree: { index_position: "4", file_position: "9" },
-      unknown_type: { type: "planet" },
-      ambiguous_name: { name: "Mira" },
-      ambiguous_edge_end: { edge: "Mira -knows-> Toma", name: "Mira" },
+      "errors.keyUnavailable": {},
+      "errors.modelNotFound": { model: "mira-4" },
+      "errors.promptRefused": {},
+      "errors.promptRefusedBudget": {},
+      "errors.providerAuth": {},
+      "errors.unknown": {},
     };
-    const keys = Object.keys(catalogs.en).filter((key) =>
-      key.startsWith("shelf.report.conflict."),
+    const prefix = "errors.";
+    const keys = Object.keys(catalogs.en).filter(
+      (key) => key.startsWith(prefix) && key !== "errors.link" && key !== "errors.details",
     );
-    const codes = keys.map((key) => key.slice("shelf.report.conflict.".length));
 
     // Both directions: a catalog message with no engine code is dead, and a
     // code with no message loses its localization silently.
-    expect(codes.sort()).toEqual(Object.keys(paramsByCode).sort());
+    expect(keys.sort()).toEqual(Object.keys(paramsByCode).sort());
 
     for (const key of keys) {
-      const code = key.slice("shelf.report.conflict.".length);
-      const params = paramsByCode[code];
-      if (params === undefined) throw new Error(`no param set for ${code}`);
+      if (paramsByCode[key] === undefined) throw new Error(`no param set for ${key}`);
       for (const candidate of locales) {
+        const params = {
+          ...paramsByCode[key],
+          link: catalogs[candidate]["errors.link"],
+        };
         const message = catalogs[candidate][key as keyof typeof catalogs.en];
         const rendered = String(new IntlMessageFormat(message, candidate).format(params));
         expect(rendered, `${candidate}/${key}`).not.toMatch(/[{}]/);
@@ -134,51 +134,24 @@ describe("the formal register", () => {
     applyLocale("en");
   });
 
-  it("serves the formal overlay in German", () => {
-    applyLocale("de");
-    applyFormality("informal");
-    expect(t("settings.appearance.hint")).toBe("System folgt deinem Gerät.");
-
-    applyFormality("formal");
-    expect(t("settings.appearance.hint")).toBe("System folgt Ihrem Gerät.");
-  });
-
-  it("serves the formal overlay in French", () => {
-    applyLocale("fr");
-    applyFormality("informal");
-    expect(t("settings.appearance.hint")).toBe("Système suit ton appareil.");
-
-    applyFormality("formal");
-    expect(t("settings.appearance.hint")).toBe("Système suit votre appareil.");
-  });
+  // The end-to-end overlay assertions — a formal variant rendered beside
+  // its informal base — left with the capability catalogs that carried
+  // their strings; the demolition leaves no live overlay key. The gates
+  // below keep the register's machinery pinned over the keys that remain,
+  // and the end-to-end form returns with the rebuilt copy (W2).
 
   it("falls through to the base where the overlay is silent", () => {
     applyLocale("de");
     applyFormality("formal");
 
-    expect(t("settings.heading")).toBe("Einstellungen");
+    expect(t("errors.link")).toBe("Einstellungen → Modelle");
   });
 
   it("leaves English unchanged", () => {
     applyLocale("en");
     applyFormality("formal");
 
-    expect(t("settings.appearance.hint")).toBe(
-      catalogs.en["settings.appearance.hint"],
-    );
-  });
-
-  it("formats a parameterized formal message", () => {
-    applyLocale("de");
-    applyFormality("informal");
-    expect(t("knowledge.deleteBody", { title: "Mira" })).toContain(
-      "wo du sie hergeladen hast",
-    );
-
-    applyFormality("formal");
-    expect(t("knowledge.deleteBody", { title: "Mira" })).toContain(
-      "wo Sie sie hergeladen haben",
-    );
+    expect(t("errors.link")).toBe(catalogs.en["errors.link"]);
   });
 
   it("parses every overlay message", () => {
@@ -210,7 +183,7 @@ describe("the active language", () => {
     adoptServerLocale("de");
 
     expect(activeLocale()).toBe("de");
-    expect(t("settings.language")).toBe("Sprache");
+    expect(t("errors.link")).toBe("Einstellungen → Modelle");
   });
 
   it("ignores a code the catalog does not carry", () => {
