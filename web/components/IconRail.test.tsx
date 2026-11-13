@@ -463,12 +463,18 @@ describe("the rail's drafted chrome", () => {
   it("sits on the panel ground behind a hairline edge, flat (Tier 1)", () => {
     // The tier's discipline: a chrome rail is a flat panel bound by the
     // hairline — the open rail's overlay shadow the old shell wore is
-    // gone, because elevation belongs to the tiers that earn it. The one
-    // `shadow-overlay` in the file belongs to the book menu's popover, the
-    // floating surface's own Tier 3 elevation (Menu.tsx's paint) — the
-    // rail panel itself stays flat.
-    expect(railSource).toMatch(/border-r border-border bg-panel/);
-    expect(railSource).not.toMatch(/shadow-(?!overlay)/);
+    // gone, because elevation belongs to the tiers that earn it. Two
+    // shadows live in the file and neither is the panel's: the book
+    // menu's popover carries the floating surface's own Tier 3 elevation
+    // (Menu.tsx's paint), and the brand placard carries the draft's own
+    // `shadow-sm` tile depth (screens/writing/workspace.html's header
+    // row) — a 32 px mark's hair of depth, not a surface's lift.
+    const nav = railSource.match(/className="group absolute inset-y-0[^"]*"/);
+    expect(nav).toBeTruthy();
+    expect(nav![0]).toMatch(/border-r border-border bg-panel/);
+    expect(nav![0]).not.toContain("shadow-");
+    expect(railSource).toContain("shadow-overlay");
+    expect(railSource).toContain("shadow-sm");
   });
 
   it("carries the eyebrow-tracked group labels the drafts group the rail by", () => {
@@ -478,6 +484,48 @@ describe("the rail's drafted chrome", () => {
     expect(railSource).toMatch(/text-eyebrow uppercase/);
     expect(railSource).toMatch(/const REVEAL =/);
     expect(railSource.match(new RegExp("\\$\\{REVEAL\\}", "g"))?.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("the rail's brand block", () => {
+  /** The block, found by its placard once the rail renders. */
+  async function brand() {
+    mockApi();
+    renderAt("/");
+    await screen.findByRole("button", { name: t("shell.railBookMenu") });
+    return document.querySelector("div[aria-hidden='true'].h-14");
+  }
+
+  it("stands at the head with the sepia placard, decorative to a reader", async () => {
+    const block = await brand();
+    expect(block).not.toBeNull();
+    // The draft's placard: 32 px on the sepia cover ground, the mark's
+    // hair of shadow. Decorative chrome — the grip's rule: the brand is
+    // the document title's, and a wordmark that names no destination is
+    // not read.
+    expect(block!.querySelector(".bg-cover-sepia.shadow-sm")).not.toBeNull();
+  });
+
+  it("wears the serif's italic N and reveals the wordmark with the rail", async () => {
+    const block = await brand();
+    const n = block!.querySelector(".font-garamond.italic");
+    expect(n?.textContent).toBe("N");
+    // The wordmark rides the one reveal the rail's labels ride — hover,
+    // focus or a coarse pointer, never its own trigger.
+    expect(block!.textContent).toContain("Narrare");
+    expect(block!.textContent).toContain(t("shell.railAtelier"));
+    expect(block!.querySelector("span[class*='group-hover:opacity-100']")).not.toBeNull();
+  });
+
+  it("takes the wordmark's name verbatim and the atelier line from the catalogs", () => {
+    // "Narrare" is the product's name — untranslated in all three
+    // catalogs, `app.title`'s rule — so the source carries it as its own
+    // JSX text, never through `t`; the eyebrow under it is the
+    // translatable string the draft draws, and it rides `t` like every
+    // catalog word on the rail.
+    expect(railSource).toMatch(/^\s*Narrare$/m);
+    expect(railSource).not.toMatch(/Narrare"\)/);
+    expect(railSource).toContain('{t("shell.railAtelier")}');
   });
 });
 

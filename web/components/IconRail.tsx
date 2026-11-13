@@ -27,8 +27,9 @@ import { Icon, type IconName } from "../ui/icons";
  * one column.
  *
  * The drafted blocks complete the rail (spec §5.0, the workspace screen's
- * own left `<aside>`): the book-switcher at the head — the active novel's
- * cover chip and name, and an unfold-more menu of the user's novels that
+ * own left `<aside>`): the brand mark and the book-switcher at the head —
+ * the sepia "N" placard with its wordmark, then the active novel's cover
+ * chip and name, and an unfold-more menu of the user's novels that
  * navigates on select; and at the foot, behind the hairline, the sync dot
  * the autosave state drives, the theme toggle cycling the settings row's
  * own tri-state, and the user block. All four run on the real sources the
@@ -276,6 +277,37 @@ const CHIP_GROUND: Record<CoverTone, string> = {
 };
 
 /**
+ * The drafted logo block at the rail's very head (the workspace draft's
+ * header row): the 32 px sepia placard carrying the serif's italic "N" —
+ * the brand serif's real 600 italic cut, the runhead's own voice — and,
+ * opened with the rail like every label, the wordmark: the product's own
+ * name (untranslated in all three catalogs, `app.title`'s rule) over the
+ * catalog's atelier line. The block is decorative chrome — the grip's
+ * rule, `aria-hidden`: the brand lives in the document's title, and a
+ * wordmark that names no destination is not read.
+ */
+function RailBrand() {
+  const t = useTranslation();
+  return (
+    <div aria-hidden="true" className="flex h-14 w-full items-center gap-2 border-b border-rule px-1">
+      <span className="ml-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius)] bg-cover-sepia shadow-sm">
+        <span className="font-garamond italic font-semibold leading-none text-title text-primary-foreground">
+          N
+        </span>
+      </span>
+      <span className={`${REVEAL} min-w-0`}>
+        <span className="block truncate text-emph leading-tight tracking-tight text-primary">
+          Narrare
+        </span>
+        <span className="block truncate text-eyebrow uppercase text-muted">
+          {t("shell.railAtelier")}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/**
  * The book-switcher at the rail's head (the workspace draft's soft pill):
  * the active novel's cover chip — its face while the rail is closed — and
  * its name beside the unfold-more, opening a menu of the user's novels
@@ -426,6 +458,10 @@ export function IconRail({ sync }: { sync: RailSync }) {
         className="group absolute inset-y-0 left-0 z-20 flex w-[var(--rail-width)] flex-col items-start justify-between overflow-hidden border-r border-border bg-panel p-1.5 transition-[width] duration-150 hover:w-[168px] focus-within:w-[168px] motion-reduce:transition-none pointer-coarse:transition-none"
       >
         <div className="flex w-full flex-col items-stretch gap-1">
+          {/* The brand at the rail's very head, the switcher beneath it:
+           * the drafts put the mark above the open book, the destinations
+           * beneath both. */}
+          <RailBrand />
           {/* The book-switcher at the head, above the groups: the drafts put
            * the open book at the rail's top, the destinations beneath it. */}
           {novelsQuery.data !== undefined ? (

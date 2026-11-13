@@ -623,9 +623,12 @@ def test_the_outage_stays_reachable_at_a_narrow_window(page: Page, stack: Stack)
         retry = page.get_by_role("button", name="Erneut versuchen")
         expect(retry).to_be_visible()
         # No drawer stands, so nothing may stand before it: no scrim exists
-        # (the scrims are the page's only aria-hidden divs) and the click
-        # lands — Playwright refuses a click another element intercepts.
-        expect(page.locator("div[aria-hidden='true']")).to_have_count(0)
+        # and the click lands — Playwright refuses a click another element
+        # intercepts. The census reads the scrims by what they are (the
+        # page's own overlay class), not by the aria-hidden attribute
+        # alone: the shell rail carries decorative aria-hidden chrome of
+        # its own (the brand block), display-none at this width.
+        expect(page.locator("div[class*='bg-scrim']")).to_have_count(0)
         retry.click()
         expect(page.get_by_role("alert").filter(has_text="konnte nicht geladen")).to_be_visible()
     finally:

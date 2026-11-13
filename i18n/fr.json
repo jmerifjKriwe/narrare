@@ -66,6 +66,7 @@
   "shell.paletteKeyMac": "⌘K",
   "shell.paletteKeyOther": "Ctrl K",
   "shell.paletteOpen": "Ouvrir la palette de commandes, {key}",
+  "shell.railAtelier": "Atelier d'écriture",
   "shell.railBookMenu": "Changer de roman",
   "shell.railGroupManuscript": "Manuscrit & œuvre",
   "shell.railGroupWorld": "Architecture & monde",
