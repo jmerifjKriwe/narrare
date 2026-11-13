@@ -1,6 +1,7 @@
 """Request and response shapes for the knowledge capability."""
 
 from datetime import datetime  # noqa: TC003  Pydantic resolves these at runtime
+from typing import Any
 from uuid import UUID  # noqa: TC003
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
@@ -18,7 +19,18 @@ class DocumentRead(BaseModel):
     # validate-then-model_copy is the seam, so the default is what a
     # Document row alone can say (it carries no passages of its own).
     byte_size: int | None
-    chunk_count: int = 0
+    chunk_count: int
+
+    @classmethod
+    def of(cls, row: Any, chunk_count: int) -> DocumentRead:
+        """Build a read from a row plus its passage count (required, not defaulted)."""
+        return cls(
+            id=row.id,
+            title=row.title,
+            created_at=row.created_at,
+            byte_size=row.byte_size,
+            chunk_count=chunk_count,
+        )
 
 
 class SearchRequest(BaseModel):

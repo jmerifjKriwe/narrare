@@ -29,6 +29,11 @@ async def lock_novel(session: AsyncSession, *, user_id: UUID, novel_id: UUID) ->
     because each reads positions another may be changing this moment. The
     lock is the novel row itself: the parent both sides already share, so
     it needs no table of its own.
+
+    Contract: callers must scope (verify the novel exists and is owned) before
+    locking. `lock_novel` locks the key regardless of whether the row exists,
+    so locking before scoping leaves the existence check racing exactly the
+    way the lock was meant to close (#669).
     """
     await session.execute(
         select(Novel.id).where(Novel.id == novel_id, Novel.user_id == user_id).with_for_update()

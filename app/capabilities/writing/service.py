@@ -8,6 +8,7 @@ from uuid import UUID  # noqa: TC003
 from zipfile import BadZipFile
 
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
+from sqlalchemy.orm.exc import StaleDataError
 
 from app.capabilities.writing.metadata import normalized_novel_updates
 from app.capabilities.writing.prompts import render_continuation, scaffold_length
@@ -105,6 +106,9 @@ class WritingService:
         Raise SetupRequiredError if setup has not created the owning user.
         """
         await self._require_user()
+        # Fold an empty/whitespace genre to None at the create boundary, the
+        # way PATCH does, so "no genre" is one value everywhere.
+        genre = (genre or "").strip() or None
         novel = await self.novels.create(title, genre=genre, blurb=blurb)
         await self.session.commit()
         return novel
@@ -156,8 +160,11 @@ class WritingService:
         if novel is None:
             raise NotFoundError
         updates = normalized_novel_updates(changes)
-        novel = await self.novels.save(novel, updates)
-        await self.session.commit()
+        # An empty body carries no field and must not advance updated_at:
+        # save nothing, commit nothing, so "last written" stays where it was.
+        if updates:
+            novel = await self.novels.save(novel, updates)
+            await self.session.commit()
         return self._with_counts(novel, (await self.novels.counts(novel_id)).get(novel_id, (0, 0)))
 
     async def delete_novel(self, novel_id: UUID) -> None:
@@ -173,8 +180,12 @@ class WritingService:
         novel = await self.novels.get(novel_id)
         if novel is None:
             raise NotFoundError
-        await self.novels.delete(novel)
-        await self.session.commit()
+        try:
+            await self.novels.delete(novel)
+            await self.session.commit()
+        except StaleDataError:
+            await self.session.rollback()
+            raise NotFoundError from None
 
     async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:
         await self._require_user()
@@ -305,11 +316,15 @@ class WritingService:
         chapter = await self.get_chapter(chapter_id)
         novel_id = chapter.novel_id
         await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
-        await self.chapters.delete(chapter)
-        survivors = await self.chapters.list_for_novel(novel_id)
-        await self.chapters.renumber(novel_id, [survivor.id for survivor in survivors])
-        await self.chapters.touch_novel(novel_id)
-        await self.session.commit()
+        try:
+            await self.chapters.delete(chapter)
+            survivors = await self.chapters.list_for_novel(novel_id)
+            await self.chapters.renumber(novel_id, [survivor.id for survivor in survivors])
+            await self.chapters.touch_novel(novel_id)
+            await self.session.commit()
+        except StaleDataError:
+            await self.session.rollback()
+            raise NotFoundError from None
 
     async def reorder_chapters(self, novel_id: UUID, chapter_ids: Sequence[UUID]) -> None:
         """Rewrite the novel's chapter order as the one whole the body carries.
@@ -331,6 +346,8 @@ class WritingService:
         if await self.novels.get(novel_id) is None:
             raise NotFoundError
         await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
+        if await self.novels.get(novel_id) is None:
+            raise NotFoundError
         current = [chapter.id for chapter in await self.chapters.list_for_novel(novel_id)]
         # Set and length, one comparison each: the set catches an id the
         # book does not hold (a deleted chapter, a foreign one), the length

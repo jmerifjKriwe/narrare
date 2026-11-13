@@ -59,10 +59,7 @@ ServiceDep = Annotated[KnowledgeService, Depends(_service)]
 
 @router.get("/documents", response_model=list[DocumentRead])
 async def list_documents(service: ServiceDep) -> list[DocumentRead]:
-    return [
-        DocumentRead.model_validate(document).model_copy(update={"chunk_count": count})
-        for document, count in await service.list_documents()
-    ]
+    return [DocumentRead.of(document, count) for document, count in await service.list_documents()]
 
 
 @router.post("/documents", response_model=DocumentRead, status_code=201)
@@ -90,9 +87,7 @@ async def upload_document(
             status_code=409,
             detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
         ) from None
-    return DocumentRead.model_validate(document).model_copy(
-        update={"chunk_count": await service.chunk_count(document.id)}
-    )
+    return DocumentRead.of(document, await service.chunk_count(document.id))
 
 
 @router.delete("/documents/{document_id}", status_code=204)

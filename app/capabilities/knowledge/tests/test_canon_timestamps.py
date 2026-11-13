@@ -2,7 +2,7 @@
 
 Every knowledge write that changes what the export archive carries — an
 entity corrected or deleted, an edge added, retyped or deleted, a
-suggestion accepted into an entity — advances the parent novel's
+suggestion accepted into an entity, a merge — advances the parent novel's
 updated_at, the same bump a chapter write makes, so the shelf and the
 export staleness warning read the canon as part of the book. The writes
 that do not change the archive do not touch it: a document feeds the
