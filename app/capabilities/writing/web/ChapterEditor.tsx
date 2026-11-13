@@ -408,7 +408,7 @@ export function ChapterEditor({
                 {t("chapters.chapterOrdinalLabel", { ordinal: chapterOrdinal(chapterNumber, locale) })}
               </span>
             ) : null}
-            <h2 className="text-[26px] leading-[34px] font-semibold tracking-tight text-primary [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]">
+            <h2 className="prose-headline">
               {headlineTitle}
             </h2>
             <div

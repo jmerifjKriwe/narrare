@@ -331,6 +331,18 @@ describe("the paper's utilities", () => {
     expect(head["opacity"]).toBeUndefined();
   });
 
+  it("names the prose headline's face once: the serif's 600 over the 26/34 step", () => {
+    const head = utilitiesRule(".prose-headline");
+    expect(head["font-family"]).toContain('"EB Garamond"');
+    // The prose h1's own step: 1.625rem = 26 px over the line's 2.125rem =
+    // 34 px, the drafted pair (spec §6.3), with the headline's tracking.
+    expect(head["font-size"]).toBe("1.625rem");
+    expect(head["line-height"]).toBe("2.125rem");
+    expect(head["font-weight"]).toBe("600");
+    expect(head["letter-spacing"]).toBe("-0.025em");
+    expect(head["color"]).toBe("var(--primary)");
+  });
+
   it("inks the ghost in the writing hue at the drafted strength", () => {
     const ghost = rule(".ProseMirror .ghost");
     expect(ghost["font-style"]).toBe("italic");

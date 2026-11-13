@@ -91,10 +91,7 @@ export function RailHeader({
           tooltip carries the whole name for a pointer, as the breadcrumb's
           does. */}
       {bookTitle !== undefined ? (
-        <p
-          title={bookTitle}
-          className="text-title text-primary tracking-tight [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]"
-        >
+        <p title={bookTitle} className="prose-headline">
           {bookTitle}
         </p>
       ) : null}

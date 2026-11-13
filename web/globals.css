@@ -667,6 +667,23 @@ body {
   }
 
   /*
+   * The prose headline: the paper's article-header face, the one rule the
+   * chapter's name (and the shelf's two headings beside it) speak — the
+   * serif's real 600 over the prose h1's own 26/34 px step in the primary
+   * ink (spec §6.3, the draft's prose-heading-1). Named once so a call
+   * site stays words, not an inlined font stack with ad-hoc metrics; the
+   * typeScale census reads the rule here, where it lives.
+   */
+  .prose-headline {
+    color: var(--primary);
+    font-family: "EB Garamond", Georgia, "Times New Roman", serif;
+    font-size: 1.625rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 2.125rem;
+  }
+
+  /*
    * The drop cap on the prose's first paragraph — the draft's literary
    * first letter, floated in the primary ink. The first <p>, not the first
    * child: a chapter that opens with a heading still caps its first

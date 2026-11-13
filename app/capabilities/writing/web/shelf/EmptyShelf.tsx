@@ -61,7 +61,7 @@ export function EmptyShelf({
         <UnwrittenCover />
       </div>
       <div className="relative z-10 max-w-xl space-y-3">
-        <h2 className="text-[26px] leading-[34px] font-semibold tracking-tight text-primary [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]">
+        <h2 className="prose-headline">
           {t("shelf.empty.title")}
         </h2>
         <p className="text-[18px] leading-[31.5px] text-muted [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]">

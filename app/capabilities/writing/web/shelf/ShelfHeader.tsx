@@ -99,7 +99,7 @@ export function ShelfHeader({
             {t("shelf.session", { season, year: now.getFullYear() })}
           </span>
         </div>
-        <h1 className="text-[26px] leading-[34px] font-semibold tracking-tight text-primary [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]">
+        <h1 className="prose-headline">
           {t("shelf.title")}
         </h1>
         <p className="mt-1 text-body text-muted">{t("shelf.subtitle")}</p>

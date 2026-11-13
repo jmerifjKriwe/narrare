@@ -922,9 +922,10 @@ describe("ChapterEditor's chapter headline", () => {
     expect(eyebrow.className).toContain("text-area-writing");
 
     const heading = screen.getByRole("heading", { name: "Ghost in the Machine" });
-    expect(heading.className).toContain("text-[26px]");
-    expect(heading.className).toContain("EB_Garamond");
-    expect(heading.className).toContain("text-primary");
+    // The face is the stylesheet's one prose headline — the serif's 600
+    // over the 26/34 step in the primary ink. The typeScale census pins
+    // the rule where it lives; the site only wears it.
+    expect(heading.className).toContain("prose-headline");
 
     const rule = document.querySelector("[data-headline-rule]");
     expect(rule).not.toBeNull();
