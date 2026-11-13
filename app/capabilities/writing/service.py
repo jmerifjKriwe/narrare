@@ -1,5 +1,6 @@
 """Writing logic. Routers delegate here; this module knows the unit of work."""
 
+import contextlib
 import zlib
 from collections.abc import Sequence  # noqa: TC003
 from pathlib import Path
@@ -389,8 +390,13 @@ class WritingService:
         # directory the caller could believe a retry's debris.
         if Path(path).is_file():
             raise FieldRefusedError(("path",), f"{path}: is a file")
+        # Remember whether the target pre-existed, so a failed stamp/commit
+        # cleans up only a directory this export created — never a
+        # pre-existing or concurrently modified target (#678, Sourcery).
+        target = Path(path)
+        pre_existed = target.exists()
         try:
-            write_directory(Path(path), files)
+            write_directory(target, files)
         except ArchiveError:
             # write_directory's one refusal: the target exists and is non-empty.
             raise TargetNotEmptyError(path) from None
@@ -400,20 +406,19 @@ class WritingService:
             # name). Both are the request's fault and come back named.
             reason = error.strerror if isinstance(error, OSError) and error.strerror else str(error)
             raise FieldRefusedError(("path",), f"{path}: {reason}") from None
-        # Stamp and commit after the directory landed. If the commit fails
-        # (disk full on the stamp, a constraint violation), the directory
-        # written above would otherwise strand on disk un-stamped and untraced
-        # — the next export would meet its own debris. Roll back the stamp and
-        # remove the just-written tree so a retry starts from a clean target
-        # (#678).
+        # Stamp and commit after the directory landed. If the commit fails,
+        # roll back and remove only a directory this export created, running
+        # cleanup even on cancellation or rollback failure.
         try:
             await self.novels.touch_exported(novel_id)
             await self.session.commit()
-        except Exception:
-            await self.session.rollback()
-            import shutil as _shutil
+        except BaseException:
+            with contextlib.suppress(BaseException):
+                await self.session.rollback()
+            if not pre_existed:
+                import shutil as _shutil
 
-            _shutil.rmtree(Path(path), ignore_errors=True)
+                _shutil.rmtree(target, ignore_errors=True)
             raise
         tree = ArchiveTree(files)
         return ExportDone(
