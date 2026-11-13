@@ -71,7 +71,7 @@ def _probe(collected: list[str], label: str, measure) -> None:
     """Collect one measurement's failure under its face's name, or pass."""
     try:
         measure()
-    except pytest.fail.Exception as failure:
+    except Exception as failure:
         collected.append(f"  [{label}] {failure}")
 
 
@@ -113,6 +113,21 @@ def _pin_columns(page: Page) -> None:
             f"the rail is not a column: right edge "
             f"{rail['x'] + rail['width']}px runs past the editor's left "
             f"{editor['x']}px"
+        )
+
+
+def _pin_dock_columns(page: Page) -> None:
+    """At and above the breakpoint the dock is a column beside the editor,
+    not a drawer over it. A dock-only ``max-lg:``→``max-xl:`` drift would
+    drawer-ize 1024 and pass every other gate (#440)."""
+    dock = page.locator(DOCK).bounding_box()
+    editor = page.locator(EDITOR).bounding_box()
+    if dock is None or editor is None:
+        pytest.fail("the dock or the editor section has no box")
+    if dock["x"] < editor["x"] + editor["width"]:
+        pytest.fail(
+            f"the dock is not a column: left edge {dock['x']}px sits inside "
+            f"the editor's right edge {editor['x'] + editor['width']}px"
         )
 
 
@@ -239,6 +254,9 @@ def test_the_pages_fit_and_the_panels_cover(page: Page, stack: Stack, width: int
     title = f"Der schmale Raum {width}"
     _create_workspace(page, title)
     page.set_viewport_size({"width": width, "height": 720})
+    assert page.viewport_size is not None and page.viewport_size["width"] == width, (
+        f"viewport width {width} was not applied (got {page.viewport_size})"
+    )
     novel_url = page.url.split("?")[0]
     # The module's database is shared, so every width owns a book no other uses.
     failures: list[str] = []
@@ -306,6 +324,12 @@ def test_the_pages_fit_and_the_panels_cover(page: Page, stack: Stack, width: int
             failures,
             f"{width}px /novels dock overlay",
             lambda: assert_overlay(page, editor_selector=EDITOR, panel_selector=DOCK),
+        )
+    else:
+        _probe(
+            failures,
+            f"{width}px /novels dock columns",
+            lambda: _pin_dock_columns(page),
         )
 
     # At 360 only: a tall fixture — seven more chapters, the only way a user

@@ -35,7 +35,7 @@ export function PromptsPage() {
   const t = useTranslation();
   // The tab's name: this page is "Prompts" for as long as it shows, and the
   // top bar's place indicator reads the same stack's top.
-  usePageTitle(t("prompts.settingsTitle"));
+  usePageTitle(t("prompts.heading"));
   const [novels, setNovels] = useState<Novel[]>([]);
   const [novelId, setNovelId] = useState("");
   const [rows, setRows] = useState<PromptSummary[] | null>(null);

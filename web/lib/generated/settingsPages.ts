@@ -10,7 +10,7 @@
 import { catalogs } from "./catalogs";
 
 export const settingsPages = [
-  { id: "prompts", path: "/settings/prompts", titleKey: "prompts.settingsTitle" },
+  { id: "prompts", path: "/settings/prompts", titleKey: "prompts.heading" },
 ] as const satisfies ReadonlyArray<{
   id: string;
   path: string;

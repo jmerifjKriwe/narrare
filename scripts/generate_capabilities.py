@@ -635,7 +635,7 @@ def scan_settings(sources: dict[str, str]) -> SettingsScan:
         SettingsPage(
             id=capability,
             path=f"{settings_route}/{_settings_path(sources[capability], capability)}",
-            title_key=f"{capability}.settingsTitle",
+            title_key=f"{capability}.heading",
         )
         for capability in pages
     )

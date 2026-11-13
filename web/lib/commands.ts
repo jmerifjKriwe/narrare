@@ -42,8 +42,6 @@ export type Command = {
   run: (ctx: CommandContext) => void;
   /** Off rows do not render runnable; absent means always on. */
   enabled?: (ctx: CommandContext) => boolean;
-  /** The hint the palette names beside the row, when the row has one. */
-  shortcut?: string;
 };
 
 /**
@@ -70,7 +68,38 @@ export function matchesAllLocales(titleKey: MessageKey, query: string): boolean 
  * trim as `matchesAllLocales`, so one search semantics covers the keyed
  * rows and the data rows alike.
  */
+/**
+ * The palette's matcher for rows that own their words instead of a catalog
+ * key — a chapter's title (and its localized default), an entity's name,
+ * aliases and tags, a novel's title. The same normalization and the same
+ * trim as `matchesAllLocales`, so one search semantics covers the keyed
+ * rows and the data rows alike.
+ */
 export function matchesAnyText(query: string, texts: string[]): boolean {
   const needle = normalize(query.trim());
   return texts.some((text) => normalize(text).includes(needle));
+}
+
+/**
+ * Chapter rows own their words (the chapter's title, or its localized
+ * default). Matching them across every catalog's rendering of the default
+ * title — not just the active one — is what lets a German word find the
+ * row from an English UI. The `{n}` placeholder is interpolated per
+ * catalog before matching, so "Kapitel 3" finds "Chapter 3"'s row too.
+ */
+export function matchesChapterRow(
+  query: string,
+  chapter: { title: string; position: number },
+): boolean {
+  const needle = normalize(query.trim());
+  if (normalize(chapter.title).includes(needle)) return true;
+  // A custom title owns the row's words: a default-title query must not
+  // surface a chapter that no longer calls itself by that default.
+  if (chapter.title.trim() !== "") return false;
+  const n = chapter.position + 1;
+  return Object.values(catalogs).some((catalog) => {
+    const template = catalog["chapters.defaultTitle" as MessageKey];
+    if (typeof template !== "string") return false;
+    return normalize(template.replace(/\{n\}/g, String(n))).includes(needle);
+  });
 }

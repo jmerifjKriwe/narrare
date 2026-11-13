@@ -1,9 +1,9 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
-import { matchesAllLocales, matchesAnyText, type Command, type CommandContext } from "../lib/commands";
+import { matchesAllLocales, matchesAnyText, matchesChapterRow, type Command, type CommandContext } from "../lib/commands";
 import { nav } from "../lib/generated/capabilities";
 import { commands } from "../lib/generated/commands";
 import { docks } from "../lib/generated/docks";
@@ -75,7 +75,7 @@ function Group({
   if (count === 0) return null;
   return (
     <div role="group" aria-label={label}>
-      <p className={GROUP_LABEL}>{label}</p>
+      <p className={GROUP_LABEL} aria-hidden="true">{label}</p>
       <div className="flex flex-col">{children}</div>
     </div>
   );
@@ -102,12 +102,7 @@ function ChaptersGroup({
 }) {
   const t = useTranslation();
   const chapters = useChaptersQuery(novelId).data;
-  const rows = (chapters ?? []).filter((chapter) =>
-    matchesAnyText(query, [
-      chapter.title,
-      t("chapters.defaultTitle", { n: chapter.position + 1 }),
-    ]),
-  );
+  const rows = (chapters ?? []).filter((chapter) => matchesChapterRow(query, chapter));
   return (
     <Group label={t("palette.chapters")} count={rows.length} onCount={onCount}>
       {rows.map((chapter) => (
@@ -347,13 +342,18 @@ export function Palette({
   // purpose.
   const wasOpen = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: initialQuery is the open's question, not a live value — re-reading it mid-open would clobber the user's typing.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (open && !wasOpen.current) {
       opener.current = document.activeElement as HTMLElement | null;
       setQuery(initialQuery);
       setCounts({});
     } else if (!open && wasOpen.current) {
-      opener.current?.focus();
+      const openerEl = opener.current;
+      if (openerEl !== null && document.contains(openerEl)) {
+        openerEl.focus();
+      } else {
+        document.querySelector<HTMLElement>("main#main")?.focus();
+      }
       opener.current = null;
     }
     wasOpen.current = open;

@@ -13,7 +13,7 @@ export const CLUSTERS = [
   {
     id: "language",
     path: "/settings/language",
-    titleKey: "settings.clusterLanguage",
+    titleKey: "settings.language",
     descriptionKey: "settings.clusterLanguage.description",
   },
   {
@@ -25,7 +25,7 @@ export const CLUSTERS = [
   {
     id: "provider",
     path: "/settings/provider",
-    titleKey: "settings.clusterProvider",
+    titleKey: "settings.providers",
     descriptionKey: "settings.clusterProvider.description",
   },
   {

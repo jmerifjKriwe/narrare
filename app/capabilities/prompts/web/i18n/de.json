@@ -46,6 +46,5 @@
   "prompts.saveRefused": "Das Speichern wurde abgelehnt — {reason}: {detail}",
   "prompts.scope.global": "Global",
   "prompts.scope.novel": "Dieser Roman",
-  "prompts.settingsTitle": "Prompts",
   "prompts.variable": "{name} — z. B. {example}"
 }

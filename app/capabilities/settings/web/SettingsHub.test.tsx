@@ -105,16 +105,16 @@ describe("the settings area", () => {
   it("renders a hub card per cluster with its description and its link", async () => {
     // The cards' words are catalog keys: a missing key must fail here, as
     // the missing key, before a role query can blur the failure.
-    expect(t("settings.clusterLanguage")).toBeDefined();
-    expect(t("settings.clusterProvider")).toBeDefined();
-    expect(t("prompts.settingsTitle")).toBeDefined();
+    expect(t("settings.language")).toBeDefined();
+    expect(t("settings.providers")).toBeDefined();
+    expect(t("prompts.heading")).toBeDefined();
 
     renderArea("/settings");
     // The shell paints after its settings query answers; the first heading
     // is the gate's opening, and the cards are on that first paint.
     await screen.findByRole("heading", { name: t("settings.heading") });
 
-    const language = screen.getByRole("region", { name: t("settings.clusterLanguage") });
+    const language = screen.getByRole("region", { name: t("settings.language") });
     expect(
       within(language).getByText(t("settings.clusterLanguage.description")),
     ).toBeTruthy();
@@ -122,7 +122,7 @@ describe("the settings area", () => {
       "/settings/language",
     );
 
-    const provider = screen.getByRole("region", { name: t("settings.clusterProvider") });
+    const provider = screen.getByRole("region", { name: t("settings.providers") });
     expect(within(provider).getByText(t("settings.clusterProvider.description"))).toBeTruthy();
     expect(within(provider).getByRole("link").getAttribute("href")).toBe(
       "/settings/provider",
@@ -138,7 +138,7 @@ describe("the settings area", () => {
 
     // A contributed row carries no description: the title is the whole
     // card, and the link is the generated registry's path.
-    const prompts = screen.getByRole("region", { name: t("prompts.settingsTitle") });
+    const prompts = screen.getByRole("region", { name: t("prompts.heading") });
     expect(within(prompts).getByRole("link").getAttribute("href")).toBe("/settings/prompts");
   });
 
@@ -146,7 +146,7 @@ describe("the settings area", () => {
     renderArea("/settings");
     await screen.findByRole("heading", { name: t("settings.heading") });
 
-    const card = screen.getByRole("region", { name: t("settings.clusterProvider") });
+    const card = screen.getByRole("region", { name: t("settings.providers") });
     await userEvent.click(within(card).getByRole("link"));
 
     // The provider surface mounted: its panel answered the mount's reads

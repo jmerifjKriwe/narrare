@@ -46,6 +46,5 @@
   "prompts.saveRefused": "L'enregistrement a été refusé — {reason} : {detail}",
   "prompts.scope.global": "Global",
   "prompts.scope.novel": "Ce roman",
-  "prompts.settingsTitle": "Prompts",
   "prompts.variable": "{name} — p. ex. {example}"
 }
