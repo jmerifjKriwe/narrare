@@ -188,8 +188,13 @@ export function NovelPage() {
     if (isOpen) discard();
     try {
       await deleteChapter.mutateAsync(chapterId);
-    } catch {
-      // A refused delete hands the retired words back — only the words
+    } catch (error) {
+      // A 404 means the chapter is already gone — the user's intent
+      // (delete it) is satisfied, so treat it as success (#699-shaped).
+      if ((error as { status?: number }).status === 404) {
+        return true;
+      }
+      // A refused delete hands the retired words back — only the words:
       // that were pending: both fields dirty again, the status pending,
       // so the leave guards protect them and the next debounce carries
       // them to a chapter that still lives. A clean chapter stays clean.
@@ -402,6 +407,7 @@ export function NovelPage() {
             open={renameOpen}
             onOpenChange={setRenameOpen}
             onRenamed={rename}
+            initialTitle={draft.title}
           />
           <ChapterDeleteDialog
             novelId={novelId}

@@ -228,7 +228,8 @@ async def test_empty_database_migrated_equals_the_models(url: str) -> None:
                 await connection.execute(
                     text(
                         "SELECT condeferrable, condeferred FROM pg_constraint "
-                        "WHERE conname = 'uq_chapters_novel_id_position'"
+                        "WHERE contype = 'u' AND conrelid = 'chapters'::regclass "
+                        "AND conname = 'uq_chapters_novel_id_position'"
                     )
                 )
             ).one()

@@ -209,6 +209,11 @@ export function ChapterRail({
           );
         })}
       </ul>
+      {railFilter && visibleChapters.length === 0 ? (
+        <p role="status" className="mt-2 text-body text-muted">
+          {t("chapters.noResults")}
+        </p>
+      ) : null}
       <Button onClick={() => void onCreateChapter()} className="mt-3 w-full">
         {t("chapters.new")}
       </Button>

@@ -24,6 +24,7 @@ from app.capabilities.writing.schemas import (
     NovelCreate,
     NovelRead,
     NovelUpdate,
+    OrderMismatchRead,
     WritingErrorRead,
 )
 from app.capabilities.writing.service import (
@@ -132,7 +133,7 @@ async def _continuation_events(
 @router.get("/novels", response_model=list[NovelRead])
 async def list_novels(service: ServiceDep) -> list[NovelRead]:
     """Return the current user's novels."""
-    return [NovelRead.model_validate(novel) for novel in await service.list_novels()]
+    return list(await service.list_novels())
 
 
 @router.get(
@@ -146,7 +147,7 @@ async def get_novel(novel_id: UUID, service: ServiceDep) -> NovelRead:
         novel = await service.get_novel(novel_id)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="novel not found") from None
-    return NovelRead.model_validate(novel)
+    return novel
 
 
 @router.post(
@@ -186,7 +187,7 @@ async def update_novel(novel_id: UUID, payload: NovelUpdate, service: ServiceDep
         raise HTTPException(status_code=404, detail="novel not found") from None
     except InvalidNovelUpdateError as error:
         raise HTTPException(status_code=422, detail=str(error)) from None
-    return NovelRead.model_validate(novel)
+    return novel
 
 
 @router.delete(
@@ -368,20 +369,8 @@ async def create_chapter(
     responses={
         404: {"model": WritingErrorRead, "description": "Novel not found"},
         409: {
+            "model": OrderMismatchRead,
             "description": "The body is not the book's current whole of chapter ids",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": {
-                            "code": "order_mismatch",
-                            "chapter_ids": [
-                                "0e2e6d64-2f68-4b6e-9a76-6a41e0f30f6b",
-                                "3d9a1c02-9c74-4c0f-9d0e-0f0e6c58a2f1",
-                            ],
-                        }
-                    }
-                }
-            },
         },
     },
 )

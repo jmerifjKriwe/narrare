@@ -12,8 +12,25 @@ import { useAutosave, unsavedStatus, type DocumentDraft } from "@shell/lib/save"
  * `changeTitle` and `schedule` to the editor, rail and dialogs.
  */
 export function useNovelDraft(novelId: string, current: Chapter | null) {
+  // The latest held draft, keyed by its chapter, read at patch time so a
+  // rename that landed after the flush was scheduled still reaches the
+  // cache (#687) without leaking a newer chapter's draft into an older
+  // chapter's cache entry (Sourcery).
+  const latestDraft = useRef<{ chapterId: string | null; draft: DocumentDraft }>({
+    chapterId: null,
+    draft: { title: "", body: "" },
+  });
+  // remember runs only on a successful save (onSaved), so the cache patch
+  // reflects a confirmed write; the invalidation that follows reconciles
+  // any later rename (#687/#688) instead of an optimistic guess (Sourcery).
   const remember = useCallback(
     (chapterId: string, draft: DocumentDraft) => {
+      const held = latestDraft.current;
+      const settled =
+        held.chapterId === chapterId &&
+        (held.draft.title !== "" || held.draft.body !== "")
+          ? held.draft
+          : draft;
       // The saved draft reaches the cache before the ask: the patch makes
       // the settled document — title and body both — the key's own answer,
       // so the words, the row's name and the freshness their updated_at
@@ -23,7 +40,7 @@ export function useNovelDraft(novelId: string, current: Chapter | null) {
       queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], (rows) =>
         rows?.map((row) =>
           row.id === chapterId
-            ? { ...row, ...draft, updated_at: new Date().toISOString() }
+            ? { ...row, ...settled, title: settled.title.trim(), updated_at: new Date().toISOString() }
             : row,
         ),
       );
@@ -43,7 +60,7 @@ export function useNovelDraft(novelId: string, current: Chapter | null) {
   // its ref — on each switch. Here the body's lifetime spans switches: the
   // editor shows `status` beside the text and feeds `schedule` on update;
   // `flush` is the page's own handle on what has not reached the server.
-  const { status, schedule: saveSchedule, flush, discard } = useAutosave(
+  const { status, schedule: saveSchedule, flush, discard, clearDirty } = useAutosave(
     current?.id ?? null,
     remember,
   );
@@ -69,6 +86,7 @@ export function useNovelDraft(novelId: string, current: Chapter | null) {
     });
   }
   const draft = held.draft;
+  latestDraft.current = { chapterId: current?.id ?? null, draft };
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const scheduleDraft = useCallback(
@@ -164,13 +182,17 @@ export function useNovelDraft(novelId: string, current: Chapter | null) {
    *  and the rename survives it (Task 9's contract). */
   const rename = useCallback(
     (title: string) => {
+      // The rename committed a new title: drop the title from any pending
+      // autosave slot so a later flush cannot overwrite it with the old
+      // value (Sourcery).
+      clearDirty("title");
       setHeld((previous) =>
         previous.id === current?.id
           ? { ...previous, draft: { ...previous.draft, title } }
           : previous,
       );
     },
-    [current?.id],
+    [current?.id, clearDirty],
   );
 
   return {

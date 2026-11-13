@@ -258,7 +258,7 @@ def test_a_sixty_chapter_rail_stays_inside_the_viewport(page: Page, stack: Stack
     expect(page.get_by_label("Kapitel filtern")).to_be_visible()
     band: object = page.evaluate(
         """() => {
-          const band = document.querySelector('div.mt-6.flex');
+          const band = document.querySelector('[data-testid="chapter-filter-band"]');
           return band === null ? null
             : { scroll: band.scrollWidth, client: band.clientWidth };
         }"""

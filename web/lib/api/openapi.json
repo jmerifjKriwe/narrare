@@ -350,7 +350,6 @@
             "title": "Byte Size"
           },
           "chunk_count": {
-            "default": 0,
             "title": "Chunk Count",
             "type": "integer"
           },
@@ -373,7 +372,8 @@
           "id",
           "title",
           "created_at",
-          "byte_size"
+          "byte_size",
+          "chunk_count"
         ],
         "title": "DocumentRead",
         "type": "object"
@@ -1457,6 +1457,41 @@
           }
         },
         "title": "NovelUpdate",
+        "type": "object"
+      },
+      "OrderMismatchDetail": {
+        "properties": {
+          "chapter_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Chapter Ids",
+            "type": "array"
+          },
+          "code": {
+            "default": "order_mismatch",
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chapter_ids"
+        ],
+        "title": "OrderMismatchDetail",
+        "type": "object"
+      },
+      "OrderMismatchRead": {
+        "description": "The 409 body for a chapter-order mismatch: the stored ids in position order.",
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/OrderMismatchDetail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "OrderMismatchRead",
         "type": "object"
       },
       "PlanningErrorRead": {
@@ -6679,14 +6714,8 @@
           "409": {
             "content": {
               "application/json": {
-                "example": {
-                  "detail": {
-                    "chapter_ids": [
-                      "0e2e6d64-2f68-4b6e-9a76-6a41e0f30f6b",
-                      "3d9a1c02-9c74-4c0f-9d0e-0f0e6c58a2f1"
-                    ],
-                    "code": "order_mismatch"
-                  }
+                "schema": {
+                  "$ref": "#/components/schemas/OrderMismatchRead"
                 }
               }
             },

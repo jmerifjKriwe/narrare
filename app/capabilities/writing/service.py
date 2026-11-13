@@ -7,6 +7,7 @@ from typing import Literal
 from uuid import UUID  # noqa: TC003
 from zipfile import BadZipFile
 
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.writing.metadata import normalized_novel_updates
@@ -105,6 +106,9 @@ class WritingService:
         Raise SetupRequiredError if setup has not created the owning user.
         """
         await self._require_user()
+        # Fold an empty/whitespace genre to None at the create boundary, the
+        # way PATCH does, so "no genre" is one value everywhere.
+        genre = (genre or "").strip() or None
         novel = await self.novels.create(title, genre=genre, blurb=blurb)
         await self.session.commit()
         return novel
@@ -156,8 +160,11 @@ class WritingService:
         if novel is None:
             raise NotFoundError
         updates = normalized_novel_updates(changes)
-        novel = await self.novels.save(novel, updates)
-        await self.session.commit()
+        # An empty body carries no field and must not advance updated_at:
+        # save nothing, commit nothing, so "last written" stays where it was.
+        if updates:
+            novel = await self.novels.save(novel, updates)
+            await self.session.commit()
         return self._with_counts(novel, (await self.novels.counts(novel_id)).get(novel_id, (0, 0)))
 
     async def delete_novel(self, novel_id: UUID) -> None:
@@ -170,10 +177,11 @@ class WritingService:
         novel's, and survive. Commit the deletion; raise NotFoundError for
         an absent or unowned novel.
         """
-        novel = await self.novels.get(novel_id)
-        if novel is None:
+        result = await self.session.execute(
+            delete(Novel).where(Novel.id == novel_id, Novel.user_id == self.user_id)
+        )
+        if getattr(result, "rowcount", 0) == 0:
             raise NotFoundError
-        await self.novels.delete(novel)
         await self.session.commit()
 
     async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:
@@ -305,7 +313,11 @@ class WritingService:
         chapter = await self.get_chapter(chapter_id)
         novel_id = chapter.novel_id
         await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
-        await self.chapters.delete(chapter)
+        result = await self.session.execute(
+            delete(Chapter).where(Chapter.id == chapter_id, Chapter.user_id == self.user_id)
+        )
+        if getattr(result, "rowcount", 0) == 0:
+            raise NotFoundError
         survivors = await self.chapters.list_for_novel(novel_id)
         await self.chapters.renumber(novel_id, [survivor.id for survivor in survivors])
         await self.chapters.touch_novel(novel_id)
@@ -331,6 +343,8 @@ class WritingService:
         if await self.novels.get(novel_id) is None:
             raise NotFoundError
         await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
+        if await self.novels.get(novel_id) is None:
+            raise NotFoundError
         current = [chapter.id for chapter in await self.chapters.list_for_novel(novel_id)]
         # Set and length, one comparison each: the set catches an id the
         # book does not hold (a deleted chapter, a foreign one), the length

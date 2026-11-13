@@ -11,6 +11,13 @@ from app.kernel.contracts.models import Chapter, Entity, Novel
 from app.kernel.contracts.positions import next_chapter_position
 from app.kernel.db.base import ScopedRepository
 
+
+def apply_changes(row: Any, changes: dict[str, Any]) -> None:
+    """Apply a field/value mapping onto a row in one place (novels + chapters)."""
+    for field, value in changes.items():
+        setattr(row, field, value)
+
+
 # One whitespace class, both sides of the count (R31, fix round 2):
 # the trim and the split derive from this one bracket expression, so
 # they cannot drift. ``\s`` is the database's ``[[:space:]]`` — wider
@@ -81,8 +88,7 @@ class NovelRepository(ScopedRepository[Novel]):
         ``updated_at`` rides the row's UPDATE through the column's
         ``onupdate``, and an empty change set writes nothing at all.
         """
-        for field, value in changes.items():
-            setattr(novel, field, value)
+        apply_changes(novel, changes)
         await self.session.flush()
         return novel
 
@@ -171,8 +177,7 @@ class ChapterRepository(ScopedRepository[Chapter]):
 
     async def save(self, chapter: Chapter, changes: dict[str, Any]) -> Chapter:
         """Apply an edit and mark the novel written-in; one write, one bump."""
-        for field, value in changes.items():
-            setattr(chapter, field, value)
+        apply_changes(chapter, changes)
         await self.touch_novel(chapter.novel_id)
         await self.session.flush()
         return chapter

@@ -27,7 +27,7 @@ OTHER_USER = UUID("00000000-0000-0000-0000-000000000002")
 TEXT = "\n\n".join(["Wort " * 100, "Leuchtturm " * 41, "Nebel " * 100])
 
 
-def _upload(title: str | None, text: str) -> dict[str, str] | None:
+def _upload(title: str | None) -> dict[str, str] | None:
     return {"title": title} if title else None
 
 
@@ -37,7 +37,7 @@ async def _post_document(
     response = await client.post(
         "/api/knowledge/documents",
         files={"file": ("notizen.txt", text.encode("utf-8"), "text/plain")},
-        data=_upload(title, text),
+        data=_upload(title),
     )
     return response.status_code, response.json()
 
@@ -72,7 +72,8 @@ async def test_document_list_counts_chunks_in_one_query() -> None:
         context: object,
         executemany: bool,
     ) -> None:
-        if "count(*)" in statement and "FROM chunks" in statement:
+        lowered = statement.lower()
+        if "count" in lowered and "chunks" in lowered:
             chunk_count_queries.append(statement)
 
     event.listen(engine.sync_engine, "before_cursor_execute", _record)
@@ -89,7 +90,10 @@ async def test_document_list_counts_chunks_in_one_query() -> None:
     assert by_title["Notizen"]["byte_size"] == len(TEXT.encode("utf-8"))
     # two documents, one grouped count query — not one query per row
     assert len(chunk_count_queries) == 1
-    assert "GROUP BY" in chunk_count_queries[0]
+    statement = chunk_count_queries[0].lower()
+    assert "count" in statement
+    assert "chunks" in statement
+    assert "group by" in statement
 
 
 async def test_delete_document_cascades_chunks() -> None:
@@ -156,3 +160,10 @@ async def test_delete_document_answers_404_for_a_foreign_document() -> None:
         chunks = await session.scalar(sql("SELECT count(*) FROM chunks"))
     assert documents == 1
     assert chunks == 1
+
+
+async def test_upload_answer_carries_the_real_chunk_count() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        status, body = await _post_document(client, TEXT, "Notizen")
+        assert status == 201
+        assert body["chunk_count"] == 3

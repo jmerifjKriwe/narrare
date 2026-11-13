@@ -1153,7 +1153,9 @@ describe("the rail's filter", () => {
     const rail = screen.getByRole("complementary");
 
     try {
-      applyLocale("en");
+      await act(async () => {
+        applyLocale("en");
+      });
       await user.clear(screen.getByRole("searchbox"));
       await user.type(screen.getByRole("searchbox"), "Chapter");
       expect(rail.querySelectorAll("li > button").length).toBe(20);
@@ -1164,12 +1166,16 @@ describe("the rail's filter", () => {
       // German rows say "Kapitel n": the standing English question no
       // longer describes any of them, and the filter re-matches instead of
       // replaying the English answer.
-      applyLocale("de");
+      await act(async () => {
+        applyLocale("de");
+      });
       await waitFor(() =>
         expect(rail.querySelectorAll("li > button").length).toBe(0),
       );
     } finally {
-      applyLocale(was);
+      await act(async () => {
+        applyLocale(was);
+      });
     }
   });
 });

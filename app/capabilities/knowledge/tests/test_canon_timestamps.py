@@ -2,7 +2,7 @@
 
 Every knowledge write that changes what the export archive carries — an
 entity corrected or deleted, an edge added, retyped or deleted, a
-suggestion accepted into an entity — advances the parent novel's
+suggestion accepted into an entity, a merge — advances the parent novel's
 updated_at, the same bump a chapter write makes, so the shelf and the
 export staleness warning read the canon as part of the book. The writes
 that do not change the archive do not touch it: a document feeds the
@@ -212,4 +212,22 @@ async def test_dismissing_a_finding_does_not_advance_the_novel() -> None:
     async with _client() as client:
         dismissed = await client.post(f"/api/knowledge/findings/{finding.id}/dismiss")
         assert dismissed.status_code == 200
+    assert await _written_at(novel.id) == before
+
+
+async def test_a_refused_canon_write_leaves_the_novel_timestamp_alone() -> None:
+    novel, [mira, haus] = await _seed_novel("Mira", "Haus")
+    async with _client() as client:
+        first = await client.post(
+            f"/api/knowledge/entities/{mira.id}/relations",
+            json={"to_entity_id": str(haus.id), "relation_type": "lebt_in"},
+        )
+        assert first.status_code == 201
+    before = await _written_at(novel.id)
+    async with _client() as client:
+        refused = await client.post(
+            f"/api/knowledge/entities/{mira.id}/relations",
+            json={"to_entity_id": str(haus.id), "relation_type": "lebt_in"},
+        )
+        assert refused.status_code == 409
     assert await _written_at(novel.id) == before

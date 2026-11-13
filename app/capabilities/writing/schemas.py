@@ -13,6 +13,17 @@ class WritingErrorRead(BaseModel):
     detail: str
 
 
+class OrderMismatchDetail(BaseModel):
+    code: str = "order_mismatch"
+    chapter_ids: list[UUID]
+
+
+class OrderMismatchRead(BaseModel):
+    """The 409 body for a chapter-order mismatch: the stored ids in position order."""
+
+    detail: OrderMismatchDetail
+
+
 class NovelCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     genre: str | None = Field(default=None, max_length=80)

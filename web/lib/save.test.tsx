@@ -25,6 +25,9 @@ vi.mock("./api/client", () => ({
   client: {
     PUT: async (_path: string, init: { body: { title?: string; body?: string } }) => {
       wire.calls.push(init.body);
+      if (wire.calls.length > 3) {
+        throw new Error("save.test: too many PUTs (infinite flush?)");
+      }
       if (wire.refuse) {
         wire.refuse = false;
         return { error: { detail: "refused" }, response: { ok: false } };

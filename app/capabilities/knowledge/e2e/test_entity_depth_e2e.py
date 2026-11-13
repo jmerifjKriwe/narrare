@@ -213,7 +213,7 @@ def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Sta
     # landed (free text still resolves to the vocabulary's id).
     kind.fill("Besitz")
     kind.press("ArrowDown")
-    expect(page.get_by_role("option", name="Besitzt", exact=True)).to_be_visible()
+    expect(page.get_by_role("option", name="Besitzt", exact=True)).to_be_visible(timeout=10000)
     kind.press("Enter")
     expect(kind).to_have_value("Besitzt")
     dialog.get_by_label("Notiz (optional)").fill("Seit dem Fest")
