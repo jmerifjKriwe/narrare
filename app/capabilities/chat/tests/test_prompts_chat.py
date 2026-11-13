@@ -207,11 +207,17 @@ async def test_a_refused_override_ends_the_stream_with_the_one_error_frame(
         await session.commit()
 
     import logging
-    from logging import getLogger
+    from logging import Handler, LogRecord, getLogger
 
     logger = getLogger("narrare")
-    previous_propagate = logger.propagate
-    logger.propagate = True
+    captured: list[LogRecord] = []
+
+    class _Capture(Handler):
+        def emit(self, record: LogRecord) -> None:
+            captured.append(record)
+
+    handler = _Capture(level=logging.ERROR)
+    logger.addHandler(handler)
     try:
         with caplog.at_level(logging.ERROR, logger="narrare"):
             async with AsyncClient(
@@ -219,12 +225,12 @@ async def test_a_refused_override_ends_the_stream_with_the_one_error_frame(
             ) as client:
                 response = await client.post("/api/chat/ask", json={"question": QUESTION})
     finally:
-        logger.propagate = previous_propagate
+        logger.removeHandler(handler)
 
     assert response.status_code == 200
     assert response.text == 'event: error\ndata: {"code": "prompt-refused"}\n\n'
     async with Session() as session:
         assert await session.scalar(sql_text("SELECT count(*) FROM llm_calls")) == 0
-    refusals = [record for record in caplog.records if record.getMessage() == "chat prompt refused"]
+    refusals = [record for record in captured if record.getMessage() == "chat prompt refused"]
     assert len(refusals) == 1
     assert refusals[0].exc_info is not None
