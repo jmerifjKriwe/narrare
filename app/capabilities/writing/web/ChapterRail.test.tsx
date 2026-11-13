@@ -328,6 +328,13 @@ describe("the drafted rows", () => {
     await renderRail();
     const add = screen.getByRole("button", { name: t("chapters.new") });
     expect(add.className).toContain("w-full");
+    // The drafted chip paint (the owner's fix round): container-high ground,
+    // the secondary container on the hover, primary ink, the chip's shadow —
+    // the local composition the matrix has no voice for.
+    expect(add.className).toContain("bg-surface-container-high");
+    expect(add.className).toContain("hover:bg-secondary-container");
+    expect(add.className).toContain("text-primary");
+    expect(add.className).toContain("shadow-sm");
     // The drafted glyph rides beside the label.
     expect(add.querySelector("svg")).toBeTruthy();
     const user = userEvent.setup();

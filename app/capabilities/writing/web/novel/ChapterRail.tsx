@@ -4,7 +4,6 @@ import { useState } from "react";
 import type { Chapter } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { formatWordCount } from "@shell/lib/words";
-import { Button } from "@shell/ui/Button";
 import { Icon } from "@shell/ui/icons";
 import { Notice } from "@shell/ui/Notice";
 
@@ -345,19 +344,25 @@ export function ChapterRail({
               );
             })}
           </ul>
-          {/* The drafted add-chapter action: full width, dense, the
-              plus glyph beside the label — the existing create path,
-              restyled (the ladder's quiet voice; the draft's tonal
-              chip paint is not one of the matrix's five paints). */}
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<Icon name="plus" size={16} />}
+          {/* The drafted add-chapter action (screens/writing/workspace.html,
+              the drawer's bottom button): full width, dense, the plus glyph
+              beside the label, wearing the draft's chip paint — the
+              container-high ground stepping to the secondary container on
+              the hover, primary ink, the chip's hair of shadow. That paint
+              is not one of the button matrix's five voices, so this is the
+              surface's own local composition, the prompt-bar trigger's
+              precedent — the owner's fix round overrules the earlier
+              matrix decision. The state contract is still the primitive's:
+              the amber ring with its transparent offset, the disabled dim,
+              the transition dropped under reduced motion. */}
+          <button
+            type="button"
             onClick={() => void onCreateChapter()}
-            className="mt-3 w-full justify-center"
+            className="mt-3 flex h-7 w-full items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-surface-container-high text-label text-primary shadow-sm transition-colors hover:bg-secondary-container focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 focus-visible:ring-offset-transparent disabled:opacity-50 motion-reduce:transition-none"
           >
+            <Icon name="plus" size={16} />
             {t("chapters.new")}
-          </Button>
+          </button>
           {orderFailed ? (
             <Notice tone="danger" live="alert" className="mt-2">
               {t("chapters.orderFailed")}
