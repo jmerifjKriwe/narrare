@@ -491,7 +491,7 @@ export function KnowledgePage() {
           <>
             <div aria-hidden="true" className="flex flex-col">
               {[0, 1, 2].map((row) => (
-                <div key={row} className="flex h-7 items-center px-3">
+                <div key={row} className="flex h-7 items-center border-b border-rule">
                   <div className="h-3 w-1/3 motion-safe:animate-pulse rounded-[var(--radius)] bg-rule" />
                 </div>
               ))}

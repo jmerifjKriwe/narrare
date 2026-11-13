@@ -12,8 +12,12 @@ import { useAutosave, unsavedStatus, type DocumentDraft } from "@shell/lib/save"
  * `changeTitle` and `schedule` to the editor, rail and dialogs.
  */
 export function useNovelDraft(novelId: string, current: Chapter | null) {
+  // The latest held draft, read at patch time so a rename that landed after
+  // the flush was scheduled still reaches the cache (#687).
+  const latestDraft = useRef<DocumentDraft>({ title: "", body: "" });
   const remember = useCallback(
     (chapterId: string, draft: DocumentDraft) => {
+      const settled = latestDraft.current.title !== "" || latestDraft.current.body !== "" ? latestDraft.current : draft;
       // The saved draft reaches the cache before the ask: the patch makes
       // the settled document — title and body both — the key's own answer,
       // so the words, the row's name and the freshness their updated_at
@@ -23,7 +27,7 @@ export function useNovelDraft(novelId: string, current: Chapter | null) {
       queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], (rows) =>
         rows?.map((row) =>
           row.id === chapterId
-            ? { ...row, ...draft, title: draft.title.trim(), updated_at: new Date().toISOString() }
+            ? { ...row, ...settled, title: settled.title.trim(), updated_at: new Date().toISOString() }
             : row,
         ),
       );
@@ -69,6 +73,7 @@ export function useNovelDraft(novelId: string, current: Chapter | null) {
     });
   }
   const draft = held.draft;
+  latestDraft.current = draft;
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const scheduleDraft = useCallback(

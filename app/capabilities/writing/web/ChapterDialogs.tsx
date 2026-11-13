@@ -58,17 +58,20 @@ export function ChapterRenameDialog({
   open,
   onOpenChange,
   onRenamed,
+  initialTitle,
 }: {
   chapter: Chapter;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called with the server's title once the rename landed. */
   onRenamed?: (title: string) => void;
+  /** Prefill from the draft's typed (possibly unsent) title (#688). */
+  initialTitle?: string;
 }) {
   const t = useTranslation();
   return (
     <Dialog title={t("chapters.renameTitle")} isOpen={open} onOpenChange={onOpenChange}>
-      {(close) => <RenameForm chapter={chapter} close={close} onRenamed={onRenamed} />}
+      {(close) => <RenameForm chapter={chapter} close={close} onRenamed={onRenamed} initialTitle={initialTitle} />}
     </Dialog>
   );
 }
@@ -80,13 +83,15 @@ function RenameForm({
   chapter,
   close,
   onRenamed,
+  initialTitle,
 }: {
   chapter: Chapter;
   close: () => void;
   onRenamed?: (title: string) => void;
+  initialTitle?: string;
 }) {
   const t = useTranslation();
-  const [title, setTitle] = useState(chapter.title);
+  const [title, setTitle] = useState(initialTitle ?? chapter.title);
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState(false);
 

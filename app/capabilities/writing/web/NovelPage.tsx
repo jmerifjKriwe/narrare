@@ -402,6 +402,7 @@ export function NovelPage() {
             open={renameOpen}
             onOpenChange={setRenameOpen}
             onRenamed={rename}
+            initialTitle={draft.title}
           />
           <ChapterDeleteDialog
             novelId={novelId}
