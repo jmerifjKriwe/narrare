@@ -59,6 +59,8 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`shelf-dark`](screens/library/shelf-dark.webp) | Bücherregal — Midnight Ink (S0, dark) | 1246 px |
 |  | [`shelf-empty`](screens/library/shelf-empty.webp) | Bücherregal — Leerstand (G-4) | 1024 px |
 |  | [`shelf-states`](screens/library/shelf-states.webp) | Bücherregal — Zustände: laden, Fehler, viele Bücher, langer Titel (G-4) | 1024 px |
+|  | [`shelf-filter`](screens/library/shelf-filter.webp) | Bücherregal — Filter geöffnet (G-F1) | 2474 px |
+|  | [`shelf-filter-dark`](screens/library/shelf-filter-dark.webp) | Bücherregal — Filter geöffnet, Midnight Ink (G-F1) | 3264 px |
 |  | [`welcome-onboarding`](screens/library/welcome-onboarding.webp) | Willkommen & Autoren-Onboarding | 2570 px |
 |  | [`integrated-suite`](screens/library/integrated-suite.webp) | Narrare — Integrierte Gesamtsuite (Regal, Workspace & KI-Dock) | 3664 px |
 | Writing | [`workspace`](screens/writing/workspace.webp) | Schreib-Workspace | 3434 px |
@@ -100,6 +102,13 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`ai-prompts-overrides`](screens/shell/ai-prompts-overrides.webp) | KI-Prompts & Feature-Überschreibung | 3008 px |
 |  | [`help-center`](screens/shell/help-center.webp) | Hilfe-Zentrum & Kontext-Handbuch | 2144 px |
 | Mobile | [`pocket-quick-capture`](screens/mobile/pocket-quick-capture.webp) | Narrare Pocket — Unterwegs-Studio & Quick Capture | 3238 px |
+
+The two G-F1 exports (`shelf-filter`, `shelf-filter-dark`) are authority for the
+**Filter panel only**: the light export's page matches the canonical shelf, but the
+dark export's surrounding page is a regeneration with its own composition and is
+not normative — `shelf` / `shelf-dark` remain the page authority. The panel's
+structure (header FILTERN + close, Genre checkbox rows with live counts, footer
+Zurücksetzen + selection count, no apply action) is what the implementation builds.
 
 Reference screenshots uploaded into the same Stitch project are the files already
 tracked in [`assets/screenshots/`](../../../assets/screenshots/); they are not

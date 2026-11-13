@@ -54,7 +54,7 @@ carries the full trigger and the field's likely shape.
 | 8 | Hero imprint + foot row | "Atelier Opus IV" | `—` (corner motif stays decorative) | imprint / series field | [#832](https://github.com/jmerifjKriwe/narrare/issues/832) |
 | 9 | Hero eyebrow form | "Roman • Sci-Fi" | genre alone | book form / kind field | [#833](https://github.com/jmerifjKriwe/narrare/issues/833) |
 | 10 | Cover author | "Calder" | author real; null → `—` | none — real data already | — |
-| 11 | Filter panel | button only in draft | Stitch-round composition, genre filter real | round export G-F1; further states | [#834](https://github.com/jmerifjKriwe/narrare/issues/834) |
+| 11 | Filter panel | button only in draft | Stitch-round composition (`shelf-filter` / `shelf-filter-dark`), genre filter real | round export G-F1; further states | [#834](https://github.com/jmerifjKriwe/narrare/issues/834) |
 
 ### Reading the rows
 

@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Bücherregal — Narrare Studio</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "on-tertiary-fixed-variant": "#693b29",
+            "surface-container-lowest": "#100e09",
+            "on-primary-container": "#686250",
+            "surface": "#16130e",
+            "on-secondary-container": "#fff3df",
+            "tertiary-fixed-dim": "#fab7a0",
+            "surface-container": "#221f1a",
+            "surface-container-low": "#1e1b16",
+            "on-error": "#690005",
+            "inverse-on-surface": "#34302a",
+            "secondary-container": "#8c6b01",
+            "primary-fixed": "#ece2cc",
+            "surface-container-high": "#2d2924",
+            "on-secondary-fixed": "#251a00",
+            "surface-dim": "#16130e",
+            "secondary-fixed-dim": "#ecc15a",
+            "inverse-surface": "#e9e1d9",
+            "on-error-container": "#ffdad6",
+            "surface-tint": "#cfc6b0",
+            "on-tertiary-fixed": "#341104",
+            "tertiary": "#fffaf9",
+            "outline-variant": "#4a463e",
+            "on-surface-variant": "#ccc6ba",
+            "surface-variant": "#38342e",
+            "background": "#16130e",
+            "surface-bright": "#3c3933",
+            "outline": "#959086",
+            "tertiary-container": "#ffd6c8",
+            "on-tertiary-container": "#895542",
+            "on-primary-fixed": "#201b0e",
+            "secondary": "#ecc15a",
+            "on-secondary": "#3f2e00",
+            "on-background": "#e9e1d9",
+            "on-tertiary": "#4e2515",
+            "primary": "#fffaf9",
+            "tertiary-fixed": "#ffdbcf",
+            "on-primary": "#353021",
+            "error": "#ffb4ab",
+            "error-container": "#93000a",
+            "primary-fixed-dim": "#cfc6b0",
+            "on-secondary-fixed-variant": "#5a4300",
+            "secondary-fixed": "#ffdf99",
+            "inverse-primary": "#655e4d",
+            "surface-container-highest": "#38342e",
+            "on-primary-fixed-variant": "#4c4636",
+            "primary-container": "#e8dec8",
+            "on-surface": "#e9e1d9"
+          },
+          borderRadius: {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          spacing: {
+            "margin": "3rem",
+            "margin-tablet": "2rem",
+            "space-xl": "2.5rem",
+            "space-md": "1rem",
+            "gutter-mobile": "1rem",
+            "gutter": "1.5rem",
+            "space-sm": "0.5rem",
+            "space-xs": "0.25rem",
+            "margin-mobile": "1.25rem",
+            "space-lg": "1.5rem"
+          },
+          fontFamily: {
+            "display-lg-mobile": ["EB Garamond"],
+            "headline-sm": ["EB Garamond"],
+            "body-lg": ["EB Garamond"],
+            "headline-lg": ["EB Garamond"],
+            "ui-label-sm": ["Plus Jakarta Sans"],
+            "body-md": ["EB Garamond"],
+            "ui-label-md": ["Plus Jakarta Sans"],
+            "headline-md": ["EB Garamond"],
+            "display-lg": ["EB Garamond"],
+            "ui-label-lg": ["Plus Jakarta Sans"]
+          },
+          fontSize: {
+            "display-lg-mobile": ["36px", { lineHeight: "44px", letterSpacing: "-0.01em", fontWeight: "400" }],
+            "headline-sm": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+            "body-lg": ["20px", { lineHeight: "32px", fontWeight: "400" }],
+            "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "500" }],
+            "ui-label-sm": ["11px", { lineHeight: "14px", letterSpacing: "0.04em", fontWeight: "600" }],
+            "body-md": ["17px", { lineHeight: "28px", fontWeight: "400" }],
+            "ui-label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.02em", fontWeight: "500" }],
+            "headline-md": ["26px", { lineHeight: "34px", fontWeight: "500" }],
+            "display-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.02em", fontWeight: "400" }],
+            "ui-label-lg": ["14px", { lineHeight: "20px", letterSpacing: "0.01em", fontWeight: "600" }]
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    /* Custom Atmospheric Styling */
+    body {
+      background-color: #16140F;
+      color: #DFDEDA;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    .serif-title {
+      font-family: 'EB Garamond', serif;
+    }
+
+    .book-shadow {
+      box-shadow: -10px 14px 28px rgba(0, 0, 0, 0.7), -2px 0 6px rgba(255, 255, 255, 0.03) inset;
+    }
+
+    .book-spine-line {
+      background: linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(255,255,255,0.06) 40%, rgba(0,0,0,0.3) 100%);
+    }
+
+    /* Popover Elevation */
+    .popover-shadow {
+      box-shadow: 0 16px 36px -4px rgba(7, 6, 4, 0.85), 0 0 0 1px #3D372E;
+    }
+
+    /* Custom Scrollbar for atmospheric view */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #16140F;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2E2A23;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3D372E;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex bg-[#16140F] text-[#DFDEDA] antialiased overflow-x-hidden">
+<!-- ==================== 1. ÄUßERST LINKS: SCHMALE ATELIER-SIDEBAR ==================== -->
+<aside class="w-16 flex-shrink-0 bg-[#14120D] border-r border-[#2C2922] flex flex-col items-center py-4 z-40 justify-between select-none">
+<!-- Top Icons Cluster -->
+<div class="flex flex-col items-center gap-6 w-full">
+<!-- Narrare Logo Monogram -->
+<a class="w-10 h-10 rounded-lg bg-[#211F1A] border border-[#3D372E] flex items-center justify-center text-[#D39562] font-serif font-bold text-xl tracking-tight hover:border-[#D39562] transition-colors" href="#">
+        N
+      </a>
+<div class="w-8 h-px bg-[#2C2922]/80 my-1"></div>
+<!-- Navigation Icons -->
+<nav class="flex flex-col items-center gap-3 w-full">
+<!-- Aktiv: Bibliothek / Shelf -->
+<a class="relative group p-2.5 rounded-lg bg-[#211F1A] text-[#D39562] border border-[#3D372E]/80 transition-all" href="#" title="Bibliothek &amp; Regal">
+<span class="material-symbols-outlined text-[20px]" data-icon="auto_stories" style="font-variation-settings: 'FILL' 1;">auto_stories</span>
+<span class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[#D39562] rounded-r"></span>
+</a>
+<!-- Sprechblase / Dialoge & Notizen -->
+<a class="p-2.5 rounded-lg text-[#959086] hover:text-[#DFDEDA] hover:bg-[#1E1B16] transition-all" href="#" title="Dialoge &amp; Notizen">
+<span class="material-symbols-outlined text-[20px]" data-icon="chat_bubble_outline">chat_bubble_outline</span>
+</a>
+<!-- Datenbank / Weltbau Graph -->
+<a class="p-2.5 rounded-lg text-[#959086] hover:text-[#DFDEDA] hover:bg-[#1E1B16] transition-all" href="#" title="Weltbau Graph">
+<span class="material-symbols-outlined text-[20px]" data-icon="schema">schema</span>
+</a>
+<!-- Verzweigung / Handlungsstränge -->
+<a class="p-2.5 rounded-lg text-[#959086] hover:text-[#DFDEDA] hover:bg-[#1E1B16] transition-all" href="#" title="Handlungsstränge">
+<span class="material-symbols-outlined text-[20px]" data-icon="alt_route">alt_route</span>
+</a>
+</nav>
+</div>
+<!-- Bottom Icon: Einstellungs-Zahnrad -->
+<div class="flex flex-col items-center gap-3 w-full">
+<a class="p-2.5 rounded-lg text-[#959086] hover:text-[#DFDEDA] hover:bg-[#1E1B16] transition-all" href="#" title="Einstellungen">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+</a>
+<div class="w-8 h-8 rounded-full bg-[#1C1914] border border-[#3D372E] flex items-center justify-center text-[11px] font-medium text-[#A89F91]">
+        HC
+      </div>
+</div>
+</aside>
+<!-- ==================== HAUPT-CONTENT-BEREICH ==================== -->
+<div class="flex-1 flex flex-col min-w-0 bg-[#16140F]">
+<!-- ==================== 1. TOPBAR ==================== -->
+<header class="h-14 border-b border-[#2C2922] bg-[#16140F]/90 backdrop-blur-md sticky top-0 z-30 px-6 flex items-center justify-between">
+<!-- Breadcrumb links mit Sync-Chip -->
+<div class="flex items-center gap-3">
+<div class="flex items-center text-[13px] tracking-wide">
+<span class="text-[#959086] hover:text-[#DFDEDA] transition-colors cursor-pointer">Manuscripts</span>
+<span class="text-[#4A463E] mx-2 font-mono">/</span>
+<span class="text-[#DFDEDA] font-medium">Dead Signal</span>
+</div>
+<!-- Sync Chip -->
+<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#1B3520]/70 border border-[#2B5433]/70 text-[#66BB6A] text-[11px] font-medium select-none ml-2">
+<span class="w-1.5 h-1.5 rounded-full bg-[#66BB6A] animate-pulse"></span>
+<span>Saved</span>
+<span class="text-[#4D8055] text-[10px] hidden sm:inline">• Vor 6 Sekunden synchronisiert</span>
+</div>
+</div>
+<!-- Rechts: Suchfeld (⌘K), Wortzahl-Chip, Sprach-Chip -->
+<div class="flex items-center gap-3">
+<!-- ⌘K Schnellsuchfeld -->
+<button class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded bg-[#1C1914] border border-[#2E2A23] text-[#959086] text-[12px] hover:border-[#3D372E] transition-all">
+<span class="material-symbols-outlined text-[15px]" data-icon="search">search</span>
+<span class="pr-3">Dokumente &amp; Szenen...</span>
+<kbd class="px-1.5 py-0.2 rounded bg-[#25221B] border border-[#383329] text-[10px] font-mono text-[#A89F91]">⌘K</kbd>
+</button>
+<!-- Wortzahl-Chip -->
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1E1B16] border border-[#2C2922] text-[#DFDEDA] text-[12px] font-medium tracking-tight">
+<span class="material-symbols-outlined text-[14px] text-[#D39562]" data-icon="edit_note">edit_note</span>
+<span>48.219 words</span>
+</div>
+<!-- Sprach-Chip -->
+<div class="flex items-center gap-1 px-2.5 py-1 rounded bg-[#1E1B16] border border-[#2C2922] text-[11px] font-semibold text-[#A89F91]">
+<span class="text-[#DFDEDA]">DE</span>
+<span class="text-[#4A463E]">/</span>
+<span>EN</span>
+</div>
+</div>
+</header>
+<!-- ==================== SCROLLBARER ARBEITSRAUM ==================== -->
+<main class="flex-1 overflow-y-auto px-6 lg:px-12 py-8 max-w-7xl w-full mx-auto space-y-10">
+<!-- ==================== 2. SEITENKOPF "ATELIER & ARCHIV" ==================== -->
+<section class="space-y-6">
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+<div class="space-y-2">
+<!-- Sub-Eyebrow -->
+<div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#D39562] flex items-center gap-2">
+<span class="inline-block w-1.5 h-1.5 rounded-full bg-[#D39562]"></span>
+              ATELIER &amp; ARCHIV • Frühjahrs-Session 2025
+            </div>
+<!-- Monumentaler Titel -->
+<h1 class="serif-title text-[44px] md:text-[52px] leading-tight font-normal text-[#FFF7ED] tracking-tight">
+              Das Bücherregal
+            </h1>
+<!-- Beschreibung -->
+<p class="serif-title text-[18px] md:text-[20px] text-[#A89F91] max-w-2xl leading-relaxed italic">
+              Verwalte deine Manuskripte, Buchstrukturen und schriftstellerischen Entwürfe.
+            </p>
+</div>
+<!-- Aktionen rechts -->
+<div class="flex items-center gap-3 self-start lg:self-end">
+<!-- Button Importieren (Ghost/Outline) -->
+<button class="px-4 py-2.5 rounded bg-[#1C1914] border border-[#3D372E] text-[#DFDEDA] hover:bg-[#25221B] hover:text-[#FFF7ED] text-[13px] font-medium tracking-wide transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-[17px] text-[#959086]" data-icon="file_upload">file_upload</span>
+<span>Importieren</span>
+</button>
+<!-- Primärer Button "+ Neues Buch anlegen" (#D39562 Akzent) -->
+<button class="px-4 py-2.5 rounded bg-[#D39562] text-[#16140F] hover:bg-[#DF9F6E] active:scale-[0.98] text-[13px] font-semibold tracking-wide transition-all shadow-md shadow-[#D39562]/10 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="add">add</span>
+<span>+ Neues Buch anlegen</span>
+</button>
+</div>
+</div>
+<!-- 3 Metrik-Karten (#211F1A mit feiner Border) -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+<!-- Karte 1 -->
+<div class="bg-[#211F1A] border border-[#2E2A23] rounded p-4 flex items-center justify-between">
+<div>
+<p class="text-[11px] uppercase tracking-wider text-[#959086] font-medium">Aktive Projekte</p>
+<p class="serif-title text-[28px] font-semibold text-[#FFF7ED] mt-0.5">4 Romane</p>
+</div>
+<div class="w-10 h-10 rounded bg-[#1A1813] border border-[#2E2A23] flex items-center justify-center text-[#D39562]">
+<span class="material-symbols-outlined text-[20px]" data-icon="library_books">library_books</span>
+</div>
+</div>
+<!-- Karte 2 -->
+<div class="bg-[#211F1A] border border-[#2E2A23] rounded p-4 flex items-center justify-between">
+<div>
+<p class="text-[11px] uppercase tracking-wider text-[#959086] font-medium">Gesamtwörter</p>
+<p class="serif-title text-[28px] font-semibold text-[#FFF7ED] mt-0.5">38.734</p>
+</div>
+<div class="w-10 h-10 rounded bg-[#1A1813] border border-[#2E2A23] flex items-center justify-center text-[#ECC15A]">
+<span class="material-symbols-outlined text-[20px]" data-icon="ink_pen">ink_pen</span>
+</div>
+</div>
+<!-- Karte 3 -->
+<div class="bg-[#211F1A] border border-[#2E2A23] rounded p-4 flex items-center justify-between">
+<div>
+<p class="text-[11px] uppercase tracking-wider text-[#959086] font-medium">Schreibstreak</p>
+<p class="serif-title text-[28px] font-semibold text-[#FFF7ED] mt-0.5">14 Tage</p>
+</div>
+<div class="w-10 h-10 rounded bg-[#1A1813] border border-[#2E2A23] flex items-center justify-center text-[#D39562]">
+<span class="material-symbols-outlined text-[20px]" data-icon="local_fire_department" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+</div>
+</div>
+</section>
+<!-- ==================== 3. HERO-KARTE MIT AKTIVEM BUCH "DEAD SIGNAL" ==================== -->
+<section class="bg-[#1C1914] border border-[#2E2A23] rounded-lg p-6 lg:p-7 relative overflow-hidden">
+<!-- Subtile warme Vignette im Hintergrund -->
+<div class="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-[#D39562]/5 blur-3xl pointer-events-none"></div>
+<div class="flex flex-col lg:flex-row gap-7 items-stretch">
+<!-- Buchcover links im Format 2:3 mit 3D-Buchbinder-Schatten -->
+<div class="w-full sm:w-56 md:w-60 flex-shrink-0 self-center lg:self-start">
+<div class="aspect-[2/3] w-full bg-[#181611] rounded border border-[#3D372E] relative p-5 flex flex-col justify-between book-shadow overflow-hidden group select-none">
+<!-- Buchrücken-Falz-Effekt -->
+<div class="absolute left-0 top-0 bottom-0 w-3.5 book-spine-line border-r border-[#2C2922]/50"></div>
+<!-- Cover Header -->
+<div class="pl-2 space-y-2">
+<div class="flex items-center justify-between">
+<span class="text-[9px] font-semibold tracking-[0.2em] text-[#D39562] uppercase">Atelier Opus IV</span>
+<span class="material-symbols-outlined text-[14px] text-[#A89F91]" data-icon="flare">flare</span>
+</div>
+<p class="text-[10px] tracking-[0.14em] text-[#8C8477] uppercase font-mono">ROMAN • SCI-FI</p>
+</div>
+<!-- Cover Symbol & Titel Zentrum -->
+<div class="pl-2 my-auto text-center space-y-3">
+<div class="w-12 h-12 mx-auto rounded-full border border-[#D39562]/40 flex items-center justify-center bg-[#211F1A]">
+<span class="material-symbols-outlined text-[24px] text-[#D39562]" data-icon="filter_center_focus">filter_center_focus</span>
+</div>
+<div>
+<h3 class="serif-title text-[24px] text-[#FFF7ED] font-normal tracking-wide">Dead Signal</h3>
+<div class="w-6 h-px bg-[#D39562]/60 mx-auto my-1.5"></div>
+<p class="serif-title text-[13px] text-[#A89F91] italic">H. Calder</p>
+</div>
+</div>
+<!-- Cover Footer -->
+<div class="pl-2 pt-2 border-t border-[#2C2922] flex items-center justify-between text-[8px] font-mono text-[#696356]">
+<span>ARCHIV-EDITION</span>
+<span>2025</span>
+</div>
+</div>
+</div>
+<!-- Rechts: Detailinformationen & Aktionen -->
+<div class="flex-1 flex flex-col justify-between space-y-4">
+<div class="space-y-3">
+<!-- Status Pill & Sync Zeit -->
+<div class="flex flex-wrap items-center gap-3">
+<span class="px-2.5 py-0.5 rounded text-[10px] font-semibold tracking-wider bg-[#1B3520] text-[#66BB6A] border border-[#2B5433]">
+                  AKTUELL IN ARBEIT
+                </span>
+<span class="text-[12px] text-[#959086] flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-[#66BB6A]" data-icon="cloud_done">cloud_done</span>
+                  Vor 6 Sekunden synchronisiert
+                </span>
+</div>
+<!-- Romantitel & Subtitel -->
+<div>
+<h2 class="serif-title text-[34px] md:text-[38px] leading-tight text-[#FFF7ED] font-medium">
+                  Dead Signal
+                </h2>
+<p class="text-[13px] font-medium tracking-wide text-[#D39562] mt-0.5">
+                  Band I • Tiefsee-Archäologie &amp; Kosmische Leere
+                </p>
+</div>
+<!-- Kursiver 3-zeiliger Blurb mit marginaler Randlinie -->
+<div class="pl-3.5 border-l-2 border-[#8C5845] py-0.5 my-2">
+<p class="serif-title text-[16px] md:text-[17px] text-[#CCC6BA] italic leading-relaxed">
+                  „Die Sensorenbatterie der Station Erebus schwieg seit drei Tagen. Als das Tauchteam die äußere Luftschleuse des Tiefseerückens erreichte, fanden sie keine gebrochenen Dichtungen, sondern 72 identische Audioimpulse im Notfall-Logbuch – moduliert in reinem C-Dur.“
+                </p>
+</div>
+<!-- Metadaten-Leiste -->
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 text-[12px] text-[#A89F91]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-[#959086]" data-icon="straighten">straighten</span>
+<span><strong class="text-[#DFDEDA] font-medium">3.384</strong> / 60.000 Wörter</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-[#959086]" data-icon="article">article</span>
+<span><strong class="text-[#DFDEDA] font-medium">3</strong> Kapitel verfasst</span>
+</div>
+<div class="flex items-center gap-2 col-span-2 sm:col-span-1">
+<span class="material-symbols-outlined text-[16px] text-[#959086]" data-icon="schedule">schedule</span>
+<span>Zuletzt: <strong class="text-[#DFDEDA] font-medium">Heute, 14:22</strong></span>
+</div>
+</div>
+<!-- Dezenter Fortschrittsbalken -->
+<div class="space-y-1.5 pt-1">
+<div class="flex justify-between text-[11px] text-[#8C8477]">
+<span>Fortschritt 1. Entwurf</span>
+<span class="font-mono text-[#D39562]">5,6%</span>
+</div>
+<div class="w-full h-1.5 rounded-full bg-[#16140F] border border-[#2E2A23] overflow-hidden">
+<div class="h-full bg-gradient-to-r from-[#8C5845] to-[#D39562] rounded-full" style="width: 5.6%;"></div>
+</div>
+</div>
+</div>
+<!-- Buttons -->
+<div class="flex flex-wrap items-center gap-3 pt-4 border-t border-[#26231C]">
+<button class="px-5 py-2.5 rounded bg-[#D39562] text-[#16140F] hover:bg-[#DF9F6E] active:scale-[0.98] text-[13px] font-semibold tracking-wide transition-all shadow flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="stylus_note">stylus_note</span>
+<span>Weiterschreiben in Kapitel 3</span>
+</button>
+<button class="px-4 py-2.5 rounded bg-[#211F1A] border border-[#3D372E] text-[#DFDEDA] hover:bg-[#2C2922] text-[13px] font-medium tracking-wide transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-[17px] text-[#959086]" data-icon="account_tree">account_tree</span>
+<span>Gliederung &amp; Szenen</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- ==================== 4. FILTER- / ANSICHTS-ZEILE MIT OFFENEM POPOVER ==================== -->
+<section class="space-y-4 relative">
+<div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#16140F] py-1">
+<!-- Links: Suchfeld & Aktiver Filter-Button mit Anker -->
+<div class="flex items-center gap-3 flex-1 max-w-xl">
+<!-- Suchfeld -->
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[17px] text-[#959086]" data-icon="search">search</span>
+<input class="w-full pl-9 pr-4 py-2 bg-[#16140F] border border-[#2E2A23] focus:border-[#D39562] focus:ring-0 rounded text-[13px] text-[#DFDEDA] placeholder-[#736C61] transition-colors outline-none" placeholder="Titel, Figuren oder Tags durchsuchen..." type="text"/>
+</div>
+<!-- DER AKTIVE FILTER-BUTTON (Pressed State) -->
+<div class="relative inline-block">
+<button class="px-3.5 py-2 rounded bg-[#27231B] border border-[#D39562] text-[#FFF7ED] text-[13px] font-medium flex items-center gap-2 transition-all shadow-sm shadow-[#D39562]/10" id="filterButton">
+<span class="material-symbols-outlined text-[17px] text-[#D39562]" data-icon="tune">tune</span>
+<span>Filter</span>
+<span class="w-1.5 h-1.5 rounded-full bg-[#D39562]"></span>
+</button>
+<!-- ============================================================ -->
+<!-- DIREKT UNTER DEM FILTER-BUTTON VERANKERT: GEÖFFNETES POPOVER -->
+<!-- ============================================================ -->
+<div class="absolute left-0 top-full mt-2 w-64 bg-[#1C1914] border border-[#3D372E] rounded-xl popover-shadow z-50 p-4 select-none animate-in fade-in duration-150" id="filterPopover">
+<!-- Kopfzeile: "FILTERN" (11px, uppercase, +0.08em, text-[#A89F91]), rechts kleines X-Icon -->
+<div class="flex items-center justify-between pb-3 border-b border-[#2C2922]">
+<span class="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#A89F91]">
+                    FILTERN
+                  </span>
+<button class="text-[#736C61] hover:text-[#DFDEDA] transition-colors p-0.5 rounded hover:bg-[#25221B]">
+<span class="material-symbols-outlined text-[15px]" data-icon="close">close</span>
+</button>
+</div>
+<!-- Gruppe: Überschrift "Genre" (12px, semi-bold text-[#DFDEDA]) -->
+<div class="pt-3 pb-2">
+<h4 class="text-[12px] font-semibold text-[#DFDEDA] mb-2">
+                    Genre
+                  </h4>
+<!-- Checkbox-Liste (comfortable Zeilenhöhe ca. 36px je Item) -->
+<div class="space-y-1">
+<!-- Item 1: [x] Sci-Fi (aktiv angehakt mit warmem Akzent #D39562) -->
+<label class="flex items-center gap-3 h-9 px-2 rounded hover:bg-[#25221B] cursor-pointer transition-colors">
+<input checked="" class="w-4 h-4 rounded bg-[#16140F] border border-[#3D372E] text-[#D39562] focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#D39562]" type="checkbox"/>
+<span class="text-[13px] text-[#FFF7ED] font-medium">Sci-Fi</span>
+</label>
+<!-- Item 2: [ ] Mystery -->
+<label class="flex items-center gap-3 h-9 px-2 rounded hover:bg-[#25221B] cursor-pointer transition-colors">
+<input class="w-4 h-4 rounded bg-[#16140F] border border-[#3D372E] text-[#D39562] focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#D39562]" type="checkbox"/>
+<span class="text-[13px] text-[#A89F91] hover:text-[#DFDEDA]">Mystery</span>
+</label>
+<!-- Item 3: [ ] Lit Fiction -->
+<label class="flex items-center gap-3 h-9 px-2 rounded hover:bg-[#25221B] cursor-pointer transition-colors">
+<input class="w-4 h-4 rounded bg-[#16140F] border border-[#3D372E] text-[#D39562] focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#D39562]" type="checkbox"/>
+<span class="text-[13px] text-[#A89F91] hover:text-[#DFDEDA]">Lit Fiction</span>
+</label>
+<!-- Item 4: [ ] Historisch -->
+<label class="flex items-center gap-3 h-9 px-2 rounded hover:bg-[#25221B] cursor-pointer transition-colors">
+<input class="w-4 h-4 rounded bg-[#16140F] border border-[#3D372E] text-[#D39562] focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#D39562]" type="checkbox"/>
+<span class="text-[13px] text-[#A89F91] hover:text-[#DFDEDA]">Historisch</span>
+</label>
+</div>
+</div>
+<!-- Fußzeile: Feine Trennlinie, darunter die Textaktion "Zurücksetzen" -->
+<div class="pt-2 mt-1 border-t border-[#2C2922] flex justify-between items-center">
+<button class="text-[11px] font-medium text-[#D39562] hover:text-[#DF9F6E] transition-colors">
+                    Zurücksetzen
+                  </button>
+<span class="text-[10px] text-[#736C61] italic">1 Filter aktiv</span>
+</div>
+</div>
+<!-- ENDE POPOVER -->
+</div>
+</div>
+<!-- Rechts: Ansicht-Schalter (Raster vs. Liste) -->
+<div class="flex items-center gap-2 self-end sm:self-center">
+<span class="text-[12px] text-[#8C8477]">Ansicht:</span>
+<div class="flex items-center bg-[#1C1914] border border-[#2E2A23] rounded p-0.5">
+<!-- Raster-Icon (aktiv) -->
+<button class="p-1.5 rounded bg-[#2A261F] text-[#FFF7ED] shadow-sm" title="Rasteransicht">
+<span class="material-symbols-outlined text-[16px]" data-icon="grid_view">grid_view</span>
+</button>
+<!-- Listen-Icon -->
+<button class="p-1.5 rounded text-[#8C8477] hover:text-[#DFDEDA] transition-colors" title="Listenansicht">
+<span class="material-symbols-outlined text-[16px]" data-icon="view_list">view_list</span>
+</button>
+</div>
+</div>
+</div>
+<!-- ==================== 5. BÜCHER-GRID MIT COVER-KARTEN ==================== -->
+<!-- Das Popover überlagert visuell die linke obere Kartenecke -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 pt-2">
+<!-- KARTE 1: "Dead Signal" (Sci-Fi, braun/dunkles Cover, Badge "ENTWURF", 3.384 W., 3 Kapitel) -->
+<div class="bg-[#211F1A] border border-[#2E2A23] hover:border-[#3D372E] rounded-lg p-4 flex flex-col justify-between transition-all group">
+<div class="space-y-3">
+<!-- Miniatur-Buchcover -->
+<div class="aspect-[2/3] w-full rounded bg-[#181611] border border-[#3D372E] p-4 flex flex-col justify-between relative book-shadow overflow-hidden group-hover:scale-[1.01] transition-transform">
+<div class="absolute left-0 top-0 bottom-0 w-2.5 book-spine-line"></div>
+<div class="flex justify-between items-center pl-1">
+<span class="text-[8px] font-mono text-[#D39562] uppercase tracking-wider">SCI-FI</span>
+<span class="material-symbols-outlined text-[12px] text-[#959086]" data-icon="radio_button_checked">radio_button_checked</span>
+</div>
+<div class="text-center my-auto pl-1">
+<h4 class="serif-title text-[18px] text-[#FFF7ED] font-normal leading-snug">Dead Signal</h4>
+<p class="serif-title text-[11px] text-[#959086] italic">H. Calder</p>
+</div>
+<div class="text-[7px] text-[#696356] font-mono pl-1">OPUS IV</div>
+</div>
+<!-- Karten Meta -->
+<div class="space-y-1.5 pt-1">
+<div class="flex items-center justify-between">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold tracking-wider bg-[#192D3E] text-[#64B5F6] border border-[#21435E]">
+                    ENTWURF
+                  </span>
+<span class="text-[11px] text-[#8C8477]">Sci-Fi</span>
+</div>
+<h3 class="serif-title text-[19px] text-[#FFF7ED] font-medium group-hover:text-[#D39562] transition-colors">
+                  Dead Signal
+                </h3>
+</div>
+</div>
+<!-- Footer Meta -->
+<div class="pt-3 mt-3 border-t border-[#2C2922] flex items-center justify-between text-[11px] text-[#959086]">
+<span>3.384 W.</span>
+<span>3 Kapitel</span>
+</div>
+</div>
+<!-- KARTE 2: "Winterhaus" (Mystery, helles Elfenbein-Cover, Badge "PLANUNG", 0 W., 0 Kapitel) -->
+<div class="bg-[#211F1A] border border-[#2E2A23] hover:border-[#3D372E] rounded-lg p-4 flex flex-col justify-between transition-all group">
+<div class="space-y-3">
+<!-- Miniatur-Buchcover (Helles Elfenbein) -->
+<div class="aspect-[2/3] w-full rounded bg-[#E8DEC8] text-[#16140F] border border-[#C5BCAB] p-4 flex flex-col justify-between relative book-shadow group-hover:scale-[1.01] transition-transform">
+<div class="absolute left-0 top-0 bottom-0 w-2.5 bg-gradient-to-r from-black/20 via-white/20 to-black/10"></div>
+<div class="flex justify-between items-center pl-1">
+<span class="text-[8px] font-mono text-[#686250] uppercase tracking-wider">MYSTERY</span>
+<span class="material-symbols-outlined text-[12px] text-[#686250]" data-icon="ac_unit">ac_unit</span>
+</div>
+<div class="text-center my-auto pl-1">
+<h4 class="serif-title text-[19px] text-[#16140F] font-semibold leading-snug">Winterhaus</h4>
+<p class="serif-title text-[11px] text-[#554E41] italic">Novelle in Weiß</p>
+</div>
+<div class="text-[7px] text-[#7A7363] font-mono pl-1">EXPOSÉ</div>
+</div>
+<!-- Karten Meta -->
+<div class="space-y-1.5 pt-1">
+<div class="flex items-center justify-between">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold tracking-wider bg-[#2C2922] text-[#CCC6BA] border border-[#3D372E]">
+                    PLANUNG
+                  </span>
+<span class="text-[11px] text-[#8C8477]">Mystery</span>
+</div>
+<h3 class="serif-title text-[19px] text-[#FFF7ED] font-medium group-hover:text-[#D39562] transition-colors">
+                  Winterhaus
+                </h3>
+</div>
+</div>
+<!-- Footer Meta -->
+<div class="pt-3 mt-3 border-t border-[#2C2922] flex items-center justify-between text-[11px] text-[#959086]">
+<span>0 W.</span>
+<span>0 Kapitel</span>
+</div>
+</div>
+<!-- KARTE 3: "The Salt Road" (Lit Fiction, warmbraunes Cover, Badge "LEKTORAT", 24.150 W., 12 Kapitel) -->
+<div class="bg-[#211F1A] border border-[#2E2A23] hover:border-[#3D372E] rounded-lg p-4 flex flex-col justify-between transition-all group">
+<div class="space-y-3">
+<!-- Miniatur-Buchcover (Warmbraun) -->
+<div class="aspect-[2/3] w-full rounded bg-[#38261E] border border-[#523A2F] p-4 flex flex-col justify-between relative book-shadow group-hover:scale-[1.01] transition-transform">
+<div class="absolute left-0 top-0 bottom-0 w-2.5 book-spine-line"></div>
+<div class="flex justify-between items-center pl-1">
+<span class="text-[8px] font-mono text-[#ECC15A] uppercase tracking-wider">LIT FICTION</span>
+<span class="material-symbols-outlined text-[12px] text-[#D39562]" data-icon="waves">waves</span>
+</div>
+<div class="text-center my-auto pl-1">
+<h4 class="serif-title text-[18px] text-[#FFEFEA] font-normal leading-snug">The Salt Road</h4>
+<p class="serif-title text-[11px] text-[#D8BDB2] italic">H. Calder</p>
+</div>
+<div class="text-[7px] text-[#9A7D73] font-mono pl-1">BAND II</div>
+</div>
+<!-- Karten Meta -->
+<div class="space-y-1.5 pt-1">
+<div class="flex items-center justify-between">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold tracking-wider bg-[#3B2D17] text-[#ECC15A] border border-[#574322]">
+                    LEKTORAT
+                  </span>
+<span class="text-[11px] text-[#8C8477]">Lit Fiction</span>
+</div>
+<h3 class="serif-title text-[19px] text-[#FFF7ED] font-medium group-hover:text-[#D39562] transition-colors">
+                  The Salt Road
+                </h3>
+</div>
+</div>
+<!-- Footer Meta -->
+<div class="pt-3 mt-3 border-t border-[#2C2922] flex items-center justify-between text-[11px] text-[#959086]">
+<span>24.150 W.</span>
+<span>12 Kapitel</span>
+</div>
+</div>
+<!-- KARTE 4: "Der Nebel von Arkona" (Historisch, preußischblaues Cover, Badge "ENTWURF", 11.200 W., 5 Kapitel) -->
+<div class="bg-[#211F1A] border border-[#2E2A23] hover:border-[#3D372E] rounded-lg p-4 flex flex-col justify-between transition-all group">
+<div class="space-y-3">
+<!-- Miniatur-Buchcover (Preußischblau) -->
+<div class="aspect-[2/3] w-full rounded bg-[#13212C] border border-[#233B4E] p-4 flex flex-col justify-between relative book-shadow group-hover:scale-[1.01] transition-transform">
+<div class="absolute left-0 top-0 bottom-0 w-2.5 book-spine-line"></div>
+<div class="flex justify-between items-center pl-1">
+<span class="text-[8px] font-mono text-[#64B5F6] uppercase tracking-wider">HISTORISCH</span>
+<span class="material-symbols-outlined text-[12px] text-[#64B5F6]" data-icon="foggy">foggy</span>
+</div>
+<div class="text-center my-auto pl-1">
+<h4 class="serif-title text-[17px] text-[#EDF6FF] font-normal leading-snug">Der Nebel von Arkona</h4>
+<p class="serif-title text-[11px] text-[#94B3CC] italic">Ostsee 1894</p>
+</div>
+<div class="text-[7px] text-[#4F6C82] font-mono pl-1">CHRONIK I</div>
+</div>
+<!-- Karten Meta -->
+<div class="space-y-1.5 pt-1">
+<div class="flex items-center justify-between">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold tracking-wider bg-[#192D3E] text-[#64B5F6] border border-[#21435E]">
+                    ENTWURF
+                  </span>
+<span class="text-[11px] text-[#8C8477]">Historisch</span>
+</div>
+<h3 class="serif-title text-[19px] text-[#FFF7ED] font-medium group-hover:text-[#D39562] transition-colors truncate">
+                  Der Nebel von Arkona
+                </h3>
+</div>
+</div>
+<!-- Footer Meta -->
+<div class="pt-3 mt-3 border-t border-[#2C2922] flex items-center justify-between text-[11px] text-[#959086]">
+<span>11.200 W.</span>
+<span>5 Kapitel</span>
+</div>
+</div>
+</div>
+</section>
+<!-- ==================== 6. FUßBEREICH: AKTIVITÄTS-BANNER ==================== -->
+<footer class="pt-4 pb-12">
+<div class="bg-[#1C1914] border border-[#2E2A23] rounded-lg p-5 flex flex-col md:flex-row items-center justify-between gap-5">
+<!-- Schreibziel Info -->
+<div class="flex items-center gap-4 w-full md:w-auto">
+<div class="w-11 h-11 rounded-full bg-[#27231B] border border-[#3D372E] flex items-center justify-center text-[#D39562] flex-shrink-0">
+<span class="material-symbols-outlined text-[22px]" data-icon="track_changes">track_changes</span>
+</div>
+<div class="space-y-1 flex-1">
+<div class="flex items-baseline gap-2">
+<h4 class="text-[13px] font-semibold text-[#FFF7ED]">Heutiges Schreibziel: 750 Wörter</h4>
+<span class="text-[11px] text-[#D39562] font-mono">412 W. erfasst (55%)</span>
+</div>
+<div class="w-48 sm:w-64 h-1.5 bg-[#16140F] rounded-full border border-[#2C2922] overflow-hidden">
+<div class="h-full bg-[#D39562] rounded-full" style="width: 55%;"></div>
+</div>
+</div>
+</div>
+<!-- Wochen-Sparkline & Trendkurve ("840 W/Tag") -->
+<div class="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
+<div class="flex items-center gap-3">
+<div class="text-right">
+<p class="text-[10px] text-[#8C8477] uppercase tracking-wider">Wochen-Schnitt</p>
+<p class="text-[13px] font-semibold text-[#DFDEDA] font-mono">840 W/Tag</p>
+</div>
+<!-- Mini-Sparkline SVG -->
+<div class="w-24 h-7 flex items-end gap-1 px-1 py-0.5 bg-[#16140F] border border-[#2E2A23] rounded">
+<div class="w-2 bg-[#4A463E] rounded-t-sm" style="height: 40%;" title="Mo: 450 W"></div>
+<div class="w-2 bg-[#4A463E] rounded-t-sm" style="height: 60%;" title="Di: 620 W"></div>
+<div class="w-2 bg-[#4A463E] rounded-t-sm" style="height: 85%;" title="Mi: 980 W"></div>
+<div class="w-2 bg-[#4A463E] rounded-t-sm" style="height: 70%;" title="Do: 780 W"></div>
+<div class="w-2 bg-[#4A463E] rounded-t-sm" style="height: 50%;" title="Fr: 540 W"></div>
+<div class="w-2 bg-[#4A463E] rounded-t-sm" style="height: 95%;" title="Sa: 1.100 W"></div>
+<div class="w-2 bg-[#D39562] rounded-t-sm" style="height: 65%;" title="Heute: 412 W"></div>
+</div>
+</div>
+<!-- Button "Statistiken öffnen" -->
+<button class="px-3.5 py-2 rounded bg-[#211F1A] border border-[#3D372E] text-[#DFDEDA] hover:bg-[#2C2922] hover:text-[#FFF7ED] text-[12px] font-medium tracking-wide transition-all flex items-center gap-1.5 flex-shrink-0">
+<span class="material-symbols-outlined text-[16px] text-[#A89F91]" data-icon="query_stats">query_stats</span>
+<span>Statistiken öffnen</span>
+</button>
+</div>
+</div>
+</footer>
+</main>
+</div>
+<!-- Inline Interaction Handler (Leichtgewichtige Interaktivität für Filter & Badges) -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const filterButton = document.getElementById('filterButton');
+      const filterPopover = document.getElementById('filterPopover');
+
+      // Toggle Filter Popover
+      if (filterButton && filterPopover) {
+        filterButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isHidden = filterPopover.classList.contains('hidden');
+          if (isHidden) {
+            filterPopover.classList.remove('hidden');
+          } else {
+            filterPopover.classList.add('hidden');
+          }
+        });
+
+        // Close on escape or outside click
+        document.addEventListener('click', (e) => {
+          if (!filterPopover.contains(e.target) && !filterButton.contains(e.target)) {
+            filterPopover.classList.add('hidden');
+          }
+        });
+
+        const closeBtn = filterPopover.querySelector('button');
+        if (closeBtn) {
+          closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            filterPopover.classList.add('hidden');
+          });
+        }
+      }
+    });
+  </script>
+</body></html>

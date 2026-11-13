@@ -230,10 +230,15 @@ under the pilot index #780. The committed English gap doc is
 
 ## 7. Stitch round (gap protocol)
 
-- **G-F1 — Filter panel composition.** The draft draws only the button. One
-  batched round in the `narrare` Stitch project answers the panel (filters,
-  layout, states); export into `docs/design/stitch/` before implementation.
-  Any further undrafted detail the builder meets joins the same round.
+- **G-F1 — Filter panel composition. — ANSWERED 2026-11-13.** One batched round in
+  the `narrare` Stitch project produced `screens/library/shelf-filter` (light) and
+  `shelf-filter-dark` (dark): the panel anchored under the Filter button — header
+  FILTERN + close, Genre checkbox rows with live per-genre counts, footer
+  Zurücksetzen + selection count, live filtering, no apply action. The exports are
+  authority for the **panel only** (the dark export's surrounding page drifted and
+  is not normative; `shelf`/`shelf-dark` stay the page authority — README). The
+  no-genres edge state and any further panel states join #834, never a local
+  invention. Task 9 builds from the exports.
 
 ## 8. Deviation log and spec corrections
 
