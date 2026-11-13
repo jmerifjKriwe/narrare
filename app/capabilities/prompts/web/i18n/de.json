@@ -1,5 +1,6 @@
 {
   "prompts.create": "Überschreibung für diesen Roman anlegen",
+  "prompts.createGlobal": "Globale Überschreibung anlegen",
   "prompts.diff.bundled": "Mitgeliefert",
   "prompts.diff.none": "Keine Überschreibung in Kraft — die mitgelieferte Vorlage gilt.",
   "prompts.diff.override": "Überschreibung in Kraft",
@@ -46,6 +47,5 @@
   "prompts.scope.global": "Global",
   "prompts.scope.novel": "Dieser Roman",
   "prompts.settingsTitle": "Prompts",
-  "prompts.variable": "{name} — z. B. {example}",
-  "prompts.createGlobal": "Globale Überschreibung anlegen"
+  "prompts.variable": "{name} — z. B. {example}"
 }

@@ -1,5 +1,6 @@
 {
   "prompts.create": "Créer un remplacement pour ce roman",
+  "prompts.createGlobal": "Créer un remplacement global",
   "prompts.diff.bundled": "Fourni",
   "prompts.diff.none": "Aucun remplacement en vigueur — le modèle fourni s'applique.",
   "prompts.diff.override": "Remplacement en vigueur",
@@ -46,6 +47,5 @@
   "prompts.scope.global": "Global",
   "prompts.scope.novel": "Ce roman",
   "prompts.settingsTitle": "Prompts",
-  "prompts.variable": "{name} — p. ex. {example}",
-  "prompts.createGlobal": "Créer un remplacement global"
+  "prompts.variable": "{name} — p. ex. {example}"
 }

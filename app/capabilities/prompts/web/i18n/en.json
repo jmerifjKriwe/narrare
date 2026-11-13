@@ -1,5 +1,6 @@
 {
   "prompts.create": "Create an override for this novel",
+  "prompts.createGlobal": "Create a global override",
   "prompts.diff.bundled": "Bundled",
   "prompts.diff.none": "No override is in force — the bundled template stands.",
   "prompts.diff.override": "Override in force",
@@ -46,6 +47,5 @@
   "prompts.scope.global": "Global",
   "prompts.scope.novel": "This novel",
   "prompts.settingsTitle": "Prompts",
-  "prompts.variable": "{name} — e.g. {example}",
-  "prompts.createGlobal": "Create a global override"
+  "prompts.variable": "{name} — e.g. {example}"
 }
