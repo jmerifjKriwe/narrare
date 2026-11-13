@@ -101,6 +101,8 @@ pilot has already hardened. The owner chose this order on 2026-11-11.
 | Controls 28 px / 4 px, two radii (DESIGN.md "Components", the two-radius rule) | **Amended by the owner (O-2):** the screens win. Button ladder sm/md/lg = 28 (dense floor) / 36 / 40 px at 8 px radius (a draft's compact 32 px button takes md); icon buttons p-1/p-1.5, cards 12 px, pills full — a three-radius ladder (4 small controls / 8 controls / 12 surfaces) plus pills. |
 | Icons: the drafts' Material Symbols (~25 glyphs, 18–20 px font) | **Decided by the owner (O-3):** the app's hand-drawn 16 px / 1.5-stroke set stays the icon language and is extended with the missing glyphs; Material Symbols is not adopted. Logged as deviation #1 (§6.9). |
 | Primary `oklch(0.42 0.09 45)` / peach dark | Primary **`#743B1F` light / `#D39562` dark**, `on-primary` from DESIGN.md. |
+| W3 D-2: both bars stay (TopBar as W1 shipped, band as drafted ribbon) | **Superseded by the owner 2026-11-13** (Shelf fidelity repair): the drafted TopBar ships shell-wide and owns breadcrumb, save chip, word count and language on every route; the workspace band keeps only workbench controls. Spec `2026-11-13-shelf-fidelity-design.md` §5.1/§5.8 (D-5). |
+| Dark token card's tolerated accent-hue deltas (`dark-tokens.md`) | **Superseded by the owner 2026-11-13** (Shelf fidelity repair, D-6): the dark shelf screen's literal pill/accent hues bind (§6.1 screen-wins), shipped as measured-AA `light-dark()` pairs. Spec `2026-11-13-shelf-fidelity-design.md` §5.9. |
 
 Everything else the command focus norm fixed — Platz-Atlas, one active dock, palette
 behaviour, AI patterns, focus-ring duty, forced-colors fallbacks — carries forward unchanged.
@@ -207,10 +209,17 @@ From DESIGN.md "Components" and the Shelf/workspace screens, in the shell's own 
   language; it is extended with the ~20 concepts the drafts introduce (bookmark-collection,
   edit-note, hub, radar, waves, foggy, ink-highlighter …). A drafted Material Symbols glyph
   names the *concept*; the glyph drawn for it is the app's own. No icon font, no CDN.
-- Cover composition, three tones (pale / sepia / ink): 3:4 aspect, 5 px embossed spine on
-  the left, sepia gets the 1 px gold inset frame at 5 px offset, title bottom-aligned EB
-  Garamond (pale: eyebrow top-left), card footer with chapter count, tabular word count,
-  status pill.
+- Cover composition, four tones (pale / sepia / ink / slate), per the shelf screen
+  (corrected 2026-11-13 by the Shelf fidelity repair, §6.1 screen-wins; the earlier
+  "title bottom-aligned" prose was a narrowing the screen never drew): spine gradient
+  at the left; top block — eyebrow (genre, else language) + title in the brand serif
+  italic (grid `prose-heading-2`, hero `prose-heading-1`); middle — genre motif glyph
+  in the hand-drawn stroke language; foot — author line (null → "—"). Sepia keeps the
+  1 px gold inset frame at 5 px offset. The hero adds an amber rule under the eyebrow
+  and a foot row with the imprint slot + decorative corner motif. Grid w-36 h-52,
+  hero w-48 h-72. The card body around the cover carries the chapter count, tabular
+  word count and status pill — not the cover itself. Full norm:
+  `specs/2026-11-13-shelf-fidelity-design.md` §5.4.
 - Keycap badges (`⌘`, `K`, `Tab`, `Esc`) for palette and ghost-text affordances.
 - Notice and finding cards: 1 px border, severity rule on top (warning amber / danger
   rust), side-by-side quotes, action bar with primary *Übernehmen* / ghost *Verwerfen*
@@ -299,6 +308,8 @@ the shipped value, the reason, and the owner's approval. Empty today:
 | 2026-11-13 | Ghost text tinted `area-writing` at 70% alpha on the card; running head at 70% opacity (W3 paper draft) | Ghost: `color-mix(in srgb, var(--area-writing) 70%, var(--foreground))` (8.25:1 light / 7.65:1 dark); running head at full token colour | The drafted alphas measure 3.18:1/3.75:1 (ghost) and 2.82:1 (runhead) — below the AA floor the spec pins; the mix keeps the 70% hue dominance while passing AA in both themes. Both values are pinned by test so the decision cannot drift. | **Owner approved, 2026-11-14** (W3 Task 8) |
 | 2026-11-13 | W3 card foot "names the timestamp the autosave state already carries" (§5.1 draft) | The foot names the state in words; no time | `SaveStatus` is a bare union carrying no timestamp — the spec's premise was wrong; a relative autosave time needs the save state to carry one first (whole-branch review finding). | Coordinator docket, 2026-11-13; a follow-up would first extend `SaveStatus` |
 | 2026-11-13 | W3 rail's story-arc caption is 9px SVG text inside the graphic (draft) | The caption is HTML `text-meta` beside the graphic | 9px SVG text cannot hold AA in both themes at the drafted weight; the HTML caption reads at the meta step with full contrast. | Owner approved, 2026-11-14 (W3 fidelity pass) |
+| 2026-11-13 | `workspace.html` draws one bar above the editor | W3 shipped the W1 TopBar plus a band repeating the shell facts (D-2, owner 2026-11-12) | D-2 froze the bar to keep W3's scope on the workbench. | **Superseded by owner 2026-11-13 (D-5):** the Shelf fidelity repair ships the drafted bar shell-wide and trims the band to workbench controls (spec §5.8); the departure closes. |
+| 2026-11-13 | The dark shelf screen's literal pill/accent hues (`shelf-dark.html`) | The dark token card's hues, with accent deltas tolerated in the dark side-by-side (`dark-tokens.md` ruling, 2026-11-11) | The coordinator ruling let the card fill DESIGN.md's gaps; the tolerance was provisional, awaiting the owner's choice. | **Superseded by owner 2026-11-13 (D-6): screen wins** — the repair ships the screen's hues as measured-AA `light-dark()` pairs (spec §5.9); the tolerance is revoked. |
 
 ## 7. Open gaps for the first Stitch round
 

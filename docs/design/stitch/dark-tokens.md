@@ -56,6 +56,15 @@ Task 12's side-by-side, whose dark leg may therefore show accent hue deltas unti
 values are re-rendered. If the owner prefers the shelf's renderings as the norm, one edit
 round on the card settles it.*
 
+*Superseded in part (owner, 2026-11-13, Shelf fidelity repair D-6): the owner chose the
+shelf's renderings. For the shelf's dark leg the screen's literal pill and accent hues
+bind — status pills active `#1B3520/#66BB6A` (rule `#25502C`), draft `#192D3E/#64B5F6`
+(rule `#234561`), planning `#2C2C28/#E0E0E0` (rule `#3D3D37`), review `#3A2814/#FFB74D`
+(rule `#5A3C1C`), area-writing accent `#E28659` — shipped as `light-dark()` pairs with
+measured AA in both themes. The delta tolerance above no longer applies to these values;
+the card-fill mechanism stands for dark values the screen does not draw. Norm:
+`specs/2026-11-13-shelf-fidelity-design.md` §5.9; logged in the umbrella §5 table.*
+
 ## Surface ladder and the remaining pairs (gap closed 2026-11-11)
 
 From the second S0 card [`documents/midnight-ink-surface-ladder.html`](documents/midnight-ink-surface-ladder.html)

@@ -254,7 +254,11 @@ here — they are W4's surfaces and carry their own follow-ups there.
 
 - **D-1** — Shell chrome completes in W3 (G1a); the gate judges shell + surface.
 - **D-2** — Both bars stay: global `TopBar` as W1 shipped it, the workspace band
-  becomes the drafted editor ribbon.
+  becomes the drafted editor ribbon. **Superseded 2026-11-13** by the Shelf fidelity
+  repair (owner): the drafted `TopBar` ships shell-wide and owns the shell facts
+  (breadcrumb, save chip, word count, language) on every route; the workspace band
+  loses its duplicated left cluster and keeps only the workbench controls. See
+  `specs/2026-11-13-shelf-fidelity-design.md` §5.1/§5.8, decision D-5.
 - **D-3** — Chapter eyebrow written out ("Kapitel Eins"), locale number words.
 - **D-4** — Floating prompt bar input and pills render disabled + one follow-up
   issue naming the prompt parameter as its trigger.

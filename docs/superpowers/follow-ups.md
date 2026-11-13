@@ -32,6 +32,7 @@ still resolve; a closed id is in the table the Archive section points to.
 | Provider presets and model profiles (2026-11) | #732 |
 | Literary Modernism shelf pilot (2026-11) | #780 |
 | Literary Modernism workspace W3 (2026-11) | #815 |
+| Shelf fidelity repair (2026-11-13) | #831 |
 
 A new wave opens its index and adds a row here. A fix closes its issue from the
 commit that lands it: `Closes #<n>`. Nothing is dropped for being minor:

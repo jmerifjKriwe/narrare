@@ -216,14 +216,17 @@ wave) carries exactly this table, kept current as issues close:
 | 5 | Search scope | "Titel, Figuren oder Tags…" | titles only | searchable figures/tags | #785 |
 | 6 | Hero series line | "Band I • …" | "—" | series/band field | #786 |
 | 7 | Statistics / goal doors | "Statistiken öffnen" | disabled button | statistics surface | #788 |
-| 8 | Hero imprint + foot row | "Atelier Opus IV" | "—" (corner motif stays decorative) | imprint/series field | new |
-| 9 | Hero eyebrow form | "Roman • Sci-Fi" | genre alone | book form/kind field | new |
+| 8 | Hero imprint + foot row | "Atelier Opus IV" | "—" (corner motif stays decorative) | imprint/series field | #832 |
+| 9 | Hero eyebrow form | "Roman • Sci-Fi" | genre alone | book form/kind field | #833 |
 | 10 | Cover author | "Calder" | author real; null → "—" | none (real data) | — |
-| 11 | Filter panel | button only in draft | Stitch-round composition, genre filter real | round export G-F1 | new (panel states) |
+| 11 | Filter panel | button only in draft | Stitch-round composition, genre filter real | round export G-F1 | #834 (panel states) |
 
 New issues are filed at the wave's opening under a new index row in
-`docs/superpowers/follow-ups.md` (labels per AGENTS.md: `follow-up`, `area: web`
-or `area: writing`, severity). #781–#786/#788 stay under the pilot index #780.
+`docs/superpowers/follow-ups.md` (labels per AGENTS.md: `follow-up`,
+`area: writing`, `severity: minor` — the pilot precedent). Index #831; children
+#832 (imprint), #833 (form/kind), #834 (filter panel states). #781–#786/#788 stay
+under the pilot index #780. The committed English gap doc is
+`docs/design/stitch/shelf-gaps.md`.
 
 ## 7. Stitch round (gap protocol)
 
