@@ -147,6 +147,16 @@
   --cover-slate: light-dark(#3A637B, #284457);
   --cover-slate-ink: #FFF8F2;
 
+  /* The cover's motif ink: the amber the drafts draw their geometric
+   * glyphs in (`shelf.html`'s `amber-focus-dark`), printed on the object
+   * like the bright cover inks and therefore theme-constant. It rides the
+   * three dark grounds in both halves: 4.61:1 on sepia light and 5.84:1 on
+   * sepia dark, 8.40:1 / 9.53:1 on ink, 3.38:1 on slate light (the closest)
+   * and 5.35:1 on slate dark — all past the 3:1 a graphic needs. Pale keeps
+   * its own deep ink (13.48:1 / 12.44:1): amber cannot clear 3:1 on the
+   * linen, and a cover's motif is a drawing, not a surface accent. */
+  --cover-motif: #F2AD73;
+
   /* The shape ladder (spec §6.4): a control is never rounded like the
    * surface that holds it, so each step carries its role's name —
    * `rounded-[var(--radius-control)]`, `rounded-[var(--radius-surface)]`.
@@ -266,6 +276,7 @@ body {
   --color-cover-ink-ink: var(--cover-ink-ink);
   --color-cover-slate: var(--cover-slate);
   --color-cover-slate-ink: var(--cover-slate-ink);
+  --color-cover-motif: var(--cover-motif);
   --color-area-writing: var(--area-writing);
   --color-area-knowledge: var(--area-knowledge);
   --color-area-chat: var(--area-chat);

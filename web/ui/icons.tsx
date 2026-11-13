@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The icon set: forty-five line glyphs on one 16×16 grid, drawn for the
+ * The icon set: forty-seven line glyphs on one 16×16 grid, drawn for the
  * stroke they run on — `currentColor` at 1.5, round caps and joins, no
  * fills — so a glyph wears the ink of whatever it sits beside and carries
  * no color of its own. The whole presentation contract lives on the
@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
  */
 
 /**
- * The forty-five drawings. Each stays inside the 2.35–13.65 envelope —
+ * The forty-seven drawings. Each stays inside the 2.35–13.65 envelope —
  * knowledge's stack sets both extremes; on the x axis the ink never leaves
  * 2.5–13.5 — so the 1.5 stroke, reaching half its width past the ink, never
  * clips the viewBox. Each is a single-stroke metaphor: detail that
@@ -253,6 +253,10 @@ export const icons = {
       <path d="M4 5.6C5.12 5.6 6.23 5.9 7.2 6.46C8.17 7.02 8.98 7.83 9.54 8.8C10.1 9.77 10.4 10.88 10.4 12" />
     </>
   ),
+  /** The neutral ring: the cover motif for a genre the set does not know.
+   *  A plain circle, distinct from `radar`'s sweep and `target`'s rings, so
+   *  an unknown genre reads as a calm mark rather than a wrong metaphor. */
+  ring: <circle cx="8" cy="8" r="5.6" />,
   /** The schema: a table of fields, its header ruled off. */
   schema: (
     <>
@@ -267,6 +271,18 @@ export const icons = {
    *  continuation itself. */
   spark: (
     <path d="M8 2.6C8.6 5.3 10.7 7.4 13.4 8C10.7 8.6 8.6 10.7 8 13.4C7.4 10.7 5.3 8.6 2.6 8C5.3 7.4 7.4 5.3 8 2.6Z" />
+  ),
+  /** The sci-fi cover's target: concentric rings under a crosshair, the
+   *  drafted hero motif. The screen's dashed outer ring is detail that
+   *  disappears at 16 px (and the set carries no per-glyph attributes):
+   *  left out. Three circles and the two axes keep the metaphor. */
+  target: (
+    <>
+      <circle cx="8" cy="8" r="5.6" />
+      <circle cx="8" cy="8" r="3" />
+      <path d="M8 2.8V13.2M2.8 8H13.2" />
+      <circle cx="8" cy="8" r="0.9" />
+    </>
   ),
   /** The theme: a moon, its dark side cut away. The outer edge is one
    *  arc of a circle whose centre the box can bound; the cut is a curve,

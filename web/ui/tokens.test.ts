@@ -196,6 +196,9 @@ const PAIRS: Record<string, [string, string]> = {
   "cover-ink-ink": ["#FFF8F2", "#DFDEDA"],
   "cover-slate": ["#3A637B", "#284457"],
   "cover-slate-ink": ["#FFF8F2", "#FFF8F2"],
+  // The motif ink is the drafted amber, printed on the object: constant in
+  // both themes, because the grounds it rides stay dark in both.
+  "cover-motif": ["#F2AD73", "#F2AD73"],
 };
 
 /** The shape ladder (spec §6.4): 4 px small controls, 8 px controls, 12 px surfaces. */
@@ -266,6 +269,11 @@ const GRAPHICS_PAIRS: [string, string, number][] = [
   ["area-chat", "card", 3],
   ["area-planning", "card", 3],
   ["area-settings", "card", 3],
+  // The cover motif rides the three dark grounds; pale uses its own ink
+  // (already in the text table) because the amber cannot clear 3:1 there.
+  ["cover-motif", "cover-sepia", 3],
+  ["cover-motif", "cover-ink", 3],
+  ["cover-motif", "cover-slate", 3],
 ];
 
 describe("the shell's tokens", () => {

@@ -2,15 +2,17 @@
 /**
  * The cover's contract, pinned beside the other class helpers: the tone is
  * a pure hash of the title — deterministic, in range, spread across all
- * four tones — and the tile renders the 3:4 aspect, the exact tone classes
- * of the spec's quartet (pale, sepia, ink, slate — the last is O-2's
- * drafted ground), the spine strip every tone wears, sepia's gold frame,
- * pale's eyebrow, the serif lettering clamped to three lines, and the
- * aria-hidden that keeps the title out of the tree the card's link already
- * names (title and word count are the card's accessible name, not the
- * tile's — Task 10 pins that side). The frozen hash pins are the point:
- * the move from three tones to four re-buckets every book at once, so the
- * mapping must stay a reviewed decision.
+ * four tones — and the tile renders the drafted composition in the exact
+ * tone classes of the spec's quartet (pale, sepia, ink, slate — the last is
+ * O-2's drafted ground): the 3:4-ish geometry of the screens, the spine
+ * gradient every tone wears, the top block (eyebrow + italic serif title at
+ * the prose-heading step), the middle genre motif, the author foot, sepia's
+ * gold frame, and the hero's imprint row with its corner motif. The
+ * aria-hidden keeps the title out of the tree the card's link already names
+ * (title and word count are the card's accessible name, not the tile's —
+ * Task 10 pins that side). The frozen hash pins are the point: the move
+ * from three tones to four re-buckets every book at once, so the mapping
+ * must stay a reviewed decision.
  *
  * The forced-colors leg pins structure, not colour: the lettering is real
  * text and the decorative layers carry none, so a forced palette cannot
@@ -27,6 +29,11 @@ const GROUNDS = ["bg-cover-pale", "bg-cover-sepia", "bg-cover-ink", "bg-cover-sl
 /** Twenty hashed titles: enough that every tone is represented. */
 const TITLES = Array.from({ length: 20 }, (_, index) => `Buch ${index}`);
 const byTone = (tone: CoverTone) => TITLES.find((title) => coverTone(title) === tone)!;
+
+/** The tile that holds a rendered title. */
+function tileOf(container: HTMLElement): HTMLElement {
+  return container.firstElementChild as HTMLElement;
+}
 
 afterEach(cleanup);
 
@@ -60,7 +67,7 @@ describe("coverTone", () => {
   it("wears the cover token of its tone, never an action or area token", () => {
     for (const tone of [0, 1, 2, 3] as const) {
       const { container } = render(<Cover title={byTone(NAMES[tone])} />);
-      const tile = container.firstElementChild as HTMLElement;
+      const tile = tileOf(container);
       expect(tile.getAttribute("data-cover-tone")).toBe(NAMES[tone]);
       expect(tile.className).toContain(GROUNDS[tone]);
       expect(tile.className).not.toContain("bg-primary");
@@ -83,64 +90,236 @@ describe("coverTone", () => {
 });
 
 describe("Cover", () => {
-  it("renders the 3:4 tile in the tone the title hashes to, hidden from the tree", () => {
-    render(<Cover title="Das Wattenmeer" />);
-    const tile = screen.getByText("Das Wattenmeer").parentElement as HTMLElement;
-    expect(tile.className).toContain("aspect-[3/4]");
+  it("renders the tile in the tone the title hashes to, hidden from the tree", () => {
+    const { container } = render(<Cover title="Das Wattenmeer" />);
+    const tile = screen.getByText("Das Wattenmeer").closest("[data-cover-tone]") as HTMLElement;
+    expect(tileOf(container)).toBe(tile);
     expect(tile.className).toContain("bg-cover-slate");
     expect(tile.getAttribute("aria-hidden")).toBe("true");
   });
 
+  it("sizes the grid and hero covers to the drafted geometry", () => {
+    // The screens' own boxes (shelf.html): the grid cover 36 × 52, the hero
+    // 48 × 72. The shelf card's cover is not a 3:4 box any more — the screen
+    // draws a taller card tile, and the screen wins (§5.4).
+    const card = render(<Cover title="Winterhaus" size="card" />);
+    const cardTile = tileOf(card.container);
+    expect(cardTile.className).toContain("w-36");
+    expect(cardTile.className).toContain("h-52");
+    cleanup();
+    const hero = render(<Cover title="Der Sturm" size="hero" />);
+    const heroTile = tileOf(hero.container);
+    expect(heroTile.className).toContain("w-48");
+    expect(heroTile.className).toContain("h-72");
+    expect(heroTile.className).not.toContain("w-36");
+  });
+
+  it("composes every tone the same way: top title, middle motif, author foot", () => {
+    // The screen's one composition replaces the old bottom-aligned and
+    // centred variants: a cover reads top to bottom on every ground.
+    for (const name of NAMES) {
+      const { container } = render(
+        <Cover title={byTone(name)} size="card" genre="Sci-Fi" author="Calder" />,
+      );
+      const tile = tileOf(container);
+      const eyebrow = tile.querySelector("[data-cover-eyebrow]") as HTMLElement;
+      const title = tile.querySelector("[data-cover-title]") as HTMLElement;
+      const motif = tile.querySelector("[data-cover-motif]") as HTMLElement;
+      const author = tile.querySelector("[data-cover-author]") as HTMLElement;
+      expect(eyebrow, name).not.toBeNull();
+      expect(title, name).not.toBeNull();
+      expect(motif, name).not.toBeNull();
+      expect(author, name).not.toBeNull();
+      // Reading order: the eyebrow and title at the top, the glyph in the
+      // middle, the author at the foot.
+      const html = tile.innerHTML;
+      expect(html.indexOf("data-cover-eyebrow"), name).toBeLessThan(
+        html.indexOf("data-cover-motif"),
+      );
+      expect(html.indexOf("data-cover-motif"), name).toBeLessThan(
+        html.indexOf("data-cover-author"),
+      );
+      // One composition for all tones: no ground centres or bottom-aligns.
+      expect(title.className, name).not.toContain("text-center");
+      expect(tile.className, name).toContain("justify-between");
+      cleanup();
+    }
+  });
+
+  it("sets the title at the drafted step per size", () => {
+    // The grid's prose-heading-2 (21 / 28) and the hero's prose-heading-1
+    // (26 / 34), in the brand serif's italic 600.
+    const card = render(<Cover title="Winterhaus" size="card" />);
+    const cardTitle = card.container.querySelector("[data-cover-title]") as HTMLElement;
+    expect(cardTitle.className).toContain("text-[1.3125rem]");
+    expect(cardTitle.className).toContain("leading-[1.75rem]");
+    expect(cardTitle.className).toContain("font-garamond");
+    expect(cardTitle.className).toContain("italic");
+    expect(cardTitle.className).toContain("font-semibold");
+    cleanup();
+    const hero = render(<Cover title="Der Sturm" size="hero" />);
+    const heroTitle = hero.container.querySelector("[data-cover-title]") as HTMLElement;
+    expect(heroTitle.className).toContain("text-[1.625rem]");
+    expect(heroTitle.className).toContain("leading-[2.125rem]");
+  });
+
   it("wears the eyebrow's genre, or the language when there is none", () => {
-    // Der Sturm lands on slate, one of the tones that set the eyebrow in
-    // the top-left corner.
-    const withGenre = render(<Cover title="Der Sturm" genre="Roman" language="de" />);
+    // Der Sturm lands on slate, one of the tones that set the eyebrow at
+    // the top of the tile.
+    const withGenre = render(<Cover title="Der Sturm" size="card" genre="Roman" language="de" />);
     expect(withGenre.getByText("Roman")).toBeTruthy();
     // One line, on the design's micro-label step: a long genre must not
     // wrap over the title below it.
     expect(withGenre.getByText("Roman").className).toContain("truncate");
     expect(withGenre.getByText("Roman").className).toContain("text-eyebrow");
     cleanup();
-    const withoutGenre = render(<Cover title="Der Sturm" language="de" />);
+    const withoutGenre = render(<Cover title="Der Sturm" size="card" language="de" />);
     expect(withoutGenre.getByText("DE")).toBeTruthy();
     cleanup();
-    const bare = render(<Cover title="Der Sturm" />);
+    const bare = render(<Cover title="Der Sturm" size="card" />);
     expect(bare.container.querySelector("[data-cover-eyebrow]")).toBeNull();
   });
 
   it("treats an empty genre as no genre", () => {
-    const { getByText } = render(<Cover title="Der Sturm" genre="  " language="de" />);
+    const { getByText } = render(<Cover title="Der Sturm" size="card" genre="  " language="de" />);
     expect(getByText("DE")).toBeTruthy();
   });
 
-  it("wears the spine strip on every tone, at the strength its ground names", () => {
-    // The rendered composition names the strength per tone — pale 20 %,
-    // sepia 40 %, slate 40 %, ink 60 %: the dark shelf names all four and
-    // the light shelf agrees on pale. A strength that drifts from its
-    // screen fails here; a uniform one is imperceptible on the midnight
-    // ground.
-    const strengths: Record<CoverTone, string> = {
-      pale: "bg-black/20",
-      sepia: "bg-black/40",
-      ink: "bg-black/60",
-      slate: "bg-black/40",
-    };
-    for (const name of NAMES) {
-      const { container } = render(<Cover title={byTone(name)} />);
-      const spine = container.querySelector("[data-cover-spine]") as HTMLElement;
-      // 5 px of the ground darkened: the strip is not the tone's ink, which
-      // would lighten the dark grounds it has to shade.
-      expect(spine, name).toBeTruthy();
-      expect(spine.className, name).toContain("w-[5px]");
-      expect(spine.className, name).toContain("left-0");
-      expect(spine.className, name).toContain(strengths[name]);
-      expect(spine.className, name).not.toContain("bg-current");
+  it("draws the motif each genre names, and the neutral ring when it knows none", () => {
+    const cases: [string | null, string][] = [
+      ["Sci-Fi", "target"],
+      ["Science Fiction", "target"],
+      ["Mystery", "house"],
+      ["Krimi", "house"],
+      ["Lit Fiction", "waves"],
+      ["Literatur", "waves"],
+      ["Historisch", "foggy"],
+      ["Historischer Roman", "foggy"],
+      ["Sachbuch", "ring"],
+      [null, "ring"],
+    ];
+    for (const [genre, motif] of cases) {
+      const { container } = render(<Cover title="Der Sturm" size="card" genre={genre} />);
+      const glyph = container.querySelector("[data-cover-motif]") as HTMLElement;
+      expect(glyph.getAttribute("data-cover-motif"), String(genre)).toBe(motif);
       cleanup();
     }
   });
 
+  it("keeps the motif in the tone's accent ink", () => {
+    // The three dark grounds wear the drafted amber (`--cover-motif`, 4.61:1
+    // on sepia light through 9.53:1 on ink dark); pale keeps its own deep
+    // ink, where amber cannot clear 3:1 on the linen (13.48:1 / 12.44:1).
+    const pale = render(<Cover title={byTone("pale")} size="card" />);
+    expect(
+      (pale.container.querySelector("[data-cover-motif]") as HTMLElement).className,
+    ).toContain("text-cover-pale-ink");
+    cleanup();
+    for (const name of ["sepia", "ink", "slate"] as const) {
+      const { container } = render(<Cover title={byTone(name)} size="card" />);
+      expect(
+        (container.querySelector("[data-cover-motif]") as HTMLElement).className,
+        name,
+      ).toContain("text-cover-motif");
+      cleanup();
+    }
+  });
+
+  it("puts the author at the foot, writing — when the book has none", () => {
+    const known = render(<Cover title="Der Sturm" size="card" author="Calder" />);
+    expect(
+      (known.container.querySelector("[data-cover-author]") as HTMLElement).textContent,
+    ).toBe("Calder");
+    cleanup();
+    const unknown = render(<Cover title="Der Sturm" size="card" author={null} />);
+    // The book has no author yet: the drafted line holds its place with the
+    // placeholder, never an invented name. Real data, no follow-up issue.
+    expect(
+      (unknown.container.querySelector("[data-cover-author]") as HTMLElement).textContent,
+    ).toBe("—");
+    cleanup();
+    const absent = render(<Cover title="Der Sturm" size="card" />);
+    expect(absent.container.querySelector("[data-cover-author]")).toBeNull();
+  });
+
+  it("renders the hero's imprint row only when the prop is present", () => {
+    const withImprint = render(
+      <Cover title="Übers Meer" size="hero" imprint="Atelier Opus IV" />,
+    );
+    const row = withImprint.container.querySelector("[data-cover-imprint]") as HTMLElement;
+    expect(row).not.toBeNull();
+    expect(row.textContent).toContain("Atelier Opus IV");
+    cleanup();
+    // Interim: no imprint field exists yet; the drafted slot holds its
+    // place with the neutral value until one does (#832).
+    const unknown = render(<Cover title="Übers Meer" size="hero" imprint={null} />);
+    const unknownRow = unknown.container.querySelector("[data-cover-imprint]") as HTMLElement;
+    expect(unknownRow).not.toBeNull();
+    expect(unknownRow.textContent).toContain("—");
+    cleanup();
+    const absent = render(<Cover title="Übers Meer" size="hero" />);
+    expect(absent.container.querySelector("[data-cover-imprint]")).toBeNull();
+    cleanup();
+    // The grid cover has no imprint row, even if a caller passes one: the
+    // draft draws it on the hero only.
+    const card = render(<Cover title="Winterhaus" size="card" imprint="Atelier Opus IV" />);
+    expect(card.container.querySelector("[data-cover-imprint]")).toBeNull();
+  });
+
+  it("draws the hero's corner motif as decoration beside the imprint", () => {
+    const { container } = render(
+      <Cover title="Übers Meer" size="hero" imprint="Atelier Opus IV" />,
+    );
+    const corner = container.querySelector("[data-cover-corner]") as HTMLElement;
+    expect(corner).not.toBeNull();
+    expect(corner.getAttribute("aria-hidden")).toBe("true");
+    expect(corner.querySelector("svg")).not.toBeNull();
+    cleanup();
+    const card = render(<Cover title="Winterhaus" size="card" />);
+    expect(card.container.querySelector("[data-cover-corner]")).toBeNull();
+  });
+
+  it("adds the amber rule under the hero's eyebrow, and only there", () => {
+    const hero = render(<Cover title="Übers Meer" size="hero" />);
+    const rule = hero.container.querySelector("[data-cover-rule]") as HTMLElement;
+    expect(rule).not.toBeNull();
+    expect(rule.className).toContain("w-6");
+    expect(rule.className).toContain("h-0.5");
+    // Übers Meer lands on ink: the amber accent of the dark grounds.
+    expect(rule.className).toContain("bg-cover-motif");
+    cleanup();
+    const card = render(<Cover title="Winterhaus" size="card" />);
+    expect(card.container.querySelector("[data-cover-rule]")).toBeNull();
+  });
+
+  it("wears the spine gradient on every tone, at the drafted strength and width", () => {
+    // The screens draw the spine as a 2.5-unit gradient on the grid cover
+    // and 3.5 on the hero; the strength is the tone's own, because a
+    // uniform one disappears on the midnight ground.
+    const starts: Record<CoverTone, string> = {
+      pale: "from-black/20",
+      sepia: "from-black/35",
+      ink: "from-black/50",
+      slate: "from-black/40",
+    };
+    for (const name of NAMES) {
+      const { container } = render(<Cover title={byTone(name)} size="card" />);
+      const spine = container.querySelector("[data-cover-spine]") as HTMLElement;
+      expect(spine, name).not.toBeNull();
+      expect(spine.className, name).toContain("w-2.5");
+      expect(spine.className, name).toContain("left-0");
+      expect(spine.className, name).toContain("bg-gradient-to-r");
+      expect(spine.className, name).toContain("to-transparent");
+      expect(spine.className, name).toContain(starts[name]);
+      cleanup();
+    }
+    const hero = render(<Cover title="Der Sturm" size="hero" />);
+    const heroSpine = hero.container.querySelector("[data-cover-spine]") as HTMLElement;
+    expect(heroSpine.className).toContain("w-3.5");
+  });
+
   it("draws its gold frame only on the sepia tone", () => {
-    const sepia = render(<Cover title={byTone("sepia")} />);
+    const sepia = render(<Cover title={byTone("sepia")} size="card" />);
     const frame = sepia.container.querySelector("[data-cover-frame]") as HTMLElement;
     expect(frame).not.toBeNull();
     // 1 px gold hairline at a 5 px offset: the tone's own ink washed over
@@ -149,67 +328,48 @@ describe("Cover", () => {
     expect(frame.className).toContain("border-current");
     cleanup();
     for (const name of ["pale", "ink", "slate"] as const) {
-      const other = render(<Cover title={byTone(name)} />);
+      const other = render(<Cover title={byTone(name)} size="card" />);
       expect(other.container.querySelector("[data-cover-frame]"), name).toBeNull();
       cleanup();
     }
   });
 
-  it("centres the ink tone's title with its metadata at 60% opacity", () => {
-    const { container, getByText } = render(<Cover title="Übers Meer" genre="Roman" />);
-    // Übers Meer lands on ink: the one tone whose composition centres.
-    expect(coverTone("Übers Meer")).toBe("ink");
-    expect(getByText("Übers Meer").className).toContain("text-center");
-    const metadata = container.querySelector("[data-cover-eyebrow]") as HTMLElement;
-    expect(metadata).not.toBeNull();
-    expect(metadata.className).toContain("opacity-60");
-    expect(metadata.className).toContain("text-center");
-    // The caption follows the centred title instead of taking the corner
-    // the other tones give it: it is not an absolutely placed layer.
-    expect(metadata.className).not.toContain("absolute");
-  });
-
-  it("clamps the lettering to three lines with the overflow the clamp carries", () => {
+  it("clamps the title and truncates the author", () => {
     const longTitle = "Der Sturm über das Wattenmeer der Halligen".repeat(3);
-    render(<Cover title={longTitle} />);
-    const lettering = screen.getByText(longTitle);
-    expect(lettering.className).toContain("line-clamp-3");
-    expect(lettering.className).toContain("overflow-hidden");
-    // The brand serif, 600: the cover's title is a heading, and the serif's
-    // headings carry the wordmark's weight.
-    expect(lettering.className).toContain("font-semibold");
-    expect(lettering.className).toContain("[font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]");
+    const { container } = render(
+      <Cover title={longTitle} size="card" author={"Ein sehr langer Autorenname, der nicht passt"} />,
+    );
+    const title = container.querySelector("[data-cover-title]") as HTMLElement;
+    expect(title.textContent).toBe(longTitle);
+    expect(title.className).toContain("line-clamp-3");
+    expect(title.className).toContain("overflow-hidden");
+    const author = container.querySelector("[data-cover-author]") as HTMLElement;
+    expect(author.className).toContain("truncate");
   });
 
   it("keeps the title readable by structure, not colour", () => {
     // Forced colours strip the palette; the lettering survives because it
     // is real text and nothing decorative is woven through it. The spine,
-    // the frame and the eyebrow are their own elements and carry no text.
-    const { container } = render(<Cover title={byTone("sepia")} genre="Roman" />);
-    for (const decorative of ["[data-cover-spine]", "[data-cover-frame]"]) {
+    // frame, motif and corner mark are their own elements and carry no
+    // text.
+    const { container } = render(
+      <Cover title={byTone("sepia")} size="hero" genre="Roman" imprint="Atelier Opus IV" />,
+    );
+    for (const decorative of [
+      "[data-cover-spine]",
+      "[data-cover-frame]",
+      "[data-cover-motif]",
+      "[data-cover-corner]",
+      "[data-cover-rule]",
+    ]) {
       const layer = container.querySelector(decorative) as HTMLElement;
-      expect(layer.textContent).toBe("");
+      expect(layer, decorative).not.toBeNull();
+      expect(layer.textContent, decorative).toBe("");
     }
-    const lettering = screen.getByText(byTone("sepia"));
+    const lettering = container.querySelector("[data-cover-title]") as HTMLElement;
     expect(lettering.textContent).toBe(byTone("sepia"));
-    // The title is not a child of any decorative layer: it keeps its own
-    // place in the tile whatever a forced palette paints.
     for (const decorative of ["[data-cover-spine]", "[data-cover-frame]"]) {
       expect(lettering.closest(decorative)).toBeNull();
     }
-  });
-
-  it("sizes the hero's cover wider than the shelf card's", () => {
-    // The drafted shelf's own widths (screens/library/shelf.html): the
-    // card's cover at w-36, the hero's at w-48 — the tile's height always
-    // deriving from the 3:4 norm, never from a drafted h-* pair.
-    render(<Cover title="Der Sturm" size="hero" />);
-    const heroTile = screen.getByText("Der Sturm").parentElement as HTMLElement;
-    expect(heroTile.className).toContain("w-48");
-    render(<Cover title="Winterhaus" size="card" />);
-    const cardTile = screen.getByText("Winterhaus").parentElement as HTMLElement;
-    expect(cardTile.className).toContain("w-36");
-    expect(cardTile.className).not.toContain("w-20");
-    expect(heroTile.className).not.toContain("w-36");
   });
 });
