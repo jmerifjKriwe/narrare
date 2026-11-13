@@ -326,7 +326,7 @@ export function NovelDeleteDialog({
 }) {
   const t = useTranslation();
   return (
-    <Dialog title={t("novels.deleteTitle")} isOpen={open} onOpenChange={onOpenChange}>
+    <Dialog title={t("novels.deleteTitle")} isOpen={open} onOpenChange={onOpenChange} isDismissable={false}>
       {(close) => <DeleteForm novel={novel} close={close} />}
     </Dialog>
   );
@@ -362,7 +362,11 @@ function DeleteForm({ novel, close }: { novel: Novel; close: () => void }) {
     setRefusal(false);
     try {
       await deleteNovel.mutateAsync(novel.id);
-    } catch {
+    } catch (error) {
+      if ((error as { status?: number }).status === 404) {
+        close();
+        return;
+      }
       setRefusal(true);
       return;
     } finally {

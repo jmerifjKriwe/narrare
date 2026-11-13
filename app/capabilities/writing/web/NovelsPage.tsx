@@ -60,7 +60,7 @@ export function NovelsPage() {
   // double-invoke) treat a state initializer that mutates it as a hazard.
   const [deletedElsewhere, setDeletedElsewhere] = useState(false);
   useEffect(() => {
-    setDeletedElsewhere(takeNovelDeletedElsewhere());
+    if (takeNovelDeletedElsewhere()) setDeletedElsewhere(true);
   }, []);
 
   // The setup gate decides whether there is a library to list at all. Only

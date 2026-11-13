@@ -12,12 +12,22 @@ import { useAutosave, unsavedStatus, type DocumentDraft } from "@shell/lib/save"
  * `changeTitle` and `schedule` to the editor, rail and dialogs.
  */
 export function useNovelDraft(novelId: string, current: Chapter | null) {
-  // The latest held draft, read at patch time so a rename that landed after
-  // the flush was scheduled still reaches the cache (#687).
-  const latestDraft = useRef<DocumentDraft>({ title: "", body: "" });
+  // The latest held draft, keyed by its chapter, read at patch time so a
+  // rename that landed after the flush was scheduled still reaches the
+  // cache (#687) without leaking a newer chapter's draft into an older
+  // chapter's cache entry (Sourcery).
+  const latestDraft = useRef<{ chapterId: string | null; draft: DocumentDraft }>({
+    chapterId: null,
+    draft: { title: "", body: "" },
+  });
   const remember = useCallback(
     (chapterId: string, draft: DocumentDraft) => {
-      const settled = latestDraft.current.title !== "" || latestDraft.current.body !== "" ? latestDraft.current : draft;
+      const held = latestDraft.current;
+      const settled =
+        held.chapterId === chapterId &&
+        (held.draft.title !== "" || held.draft.body !== "")
+          ? held.draft
+          : draft;
       // The saved draft reaches the cache before the ask: the patch makes
       // the settled document — title and body both — the key's own answer,
       // so the words, the row's name and the freshness their updated_at
@@ -73,7 +83,7 @@ export function useNovelDraft(novelId: string, current: Chapter | null) {
     });
   }
   const draft = held.draft;
-  latestDraft.current = draft;
+  latestDraft.current = { chapterId: current?.id ?? null, draft };
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const scheduleDraft = useCallback(

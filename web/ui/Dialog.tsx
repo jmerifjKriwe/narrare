@@ -66,6 +66,7 @@ export function Dialog({
   children,
   isOpen,
   onOpenChange,
+  isDismissable = true,
 }: {
   title: string;
   /** The visible label of the trigger, in the trigger shape. */
@@ -86,6 +87,9 @@ export function Dialog({
    *  the trigger shape. */
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Whether Escape / outside-click may close the dialog. Defaults to
+   *  true; delete dialogs pass false while a delete is in flight (#690). */
+  isDismissable?: boolean;
 }) {
   if (isOpen !== undefined) {
     return (

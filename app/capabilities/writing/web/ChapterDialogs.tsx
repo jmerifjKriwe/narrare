@@ -179,7 +179,7 @@ export function ChapterDeleteDialog({
 }) {
   const t = useTranslation();
   return (
-    <Dialog title={t("chapters.deleteTitle")} isOpen={open} onOpenChange={onOpenChange}>
+    <Dialog title={t("chapters.deleteTitle")} isOpen={open} onOpenChange={onOpenChange} isDismissable={false}>
       {(close) => (
         <DeleteForm novelId={novelId} chapter={chapter} close={close} onDelete={onDelete} />
       )}

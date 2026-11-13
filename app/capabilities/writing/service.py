@@ -7,8 +7,8 @@ from typing import Literal
 from uuid import UUID  # noqa: TC003
 from zipfile import BadZipFile
 
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
-from sqlalchemy.orm.exc import StaleDataError
 
 from app.capabilities.writing.metadata import normalized_novel_updates
 from app.capabilities.writing.prompts import render_continuation, scaffold_length
@@ -177,15 +177,12 @@ class WritingService:
         novel's, and survive. Commit the deletion; raise NotFoundError for
         an absent or unowned novel.
         """
-        novel = await self.novels.get(novel_id)
-        if novel is None:
+        result = await self.session.execute(
+            delete(Novel).where(Novel.id == novel_id, Novel.user_id == self.user_id)
+        )
+        if getattr(result, "rowcount", 0) == 0:
             raise NotFoundError
-        try:
-            await self.novels.delete(novel)
-            await self.session.commit()
-        except StaleDataError:
-            await self.session.rollback()
-            raise NotFoundError from None
+        await self.session.commit()
 
     async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:
         await self._require_user()
@@ -316,15 +313,15 @@ class WritingService:
         chapter = await self.get_chapter(chapter_id)
         novel_id = chapter.novel_id
         await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
-        try:
-            await self.chapters.delete(chapter)
-            survivors = await self.chapters.list_for_novel(novel_id)
-            await self.chapters.renumber(novel_id, [survivor.id for survivor in survivors])
-            await self.chapters.touch_novel(novel_id)
-            await self.session.commit()
-        except StaleDataError:
-            await self.session.rollback()
-            raise NotFoundError from None
+        result = await self.session.execute(
+            delete(Chapter).where(Chapter.id == chapter_id, Chapter.user_id == self.user_id)
+        )
+        if getattr(result, "rowcount", 0) == 0:
+            raise NotFoundError
+        survivors = await self.chapters.list_for_novel(novel_id)
+        await self.chapters.renumber(novel_id, [survivor.id for survivor in survivors])
+        await self.chapters.touch_novel(novel_id)
+        await self.session.commit()
 
     async def reorder_chapters(self, novel_id: UUID, chapter_ids: Sequence[UUID]) -> None:
         """Rewrite the novel's chapter order as the one whole the body carries.
