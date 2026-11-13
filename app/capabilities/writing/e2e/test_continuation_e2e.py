@@ -133,9 +133,10 @@ def test_the_ghost_is_discarded_by_escape_and_leaves_no_trace(page: Page, stack:
     """Verify Escape discards the ghost without persisting text or disrupting focus controls."""
     _write_a_line(page, "Die Barkasse", "Die Barkasse legte ab.")
 
-    # The runhead's trigger: `.first` because the prompt bar repeats the
-    # same words below the card (the bar augments the button, not replaces).
-    page.get_by_role("button", name="Weiterschreiben").first.click()
+    # The runhead's own trigger, by its hook: the prompt bar repeats the
+    # same words below the card (the bar augments the button, not
+    # replaces), so the name alone matches two.
+    page.locator("[data-continue-button]").click()
     ghost = page.locator(".ProseMirror .ghost")
     expect(ghost).to_contain_text("über die Straße.")
 

@@ -415,10 +415,10 @@ def _capture(
         }"""
     )
     vendor.set_answer(CONTINUATION)
-    # The runhead's trigger: `.first` because the floating prompt bar
+    # The runhead's own trigger, by its hook: the floating prompt bar
     # repeats the same words below the card (the bar augments the button,
-    # not replaces — the continuation suites' own helper's rule).
-    page.get_by_role("button", name="Continue writing").first.click()
+    # not replaces), so the name alone matches two.
+    page.locator("[data-continue-button]").click()
     ghost = page.locator(".ProseMirror .ghost")
     expect(ghost).to_contain_text("relay clicked")
     # The caret sits at the end of a long chapter; bring the offer into frame.
@@ -453,7 +453,11 @@ def _capture(
         }"""
     )
     vendor.set_answer(CONTINUATION)
-    page.get_by_role("button", name="Continue writing").first.click()
+    # The same trigger by the same hook. At depth 2 the prompt bar is
+    # unmounted with the rest of the chrome, so exactly one Continue
+    # writing button stands — the hook just keeps both steps on the
+    # runhead's own control instead of trusting that.
+    page.locator("[data-continue-button]").click()
     ghost = page.locator(".ProseMirror .ghost")
     expect(ghost).to_contain_text("relay clicked")
     shot(SHOTS[19])

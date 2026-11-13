@@ -312,10 +312,11 @@ def test_providers_models_assign_and_audit_end_to_end(page: Page, stack: Stack) 
     page.keyboard.type("Die Anbieterprobe begann.")
     expect(page.get_by_text("Gespeichert")).to_be_visible()
 
-    # The runhead's trigger: `.first` because the floating prompt bar
+    # The runhead's own trigger, by its hook: the floating prompt bar
     # repeats the same words below the card (the bar augments the button,
-    # not replaces — the continuation suites' own helper's rule).
-    page.get_by_role("button", name="Weiterschreiben").first.click()
+    # not replaces — the continuation suites' own helper's rule), so the
+    # name alone matches two.
+    page.locator("[data-continue-button]").click()
     ghost = page.locator(".ProseMirror .ghost")
     expect(ghost).to_contain_text("über die Straße.")
     page.keyboard.press("Tab")

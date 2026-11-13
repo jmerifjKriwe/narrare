@@ -245,10 +245,10 @@ def _run_continuation(page: Page) -> None:
     stream finalizer's own commit and can land a moment later, so a caller
     that reads it waits first: see :func:`_await_continuation`.
     """
-    # The runhead's trigger: `.first` because the floating prompt bar
+    # The runhead's own trigger, by its hook: the floating prompt bar
     # repeats the same words below the card (the bar augments the button,
-    # not replaces).
-    page.get_by_role("button", name="Weiterschreiben").first.click()
+    # not replaces), so the name alone matches two.
+    page.locator("[data-continue-button]").click()
     ghost = page.locator(".ProseMirror .ghost")
     expect(ghost).to_contain_text("über die Straße.")
     page.keyboard.press("Tab")

@@ -356,8 +356,12 @@ export function ChapterEditor({
           focus target, and the ring means "the text has the caret". */}
       <div className="mt-4 mb-4 flex items-center gap-3">
         {/* The workspace's one filled primary (R46): through the primitive,
-            so the fill, the ring and the disabled state ride buttonClass. */}
-        <Button variant="primary" onClick={continueWriting} disabled={continuing}>
+            so the fill, the ring and the disabled state ride buttonClass.
+            The hook is this button's own address: the prompt bar repeats
+            the same words below the card, so a name locator matches two —
+            the suites click this one by `data-continue-button`, not by
+            position. */}
+        <Button variant="primary" data-continue-button onClick={continueWriting} disabled={continuing}>
           {t("chapters.continue")}
         </Button>
       </div>

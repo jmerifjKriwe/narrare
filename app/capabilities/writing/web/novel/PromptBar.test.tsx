@@ -281,6 +281,10 @@ describe("the bar in the editor", () => {
       return found;
     });
     expect(triggers[0]!.closest("[data-prompt-bar]")).toBeNull();
+    // The runhead's trigger answers to its own hook — the address the E2E
+    // suites click when the bar doubles the accessible name.
+    expect(triggers[0]!.getAttribute("data-continue-button")).not.toBeNull();
+    expect(triggers[1]!.getAttribute("data-continue-button")).toBeNull();
 
     // The bar's trigger streams into the ghost — the editor's own
     // continuation, not a second one.
