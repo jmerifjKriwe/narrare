@@ -74,12 +74,14 @@ def test_prepare_database_runs_before_the_worker_starts(
     # The worker must not exist while prepare_database runs: a reordering that
     # starts it first would otherwise leave this suite green (#500).
     started: list[bool] = []
+    prepared: list[bool] = []
     original_prepare = main.prepare_database
     original_start = main.start_worker
 
     async def patched_prepare(database_url: str) -> object:
         # The worker must not have been started yet.
         assert not started, "start_worker ran before prepare_database"
+        prepared.append(True)
         return await original_prepare(database_url)
 
     from typing import Any
@@ -92,6 +94,7 @@ def test_prepare_database_runs_before_the_worker_starts(
     monkeypatch.setattr(main, "start_worker", patched_start)
     with client_factory():
         pass
+    assert prepared, "prepare_database was never called"
     assert started, "worker never started"
 
 

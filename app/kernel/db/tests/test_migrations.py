@@ -289,6 +289,79 @@ async def test_the_provider_fk_restricts_and_the_marks_index_sits(url: str) -> N
 SNAPSHOT = Path(__file__).parent / "fixtures" / "schema_0.2.0.sql"
 
 
+def _split_sql_statements(script: str) -> list[str]:
+    statements: list[str] = []
+    current: list[str] = []
+    i = 0
+    n = len(script)
+    in_single = False
+    dollar_tag: str | None = None
+    in_comment = False
+    while i < n:
+        if in_comment:
+            current.append(script[i])
+            if script[i] == "\n":
+                in_comment = False
+            i += 1
+            continue
+        if not in_single and dollar_tag is None and script.startswith("--", i):
+            in_comment = True
+            current.append(script[i])
+            i += 1
+            continue
+        if in_single:
+            current.append(script[i])
+            if script[i] == "'":
+                if i + 1 < n and script[i + 1] == "'":
+                    current.append(script[i + 1])
+                    i += 2
+                    continue
+                in_single = False
+            i += 1
+            continue
+        if dollar_tag is not None:
+            if script.startswith(dollar_tag, i):
+                current.append(dollar_tag)
+                i += len(dollar_tag)
+                dollar_tag = None
+                continue
+            current.append(script[i])
+            i += 1
+            continue
+        if script[i] == "'":
+            in_single = True
+            current.append(script[i])
+            i += 1
+            continue
+        if script[i] == "$":
+            j = script.find("$", i + 1)
+            if j != -1:
+                tag = script[i : j + 1]
+                if tag == "$$" or (
+                    len(tag) > 2
+                    and tag[1:-1].isidentifier()
+                    and tag.startswith("$")
+                    and tag.endswith("$")
+                ):
+                    dollar_tag = tag
+                    current.append(tag)
+                    i = j + 1
+                    continue
+        if script[i] == ";" and i + 1 < n and script[i + 1] == "\n":
+            statement = "".join(current).strip()
+            if statement:
+                statements.append(statement)
+            current = []
+            i += 2
+            continue
+        current.append(script[i])
+        i += 1
+    tail = "".join(current).strip()
+    if tail:
+        statements.append(tail)
+    return statements
+
+
 async def _load_snapshot(database_url: str, snapshot: Path) -> None:
     """The snapshot's DDL, statement by statement, in one transaction.
 
@@ -300,16 +373,11 @@ async def _load_snapshot(database_url: str, snapshot: Path) -> None:
     not at all.
     """
     script = snapshot.read_text(encoding="utf-8")
-    # Guard against a statement boundary hiding inside a string literal: a
-    # future fixture with a semicolon-newline in a literal would otherwise
-    # die as an opaque SQL syntax error (issue #498).
-    for chunk in script.split(";\n"):
-        if chunk.count("'") % 2:
-            raise ValueError("snapshot contains a statement boundary inside a string literal")
+    engine = create_async_engine(database_url)
     engine = create_async_engine(database_url)
     try:
         async with engine.begin() as connection:
-            for chunk in script.split(";\n"):
+            for chunk in _split_sql_statements(script):
                 statement = "\n".join(
                     line for line in chunk.splitlines() if not line.lstrip().startswith("--")
                 ).strip()

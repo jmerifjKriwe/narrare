@@ -19,6 +19,7 @@ refusal, not a startup that never returns.
 import asyncio
 import shlex
 import subprocess  # nosec B404
+import sys
 from datetime import UTC, datetime
 from os import environ, replace
 from typing import TYPE_CHECKING, cast
@@ -357,4 +358,12 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
         # produced (issue #489).
         raise BackupFailed(f"could not finalise the dump {file}: {exc}") from exc
     finally:
-        partial.unlink(missing_ok=True)
+        # Cleanup must not escape as a raw OSError and mask the original
+        # failure (issue #489 / review). FileNotFoundError is already
+        # tolerated by missing_ok=True; any other failure is converted
+        # only when nothing else is propagating.
+        try:
+            partial.unlink(missing_ok=True)
+        except OSError as exc:
+            if sys.exc_info()[0] is None:
+                raise BackupFailed(f"could not remove the partial dump {partial}: {exc}") from exc
