@@ -251,7 +251,20 @@ export function NovelPage() {
   const dockOverlay = narrow && openDock !== null;
 
   return (
-    <div className="mx-auto max-w-[1200px] px-4 py-10">
+    // At the deepest step the container becomes the draft's zen canvas
+    // (zen-focus.html's main): a flex column at least the viewport tall —
+    // `main`, chromeless here, is the whole viewport — with the paper's
+    // group centered in it and the draft's own generous air above and
+    // below (`pt-32 pb-44`), so a calm page holds the writing even when
+    // the prose outgrows the screen. The workbench depths keep the band's
+    // own margins: `min-h-full` and the centering exist at depth 2 only.
+    <div
+      className={
+        focus === 2
+          ? "mx-auto flex min-h-full max-w-[1200px] flex-col justify-center px-4 pt-32 pb-44"
+          : "mx-auto max-w-[1200px] px-4 py-10"
+      }
+    >
       {focus < 2 ? (
         <>
           <Link

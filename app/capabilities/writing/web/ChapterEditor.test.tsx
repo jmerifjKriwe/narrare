@@ -32,6 +32,7 @@ import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
 import { PALETTE_OPEN_EVENT } from "@shell/lib/palette";
+import { shortcutKeycap } from "@shell/lib/shortcuts";
 import {
   useAutosave,
   unsavedStatus,
@@ -795,6 +796,35 @@ describe("ChapterEditor's ghost text", () => {
     await waitFor(() => expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed + 1));
     const button = screen.getByRole("button", { name: t("chapters.continue") }) as HTMLButtonElement;
     await waitFor(() => expect(button.disabled).toBe(false)); // the finally ran
+  });
+
+  it("keeps the ghost and its Tab keycap reachable at focus depth 2", async () => {
+    // The zen draft's paper still carries its ghost line and the keycap
+    // beside it (spec §5.5): the deepest step yields the frame around the
+    // prose, never the suggestion inside it — Tab takes it, Esc discards
+    // it, exactly as at the workbench.
+    render(
+      <Harness
+        chapterId={CHAPTER}
+        body="Anfang."
+        focusDepth={2}
+        proposal="Der Vorschlag des Geistes."
+      />,
+    );
+
+    const ghost = await screen.findByText("Der Vorschlag des Geistes.");
+    expect(ghost.closest(".ghost")).not.toBeNull();
+    const pill = document.querySelector("[data-ghost-pill]");
+    expect(pill).not.toBeNull();
+    // Reachable means inside the one surface the depth leaves standing:
+    // the card holds both widgets, and the pill names Tab with the
+    // shortcut registry's own keycap.
+    const card = document.querySelector("[data-editor-card]")!;
+    expect(card.contains(ghost)).toBe(true);
+    expect(card.contains(pill!)).toBe(true);
+    expect(pill!.querySelector("kbd")!.textContent).toBe(
+      shortcutKeycap("editor.acceptGhost"),
+    );
   });
 });
 

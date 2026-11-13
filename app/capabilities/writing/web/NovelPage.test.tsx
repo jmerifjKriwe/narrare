@@ -1676,3 +1676,59 @@ describe("the paper's running head", () => {
     expect(alone.textContent).not.toContain("—");
   });
 });
+
+describe("the zen canvas (focus depth 2)", () => {
+  /** The page's container, the one the workbench's columns stand in. */
+  function pageCanvas(): HTMLElement {
+    return document.querySelector("#main > div")!;
+  }
+  /** The editor column — the paper's section, alone at the deepest step. */
+  function editorColumn(): HTMLElement {
+    return document.querySelector("#main section")!;
+  }
+
+  it("centers the paper on a calm canvas and takes the column's seam pad back", { timeout: 10_000 }, async () => {
+    mockLoaded();
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // The workbench depths keep the band's own margins: the container is
+    // the page's, and the column carries the dock's seam pad. (Depth 0 —
+    // and by the same classes depth 1 — must not move.)
+    expect(pageCanvas().className).toContain("py-10");
+    expect(editorColumn().className).toContain("lg:pr-4");
+
+    // F9 F9, the deepest step: the canvas takes the draft's zen spacing —
+    // the page a flex column at least the viewport tall, the paper centered
+    // in it with the draft's generous air above and below (zen-focus.html's
+    // `pt-32 pb-44 justify-center min-h-…`) — and the band stays gone.
+    // Classes only: the machine (F9, Esc, the URL's depth) is frozen.
+    await user.keyboard("{F9}{F9}");
+    await waitFor(() => expect(pageCanvas().className).toContain("justify-center"));
+    expect(pageCanvas().className).toContain("flex");
+    expect(pageCanvas().className).toContain("flex-col");
+    expect(pageCanvas().className).toContain("min-h-full");
+    expect(pageCanvas().className).toContain("pt-32");
+    expect(pageCanvas().className).toContain("pb-44");
+    expect(pageCanvas().className).not.toContain("py-10");
+    expect(screen.queryByRole("banner")).toBeNull();
+    // Alone on the canvas the paper centers truly: the seam pad existed for
+    // the dock's neighbour, and the dock yielded with the band.
+    await waitFor(() => expect(editorColumn().className).not.toContain("lg:pr-4"));
+    // The writing surface is still there, with its writing control — the
+    // draft's paper and nothing else in the column's way.
+    expect(document.querySelector(".ProseMirror")).not.toBeNull();
+
+    // Esc releases: the workbench margins return with the band's step (the
+    // walk is 2 → 1 → 0 — the rail only returns at the workbench). (The
+    // banner role is ambiguous to jsdom's role engine — the runhead is a
+    // <header> too — so chrome's return is proven by the rail's.)
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(pageCanvas().className).toContain("py-10"));
+    expect(pageCanvas().className).not.toContain("justify-center");
+    await waitFor(() => expect(editorColumn().className).toContain("lg:pr-4"));
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(document.querySelector("aside")).not.toBeNull());
+  });
+});

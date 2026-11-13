@@ -65,8 +65,13 @@ export function EditorColumn({
 }) {
   const t = useTranslation();
   return (
+    // The column's `lg:pr-4` is the dock seam's pad — the ring's 16 px
+    // before the neighbour's edge — and the dock is the band's tenant: at
+    // the deepest step both are gone, and the pad would sit the paper's
+    // 576 off the canvas's true center. The zen draft centers its paper
+    // (zen-focus.html), so the seam pad yields with the chrome it pads.
     <section
-      className="flex min-w-0 flex-1 flex-col items-center lg:pr-4"
+      className={`flex min-w-0 flex-1 flex-col items-center${focus === 2 ? "" : " lg:pr-4"}`}
       inert={railOverlay || dockOverlay || undefined}
     >
       {/* The writing surface is the card (F18): ChapterEditor paints it,
