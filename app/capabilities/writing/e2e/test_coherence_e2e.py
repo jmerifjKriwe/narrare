@@ -489,8 +489,6 @@ def test_the_writer_s_day_holds_together_end_to_end(
     # debounce that had fired on its own clock would read PUT before POST.
     editor = page.locator(PROSE)
     editor.click()
-    page.keyboard.type(UNSAVED_LINE)
-    expect(page.locator(EDITOR_SECTION).get_by_role("status")).to_have_count(0)
     wire: list[str] = []
     page.on(
         "request",
@@ -503,6 +501,9 @@ def test_the_writer_s_day_holds_together_end_to_end(
             else None
         ),
     )
+    page.keyboard.type(UNSAVED_LINE)
+    expect(page.locator(EDITOR_SECTION).get_by_role("status")).to_have_count(0)
+    assert wire == [], f"debounce fired before the gate: {wire}"
     with page.expect_response(
         lambda response: (
             "/api/writing/chapters/" in response.url and response.request.method == "PUT"

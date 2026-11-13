@@ -204,7 +204,7 @@ def test_settings_host_and_contributor_scan_to_one_page_row() -> None:
     )
     assert [page.id for page in scan.rows] == ["prompts"]
     assert scan.rows[0].path == "/settings/prompts"
-    assert scan.rows[0].title_key == "prompts.settingsTitle"
+    assert scan.rows[0].title_key == "prompts.heading"
     assert scan.host == "settings"
 
 
@@ -283,10 +283,7 @@ def test_settings_pages_table_renders_the_rows_like_the_dock_registry(
             },
         )
     )
-    assert (
-        '  { id: "prompts", path: "/settings/prompts", titleKey: "prompts.settingsTitle" },\n'
-        in pages
-    )
+    assert '  { id: "prompts", path: "/settings/prompts", titleKey: "prompts.heading" },\n' in pages
     assert "export const settingsPages = [\n" in pages
     assert "] as const satisfies ReadonlyArray<{" in pages
     assert "titleKey: keyof typeof catalogs.en;" in pages
@@ -367,7 +364,13 @@ def _commands_repo(tmp_path: Path, capabilities: tuple[str, ...]) -> Path:
 def test_commands_view_imports_and_aggregates_the_modules_in_palette_order(
     tmp_path: Path,
 ) -> None:
-    view = typescript_commands(_commands_repo(tmp_path, ("knowledge", "prompts", "settings")))
+    view = typescript_commands(
+        _commands_repo(tmp_path, ("writing", "knowledge", "prompts", "settings"))
+    )
+    assert (
+        "import { commands as writingCommands }"
+        ' from "../../../app/capabilities/writing/web/commands";\n' in view
+    )
     assert (
         "import { commands as settingsCommands }"
         ' from "../../../app/capabilities/settings/web/commands";\n' in view
@@ -379,11 +382,10 @@ def test_commands_view_imports_and_aggregates_the_modules_in_palette_order(
     # The palette's row order is a deliberate arrangement, not the folder
     # sort: writing leads when it appears, and the rest follow that pinned
     # order. A capability absent here contributes nothing to import.
+    assert view.index("  ...writingCommands,\n") < view.index("  ...settingsCommands,\n")
     assert view.index("  ...settingsCommands,\n") < view.index("  ...promptsCommands,\n")
     assert view.index("  ...promptsCommands,\n") < view.index("  ...knowledgeCommands,\n")
-    # Writing owns no commands module yet: it leads the pinned order in the
-    # header, but contributes no import and no spread.
-    assert "writingCommands" not in view
+    # Writing leads the pinned order and now contributes its module too.
     assert "export const commands = [\n" in view
     assert "] as const satisfies ReadonlyArray<Command>;" in view
 

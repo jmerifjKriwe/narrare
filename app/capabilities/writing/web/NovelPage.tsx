@@ -90,6 +90,10 @@ export function NovelPage() {
       // composition's Esc would tear the mode mid-word.
       if (event.repeat || event.isComposing) return;
       if (event.defaultPrevented) return;
+      // A modal owns the stage (palette or any dialog): stepping the focus
+      // from under it would start a second navigation behind the one that
+      // is waiting. The palette has no F9 tenant of its own.
+      if (document.querySelector(".react-aria-ModalOverlay") !== null) return;
       // The leave dialog owns the keyboard while it stands: stepping the
       // focus from under an unanswered ask would start a second navigation
       // behind the one that is waiting for this answer.
@@ -250,7 +254,11 @@ export function NovelPage() {
           </Link>
           {/* The heading names the book only when the book's row is here: an
               empty h1 on the outage page would be a heading about nothing. */}
-          {novelQuery.data ? (
+          {failed ? (
+            <h1 className="mt-2 text-title font-semibold tracking-tight">
+              {t("chapters.errorLoad")}
+            </h1>
+          ) : novelQuery.data ? (
             <h1 className="mt-2 text-title font-semibold tracking-tight">
               {novelQuery.data.title}
             </h1>

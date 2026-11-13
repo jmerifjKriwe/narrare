@@ -1,5 +1,5 @@
 import { useParams, useSearch } from "@tanstack/react-router";
-import { useId, useState } from "react";
+import { useId, useState, useEffect } from "react";
 
 import { announce } from "@shell/lib/announce";
 import { useTranslation } from "@shell/lib/i18n";
@@ -36,7 +36,24 @@ export function ExtractionPanel() {
   // shows, and nothing is written to the URL for it.
   const { chapter: chapterParam } = useSearch({ from: "/novels/$id" });
   const chapters = useChaptersQuery(novelId);
-  const chapterId = chapterParam ?? activeChapterFallback(chapters.data ?? []);
+  // Latch the param-less fallback the way the workbench latches its
+  // selection: a dismissed create must not re-target extraction onto the
+  // newly created (empty) chapter. The fallback moves only when the
+  // latched id leaves the list.
+  const [latchedFallback, setLatchedFallback] = useState<string | null>(null);
+  useEffect(() => {
+    const rows = chapters.data;
+    if (rows === undefined) return;
+    setLatchedFallback((previous) =>
+      previous !== null && rows.some((chapter) => chapter.id === previous)
+        ? previous
+        : activeChapterFallback(rows),
+    );
+  }, [chapters.data]);
+  const chapterId =
+    chapterParam !== undefined && (chapters.data ?? []).some((chapter) => chapter.id === chapterParam)
+      ? chapterParam
+      : latchedFallback ?? activeChapterFallback(chapters.data ?? []);
   const [jobId, setJobId] = useState<string | null>(null);
   const [enqueueFailed, setEnqueueFailed] = useState(false);
   const job = useJobQuery(jobId);

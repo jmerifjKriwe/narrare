@@ -45,6 +45,5 @@
   "prompts.saveRefused": "The save was refused — {reason}: {detail}",
   "prompts.scope.global": "Global",
   "prompts.scope.novel": "This novel",
-  "prompts.settingsTitle": "Prompts",
   "prompts.variable": "{name} — e.g. {example}"
 }

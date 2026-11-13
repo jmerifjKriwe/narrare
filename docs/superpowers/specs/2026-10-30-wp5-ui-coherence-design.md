@@ -253,7 +253,7 @@ stands.
 
 ```ts
 export const commands = [
-  { id, titleKey, run(ctx), enabled?(ctx), shortcut? }, …
+  { id, titleKey, run(ctx), enabled?(ctx) }, …
 ] as const;
 ```
 
