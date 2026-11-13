@@ -50,6 +50,7 @@
   "palette.searchLabel": "Rechercher chapitres, entités, pages et commandes…",
   "proposal.accept": "Accepter",
   "proposal.discard": "Rejeter",
+  "save.autosaved": "Enregistré automatiquement",
   "save.confirmLeave": "Ce chapitre contient du texte non enregistré. Quitter quand même ?",
   "save.failed": "Non enregistré",
   "save.leaveGo": "Quitter quand même",

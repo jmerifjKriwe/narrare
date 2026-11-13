@@ -1645,3 +1645,34 @@ describe("the shelf's first paint", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 });
+
+describe("the paper's running head", () => {
+  it("carries the novel's author beside the book inside the card", { timeout: 10_000 }, async () => {
+    // The wiring: the row's `author` rides the page's reads down to the
+    // editor's paper. The author case first.
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/writing/novels/{novel_id}") {
+        return { data: { ...NOVEL, author: "H. Calder" }, response: ok() };
+      }
+      return loadedAnswer(path);
+    });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const head = await screen.findByText("Das erreichbare Buch — H. Calder");
+    expect(document.querySelector("[data-editor-card]")!.contains(head)).toBe(
+      true,
+    );
+
+    // The row without an author: the book alone, no dangling dash. The
+    // cache forgets the author row first, so the second mount reads the
+    // mock's answer, not the first mount's.
+    cleanup();
+    queryClient.clear();
+    mockLoaded();
+    renderAt(`/novels/${NOVEL_ID}`);
+    await editorElement();
+    const card = document.querySelector<HTMLElement>("[data-editor-card]")!;
+    const alone = within(card).getByText("Das erreichbare Buch");
+    expect(alone.textContent).toBe("Das erreichbare Buch");
+    expect(alone.textContent).not.toContain("—");
+  });
+});

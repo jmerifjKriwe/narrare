@@ -54,7 +54,8 @@ function Harness(props: { chapterId?: string; body?: string; title?: string; pro
   onProposalResolve?: (accepted: boolean) => void;
   onSaved?: (id: string, draft: DocumentDraft) => void;
   onFlushed?: (outcome: FlushOutcome) => void;
-  bookTitle?: string; chapterNumber?: number; chapterTotal?: number; focusDepth?: 0 | 1 | 2 }) {
+  bookTitle?: string; bookAuthor?: string;
+  chapterNumber?: number; chapterTotal?: number; focusDepth?: 0 | 1 | 2 }) {
   const save = useAutosave(props.chapterId ?? CHAPTER, props.onSaved);
   // The document as one draft — title beside body — reset from the props
   // the editor initializes from; the editor owns the caret, the page owns
@@ -101,6 +102,7 @@ function Harness(props: { chapterId?: string; body?: string; title?: string; pro
         proposal={props.proposal}
         onProposalResolve={props.onProposalResolve}
         bookTitle={props.bookTitle}
+        bookAuthor={props.bookAuthor}
         chapterNumber={props.chapterNumber}
         chapterTotal={props.chapterTotal}
         focusDepth={props.focusDepth}
@@ -213,7 +215,11 @@ function documentText(): string {
   const editable = document.querySelector(".ProseMirror");
   if (!editable) return "";
   const documentClone = editable.cloneNode(true) as HTMLElement;
-  documentClone.querySelectorAll(".ghost").forEach((node) => node.remove());
+  // The ghost's two widgets — its words and the keycap pill beside them —
+  // are decoration alike; neither shows up here until Tab.
+  documentClone
+    .querySelectorAll(".ghost, [data-ghost-pill]")
+    .forEach((node) => node.remove());
   return documentClone.textContent ?? "";
 }
 
@@ -1018,5 +1024,132 @@ describe("ChapterEditor's surface", () => {
     // the card, not inside it.
     const action = screen.getByRole("button", { name: t("chapters.continue") });
     expect(card!.contains(action)).toBe(false);
+  });
+});
+
+describe("ChapterEditor's paper", () => {
+  it("writes the running head — book — author — on the paper, above the prose", async () => {
+    render(
+      <Harness body="Anfang." bookTitle="Dead Signal" bookAuthor="H. Calder" />,
+    );
+
+    // The draft's page header, inside the card at its top: the book and its
+    // author in one line, in the utility's italic serif voice. The runhead
+    // above the card keeps the title input; this line is the paper's own.
+    const head = screen.getByText("Dead Signal — H. Calder");
+    expect(head.getAttribute("data-paper-runhead")).not.toBeNull();
+    expect(head.className).toContain("paper-runhead");
+    expect(head.className).toContain("text-body");
+
+    const card = document.querySelector("[data-editor-card]")!;
+    expect(card.contains(head)).toBe(true);
+    const prose = card.querySelector(".ProseMirror")!;
+    expect(
+      head.compareDocumentPosition(prose) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("names the book alone when the row carries no author — no dangling dash", async () => {
+    render(<Harness body="Anfang." bookTitle="Dead Signal" />);
+
+    const head = screen.getByText("Dead Signal");
+    expect(head.textContent).toBe("Dead Signal");
+    expect(head.textContent).not.toContain("—");
+  });
+
+  it("omits the folio and the page count until pagination exists", async () => {
+    render(
+      <Harness
+        body="Anfang."
+        bookTitle="Dead Signal"
+        bookAuthor="H. Calder"
+        chapterNumber={1}
+        chapterTotal={8}
+      />,
+    );
+
+    // The draft's "FOLIO 12" and "Seite 1 von 8" name pages the app does
+    // not have: interim: no pagination — follow-up filed in W3's index.
+    expect(screen.queryByText(/FOLIO/i)).toBeNull();
+    expect(document.querySelector("[data-paper-folio]")).toBeNull();
+    expect(document.querySelector("[data-paper-page]")).toBeNull();
+  });
+
+  it("yields the running head with the frame at depth 2", async () => {
+    render(
+      <Harness
+        body="Anfang."
+        bookTitle="Dead Signal"
+        bookAuthor="H. Calder"
+        focusDepth={2}
+      />,
+    );
+    expect(screen.queryByText("Dead Signal — H. Calder")).toBeNull();
+    expect(document.querySelector(".ProseMirror")).not.toBeNull();
+  });
+
+  it("carries the drop cap on the prose root, never in the document", async () => {
+    render(<Harness body="Anfang." />);
+
+    // The utility rides the prose root's wrapper, so the first paragraph's
+    // first letter is a rendering: nothing enters the document, and the
+    // autosave's Markdown is untouched.
+    const wrapper = document.querySelector(".ProseMirror")!.parentElement!;
+    expect(wrapper.className).toContain("drop-cap");
+    expect(documentText()).toBe("Anfang.");
+  });
+
+  it("carries the settled autosave line on the foot, and goes quiet while text waits", { timeout: 10_000 }, async () => {
+    render(<Harness body="" />);
+
+    // The settled paper: idle counts as saved (the band chip's standing
+    // rule), so the line stands on an untouched chapter — the success dot
+    // beside the state's words, from the one `status` owner.
+    const line = screen
+      .getByText(t("save.autosaved"))
+      .closest("[data-paper-foot-state]");
+    expect(line).not.toBeNull();
+    expect(line!.querySelector("span[aria-hidden='true']")).not.toBeNull();
+
+    const user = await focusEditor();
+    await user.keyboard("Ein Satz.");
+    // Inside the debounce the words exist only in the browser: the line
+    // goes quiet — the pending state stays the runhead's to name.
+    await waitFor(() =>
+      expect(screen.queryByText(t("save.autosaved"))).toBeNull(),
+    );
+    await waitFor(
+      () => expect(screen.getByText(t("save.autosaved"))).toBeTruthy(),
+      { timeout: 5000 },
+    );
+  });
+
+  it("names the Tab key beside the pending ghost, and leaves with it", async () => {
+    render(
+      <Harness chapterId={CHAPTER} body="" proposal="Der Vorschlag des Geistes." />,
+    );
+
+    // The draft's "[Tab] Vorschlag übernehmen" pill, as a widget beside the
+    // ghost's words — the shortcut registry's own keycap and label, never a
+    // literal. Hidden from the reading order: the arrival announcement is
+    // the ghost's voice.
+    const label = await screen.findByText(t("settings.shortcut.acceptGhost"));
+    const pill = label.closest("[data-ghost-pill]");
+    expect(pill).not.toBeNull();
+    expect(pill!.getAttribute("aria-hidden")).toBe("true");
+    const key = pill!.querySelector("kbd");
+    expect(key?.textContent).toBe(t("settings.shortcutKey.tab"));
+    const ghost = document.querySelector(".ghost")!;
+    expect(
+      pill!.compareDocumentPosition(ghost) & Node.DOCUMENT_POSITION_PRECEDING,
+    ).toBeTruthy();
+
+    // The pill is decoration with the ghost: stripped from the document's
+    // text, and gone when the ghost goes.
+    expect(documentText()).not.toContain(t("settings.shortcut.acceptGhost"));
+    const user = await focusEditor();
+    await user.keyboard("{Escape}");
+    expect(document.querySelector("[data-ghost-pill]")).toBeNull();
+    expect(document.querySelector(".ghost")).toBeNull();
   });
 });

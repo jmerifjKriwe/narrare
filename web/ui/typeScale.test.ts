@@ -74,7 +74,27 @@ function token(name: string): string | null {
  * stylesheet's own text, so a rule that moves is still the rule that is read.
  */
 function rule(...selectors: string[]): Record<string, string> {
-  for (const match of CSS.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  return declarationsIn(CSS, selectors);
+}
+
+/**
+ * The declarations of one rule inside the utilities layer. The layer's own
+ * braces wrap its rules, so the flat matcher above would read the layer's
+ * opener as the rule's selector; this reads the layer's body instead.
+ */
+function utilitiesRule(...selectors: string[]): Record<string, string> {
+  const open = CSS.indexOf("@layer utilities");
+  if (open === -1) throw new Error("globals.css has no utilities layer");
+  const body = CSS.slice(CSS.indexOf("{", open) + 1, CSS.lastIndexOf("}"));
+  return declarationsIn(body, selectors);
+}
+
+/** The shared matcher behind `rule` and `utilitiesRule`. */
+function declarationsIn(
+  text: string,
+  selectors: string[],
+): Record<string, string> {
+  for (const match of text.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const found = match[1].split(",").map((part) => part.trim().replace(/\s+/g, " "));
     if (found.length !== selectors.length) continue;
     if (!selectors.every((selector, at) => found[at] === selector)) continue;
@@ -283,6 +303,43 @@ describe("the prose's own headings", () => {
       ".ProseMirror h6",
     );
     expect(shared["font-weight"]).toBe("600");
+  });
+});
+
+describe("the paper's utilities", () => {
+  it("draws the drop cap with the drafted metrics", () => {
+    const cap = utilitiesRule(
+      ".drop-cap .ProseMirror > p:first-of-type::first-letter",
+    );
+    expect(cap["float"]).toBe("left");
+    expect(cap["font-size"]).toBe("4.5rem");
+    expect(cap["line-height"]).toBe("0.8");
+    // The serif's real 600 cut — no synthesized 700, the headings' rule.
+    expect(cap["font-weight"]).toBe("600");
+    expect(cap["color"]).toBe("var(--primary)");
+    expect(cap["font-family"]).toContain('"EB Garamond"');
+    expect(cap["margin-right"]).toBe("0.75rem");
+  });
+
+  it("inks the running head in the serif's italic, muted voice", () => {
+    const head = utilitiesRule(".paper-runhead");
+    expect(head["font-style"]).toBe("italic");
+    expect(head["color"]).toBe("var(--muted)");
+    expect(head["font-family"]).toContain('"EB Garamond"');
+    // No opacity: the draft's 70% would drop the muted ink below AA on the
+    // card (2.82:1 light); the token alone reads 5.05:1 / 4.53:1.
+    expect(head["opacity"]).toBeUndefined();
+  });
+
+  it("inks the ghost in the writing hue at the drafted strength", () => {
+    const ghost = rule(".ProseMirror .ghost");
+    expect(ghost["font-style"]).toBe("italic");
+    // The drafted 70%, carried by the document's ink: alpha over the card
+    // measures 3.18:1 (light) / 3.75:1 (dark) — below AA; this mix keeps
+    // the hue's strength and reads 8.25:1 / 7.65:1.
+    expect(ghost["color"]).toBe(
+      "color-mix(in srgb, var(--area-writing) 70%, var(--foreground))",
+    );
   });
 });
 

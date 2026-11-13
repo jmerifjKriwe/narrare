@@ -50,6 +50,7 @@
   "palette.searchLabel": "Search chapters, entities, pages and commands…",
   "proposal.accept": "Accept",
   "proposal.discard": "Discard",
+  "save.autosaved": "Saved automatically",
   "save.confirmLeave": "This chapter has text that was not saved. Leave anyway?",
   "save.failed": "Not saved",
   "save.leaveGo": "Leave anyway",

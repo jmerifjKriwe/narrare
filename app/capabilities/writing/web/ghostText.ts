@@ -1,6 +1,8 @@
 /**
  * The editor's ghost text: a continuation proposal rendered as a ProseMirror
- * decoration at the caret, never as document content.
+ * decoration at the caret, never as document content. Two widgets ride the
+ * one plugin state: the proposal's words, and the keycap pill naming Tab
+ * beside them — both aria-hidden, both gone the moment the ghost resolves.
  *
  * The distinction is the contract. The ghost lives in plugin state — where it
  * sits and what it says — and paints a widget into the editor DOM. The
@@ -13,6 +15,10 @@ import { Extension } from "@tiptap/core";
 import type { Editor } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+
+import { t } from "@shell/lib/i18n";
+import { shortcutKeycap } from "@shell/lib/shortcuts";
+import { KEYCAP_CLASSES } from "@shell/ui/Keycap";
 
 /** The ghost's plugin state: the caret position it arrived at, its text. */
 type Ghost = { pos: number; text: string };
@@ -67,15 +73,36 @@ export function ghostText(handlers: { current: GhostHandlers }): Extension {
             decorations(state) {
               const ghost = ghostKey.getState(state);
               if (!ghost) return null;
-              // One widget span, aria-hidden: the live region carries the
-              // arrival, and screen readers must not read uncommitted text
-              // as document content.
+              // One widget span per piece, aria-hidden: the live region
+              // carries the arrival, and screen readers must not read
+              // uncommitted text as document content. The paint itself is
+              // the stylesheet's (`.ProseMirror .ghost`).
               const span = document.createElement("span");
-              span.className = "ghost text-muted italic";
+              span.className = "ghost";
               span.setAttribute("aria-hidden", "true");
               span.textContent = ghost.text;
+              // The pill beside the pending ghost — the draft's
+              // "[Tab] Vorschlag übernehmen": the shortcut registry's own
+              // keycap and label, never a literal. A hint, not a control:
+              // select-none, aria-hidden, no pointer of its own. The words
+              // are read at paint time, so a locale switch while a ghost
+              // is pending re-inks them at the next transaction — the
+              // editor holds the caret while the ghost stands, so the
+              // next keystroke is that transaction.
+              const pill = document.createElement("span");
+              pill.className =
+                "inline-flex select-none items-center gap-1.5 align-middle whitespace-nowrap rounded-full bg-surface-container-high px-2 py-0.5 text-meta leading-none text-primary";
+              pill.dataset.ghostPill = "true";
+              pill.setAttribute("aria-hidden", "true");
+              const key = document.createElement("kbd");
+              key.className = KEYCAP_CLASSES;
+              key.textContent = shortcutKeycap("editor.acceptGhost");
+              pill.append(key, document.createTextNode(t("settings.shortcut.acceptGhost")));
               return DecorationSet.create(state.doc, [
                 Decoration.widget(ghost.pos, span, { side: 1 }),
+                // side 2: after the words at the same position — beside
+                // the ghost, as the draft draws it.
+                Decoration.widget(ghost.pos, pill, { side: 2 }),
               ]);
             },
             handleKeyDown(view, event) {

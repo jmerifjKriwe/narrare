@@ -30,12 +30,16 @@ import { slashPalette } from "./slashPalette";
  * The frame (F4) is the runhead above the text — book · the title input on
  * the left, the chapter's code, then the save state on the right — the
  * chapter headline inside the card (the position written out as the eyebrow,
- * the name in the prose heading's face, the 1 px rule), and the footer below
- * it: the chapter's word count, counted live with the shared rule, and its
- * position in the book. All of it names the writing, so all of it yields at
- * focus depth 2, where only the writing surface remains. The book's name
- * arrives as a prop; without it the frame still carries the title input and
- * the save state, and the footer counts what it has.
+ * the name in the prose heading's face, the 1 px rule), and the paper's own
+ * chrome around the prose: the running head at the card's top (the book and,
+ * where the row carries one, its author, in the serif's italic muted voice)
+ * and the foot below the prose — the word count and position as before, and
+ * the settled autosave line (the success dot and the state in the paper's
+ * words, from the same one `status` the runhead's indicator reads). All of
+ * it names the writing, so all of it yields at focus depth 2, where only
+ * the writing surface remains. The book's name and the author's name arrive
+ * as props; without them the frame still carries the title input and the
+ * save state, and the footer counts what it has.
  */
 export function ChapterEditor({
   chapterId,
@@ -47,6 +51,7 @@ export function ChapterEditor({
   proposal,
   onProposalResolve,
   bookTitle,
+  bookAuthor,
   chapterNumber,
   chapterTotal,
   focusDepth = 0,
@@ -68,6 +73,10 @@ export function ChapterEditor({
   onProposalResolve?: (accepted: boolean) => void;
   /** The frame's left name: the book's title, muted before the chapter's. */
   bookTitle?: string;
+  /** The paper running head's second name: the book's author, as the
+   *  novel's row holds it. `undefined` (or empty) leaves the head naming
+   *  the book alone — no dangling dash. */
+  bookAuthor?: string;
   /** The chapter's one-based position, for the footer's "n von m" and the
    *  title input's placeholder when the chapter is unnamed. */
   chapterNumber?: number;
@@ -358,6 +367,18 @@ export function ChapterEditor({
         data-editor-card
         className="rounded-[var(--radius-lg)] border border-rule bg-card p-[15px] focus-within:ring-2 focus-within:ring-focus max-[36rem]:-mx-4 max-[36rem]:rounded-none max-[36rem]:border-x-0 max-[36rem]:focus-within:ring-inset"
       >
+        {/* The paper's running head (the draft's page header): the book and,
+            where the row carries one, its author — `book — author` — in the
+            serif's italic muted voice. A rendering, like the headline: the
+            names are the row's, nothing stored here. Without an author the
+            head names the book alone, without a dangling dash. The drafted
+            folio stays off until the app has pages to count:
+            interim: no pagination — follow-up filed in W3's index */}
+        {focusDepth < 2 && bookTitle !== undefined ? (
+          <p data-paper-runhead className="paper-runhead mb-4 select-none text-body">
+            {bookAuthor ? `${bookTitle} — ${bookAuthor}` : bookTitle}
+          </p>
+        ) : null}
         {/* The chapter headline, the draft's article header: the position
             written out as the eyebrow ("Kapitel Eins" — owner decision
             D-3), the chapter's name beneath it in the prose heading's own
@@ -390,7 +411,7 @@ export function ChapterEditor({
             the card's focus-within ring stays the text's own signal. The
             card holds the headline, the sheet and its ledger alone. */}
         <MarkdownEditor
-          className="mt-4"
+          className="mt-4 drop-cap"
           focusRing={false}
           label={t("chapters.editorLabel")}
           value={body}
@@ -401,11 +422,29 @@ export function ChapterEditor({
         {focusDepth < 2 ? (
           <footer className="mt-4 flex items-baseline justify-between gap-4 text-meta text-muted">
             <span className="tabular-nums">{t("chapters.wordCount", { count: words })}</span>
-            {chapterTotal ? (
-              <span className="tabular-nums">
-                {t("chapters.position", { n: chapterNumber ?? 0, m: chapterTotal })}
-              </span>
-            ) : null}
+            <span className="flex items-baseline gap-4">
+              {chapterTotal ? (
+                <span className="tabular-nums">
+                  {t("chapters.position", { n: chapterNumber ?? 0, m: chapterTotal })}
+                </span>
+              ) : null}
+              {/* The paper's settled autosave line (the draft's foot): the
+                  success dot and the state in the paper's own words. It
+                  reads the same one `status` the runhead's SaveIndicator
+                  reads — two renderings, one owner — and stands only while
+                  the text on screen is the server's (the band chip's rule:
+                  idle counts as saved), so a pending or failed write is
+                  named once, beside the text. No live region here: the
+                  runhead's indicator is the state's announcement. The
+                  draft's page marker stays off:
+                  interim: no pagination — follow-up filed in W3's index */}
+              {status === "idle" || status === "saved" ? (
+                <span data-paper-foot-state className="flex items-center gap-1.5">
+                  <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-success" />
+                  {t("save.autosaved")}
+                </span>
+              ) : null}
+            </span>
           </footer>
         ) : null}
       </div>

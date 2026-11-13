@@ -24,6 +24,7 @@ export function EditorColumn({
   status,
   offer,
   bookTitle,
+  bookAuthor,
   focus,
   railFilter,
   retry,
@@ -48,6 +49,9 @@ export function EditorColumn({
   status: SaveStatus;
   offer: string | null;
   bookTitle: string | undefined;
+  /** The book's author, as the row holds it — the paper running head's
+   *  second name; `undefined` leaves the head naming the book alone. */
+  bookAuthor: string | undefined;
   focus: FocusStep;
   railFilter: string | null;
   retry: () => void;
@@ -143,6 +147,7 @@ export function EditorColumn({
                 proposal={offer ?? undefined}
                 onProposalResolve={onProposalResolve}
                 bookTitle={bookTitle}
+                bookAuthor={bookAuthor}
                 chapterNumber={current.position + 1}
                 chapterTotal={chapterTotal}
                 focusDepth={focus}

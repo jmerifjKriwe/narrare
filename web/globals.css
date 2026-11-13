@@ -633,3 +633,56 @@ body {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/*
+ * The ghost's ink (the draft's ghost span): the writing area's hue at the
+ * drafted 70%, carried by the document's ink rather than watered to 70%
+ * alpha — alpha over the card reads 3.18:1 in the light half and 3.75:1 in
+ * the dark one, below AA; this mix keeps the hue's strength and reads
+ * 8.25:1 / 7.65:1. Italic, as the draft draws it: tentative words, not set
+ * type.
+ */
+.ProseMirror .ghost {
+  color: color-mix(in srgb, var(--area-writing) 70%, var(--foreground));
+  font-style: italic;
+}
+
+/*
+ * The paper's utilities (the Literary Modernism drafts): pieces of the
+ * drafting paper named once, so a call site stays words, not a font stack.
+ * Values ride the tokens; the two sizes below are the draft's own metrics —
+ * a drop cap is a drawing, not a type-scale step, so it carries no token.
+ */
+@layer utilities {
+  /*
+   * The running head: the book — author line at the paper's top, the
+   * serif's italic voice on the muted ink. No opacity: the draft's 70%
+   * would drop the muted ink to 2.82:1 on the light card; the token alone
+   * reads 5.05:1 / 4.53:1.
+   */
+  .paper-runhead {
+    color: var(--muted);
+    font-family: "EB Garamond", Georgia, "Times New Roman", serif;
+    font-style: italic;
+  }
+
+  /*
+   * The drop cap on the prose's first paragraph — the draft's literary
+   * first letter, floated in the primary ink. The first <p>, not the first
+   * child: a chapter that opens with a heading still caps its first
+   * paragraph, as a book does. The class sits on the prose root, so the
+   * cap is a rendering — nothing enters the document the autosave stores.
+   * Weight 600, not the draft's bold: the bundled serif carries a real 600
+   * face and no 700 (the headings' rule), and a synthesized 700 would
+   * thicken nothing.
+   */
+  .drop-cap .ProseMirror > p:first-of-type::first-letter {
+    color: var(--primary);
+    float: left;
+    font-family: "EB Garamond", Georgia, "Times New Roman", serif;
+    font-size: 4.5rem;
+    font-weight: 600;
+    line-height: 0.8;
+    margin-right: 0.75rem;
+  }
+}

@@ -370,6 +370,7 @@ export function NovelPage() {
           status={status}
           offer={offer}
           bookTitle={novelQuery.data?.title}
+          bookAuthor={novelQuery.data?.author ?? undefined}
           focus={focus}
           railFilter={railFilter}
           retry={retry}

@@ -13,8 +13,11 @@ import type { ReactNode } from "react";
  * definition for every key the app names.
  */
 
-/** The keycap's shell: one string, worn by every key the app names. */
-const KEYCAP_CLASSES =
+/** The keycap's shell: one string, worn by every key the app names —
+ *  exported for the renderings that build a keycap outside React (the
+ *  ghost's pill paints its `<kbd>` into ProseMirror's DOM), so the shell
+ *  stays one definition the primitive and its trailers share. */
+export const KEYCAP_CLASSES =
   "inline-flex items-center rounded-[var(--radius-sm)] border border-border bg-card px-1.5 py-0.5 text-meta leading-none text-muted";
 
 export function Keycap({ children }: { children: ReactNode }) {
