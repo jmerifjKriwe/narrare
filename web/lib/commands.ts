@@ -93,6 +93,9 @@ export function matchesChapterRow(
 ): boolean {
   const needle = normalize(query.trim());
   if (normalize(chapter.title).includes(needle)) return true;
+  // A custom title owns the row's words: a default-title query must not
+  // surface a chapter that no longer calls itself by that default.
+  if (chapter.title.trim() !== "") return false;
   const n = chapter.position + 1;
   return Object.values(catalogs).some((catalog) => {
     const template = catalog["chapters.defaultTitle" as MessageKey];

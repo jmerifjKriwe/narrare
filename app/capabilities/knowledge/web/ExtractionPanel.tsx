@@ -1,5 +1,5 @@
 import { useParams, useSearch } from "@tanstack/react-router";
-import { useId, useState, useEffect } from "react";
+import { useId, useState, useEffect, useRef } from "react";
 
 import { announce } from "@shell/lib/announce";
 import { useTranslation } from "@shell/lib/i18n";
@@ -41,15 +41,22 @@ export function ExtractionPanel() {
   // newly created (empty) chapter. The fallback moves only when the
   // latched id leaves the list.
   const [latchedFallback, setLatchedFallback] = useState<string | null>(null);
+  const novelRef = useRef(novelId);
   useEffect(() => {
     const rows = chapters.data;
     if (rows === undefined) return;
-    setLatchedFallback((previous) =>
-      previous !== null && rows.some((chapter) => chapter.id === previous)
+    setLatchedFallback((previous) => {
+      // A novel switch invalidates the latch: the previous novel's chapter
+      // must never survive as the fallback for the new one.
+      if (novelRef.current !== novelId) {
+        novelRef.current = novelId;
+        return activeChapterFallback(rows);
+      }
+      return previous !== null && rows.some((chapter) => chapter.id === previous)
         ? previous
-        : activeChapterFallback(rows),
-    );
-  }, [chapters.data]);
+        : activeChapterFallback(rows);
+    });
+  }, [chapters.data, novelId]);
   const chapterId =
     chapterParam !== undefined && (chapters.data ?? []).some((chapter) => chapter.id === chapterParam)
       ? chapterParam
