@@ -192,6 +192,12 @@ describe("the prompt bar", () => {
     for (const pill of pills) {
       expect(pill.getAttribute("aria-disabled")).toBe("true");
       expect(pill.getAttribute("title")).toBe(t("chapters.promptDisabled"));
+      // The disabled look rides the muted ink on the full-opacity
+      // container ground — no opacity dimming: the pills stick to the
+      // fold over the paper, and a half-transparent ground prints the
+      // prose through them.
+      expect(pill.className).toContain("bg-surface-container-low");
+      expect(pill.className).not.toContain("opacity-");
     }
   });
 

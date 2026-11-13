@@ -92,7 +92,11 @@ export function PromptBar({
       </div>
       {/* The quick prompts (the draft's suggestion pills): real copy in
           the band's chip clothes — and as unable to send as the field
-          above them.
+          above them. The disabled look rides the muted ink alone: the
+          pills keep the full-opacity container ground, because the bar
+          sticks to the fold over the paper and a half-transparent ground
+          lets the prose print through (the fidelity gate's legibility
+          finding) — dimming the ink is the field's own disabled voice.
           interim: no prompt parameter on the continuation endpoint — #822 */}
       <div data-prompt-quicks className="flex flex-wrap items-center justify-center gap-2">
         {QUICK_PROMPTS.map((key) => (
@@ -101,7 +105,7 @@ export function PromptBar({
             type="button"
             aria-disabled="true"
             title={t("chapters.promptDisabled")}
-            className="rounded-full bg-surface-container-low px-2.5 py-1 text-meta text-muted opacity-50"
+            className="rounded-full bg-surface-container-low px-2.5 py-1 text-meta text-muted"
           >
             {t(key)}
           </button>
