@@ -360,46 +360,52 @@ describe("the save's invalidation", () => {
     mockLoaded();
     api.PUT.mockResolvedValue({ response: ok() });
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
-    renderAt(`/novels/${NOVEL_ID}`);
-    const user = userEvent.setup({ pointerEventsCheck: 0 });
-    (await editorElement()).focus();
-    await user.keyboard("Ein Satz.");
+    try {
+      renderAt(`/novels/${NOVEL_ID}`);
+      const user = userEvent.setup({ pointerEventsCheck: 0 });
+      (await editorElement()).focus();
+      await user.keyboard("Ein Satz.");
 
-    // The autosave settles (the debounce, then the PUT), and only then —
-    // `onSaved` fires on success only — the page asks the cache to refetch:
-    // the chapter list the rail (and, later, the palette) reads, and the
-    // novels prefix, which covers both the row this page reads and the list
-    // the shelf's hero reads.
-    await waitFor(
-      () => {
-        expect(invalidate).toHaveBeenCalledWith({ queryKey: ["chapters", NOVEL_ID] });
-        expect(invalidate).toHaveBeenCalledWith({ queryKey: ["novels"] });
-      },
-      { timeout: 10000 },
-    );
-    invalidate.mockRestore();
+      // The autosave settles (the debounce, then the PUT), and only then —
+      // `onSaved` fires on success only — the page asks the cache to refetch:
+      // the chapter list the rail (and, later, the palette) reads, and the
+      // novels prefix, which covers both the row this page reads and the list
+      // the shelf's hero reads.
+      await waitFor(
+        () => {
+          expect(invalidate).toHaveBeenCalledWith({ queryKey: ["chapters", NOVEL_ID] });
+          expect(invalidate).toHaveBeenCalledWith({ queryKey: ["novels"] });
+        },
+        { timeout: 10000 },
+      );
+    } finally {
+      invalidate.mockRestore();
+    }
   });
 
   it("a save that did not land invalidates nothing", { timeout: 10_000 }, async () => {
     mockLoaded();
     api.PUT.mockResolvedValue({ response: refused() });
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
-    renderAt(`/novels/${NOVEL_ID}`);
-    const user = userEvent.setup({ pointerEventsCheck: 0 });
-    (await editorElement()).focus();
-    await user.keyboard("Verloren.");
+    try {
+      renderAt(`/novels/${NOVEL_ID}`);
+      const user = userEvent.setup({ pointerEventsCheck: 0 });
+      (await editorElement()).focus();
+      await user.keyboard("Verloren.");
 
-    // The failure is named beside the text…
-    await waitFor(
-      () => expect(screen.getByRole("alert").textContent).toContain(t("save.failed")),
-      { timeout: 5000 },
-    );
-    // …and nothing was asked again: a refetch here would lay the server's
-    // old text over the body the autosave is holding for its retry. The
-    // invalidations ride `onSaved`, which a failed write never reaches.
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(invalidate).not.toHaveBeenCalled();
-    invalidate.mockRestore();
+      // The failure is named beside the text…
+      await waitFor(
+        () => expect(screen.getByRole("alert").textContent).toContain(t("save.failed")),
+        { timeout: 5000 },
+      );
+      // …and nothing was asked again: a refetch here would lay the server's
+      // old text over the body the autosave is holding for its retry. The
+      // invalidations ride `onSaved`, which a failed write never reaches.
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(invalidate).not.toHaveBeenCalled();
+    } finally {
+      invalidate.mockRestore();
+    }
   });
 
   it("patches the saved body into the chapters cache before the refetch can fail", { timeout: 10_000 }, async () => {
@@ -898,6 +904,10 @@ describe("the rail's reorder", () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     await editorElement();
 
+    const chapterGetsBefore = api.GET.mock.calls.filter(
+      ([path]) => path === "/api/writing/novels/{novel_id}/chapters",
+    ).length;
+
     titledRow("Erstes").focus();
     await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
 
@@ -909,6 +919,11 @@ describe("the rail's reorder", () => {
     const cached = queryClient.getQueryData<Array<Chapter>>(["chapters", NOVEL_ID]);
     expect(cached?.map((row) => row.id)).toEqual([CHAPTER_ID, SECOND_CHAPTER_ID]);
     expect(cached?.map((row) => row.position)).toEqual([0, 1]);
+    // no refetch followed the lone failure (#691)
+    const chapterGetsAfter = api.GET.mock.calls.filter(
+      ([path]) => path === "/api/writing/novels/{novel_id}/chapters",
+    ).length;
+    expect(chapterGetsAfter).toBe(chapterGetsBefore);
   });
 
   it("a_drag_and_drop_moves_the_chapter", { timeout: 10_000 }, async () => {
