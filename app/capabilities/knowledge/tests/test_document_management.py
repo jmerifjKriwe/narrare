@@ -156,3 +156,10 @@ async def test_delete_document_answers_404_for_a_foreign_document() -> None:
         chunks = await session.scalar(sql("SELECT count(*) FROM chunks"))
     assert documents == 1
     assert chunks == 1
+
+
+async def test_upload_answer_carries_the_real_chunk_count() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        status, body = await _post_document(client, TEXT, "Notizen")
+        assert status == 201
+        assert body["chunk_count"] == 3

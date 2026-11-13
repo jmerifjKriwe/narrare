@@ -119,6 +119,9 @@ async def test_patch_refuses_an_over_long_language() -> None:
         )
         assert refused.status_code == 422
         assert refused.json()["detail"] == "invalid language"
+        # nothing was written
+        fetched = await client.get(f"/api/writing/novels/{novel_id}")
+        assert fetched.json()["language"] is None
 
 
 async def test_patch_clears_the_language_with_null_and_with_empty_string() -> None:
@@ -211,6 +214,51 @@ async def test_patch_bumps_updated_at() -> None:
         assert patched.status_code == 200
         after = datetime.fromisoformat(patched.json()["updated_at"])
         assert after > before
+
+
+async def test_patch_refuses_an_over_long_title() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client)
+        refused = await client.patch(f"/api/writing/novels/{novel_id}", json={"title": "x" * 201})
+        assert refused.status_code == 422
+        assert refused.json()["detail"] == "invalid title"
+        fetched = await client.get(f"/api/writing/novels/{novel_id}")
+        assert fetched.json()["title"] == "Der Nebel"
+
+
+async def test_patch_trims_author_and_blurb_spaces_to_none() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client, author="A", blurb="B")
+        patched = await client.patch(
+            f"/api/writing/novels/{novel_id}", json={"author": "   ", "blurb": "   "}
+        )
+        assert patched.status_code == 200
+        assert patched.json()["author"] is None
+        assert patched.json()["blurb"] is None
+
+
+async def test_patch_with_one_good_and_one_refused_field_writes_nothing() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client, genre="Mystery")
+        refused = await client.patch(
+            f"/api/writing/novels/{novel_id}",
+            json={"genre": "Sci-Fi", "title": ""},
+        )
+        assert refused.status_code == 422
+        fetched = await client.get(f"/api/writing/novels/{novel_id}")
+        assert fetched.json()["genre"] == "Mystery"
+        assert fetched.json()["title"] == "Der Nebel"
+
+
+async def test_patch_answer_carries_last_exported_at() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client)
+        patched = await client.patch(
+            f"/api/writing/novels/{novel_id}", json={"author": "J. Autorin"}
+        )
+        assert patched.status_code == 200
+        assert "last_exported_at" in patched.json()
+        assert patched.json()["last_exported_at"] is None
 
 
 async def test_patch_answers_404_for_a_foreign_novel() -> None:
@@ -410,3 +458,37 @@ async def test_delete_novel_answers_404_for_a_foreign_novel() -> None:
             text("SELECT count(*) FROM novels WHERE id = :id"), {"id": foreign_id}
         )
         assert kept == 1
+
+
+async def test_delete_novel_answers_404_for_a_never_known_id() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        deleted = await client.delete(f"/api/writing/novels/{uuid4()}")
+        assert deleted.status_code == 404
+        assert deleted.json()["detail"] == "novel not found"
+
+
+async def test_delete_chapter_answers_404_for_a_never_known_id() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        deleted = await client.delete(f"/api/writing/chapters/{uuid4()}")
+        assert deleted.status_code == 404
+        assert deleted.json()["detail"] == "chapter not found"
+
+
+async def test_delete_last_chapter_keeps_empty_novel_and_bumps_updated_at() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client)
+        chapter = await client.post(
+            f"/api/writing/novels/{novel_id}/chapters", json={"title": "Einziger"}
+        )
+        assert chapter.status_code == 201
+        chapter_id = chapter.json()["id"]
+        fetched = await client.get(f"/api/writing/novels/{novel_id}")
+        before = datetime.fromisoformat(fetched.json()["updated_at"])
+
+        deleted = await client.delete(f"/api/writing/chapters/{chapter_id}")
+        assert deleted.status_code == 204
+
+        after = await client.get(f"/api/writing/novels/{novel_id}")
+        assert after.status_code == 200
+        assert after.json()["chapter_count"] == 0
+        assert datetime.fromisoformat(after.json()["updated_at"]) > before

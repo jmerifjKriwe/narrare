@@ -213,3 +213,21 @@ async def test_dismissing_a_finding_does_not_advance_the_novel() -> None:
         dismissed = await client.post(f"/api/knowledge/findings/{finding.id}/dismiss")
         assert dismissed.status_code == 200
     assert await _written_at(novel.id) == before
+
+
+async def test_a_refused_canon_write_leaves_the_novel_timestamp_alone() -> None:
+    novel, [mira, haus] = await _seed_novel("Mira", "Haus")
+    async with _client() as client:
+        first = await client.post(
+            f"/api/knowledge/entities/{mira.id}/relations",
+            json={"to_entity_id": str(haus.id), "relation_type": "lebt_in"},
+        )
+        assert first.status_code == 201
+    before = await _written_at(novel.id)
+    async with _client() as client:
+        refused = await client.post(
+            f"/api/knowledge/entities/{mira.id}/relations",
+            json={"to_entity_id": str(haus.id), "relation_type": "lebt_in"},
+        )
+        assert refused.status_code == 409
+    assert await _written_at(novel.id) == before
