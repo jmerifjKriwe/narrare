@@ -3,8 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { applyFormality } from "./formality";
 import { catalogs, locales } from "./generated/catalogs";
-import { overlays } from "./generated/overlays";
-import { t } from "./i18n";
+import { t, type MessageKey } from "./i18n";
 import { activeLocale, adoptServerLocale, applyLocale } from "./locale";
 
 /**
@@ -43,14 +42,80 @@ describe("ICU message format", () => {
     }
   });
 
-  it("fills a placeholder from the catalog the app actually renders", () => {
-    // shell.paletteOpen is the one central message with a parameter while
-    // the rebuilt screens bring their copy back. The expected value comes
-    // from the active catalog, so the test survives a locale change; a
-    // formatter that never ran would return the raw "{key}".
-    const message = catalogs[activeLocale()]["shell.paletteOpen"];
-    expect(t("shell.paletteOpen", { key: "⌘K" })).toBe(message.replace("{key}", "⌘K"));
-    expect(t("shell.paletteOpen", { key: "⌘K" })).not.toContain("{");
+  it("fills the wizard's live counters from the active catalog", () => {
+    // #849: shell.paletteOpen was a dead production key kept only as this
+    // fixture — the palette is gone, and the key with it. The pin now rides
+    // the wizard's own parameterized copy: the step counter and the canon
+    // badge. The expected value comes from the active catalog, so the test
+    // survives a locale change; a formatter that never ran would return the
+    // raw "{step}".
+    const counter = catalogs[activeLocale()]["setup.structure.stepOf"];
+    expect(t("setup.structure.stepOf", { step: 2, total: 4 })).toBe(
+      counter.replace("{step}", "2").replace("{total}", "4"),
+    );
+    expect(t("setup.structure.stepOf", { step: 2, total: 4 })).not.toContain("{");
+
+    const badge = catalogs[activeLocale()]["setup.aiRules.canon.badge"];
+    expect(t("setup.aiRules.canon.badge", { n: 4 })).toBe(badge.replace("{n}", "4"));
+    expect(t("setup.aiRules.canon.badge", { n: 4 })).not.toContain("{");
+  });
+
+  it("quotes its apostrophes so the placeholders still fill", () => {
+    // A lone ' directly before a placeholder starts an ICU quoted literal:
+    // the braces print instead of the value — the English receipt's
+    // regression (#847). The wizard's copy carries the shape: fr's doubled
+    // apostrophe, en's doubled quotes around {title}. Every locale must
+    // interpolate, never quote the placeholder away.
+    const cases: { key: MessageKey; params: Record<string, string | number>; value: string }[] = [
+      { key: "setup.basis.demoEyebrow", params: { n: 1 }, value: "1" },
+      { key: "setup.basis.banner.title", params: { title: "Dead Signal" }, value: "Dead Signal" },
+      { key: "setup.structure.banner.demoTitle", params: { title: "Dead Signal" }, value: "Dead Signal" },
+    ];
+    for (const candidate of locales) {
+      for (const { key, params, value } of cases) {
+        const rendered = String(
+          new IntlMessageFormat(catalogs[candidate][key], candidate).format(params),
+        );
+        expect(rendered, `${candidate}/${key}`).not.toMatch(/[{}]/);
+        expect(rendered, `${candidate}/${key}`).toContain(value);
+      }
+    }
+    // The French eyebrow keeps exactly one apostrophe: '' is the escape that
+    // prints a literal apostrophe in any ICU, where a lone ' starts quoted
+    // text — directly before a placeholder it quotes the placeholder itself.
+    const fr = String(
+      new IntlMessageFormat(catalogs.fr["setup.basis.demoEyebrow"], "fr").format({ n: 1 }),
+    );
+    expect(fr).toBe("Modèle d'atelier 1");
+    // The failure shape itself, pinned so the escape's reason stays visible:
+    // a lone apostrophe directly before the placeholder quotes it — the
+    // braces print instead of the value (the receipt's `'{name}'` regression).
+    const broken = "Modèle d'atelier '{n}'";
+    expect(String(new IntlMessageFormat(broken, "fr").format({ n: 1 }))).toContain("{n}");
+  });
+
+  it("carries the chapter count exactly once in every locale", () => {
+    // The old errors.* sentences split the formatted text around the link's
+    // words to make them the link; a dropped or repeated placeholder broke
+    // the split (#847). The chapters plural is the live carrier of that
+    // shape: the count must survive formatting exactly once — a dropped #
+    // loses the number, a doubled one splits the surface at the wrong
+    // occurrence — in every locale, singular and plural.
+    const carriers: { key: MessageKey; params: Record<string, string | number>; count: number }[] = [
+      { key: "setup.basis.demoChapters", params: { count: 1 }, count: 1 },
+      { key: "setup.basis.demoChapters", params: { count: 3 }, count: 3 },
+      { key: "setup.landing.meta", params: { genre: "Science Fiction", count: 3 }, count: 3 },
+    ];
+    for (const candidate of locales) {
+      for (const { key, params, count } of carriers) {
+        const formatted = String(
+          new IntlMessageFormat(catalogs[candidate][key], candidate).format(params),
+        );
+        const occurrences = formatted.split(String(count)).length - 1;
+        expect(occurrences, `${candidate}/${key} count=${count}`).toBe(1);
+        expect(formatted, `${candidate}/${key}`).not.toMatch(/[{}#]/);
+      }
+    }
   });
 
   it("uses each locale's own plural rules", () => {
@@ -70,11 +135,14 @@ describe("the formal register", () => {
     applyLocale("en");
   });
 
-  // The end-to-end overlay assertions — a formal variant rendered beside
-  // its informal base — left with the capability catalogs that carried
-  // their strings; the demolition leaves no live overlay key. The gates
-  // below keep the register's machinery pinned over the keys that remain,
-  // and the end-to-end form returns with the rebuilt copy (W2).
+  // The overlay registry is empty by design: the owner chose the du register
+  // for the rebuilt copy, and W2 ships no formal register. The end-to-end
+  // overlay assertions — a formal variant rendered beside its informal base —
+  // and the "parses every overlay message" pin left with the capability
+  // catalogs that carried their strings; iterating the empty registry proved
+  // nothing (#843), so the parse pin is deleted rather than kept vacuous.
+  // Both return with the first formal overlay. The machinery below stays
+  // pinned over the keys that remain, so the fall-through cannot rot meanwhile.
 
   it("falls through to the base where the overlay is silent", () => {
     applyLocale("de");
@@ -88,18 +156,6 @@ describe("the formal register", () => {
     applyFormality("formal");
 
     expect(t("nav.back")).toBe(catalogs.en["nav.back"]);
-  });
-
-  it("parses every overlay message", () => {
-    for (const [locale, overlay] of Object.entries(overlays)) {
-      if (overlay === undefined) continue;
-      for (const [key, message] of Object.entries(overlay)) {
-        expect(
-          () => new IntlMessageFormat(message, locale),
-          `${locale}/${key}`,
-        ).not.toThrow();
-      }
-    }
   });
 });
 

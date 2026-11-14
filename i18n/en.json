@@ -19,6 +19,5 @@
   "needs.llm": "a text model",
   "shell.error": "This page could not be shown.",
   "shell.notFound": "This page does not exist.",
-  "shell.notFoundBody": "That address belongs to no screen in this app — the atelier is one click away.",
-  "shell.paletteOpen": "Open the command palette, {key}"
+  "shell.notFoundBody": "That address belongs to no screen in this app — the atelier is one click away."
 }

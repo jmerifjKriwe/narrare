@@ -19,6 +19,5 @@
   "needs.llm": "ein Textmodell",
   "shell.error": "Diese Seite konnte nicht angezeigt werden.",
   "shell.notFound": "Diese Seite existiert nicht.",
-  "shell.notFoundBody": "Diese Adresse gehört zu keinem Bildschirm der App — das Atelier ist einen Klick entfernt.",
-  "shell.paletteOpen": "Befehlspalette öffnen, {key}"
+  "shell.notFoundBody": "Diese Adresse gehört zu keinem Bildschirm der App — das Atelier ist einen Klick entfernt."
 }

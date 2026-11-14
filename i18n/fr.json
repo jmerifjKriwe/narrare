@@ -19,6 +19,5 @@
   "needs.llm": "un modèle de texte",
   "shell.error": "Cette page n'a pas pu être affichée.",
   "shell.notFound": "Cette page n'existe pas.",
-  "shell.notFoundBody": "Cette adresse ne correspond à aucun écran de l'application — l'atelier est à un clic.",
-  "shell.paletteOpen": "Ouvrir la palette de commandes, {key}"
+  "shell.notFoundBody": "Cette adresse ne correspond à aucun écran de l'application — l'atelier est à un clic."
 }
