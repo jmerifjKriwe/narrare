@@ -97,6 +97,27 @@ describe("BookCover anatomy", () => {
     expect(cls).toContain("rgba(0,0,0,0.45)");
   });
 
+  it("scales the right radius with the book (R13, Sektion 04); the spine stays square", () => {
+    const radii: Record<CoverSize, string> = {
+      wizard: "rounded-r-[6px]", // spec 701
+      hero: "rounded-r-[5px]", // spec 724
+      shelf: "rounded-r-[4px]", // spec 747
+      mini: "rounded-r-[2px]", // spec 764
+    };
+    for (const size of Object.keys(radii) as CoverSize[]) {
+      const { container, unmount } = render(<BookCover title="Dead Signal" size={size} />);
+      const el = root(container);
+      expect(el.classList.contains("rounded-l-none")).toBe(true);
+      expect(el.classList.contains(radii[size])).toBe(true);
+      // The radius scales with the book, it is not fixed: no other size's
+      // radius leaks onto this root.
+      for (const [other, radius] of Object.entries(radii)) {
+        if (other !== size) expect(el.classList.contains(radius)).toBe(false);
+      }
+      unmount();
+    }
+  });
+
   it("ports the spine crease: pale grounds the pale crease, dark grounds the black", () => {
     const cases: Array<[string, string]> = [
       ["Mystery", "rgba(44,24,16,0.2)"], // pale ground → pale crease

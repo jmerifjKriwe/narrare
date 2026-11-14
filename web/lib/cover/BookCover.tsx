@@ -99,11 +99,14 @@ const SHADOW =
   "[box-shadow:light-dark(0_1px_2px_rgba(44,24,16,0.06),0_2px_4px_rgba(0,0,0,0.6)),light-dark(0_4px_12px_rgba(44,24,16,0.08),0_8px_24px_rgba(0,0,0,0.45)),light-dark(inset_1px_0_0_rgba(255,255,255,0.15),inset_1px_0_0_rgba(255,255,255,0.08)),light-dark(inset_-1px_0_0_rgba(0,0,0,0.1),inset_-1px_0_0_rgba(0,0,0,0.4))]";
 
 /** Per-size typography and ornament scale (Sektion 04, 685–780). The miniature
- * reads only padding, creaseWidth and pad — it keeps the monogram alone. */
+ * reads only padding, creaseWidth, pad and rightRadius — it keeps the monogram
+ * alone. The right radius scales with the book (R13): 6/5/4/2px down the
+ * matrix, the spine side stays square at every size. */
 interface SizeMetrics {
   padding: string;
   creaseWidth: string;
   pad: string;
+  rightRadius: string;
   eyebrow: string;
   title: string;
   titleMonumental: string;
@@ -119,6 +122,7 @@ const METRICS: Record<CoverSize, SizeMetrics> = {
     padding: "p-5",
     creaseWidth: "w-3",
     pad: "pl-2",
+    rightRadius: "rounded-r-[6px]",
     eyebrow: "text-[10px] tracking-[0.2em]",
     title: "text-[21px]",
     titleMonumental: "text-[24px]",
@@ -132,6 +136,7 @@ const METRICS: Record<CoverSize, SizeMetrics> = {
     padding: "p-4",
     creaseWidth: "w-2.5",
     pad: "pl-1.5",
+    rightRadius: "rounded-r-[5px]",
     eyebrow: "text-[8px] tracking-widest",
     title: "text-[18px]",
     titleMonumental: "text-[20px]",
@@ -145,6 +150,7 @@ const METRICS: Record<CoverSize, SizeMetrics> = {
     padding: "p-3",
     creaseWidth: "w-2",
     pad: "pl-1",
+    rightRadius: "rounded-r-[4px]",
     eyebrow: "text-[7px] tracking-wider",
     title: "text-[14px]",
     titleMonumental: "text-[16px]",
@@ -158,6 +164,7 @@ const METRICS: Record<CoverSize, SizeMetrics> = {
     padding: "p-1",
     creaseWidth: "w-1",
     pad: "pl-0.5",
+    rightRadius: "rounded-r-[2px]",
     eyebrow: "text-[6px] tracking-wider",
     title: "text-[9px]",
     titleMonumental: "text-[9px]",
@@ -234,7 +241,8 @@ export function BookCover({
       data-channel={model.channel}
       style={{ width: model.width, height: model.height }}
       className={cx(
-        "relative flex flex-col overflow-hidden rounded-l-none rounded-r-[6px] select-none",
+        "relative flex flex-col overflow-hidden rounded-l-none select-none",
+        m.rightRadius,
         model.monogram ? "justify-end" : "justify-between",
         palette.ground,
         palette.ink,
