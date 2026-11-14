@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projekt-Setup: Start oder Demo-Vorlage wählen (Midnight Ink) — Narrare</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['"EB Garamond"', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            ground: '#16140F',
+            panel: '#1C1914',
+            card: '#211F1A',
+            soft: '#2C2922',
+            hairline: '#35332D',
+            divider: '#302D28',
+            primaryText: '#DFDEDA',
+            mutedText: '#89867F',
+            amberPrimary: '#D39562',
+            amberFocus: '#F2AD73',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #16140F;
+      color: #DFDEDA;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .font-serif-prose {
+      font-family: 'EB Garamond', serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #16140F;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #35332D;
+      border-radius: 3px;
+    }
+    /* Subtiler Buchdeckel-Schatten */
+    .book-shadow {
+      box-shadow: 
+        -4px 0 10px rgba(0, 0, 0, 0.45),
+        4px 4px 18px rgba(0, 0, 0, 0.6),
+        inset -1px 0 0 rgba(255, 255, 255, 0.05),
+        inset 2px 0 3px rgba(0, 0, 0, 0.6);
+    }
+    .spine-crease {
+      background: linear-gradient(90deg, 
+        rgba(0,0,0,0.5) 0%, 
+        rgba(255,255,255,0.06) 12%, 
+        rgba(0,0,0,0.4) 24%, 
+        transparent 36%);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#16140F] text-[#DFDEDA] antialiased flex flex-col justify-between selection:bg-[#D39562]/30 selection:text-[#F2AD73]">
+
+  <!-- TOP NAVIGATION / HEADER -->
+  <header class="border-b border-[#302D28] bg-[#1C1914] px-6 py-3.5 sticky top-0 z-30">
+    <div class="max-w-[1400px] mx-auto flex items-center justify-between gap-6">
+      
+      <!-- Brand & Breadcrumb -->
+      <div class="flex items-center gap-3 shrink-0">
+        <div class="w-8 h-8 rounded bg-[#2C2922] border border-[#35332D] flex items-center justify-center text-[#D39562] font-serif font-bold text-lg shadow-sm">
+          N
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="font-semibold text-[#DFDEDA] tracking-tight">Atelier Narrare</span>
+          <span class="text-[#89867F] font-serif">/</span>
+          <span class="text-[#89867F]">Projekt-Setup</span>
+        </div>
+        <div class="hidden lg:flex items-center gap-2 pl-3 border-l border-[#302D28] text-[11px] text-[#89867F]">
+          <span class="tracking-widest uppercase text-[10px]">Schreibjahr 2026</span>
+          <span class="inline-block w-1 h-1 rounded-full bg-[#89867F]"></span>
+          <span>Edition Prima</span>
+        </div>
+      </div>
+
+      <!-- Stepper: Schritt 1 von 4 -->
+      <div class="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#16140F] border border-[#35332D] text-xs">
+        <!-- Step 1 Active -->
+        <div class="flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#2C2922] border border-[#D39562]/40 text-[#DFDEDA] font-medium shadow-sm">
+          <span class="w-4 h-4 rounded-full bg-[#D39562] text-[#16140F] font-bold text-[10px] flex items-center justify-center">1</span>
+          <span class="text-[#F2AD73]">Projekt-Basis &amp; Vorlage</span>
+        </div>
+        <span class="text-[#35332D] px-0.5">›</span>
+        <!-- Step 2 -->
+        <div class="flex items-center gap-1.5 px-2 text-[#89867F] hover:text-[#DFDEDA] transition-colors">
+          <span class="text-[11px]">2.</span>
+          <span>Struktur</span>
+        </div>
+        <span class="text-[#35332D] px-0.5">›</span>
+        <!-- Step 3 -->
+        <div class="flex items-center gap-1.5 px-2 text-[#89867F] hover:text-[#DFDEDA] transition-colors">
+          <span class="text-[11px]">3.</span>
+          <span>KI-Partner</span>
+        </div>
+        <span class="text-[#35332D] px-0.5">›</span>
+        <!-- Step 4 -->
+        <div class="flex items-center gap-1.5 px-2 text-[#89867F] hover:text-[#DFDEDA] transition-colors">
+          <span class="text-[11px]">4.</span>
+          <span>Bereitstellung</span>
+        </div>
+      </div>
+
+      <!-- Right Actions: Language & Context Link -->
+      <div class="flex items-center gap-4 shrink-0 text-xs">
+        <div class="flex items-center gap-1.5 text-[11px] font-medium text-[#89867F] bg-[#16140F] px-2.5 py-1 rounded border border-[#302D28]">
+          <span class="text-[#D39562] font-semibold cursor-pointer">DE</span>
+          <span class="text-[#35332D]">|</span>
+          <span class="hover:text-[#DFDEDA] cursor-pointer transition-colors">EN</span>
+          <span class="text-[#35332D]">|</span>
+          <span class="hover:text-[#DFDEDA] cursor-pointer transition-colors">FR</span>
+        </div>
+        <button class="w-8 h-8 rounded flex items-center justify-center text-[#89867F] hover:text-[#DFDEDA] hover:bg-[#2C2922] transition-colors" title="Handbuch öffnen">
+          <span class="material-symbols-outlined text-[18px]">menu_book</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-[1360px] w-full mx-auto px-6 py-9 space-y-8">
+
+    <!-- HERO INTRO -->
+    <div class="space-y-2">
+      <div class="flex items-center gap-2 text-[11px] font-semibold tracking-wider text-[#D39562] uppercase">
+        <span class="h-[1px] w-4 bg-[#D39562]"></span>
+        <span>Atelier-Genesis</span>
+      </div>
+      <h1 class="text-3xl md:text-4xl font-serif text-[#DFDEDA] font-normal tracking-tight">
+        Wie möchtest du dein literarisches Werk beginnen?
+      </h1>
+      <p class="text-sm text-[#89867F] max-w-3xl leading-relaxed">
+        Wähle eine unbeschriebene Leinwand für deine eigene Schöpfung oder betritt eines unserer drei kuratierten Werk-Ensembles samt verankertem Figuren- und Schauplatzgefüge.
+      </p>
+    </div>
+
+    <!-- OPTION A: REINE LEINWAND (TABULA RASA) -->
+    <section class="rounded-xl border border-[#302D28] bg-[#1C1914] p-6 lg:p-7 shadow-sm transition-all hover:border-[#35332D]">
+      <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-5 border-b border-[#302D28]">
+        <div>
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wide uppercase bg-[#2C2922] text-[#89867F] border border-[#35332D]">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#89867F]"></span>
+              Option A • Reine Leinwand (Tabula Rasa)
+            </span>
+          </div>
+          <h2 class="text-lg md:text-xl font-medium text-[#DFDEDA] tracking-tight">
+            Unbeschriebenes Manuskript konfigurieren
+          </h2>
+          <p class="text-xs text-[#89867F] mt-0.5">
+            Beginne ohne Vorgaben mit deinem eigenen Text und individuellen Gesetzmäßigkeiten.
+          </p>
+        </div>
+        <button class="shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#211F1A] hover:bg-[#2C2922] border border-[#35332D] text-xs font-medium text-[#DFDEDA] transition-all hover:border-[#D39562]/40 active:scale-95">
+          <span class="material-symbols-outlined text-[16px] text-[#D39562]">edit_note</span>
+          <span>Als leeres Werk starten</span>
+        </button>
+      </div>
+
+      <!-- Konfigurations-Gitter + Live-Buchcover -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6">
+        
+        <!-- Formularfelder (Spalte links, 7 Cols) -->
+        <div class="lg:col-span-7 space-y-6">
+          
+          <!-- Arbeitstitel -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between text-xs">
+              <label for="work-title" class="font-medium text-[#DFDEDA]">Arbeitstitel des Manuskripts</label>
+              <span class="text-[11px] text-[#89867F] flex items-center gap-1 font-serif italic">
+                <span class="material-symbols-outlined text-[13px] text-[#D39562]">sync</span>
+                Der Titel synchronisiert sich in Echtzeit auf das Cover
+              </span>
+            </div>
+            <div class="relative">
+              <input 
+                id="work-title"
+                type="text" 
+                value="Die Winterchronik von Station Sieben"
+                class="w-full bg-[#211F1A] border border-[#35332D] rounded-lg px-3.5 py-2.5 text-sm text-[#DFDEDA] placeholder-[#89867F] focus:outline-none focus:border-[#D39562] focus:ring-1 focus:ring-[#D39562] transition-colors"
+              />
+            </div>
+          </div>
+
+          <!-- Literarisches Genre & Tonalität (Tag-Pills) -->
+          <div class="space-y-2">
+            <label class="block text-xs font-medium text-[#DFDEDA]">Literarisches Genre &amp; Tonalität</label>
+            <div class="flex flex-wrap gap-2">
+              
+              <!-- Tag: Sci-Fi (Selected) -->
+              <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#2C2922] border border-[#D39562] text-[#F2AD73] shadow-sm transition-all">
+                <span class="material-symbols-outlined text-[14px]">check</span>
+                <span>Science Fiction &amp; Speculative</span>
+              </button>
+
+              <!-- Tag: Mystery -->
+              <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#211F1A] border border-[#35332D] text-[#89867F] hover:text-[#DFDEDA] hover:border-[#89867F] transition-all">
+                <span>Mystery &amp; Noir</span>
+              </button>
+
+              <!-- Tag: Historisch -->
+              <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#211F1A] border border-[#35332D] text-[#89867F] hover:text-[#DFDEDA] hover:border-[#89867F] transition-all">
+                <span>Historischer Roman</span>
+              </button>
+
+              <!-- Tag: Belletristik (Selected) -->
+              <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#2C2922] border border-[#D39562] text-[#F2AD73] shadow-sm transition-all">
+                <span class="material-symbols-outlined text-[14px]">check</span>
+                <span>Literarische Belletristik</span>
+              </button>
+
+              <!-- Tag: Low Fantasy -->
+              <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#211F1A] border border-[#35332D] text-[#89867F] hover:text-[#DFDEDA] hover:border-[#89867F] transition-all">
+                <span>Low Fantasy / Magischer Realismus</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Ziel-Umfang des Manuskripts (65.000 Wörter) -->
+          <div class="space-y-2">
+            <label class="block text-xs font-medium text-[#DFDEDA]">Ziel-Umfang des Manuskripts</label>
+            <div class="p-4 rounded-lg bg-[#211F1A] border border-[#35332D] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div class="flex items-baseline gap-2">
+                <span class="px-3 py-1.5 rounded bg-[#16140F] border border-[#35332D] font-mono text-base font-semibold text-[#DFDEDA]">
+                  65.000
+                </span>
+                <span class="text-xs text-[#89867F]">Wörter</span>
+              </div>
+
+              <!-- Format-Kategorie Anzeige & Skala -->
+              <div class="flex-1 sm:max-w-xs space-y-1.5">
+                <div class="flex justify-between items-center text-[10px] text-[#89867F] uppercase tracking-wider">
+                  <span class="text-[#D39562] font-semibold">Standard-Roman</span>
+                  <span>60k – 80k W.</span>
+                </div>
+                <!-- Progress Line -->
+                <div class="h-1.5 w-full bg-[#16140F] rounded-full overflow-hidden relative">
+                  <div class="absolute left-0 top-0 bottom-0 bg-[#D39562]" style="width: 65%;"></div>
+                  <!-- Marker -->
+                  <div class="absolute top-0 bottom-0 w-1 bg-[#F2AD73] rounded-full" style="left: 65%;"></div>
+                </div>
+                <div class="flex justify-between text-[9px] text-[#89867F]">
+                  <span>Kurzform</span>
+                  <span>Novelle</span>
+                  <span class="text-[#DFDEDA] font-medium">Roman</span>
+                  <span>Epos</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-[11px] text-[#89867F]">
+              Entspricht ca. 240 Normseiten (Buchdruckformat).
+            </p>
+          </div>
+
+        </div>
+
+        <!-- LEBENDE BUCHCOVER-VORSCHAU (Spalte rechts, 5 Cols) -->
+        <div class="lg:col-span-5 flex flex-col items-center justify-center p-4 bg-[#16140F]/60 rounded-xl border border-[#302D28]/80">
+          <div class="text-[10px] uppercase tracking-widest text-[#89867F] font-semibold mb-3">
+            Haptische Einband-Vorschau
+          </div>
+
+          <!-- 3:4 Physisches Buchcover -->
+          <div class="relative w-52 h-[276px] rounded-r-md rounded-l-sm bg-[#1A1813] border-y border-r border-[#35332D] book-shadow p-5 flex flex-col justify-between overflow-hidden">
+            
+            <!-- Buchrücken-Knick & Textur -->
+            <div class="absolute left-0 top-0 bottom-0 w-4 spine-crease pointer-events-none"></div>
+            <!-- Subtile Papier-Körnung -->
+            <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-[#2C2922]/10 to-white/5 pointer-events-none"></div>
+
+            <!-- Kopfzeile auf Cover -->
+            <div class="relative z-10 pl-2">
+              <div class="text-[8px] uppercase tracking-[0.2em] text-[#D39562]/80 font-mono">
+                Narrare Atelier • Edition Prima
+              </div>
+              <div class="w-6 h-[1px] bg-[#D39562]/40 mt-1"></div>
+            </div>
+
+            <!-- Titel mittig (dynamisch) -->
+            <div class="relative z-10 pl-2 my-auto py-2">
+              <div class="font-serif text-lg font-normal text-[#DFDEDA] leading-snug tracking-normal italic drop-shadow-sm">
+                Die Winterchronik von Station Sieben
+              </div>
+              <div class="text-[10px] text-[#89867F] mt-2 font-serif">
+                Ein Manuskript von <span class="text-[#DFDEDA]">Dir</span>
+              </div>
+            </div>
+
+            <!-- Fußzeile auf Cover (Verlag) -->
+            <div class="relative z-10 pl-2 pt-2 border-t border-[#35332D]/70 flex items-center justify-between text-[8px] text-[#89867F] uppercase tracking-widest font-mono">
+              <span>Narrare Press</span>
+              <span>Anno 2026</span>
+            </div>
+
+          </div>
+
+          <div class="text-[11px] text-[#89867F] mt-3 font-serif italic text-center">
+            Pergamenteinband mit Goldblindprägung (Simulierter Vorabdruck)
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- OPTION B: KURATIERTES ATELIER (DEMO-VORLAGEN) -->
+    <section class="rounded-xl border border-[#D39562]/40 bg-[#1C1914] p-6 lg:p-7 shadow-md relative">
+      
+      <!-- Sektions-Kopf -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-[#302D28]">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wide uppercase bg-[#D39562]/15 text-[#F2AD73] border border-[#D39562]/30">
+              <span class="material-symbols-outlined text-[12px]">auto_awesome</span>
+              Option B • Empfohlen zum Entdecken
+            </span>
+          </div>
+          <h2 class="text-xl font-medium text-[#DFDEDA] tracking-tight">
+            Kuratiertes Atelier — mit Vorlage starten
+          </h2>
+          <p class="text-xs text-[#89867F] mt-0.5">
+            Echte literarische Welten mit fertiger Szenenarchitektur, erprobter Figuren-Dynamik und sofort schreibbereitem Workspace.
+          </p>
+        </div>
+      </div>
+
+      <!-- Drei kuratierte Demo-Karten (KEINE Statistik-Chips, nur Titel, Genre, Beschreibung, Kapitelzahl) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        
+        <!-- CARD 1: DEAD SIGNAL (AKTIV / AUSGEWÄHLT) -->
+        <div class="rounded-lg bg-[#211F1A] border-2 border-[#D39562] p-5 flex flex-col justify-between relative shadow-lg transition-transform hover:-translate-y-0.5">
+          <!-- Active Badge -->
+          <div class="absolute -top-3 right-4 px-2.5 py-0.5 rounded-full bg-[#D39562] text-[#16140F] font-bold text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm">
+            <span class="material-symbols-outlined text-[13px]">check</span>
+            <span>Ausgewählt</span>
+          </div>
+
+          <div class="space-y-3.5">
+            <!-- Miniatur Buchcover-Kopf -->
+            <div class="h-28 rounded bg-[#16140F] border border-[#35332D] p-3.5 flex flex-col justify-between relative overflow-hidden book-shadow">
+              <div class="absolute left-0 top-0 bottom-0 w-2 spine-crease"></div>
+              <div class="flex justify-between items-start text-[8px] text-[#89867F] uppercase tracking-widest font-mono">
+                <span>Atelier-Vorlage 01</span>
+                <span class="material-symbols-outlined text-[14px] text-[#D39562]">satellite_alt</span>
+              </div>
+              <div>
+                <div class="font-serif italic text-base text-[#DFDEDA] font-normal leading-tight">Dead Signal</div>
+                <div class="text-[9px] text-[#89867F] mt-0.5">Station 7 Chroniken</div>
+              </div>
+              <div class="flex justify-between text-[8px] text-[#89867F] font-mono">
+                <span>SCI-FI NOIR</span>
+                <span class="text-[#D39562]">3 KAPITEL</span>
+              </div>
+            </div>
+
+            <!-- Beschreibung & Metadaten (Keine Statistik-Chips) -->
+            <div>
+              <div class="flex items-center justify-between">
+                <h3 class="text-base font-semibold text-[#DFDEDA] tracking-tight">Dead Signal</h3>
+                <span class="text-xs font-serif italic text-[#D39562]">3 Kapitel verfasst</span>
+              </div>
+              <div class="text-[11px] text-[#89867F] mt-0.5">
+                Science Fiction (Hard Sci-Fi Noir auf Station 7)
+              </div>
+              <p class="text-xs text-[#89867F] leading-relaxed mt-2.5 line-clamp-3">
+                „Eine Ingenieurin auf einer abgelegenen Raumstation empfängt ein Signal von der Erde, das es nicht geben darf.“
+              </p>
+            </div>
+          </div>
+
+          <!-- Auswahl-Button -->
+          <div class="pt-5 mt-2 border-t border-[#302D28]">
+            <button class="w-full py-2 px-3 rounded-md bg-[#D39562] text-[#16140F] text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm hover:bg-[#F2AD73] transition-colors">
+              <span class="material-symbols-outlined text-[15px]">check_circle</span>
+              <span>Aktive Vorlage</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- CARD 2: ECHOES OF THE THORNWALL -->
+        <div class="rounded-lg bg-[#211F1A] border border-[#35332D] hover:border-[#89867F] p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5">
+          <div class="space-y-3.5">
+            <!-- Miniatur Buchcover-Kopf -->
+            <div class="h-28 rounded bg-[#16140F] border border-[#35332D] p-3.5 flex flex-col justify-between relative overflow-hidden book-shadow">
+              <div class="absolute left-0 top-0 bottom-0 w-2 spine-crease"></div>
+              <div class="flex justify-between items-start text-[8px] text-[#89867F] uppercase tracking-widest font-mono">
+                <span>Atelier-Vorlage 02</span>
+                <span class="material-symbols-outlined text-[14px] text-[#89867F]">fort</span>
+              </div>
+              <div>
+                <div class="font-serif italic text-base text-[#DFDEDA] font-normal leading-tight">Echoes of the Thornwall</div>
+                <div class="text-[9px] text-[#89867F] mt-0.5">Chronik der Voidsphäre</div>
+              </div>
+              <div class="flex justify-between text-[8px] text-[#89867F] font-mono">
+                <span>HIGH FANTASY</span>
+                <span>4 KAPITEL</span>
+              </div>
+            </div>
+
+            <!-- Beschreibung & Metadaten (Keine Statistik-Chips) -->
+            <div>
+              <div class="flex items-center justify-between">
+                <h3 class="text-base font-medium text-[#DFDEDA] tracking-tight">Echoes of the Thornwall</h3>
+                <span class="text-xs font-serif italic text-[#89867F]">4 Kapitel verfasst</span>
+              </div>
+              <div class="text-[11px] text-[#89867F] mt-0.5">
+                Fantasy
+              </div>
+              <p class="text-xs text-[#89867F] leading-relaxed mt-2.5 line-clamp-3">
+                „Eine junge Magierin navigiert politische Intrigen zwischen einem uralten Orden und aufständischen Rebellen, während sie verbotene Void-Magie meistert.“
+              </p>
+            </div>
+          </div>
+
+          <!-- Auswahl-Button -->
+          <div class="pt-5 mt-2 border-t border-[#302D28]">
+            <button class="w-full py-2 px-3 rounded-md bg-[#2C2922] hover:bg-[#35332D] text-[#DFDEDA] border border-[#35332D] text-xs font-medium flex items-center justify-center gap-1.5 transition-colors">
+              <span>Vorlage wählen</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- CARD 3: IM STILLEN WALD -->
+        <div class="rounded-lg bg-[#211F1A] border border-[#35332D] hover:border-[#89867F] p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5">
+          <div class="space-y-3.5">
+            <!-- Miniatur Buchcover-Kopf -->
+            <div class="h-28 rounded bg-[#16140F] border border-[#35332D] p-3.5 flex flex-col justify-between relative overflow-hidden book-shadow">
+              <div class="absolute left-0 top-0 bottom-0 w-2 spine-crease"></div>
+              <div class="flex justify-between items-start text-[8px] text-[#89867F] uppercase tracking-widest font-mono">
+                <span>Atelier-Vorlage 03</span>
+                <span class="material-symbols-outlined text-[14px] text-[#89867F]">forest</span>
+              </div>
+              <div>
+                <div class="font-serif italic text-base text-[#DFDEDA] font-normal leading-tight">Im Stillen Wald</div>
+                <div class="text-[9px] text-[#89867F] mt-0.5">Münsterland-Aufzeichnungen</div>
+              </div>
+              <div class="flex justify-between text-[8px] text-[#89867F] font-mono">
+                <span>LITERARISCHE FIKTION</span>
+                <span>2 KAPITEL</span>
+              </div>
+            </div>
+
+            <!-- Beschreibung & Metadaten (Keine Statistik-Chips) -->
+            <div>
+              <div class="flex items-center justify-between">
+                <h3 class="text-base font-medium text-[#DFDEDA] tracking-tight">Im Stillen Wald</h3>
+                <span class="text-xs font-serif italic text-[#89867F]">2 Kapitel verfasst</span>
+              </div>
+              <div class="text-[11px] text-[#89867F] mt-0.5">
+                Literarische Fiktion
+              </div>
+              <p class="text-xs text-[#89867F] leading-relaxed mt-2.5 line-clamp-3">
+                „Ein Förster entdeckt in seinem abgelegenen Waldstück Geheimnisse, die die Grenze zwischen Leben und Tod im Gehölz verschwimmen lassen.“
+              </p>
+            </div>
+          </div>
+
+          <!-- Auswahl-Button -->
+          <div class="pt-5 mt-2 border-t border-[#302D28]">
+            <button class="w-full py-2 px-3 rounded-md bg-[#2C2922] hover:bg-[#35332D] text-[#DFDEDA] border border-[#35332D] text-xs font-medium flex items-center justify-center gap-1.5 transition-colors">
+              <span>Vorlage wählen</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Auswahl-Hinweis -->
+      <div class="mt-6 pt-4 border-t border-[#302D28] flex items-center justify-center gap-2 text-xs text-[#89867F] font-serif italic text-center">
+        <span class="material-symbols-outlined text-[16px] text-[#D39562]">info</span>
+        <span>Bei gewählter Vorlage sind Titel und Genre der Vorlage verbindlich; deine Einstellungen aus Schritt 2 und 3 gelten zusätzlich.</span>
+      </div>
+
+    </section>
+
+    <!-- BESTÄTIGUNGS-BANNER -->
+    <div class="rounded-xl bg-[#1C1914] border border-[#302D28] px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-3.5">
+        <div class="w-9 h-9 rounded-lg bg-[#2C2922] border border-[#35332D] flex items-center justify-center text-[#D39562] shrink-0">
+          <span class="material-symbols-outlined text-[20px]">auto_stories</span>
+        </div>
+        <div>
+          <div class="text-xs font-medium text-[#DFDEDA] flex items-center gap-2">
+            <span>Gewählte Basis:</span>
+            <span class="text-[#F2AD73] font-serif italic font-semibold">Vorlage ‚Dead Signal‘</span>
+            <span class="text-[11px] text-[#89867F] font-sans font-normal">(Science Fiction • 3 Kapitel)</span>
+          </div>
+          <div class="text-[11px] text-[#89867F] mt-0.5">
+            Kausalitätsgarantie aktiv: Bestehende Schauplatz- und Figurenbezüge werden in Schritt 2 nahtlos übernommen.
+          </div>
+        </div>
+      </div>
+
+      <button class="text-xs text-[#D39562] hover:text-[#F2AD73] flex items-center gap-1 font-medium transition-colors shrink-0">
+        <span>Details einsehen</span>
+        <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+      </button>
+    </div>
+
+  </main>
+
+  <!-- STICKY FOOTER NAVIGATION -->
+  <footer class="border-t border-[#302D28] bg-[#1C1914] px-6 py-4 sticky bottom-0 z-30">
+    <div class="max-w-[1400px] mx-auto flex items-center justify-between gap-4">
+      
+      <!-- Ghost Abbrechen -->
+      <button class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-[#89867F] hover:text-[#DFDEDA] transition-colors">
+        <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+        <span>Abbrechen &amp; zurück zum Bücherregal</span>
+      </button>
+
+      <!-- Status-Anzeige mitte -->
+      <div class="hidden md:flex items-center gap-2 text-xs text-[#89867F]">
+        <span class="inline-block w-2 h-2 rounded-full bg-[#D39562] animate-pulse"></span>
+        <span>Schritt 1 von 4 konfiguriert • Änderungen im lokalen Speicher gesichert</span>
+      </div>
+
+      <!-- Primär-CTA: Weiter zu Schritt 2 -->
+      <button class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#D39562] hover:bg-[#F2AD73] text-[#16140F] font-bold text-xs shadow-md transition-all active:scale-95">
+        <span>Weiter zu Schritt 2 — Dramaturgie &amp; Struktur</span>
+        <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+      </button>
+
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-[#16140F] text-[#DFDEDA]" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Bücherregal: Dein Atelier — Narrare</title>
+<!-- Google Web Fonts: Newsreader (Literarische Serif) & Plus Jakarta Sans (Moderne Sans-Serif) -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 via CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration for Midnight Ink Theme -->
+<script data-purpose="tailwind-config">
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            ink: {
+              base: '#16140F',
+              panel: '#1C1914',
+              card: '#211F1A',
+              elevated: '#28251F',
+              hover: '#2C2922',
+              border: '#35332D',
+              borderLight: '#444139',
+              divider: '#302D28',
+              text: '#DFDEDA',
+              muted: '#89867F',
+            },
+            amberAccent: {
+              DEFAULT: '#D39562',
+              hover: '#F2AD73',
+              glow: 'rgba(211, 149, 98, 0.18)',
+            },
+            sage: {
+              active: '#48bb78',
+              glow: 'rgba(72, 187, 120, 0.25)',
+            }
+          },
+          fontFamily: {
+            serif: ['Newsreader', 'Georgia', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+          },
+          boxShadow: {
+            'book': '0 22px 35px -8px rgba(0, 0, 0, 0.75), 0 8px 16px -4px rgba(0, 0, 0, 0.5), inset 2px 0 3px rgba(255, 255, 255, 0.08)',
+            'card-subtle': '0 4px 20px -2px rgba(0, 0, 0, 0.45)',
+          }
+        }
+      }
+    }
+  </script>
+<!-- Custom Typography & Paper Texture Accents -->
+<style data-purpose="custom-decorations">
+    /* Subtle parchment-like background grain for haptic book atelier sensation */
+    body {
+      background-color: #16140F;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(33, 31, 26, 0.6) 0%, transparent 70%),
+        radial-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 100% 100%, 28px 28px;
+    }
+    
+    /* Book spine indent visual cue */
+    .book-spine-crease {
+      box-shadow: inset 8px 0 14px -6px rgba(0, 0, 0, 0.85), inset -2px 0 4px rgba(255, 255, 255, 0.05);
+    }
+  </style>
+</head>
+<body class="min-h-full font-sans antialiased text-ink-text selection:bg-amberAccent selection:text-ink-base flex flex-col justify-between">
+<!-- BEGIN: MainHeader -->
+<header class="w-full border-b border-ink-border bg-ink-panel/95 backdrop-blur-sm sticky top-0 z-40 transition-colors" data-purpose="global-navigation">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+<!-- Brand & Workspace Breadcrumb -->
+<div class="flex items-center space-x-3.5">
+<div class="w-8 h-8 rounded bg-[#11100C] border border-ink-border flex items-center justify-center text-ink-text font-serif font-bold text-lg tracking-wider shadow-inner">
+          N
+        </div>
+<div class="flex items-center text-sm">
+<span class="font-serif font-medium tracking-wide text-base text-ink-text">Atelier Narrare</span>
+<span class="mx-2 text-ink-muted">/</span>
+<span class="text-ink-muted font-normal">Dein Atelier</span>
+</div>
+</div>
+<!-- Engine Status Indicator Badge (Center) -->
+<div class="hidden md:flex items-center">
+<div class="flex items-center space-x-2 px-3 py-1 rounded-full bg-[#1A1813] border border-ink-border/80 text-xs text-ink-muted">
+<span class="w-2 h-2 rounded-full bg-sage-active shadow-[0_0_8px_rgba(72,187,120,0.6)] animate-pulse"></span>
+<span class="font-mono text-xs tracking-tight">Kausalitäts-Engine wach • v2.4</span>
+</div>
+</div>
+<!-- Header Tools: Year, Languages, User Avatar -->
+<div class="flex items-center space-x-4">
+<!-- Schreibjahr Badge -->
+<div class="hidden sm:block px-2.5 py-1 rounded border border-ink-border bg-[#181612] text-xs font-mono text-ink-muted">
+          Schreibjahr 2026
+        </div>
+<!-- Language Selector -->
+<div class="flex items-center space-x-1.5 text-xs text-ink-muted font-medium border border-ink-border rounded px-2.5 py-1 bg-[#181612]">
+<button class="text-ink-text hover:text-amberAccent transition-colors">DE</button>
+<span class="text-ink-border text-[10px]">|</span>
+<button class="hover:text-ink-text transition-colors">EN</button>
+<span class="text-ink-border text-[10px]">|</span>
+<button class="hover:text-ink-text transition-colors">FR</button>
+</div>
+<!-- User Profile Avatar Monogram -->
+<button aria-label="Benutzerkonto" class="w-8 h-8 rounded-full border border-ink-border bg-ink-elevated hover:border-amberAccent text-xs font-semibold text-ink-text flex items-center justify-center transition-all">
+          AN
+        </button>
+</div>
+</div>
+</header>
+<!-- END: MainHeader -->
+<!-- BEGIN: MainContent -->
+<main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10" data-purpose="workspace-content">
+<!-- BEGIN: HeroCard (Active Work) -->
+<section class="relative rounded-lg border border-ink-border bg-ink-card p-6 md:p-8 lg:p-10 shadow-card-subtle overflow-hidden" data-purpose="active-project-showcase">
+<!-- Subtle Architectural Open Book Watermark in Background -->
+<div class="absolute right-0 bottom-0 pointer-events-none opacity-[0.035] text-white select-none">
+<svg fill="none" height="340" stroke="currentColor" stroke-width="2" viewbox="0 0 120 100" width="460">
+<path d="M10 85 C 35 75, 45 75, 60 85 C 75 75, 85 75, 110 85 L 110 20 C 85 10, 75 10, 60 20 C 45 10, 35 10, 10 20 Z"></path>
+<line x1="60" x2="60" y1="20" y2="85"></line>
+<path d="M12 28 C 35 18, 45 18, 58 28"></path>
+<path d="M62 28 C 75 18, 85 18, 108 28"></path>
+<path d="M12 36 C 35 26, 45 26, 58 36"></path>
+<path d="M62 36 C 75 26, 85 26, 108 36"></path>
+</svg>
+</div>
+<div class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+<!-- Left: Physical Book Cover Canvas Presentation -->
+<div class="lg:col-span-4 flex justify-center lg:justify-start">
+<div class="w-64 h-96 rounded-sm bg-[#12110D] book-spine-crease border-y border-r border-[#2C2922] border-l-4 border-l-[#0C0B08] p-6 flex flex-col justify-between shadow-book relative transition-transform hover:-translate-y-1 duration-300">
+<!-- Book Metadata Header -->
+<div class="text-center pt-2">
+<span class="text-[9px] uppercase tracking-[0.25em] text-[#C2A375] font-mono block">SCIENCE FICTION • OPUS I</span>
+</div>
+<!-- Book Seal / Canon Motif -->
+<div class="my-auto flex flex-col items-center">
+<div class="w-16 h-16 rounded border border-[#C2A375]/40 flex flex-col items-center justify-center p-2 mb-2 relative">
+<div class="w-2.5 h-2.5 rounded-full bg-[#C2A375]/80 mb-1"></div>
+<div class="w-8 h-[1px] bg-[#C2A375]/50"></div>
+<div class="w-[1px] h-6 bg-[#C2A375]/30 absolute"></div>
+</div>
+<span class="text-[8px] font-mono tracking-[0.22em] text-[#C2A375]/70 uppercase">SIGNAL CANON</span>
+</div>
+<!-- Book Title & Author Footer -->
+<div class="border-t border-[#C2A375]/25 pt-4 text-left">
+<h3 class="font-serif text-2xl text-ink-text leading-tight tracking-wide font-normal">Dead Signal</h3>
+<p class="text-[10px] text-[#A69B89] font-sans mt-1 tracking-wider uppercase">Calder • Atelier Narrare 2026</p>
+</div>
+</div>
+</div>
+<!-- Right: Manuscript Status, Excerpt & CTAs -->
+<div class="lg:col-span-8 flex flex-col justify-between h-full space-y-6">
+<!-- Top Metadata & Title -->
+<div class="space-y-2">
+<div class="flex items-center space-x-2">
+<span class="inline-block w-1.5 h-1.5 rounded-full bg-sage-active"></span>
+<span class="text-[11px] font-mono font-medium tracking-widest uppercase text-sage-active">AKTIVES WERK • SOEBEN BEREITGESTELLT</span>
+</div>
+<h1 class="text-4xl md:text-5xl font-serif text-ink-text font-normal tracking-tight">
+              Dead Signal
+            </h1>
+<p class="text-xs md:text-sm text-ink-muted">
+              Science Fiction <span class="mx-1.5 text-ink-border">•</span> 3 Kapitel vordefiniert
+            </p>
+</div>
+<!-- Literary Excerpt in Zettelkasten Quote Block -->
+<div class="relative border-l-2 border-[#544D3F] pl-4 py-1.5 my-2">
+<blockquote class="font-serif italic text-base md:text-lg text-[#C8C6C0] leading-relaxed">
+              „Die Sensorenbatterie der Station Erebus schwieg seit drei Tagen. Als das Tauchteam die äußere Luftschleuse des Tiefseerückens erreichte, fanden sie keine gebrochenen Dichtungen, sondern 72 identische Audioimpulse im Notfall-Logbuch – moduliert in reinem C-Dur.“
+            </blockquote>
+</div>
+<!-- Progress Indicator Bar & Metadata Row -->
+<div class="space-y-2">
+<!-- Sleek Progress Track -->
+<div class="w-full bg-[#181612] h-1.5 rounded-full overflow-hidden border border-ink-border/50">
+<div class="bg-amberAccent h-full w-[14%] rounded-full shadow-[0_0_8px_rgba(211,149,98,0.4)]"></div>
+</div>
+<!-- Metadata Stats Row -->
+<div class="flex flex-col sm:flex-row justify-between text-xs text-ink-muted font-mono pt-0.5 gap-1">
+<span>Wortstand wird beim ersten Schreiben gezählt • 3 Kapitel vordefiniert</span>
+<span class="text-ink-muted/80">Soeben im Setup bereitgestellt • Kausalitätsprüfung aktiv</span>
+</div>
+</div>
+<!-- Interaction Actions -->
+<div class="pt-2 flex flex-col sm:flex-row sm:items-center gap-4">
+<!-- Primary Action Button: Write Chapter 1 -->
+<a class="inline-flex items-center justify-center px-6 py-2.5 rounded bg-amberAccent hover:bg-amberAccent-hover text-[#16140F] font-semibold text-sm transition-all duration-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amberAccent focus:ring-offset-ink-panel" href="#weiterschreiben">
+<span>Weiterschreiben — Kapitel 1</span>
+<span class="ml-2 font-bold">→</span>
+</a>
+<!-- Secondary Action Button: Lore & Entity Graph -->
+<a class="inline-flex items-center justify-center px-5 py-2.5 rounded bg-ink-elevated hover:bg-ink-hover border border-ink-border text-ink-text text-sm font-medium transition-all duration-200" href="#lore-graph">
+<svg class="w-4 h-4 mr-2 text-ink-muted" fill="currentColor" viewbox="0 0 20 20">
+<circle cx="5" cy="6" r="2.5"></circle>
+<circle cx="15" cy="5" r="2"></circle>
+<circle cx="12" cy="15" r="2.5"></circle>
+<line stroke="currentColor" stroke-width="1.5" x1="6.8" x2="10.5" y1="7.2" y2="13"></line>
+<line stroke="currentColor" stroke-width="1.5" x1="13.2" x2="12.5" y1="6.5" y2="13"></line>
+</svg>
+<span>Entitäten- &amp; Lore-Graph öffnen</span>
+</a>
+</div>
+<!-- Bottom Storyboard Link -->
+<div class="pt-1">
+<a class="inline-flex items-center text-xs text-ink-muted hover:text-ink-text transition-colors" href="#storyboard">
+<svg class="w-3.5 h-3.5 mr-1.5 text-ink-muted" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+<span>3-Akt-Storyboard einsehen</span>
+</a>
+</div>
+</div>
+</div>
+</section>
+<!-- END: HeroCard -->
+<!-- BEGIN: WorkspaceExtensionSection -->
+<section class="space-y-4" data-purpose="workspace-extensions">
+<!-- Section Header -->
+<div class="flex items-center justify-between border-b border-ink-border pb-3">
+<h2 class="font-serif text-2xl text-ink-text font-normal flex items-baseline">
+          Weiter im Atelier <span class="text-sm font-sans font-normal text-ink-muted ml-2">(3 Arbeitsräume)</span>
+</h2>
+<span class="text-xs font-mono text-ink-muted">Architektur im Aufbau</span>
+</div>
+<!-- 3 Feature Extension Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+<!-- Card 1: Zen-Fokus & Atmosphäre -->
+<article class="rounded border border-ink-border bg-ink-card p-5 flex flex-col justify-between hover:border-ink-borderLight transition-all">
+<div class="space-y-3">
+<div class="flex items-start justify-between">
+<div class="w-8 h-8 rounded bg-ink-panel border border-ink-border flex items-center justify-center text-ink-muted">
+<!-- Desk/Pen Icon -->
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"></path>
+</svg>
+</div>
+<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-ink-panel border border-ink-border text-ink-muted">demnächst</span>
+</div>
+<h3 class="font-sans font-medium text-base text-ink-text">Zen-Fokus &amp; Atmosphäre</h3>
+<p class="text-xs text-ink-muted leading-relaxed">
+              Ablenkungsfreie Vollbild-Kladde mit Naturton-Geräuschen und Takt-Timer.
+            </p>
+</div>
+<div class="pt-6">
+<span class="text-[11px] font-serif italic text-ink-muted">kommt mit dem weiteren Aufbau</span>
+</div>
+</article>
+<!-- Card 2: Chronologie & Timeline -->
+<article class="rounded border border-ink-border bg-ink-card p-5 flex flex-col justify-between hover:border-ink-borderLight transition-all">
+<div class="space-y-3">
+<div class="flex items-start justify-between">
+<div class="w-8 h-8 rounded bg-ink-panel border border-ink-border flex items-center justify-center text-ink-muted">
+<!-- Timeline/Fork Icon -->
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"></path>
+</svg>
+</div>
+<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-ink-panel border border-ink-border text-ink-muted">demnächst</span>
+</div>
+<h3 class="font-sans font-medium text-base text-ink-text">Chronologie &amp; Timeline</h3>
+<p class="text-xs text-ink-muted leading-relaxed">
+              Kausale Zeitebenen, Szenen-Beats und Verzugs-Detektion im Handlungsverlauf.
+            </p>
+</div>
+<div class="pt-6">
+<span class="text-[11px] font-serif italic text-ink-muted">kommt mit dem weiteren Aufbau</span>
+</div>
+</article>
+<!-- Card 3: Manuskript importieren -->
+<article class="rounded border border-ink-border bg-ink-card p-5 flex flex-col justify-between hover:border-ink-borderLight transition-all">
+<div class="space-y-3">
+<div class="flex items-start justify-between">
+<div class="w-8 h-8 rounded bg-ink-panel border border-ink-border flex items-center justify-center text-ink-muted">
+<!-- Import Document Icon -->
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"></path>
+</svg>
+</div>
+<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-ink-panel border border-ink-border text-ink-muted">demnächst</span>
+</div>
+<h3 class="font-sans font-medium text-base text-ink-text">Manuskript importieren</h3>
+<p class="text-xs text-ink-muted leading-relaxed">
+              Bestehende Fragmente aus .docx, .scriv oder Scrivener-Archiven einbinden.
+            </p>
+</div>
+<div class="pt-6">
+<span class="text-[11px] font-serif italic text-ink-muted">kommt mit dem weiteren Aufbau</span>
+</div>
+</article>
+</div>
+</section>
+<!-- END: WorkspaceExtensionSection -->
+<!-- BEGIN: StartNewProjectSection -->
+<section class="space-y-4" data-purpose="create-new-project">
+<!-- Section Header -->
+<div class="flex items-center justify-between border-b border-ink-border pb-3">
+<h2 class="font-serif text-2xl text-ink-text font-normal">Neues beginnen</h2>
+<span class="text-xs font-mono text-ink-muted">Zweiter Schreibtisch</span>
+</div>
+<!-- Two Main Action Columns -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+<!-- Column 1: Neues Werk aufschlagen -->
+<div class="rounded border border-ink-border bg-ink-card p-6 flex flex-col justify-between hover:border-ink-borderLight transition-all">
+<div class="space-y-4">
+<div class="flex items-center space-x-3">
+<div class="w-10 h-10 rounded border border-ink-border bg-ink-panel flex items-center justify-center text-amberAccent">
+<!-- Plus Circle Icon -->
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="9" stroke-width="1.75"></circle>
+<path d="M12 8v8m-4-4h8" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"></path>
+</svg>
+</div>
+<div>
+<h3 class="font-sans font-semibold text-base text-ink-text">Neues Werk aufschlagen</h3>
+<p class="text-xs text-ink-muted">Geführter Assistent in 4 Schritten</p>
+</div>
+</div>
+<p class="text-xs text-ink-muted leading-relaxed pt-2">
+              Starte ein weiteres literarisches Projekt mit maßgeschneiderter Erzählarchitektur, Figurentabellen und eigenständigem Kausalitäts-Graph.
+            </p>
+</div>
+<div class="pt-8 border-t border-ink-border/60 mt-6">
+<a class="inline-flex items-center text-xs font-medium text-ink-text hover:text-amberAccent transition-colors" href="#assistent">
+<span>Projekt-Assistenten starten</span>
+<span class="ml-1.5 font-bold">→</span>
+</a>
+</div>
+</div>
+<!-- Column 2: Weitere Vorlage erkunden -->
+<div class="rounded border border-ink-border bg-ink-card p-6 flex flex-col justify-between hover:border-ink-borderLight transition-all">
+<div>
+<div class="flex items-center space-x-3 mb-4">
+<div class="w-10 h-10 rounded border border-ink-border bg-ink-panel flex items-center justify-center text-ink-muted">
+<!-- Open Book Icon -->
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"></path>
+</svg>
+</div>
+<div>
+<h3 class="font-sans font-semibold text-base text-ink-text">Weitere Vorlage erkunden</h3>
+<p class="text-xs text-ink-muted">Kuratiertes Ensemble für Narrare</p>
+</div>
+</div>
+<!-- Templates List -->
+<ul class="divide-y divide-ink-border/50 text-xs mt-3">
+<!-- Item 1: Active Work -->
+<li class="py-2.5 flex items-center justify-between">
+<span class="text-ink-text font-medium">Dead Signal</span>
+<span class="flex items-center text-sage-active font-mono text-[11px]">
+<span class="w-1.5 h-1.5 rounded-full bg-sage-active mr-1.5"></span>
+                  Im Regal aktiv
+                </span>
+</li>
+<!-- Item 2: Thornwall -->
+<li class="py-2.5 flex items-center justify-between">
+<span class="text-ink-muted hover:text-ink-text transition-colors">Echoes of the Thornwall</span>
+<span class="text-ink-muted font-mono text-[11px]">High Fantasy • Epos</span>
+</li>
+<!-- Item 3: Im Stillen Wald -->
+<li class="py-2.5 flex items-center justify-between">
+<span class="text-ink-muted hover:text-ink-text transition-colors">Im Stillen Wald</span>
+<span class="text-ink-muted font-mono text-[11px]">Literarischer Noir</span>
+</li>
+</ul>
+</div>
+<div class="pt-4 border-t border-ink-border/60 mt-4 text-right">
+<a class="inline-flex items-center text-xs font-medium text-ink-muted hover:text-ink-text transition-colors" href="#katalog">
+<span>Vorlagen-Katalog durchblättern</span>
+<span class="ml-1.5 font-bold">→</span>
+</a>
+</div>
+</div>
+</div>
+</section>
+<!-- END: StartNewProjectSection -->
+</main>
+<!-- END: MainContent -->
+<!-- BEGIN: MainFooter -->
+<footer class="w-full border-t border-ink-border bg-ink-panel mt-16 pt-12 pb-8" data-purpose="literary-footer">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+<!-- Central Literary Maxim -->
+<div class="text-center max-w-3xl mx-auto space-y-2">
+<p class="font-serif italic text-lg md:text-xl text-[#C8C6C0] leading-relaxed">
+          „Ein Roman ist kein statischer Text, sondern ein Organismus aus Kausalität, Takt und dem Atem seiner Figuren.“
+        </p>
+<p class="text-xs font-sans tracking-wide text-ink-muted">
+          — Atelier Notizen, Grundsatz III
+        </p>
+</div>
+<!-- Fine Subtle Hairline -->
+<div class="w-24 h-[1px] bg-ink-border mx-auto"></div>
+<!-- Trust Bar & Spec Credentials -->
+<div class="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-ink-muted font-sans pt-2">
+<!-- Left: Sovereign Guarantee -->
+<div class="flex flex-wrap items-center justify-center md:justify-start gap-x-2 gap-y-1 text-center md:text-left">
+<span class="text-ink-text font-medium">100% Autorensouveränität</span>
+<span class="text-ink-border">•</span>
+<span>(Kein KI-Training mit deinen Texten)</span>
+<span class="text-ink-border">•</span>
+<span>Strikter Kausalitäts-Wächter</span>
+<span class="text-ink-border">•</span>
+<span>Lokal zuerst (Verschlüsselter Kausalitätsspeicher)</span>
+</div>
+<!-- Right: Technical Specification Version -->
+<div class="font-mono text-[11px] text-ink-muted/90 shrink-0">
+          Literary Modernism Engine v2.4 • Midnight Ink Spec
+        </div>
+</div>
+</div>
+</footer>
+<!-- END: MainFooter -->
+</body></html>
