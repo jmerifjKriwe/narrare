@@ -195,6 +195,18 @@ const PAIRS: Record<string, [string, string]> = {
   "cover-ink-ink": ["#FFF8F2", "#DFDEDA"],
   "cover-slate": ["#3A637B", "#284457"],
   "cover-slate-ink": ["#FFF8F2", "#FFF8F2"],
+  // The procedural cover's four genre grounds (cover-system spec, Sektion
+  // 02): theme-constant in both halves, the spec's no-inversion rule
+  // (Sektion 06) — a book keeps its pigment on the midnight shelf, and the
+  // rim-light that keeps it off the canvas is the component's own.
+  "cover-fantasy": ["#2C382E", "#2C382E"],
+  "cover-fantasy-ink": ["#FFF8F2", "#FFF8F2"],
+  "cover-romance": ["#633B3E", "#633B3E"],
+  "cover-romance-ink": ["#FFF8F2", "#FFF8F2"],
+  "cover-thriller": ["#1D2228", "#1D2228"],
+  "cover-thriller-ink": ["#FFF8F2", "#FFF8F2"],
+  "cover-fallback": ["#DFD7CB", "#DFD7CB"],
+  "cover-fallback-ink": ["#1E1B16", "#1E1B16"],
 };
 
 /** The shape ladder (spec §6.4): 4 px small controls, 8 px controls, 12 px surfaces. */
@@ -249,6 +261,10 @@ const TEXT_PAIRS: [string, string, number][] = [
   ["cover-sepia-ink", "cover-sepia", 4.5],
   ["cover-ink-ink", "cover-ink", 4.5],
   ["cover-slate-ink", "cover-slate", 4.5],
+  ["cover-fantasy-ink", "cover-fantasy", 4.5],
+  ["cover-romance-ink", "cover-romance", 4.5],
+  ["cover-thriller-ink", "cover-thriller", 4.5],
+  ["cover-fallback-ink", "cover-fallback", 4.5],
 ];
 
 /** The marks that carry no text and still have to be seen: 3:1 (WCAG 1.4.11). */

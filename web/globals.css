@@ -127,6 +127,22 @@
   --cover-slate: light-dark(#3A637B, #284457);
   --cover-slate-ink: #FFF8F2;
 
+  /* The procedural cover's four genre grounds (cover-system spec, Sektion
+   * 02): theme-constant in both halves, the spec's no-inversion rule
+   * (Sektion 06) — a book is a material object and keeps its pigment on
+   * the midnight shelf; the 1px rim-light and the deeper contact shadow
+   * that keep it off the canvas live in the component, not the tokens.
+   * The inks answer their grounds: parchment on the three dark ones,
+   * deep ink on the light fallback. */
+  --cover-fantasy: #2C382E;
+  --cover-fantasy-ink: #FFF8F2;
+  --cover-romance: #633B3E;
+  --cover-romance-ink: #FFF8F2;
+  --cover-thriller: #1D2228;
+  --cover-thriller-ink: #FFF8F2;
+  --cover-fallback: #DFD7CB;
+  --cover-fallback-ink: #1E1B16;
+
   /* The shape ladder (spec §6.4): a control is never rounded like the
    * surface that holds it, so each step carries its role's name —
    * `rounded-[var(--radius-control)]`, `rounded-[var(--radius-surface)]`.
@@ -246,6 +262,14 @@ body {
   --color-cover-ink-ink: var(--cover-ink-ink);
   --color-cover-slate: var(--cover-slate);
   --color-cover-slate-ink: var(--cover-slate-ink);
+  --color-cover-fantasy: var(--cover-fantasy);
+  --color-cover-fantasy-ink: var(--cover-fantasy-ink);
+  --color-cover-romance: var(--cover-romance);
+  --color-cover-romance-ink: var(--cover-romance-ink);
+  --color-cover-thriller: var(--cover-thriller);
+  --color-cover-thriller-ink: var(--cover-thriller-ink);
+  --color-cover-fallback: var(--cover-fallback);
+  --color-cover-fallback-ink: var(--cover-fallback-ink);
   --color-area-writing: var(--area-writing);
   --color-area-knowledge: var(--area-knowledge);
   --color-area-chat: var(--area-chat);
