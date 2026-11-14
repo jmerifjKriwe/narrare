@@ -3,7 +3,7 @@
 // appears here on the next `just generate`.
 
 export const demos = [
-  { slug: "dead-signal", title: "Dead Signal", language: "en", chapters: 3, entities: 8 },
-  { slug: "echoes-of-the-thornwall", title: "Echoes of the Thornwall", language: "en", chapters: 4, entities: 16 },
-  { slug: "im-stillen-wald", title: "Im Stillen Wald", language: "de", chapters: 2, entities: 6 },
+  { slug: "dead-signal", title: "Dead Signal", language: "en", genre: "Science Fiction", blurb: "An engineer on a remote space station receives a mysterious signal from Earth that shouldn't exist, forcing her to question everything she knows about the world she left behind.", chapters: 3, entities: 8 },
+  { slug: "echoes-of-the-thornwall", title: "Echoes of the Thornwall", language: "en", genre: "Fantasy", blurb: "A young mage must navigate political intrigue between an ancient order and rising rebels while mastering forbidden magic tied to a mysterious relic.", chapters: 4, entities: 16 },
+  { slug: "im-stillen-wald", title: "Im Stillen Wald", language: "de", genre: "Literary", blurb: "Ein Förster entdeckt in seinem abgelegenen Waldstück Geheimnisse, die die Grenze zwischen Leben und Tod verschwimmen lassen.", chapters: 2, entities: 6 },
 ] as const;

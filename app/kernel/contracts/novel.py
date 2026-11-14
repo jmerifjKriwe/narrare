@@ -20,6 +20,14 @@ class Novel(UserOwned):
     # `en`); both are nullable — a novel without an answer does not lie.
     author: Mapped[str | None] = mapped_column(String(200))
     language: Mapped[str | None] = mapped_column(String(16))
+    # The setup wizard's per-novel answers. All nullable: a novel without an
+    # answer does not lie. The vocabulary the setup schema validates against
+    # comes from the Stitch drafts; the template wave pins ``dramatic_form``.
+    target_words: Mapped[int | None] = mapped_column()
+    author_typology: Mapped[str | None] = mapped_column(String(40))
+    dramatic_form: Mapped[str | None] = mapped_column(String(80))
+    ai_role: Mapped[str | None] = mapped_column(String(40))
+    canon_strictness: Mapped[int | None] = mapped_column()
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

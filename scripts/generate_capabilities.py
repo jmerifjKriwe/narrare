@@ -1485,6 +1485,8 @@ def typescript_demos(root: Path) -> str:
             f"slug: {_ts_string(info.slug)}, "
             f"title: {_ts_string(info.title)}, "
             f"language: {_ts_string(info.language)}, "
+            f"genre: {_ts_string(archive.genre or '')}, "
+            f"blurb: {_ts_string(archive.blurb or '')}, "
             f"chapters: {len(archive.chapters)}, "
             f"entities: {len(archive.entities)} "
             "},"

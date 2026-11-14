@@ -64,6 +64,32 @@ async def test_complete_without_demo_is_unchanged() -> None:
         assert await session.scalar(select(func.count()).select_from(EntityRelation)) == 0
 
 
+async def test_demo_binds_user_settings_but_keeps_archive_identity() -> None:
+    async with Session() as session:
+        novel = await SetupService(session).complete(
+            "ignored for a demo",
+            demo="dead-signal",
+            target_words=65000,
+            author_typology="plotter",
+            dramatic_form="three-act",
+            ai_role="lektor",
+            canon_strictness=4,
+        )
+
+    async with Session() as session:
+        stored = await session.get(Novel, novel.id)
+        assert stored is not None
+        # the archive's identity wins over anything the wizard might send
+        assert stored.title == "Dead Signal"
+        assert stored.genre == "Science Fiction"
+        # the user's per-novel settings still bind onto the imported project
+        assert stored.target_words == 65000
+        assert stored.author_typology == "plotter"
+        assert stored.dramatic_form == "three-act"
+        assert stored.ai_role == "lektor"
+        assert stored.canon_strictness == 4
+
+
 async def test_unknown_demo_slug_is_422() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(

@@ -2624,6 +2624,52 @@
       },
       "SetupRequest": {
         "properties": {
+          "ai_role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "archivar",
+                  "coautor",
+                  "lektor",
+                  "sparring"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Role"
+          },
+          "author_typology": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plotter",
+                  "pantser",
+                  "plantser"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Typology"
+          },
+          "canon_strictness": {
+            "anyOf": [
+              {
+                "maximum": 5,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canon Strictness"
+          },
           "demo": {
             "anyOf": [
               {
@@ -2635,11 +2681,48 @@
             ],
             "title": "Demo"
           },
+          "dramatic_form": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dramatic Form"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
           "novel_title": {
             "maxLength": 200,
             "minLength": 1,
             "title": "Novel Title",
             "type": "string"
+          },
+          "target_words": {
+            "anyOf": [
+              {
+                "maximum": 2147483647,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Words"
           }
         },
         "required": [

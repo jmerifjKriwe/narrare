@@ -2395,10 +2395,22 @@ export interface components {
         };
         /** SetupRequest */
         SetupRequest: {
+            /** Ai Role */
+            ai_role?: ("archivar" | "coautor" | "lektor" | "sparring") | null;
+            /** Author Typology */
+            author_typology?: ("plotter" | "pantser" | "plantser") | null;
+            /** Canon Strictness */
+            canon_strictness?: number | null;
             /** Demo */
             demo?: string | null;
+            /** Dramatic Form */
+            dramatic_form?: string | null;
+            /** Genre */
+            genre?: string | null;
             /** Novel Title */
             novel_title: string;
+            /** Target Words */
+            target_words?: number | null;
         };
         /** SetupResult */
         SetupResult: {

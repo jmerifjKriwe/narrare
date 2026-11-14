@@ -29,7 +29,16 @@ async def status(service: ServiceDep) -> SetupStatus:
 @router.post("", response_model=SetupResult, status_code=201)
 async def complete(payload: SetupRequest, service: ServiceDep) -> SetupResult:
     try:
-        novel = await service.complete(payload.novel_title, payload.demo)
+        novel = await service.complete(
+            payload.novel_title,
+            payload.demo,
+            genre=payload.genre,
+            target_words=payload.target_words,
+            author_typology=payload.author_typology,
+            dramatic_form=payload.dramatic_form,
+            ai_role=payload.ai_role,
+            canon_strictness=payload.canon_strictness,
+        )
     except AlreadySetUpError:
         raise HTTPException(status_code=409, detail="setup already complete") from None
     return SetupResult(novel_id=novel.id, novel_title=novel.title)

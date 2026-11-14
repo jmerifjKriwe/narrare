@@ -7,8 +7,8 @@ from app.kernel.db.base import ScopedRepository
 class NovelRepository(ScopedRepository[Novel]):
     model = Novel
 
-    async def create(self, title: str) -> Novel:
-        novel = Novel(user_id=self.user_id, title=title)
+    async def create(self, title: str, *, genre: str | None = None) -> Novel:
+        novel = Novel(user_id=self.user_id, title=title, genre=genre)
         self.session.add(novel)
         await self.session.flush()
         return novel
