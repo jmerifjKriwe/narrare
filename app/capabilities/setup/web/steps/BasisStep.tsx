@@ -142,6 +142,12 @@ export function BasisStep() {
   // never reaches the state; on blur the field snaps back to the value that
   // would actually be sent, so it never shows a number the POST won't carry.
   const [wordsDraft, setWordsDraft] = useState<string | null>(null);
+  // The title field's draft while editing, the same seam: the address drops a
+  // whitespace-only title (empty-after-trim is a missing title), so without a
+  // draft the round trip would eat a leading space the instant it is typed.
+  // The draft holds exactly what the author typed; on blur the field snaps to
+  // the value the address carries. Validation still reads the trimmed state.
+  const [titleDraft, setTitleDraft] = useState<string | null>(null);
   usePageTitle(t("setup.basis"));
 
   // The pre-setup mirror, the welcome's contract: adopt before paint when
@@ -152,12 +158,13 @@ export function BasisStep() {
     if (mirrored !== null) applyLocale(mirrored);
   }, []);
 
-  // The binding's two seams: a bound step drops the word draft (the target
-  // belongs to the blank path), and the tabula-rasa button's focus request
-  // lands once the title field is editable again.
+  // The binding's two seams: a bound step drops both drafts (the target and
+  // the editable title belong to the blank path), and the tabula-rasa button's
+  // focus request lands once the title field is editable again.
   useEffect(() => {
     if (bound) {
       setWordsDraft(null);
+      setTitleDraft(null);
       return;
     }
     if (focusTitlePending.current) {
@@ -216,6 +223,13 @@ export function BasisStep() {
     if (raw.trim() !== "" && Number.isInteger(parsed) && parsed >= 1 && parsed <= TARGET_WORDS_MAX) {
       update({ targetWords: parsed });
     }
+  }
+
+  /** The title's keystroke: the draft keeps the raw entry on screen while the
+   *  address takes the serialized form (a whitespace-only title drops out). */
+  function changeTitle(raw: string) {
+    setTitleDraft(raw);
+    update({ title: raw });
   }
 
   /** Option A's button: release any binding and hand focus to the title. */
@@ -414,8 +428,9 @@ export function BasisStep() {
                       required={!bound}
                       aria-invalid={titleMissing}
                       aria-describedby={titleMissing ? titleErrorId : undefined}
-                      value={bound ? demo.title : state.title}
-                      onChange={(event) => update({ title: event.target.value })}
+                      value={bound ? demo.title : (titleDraft ?? state.title)}
+                      onChange={(event) => changeTitle(event.target.value)}
+                      onBlur={() => setTitleDraft(null)}
                       placeholder={t("setup.basis.titlePlaceholder")}
                       className={`${SERIF} h-10 w-full rounded border bg-surface px-3.5 text-lg text-foreground outline-none transition-shadow focus:border-focus focus:ring-1 focus:ring-focus ${
                         titleMissing ? "border-danger pr-9" : "border-border"

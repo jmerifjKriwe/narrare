@@ -146,6 +146,36 @@ describe("the basis step — the blank path", () => {
     expect(address(router).title).toBeUndefined();
   });
 
+  it("keeps whitespace while typing — the address round trip never eats the field", async () => {
+    const router = renderBasis();
+    await screen.findByRole("heading", { level: 1 });
+
+    // A lone space stays in the field even though the address carries no
+    // title: the draft holds the keystroke the serialization would drop.
+    fireEvent.change(titleField(), { target: { value: " " } });
+    expect(titleField().value).toBe(" ");
+    expect(address(router).title).toBeUndefined();
+
+    // Whitespace is still not a title: panel 1's validation stands.
+    expect(screen.getByText(de["setup.basis.titleError"])).toBeTruthy();
+    expect(continueButton().hasAttribute("disabled")).toBe(true);
+
+    // Leading spaces survive into real text, on screen and in the address.
+    fireEvent.change(titleField(), { target: { value: "  Die Winterchronik" } });
+    await waitFor(() => expect(address(router).title).toBe("  Die Winterchronik"));
+    expect(titleField().value).toBe("  Die Winterchronik");
+    expect(continueButton().hasAttribute("disabled")).toBe(false);
+
+    // Blur snaps the field to the value the address carries — a whitespace-
+    // only entry falls back to empty, never a title the POST would not send.
+    fireEvent.change(titleField(), { target: { value: "   " } });
+    fireEvent.blur(titleField());
+    await waitFor(() => expect(titleField().value).toBe(""));
+    expect(address(router).title).toBeUndefined();
+    expect(screen.getByText(de["setup.basis.titleError"])).toBeTruthy();
+    expect(continueButton().hasAttribute("disabled")).toBe(true);
+  });
+
   it("validates deterministically: the error line and the locked continue until a title stands", async () => {
     renderBasis();
     await screen.findByRole("heading", { level: 1 });
