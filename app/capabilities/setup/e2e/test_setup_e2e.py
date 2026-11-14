@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 import pytest
 from playwright.sync_api import Browser, Page, expect
 
-from app.kernel.db import testsupport
+from app.capabilities.setup.e2e.conftest import DATABASE
 from app.kernel.testing.a11y import assert_accessible
 from app.kernel.testing.db_rows import rows as _shared_rows
 from app.kernel.testing.stack import WEB_URL
@@ -30,8 +30,6 @@ if TYPE_CHECKING:
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
 BASE = WEB_URL
-# this run's stack database (e2e/conftest.py)
-DATABASE = testsupport.test_database("narrare_v2_setup_e2e")
 
 # The wizard's German face (de-DE context, pinned in app/capabilities/conftest.py).
 BASIS_HERO = "Wie möchtest du dein literarisches Werk beginnen?"
