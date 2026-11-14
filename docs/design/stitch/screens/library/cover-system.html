@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Narrare Spec • Prozedurales Buchcover-System</title>
+<!-- Typography & Icons -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS Engine -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "on-error": "#ffffff",
+            "text-muted-dark": "#89867F",
+            "surface-container-low": "#faf2ea",
+            "area-settings": "#5A5549",
+            "on-surface": "#1e1b16",
+            "primary-fixed-dim": "#ffb695",
+            "secondary-fixed": "#ffdbce",
+            "bg-canvas-light": "#F6F3ED",
+            "surface-container": "#f4ede4",
+            "area-writing": "#914F2F",
+            "tertiary-container": "#6e3f14",
+            "rule-dark": "#302D28",
+            "surface-bright": "#fff8f2",
+            "text-muted-light": "#6E6B65",
+            "area-planning": "#834D7E",
+            "on-primary-fixed": "#351000",
+            "text-foreground-dark": "#DFDEDA",
+            "bg-soft-light": "#EFEBE2",
+            "primary": "#58250b",
+            "bg-panel-dark": "#1C1914",
+            "secondary-container": "#fed8ca",
+            "bg-canvas-dark": "#16140F",
+            "bg-card-dark": "#211F1A",
+            "cover-pale": "#EEEBE5",
+            "primary-container": "#743b1f",
+            "outline-variant": "#d8c2b9",
+            "primary-fixed": "#ffdbcc",
+            "inverse-surface": "#33302b",
+            "area-knowledge": "#606127",
+            "on-surface-variant": "#53433d",
+            "surface-container-lowest": "#ffffff",
+            "state-danger": "#AC3031",
+            "on-secondary-container": "#795c52",
+            "cover-ink": "#24211C",
+            "on-tertiary": "#ffffff",
+            "background": "#fff8f2",
+            "amber-focus": "#8F4622",
+            "cover-sepia": "#743B1F",
+            "secondary-fixed-dim": "#e3bfb2",
+            "on-tertiary-fixed": "#2f1500",
+            "secondary": "#74584e",
+            "border-light": "#E0DEDA",
+            "on-background": "#1e1b16",
+            "error-container": "#ffdad6",
+            "surface-container-highest": "#e9e1d9",
+            "rule-light": "#EEEBE5",
+            "on-primary-fixed-variant": "#6f371c",
+            "bg-soft-dark": "#2C2922",
+            "surface-dim": "#e0d9d1",
+            "on-secondary-fixed": "#2a170f",
+            "tertiary": "#522900",
+            "inverse-primary": "#ffb695",
+            "bg-panel-light": "#FDFCF9",
+            "on-secondary": "#ffffff",
+            "inverse-on-surface": "#f7f0e7",
+            "error": "#ba1a1a",
+            "state-warning": "#9A6100",
+            "tertiary-fixed-dim": "#fcb882",
+            "border-dark": "#35332D",
+            "outline": "#86736c",
+            "amber-focus-dark": "#F2AD73",
+            "surface-container-high": "#eee7df",
+            "surface-tint": "#8c4e30",
+            "surface": "#fff8f2",
+            "surface-variant": "#e9e1d9",
+            "on-tertiary-fixed-variant": "#693c10",
+            "bg-card-light": "#FFFFFF",
+            "on-error-container": "#93000a",
+            "on-primary-container": "#f8a884",
+            "area-chat": "#3A637B",
+            "on-primary": "#ffffff",
+            "tertiary-fixed": "#ffdcc3",
+            "on-secondary-fixed-variant": "#5a4137",
+            "state-success": "#21763C",
+            "on-tertiary-container": "#eead78"
+          },
+          borderRadius: {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          spacing: {
+            "gutter": "1rem",
+            "space-lg": "1.5rem",
+            "rail-expanded": "10.5rem",
+            "space-sm": "0.5rem",
+            "space-xs": "0.25rem",
+            "margin": "1.5rem",
+            "space-xl": "2rem",
+            "container-max": "75rem",
+            "rail-collapsed": "3rem",
+            "dock-width": "21rem",
+            "space-md": "1rem",
+            "prose-max-width": "34rem"
+          },
+          fontFamily: {
+            "prose-heading-2": ["EB Garamond"],
+            "headline-title": ["Plus Jakarta Sans"],
+            "prose-heading-1": ["EB Garamond"],
+            "headline-hero": ["Plus Jakarta Sans"],
+            "prose-editorial": ["EB Garamond"],
+            "meta-default": ["Plus Jakarta Sans"],
+            "body-default": ["Plus Jakarta Sans"],
+            "headline-emph": ["Plus Jakarta Sans"],
+            "eyebrow-tracked": ["Plus Jakarta Sans"],
+            "label-default": ["Plus Jakarta Sans"]
+          },
+          fontSize: {
+            "prose-heading-2": ["21px", { lineHeight: "28px", fontWeight: "600" }],
+            "headline-title": ["20px", { lineHeight: "26px", letterSpacing: "-0.015em", fontWeight: "600" }],
+            "prose-heading-1": ["26px", { lineHeight: "34px", letterSpacing: "-0.01em", fontWeight: "600" }],
+            "headline-hero": ["28px", { lineHeight: "32px", letterSpacing: "-0.02em", fontWeight: "700" }],
+            "prose-editorial": ["18px", { lineHeight: "31.5px", letterSpacing: "0.01em", fontWeight: "400" }],
+            "meta-default": ["12px", { lineHeight: "17px", fontWeight: "400" }],
+            "body-default": ["14px", { lineHeight: "22px", fontWeight: "400" }],
+            "headline-emph": ["15px", { lineHeight: "22px", fontWeight: "600" }],
+            "eyebrow-tracked": ["11px", { lineHeight: "16px", letterSpacing: "0.08em", fontWeight: "600" }],
+            "label-default": ["13px", { lineHeight: "18px", fontWeight: "500" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    /* Physical book crease & tactile shadows */
+    .book-spine-crease {
+      background: linear-gradient(90deg, 
+        rgba(0, 0, 0, 0.28) 0%, 
+        rgba(0, 0, 0, 0.12) 3%, 
+        rgba(255, 255, 255, 0.25) 5%, 
+        rgba(0, 0, 0, 0.08) 8%, 
+        transparent 14%
+      );
+    }
+    .book-spine-crease-pale {
+      background: linear-gradient(90deg, 
+        rgba(44, 24, 16, 0.2) 0%, 
+        rgba(44, 24, 16, 0.08) 3%, 
+        rgba(255, 255, 255, 0.6) 5%, 
+        rgba(44, 24, 16, 0.05) 8%, 
+        transparent 14%
+      );
+    }
+    .book-shadow-tactile {
+      box-shadow: 
+        0 1px 2px rgba(44, 24, 16, 0.06),
+        0 4px 12px rgba(44, 24, 16, 0.08),
+        inset 1px 0 0 rgba(255, 255, 255, 0.15),
+        inset -1px 0 0 rgba(0, 0, 0, 0.1);
+    }
+    .book-shadow-tactile-dark {
+      box-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.6),
+        0 8px 24px rgba(0, 0, 0, 0.45),
+        inset 1px 0 0 rgba(255, 255, 255, 0.08),
+        inset -1px 0 0 rgba(0, 0, 0, 0.4);
+    }
+    .callout-line {
+      stroke-dasharray: 3 3;
+    }
+    /* Monospace-like technical figures */
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- TOP NAVIGATION (Consistent with Shared JSON Component: TopNavBar) -->
+<header class="w-full h-14 px-6 flex items-center justify-between border-b border-border-light dark:border-border-dark bg-bg-panel-light dark:bg-bg-panel-dark z-40 sticky top-0">
+<div class="flex items-center gap-6">
+<span class="font-prose-heading-1 text-prose-heading-1 tracking-tight text-primary dark:text-inverse-primary font-semibold">Narrare</span>
+<span class="text-border-light hidden md:inline">|</span>
+<nav class="hidden md:flex items-center gap-6 font-label-default text-label-default">
+<a class="text-text-muted-light dark:text-text-muted-dark font-medium py-4 hover:text-amber-focus dark:hover:text-amber-focus-dark transition-colors duration-150" href="#manuscripts">Manuscripts</a>
+<a class="text-text-muted-light dark:text-text-muted-dark font-medium py-4 hover:text-amber-focus dark:hover:text-amber-focus-dark transition-colors duration-150" href="#lore-graph">Lore Graph</a>
+<a class="text-text-muted-light dark:text-text-muted-dark font-medium py-4 hover:text-amber-focus dark:hover:text-amber-focus-dark transition-colors duration-150" href="#causality">Causality Engine</a>
+<a class="text-primary dark:text-inverse-primary font-semibold border-b-2 border-primary dark:border-inverse-primary py-4" href="#ateliers">Ateliers</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded bg-bg-soft-light text-text-muted-light font-eyebrow-tracked text-eyebrow-tracked tracking-wider uppercase border border-border-light">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+        SPEC V2.4 CANON
+      </div>
+<span class="font-meta-default text-meta-default text-text-muted-light tracking-wide cursor-pointer hover:text-primary transition-colors">DE | EN | FR</span>
+<div class="flex items-center gap-1 text-text-muted-light">
+<button class="p-1.5 hover:text-amber-focus transition-colors duration-150 rounded" title="Psychology Index">
+<span class="material-symbols-outlined text-[18px]">psychology</span>
+</button>
+<button class="p-1.5 hover:text-amber-focus transition-colors duration-150 rounded" title="Story Engine">
+<span class="material-symbols-outlined text-[18px]">auto_stories</span>
+</button>
+<button class="p-1.5 hover:text-amber-focus transition-colors duration-150 rounded" title="Atelier Settings">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+</button>
+</div>
+<div class="w-7 h-7 rounded border border-border-light bg-surface-container flex items-center justify-center font-meta-default text-primary font-semibold" title="Archivist portrait avatar">
+        N
+      </div>
+</div>
+</header>
+<!-- MAIN DOCUMENT SHEET (Desktop centered manual sheet) -->
+<main class="max-w-[1240px] mx-auto px-6 py-10 space-y-16">
+<!-- HEADER & SYSTEM-PRÄAMBEL -->
+<section class="border-b border-border-light pb-10">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div class="space-y-2 max-w-3xl">
+<div class="flex items-center gap-2 font-eyebrow-tracked text-eyebrow-tracked text-primary tracking-widest uppercase">
+<span class="material-symbols-outlined text-[14px]">menu_book</span>
+<span>Narrare Atelier Spec • Buchgestaltung &amp; Lore-Bindung • V2.4</span>
+</div>
+<h1 class="font-prose-heading-1 text-[38px] leading-[44px] text-primary tracking-tight font-normal">
+            Prozedurales Buchcover-System
+          </h1>
+<p class="font-prose-editorial text-prose-editorial text-on-surface-variant pt-2 leading-relaxed">
+            In Narrare ist jedes Buch ein haptisches, mathematisch determiniertes <em>Buch-Objekt</em>. Wir verzichten bewusst auf beliebige Stockfotografie oder generierten Fotorealismus. Die visuelle Identität entsteht über puren CSS/SVG-Code: Spannungsfalz, Papiermaserung, kanonische Tontrennung und hauchfeine Vignetten garantieren typografische Demut und ewige Revisionsfestigkeit.
+          </p>
+</div>
+<div class="flex items-center gap-3 self-start md:self-end">
+<div class="px-3 py-2 bg-bg-panel-light border border-border-light rounded flex items-center gap-2 text-text-muted-light font-meta-default text-meta-default">
+<span class="material-symbols-outlined text-[16px] text-primary">fingerprint</span>
+<span>Algorithmus: <code class="text-primary font-mono text-[11px]">MurmurHash3(title)</code></span>
+</div>
+<button class="px-3 py-2 bg-primary-container text-background font-label-default text-label-default rounded hover:bg-amber-focus transition-all duration-150 flex items-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-[16px]">file_download</span>
+<span>Tokens Exportieren</span>
+</button>
+</div>
+</div>
+</section>
+<!-- SEKTION 1: COVER-ANATOMIE (Interaktive anatomische Zerlegung) -->
+<section class="space-y-6">
+<div class="flex items-baseline justify-between border-b border-border-light pb-3">
+<div class="space-y-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-primary uppercase">Sektion 01</span>
+<h2 class="font-headline-title text-headline-title text-on-surface">Cover-Anatomie: Das physische Buchobjekt</h2>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light">Schnittverhältnis 3:4 • Reines Vektor-Layout</span>
+</div>
+<div class="bg-bg-panel-light border border-border-light rounded p-8 md:p-12 relative overflow-hidden">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+<!-- Large 3:4 Specimen Book Cover -->
+<div class="lg:col-span-6 flex justify-center py-4">
+<div class="relative">
+<!-- The Physical Book Entity (260x360) -->
+<div class="w-[270px] h-[375px] bg-cover-sepia text-background rounded-l-none rounded-r-[6px] relative overflow-hidden book-shadow-tactile flex flex-col justify-between p-6 select-none transition-transform hover:scale-[1.01] duration-200" id="specimen-cover">
+<!-- 1. Spine Crease Gradient (Buchrücken-Falz) -->
+<div class="absolute inset-y-0 left-0 w-[14px] book-spine-crease pointer-events-none z-20"></div>
+<!-- 2. Subtle blind deboss inner boundary (Gold / Blindprägung) -->
+<div class="absolute inset-[6px] border border-amber-300/20 rounded-r-[4px] pointer-events-none"></div>
+<!-- Header / Eyebrow Group -->
+<div class="relative z-10 pl-2">
+<span class="font-eyebrow-tracked text-[10px] tracking-[0.2em] uppercase text-surface-dim block">
+                    Literarischer Roman • Opus IV
+                  </span>
+<div class="w-8 h-[1px] bg-surface-dim/40 mt-1"></div>
+</div>
+<!-- 5. Vector Genre Vignette (Florentiner Terracotta / Meereswellen & Horizont) -->
+<div class="relative z-10 flex flex-col items-center justify-center my-auto py-2">
+<svg class="w-20 h-20 text-background/30" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 100 100">
+<circle cx="50" cy="50" r="38" stroke="currentColor" stroke-dasharray="2 2"></circle>
+<path d="M22 56C30 50 38 62 50 56C62 50 70 62 78 56" stroke="currentColor" stroke-linecap="round"></path>
+<path d="M26 63C33 58 40 68 50 63C60 58 67 68 74 63" stroke="currentColor" stroke-linecap="round"></path>
+<circle cx="50" cy="38" fill="currentColor" fill-opacity="0.15" r="7" stroke="currentColor"></circle>
+<line stroke="currentColor" x1="50" x2="50" y1="20" y2="28"></line>
+</svg>
+</div>
+<!-- 4. Title & 6. Author Group -->
+<div class="relative z-10 pl-2 space-y-2">
+<h3 class="font-prose-heading-1 text-[27px] leading-[32px] italic text-surface-bright font-normal">
+                    Das Schweigen der Gezeiten
+                  </h3>
+<div class="pt-2 border-t border-background/20 flex items-center justify-between font-label-default text-[11px] text-surface-dim">
+<span class="tracking-wide">Calder &amp; Co.</span>
+<span class="font-mono text-[9px] text-surface-dim/70">§ 1894 / REV.3</span>
+</div>
+</div>
+</div>
+<!-- Visual Indicator Badges around the specimen -->
+<div class="absolute -top-3 -left-3 bg-primary text-background font-mono text-[10px] px-2 py-0.5 rounded shadow">
+                [1] 0px Falzkante
+              </div>
+<div class="absolute -top-3 -right-3 bg-primary text-background font-mono text-[10px] px-2 py-0.5 rounded shadow">
+                [2] 6px Rundschnitt
+              </div>
+</div>
+</div>
+<!-- Anatomical Specification Callouts (Right Column) -->
+<div class="lg:col-span-6 space-y-4 font-body-default text-body-default">
+<div class="p-3.5 bg-bg-soft-light rounded border border-border-light flex gap-3.5">
+<span class="w-6 h-6 rounded bg-primary text-background flex items-center justify-center font-mono text-xs flex-shrink-0 mt-0.5">1</span>
+<div>
+<h4 class="font-headline-emph text-headline-emph text-primary">Spannungsfalz &amp; Lichtkante (14px)</h4>
+<p class="font-meta-default text-meta-default text-text-muted-light mt-0.5">
+                  Ein mehrstufiger CSS-Gradient simuliert den Leim- und Druckwulst am Rücken. Dunkler Schattenkeil (28% Ink), gefolgt von einer 1px Lichtbrechung (25% Reißweiß).
+                </p>
+</div>
+</div>
+<div class="p-3.5 bg-bg-soft-light rounded border border-border-light flex gap-3.5">
+<span class="w-6 h-6 rounded bg-primary text-background flex items-center justify-center font-mono text-xs flex-shrink-0 mt-0.5">2</span>
+<div>
+<h4 class="font-headline-emph text-headline-emph text-primary">Asymmetrische Ecken-Geometrie</h4>
+<p class="font-meta-default text-meta-default text-text-muted-light mt-0.5">
+                  Links exakt <code class="text-primary font-mono text-[11px]">0px</code> (gebundener Fadenheftungs-Rücken). Rechts sanft gerundet mit <code class="text-primary font-mono text-[11px]">6px</code> als haptische Abrundung des Buchdeckelschnitts.
+                </p>
+</div>
+</div>
+<div class="p-3.5 bg-bg-soft-light rounded border border-border-light flex gap-3.5">
+<span class="w-6 h-6 rounded bg-primary text-background flex items-center justify-center font-mono text-xs flex-shrink-0 mt-0.5">3</span>
+<div>
+<h4 class="font-headline-emph text-headline-emph text-primary">Kolumnentitel / Genre-Eyebrow</h4>
+<p class="font-meta-default text-meta-default text-text-muted-light mt-0.5">
+                  Gesetzt in Plus Jakarta Sans (10px), Letter-Spacing <code class="text-primary font-mono text-[11px]">+0.2em</code>, Versalien. Verankert das Werk im Kanon der Ateliers.
+                </p>
+</div>
+</div>
+<div class="p-3.5 bg-bg-soft-light rounded border border-border-light flex gap-3.5">
+<span class="w-6 h-6 rounded bg-primary text-background flex items-center justify-center font-mono text-xs flex-shrink-0 mt-0.5">4</span>
+<div>
+<h4 class="font-headline-emph text-headline-emph text-primary">Werkstitel in EB Garamond Kursiv</h4>
+<p class="font-meta-default text-meta-default text-text-muted-light mt-0.5">
+                  Optischer Randausgleich. Die Schriftgröße skaliert nie unter Lesbarkeitsgrenzen; bei Überlänge greift eine dreizeilige Rhythmisierung statt Abschneiden mit Ellipsen.
+                </p>
+</div>
+</div>
+<div class="p-3.5 bg-bg-soft-light rounded border border-border-light flex gap-3.5">
+<span class="w-6 h-6 rounded bg-primary text-background flex items-center justify-center font-mono text-xs flex-shrink-0 mt-0.5">5</span>
+<div>
+<h4 class="font-headline-emph text-headline-emph text-primary">Vektorielle Genre-Vignette (25-35% Alpha)</h4>
+<p class="font-meta-default text-meta-default text-text-muted-light mt-0.5">
+                  Hauchfeines Signet (1.0 - 1.2px Hairline), generiert nach Kanon-Thematik. Dient als Gravur-Metapher und tritt optisch hinter den Titel zurück.
+                </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- SEKTION 2: FARBPALETTE & GENRE-ZUORDNUNG -->
+<section class="space-y-6">
+<div class="flex items-baseline justify-between border-b border-border-light pb-3">
+<div class="space-y-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-primary uppercase">Sektion 02</span>
+<h2 class="font-headline-title text-headline-title text-on-surface">Kanonische Grundtöne &amp; Genre-Matrix</h2>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light">8 Primäre Farbkanäle • Streng barrierefrei (WCAG AA)</span>
+</div>
+<p class="font-prose-editorial text-[17px] text-on-surface-variant max-w-3xl">
+        Die Kolorierung ordnet das Werk auf den ersten Blick in die narrative Disziplin ein. Alle Kombinationen erfüllen die Richtlinie für Textkontrast auf haptischen Papieren.
+      </p>
+<!-- 8-Card Genre Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- 1. Sci-Fi (Midnight Ink) -->
+<div class="bg-bg-panel-light border border-border-light rounded p-4 space-y-3">
+<div class="w-full h-36 bg-[#1A1815] rounded-r-[4px] relative overflow-hidden book-shadow-tactile p-3 flex flex-col justify-between text-[#FFF8F2]">
+<div class="absolute inset-y-0 left-0 w-2.5 book-spine-crease"></div>
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-70">Science Fiction</span>
+<div class="flex justify-center my-auto">
+<svg class="w-10 h-10 opacity-35" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 40 40">
+<circle cx="20" cy="20" r="14" stroke-dasharray="2 2"></circle>
+<circle cx="20" cy="20" r="6"></circle>
+<line x1="20" x2="20" y1="2" y2="38"></line>
+</svg>
+</div>
+<span class="font-prose-heading-2 text-[15px] italic leading-tight">Orbital-7</span>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between font-label-default text-xs text-primary font-semibold">
+<span>Sci-Fi: Ink</span>
+<span class="font-mono text-text-muted-light text-[11px]">#1A1815</span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light">Radar- &amp; Planetenbahnen, Pulsierender Signalvektor.</p>
+</div>
+</div>
+<!-- 2. Fantasy (Waldmoos) -->
+<div class="bg-bg-panel-light border border-border-light rounded p-4 space-y-3">
+<div class="w-full h-36 bg-[#2C382E] rounded-r-[4px] relative overflow-hidden book-shadow-tactile p-3 flex flex-col justify-between text-[#FFF8F2]">
+<div class="absolute inset-y-0 left-0 w-2.5 book-spine-crease"></div>
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-70">Fantasy</span>
+<div class="flex justify-center my-auto">
+<svg class="w-10 h-10 opacity-35" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 40 40">
+<path d="M20 5 L24 16 L35 20 L24 24 L20 35 L16 24 L5 20 L16 16 Z"></path>
+<circle cx="20" cy="20" r="12" stroke-dasharray="1 3"></circle>
+</svg>
+</div>
+<span class="font-prose-heading-2 text-[15px] italic leading-tight">Der Eichenhort</span>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between font-label-default text-xs text-primary font-semibold">
+<span>Fantasy: Waldmoos</span>
+<span class="font-mono text-text-muted-light text-[11px]">#2C382E</span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light">Himmelsstern &amp; Astralbogen, arkaner Foliant.</p>
+</div>
+</div>
+<!-- 3. Mystery (Pale Stein) -->
+<div class="bg-bg-panel-light border border-border-light rounded p-4 space-y-3">
+<div class="w-full h-36 bg-[#EEEBE5] rounded-r-[4px] relative overflow-hidden book-shadow-tactile p-3 flex flex-col justify-between text-[#1E1B16]">
+<div class="absolute inset-y-0 left-0 w-2.5 book-spine-crease-pale"></div>
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-60">Mystery</span>
+<div class="flex justify-center my-auto">
+<svg class="w-10 h-10 opacity-30" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 40 40">
+<rect height="20" width="20" x="10" y="10"></rect>
+<line x1="10" x2="30" y1="20" y2="20"></line>
+<line x1="20" x2="20" y1="10" y2="30"></line>
+<circle cx="20" cy="20" r="3"></circle>
+</svg>
+</div>
+<span class="font-prose-heading-2 text-[15px] italic leading-tight text-[#1E1B16]">Villa Blackwood</span>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between font-label-default text-xs text-primary font-semibold">
+<span>Mystery: Steinpergament</span>
+<span class="font-mono text-text-muted-light text-[11px]">#EEEBE5</span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light">Architektonischer Grundriss, Fluchtlinien.</p>
+</div>
+</div>
+<!-- 4. Literary Fiction (Florentiner Terracotta) -->
+<div class="bg-bg-panel-light border border-border-light rounded p-4 space-y-3">
+<div class="w-full h-36 bg-[#743B1F] rounded-r-[4px] relative overflow-hidden book-shadow-tactile p-3 flex flex-col justify-between text-[#FFF8F2]">
+<div class="absolute inset-y-0 left-0 w-2.5 book-spine-crease"></div>
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-70">Literary Fiction</span>
+<div class="flex justify-center my-auto">
+<svg class="w-10 h-10 opacity-35" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 40 40">
+<path d="M8 24 Q 20 14, 32 24"></path>
+<path d="M12 28 Q 20 20, 28 28"></path>
+<circle cx="20" cy="12" r="3"></circle>
+</svg>
+</div>
+<span class="font-prose-heading-2 text-[15px] italic leading-tight">Am Flussufer</span>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between font-label-default text-xs text-primary font-semibold">
+<span>Literary: Terracotta</span>
+<span class="font-mono text-text-muted-light text-[11px]">#743B1F</span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light">Organischer Wellenfluss &amp; Horizontmarke.</p>
+</div>
+</div>
+<!-- 5. Historical (Schieferblau) -->
+<div class="bg-bg-panel-light border border-border-light rounded p-4 space-y-3">
+<div class="w-full h-36 bg-[#3A637B] rounded-r-[4px] relative overflow-hidden book-shadow-tactile p-3 flex flex-col justify-between text-[#FFF8F2]">
+<div class="absolute inset-y-0 left-0 w-2.5 book-spine-crease"></div>
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-70">Historischer Roman</span>
+<div class="flex justify-center my-auto">
+<svg class="w-10 h-10 opacity-35" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 40 40">
+<polygon points="20,6 26,34 14,34"></polygon>
+<line x1="8" x2="32" y1="34" y2="34"></line>
+<circle cx="20" cy="14" fill="currentColor" r="2"></circle>
+</svg>
+</div>
+<span class="font-prose-heading-2 text-[15px] italic leading-tight">Kaiser &amp; Salzwasser</span>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between font-label-default text-xs text-primary font-semibold">
+<span>Historisch: Schiefer</span>
+<span class="font-mono text-text-muted-light text-[11px]">#3A637B</span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light">Maritime Leuchtfeuer-Geometrie &amp; Nebelkante.</p>
+</div>
+</div>
+<!-- 6. Romance (Altrosé-Marmor) -->
+<div class="bg-bg-panel-light border border-border-light rounded p-4 space-y-3">
+<div class="w-full h-36 bg-[#633B3E] rounded-r-[4px] relative overflow-hidden book-shadow-tactile p-3 flex flex-col justify-between text-[#FFF8F2]">
+<div class="absolute inset-y-0 left-0 w-2.5 book-spine-crease"></div>
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-70">Romance</span>
+<div class="flex justify-center my-auto">
+<svg class="w-10 h-10 opacity-35" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 40 40">
+<circle cx="16" cy="20" r="9"></circle>
+<circle cx="24" cy="20" r="9"></circle>
+<path d="M20 11 L20 29"></path>
+</svg>
+</div>
+<span class="font-prose-heading-2 text-[15px] italic leading-tight">Garten im Mai</span>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between font-label-default text-xs text-primary font-semibold">
+<span>Romance: Altrosé</span>
+<span class="font-mono text-text-muted-light text-[11px]">#633B3E</span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light">Verschlungene Knospen &amp; botanische Linien.</p>
+</div>
+</div>
+<!-- 7. Thriller (Kaltes Graphit) -->
+<div class="bg-bg-panel-light border border-border-light rounded p-4 space-y-3">
+<div class="w-full h-36 bg-[#1D2228] rounded-r-[4px] relative overflow-hidden book-shadow-tactile p-3 flex flex-col justify-between text-[#E8ECF0]">
+<div class="absolute inset-y-0 left-0 w-2.5 book-spine-crease"></div>
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-70">Thriller</span>
+<div class="flex justify-center my-auto">
+<svg class="w-10 h-10 opacity-35" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 40 40">
+<path d="M4 20 L14 20 L18 8 L22 32 L26 20 L36 20"></path>
+</svg>
+</div>
+<span class="font-prose-heading-2 text-[15px] italic leading-tight">Frequenz Null</span>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between font-label-default text-xs text-primary font-semibold">
+<span>Thriller: Graphit</span>
+<span class="font-mono text-text-muted-light text-[11px]">#1D2228</span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light">Seismische Risslinie &amp; Pulsausschlag.</p>
+</div>
+</div>
+<!-- 8. Neutraler Fallback (Naturleinen / Tabula Rasa) -->
+<div class="bg-bg-panel-light border border-border-light rounded p-4 space-y-3">
+<div class="w-full h-36 bg-[#DFD7CB] rounded-r-[4px] relative overflow-hidden book-shadow-tactile p-3 flex flex-col justify-between text-[#3B342A]">
+<div class="absolute inset-y-0 left-0 w-2.5 book-spine-crease-pale"></div>
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-60">Tabula Rasa</span>
+<div class="flex justify-center my-auto">
+<svg class="w-10 h-10 opacity-30" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 40 40">
+<rect height="16" stroke-dasharray="2 2" width="16" x="12" y="12"></rect>
+<circle cx="20" cy="20" fill="currentColor" r="2"></circle>
+</svg>
+</div>
+<span class="font-prose-heading-2 text-[15px] italic leading-tight text-[#3B342A]">Unbenanntes Opus</span>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between font-label-default text-xs text-primary font-semibold">
+<span>Neutral: Naturleinen</span>
+<span class="font-mono text-text-muted-light text-[11px]">#DFD7CB</span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light">Monogramm-Quadrat, atelier-neutraler Standard.</p>
+</div>
+</div>
+</div>
+<!-- Technical Token Specification Table -->
+<div class="border border-border-light rounded bg-bg-panel-light overflow-x-auto">
+<table class="w-full text-left font-meta-default text-meta-default border-collapse">
+<thead>
+<tr class="bg-bg-soft-light border-b border-border-light font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">
+<th class="p-3">Genre-Identifikator</th>
+<th class="p-3">CSS-Token Farbwert</th>
+<th class="p-3">Typografie-Kontrast</th>
+<th class="p-3">Vignetten-Spezifikation</th>
+<th class="p-3">Deterministisches Hash-Präfix</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-light font-mono text-[12px] text-on-surface">
+<tr>
+<td class="p-3 font-sans font-medium text-primary">Sci-Fi</td>
+<td class="p-3">--cover-bg-scifi: #1A1815</td>
+<td class="p-3 text-state-success font-sans">15.8:1 (AAA)</td>
+<td class="p-3 font-sans">Ringe concentric r=14,6 / pulse line</td>
+<td class="p-3">0x01_ORB</td>
+</tr>
+<tr>
+<td class="p-3 font-sans font-medium text-primary">Literary Fiction</td>
+<td class="p-3">--cover-bg-lit: #743B1F</td>
+<td class="p-3 text-state-success font-sans">8.4:1 (AAA)</td>
+<td class="p-3 font-sans">Wellenband bez=Q(20,14) / Horizont</td>
+<td class="p-3">0x04_WAV</td>
+</tr>
+<tr>
+<td class="p-3 font-sans font-medium text-primary">Mystery</td>
+<td class="p-3">--cover-bg-mystery: #EEEBE5</td>
+<td class="p-3 text-state-success font-sans">12.1:1 (AAA)</td>
+<td class="p-3 font-sans">Cottage Blueprint rect=20x20</td>
+<td class="p-3">0x03_GEO</td>
+</tr>
+<tr>
+<td class="p-3 font-sans font-medium text-primary">Naturleinen (Fallback)</td>
+<td class="p-3">--cover-bg-fallback: #DFD7CB</td>
+<td class="p-3 text-state-success font-sans">7.9:1 (AA)</td>
+<td class="p-3 font-sans">Atelier Seal rect-dashed</td>
+<td class="p-3">0x00_NUL</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- SEKTION 3: PSEUDORANDOMISIERTE VARIANTEN INNERHALB DESSELBEN GENRES -->
+<section class="space-y-6">
+<div class="flex items-baseline justify-between border-b border-border-light pb-3">
+<div class="space-y-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-primary uppercase">Sektion 03</span>
+<h2 class="font-headline-title text-headline-title text-on-surface">Pseudorandomisierte Varianten im selben Genre</h2>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light">Keine Monotonie im Bücherregal</span>
+</div>
+<p class="font-prose-editorial text-[17px] text-on-surface-variant max-w-3xl">
+        Zwei Romane desselben Genres wirken nebeneinander nie wie Duplikate. Das System leitet aus der Prüfsumme des Titels (<code class="text-primary font-mono text-[13px]">hash % 3</code>) eine von drei Gestaltungs-Achsen ab: <em>Zentriert-Klassisch</em>, <em>Versetzte Achse</em> oder <em>Architektonische Rand-Vignette</em>.
+      </p>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+<!-- Sci-Fi Variante A: Zentriert -->
+<div class="space-y-2">
+<div class="h-64 bg-[#1A1815] rounded-r-[5px] relative overflow-hidden book-shadow-tactile p-5 flex flex-col justify-between text-[#FFF8F2]">
+<div class="absolute inset-y-0 left-0 w-3 book-spine-crease"></div>
+<div class="text-center">
+<span class="font-eyebrow-tracked text-[9px] tracking-[0.2em] uppercase opacity-60">Science Fiction • Var. A</span>
+</div>
+<!-- Central Orbital Rings -->
+<div class="flex justify-center my-auto">
+<svg class="w-16 h-16 opacity-30" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 60 60">
+<circle cx="30" cy="30" r="22" stroke-dasharray="3 3"></circle>
+<circle cx="30" cy="30" r="12"></circle>
+<circle cx="30" cy="30" fill="currentColor" r="4"></circle>
+</svg>
+</div>
+<div class="text-center space-y-1">
+<h4 class="font-prose-heading-2 text-[18px] italic leading-tight">Singularität Eins</h4>
+<p class="font-label-default text-[10px] opacity-70">Zentrierte Kosmologie</p>
+</div>
+</div>
+<div class="p-2.5 bg-bg-panel-light border border-border-light rounded">
+<span class="font-headline-emph text-xs text-primary block">Achse A: Zentrische Kreisform</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">Fokus ruht ruhig in der optischen Mitte.</span>
+</div>
+</div>
+<!-- Sci-Fi Variante B: Versetzte Signal-Achse -->
+<div class="space-y-2">
+<div class="h-64 bg-[#1A1815] rounded-r-[5px] relative overflow-hidden book-shadow-tactile p-5 flex flex-col justify-between text-[#FFF8F2]">
+<div class="absolute inset-y-0 left-0 w-3 book-spine-crease"></div>
+<div class="flex justify-between items-center pl-2">
+<span class="font-eyebrow-tracked text-[9px] tracking-[0.2em] uppercase opacity-60">Science Fiction • Var. B</span>
+<span class="font-mono text-[9px] opacity-40">AXIS-R</span>
+</div>
+<!-- Off-center Signal Beam -->
+<div class="my-auto pl-8">
+<svg class="w-20 h-16 opacity-30" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 80 50">
+<line x1="10" x2="70" y1="10" y2="40"></line>
+<circle cx="20" cy="15" r="5"></circle>
+<circle cx="60" cy="35" r="8" stroke-dasharray="2 2"></circle>
+</svg>
+</div>
+<div class="pl-2 space-y-1">
+<h4 class="font-prose-heading-2 text-[18px] italic leading-tight">Lichtjahr-Drift</h4>
+<p class="font-label-default text-[10px] opacity-70">Dynamische Diagonale</p>
+</div>
+</div>
+<div class="p-2.5 bg-bg-panel-light border border-border-light rounded">
+<span class="font-headline-emph text-xs text-primary block">Achse B: Asymmetrischer Vektor</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">Erzeugt Bewegung bei Expeditions-Plots.</span>
+</div>
+</div>
+<!-- Sci-Fi Variante C: Minimale Rand-Vignette -->
+<div class="space-y-2">
+<div class="h-64 bg-[#1A1815] rounded-r-[5px] relative overflow-hidden book-shadow-tactile p-5 flex flex-col justify-between text-[#FFF8F2]">
+<div class="absolute inset-y-0 left-0 w-3 book-spine-crease"></div>
+<!-- Top Vignette -->
+<div class="flex justify-between items-start pl-2">
+<span class="font-eyebrow-tracked text-[9px] tracking-[0.2em] uppercase opacity-60">Science Fiction • Var. C</span>
+<svg class="w-8 h-8 opacity-40" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 30 30">
+<path d="M5 25 L25 5 M15 5 L25 5 L25 15"></path>
+</svg>
+</div>
+<!-- Dominanter Titel & Leerraum -->
+<div class="my-auto pl-2">
+<span class="font-meta-default text-[10px] uppercase tracking-widest text-primary-fixed-dim block mb-1">Station 404</span>
+<h4 class="font-prose-heading-1 text-[22px] italic leading-tight">Das kalte Vakuum</h4>
+</div>
+<div class="pl-2 pt-2 border-t border-white/10 flex justify-between font-mono text-[9px] opacity-60">
+<span>HASH_702A</span>
+<span>MINIMAL</span>
+</div>
+</div>
+<div class="p-2.5 bg-bg-panel-light border border-border-light rounded">
+<span class="font-headline-emph text-xs text-primary block">Achse C: Monumentaler Weißraum</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">Grafik weicht zugunsten kühler Typografie.</span>
+</div>
+</div>
+</div>
+</section>
+<!-- SEKTION 4: MASSSTÄBE & FLÄCHEN-HIERARCHIE (Skalierungs-Matrix) -->
+<section class="space-y-6">
+<div class="flex items-baseline justify-between border-b border-border-light pb-3">
+<div class="space-y-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-primary uppercase">Sektion 04</span>
+<h2 class="font-headline-title text-headline-title text-on-surface">Maßstäbe &amp; Flächen-Hierarchie</h2>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light">4 Kanonische Ansichtsgrößen • Typografisches Clamping</span>
+</div>
+<p class="font-prose-editorial text-[17px] text-on-surface-variant max-w-3xl">
+        Ein Buchobjekt muss sowohl auf dem breiten Arbeits-Podest als auch in der kompakten Breadcrumb-Navigation eindeutig lesbar sein. Die Details schrumpfen nicht stur linear mit, sondern blenden sekundäre Ornamente sukzessive aus.
+      </p>
+<!-- Matrix Canvas with the same specimen: 'Dead Signal' -->
+<div class="bg-bg-panel-light border border-border-light rounded p-8 flex flex-col lg:flex-row items-end justify-between gap-8 overflow-x-auto">
+<!-- 1. Einband-Vorschau im Setup-Wizard (224x300) -->
+<div class="flex flex-col items-center space-y-3 flex-shrink-0">
+<div class="w-[224px] h-[300px] bg-[#3A637B] rounded-r-[6px] relative overflow-hidden book-shadow-tactile p-5 flex flex-col justify-between text-[#FFF8F2]">
+<div class="absolute inset-y-0 left-0 w-3 book-spine-crease"></div>
+<div class="pl-2">
+<span class="font-eyebrow-tracked text-[9px] tracking-widest uppercase opacity-70">Historischer Roman</span>
+</div>
+<div class="my-auto flex justify-center">
+<svg class="w-14 h-14 opacity-35" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 50 50">
+<polygon points="25,8 33,42 17,42"></polygon>
+<line x1="10" x2="40" y1="42" y2="42"></line>
+</svg>
+</div>
+<div class="pl-2 space-y-1">
+<h4 class="font-prose-heading-1 text-[21px] italic leading-tight">Dead Signal</h4>
+<p class="font-label-default text-[11px] opacity-75">K. V. Holm • Atelier I</p>
+</div>
+</div>
+<div class="text-center">
+<span class="font-headline-emph text-xs text-primary block">3. Setup-Wizard</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">224 × 300 px (Vollständige Details)</span>
+</div>
+</div>
+<!-- 2. Fokus-Band / Hero (192x288) -->
+<div class="flex flex-col items-center space-y-3 flex-shrink-0">
+<div class="w-[192px] h-[264px] bg-[#3A637B] rounded-r-[5px] relative overflow-hidden book-shadow-tactile p-4 flex flex-col justify-between text-[#FFF8F2]">
+<div class="absolute inset-y-0 left-0 w-2.5 book-spine-crease"></div>
+<div class="pl-1.5">
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-70">Hist. Roman</span>
+</div>
+<div class="my-auto flex justify-center">
+<svg class="w-10 h-10 opacity-35" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 50 50">
+<polygon points="25,8 33,42 17,42"></polygon>
+<line x1="10" x2="40" y1="42" y2="42"></line>
+</svg>
+</div>
+<div class="pl-1.5 space-y-0.5">
+<h4 class="font-prose-heading-2 text-[18px] italic leading-tight">Dead Signal</h4>
+<p class="font-label-default text-[10px] opacity-75">K. V. Holm</p>
+</div>
+</div>
+<div class="text-center">
+<span class="font-headline-emph text-xs text-primary block">2. Fokus-Band (Hero)</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">192 × 264 px (Aktives Werk)</span>
+</div>
+</div>
+<!-- 3. Regal-Kompaktkarte (144x208) -->
+<div class="flex flex-col items-center space-y-3 flex-shrink-0">
+<div class="w-[144px] h-[200px] bg-[#3A637B] rounded-r-[4px] relative overflow-hidden book-shadow-tactile p-3 flex flex-col justify-between text-[#FFF8F2]">
+<div class="absolute inset-y-0 left-0 w-2 book-spine-crease"></div>
+<div class="pl-1">
+<span class="font-eyebrow-tracked text-[7px] tracking-wider uppercase opacity-70">Hist.</span>
+</div>
+<div class="pl-1 space-y-0.5 mt-auto">
+<h4 class="font-prose-heading-2 text-[14px] italic leading-snug">Dead Signal</h4>
+<p class="font-label-default text-[9px] opacity-70">Holm</p>
+</div>
+</div>
+<div class="text-center">
+<span class="font-headline-emph text-xs text-primary block">1. Regal-Kompaktkarte</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">144 × 200 px (Vignette entfällt)</span>
+</div>
+</div>
+<!-- 4. Listen- & Breadcrumb-Miniatur (36x48) -->
+<div class="flex flex-col items-center space-y-3 flex-shrink-0">
+<div class="w-[36px] h-[48px] bg-[#3A637B] rounded-r-[2px] relative overflow-hidden book-shadow-tactile p-1 flex flex-col justify-end text-[#FFF8F2]">
+<div class="absolute inset-y-0 left-0 w-1 book-spine-crease"></div>
+<div class="pl-0.5 pb-0.5">
+<span class="font-prose-heading-2 text-[9px] font-bold leading-none block">DS</span>
+</div>
+</div>
+<div class="text-center">
+<span class="font-headline-emph text-xs text-primary block">4. Miniatur</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">36 × 48 px (Monogramm)</span>
+</div>
+</div>
+</div>
+</section>
+<!-- SEKTION 5: ROBUSTHEIT & RANDZUSTÄNDE (Grenzfälle) -->
+<section class="space-y-6">
+<div class="flex items-baseline justify-between border-b border-border-light pb-3">
+<div class="space-y-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-primary uppercase">Sektion 05</span>
+<h2 class="font-headline-title text-headline-title text-on-surface">Robustheit &amp; Grenzfälle</h2>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light">Unverwüstliche Layout-Stabilität</span>
+</div>
+<p class="font-prose-editorial text-[17px] text-on-surface-variant max-w-3xl">
+        In der realen Atelier-Nutzung treten extreme Eingaben auf: unvollendete Titel, Mammut-Sätze oder fehlende Genre-Tags. Das Layout darf unter keinen Umständen umbrechen oder unansehnlich werden.
+      </p>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-2">
+<!-- Fall A: Extrem langer Titel -->
+<div class="space-y-2">
+<div class="h-80 bg-[#1D2228] rounded-r-[5px] relative overflow-hidden book-shadow-tactile p-4 flex flex-col justify-between text-[#E8ECF0]">
+<div class="absolute inset-y-0 left-0 w-3 book-spine-crease"></div>
+<div class="pl-2">
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-60">Grenzfall A • Titel &gt; 60 Z.</span>
+</div>
+<div class="pl-2 my-auto">
+<h4 class="font-prose-heading-2 text-[15px] leading-[20px] italic font-normal">
+                Die Chroniken von Svalbard und das verschollene Signal im subglazialen Riss
+              </h4>
+</div>
+<div class="pl-2 pt-2 border-t border-white/10 font-label-default text-[10px] opacity-75">
+              Prof. L. Nansen
+            </div>
+</div>
+<div class="p-2.5 bg-bg-panel-light border border-border-light rounded">
+<span class="font-headline-emph text-xs text-primary block">Dreizeiliges Leading</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">Kein Ellipsis-Abschneiden; Vektor tritt zurück.</span>
+</div>
+</div>
+<!-- Fall B: Ohne Genre -->
+<div class="space-y-2">
+<div class="h-80 bg-[#DFD7CB] rounded-r-[5px] relative overflow-hidden book-shadow-tactile p-4 flex flex-col justify-between text-[#3B342A]">
+<div class="absolute inset-y-0 left-0 w-3 book-spine-crease-pale"></div>
+<div class="pl-2">
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-60">Grenzfall B • Ohne Genre</span>
+</div>
+<div class="flex justify-center my-auto">
+<div class="w-12 h-12 border border-[#3B342A]/30 rounded-full flex items-center justify-center font-prose-heading-1 text-xs italic">
+                N
+              </div>
+</div>
+<div class="pl-2 space-y-1">
+<h4 class="font-prose-heading-1 text-[20px] italic leading-tight text-[#3B342A]">Unbenannter Entwurf</h4>
+<p class="font-label-default text-[10px] opacity-70">Naturleinen-Standard</p>
+</div>
+</div>
+<div class="p-2.5 bg-bg-panel-light border border-border-light rounded">
+<span class="font-headline-emph text-xs text-primary block">Tabula-Rasa-Fallback</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">Atelier-Siegel ersetzt fehlende Genre-Vignette.</span>
+</div>
+</div>
+<!-- Fall C: Fehlende Autoreneingabe -->
+<div class="space-y-2">
+<div class="h-80 bg-[#743B1F] rounded-r-[5px] relative overflow-hidden book-shadow-tactile p-4 flex flex-col justify-between text-[#FFF8F2]">
+<div class="absolute inset-y-0 left-0 w-3 book-spine-crease"></div>
+<div class="pl-2">
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-60">Grenzfall C • Anonym</span>
+</div>
+<div class="pl-2 my-auto">
+<h4 class="font-prose-heading-1 text-[22px] italic leading-tight">Fragment III</h4>
+</div>
+<div class="pl-2 pt-2 border-t border-white/10 flex items-center gap-1.5 font-label-default text-[11px] opacity-75">
+<span class="material-symbols-outlined text-[13px]">lock</span>
+<span>Anonymus • Eigenverlag</span>
+</div>
+</div>
+<div class="p-2.5 bg-bg-panel-light border border-border-light rounded">
+<span class="font-headline-emph text-xs text-primary block">Anonymus-Würde</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">Eleganter Platzhalter schützt Satzspiegel.</span>
+</div>
+</div>
+<!-- Fall D: Einwort-Titel -->
+<div class="space-y-2">
+<div class="h-80 bg-[#2C382E] rounded-r-[5px] relative overflow-hidden book-shadow-tactile p-5 flex flex-col justify-between text-[#FFF8F2]">
+<div class="absolute inset-y-0 left-0 w-3 book-spine-crease"></div>
+<div class="pl-2">
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-60">Grenzfall D • Einwort</span>
+</div>
+<div class="pl-2 my-auto">
+<h4 class="font-prose-heading-1 text-[34px] italic leading-none font-normal tracking-wide">
+                Echo
+              </h4>
+<div class="w-6 h-[1px] bg-white/40 mt-3"></div>
+</div>
+<div class="pl-2 font-label-default text-[10px] opacity-75">
+              C. V. H.
+            </div>
+</div>
+<div class="p-2.5 bg-bg-panel-light border border-border-light rounded">
+<span class="font-headline-emph text-xs text-primary block">Monumentaler Weißraum</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">Große Type zelebriert die Kürze des Namens.</span>
+</div>
+</div>
+</div>
+</section>
+<!-- SEKTION 6: DUNKELMODUS (MIDNIGHT INK SPEZIFIKATION) -->
+<section class="bg-bg-canvas-dark text-text-foreground-dark rounded-xl p-8 md:p-12 space-y-8 border border-border-dark relative overflow-hidden">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-rule-dark pb-4">
+<div class="space-y-1">
+<div class="flex items-center gap-2 font-eyebrow-tracked text-eyebrow-tracked text-primary-fixed-dim uppercase tracking-widest">
+<span class="material-symbols-outlined text-[14px]">dark_mode</span>
+<span>Sektion 06 • Midnight Ink Spezifikation</span>
+</div>
+<h2 class="font-headline-title text-headline-title text-surface-bright">Physische Buchkörper auf nächtlichem Obsidianboden</h2>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-dark">Keine Farb-Inversion • Taktile Abgrenzung</span>
+</div>
+<p class="font-prose-editorial text-prose-editorial text-surface-container-high max-w-3xl leading-relaxed">
+        Im Dunkelmodus kehrt Narrare die Buchdeckel <strong>niemals</strong> ins Gegenteil um. Ein Buch bleibt ein materieller Gegenstand. Um auf dunklem Grund nicht abzusaufen, erhalten die Einbände eine mikroskopische 1px Randaufhellung (<code class="text-amber-focus-dark font-mono text-[12px]">rgba(255,255,255,0.08)</code>) und einen vertieften Kontaktschatten.
+      </p>
+<!-- Night Workbench Showcase -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-8 py-4">
+<!-- Sepia on Dark Canvas -->
+<div class="flex flex-col items-center space-y-3">
+<div class="w-[200px] h-[275px] bg-cover-sepia rounded-r-[5px] relative overflow-hidden book-shadow-tactile-dark p-4 flex flex-col justify-between text-[#FFF8F2] border-t border-r border-b border-white/10">
+<div class="absolute inset-y-0 left-0 w-3 book-spine-crease"></div>
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-70">Literary Fiction</span>
+<div class="my-auto flex justify-center">
+<svg class="w-12 h-12 opacity-35" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 50 50">
+<path d="M10 30 Q 25 18, 40 30"></path>
+<circle cx="25" cy="15" r="4"></circle>
+</svg>
+</div>
+<div class="space-y-1">
+<h4 class="font-prose-heading-2 text-[17px] italic leading-tight">Florentiner Notizen</h4>
+<p class="font-label-default text-[10px] opacity-75">Band II • Atelier Narrare</p>
+</div>
+</div>
+<div class="text-center">
+<span class="font-headline-emph text-xs text-primary-fixed-dim">Satte Pigmenterhaltung</span>
+<span class="font-meta-default text-[11px] text-text-muted-dark block">Sepiaton bleibt unberührt</span>
+</div>
+</div>
+<!-- Pale Stone on Dark Canvas -->
+<div class="flex flex-col items-center space-y-3">
+<div class="w-[200px] h-[275px] bg-[#EEEBE5] rounded-r-[5px] relative overflow-hidden book-shadow-tactile-dark p-4 flex flex-col justify-between text-[#1E1B16] border-t border-r border-b border-black/20">
+<div class="absolute inset-y-0 left-0 w-3 book-spine-crease-pale"></div>
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-60">Mystery</span>
+<div class="my-auto flex justify-center">
+<svg class="w-12 h-12 opacity-30" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 50 50">
+<rect height="20" width="20" x="15" y="15"></rect>
+<circle cx="25" cy="25" r="3"></circle>
+</svg>
+</div>
+<div class="space-y-1">
+<h4 class="font-prose-heading-2 text-[17px] italic leading-tight text-[#1E1B16]">Das weiße Sanatorium</h4>
+<p class="font-label-default text-[10px] opacity-70">Opus VII</p>
+</div>
+</div>
+<div class="text-center">
+<span class="font-headline-emph text-xs text-primary-fixed-dim">Pergament-Lichteffekt</span>
+<span class="font-meta-default text-[11px] text-text-muted-dark block">Wirkt wie angestrahltes Papier</span>
+</div>
+</div>
+<!-- Ink on Dark Canvas (The hardest case) -->
+<div class="flex flex-col items-center space-y-3">
+<div class="w-[200px] h-[275px] bg-[#1C1A17] rounded-r-[5px] relative overflow-hidden book-shadow-tactile-dark p-4 flex flex-col justify-between text-[#FFF8F2] border-t border-r border-b border-[#3D372E]">
+<div class="absolute inset-y-0 left-0 w-3 book-spine-crease"></div>
+<span class="font-eyebrow-tracked text-[8px] tracking-widest uppercase opacity-70">Science Fiction</span>
+<div class="my-auto flex justify-center">
+<svg class="w-12 h-12 opacity-40 text-amber-focus-dark" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 50 50">
+<circle cx="25" cy="25" r="18" stroke-dasharray="2 3"></circle>
+<line x1="25" x2="25" y1="5" y2="45"></line>
+</svg>
+</div>
+<div class="space-y-1">
+<h4 class="font-prose-heading-2 text-[17px] italic leading-tight">Nacht-Frequenz</h4>
+<p class="font-label-default text-[10px] opacity-75">Tiefenschwärze</p>
+</div>
+</div>
+<div class="text-center">
+<span class="font-headline-emph text-xs text-primary-fixed-dim">Hairline Rim-Light (#3D372E)</span>
+<span class="font-meta-default text-[11px] text-text-muted-dark block">Klare Kanten gegen Obsidian-Grund</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- FOOTER (Consistent with Shared JSON Component: Footer) -->
+<footer class="w-full py-8 px-8 border-t border-border-light dark:border-border-dark bg-bg-panel-light dark:bg-bg-panel-dark flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left mt-20">
+<div class="space-y-1">
+<span class="font-prose-heading-2 text-prose-heading-2 text-primary dark:text-inverse-primary block">Narrare Atelier</span>
+<p class="font-prose-editorial text-prose-editorial text-text-muted-light dark:text-text-muted-dark text-sm">
+        © Narrare Atelier. Written sovereignty guaranteed. Local-first, zero-surveillance manuscript vault.
+      </p>
+</div>
+<div class="flex flex-wrap items-center justify-center gap-6 font-label-default text-label-default">
+<a class="text-text-muted-light dark:text-text-muted-dark hover:text-primary dark:hover:text-inverse-primary transition-colors duration-150" href="#manifest">Sovereignty Manifest</a>
+<a class="text-text-muted-light dark:text-text-muted-dark hover:text-primary dark:hover:text-inverse-primary transition-colors duration-150" href="#canon">Causality Canon</a>
+<a class="text-primary dark:text-inverse-primary font-semibold hover:text-primary transition-colors duration-150" href="#rigor">Typography Rigor</a>
+<a class="text-text-muted-light dark:text-text-muted-dark hover:text-primary dark:hover:text-inverse-primary transition-colors duration-150" href="#export">Export Lexicon</a>
+</div>
+</footer>
+</body></html>
