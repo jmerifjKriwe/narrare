@@ -144,13 +144,10 @@ describe("the wizard's steps", () => {
     ).toBe("Dead Signal");
   });
 
-  it.each(["/setup/provisioning"])(
-    "answers %s with the interim placeholder",
-    async (path) => {
-      scriptStatus(async () => ({ data: { complete: false }, response: ok() }));
-      renderTree(path);
+  it("answers /setup/provisioning with the interim placeholder", async () => {
+    scriptStatus(async () => ({ data: { complete: false }, response: ok() }));
+    renderTree("/setup/provisioning");
 
-      expect(await screen.findByRole("heading", { name: t("setup.interimTitle") })).toBeTruthy();
-    },
-  );
+    expect(await screen.findByRole("heading", { name: t("setup.interimTitle") })).toBeTruthy();
+  });
 });

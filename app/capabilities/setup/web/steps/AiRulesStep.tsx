@@ -1,15 +1,11 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import { useEffect, useRef, type KeyboardEvent } from "react";
 
-import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
-import { activeLocale, applyLocale, chosenLocale, type Locale } from "@shell/lib/locale";
 import { usePageTitle } from "@shell/lib/pageTitle";
-import { queryClient } from "@shell/lib/query";
 import { Icon, type IconName } from "@shell/ui/icons";
 
-import { readPreSetupLocale, storePreSetupLocale } from "../preSetupLocale";
+import { WizardHeader } from "../WizardHeader";
 import { useWizardState, type AiRole } from "../wizardState";
 
 /**
@@ -51,9 +47,6 @@ const SERIF = "[font-family:var(--font-serif)]";
 /** The shell's focus ring on every control this step offers. */
 const FOCUS =
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
-
-/** The draft draws DE|EN|FR with DE leading; the switcher keeps that order. */
-const SWITCHER_ORDER: readonly Locale[] = ["de", "en", "fr"];
 
 /** The four roles in the draft's order; ids are the backend Literals. The
  *  lektor card wears the draft's standing recommendation badge. */
@@ -146,22 +139,12 @@ function radioKey<T extends string>(
 
 export function AiRulesStep() {
   const t = useTranslation();
-  const locale = activeLocale();
   const navigate = useNavigate();
   const { state, update } = useWizardState("/setup/ai-rules");
   const complete = state.aiRole !== null;
   const canon = state.canon ?? CANON_DEFAULT;
   const roleRefs = useRef<Partial<Record<AiRole, HTMLElement | null>>>({});
-  const switcherRefs = useRef<Partial<Record<Locale, HTMLElement | null>>>({});
   usePageTitle(t("setup.aiRules"));
-
-  // The pre-setup mirror, the welcome's contract: adopt before paint when
-  // the settings row holds no choice yet.
-  useLayoutEffect(() => {
-    if (chosenLocale() !== null) return;
-    const mirrored = readPreSetupLocale();
-    if (mirrored !== null) applyLocale(mirrored);
-  }, []);
 
   // The balanced default is a real answer: materialize it into the address
   // on arrival so the one POST always carries a strictness and a refresh or
@@ -169,26 +152,6 @@ export function AiRulesStep() {
   useEffect(() => {
     if (state.canon === null) update({ canon: CANON_DEFAULT });
   }, [state.canon, update]);
-
-  /** Apply and persist a locale — the welcome switcher's contract: the
-   *  structural 409 keeps the mirror, a success clears it, any other refusal
-   *  restores the prior choice. */
-  async function chooseLocale(next: Locale) {
-    if (next === activeLocale()) return;
-    const previous = chosenLocale();
-    applyLocale(next);
-    storePreSetupLocale(next);
-    try {
-      const { response } = await client.PATCH("/api/settings", { body: { locale: next } });
-      if (response.status === 409) return; // setup required: the mirror stands
-      if (!response.ok) throw new Error(`refused: ${response.status}`);
-      storePreSetupLocale(null);
-      void queryClient.invalidateQueries({ queryKey: ["settings"] });
-    } catch {
-      applyLocale(previous);
-      storePreSetupLocale(previous);
-    }
-  }
 
   /** The slider's keyboard contract: arrows step one stop and clamp at the
    *  ends, Home/End jump to them. Preventing the default keeps the native
@@ -210,121 +173,8 @@ export function AiRulesStep() {
     // The draft's body: full-bleed, pinned ends, the selection pair in tokens.
     // The shell owns the one <main> landmark; this is its content.
     <div className="flex min-h-screen w-full flex-col justify-between selection:bg-secondary-container selection:text-secondary-container-foreground">
-      {/* 1. Header & stepper — sticky, the wizard's shared chrome */}
-      <header className="sticky top-0 z-30 w-full bg-surface shadow-sm">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 gap-y-2 px-6 py-3">
-          {/* Brand & context */}
-          <div className="flex items-center gap-2.5">
-            <div
-              className={`${SERIF} flex h-8 w-8 items-center justify-center rounded bg-primary text-emph font-semibold text-primary-foreground shadow-inner`}
-            >
-              N
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-emph font-semibold tracking-tight text-foreground">
-                  {t("setup.welcome.wordmark")}
-                </span>
-                <span aria-hidden="true" className="text-meta text-outline-variant">
-                  /
-                </span>
-                <span className="text-label font-medium text-muted">{t("setup.basis.context")}</span>
-              </div>
-              <p className="text-eyebrow uppercase tracking-wider text-muted">
-                {t("setup.welcome.year")} • {t("setup.welcome.edition")}
-              </p>
-            </div>
-          </div>
-
-          {/* Stepper — steps one and two done (the check, a way back), three active */}
-          <nav
-            aria-label={t("setup.wizard.progress")}
-            className="hidden items-center gap-1 rounded-lg border border-border bg-surface-container-low px-3 py-1.5 md:flex"
-          >
-            {(["setup.wizard.step1", "setup.wizard.step2"] as const).map((key, at) => (
-              <span key={key} className="flex items-center gap-1">
-                {at > 0 && (
-                  <span aria-hidden="true" className="px-1 text-meta text-outline-variant">
-                    ›
-                  </span>
-                )}
-                <Link
-                  to={at === 0 ? "/setup/basis" : "/setup/structure"}
-                  search={true}
-                  className={`flex items-center gap-2 rounded px-2.5 py-1 text-label font-medium text-success transition-colors hover:bg-surface-container ${FOCUS}`}
-                >
-                  <Icon name="check" size={15} />
-                  <span>{t(key)}</span>
-                </Link>
-              </span>
-            ))}
-            <span aria-hidden="true" className="px-1 text-meta text-outline-variant">
-              ›
-            </span>
-            <div
-              aria-current="step"
-              className="flex items-center gap-2 rounded bg-primary px-2.5 py-1 text-label font-semibold text-primary-foreground shadow-sm"
-            >
-              <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-secondary-container" />
-              <span>{t("setup.wizard.step3")}</span>
-            </div>
-            <span aria-hidden="true" className="px-1 text-meta text-outline-variant">
-              ›
-            </span>
-            <span className="flex items-center gap-1.5 px-2 py-1 text-label text-muted">
-              <span className="flex h-4 w-4 items-center justify-center rounded-full border border-outline-variant text-[10px]">
-                4
-              </span>
-              <span>{t("setup.wizard.step4")}</span>
-            </span>
-          </nav>
-
-          {/* Language switcher & controls */}
-          <div className="flex items-center gap-3">
-            <div
-              role="radiogroup"
-              aria-label={t("setup.welcome.language")}
-              className="inline-flex rounded-lg border border-border bg-surface-container-lowest p-0.5 text-meta"
-            >
-              {SWITCHER_ORDER.map((code, at) => (
-                <button
-                  key={code}
-                  type="button"
-                  role="radio"
-                  aria-label={catalogs[code]["locale.name"]}
-                  aria-checked={code === locale}
-                  tabIndex={code === locale ? 0 : -1}
-                  ref={(node) => {
-                    switcherRefs.current[code] = node;
-                  }}
-                  onKeyDown={(event) =>
-                    radioKey(event, SWITCHER_ORDER, at, (id) => void chooseLocale(id), switcherRefs)
-                  }
-                  onClick={() => void chooseLocale(code)}
-                  className={
-                    code === locale
-                      ? `rounded bg-surface-container-high px-2 py-0.5 font-semibold text-primary ${FOCUS}`
-                      : `rounded px-2 py-0.5 text-muted transition-colors hover:text-foreground ${FOCUS}`
-                  }
-                >
-                  {code.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <div aria-hidden="true" className="h-4 w-px bg-border" />
-            {/* The handbook does not exist yet: honestly disabled (gap doc). */}
-            <button
-              type="button"
-              disabled
-              title={t("setup.basis.help")}
-              aria-label={t("setup.basis.help")}
-              className="flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg text-muted opacity-50"
-            >
-              <Icon name="menuBook" size={18} />
-            </button>
-          </div>
-        </div>
-      </header>
+      {/* 1. Header & stepper — the wizard's shared chrome, step three active */}
+      <WizardHeader activeStep={3} />
 
       {/* 2. The editorial intro + guarantee seal, the two-column workspace */}
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-6 pb-12 pt-8">

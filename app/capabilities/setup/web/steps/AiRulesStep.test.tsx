@@ -167,6 +167,9 @@ describe("the AI-rules step — selection and the address", () => {
 
     fireEvent.click(roleRadio("coautor"));
     await waitFor(() => expect(roleRadio("coautor").getAttribute("aria-checked")).toBe("true"));
+    // „Empfohlen" is the draft's standing recommendation: it stays on lektor
+    // while coautor holds the selection, never following the live choice.
+    expect(within(roleRadio("lektor")).getByText(de["setup.aiRules.role.recommended"])).toBeTruthy();
     expect(continueButton().hasAttribute("disabled")).toBe(false);
   });
 

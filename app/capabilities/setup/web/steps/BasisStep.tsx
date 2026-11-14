@@ -1,19 +1,15 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
-import { client } from "@shell/lib/api/client";
 import { BookCover } from "@shell/lib/cover/BookCover";
 import { channelFor, type CoverChannel } from "@shell/lib/cover/cover";
 import { GenreMotif } from "@shell/lib/cover/motifs";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { demos } from "@shell/lib/generated/demos";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
-import { activeLocale, applyLocale, chosenLocale, type Locale } from "@shell/lib/locale";
 import { usePageTitle } from "@shell/lib/pageTitle";
-import { queryClient } from "@shell/lib/query";
 import { Icon } from "@shell/ui/icons";
 
-import { readPreSetupLocale, storePreSetupLocale } from "../preSetupLocale";
+import { WizardHeader } from "../WizardHeader";
 import {
   GENRE_CAP,
   GENRE_PILL_DEFS,
@@ -56,9 +52,6 @@ const SERIF = "[font-family:var(--font-serif)]";
 /** The shell's focus ring on every control this step offers. */
 const FOCUS =
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
-
-/** The draft draws DE|EN|FR with DE leading; the switcher keeps that order. */
-const SWITCHER_ORDER: readonly Locale[] = ["de", "en", "fr"];
 
 /** The gauge's four format categories, in the draft's order. The boundaries
  *  are the draft's own bands; the widths and range labels are its gauge's. */
@@ -126,7 +119,6 @@ const MINI_PALETTE: Record<CoverChannel, { ground: string; ink: string }> = {
 
 export function BasisStep() {
   const t = useTranslation();
-  const locale = activeLocale();
   const navigate = useNavigate();
   const { state, update } = useWizardState("/setup/basis");
   const demo = findDemo(state.demo);
@@ -137,7 +129,6 @@ export function BasisStep() {
   const genreLabelId = useId();
   const titleRef = useRef<HTMLInputElement | null>(null);
   const focusTitlePending = useRef(false);
-  const radioRefs = useRef<Partial<Record<Locale, HTMLButtonElement | null>>>({});
   // The word field's draft while editing: a cleared or out-of-range entry
   // never reaches the state; on blur the field snaps back to the value that
   // would actually be sent, so it never shows a number the POST won't carry.
@@ -149,14 +140,6 @@ export function BasisStep() {
   // the value the address carries. Validation still reads the trimmed state.
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   usePageTitle(t("setup.basis"));
-
-  // The pre-setup mirror, the welcome's contract: adopt before paint when
-  // the settings row holds no choice yet.
-  useLayoutEffect(() => {
-    if (chosenLocale() !== null) return;
-    const mirrored = readPreSetupLocale();
-    if (mirrored !== null) applyLocale(mirrored);
-  }, []);
 
   // The binding's two seams: a bound step drops both drafts (the target and
   // the editable title belong to the blank path), and the tabula-rasa button's
@@ -172,42 +155,6 @@ export function BasisStep() {
       titleRef.current?.focus();
     }
   }, [bound]);
-
-  /** Apply and persist a locale — the welcome switcher's contract: the
-   *  structural 409 keeps the mirror, a success clears it, any other refusal
-   *  restores the prior choice. */
-  async function choose(next: Locale) {
-    if (next === activeLocale()) return;
-    const previous = chosenLocale();
-    applyLocale(next);
-    storePreSetupLocale(next);
-    try {
-      const { response } = await client.PATCH("/api/settings", { body: { locale: next } });
-      if (response.status === 409) return; // setup required: the mirror stands
-      if (!response.ok) throw new Error(`refused: ${response.status}`);
-      storePreSetupLocale(null);
-      void queryClient.invalidateQueries({ queryKey: ["settings"] });
-    } catch {
-      applyLocale(previous);
-      storePreSetupLocale(previous);
-    }
-  }
-
-  /** The radio group's keyboard contract, the welcome's: arrows cycle and
-   *  wrap, Home/End jump to the ends, the move selects and focuses. */
-  function radioKey(event: KeyboardEvent<HTMLButtonElement>, at: number) {
-    const span = SWITCHER_ORDER.length;
-    let next: number;
-    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (at + 1) % span;
-    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (at - 1 + span) % span;
-    else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = span - 1;
-    else return;
-    event.preventDefault();
-    const code = SWITCHER_ORDER[next];
-    void choose(code);
-    radioRefs.current[code]?.focus();
-  }
 
   function togglePill(value: string) {
     update((prev) => ({
@@ -253,107 +200,8 @@ export function BasisStep() {
     // The draft's body: full-bleed, pinned ends, the selection pair in tokens.
     // The shell owns the one <main> landmark; this is its content.
     <div className="flex min-h-screen w-full flex-col justify-between selection:bg-secondary-container selection:text-secondary-container-foreground">
-      {/* 1. Header & stepper — sticky, the draft's surface-bright bar */}
-      <header className="sticky top-0 z-30 w-full bg-surface shadow-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
-          {/* Brand & context */}
-          <div className="flex items-center gap-2.5">
-            <div
-              className={`${SERIF} flex h-8 w-8 items-center justify-center rounded bg-primary text-emph font-semibold text-primary-foreground shadow-inner`}
-            >
-              N
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-emph font-semibold tracking-tight text-foreground">
-                  {t("setup.welcome.wordmark")}
-                </span>
-                <span aria-hidden="true" className="text-meta text-outline-variant">
-                  /
-                </span>
-                <span className="text-label font-medium text-muted">{t("setup.basis.context")}</span>
-              </div>
-              <p className="text-eyebrow uppercase tracking-wider text-muted">
-                {t("setup.welcome.year")} • {t("setup.welcome.edition")}
-              </p>
-            </div>
-          </div>
-
-          {/* Stepper — step one active, the rest named and waiting */}
-          <nav
-            aria-label={t("setup.wizard.progress")}
-            className="hidden items-center gap-1 rounded-lg border border-border bg-surface-container-low px-3 py-1.5 md:flex"
-          >
-            <div
-              aria-current="step"
-              className="flex items-center gap-2 rounded bg-surface-container-lowest px-2.5 py-1 text-label font-semibold text-primary shadow-sm"
-            >
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                1
-              </span>
-              <span>{t("setup.wizard.step1")}</span>
-            </div>
-            {(["setup.wizard.step2", "setup.wizard.step3", "setup.wizard.step4"] as const).map(
-              (key, at) => (
-                <Fragment key={key}>
-                  <span aria-hidden="true" className="px-1 text-meta text-outline-variant">
-                    ›
-                  </span>
-                  <div className="flex items-center gap-1.5 px-2 py-1 text-label text-muted">
-                    <span className="flex h-4 w-4 items-center justify-center rounded-full border border-outline-variant text-[10px]">
-                      {at + 2}
-                    </span>
-                    <span>{t(key)}</span>
-                  </div>
-                </Fragment>
-              ),
-            )}
-          </nav>
-
-          {/* Language switcher & controls */}
-          <div className="flex items-center gap-3">
-            <div
-              role="radiogroup"
-              aria-label={t("setup.welcome.language")}
-              className="inline-flex rounded-lg border border-border bg-surface-container-lowest p-0.5 text-meta"
-            >
-              {SWITCHER_ORDER.map((code) => (
-                <button
-                  key={code}
-                  type="button"
-                  role="radio"
-                  aria-label={catalogs[code]["locale.name"]}
-                  aria-checked={code === locale}
-                  tabIndex={code === locale ? 0 : -1}
-                  ref={(node) => {
-                    radioRefs.current[code] = node;
-                  }}
-                  onKeyDown={(event) => radioKey(event, SWITCHER_ORDER.indexOf(code))}
-                  onClick={() => void choose(code)}
-                  className={
-                    code === locale
-                      ? `rounded bg-surface-container-high px-2 py-0.5 font-semibold text-primary ${FOCUS}`
-                      : `rounded px-2 py-0.5 text-muted transition-colors hover:text-foreground ${FOCUS}`
-                  }
-                >
-                  {code.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <div aria-hidden="true" className="h-4 w-px bg-border" />
-            {/* The handbook does not exist yet: honestly disabled (gap doc). */}
-            <button
-              type="button"
-              disabled
-              title={t("setup.basis.help")}
-              aria-label={t("setup.basis.help")}
-              className="flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg text-muted opacity-50"
-            >
-              <Icon name="menuBook" size={18} />
-            </button>
-          </div>
-        </div>
-      </header>
+      {/* 1. Header & stepper — the wizard's shared chrome, step one active */}
+      <WizardHeader activeStep={1} />
 
       {/* 2. Title & hero */}
       <div className="mx-auto w-full max-w-7xl flex-1 px-6 pb-12 pt-8">
