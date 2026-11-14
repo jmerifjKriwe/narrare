@@ -356,7 +356,7 @@ export function BookCover({
       {!model.monogram && (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-[6px] rounded-r-[4px] border border-amber-300/20"
+          className="pointer-events-none absolute inset-[6px] rounded-r-[4px] border border-cover-deboss/20"
         />
       )}
 

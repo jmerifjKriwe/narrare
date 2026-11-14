@@ -161,7 +161,9 @@ describe("BookCover anatomy", () => {
     const deboss = root(full.container).querySelector(".inset-\\[6px\\]");
     expect(deboss).not.toBeNull();
     expect(deboss?.classList.contains("rounded-r-[4px]")).toBe(true);
-    expect(deboss?.classList.contains("border-amber-300/20")).toBe(true);
+    // The drafted gold rides the cover's own token (--cover-deboss in
+    // globals.css), not the raw Tailwind palette; the opacity stays drafted.
+    expect(deboss?.classList.contains("border-cover-deboss/20")).toBe(true);
     full.unmount();
 
     const mini = render(<BookCover title="Dead Signal" size="mini" />);

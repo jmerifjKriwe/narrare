@@ -93,8 +93,6 @@
   "setup.basis.titleSync": "Der Titel synchronisiert sich in Echtzeit auf das Cover",
   "setup.basis.wordsLabel": "Ziel-Umfang des Manuskripts",
   "setup.basis.wordsUnit": "Wörter",
-  "setup.interimBody": "Das Atelier wird gerade neu gebaut und kehrt Bildschirm für Bildschirm zurück. Diese Seite ist der Zwischenstand, bis der neue Bau steht.",
-  "setup.interimTitle": "Narrare wird gerade neu gebaut",
   "setup.landing": "Bücherregal: dein Atelier",
   "setup.landing.breadcrumb": "Dein Atelier",
   "setup.landing.cta.lore": "Entitäten- & Lore-Graph öffnen",

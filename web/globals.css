@@ -142,6 +142,14 @@
   --cover-thriller-ink: #FFF8F2;
   --cover-fallback: #DFD7CB;
   --cover-fallback-ink: #1E1B16;
+  /* The blind-deboss boundary's gold (cover-system spec, Sektion 01, the
+   * "Gold / Blindprägung" hairline): the draft's Tailwind amber-300, kept
+   * verbatim in oklch — the value sits a hair outside sRGB, and a hex would
+   * clip its red channel into a different gold. Not the focus amber: the
+   * deboss is the object's own gilding, not an action. Theme-constant like
+   * the genre grounds (Sektion 06); the drafted opacity rides the utility
+   * (`border-cover-deboss/20`), not the token. */
+  --cover-deboss: oklch(87.9% 0.169 91.605);
 
   /* The shape ladder (spec §6.4): a control is never rounded like the
    * surface that holds it, so each step carries its role's name —
@@ -274,6 +282,7 @@ body {
   --color-cover-thriller-ink: var(--cover-thriller-ink);
   --color-cover-fallback: var(--cover-fallback);
   --color-cover-fallback-ink: var(--cover-fallback-ink);
+  --color-cover-deboss: var(--cover-deboss);
   --color-area-writing: var(--area-writing);
   --color-area-knowledge: var(--area-knowledge);
   --color-area-chat: var(--area-chat);

@@ -5,7 +5,7 @@ Sources of truth: ``app/capabilities/*/capability.yaml`` — facts only (spec §
 ``i18n/*.json`` for the shared text, whose *filenames* are the set of languages,
 and ``app/capabilities/*/web/i18n/*.json`` for each capability's own text, with
 ``i18n/overlays/formality/*.json`` carrying sparse formal variants. Nothing
-declares a language twice. Fourteen views, none hand-edited, all committed:
+declares a language twice. Fifteen views, none hand-edited, all committed:
 
 * ``app/generated/capabilities.py`` — the registry ``app/api/main.py``
   cross-checks against the mounted routers at startup;
@@ -43,6 +43,9 @@ declares a language twice. Fourteen views, none hand-edited, all committed:
 * ``web/lib/generated/help.ts`` — the help registry the UI resolves by
   surface, one group per topic under ``app/capabilities/*/web/help/``:
   a new topic appears by existing, with zero generator changes;
+* ``web/lib/generated/demos.ts`` — the demo corpus the setup wizard's picker
+  reads, one row per bundled archive: a demo added to the corpus appears on
+  the next ``just generate``;
 * ``docs/user/INDEX.md`` — one row per capability per locale, with the table's
   own words read from the catalogs;
 * ``docs/user/help-coverage.md`` — which capabilities ship help, in which
@@ -1515,7 +1518,7 @@ def typescript_demos(root: Path) -> str:
 
 
 def main() -> None:
-    """Validate capability inputs and overwrite the fourteen views from the current directory.
+    """Validate capability inputs and overwrite the fifteen views from the current directory.
 
     Validation may raise SystemExit; file and parse errors propagate. Parent
     directories are created as needed when writing the views.

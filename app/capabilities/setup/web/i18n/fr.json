@@ -93,8 +93,6 @@
   "setup.basis.titleSync": "Le titre se synchronise en temps réel sur la couverture",
   "setup.basis.wordsLabel": "Longueur cible du manuscrit",
   "setup.basis.wordsUnit": "mots",
-  "setup.interimBody": "Le studio est en cours de reconstruction et revient écran par écran. Cette page est l'état provisoire en attendant le nouveau Narrare.",
-  "setup.interimTitle": "Narrare est en cours de reconstruction",
   "setup.landing": "Bibliothèque : ton atelier",
   "setup.landing.breadcrumb": "Ton atelier",
   "setup.landing.cta.lore": "Ouvrir le graphe d'entités & de lore",

@@ -116,8 +116,8 @@ test-e2e scope="affected" workers="":
     uv run pytest $paths -v -m "e2e and not showcase" --timeout=60 -n "$workers"
 
 # One E2E file, node or `-k` selection with the suite's own marker and timeout
-# (no affected resolver): just test-e2e-file <file> --lf — no suite exists
-# during the rebuild interim; the first rebuilt screen brings one back.
+# (no affected resolver): just test-e2e-file <file> --lf — setup's suite is
+# back; more return with each rebuilt wave.
 [positional-arguments]
 test-e2e-file *args:
     uv run pytest {{args}} -v -m e2e --timeout=60

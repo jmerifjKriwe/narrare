@@ -93,8 +93,6 @@
   "setup.basis.titleSync": "The title syncs to the cover in real time",
   "setup.basis.wordsLabel": "Target length of the manuscript",
   "setup.basis.wordsUnit": "words",
-  "setup.interimBody": "The studio is being rebuilt and returns screen by screen. This page is the interim state while the new Narrare is under way.",
-  "setup.interimTitle": "Narrare is being rebuilt",
   "setup.landing": "Bookshelf: your atelier",
   "setup.landing.breadcrumb": "Your atelier",
   "setup.landing.cta.lore": "Open the entity & lore graph",

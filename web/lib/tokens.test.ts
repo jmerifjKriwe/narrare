@@ -250,6 +250,13 @@ const PAIRS: Record<string, [string, string]> = {
   "cover-thriller-ink": ["#FFF8F2", "#FFF8F2"],
   "cover-fallback": ["#DFD7CB", "#DFD7CB"],
   "cover-fallback-ink": ["#1E1B16", "#1E1B16"],
+  // The blind-deboss boundary's gold (cover-system spec, Sektion 01): the
+  // draft's Tailwind amber-300, theme-constant like the genre grounds. Kept
+  // in oklch — the value sits a hair outside sRGB, and a hex would clip its
+  // red channel into a different gold. A decorative hairline that carries
+  // no information of its own, so it has no contrast row (the outline
+  // hairline's rule).
+  "cover-deboss": ["oklch(87.9% 0.169 91.605)", "oklch(87.9% 0.169 91.605)"],
 };
 
 /** The shape ladder (spec §6.4): 4 px small controls, 8 px controls, 12 px surfaces. */
@@ -355,8 +362,12 @@ describe("the shell's tokens", () => {
       }
       const paintedLight = painted(tokens, name, "light").toUpperCase();
       const paintedDark = painted(tokens, name, "dark").toUpperCase();
-      if (paintedLight !== light) wrong.push(`--${name} light: ${paintedLight} ≠ ${light}`);
-      if (paintedDark !== dark) wrong.push(`--${name} dark: ${paintedDark} ≠ ${dark}`);
+      // CSS colour values are case-insensitive: the oklch deboss gold reads
+      // lowercase, the hex pairs uppercase; the comparison folds both.
+      if (paintedLight !== light.toUpperCase())
+        wrong.push(`--${name} light: ${paintedLight} ≠ ${light}`);
+      if (paintedDark !== dark.toUpperCase())
+        wrong.push(`--${name} dark: ${paintedDark} ≠ ${dark}`);
     }
     expect(wrong).toEqual([]);
   });
