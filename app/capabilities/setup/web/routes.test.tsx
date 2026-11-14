@@ -6,9 +6,10 @@
  * asks, never from a remembered variant. The gate's two choices are mocked
  * at their module boundary so the choice itself is observable while both
  * pages are still placeholders (the port tasks fill them and test them in
- * their own right); step one renders the real basis step, the other three
- * steps the interim placeholder. The API client is mocked at its module
- * boundary — the request's truth is the backend's and the E2E's.
+ * their own right); steps one and two render the real basis and structure
+ * steps, the other two steps the interim placeholder. The API client is
+ * mocked at its module boundary — the request's truth is the backend's and
+ * the E2E's.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
@@ -143,7 +144,7 @@ describe("the wizard's steps", () => {
     ).toBe("Dead Signal");
   });
 
-  it.each(["/setup/structure", "/setup/ai-rules", "/setup/provisioning"])(
+  it.each(["/setup/ai-rules", "/setup/provisioning"])(
     "answers %s with the interim placeholder",
     async (path) => {
       scriptStatus(async () => ({ data: { complete: false }, response: ok() }));

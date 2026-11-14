@@ -23,6 +23,10 @@ const BasisStep = lazy(async () => {
   const page = await import("./steps/BasisStep");
   return { default: page.BasisStep };
 });
+const StructureStep = lazy(async () => {
+  const page = await import("./steps/StructureStep");
+  return { default: page.StructureStep };
+});
 
 /**
  * The `/` gate: the welcome while the instance is unset, the landing once
@@ -54,8 +58,9 @@ const setupRoute = createRoute({
 });
 
 // The four steps, addressable each on its own — a refresh mid-wizard lands
-// on the same step. Step one is the ported basis step; the interim
-// placeholder stands in for the rest until the port tasks fill them.
+// on the same step. Steps one and two are the ported basis and structure
+// steps; the interim placeholder stands in for the rest until the port
+// tasks fill them.
 const basisRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup/basis",
@@ -65,7 +70,7 @@ const basisRoute = createRoute({
 const structureRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup/structure",
-  component: SetupPage,
+  component: StructureStep,
 });
 
 const aiRulesRoute = createRoute({
