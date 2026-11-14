@@ -121,6 +121,7 @@ afterEach(() => {
   cleanup();
   queryClient.clear();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
   applyLocale(null);
   localStorage.clear();
 });
@@ -286,6 +287,53 @@ describe("the landing — the post-setup switcher writes the row", () => {
     // The refusal snaps back: the German eyebrow stands again.
     await waitFor(() => expect(screen.getByText(de["setup.landing.eyebrow"])).toBeTruthy());
     expect(screen.getByRole("radio", { name: catalogs.de["locale.name"] }).getAttribute("aria-checked")).toBe("true");
+  });
+});
+
+describe("the landing — a kept pre-setup mirror keeps speaking", () => {
+  it("mirror present, row silent: the mirrored language speaks, read-only", async () => {
+    // The browser speaks German; the kept mirror says French. The refused
+    // seam left the row silent, so the preserved choice must keep speaking.
+    vi.stubGlobal("navigator", { language: "de-DE", languages: ["de-DE"] });
+    rowLocale = null;
+    localStorage.setItem("narrare.locale.preSetup", "fr");
+    renderLanding();
+
+    const fr = catalogs.fr;
+    expect(await screen.findByText(fr["setup.landing.eyebrow"])).toBeTruthy();
+    expect(
+      screen.getByRole("radio", { name: fr["locale.name"] }).getAttribute("aria-checked"),
+    ).toBe("true");
+    // Read-only adoption: no write goes out, and the mirror stands untouched
+    // until a switcher touch spends it.
+    expect(api.PATCH).not.toHaveBeenCalled();
+    expect(localStorage.getItem("narrare.locale.preSetup")).toBe("fr");
+  });
+
+  it("mirror absent, row silent: the browser's language stands unchanged", async () => {
+    vi.stubGlobal("navigator", { language: "de-DE", languages: ["de-DE"] });
+    rowLocale = null;
+    renderLanding();
+
+    // No mirror to adopt: the boot's browser fallback speaks, nothing invented.
+    expect(await screen.findByText(de["setup.landing.eyebrow"])).toBeTruthy();
+    expect(api.PATCH).not.toHaveBeenCalled();
+    expect(localStorage.getItem("narrare.locale.preSetup")).toBeNull();
+  });
+
+  it("a switcher touch spends the kept mirror and the row becomes the record", async () => {
+    rowLocale = null;
+    localStorage.setItem("narrare.locale.preSetup", "fr");
+    renderLanding();
+
+    expect(await screen.findByText(catalogs.fr["setup.landing.eyebrow"])).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: catalogs.de["locale.name"] }));
+
+    await waitFor(() =>
+      expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "de" } }),
+    );
+    expect(await screen.findByText(de["setup.landing.eyebrow"])).toBeTruthy();
+    expect(localStorage.getItem("narrare.locale.preSetup")).toBeNull();
   });
 });
 

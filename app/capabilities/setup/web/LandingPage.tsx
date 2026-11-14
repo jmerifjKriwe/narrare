@@ -1,4 +1,4 @@
-import { Fragment, useId, useRef, type KeyboardEvent } from "react";
+import { Fragment, useId, useLayoutEffect, useRef, type KeyboardEvent } from "react";
 
 import { client } from "@shell/lib/api/client";
 import { BookCover } from "@shell/lib/cover/BookCover";
@@ -10,7 +10,7 @@ import { usePageTitle } from "@shell/lib/pageTitle";
 import { queryClient, useNovelsQuery } from "@shell/lib/query";
 import { Icon, type IconName } from "@shell/ui/icons";
 
-import { storePreSetupLocale } from "./preSetupLocale";
+import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
 
 /**
  * The post-setup landing — the `landing-atelier` draft ported 1:1 onto the
@@ -30,7 +30,10 @@ import { storePreSetupLocale } from "./preSetupLocale";
  * The language switcher here is the post-setup contract: the settings row is
  * the record now, so a choice applies at once and PATCHes the row; a success
  * spends any leftover pre-setup mirror, a refusal restores the prior language.
- * There is no structural-409 branch — the row exists once setup has run.
+ * There is no structural-409 branch — the row exists once setup has run. A
+ * mirror the seam's refusal kept is adopted read-only as the display language
+ * while the row holds no choice, so the preserved choice keeps speaking until
+ * a switcher touch spends it.
  *
  * Deviations from the draft, kept honest (the gap doc records them): the
  * hand-drawn book object is the shared BookCover at size `hero`; the demo
@@ -75,6 +78,19 @@ export function LandingPage() {
   const newNoteId = useId();
   const radioRefs = useRef<Partial<Record<Locale, HTMLButtonElement | null>>>({});
   usePageTitle(t("setup.landing"));
+
+  // The refused seam's kept mirror: when the carry-over PATCH was refused,
+  // the row holds no choice and the preserved pre-setup choice would sit in
+  // storage speaking nowhere. Adopt it as the display language — read-only,
+  // the same adoption WizardHeader runs pre-setup, before paint so the first
+  // face is already the chosen one. A row that holds a choice always wins
+  // (the guard), and the effect writes nothing: the switcher's next
+  // successful touch spends the mirror and the row becomes the record.
+  useLayoutEffect(() => {
+    if (chosenLocale() !== null) return;
+    const mirrored = readPreSetupLocale();
+    if (mirrored !== null) applyLocale(mirrored);
+  }, []);
 
   /** Apply a locale and write the row — the post-setup contract. The row is
    *  the record now: a success spends any leftover pre-setup mirror and
