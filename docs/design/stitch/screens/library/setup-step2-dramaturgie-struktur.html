@@ -1,370 +1,484 @@
 <!DOCTYPE html>
 
-<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={"darkMode":"class","theme":{"extend":{"colors":{"secondary-fixed":"#ffdbce","on-tertiary-fixed-variant":"#693c10","tertiary-container":"#6e3f14","surface-container":"#f4ede4","on-background":"#1e1b16","on-error-container":"#93000a","surface-dim":"#e0d9d1","surface-bright":"#fff8f2","surface-container-low":"#faf2ea","on-tertiary-fixed":"#2f1500","rule-dark":"#302D28","bg-soft-light":"#EFEBE2","surface-variant":"#e9e1d9","bg-canvas-light":"#F6F3ED","on-primary-fixed":"#351000","tertiary":"#522900","background":"#fff8f2","on-surface":"#1e1b16","surface":"#fff8f2","inverse-primary":"#ffb695","surface-container-highest":"#e9e1d9","bg-card-light":"#FFFFFF","inverse-on-surface":"#f7f0e7","area-chat":"#3A637B","area-settings":"#5A5549","text-muted-light":"#6E6B65","secondary-fixed-dim":"#e3bfb2","on-tertiary-container":"#eead78","area-planning":"#834D7E","on-tertiary":"#ffffff","bg-card-dark":"#211F1A","amber-focus":"#8F4622","area-knowledge":"#606127","rule-light":"#EEEBE5","secondary-container":"#fed8ca","on-secondary-container":"#795c52","bg-canvas-dark":"#16140F","state-warning":"#9A6100","on-surface-variant":"#53433d","bg-panel-light":"#FDFCF9","cover-pale":"#EEEBE5","cover-sepia":"#743B1F","on-secondary-fixed-variant":"#5a4137","primary":"#58250b","border-dark":"#35332D","on-error":"#ffffff","text-foreground-dark":"#DFDEDA","tertiary-fixed-dim":"#fcb882","area-writing":"#914F2F","surface-container-high":"#eee7df","error":"#ba1a1a","inverse-surface":"#33302b","outline":"#86736c","surface-tint":"#8c4e30","tertiary-fixed":"#ffdcc3","secondary":"#74584e","on-primary-container":"#f8a884","error-container":"#ffdad6","cover-ink":"#24211C","outline-variant":"#d8c2b9","bg-panel-dark":"#1C1914","border-light":"#E0DEDA","primary-fixed":"#ffdbcc","state-danger":"#AC3031","on-primary-fixed-variant":"#6f371c","bg-soft-dark":"#2C2922","on-secondary":"#ffffff","primary-container":"#743b1f","state-success":"#21763C","amber-focus-dark":"#F2AD73","text-muted-dark":"#89867F","primary-fixed-dim":"#ffb695","surface-container-lowest":"#ffffff","on-secondary-fixed":"#2a170f","on-primary":"#ffffff"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"rail-collapsed":"3rem","space-xs":"0.25rem","container-max":"75rem","gutter":"1rem","space-lg":"1.5rem","dock-width":"21rem","space-xl":"2rem","space-md":"1rem","rail-expanded":"10.5rem","space-sm":"0.5rem","margin":"1.5rem","prose-max-width":"34rem"},"fontFamily":{"headline-emph":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"prose-heading-2":["EB Garamond"],"meta-default":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"headline-hero":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"eyebrow-tracked":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"]},"fontSize":{"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}]}}}</script></head><body class="bg-surface font-body-default text-body-default text-on-surface antialiased"><header class="fixed top-0 w-full z-50 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-14 max-w-container-max mx-auto px-margin flex items-center justify-between"><div class="flex items-center gap-space-md"><div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center"><span class="font-prose-heading-2 text-prose-heading-2 text-on-primary leading-none select-none">N</span></div><div class="flex items-center gap-space-xs"><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface-variant tracking-wider">Atelier</span><span class="font-meta-default text-meta-default text-on-surface-variant">/</span><span class="font-label-default text-label-default text-on-surface">Projekt-Setup &amp; Atelier-Initialisierung</span></div></div><nav class="hidden md:flex items-center gap-space-sm" data-active-classes="text-on-surface font-headline-emph bg-surface-container-high rounded"><a class="px-space-sm py-space-xs text-on-surface-variant font-label-default text-label-default hover:text-on-surface transition-colors" data-path="projekt-basis" href="#">1. Basis</a><a aria-current="page" class="px-space-sm py-space-xs transition-colors text-on-surface font-headline-emph bg-surface-container-high rounded" data-path="dramaturgie-vorlage" href="#">2. Struktur</a><a class="px-space-sm py-space-xs text-on-surface-variant font-label-default text-label-default hover:text-on-surface transition-colors" data-path="welt-und-figuren" href="#">3. Lore &amp; Cast</a><a class="px-space-sm py-space-xs text-on-surface-variant font-label-default text-label-default hover:text-on-surface transition-colors" data-path="ki-atelier-praeferenzen" href="#">4. Assistent</a></nav><div class="flex items-center gap-space-sm"><div class="flex items-center bg-surface-container rounded px-space-xs py-0.5 text-on-surface-variant"><button class="px-space-xs py-0.5 font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface font-semibold" type="button">DE</button><span class="font-meta-default text-meta-default text-outline-variant">|</span><button class="px-space-xs py-0.5 font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface-variant hover:text-on-surface" type="button">EN</button></div><button class="w-7 h-7 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">light_mode</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-14 bg-surface"><div class="max-w-container-max mx-auto px-margin py-space-xl flex justify-center"><div class="flex flex-col w-full">
-<!-- Interactive Setup Wizard Container -->
-<div class="w-full flex flex-col gap-space-xl">
-<!-- Progress Indicator / Stepper Strip -->
-<section class="w-full bg-surface-container-low rounded-xl p-space-md shadow-sm">
-<div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
-<!-- Step 1: Done -->
-<div class="flex items-center gap-space-sm group cursor-pointer opacity-90 hover:opacity-100 transition-opacity">
-<div class="w-7 h-7 rounded-full bg-state-success text-on-primary flex items-center justify-center shadow-sm">
-<span class="material-symbols-outlined text-[16px]">check</span>
+<html lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="web_standard" name="shell-type"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface": "#fff8f2",
+            "surface-dim": "#e0d9d1",
+            "surface-bright": "#fff8f2",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#faf2ea",
+            "surface-container": "#f4ede4",
+            "surface-container-high": "#eee7df",
+            "surface-container-highest": "#e9e1d9",
+            "pergament": "#fbf7f0",
+            "pergament-card": "#f8f3eb",
+            "primary": "#743b1f",
+            "primary-dark": "#58250b",
+            "primary-container": "#743b1f",
+            "primary-fixed": "#ffdbcc",
+            "primary-fixed-dim": "#ffb695",
+            "on-primary": "#ffffff",
+            "secondary": "#74584e",
+            "secondary-container": "#fed8ca",
+            "on-secondary-container": "#795c52",
+            "border-parchment": "#e6dcce",
+            "border-parchment-strong": "#d6c7b2",
+            "text-parchment-ink": "#231f1d",
+            "on-surface": "#231f1d",
+            "on-surface-variant": "#5f534d",
+            "text-muted": "#7c6f66",
+            "state-success": "#2e724a",
+            "state-warning": "#9a6100",
+            "outline-variant": "#dfd5c7",
+            "amber-focus": "#8f4622"
+          },
+          borderRadius: {
+            "DEFAULT": "0.25rem",
+            "md": "0.375rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "2xl": "1rem"
+          },
+          fontFamily: {
+            "editorial-title": ["Newsreader", "EB Garamond", "serif"],
+            "prose-heading": ["Newsreader", "EB Garamond", "serif"],
+            "ui": ["Plus Jakarta Sans", "sans-serif"],
+            "meta": ["Plus Jakarta Sans", "sans-serif"]
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    body {
+      background-color: #fff8f2;
+      color: #231f1d;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #e6dcce;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-surface font-ui text-on-surface antialiased min-h-screen flex flex-col selection:bg-primary/20 selection:text-primary-dark">
+<!-- Header: Authentic Narrare Literary Modernism -->
+<header class="sticky top-0 w-full z-50 bg-[#fff8f2]/95 backdrop-blur-md border-b border-border-parchment"><div class="max-w-[84rem] mx-auto px-6 h-16 flex items-center justify-between">
+<!-- Brand & Breadcrumbs -->
+<div class="flex items-center gap-4">
+<div class="w-9 h-9 rounded-md bg-primary text-on-primary flex items-center justify-center shadow-sm">
+<span class="font-editorial-title italic text-2xl font-serif leading-none select-none">N</span>
 </div>
-<div class="flex flex-col">
-<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface-variant">Schritt 01</span>
-<span class="font-label-default text-label-default text-on-surface font-semibold flex items-center gap-1">
-              Projekt-Basis
-              <span class="inline-block px-1.5 py-0.2 bg-surface-container text-on-surface-variant rounded text-[11px] font-normal">Dead Signal</span>
+<div class="flex items-center gap-2">
+<span class="font-ui text-[11px] uppercase tracking-[0.16em] text-text-muted font-semibold">Atelier</span>
+<span class="text-border-parchment-strong text-xs font-serif">/</span>
+<span class="font-ui text-xs font-medium text-on-surface">Projekt-Setup</span>
+</div>
+</div>
+<!-- Center Wizard Stepper (4 Phasen) -->
+<nav class="hidden lg:flex items-center gap-1.5 bg-surface-container-low px-2.5 py-1.5 rounded-full border border-border-parchment/80">
+<a class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-state-success hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined text-[15px] font-bold">check</span>
+<span>1. Basis</span>
+</a>
+<span class="text-border-parchment text-xs">―</span>
+<span class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary text-on-primary shadow-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-[#f8a884] animate-pulse"></span>
+<span>2. Struktur</span>
 </span>
+<span class="text-border-parchment text-xs">―</span>
+<span class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-text-muted opacity-60">
+<span>3. KI-Partner</span>
+</span>
+<span class="text-border-parchment text-xs">―</span>
+<span class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-text-muted opacity-60">
+<span>4. Bereitstellung</span>
+</span>
+</nav>
+<!-- Utilities & Schreibjahr 2026 -->
+<div class="flex items-center gap-3">
+<div class="inline-flex items-center rounded-md border border-border-parchment bg-surface-container-low p-0.5 text-xs text-text-muted">
+<button class="px-2 py-0.5 rounded font-semibold text-primary bg-surface shadow-xs" type="button">DE</button>
+<button class="px-2 py-0.5 rounded text-text-muted hover:text-on-surface transition-colors" type="button">EN</button>
+<button class="px-2 py-0.5 rounded text-text-muted hover:text-on-surface transition-colors" type="button">FR</button>
+</div>
+<div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border-parchment bg-surface-container-low text-[11px] font-medium text-text-muted">
+<span class="material-symbols-outlined text-[14px] text-primary">calendar_today</span>
+<span>Schreibjahr 2026</span>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-container border border-border-parchment-strong flex items-center justify-center text-primary font-semibold text-xs">
+<span>JS</span>
 </div>
 </div>
-<div class="hidden md:block w-8 h-[1px] bg-outline-variant/40"></div>
-<!-- Step 2: Active -->
-<div class="flex items-center gap-space-sm bg-surface-container rounded-lg px-space-sm py-1 shadow-sm">
-<div class="w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center font-headline-emph text-headline-emph">
-            2
-          </div>
-<div class="flex flex-col">
-<div class="flex items-center gap-1.5">
-<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-primary font-bold">Aktiv</span>
-<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+</div></header>
+<!-- Main Atelier Setup Area -->
+<main class="w-full flex-1 max-w-[84rem] mx-auto px-6 py-8 flex flex-col gap-8">
+<!-- Top Stepper Status Strip (Mobile & Contextual Sub-bar) -->
+<div class="bg-surface-container-low border border-border-parchment rounded-xl p-3.5 sm:p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-full bg-state-success/15 border border-state-success/40 text-state-success flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[16px] font-bold">check</span>
 </div>
-<span class="font-label-default text-label-default text-on-surface font-semibold">Dramaturgie &amp; Struktur</span>
-</div>
-</div>
-<div class="hidden md:block w-8 h-[1px] bg-outline-variant/40"></div>
-<!-- Step 3: Pending -->
-<div class="flex items-center gap-space-sm opacity-50">
-<div class="w-7 h-7 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center font-label-default text-label-default">
-            3
-          </div>
-<div class="flex flex-col">
-<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface-variant">Schritt 03</span>
-<span class="font-label-default text-label-default text-on-surface-variant">Welt &amp; KI-Präferenzen</span>
-</div>
-</div>
-<div class="hidden md:block w-8 h-[1px] bg-outline-variant/40"></div>
-<!-- Step 4: Pending -->
-<div class="flex items-center gap-space-sm opacity-50">
-<div class="w-7 h-7 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center font-label-default text-label-default">
-            4
-          </div>
-<div class="flex flex-col">
-<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface-variant">Schritt 04</span>
-<span class="font-label-default text-label-default text-on-surface-variant">Bereitstellung</span>
+<div>
+<span class="text-[11px] font-semibold text-text-muted uppercase tracking-wider block">Gewählte Basis</span>
+<div class="text-xs text-on-surface">
+        Vorlage <span class="font-editorial-title italic text-sm text-primary font-semibold">»Dead Signal«</span> — Science Fiction • 3 Kapitel <span class="text-text-muted">(die Konfiguration gilt zusätzlich zur Vorlage)</span>
 </div>
 </div>
 </div>
-</section>
-<!-- Header Section with Atmospheric Accent -->
-<header class="flex flex-col gap-space-xs relative">
-<div class="flex items-center gap-space-sm">
-<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-widest text-primary font-semibold">Schritt 2 / Konfiguration</span>
-<span class="text-outline-variant">•</span>
-<span class="font-meta-default text-meta-default text-on-surface-variant">Arbeitsbereich: Sci-Fi / Mystery</span>
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface border border-border-parchment text-[11px] text-text-muted self-start sm:self-auto">
+<span class="material-symbols-outlined text-[14px] text-primary">verified_user</span>
+<span>Kausalitäts-Garantie aktiv</span>
 </div>
-<h1 class="font-prose-heading-1 text-prose-heading-1 text-on-surface tracking-tight">
-        Dramaturgisches Gerüst &amp; Erzählarchitektur
-      </h1>
-<p class="font-prose-editorial text-prose-editorial text-on-surface-variant max-w-2xl">
-        Passen Sie die geerbte Struktur der Vorlage an Ihre individuellen Schreibgewohnheiten an. Narrare kalibriert KI-Interventionen und Timeline-Warnungen anhand Ihres Mental Models.
-      </p>
-</header>
+</div>
+<!-- Editorial Intro Section -->
+<header class="max-w-3xl"><div class="flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-primary font-semibold mb-1.5">
+<span>Literarische Konfiguration</span>
+<span class="text-border-parchment-strong">•</span>
+<span class="text-text-muted">Schritt 2 von 4</span>
+</div>
+<h1 class="font-editorial-title text-3xl sm:text-4xl text-on-surface font-normal tracking-tight leading-snug">
+  Dramaturgisches Gerüst &amp; Erzählarchitektur
+</h1>
+<p class="font-editorial-title italic text-base sm:text-lg text-on-surface-variant mt-2 leading-relaxed">
+  Passe die Struktur an deine Schreibgewohnheiten an. Narrare kalibriert KI-Interventionen und Timeline-Warnungen an deinem Mental Model.
+</p></header>
 <!-- Two-Column Asymmetric Workspace -->
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
-<!-- Left Column: Controls & Mental Models (7 Cols) -->
-<div class="lg:col-span-7 flex flex-col gap-space-xl">
-<!-- Section 1: Authors Typology -->
-<section class="flex flex-col gap-space-md">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-space-xs">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- LEFT COLUMN: Configurations & Mental Models (7 Cols) -->
+<div class="lg:col-span-7 flex flex-col gap-8">
+<!-- SECTION 1: Authors Typology (Mental Model) -->
+<section class="bg-surface-container-low border border-border-parchment rounded-xl p-5 sm:p-6 shadow-xs flex flex-col gap-4"><div class="flex items-center justify-between border-b border-border-parchment pb-3">
+<div class="flex items-center gap-2">
 <span class="material-symbols-outlined text-[20px] text-primary">psychology</span>
-<h2 class="font-headline-emph text-headline-emph text-on-surface">Autoren-Typologie (Mental Model)</h2>
+<h2 class="font-editorial-title text-xl text-on-surface font-semibold tracking-tight">Autoren-Typologie (Mental Model)</h2>
 </div>
-<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface-variant">Wahl beeinflusst KI-Stil</span>
+<span class="text-[11px] font-medium uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded">Wahl beeinflusst KI-Stil</span>
 </div>
-<!-- Cards Selector -->
-<div class="grid grid-cols-1 gap-space-sm" id="typology-group">
-<!-- Card 1: Architect (Active) -->
-<label class="group relative flex items-start gap-space-md p-space-md rounded-xl bg-surface-container-lowest shadow-md cursor-pointer transition-all duration-200">
-<input checked="" class="mt-1 text-primary focus:ring-amber-focus" name="author-typology" type="radio" value="plotter"/>
-<div class="flex-1 flex flex-col">
+<p class="text-xs text-text-muted leading-relaxed">
+  Wähle das Denkmodell, nach dem Narrare dein Manuskript begleitet. Es definiert, wie sensibel Kausalitätsprüfungen reagieren und wie dein Schreibassistent Rückfragen formuliert.
+</p>
+<div class="grid grid-cols-1 gap-3.5 mt-1" id="typology-group">
+<!-- Typology Option 1: Architect (Checked) -->
+<label class="relative flex items-start gap-4 p-4 rounded-lg bg-surface border-2 border-primary shadow-xs cursor-pointer transition-all">
+<input checked="" class="mt-1 text-primary focus:ring-primary h-4 w-4 border-border-parchment-strong" name="author-typology" type="radio" value="plotter"/>
+<div class="flex-1 flex flex-col gap-1">
 <div class="flex items-center justify-between">
-<span class="font-headline-emph text-headline-emph text-on-surface flex items-center gap-1.5">
-                    Der Architekt (Plotter)
-                    <span class="px-1.5 py-0.5 rounded text-[11px] font-label-default bg-secondary-container text-on-secondary-container">Standard für Vorlage</span>
+<span class="font-ui font-semibold text-sm text-on-surface flex items-center gap-2">
+          Der Architekt (Plotter)
+          <span class="text-[10px] font-medium bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded">Voreinstellung für Dead Signal</span>
 </span>
-<span class="material-symbols-outlined text-[18px] text-primary">architecture</span>
+<span class="material-symbols-outlined text-[19px] text-primary">architecture</span>
 </div>
-<p class="font-body-default text-body-default text-on-surface-variant mt-1">
-                  Fester 3-Akt-Bogen, Szenen-Beats vor dem Schreiben festlegen, strenge Kausalitätswarnungen und rigide Timeline-Überwachung.
-                </p>
-</div>
-</label>
-<!-- Card 2: Pantser -->
-<label class="group relative flex items-start gap-space-md p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-all duration-200 shadow-sm">
-<input class="mt-1 text-primary focus:ring-amber-focus" name="author-typology" type="radio" value="pantser"/>
-<div class="flex-1 flex flex-col">
-<div class="flex items-center justify-between">
-<span class="font-headline-emph text-headline-emph text-on-surface">Der Entdecker (Pantser)</span>
-<span class="material-symbols-outlined text-[18px] text-on-surface-variant">explore</span>
-</div>
-<p class="font-body-default text-body-default text-on-surface-variant mt-1">
-                  Organischer Schreibfluss, minimale Vorab-Gliederung. Charaktere und Lore werden im Hintergrund während des Tippens erfasst.
-                </p>
+<p class="text-xs text-on-surface-variant leading-relaxed mt-0.5">
+        Fester 3-Akt-Bogen, Szenen-Beats vor dem Schreiben festlegen, strenge Kausalitätswarnungen und rigide Timeline-Überwachung.
+      </p>
 </div>
 </label>
-<!-- Card 3: Plantser / Hybrid -->
-<label class="group relative flex items-start gap-space-md p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-all duration-200 shadow-sm">
-<input class="mt-1 text-primary focus:ring-amber-focus" name="author-typology" type="radio" value="plantser"/>
-<div class="flex-1 flex flex-col">
+<!-- Typology Option 2: Pantser -->
+<label class="relative flex items-start gap-4 p-4 rounded-lg bg-pergament-card border border-border-parchment hover:border-border-parchment-strong cursor-pointer transition-all">
+<input class="mt-1 text-primary focus:ring-primary h-4 w-4 border-border-parchment-strong" name="author-typology" type="radio" value="pantser"/>
+<div class="flex-1 flex flex-col gap-1">
 <div class="flex items-center justify-between">
-<span class="font-headline-emph text-headline-emph text-on-surface">Der Hybrid (Plantser)</span>
-<span class="material-symbols-outlined text-[18px] text-on-surface-variant">compass_calibration</span>
+<span class="font-ui font-semibold text-sm text-on-surface">Der Entdecker (Pantser)</span>
+<span class="material-symbols-outlined text-[19px] text-text-muted">explore</span>
 </div>
-<p class="font-body-default text-body-default text-on-surface-variant mt-1">
-                  Grober Meilenstein-Kompass mit maximaler Szene-Freiheit. KI interveniert nur bei faktischen Widersprüchen im Worldbuilding.
-                </p>
+<p class="text-xs text-on-surface-variant leading-relaxed mt-0.5">
+        Organischer Schreibfluss, minimale Vorab-Gliederung. Figuren und Lore werden im Hintergrund während des Tippens erfasst.
+      </p>
 </div>
 </label>
-</div>
-</section>
-<!-- Section 2: Dramaturgic Form Selection -->
-<section class="flex flex-col gap-space-md">
+<!-- Typology Option 3: Plantser / Hybrid -->
+<label class="relative flex items-start gap-4 p-4 rounded-lg bg-pergament-card border border-border-parchment hover:border-border-parchment-strong cursor-pointer transition-all">
+<input class="mt-1 text-primary focus:ring-primary h-4 w-4 border-border-parchment-strong" name="author-typology" type="radio" value="plantser"/>
+<div class="flex-1 flex flex-col gap-1">
 <div class="flex items-center justify-between">
-<div class="flex items-center gap-space-xs">
+<span class="font-ui font-semibold text-sm text-on-surface">Der Hybrid (Plantser)</span>
+<span class="material-symbols-outlined text-[19px] text-text-muted">explore</span>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed mt-0.5">
+        Grober Meilenstein-Kompass mit maximaler Szenen-Freiheit. Die KI interveniert nur bei faktischen Widersprüchen im Worldbuilding.
+      </p>
+</div>
+</label>
+</div></section>
+<!-- SECTION 2: Dramaturgic Form Selection (4 Paradigms) -->
+<section class="bg-surface-container-low border border-border-parchment rounded-xl p-5 sm:p-6 shadow-xs flex flex-col gap-4"><div class="flex items-center justify-between border-b border-border-parchment pb-3">
+<div class="flex items-center gap-2">
 <span class="material-symbols-outlined text-[20px] text-primary">account_tree</span>
-<h2 class="font-headline-emph text-headline-emph text-on-surface">Dramaturgische Form</h2>
+<h2 class="font-editorial-title text-xl text-on-surface font-semibold tracking-tight">Dramaturgische Form</h2>
 </div>
-<span class="font-meta-default text-meta-default text-on-surface-variant">4 Paradigmen verfügbar</span>
+<span class="text-xs text-text-muted font-medium bg-surface-container px-2 py-0.5 rounded border border-border-parchment">4 Paradigmen verfügbar</span>
 </div>
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
-<!-- Option 1: Classic 3-Act (Selected) -->
-<div class="relative p-space-md rounded-xl bg-surface-container-lowest shadow-md flex flex-col justify-between gap-space-sm cursor-pointer">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+<!-- Paradigm 1: Classic 3-Act (Active) -->
+<div class="relative p-4 rounded-lg bg-surface border-2 border-primary shadow-xs flex flex-col justify-between gap-3 cursor-pointer group">
 <div class="flex items-start justify-between">
-<div class="w-8 h-8 rounded-lg bg-primary-container text-on-primary flex items-center justify-center">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded bg-primary/10 border border-primary/20 text-primary flex items-center justify-center">
 <span class="material-symbols-outlined text-[18px]">show_chart</span>
 </div>
-<span class="w-5 h-5 rounded-full bg-primary text-on-primary flex items-center justify-center text-[12px]">
-<span class="material-symbols-outlined text-[14px]">done</span>
+<!-- 3-Balken Pacing-Indikator -->
+<div class="flex items-end gap-0.5 h-4">
+<div class="w-1 h-2 bg-primary rounded-xs"></div>
+<div class="w-1 h-3.5 bg-primary rounded-xs"></div>
+<div class="w-1 h-2.5 bg-primary rounded-xs"></div>
+</div>
+</div>
+<span class="w-5 h-5 rounded-full bg-primary text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[13px] font-bold">check</span>
 </span>
 </div>
 <div>
-<span class="font-label-default text-label-default text-on-surface font-semibold block">Klassischer 3-Akt-Bogen</span>
-<p class="font-meta-default text-meta-default text-on-surface-variant mt-0.5">
-                  Exposition, Midpoint-Wende, Climax, Resolution. In „Dead Signal“ vorkonfiguriert.
-                </p>
+<span class="font-ui font-semibold text-sm text-on-surface block">Klassischer 3-Akt-Bogen</span>
+<p class="text-xs text-text-muted leading-relaxed mt-1">
+        Exposition, Midpoint-Wende, Climax, Resolution. In Dead Signal vorkonfiguriert.
+      </p>
 </div>
-<div class="flex items-center gap-1 text-primary font-eyebrow-tracked text-eyebrow-tracked uppercase">
-<span>In Dead Signal aktiv</span>
+<div class="flex items-center gap-1.5 text-[11px] font-medium text-primary uppercase tracking-wider">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+<span>Aktiv gewählt</span>
 </div>
 </div>
-<!-- Option 2: Hero's Journey -->
-<div class="relative p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container shadow-sm flex flex-col justify-between gap-space-sm cursor-pointer transition-colors">
+<!-- Paradigm 2: Hero's Journey -->
+<div class="relative p-4 rounded-lg bg-pergament-card border border-border-parchment hover:border-border-parchment-strong shadow-xs flex flex-col justify-between gap-3 cursor-pointer transition-all">
 <div class="flex items-start justify-between">
-<div class="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface-variant flex items-center justify-center">
-<span class="material-symbols-outlined text-[18px]">route</span>
+<div class="w-8 h-8 rounded bg-surface-container border border-border-parchment-strong text-text-muted flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">explore</span>
 </div>
-<div class="w-4 h-4 rounded-full bg-surface-variant"></div>
+<span class="w-4 h-4 rounded-full border border-border-parchment-strong"></span>
 </div>
 <div>
-<span class="font-label-default text-label-default text-on-surface font-semibold block">Die Heldenreise</span>
-<p class="font-meta-default text-meta-default text-on-surface-variant mt-0.5">
-                  12 archetypische Stufen von der Gewohnten Welt bis zum Elixier der Rückkehr.
-                </p>
+<span class="font-ui font-semibold text-sm text-on-surface block">Die Heldenreise</span>
+<p class="text-xs text-text-muted leading-relaxed mt-1">
+        12 archetypische Stufen von der gewohnten Welt bis zum Elixier der Rückkehr. 12 Sequenzen.
+      </p>
 </div>
-<span class="font-meta-default text-meta-default text-on-surface-variant">12 Sequenzen</span>
+<div class="text-[11px] text-text-muted font-medium">12 mythische Stationen</div>
 </div>
-<!-- Option 3: 7-Point Story -->
-<div class="relative p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container shadow-sm flex flex-col justify-between gap-space-sm cursor-pointer transition-colors">
+<!-- Paradigm 3: 7-Point Story Structure -->
+<div class="relative p-4 rounded-lg bg-pergament-card border border-border-parchment hover:border-border-parchment-strong shadow-xs flex flex-col justify-between gap-3 cursor-pointer transition-all">
 <div class="flex items-start justify-between">
-<div class="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface-variant flex items-center justify-center">
+<div class="w-8 h-8 rounded bg-surface-container border border-border-parchment-strong text-text-muted flex items-center justify-center">
 <span class="material-symbols-outlined text-[18px]">format_list_numbered</span>
 </div>
-<div class="w-4 h-4 rounded-full bg-surface-variant"></div>
+<span class="w-4 h-4 rounded-full border border-border-parchment-strong"></span>
 </div>
 <div>
-<span class="font-label-default text-label-default text-on-surface font-semibold block">7-Punkt-Handlungsstruktur</span>
-<p class="font-meta-default text-meta-default text-on-surface-variant mt-0.5">
-                  Fokus auf Pinch Points, Plot turns und stringente Ursache-Wirkung-Pfeiler.
-                </p>
+<span class="font-ui font-semibold text-sm text-on-surface block">7-Punkt-Handlungsstruktur</span>
+<p class="text-xs text-text-muted leading-relaxed mt-1">
+        Fokus auf Pinch Points, Plot Turns und stringente Ursache-Wirkung-Pfeiler. 7 Meilensteine.
+      </p>
 </div>
-<span class="font-meta-default text-meta-default text-on-surface-variant">7 Meilensteine</span>
+<div class="text-[11px] text-text-muted font-medium">7 Meilensteine</div>
 </div>
-<!-- Option 4: Free Grid -->
-<div class="relative p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container shadow-sm flex flex-col justify-between gap-space-sm cursor-pointer transition-colors">
+<!-- Paradigm 4: Five-Act Structure -->
+<div class="relative p-4 rounded-lg bg-pergament-card border border-border-parchment hover:border-border-parchment-strong shadow-xs flex flex-col justify-between gap-3 cursor-pointer transition-all">
 <div class="flex items-start justify-between">
-<div class="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface-variant flex items-center justify-center">
-<span class="material-symbols-outlined text-[18px]">grid_view</span>
+<div class="w-8 h-8 rounded bg-surface-container border border-border-parchment-strong text-text-muted flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">view_column</span>
 </div>
-<div class="w-4 h-4 rounded-full bg-surface-variant"></div>
+<span class="w-4 h-4 rounded-full border border-border-parchment-strong"></span>
 </div>
 <div>
-<span class="font-label-default text-label-default text-on-surface font-semibold block">Freies Episoden-Raster</span>
-<p class="font-meta-default text-meta-default text-on-surface-variant mt-0.5">
-                  Modularer Aufbau für Novellen, Anthologien oder serialized Web-Fiction.
-                </p>
+<span class="font-ui font-semibold text-sm text-on-surface block">Fünf-Akt-Struktur</span>
+<p class="text-xs text-text-muted leading-relaxed mt-1">
+        Exposure, steigende Handlung, Peripetie, Fallende Handlung, Katastrophe/Dénouement. 5 Akte.
+      </p>
 </div>
-<span class="font-meta-default text-meta-default text-on-surface-variant">Benutzerdefiniert</span>
+<div class="text-[11px] text-text-muted font-medium">5 klassische Akte</div>
 </div>
+</div></section>
 </div>
-</section>
+<!-- RIGHT COLUMN: Tactile Parchment Preview (5 Cols) -->
+<div class="lg:col-span-5 flex flex-col gap-6">
+<!-- Tactile Template Inspector Card -->
+<div class="bg-[#fbf7f0] border border-border-parchment-strong rounded-xl p-6 shadow-md flex flex-col gap-6 relative overflow-hidden"><!-- Card Header & Badge -->
+<div class="flex items-start justify-between border-b border-border-parchment pb-4">
+<div>
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-primary"></span>
+<span class="font-ui text-xs font-semibold tracking-wider uppercase text-text-muted">Live-Vorschau</span>
 </div>
-<!-- Right Column: Structure Preview & Wordcount (5 Cols) -->
-<div class="lg:col-span-5 flex flex-col gap-space-lg">
-<!-- Live Preset Inspector Card -->
-<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-xl flex flex-col gap-space-md relative overflow-hidden">
-<!-- Subtle Atmospheric Badge -->
-<div class="flex items-center justify-between pb-space-xs">
-<div class="flex items-center gap-space-xs">
-<span class="w-2.5 h-2.5 rounded-full bg-primary-container"></span>
-<span class="font-headline-emph text-headline-emph text-on-surface">Vorschau: Vorlage „Dead Signal“</span>
+<h3 class="font-editorial-title text-2xl text-on-surface font-semibold mt-0.5">Vorlage »Dead Signal«</h3>
 </div>
-<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">Thriller / Antarktis</span>
+<span class="px-2.5 py-1 rounded bg-secondary-container/60 border border-secondary-container text-on-secondary-container font-ui text-[11px] font-semibold">
+    Thriller / Antarktis
+  </span>
 </div>
-<!-- Tension Curve SVG Visualization -->
-<div class="w-full bg-surface-container-low rounded-lg p-space-sm flex flex-col gap-1">
-<div class="flex items-center justify-between text-on-surface-variant font-eyebrow-tracked text-eyebrow-tracked uppercase">
-<span>Spannungskurve (Klassischer Bogen)</span>
-<span class="text-primary font-semibold">Höhepunkt bei 80%</span>
+<!-- Tension Curve SVG Visualization on Parchment -->
+<div class="bg-surface rounded-lg border border-border-parchment p-4 flex flex-col gap-2 shadow-xs">
+<div class="flex items-center justify-between text-xs">
+<span class="font-ui text-[11px] uppercase tracking-wider font-semibold text-text-muted">Spannungskurve &amp; Beats</span>
+<span class="text-primary font-semibold text-xs">Höhepunkt bei 80%</span>
 </div>
-<div class="w-full h-16 relative">
-<svg class="w-full h-full text-primary" fill="none" preserveaspectratio="none" viewbox="0 0 300 70">
-<!-- Background grid lines -->
-<line stroke="currentColor" stroke-dasharray="3 3" stroke-opacity="0.08" x1="0" x2="300" y1="20" y2="20"></line>
-<line stroke="currentColor" stroke-dasharray="3 3" stroke-opacity="0.08" x1="0" x2="300" y1="45" y2="45"></line>
-<!-- Tension Curve -->
-<path d="M 0,55 Q 50,52 80,48 T 150,38 T 210,32 Q 240,10 255,8 Q 275,30 300,48" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.5"></path>
-<!-- Gradient fill under curve -->
-<path d="M 0,55 Q 50,52 80,48 T 150,38 T 210,32 Q 240,10 255,8 Q 275,30 300,48 L 300,70 L 0,70 Z" fill="currentColor" fill-opacity="0.08"></path>
-<!-- Key Markers -->
-<circle cx="80" cy="48" fill="currentColor" r="3.5"></circle>
-<circle cx="150" cy="38" fill="currentColor" r="3.5"></circle>
-<circle cx="255" cy="8" fill="currentColor" r="4.5" stroke="#fff" stroke-width="1.5"></circle>
+<!-- Tension Arc Canvas -->
+<div class="w-full h-24 relative py-1">
+<svg class="w-full h-full text-primary" fill="none" preserveaspectratio="none" viewbox="0 0 360 85">
+<line stroke="#dfd5c7" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="360" y1="20" y2="20"></line>
+<line stroke="#dfd5c7" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="360" y1="50" y2="50"></line>
+<path d="M 0,65 Q 55,62 85,58 T 160,45 T 235,36 Q 275,10 295,8 Q 320,38 360,54 L 360,85 L 0,85 Z" fill="#743b1f" fill-opacity="0.08"></path>
+<path d="M 0,65 Q 55,62 85,58 T 160,45 T 235,36 Q 275,10 295,8 Q 320,38 360,54" fill="none" stroke="#743b1f" stroke-linecap="round" stroke-width="2.5"></path>
+<circle cx="20" cy="64" fill="#743b1f" r="3.5"></circle>
+<circle cx="85" cy="58" fill="#743b1f" r="4"></circle>
+<circle cx="160" cy="45" fill="#743b1f" r="4"></circle>
+<circle cx="235" cy="36" fill="#743b1f" r="4.5"></circle>
+<circle cx="295" cy="8" fill="#743b1f" r="5.5" stroke="#ffffff" stroke-width="2"></circle>
+<circle cx="350" cy="52" fill="#743b1f" r="3.5"></circle>
 </svg>
 </div>
-<div class="flex justify-between font-meta-default text-[11px] text-on-surface-variant px-1">
-<span>Akt I (Expos.)</span>
+<!-- Beat Axis Labels -->
+<div class="grid grid-cols-5 text-[10px] uppercase font-semibold tracking-wider text-text-muted text-center pt-1 border-t border-border-parchment/60">
+<span class="text-left">Expos.</span>
+<span>Incit. Inc.</span>
 <span>Midpoint</span>
-<span>Klimax</span>
-<span>Res.</span>
+<span class="text-primary font-bold">Klimax (80%)</span>
+<span class="text-right">Resol.</span>
 </div>
 </div>
-<!-- Structured Acts & Beats Accordion/List -->
-<div class="flex flex-col gap-space-xs">
-<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface-variant font-semibold">Vorkonfigurierte Akte &amp; Beats</span>
-<div class="space-y-2 mt-1">
-<!-- Akt I -->
-<div class="p-space-sm bg-surface-container rounded-lg flex flex-col gap-1 shadow-sm">
+<!-- Structured Acts & Beats List -->
+<div class="flex flex-col gap-2.5">
 <div class="flex items-center justify-between">
-<div class="flex items-center gap-1.5">
+<span class="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Vorkonfigurierte Akte &amp; Beats</span>
+<span class="text-xs text-primary font-medium">4 Handlungsphasen</span>
+</div>
+<div class="space-y-2.5">
+<!-- Akt I -->
+<div class="p-3.5 bg-surface rounded-lg border border-primary/30 shadow-xs flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
 <span class="w-2 h-2 rounded-full bg-state-warning"></span>
-<span class="font-label-default text-label-default text-on-surface font-semibold">Akt I: Das verschollene Echo</span>
+<span class="font-ui font-semibold text-xs text-on-surface">Akt I: Das verschollene Echo</span>
 </div>
-<span class="px-2 py-0.5 rounded text-[11px] font-label-default bg-surface-container-high text-primary font-medium">In Arbeit</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-state-warning/15 text-state-warning">In Arbeit</span>
 </div>
-<div class="flex items-center justify-between text-on-surface-variant font-meta-default text-meta-default">
-<span>Kapitel 1–3 • Prolog &amp; Stützpunkt McMurdo</span>
+<div class="flex items-center justify-between text-xs text-text-muted">
+<span>Kapitel 1–3 • Stützpunkt McMurdo</span>
 <span class="font-semibold text-on-surface">3.384 W. verfasst</span>
 </div>
-<!-- Mini Progress Bar -->
-<div class="w-full bg-surface-container-highest rounded-full h-1.5 mt-1 overflow-hidden">
+<div class="w-full bg-surface-container rounded-full h-1.5 mt-1 overflow-hidden">
 <div class="bg-primary h-full rounded-full" style="width: 38%"></div>
 </div>
 </div>
 <!-- Akt II-A -->
-<div class="p-space-sm bg-surface-container-low rounded-lg flex flex-col gap-1">
+<div class="p-3.5 bg-surface/70 rounded-lg border border-border-parchment flex flex-col gap-1">
 <div class="flex items-center justify-between">
-<div class="flex items-center gap-1.5">
-<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
-<span class="font-label-default text-label-default text-on-surface font-semibold">Akt II-A: Station 7 &amp; die Dekodierung</span>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-border-parchment-strong"></span>
+<span class="font-ui font-semibold text-xs text-on-surface">Akt II-A: Station 7 &amp; Dekodierung</span>
 </div>
-<span class="px-2 py-0.5 rounded text-[11px] font-label-default bg-surface-container-high text-on-surface-variant">Geplant</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-surface-container text-text-muted">Geplant</span>
 </div>
-<div class="flex items-center justify-between text-on-surface-variant font-meta-default text-meta-default">
-<span>Reise über das Schelfeis • Isolations-Paranoia</span>
+<div class="flex items-center justify-between text-xs text-text-muted">
+<span>Schelfeis-Querung • Isolationsparanoia</span>
 <span>Ziel: 25.000 W.</span>
 </div>
 </div>
 <!-- Akt II-B -->
-<div class="p-space-sm bg-surface-container-low rounded-lg flex flex-col gap-1">
+<div class="p-3.5 bg-surface/70 rounded-lg border border-border-parchment flex flex-col gap-1">
 <div class="flex items-center justify-between">
-<div class="flex items-center gap-1.5">
-<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
-<span class="font-label-default text-label-default text-on-surface font-semibold">Akt II-B: Der Kausalitätsbruch im Eis</span>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-border-parchment-strong"></span>
+<span class="font-ui font-semibold text-xs text-on-surface">Akt II-B: Der Kausalitätsbruch</span>
 </div>
-<span class="px-2 py-0.5 rounded text-[11px] font-label-default bg-surface-container-high text-on-surface-variant">Geplant</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-surface-container text-text-muted">Geplant</span>
 </div>
-<div class="flex items-center justify-between text-on-surface-variant font-meta-default text-meta-default">
-<span>Subglazialer Fund • Die Zeitverzögerung</span>
+<div class="flex items-center justify-between text-xs text-text-muted">
+<span>Subglazialer Fund • Zeitliche Dilatation</span>
 <span>Ziel: 20.000 W.</span>
 </div>
 </div>
 <!-- Akt III -->
-<div class="p-space-sm bg-surface-container-low rounded-lg flex flex-col gap-1">
+<div class="p-3.5 bg-surface/70 rounded-lg border border-border-parchment flex flex-col gap-1">
 <div class="flex items-center justify-between">
-<div class="flex items-center gap-1.5">
-<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
-<span class="font-label-default text-label-default text-on-surface font-semibold">Akt III: Letzter Funkspruch</span>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-border-parchment-strong"></span>
+<span class="font-ui font-semibold text-xs text-on-surface">Akt III: Letzter Funkspruch</span>
 </div>
-<span class="px-2 py-0.5 rounded text-[11px] font-label-default bg-surface-container-high text-on-surface-variant">Geplant</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-surface-container text-text-muted">Geplant</span>
 </div>
-<div class="flex items-center justify-between text-on-surface-variant font-meta-default text-meta-default">
-<span>Der Blizzard • Finale Transmission</span>
+<div class="flex items-center justify-between text-xs text-text-muted">
+<span>Der Blizzard bricht ein • Konfrontation</span>
 <span>Ziel: 15.000 W.</span>
 </div>
 </div>
 </div>
 </div>
-<!-- Wordcount Target Controller / Slider -->
-<div class="mt-space-sm pt-space-md bg-surface-container-low p-space-md rounded-xl flex flex-col gap-space-sm">
+<!-- Calibrated Wordcount Target Controller & Kausalitäts-Wächter -->
+<div class="bg-surface rounded-lg border border-border-parchment p-4 flex flex-col gap-3 shadow-xs">
 <div class="flex items-center justify-between">
-<span class="font-label-default text-label-default text-on-surface font-semibold flex items-center gap-1">
-<span class="material-symbols-outlined text-[16px] text-primary">pin</span>
-                Gesamtumfang Zielmarke
-              </span>
-<span class="font-headline-emph text-headline-emph text-primary" id="wordcount-display">65.000 Wörter</span>
+<span class="text-xs font-semibold text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[17px] text-primary">pin</span>
+      Zielumfang Manuskript
+    </span>
+<span class="font-editorial-title font-semibold text-lg text-primary" id="wordcount-display">65.000 Wörter</span>
 </div>
-<!-- Custom Slider Track -->
+<!-- Custom Slider -->
 <div class="relative w-full flex items-center">
-<input class="w-full h-2 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none" id="wordcount-slider" max="130000" min="30000" step="5000" type="range" value="65000"/>
+<input class="w-full h-2 bg-surface-container rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none" id="wordcount-slider" max="130000" min="30000" step="5000" type="range" value="65000"/>
 </div>
-<div class="flex items-center justify-between font-meta-default text-[11px] text-on-surface-variant">
+<div class="flex items-center justify-between text-[11px] text-text-muted">
 <span>Novelle (35k)</span>
-<span class="text-primary font-semibold bg-surface-container px-1.5 py-0.5 rounded">NaNoWriMo (50k)</span>
+<span class="text-primary font-semibold bg-surface-container px-2 py-0.5 rounded">Standard-Roman (65k)</span>
 <span>Epos (100k+)</span>
 </div>
-<div class="flex items-center gap-space-xs text-on-surface-variant font-meta-default text-[12px] mt-1">
-<span class="material-symbols-outlined text-[15px] text-state-success">verified</span>
-<span>Automatische Kapitel-Skalierung bleibt synchron mit Akt-Gewichtung.</span>
+<div class="flex items-center gap-2 text-[11px] text-state-success pt-2 border-t border-border-parchment/60">
+<span class="material-symbols-outlined text-[15px]">verified</span>
+<span>Akt-Gewichtung und Szenen-Budgets sind synchron gekoppelt.</span>
+</div>
+<!-- Kausalitäts-Wächter-Notiz -->
+<div class="flex items-center gap-2 text-[11px] text-primary bg-primary/5 px-2.5 py-1.5 rounded border border-primary/20"><span class="material-symbols-outlined text-[15px]">visibility</span>
+<span class="font-medium">Echtzeit-Timeline aktiv — deine Struktur wird beim Schreiben mitgeführt.</span></div>
+</div></div>
 </div>
 </div>
-</div>
-</div>
-</div>
-<!-- Wizard Navigation Footer Sticky Anchor -->
-<nav class="w-full mt-space-md pt-space-md pb-space-lg flex items-center justify-between bg-surface-container-low rounded-xl px-space-lg shadow-sm">
-<!-- Back Button -->
-<a class="px-space-md py-space-xs rounded-lg text-on-surface font-label-default text-label-default hover:bg-surface-container transition-colors flex items-center gap-space-xs" href="#">
-<span class="material-symbols-outlined text-[18px]">cloud_upload</span>
+<!-- Wizard Navigation Bar -->
+<nav class="w-full mt-4 bg-surface-container-low border border-border-parchment rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs"><!-- Back to Step 1 Button -->
+<a class="inline-flex items-center gap-2 text-xs font-medium text-on-surface hover:text-primary transition-colors py-2 px-3 rounded-lg hover:bg-surface-container" href="#">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
 <span>Zurück zu Schritt 1 (Basis)</span>
 </a>
-<!-- Wizard Flow Info / Primary Action -->
-<div class="flex items-center gap-space-md">
-<span class="hidden sm:inline font-meta-default text-meta-default text-on-surface-variant">
-          Änderungen als Arbeitskopie gesichert
-        </span>
-<button class="px-space-lg py-space-xs rounded-lg bg-primary text-on-primary font-label-default text-label-default hover:opacity-95 active:scale-[0.99] transition-all flex items-center gap-space-xs shadow-md" type="button">
-<span>Weiter zu Schritt 3: Welt &amp; KI</span>
+<!-- Middle Synchronisation note & Primary Next Step Button -->
+<div class="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto justify-end">
+<span class="text-xs text-text-muted italic font-editorial-title text-center sm:text-right">
+    Schritt 2 von 4 konfiguriert • Änderungen im Entwurf synchronisiert
+  </span>
+<button class="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-dark text-on-primary text-xs font-semibold tracking-wide transition-all shadow-sm hover:shadow flex items-center justify-center gap-2" type="button">
+<span>Weiter zu Schritt 3 — KI-Partner &amp; Kausalitätsregeln</span>
 <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
 </button>
+</div></nav>
+</main>
+<!-- Grounded Minimal Literary Footer -->
+<footer class="w-full border-t border-border-parchment bg-surface-container-low py-4 mt-auto">
+<div class="max-w-[84rem] mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-text-muted">
+<div class="flex items-center gap-2 font-editorial-title italic">
+<span>Narrare Atelier</span>
+<span>•</span>
+<span>Literarisches Manuskriptsystem</span>
 </div>
-</nav>
+<div class="text-[11px] uppercase tracking-[0.14em] font-semibold text-text-muted/80">
+        Surgical Precision • Literary Focus
+      </div>
 </div>
+</footer>
+<!-- Script for wordcount & typology interaction -->
 <script>
-    // Realtime wordcount display binder
     const slider = document.getElementById('wordcount-slider');
     const display = document.getElementById('wordcount-display');
     if (slider && display) {
@@ -374,20 +488,19 @@
       });
     }
 
-    // Interactive mental model selection visual update
     const radioInputs = document.querySelectorAll('input[name="author-typology"]');
     radioInputs.forEach((radio) => {
       radio.addEventListener('change', () => {
         document.querySelectorAll('#typology-group label').forEach((lbl) => {
-          lbl.classList.remove('bg-surface-container-lowest', 'shadow-md');
-          lbl.classList.add('bg-surface-container-low', 'shadow-sm');
+          lbl.classList.remove('bg-surface', 'border-2', 'border-primary');
+          lbl.classList.add('bg-pergament-card', 'border', 'border-border-parchment');
         });
         const activeLabel = radio.closest('label');
         if (activeLabel) {
-          activeLabel.classList.remove('bg-surface-container-low', 'shadow-sm');
-          activeLabel.classList.add('bg-surface-container-lowest', 'shadow-md');
+          activeLabel.classList.remove('bg-pergament-card', 'border-border-parchment');
+          activeLabel.classList.add('bg-surface', 'border-2', 'border-primary');
         }
       });
     });
   </script>
-</div></div></main><footer class="w-full bg-surface-container-low py-space-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="max-w-container-max mx-auto px-margin flex items-center justify-between text-on-surface-variant font-meta-default text-meta-default"><span>Narrare Atelier • Literarisches Manuskriptsystem</span><span class="font-eyebrow-tracked text-eyebrow-tracked tracking-wider uppercase text-on-surface-variant">Surgical Precision • Literary Focus</span></div></footer></body></html>
+</body></html>

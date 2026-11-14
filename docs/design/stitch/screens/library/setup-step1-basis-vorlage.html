@@ -1,594 +1,587 @@
 <!DOCTYPE html>
 
-<html class="h-full" lang="de"><head>
+<html class="h-full bg-bg-canvas-light text-on-surface antialiased" lang="de"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Narrare Atelier — Projekt-Setup</title>
+<title>Narrare — Projekt-Setup: Basis &amp; Vorlage</title>
+<!-- Typography & Icons -->
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS Engine -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script id="tailwind-config">
     tailwind.config = {
       darkMode: "class",
       theme: {
         extend: {
-          colors: {
-            "surface": "#fff8f2",
-            "surface-dim": "#e0d9d1",
-            "surface-bright": "#fff8f2",
-            "surface-container-lowest": "#ffffff",
+          "colors": {
+            "primary-fixed-dim": "#ffb695",
             "surface-container-low": "#faf2ea",
-            "surface-container": "#f4ebd9",
-            "surface-container-high": "#eee3ce",
-            "surface-container-highest": "#e5d9c2",
-            "primary": "#743b1f",
-            "primary-dark": "#58250b",
-            "primary-container": "#f7e5d8",
-            "on-primary": "#ffffff",
+            "text-muted-dark": "#89867F",
+            "secondary-fixed": "#ffdbce",
+            "bg-soft-light": "#EFEBE2",
+            "on-tertiary-fixed-variant": "#693c10",
+            "bg-panel-dark": "#1C1914",
+            "surface-dim": "#e0d9d1",
+            "surface-container-lowest": "#ffffff",
+            "on-secondary": "#ffffff",
+            "inverse-surface": "#33302b",
+            "border-dark": "#35332D",
+            "error-container": "#ffdad6",
+            "inverse-on-surface": "#f7f0e7",
+            "area-writing": "#914F2F",
+            "on-secondary-fixed": "#2a170f",
+            "on-tertiary": "#ffffff",
+            "state-danger": "#AC3031",
             "on-surface": "#1e1b16",
-            "on-surface-variant": "#62574e",
-            "outline": "#8a7d73",
-            "outline-variant": "#dccfbe",
-            "cover-sepia": "#743b1f",
-            "cover-ink": "#1e1b16",
-            "cover-linen": "#dfd7ca",
-            "cover-pale": "#f5f0e6",
-            "state-success": "#2e6930",
-            "state-warning": "#9a6100",
-            "state-accent": "#b8632e",
-            "gold-trim": "#c49a45"
+            "bg-canvas-dark": "#16140F",
+            "on-primary-container": "#f8a884",
+            "surface-variant": "#e9e1d9",
+            "rule-dark": "#302D28",
+            "area-planning": "#834D7E",
+            "on-tertiary-fixed": "#2f1500",
+            "area-knowledge": "#606127",
+            "state-warning": "#9A6100",
+            "text-muted-light": "#6E6B65",
+            "text-foreground-dark": "#DFDEDA",
+            "tertiary-fixed": "#ffdcc3",
+            "primary": "#58250b",
+            "surface-container": "#f4ede4",
+            "cover-sepia": "#743B1F",
+            "surface-bright": "#fff8f2",
+            "outline": "#86736c",
+            "on-secondary-container": "#795c52",
+            "surface-tint": "#8c4e30",
+            "border-light": "#E0DEDA",
+            "secondary-fixed-dim": "#e3bfb2",
+            "error": "#ba1a1a",
+            "on-primary": "#ffffff",
+            "bg-panel-light": "#FDFCF9",
+            "on-surface-variant": "#53433d",
+            "tertiary-fixed-dim": "#fcb882",
+            "surface": "#fff8f2",
+            "surface-container-highest": "#e9e1d9",
+            "background": "#fff8f2",
+            "tertiary": "#522900",
+            "tertiary-container": "#6e3f14",
+            "amber-focus-dark": "#F2AD73",
+            "cover-ink": "#24211C",
+            "on-error-container": "#93000a",
+            "outline-variant": "#d8c2b9",
+            "area-chat": "#3A637B",
+            "bg-card-light": "#FFFFFF",
+            "on-error": "#ffffff",
+            "bg-card-dark": "#211F1A",
+            "primary-fixed": "#ffdbcc",
+            "surface-container-high": "#eee7df",
+            "on-background": "#1e1b16",
+            "on-tertiary-container": "#eead78",
+            "primary-container": "#743b1f",
+            "on-secondary-fixed-variant": "#5a4137",
+            "inverse-primary": "#ffb695",
+            "on-primary-fixed": "#351000",
+            "secondary-container": "#fed8ca",
+            "area-settings": "#5A5549",
+            "on-primary-fixed-variant": "#6f371c",
+            "cover-pale": "#EEEBE5",
+            "bg-canvas-light": "#F6F3ED",
+            "amber-focus": "#8F4622",
+            "bg-soft-dark": "#2C2922",
+            "rule-light": "#EEEBE5",
+            "secondary": "#74584e",
+            "state-success": "#21763C"
           },
-          fontFamily: {
-            "serif": ["'EB Garamond'", "Georgia", "serif"],
-            "sans": ["'Plus Jakarta Sans'", "system-ui", "-apple-system", "sans-serif"]
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
           },
-          boxShadow: {
-            "book": "2px 6px 16px -2px rgba(45, 26, 14, 0.18), 0 2px 4px -1px rgba(45, 26, 14, 0.08)",
-            "book-hover": "4px 14px 28px -4px rgba(45, 26, 14, 0.28), 0 4px 8px -2px rgba(45, 26, 14, 0.12)",
-            "parchment": "0 1px 3px rgba(30,27,22,0.04), 0 8px 24px -4px rgba(78,54,34,0.06)"
+          "spacing": {
+            "space-lg": "1.5rem",
+            "space-sm": "0.5rem",
+            "rail-collapsed": "3rem",
+            "container-max": "75rem",
+            "gutter": "1rem",
+            "margin": "1.5rem",
+            "space-md": "1rem",
+            "dock-width": "21rem",
+            "rail-expanded": "10.5rem",
+            "space-xl": "2rem",
+            "prose-max-width": "34rem",
+            "space-xs": "0.25rem"
+          },
+          "fontFamily": {
+            "headline-hero": ["Plus Jakarta Sans"],
+            "prose-heading-1": ["EB Garamond"],
+            "body-default": ["Plus Jakarta Sans"],
+            "prose-editorial": ["EB Garamond"],
+            "meta-default": ["Plus Jakarta Sans"],
+            "headline-title": ["Plus Jakarta Sans"],
+            "eyebrow-tracked": ["Plus Jakarta Sans"],
+            "prose-heading-2": ["EB Garamond"],
+            "headline-emph": ["Plus Jakarta Sans"],
+            "label-default": ["Plus Jakarta Sans"]
+          },
+          "fontSize": {
+            "headline-hero": ["28px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "prose-heading-1": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "body-default": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+            "prose-editorial": ["18px", { "lineHeight": "31.5px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "meta-default": ["12px", { "lineHeight": "17px", "fontWeight": "400" }],
+            "headline-title": ["20px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "eyebrow-tracked": ["11px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600" }],
+            "prose-heading-2": ["21px", { "lineHeight": "28px", "fontWeight": "600" }],
+            "headline-emph": ["15px", { "lineHeight": "22px", "fontWeight": "600" }],
+            "label-default": ["13px", { "lineHeight": "18px", "fontWeight": "500" }]
           }
         }
       }
     }
   </script>
 <style>
-    body {
-      background-color: #fff8f2;
-      background-image: radial-gradient(rgba(116, 59, 31, 0.035) 1px, transparent 0);
-      background-size: 24px 24px;
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+      vertical-align: middle;
+      display: inline-block;
+      line-height: 1;
     }
-    .book-spine-sheen {
-      background: linear-gradient(90deg, rgba(255,255,255,0.18) 0%, rgba(0,0,0,0.3) 14%, rgba(255,255,255,0.08) 22%, transparent 40%);
+    .book-spine-relief {
+      box-shadow: inset 5px 0 10px -2px rgba(0, 0, 0, 0.45), inset -2px 0 4px rgba(255, 255, 255, 0.08), 8px 12px 24px -6px rgba(36, 33, 28, 0.28);
     }
-    .book-emboss-border {
-      border: 1px solid rgba(255,255,255,0.22);
-      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.25);
-    }
-    .book-emboss-border-dark {
-      border: 1px solid rgba(116, 59, 31, 0.25);
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6), inset 0 1px 2px rgba(116, 59, 31, 0.15);
+    .embossed-rule {
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.35);
     }
   </style>
 </head>
-<body class="min-h-full font-sans text-on-surface antialiased flex flex-col justify-between selection:bg-primary-container selection:text-primary-dark">
-<!-- Header -->
-<header class="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-outline-variant/60 shadow-sm">
-<div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-<!-- Brand & Breadcrumbs -->
+<body class="min-h-screen bg-bg-canvas-light text-on-surface flex flex-col justify-between selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- ========================================================================= -->
+<!-- 1. KOPFZEILE (Header & Stepper)                                           -->
+<!-- ========================================================================= -->
+<header class="w-full bg-surface-bright shadow-sm sticky top-0 z-30">
+<div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+<!-- Brand & Context -->
 <div class="flex items-center gap-4">
-<a class="w-9 h-9 rounded-md bg-primary-dark text-on-primary flex items-center justify-center shadow-sm ring-1 ring-primary/30 group transition-transform hover:scale-105" href="#">
-<span class="font-serif text-xl font-bold italic tracking-tighter select-none">N</span>
-</a>
-<div class="h-4 w-px bg-outline-variant"></div>
-<div class="flex items-center gap-2 text-xs">
-<span class="font-sans font-semibold tracking-widest uppercase text-on-surface-variant text-[11px]">Atelier</span>
-<span class="text-outline">/</span>
-<span class="font-sans font-medium text-on-surface text-[13px]">Projekt-Setup</span>
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded bg-primary-container text-surface-bright flex items-center justify-center font-prose-heading-1 text-headline-emph shadow-inner font-bold">
+            N
+          </div>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-headline-title text-headline-emph text-on-surface font-semibold tracking-tight">Atelier Narrare</span>
+<span class="text-outline-variant font-meta-default text-meta-default">/</span>
+<span class="font-label-default text-label-default text-on-surface-variant font-medium">Projekt-Setup</span>
+</div>
+<p class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase tracking-wider">Schreibjahr 2026 • Edition Prima</p>
 </div>
 </div>
-<!-- Compact Progress Step Indicator in Header -->
-<div class="hidden lg:flex items-center gap-3 bg-surface-container/60 border border-outline-variant/50 rounded-full px-4 py-1.5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]">
-<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-<span class="text-xs font-semibold text-primary uppercase tracking-wider">Schritt 1 von 4:</span>
-<span class="text-xs font-medium text-on-surface">Projekt-Basis &amp; Vorlage</span>
-<span class="text-outline-variant">|</span>
-<div class="flex items-center gap-1.5 text-[11px] text-on-surface-variant/70">
-<span>2. Struktur</span>
-<span>•</span>
-<span>3. Lore</span>
-<span>•</span>
-<span>4. Assistent</span>
 </div>
+<!-- Stepper Indicator (Schritt 1 von 4 aktiv) -->
+<nav aria-label="Setup Fortschritt" class="hidden md:flex items-center gap-1 bg-surface-container-low px-3 py-1.5 rounded-lg border border-border-light">
+<!-- Step 1 (Aktiv) -->
+<div class="flex items-center gap-2 px-2.5 py-1 rounded bg-bg-card-light shadow-sm text-primary font-label-default text-label-default font-semibold">
+<span class="w-5 h-5 rounded-full bg-primary-container text-surface-bright flex items-center justify-center text-[10px] font-bold">1</span>
+<span>Projekt-Basis &amp; Vorlage</span>
 </div>
-<!-- Actions: Language, Theme, User -->
+<span class="text-outline-variant px-1 text-meta-default">›</span>
+<!-- Step 2 -->
+<div class="flex items-center gap-1.5 px-2 py-1 text-on-surface-variant/70 font-label-default text-label-default">
+<span class="w-4 h-4 rounded-full border border-outline-variant text-text-muted-light flex items-center justify-center text-[10px]">2</span>
+<span>Struktur</span>
+</div>
+<span class="text-outline-variant px-1 text-meta-default">›</span>
+<!-- Step 3 -->
+<div class="flex items-center gap-1.5 px-2 py-1 text-on-surface-variant/70 font-label-default text-label-default">
+<span class="w-4 h-4 rounded-full border border-outline-variant text-text-muted-light flex items-center justify-center text-[10px]">3</span>
+<span>KI-Partner</span>
+</div>
+<span class="text-outline-variant px-1 text-meta-default">›</span>
+<!-- Step 4 -->
+<div class="flex items-center gap-1.5 px-2 py-1 text-on-surface-variant/70 font-label-default text-label-default">
+<span class="w-4 h-4 rounded-full border border-outline-variant text-text-muted-light flex items-center justify-center text-[10px]">4</span>
+<span>Bereitstellung</span>
+</div>
+</nav>
+<!-- Language Switcher & Controls -->
 <div class="flex items-center gap-3">
-<div class="flex items-center bg-surface-container rounded-md p-0.5 border border-outline-variant/60 text-xs">
-<button class="px-2 py-1 rounded bg-surface-container-lowest font-semibold text-primary shadow-xs" type="button">DE</button>
-<button class="px-2 py-1 text-on-surface-variant hover:text-on-surface font-medium transition-colors" type="button">EN</button>
+<div class="inline-flex rounded-lg border border-border-light bg-surface-container-lowest p-0.5 text-meta-default font-label-default">
+<button class="px-2 py-0.5 rounded font-semibold bg-surface-container-high text-primary" type="button">DE</button>
+<button class="px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface transition-colors" type="button">EN</button>
+<button class="px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface transition-colors" type="button">FR</button>
 </div>
-<button class="w-8 h-8 rounded-md flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors" title="Erscheinungsbild" type="button">
-<span class="material-symbols-outlined text-[19px]">light_mode</span>
+<div class="h-4 w-px bg-border-light"></div>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors" title="Hilfe &amp; Anleitung" type="button">
+<span class="material-symbols-outlined text-[18px]">menu_book</span>
 </button>
-<div class="h-4 w-px bg-outline-variant hidden sm:block"></div>
-<div class="flex items-center gap-2 pl-1 cursor-pointer group">
-<div class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center text-primary-dark group-hover:border-primary transition-colors">
-<span class="font-serif font-bold text-sm">A</span>
-</div>
-</div>
 </div>
 </div>
 </header>
-<!-- Main Content Canvas -->
-<main class="flex-grow max-w-7xl w-full mx-auto px-6 py-10 flex flex-col gap-10">
-<!-- Editorial Hero Title -->
-<div class="text-center max-w-3xl mx-auto flex flex-col items-center">
-<div class="inline-flex items-center gap-2 mb-3">
-<span class="h-px w-6 bg-primary/40"></span>
-<span class="font-sans text-[11px] uppercase tracking-[0.22em] text-primary font-bold">Atelier Genesis</span>
-<span class="h-px w-6 bg-primary/40"></span>
+<!-- ========================================================================= -->
+<!-- 2. TITEL- & HERO-BEREICH                                                  -->
+<!-- ========================================================================= -->
+<main class="max-w-7xl mx-auto w-full px-6 pt-8 pb-12 flex-1">
+<div class="max-w-3xl mb-8">
+<div class="flex items-center gap-2 mb-2">
+<span class="h-px w-5 bg-primary-container"></span>
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-primary-container tracking-widest uppercase">Atelier-Genesis</span>
 </div>
-<h1 class="font-serif text-3xl sm:text-4xl md:text-5xl text-on-surface font-normal tracking-tight leading-[1.18]">
-        Wie möchten Sie Ihr literarisches Werk beginnen?
+<h1 class="font-prose-heading-1 text-3xl md:text-4xl text-on-surface font-normal tracking-tight leading-tight mb-2">
+        Wie möchtest du dein literarisches Werk beginnen?
       </h1>
-<p class="mt-3.5 text-on-surface-variant font-sans text-sm md:text-base leading-relaxed max-w-2xl text-balance">
-        Wählen Sie ein unbeschriebenes Blatt für vollkommene gestalterische Freiheit oder starten Sie mit einem unserer drei reich orchestrierten Atelier-Ensembles samt Lore-Graph, Kausallogik und Manuskriptarchitektur.
+<p class="font-prose-editorial text-prose-editorial text-on-surface-variant leading-relaxed">
+        Wähle eine unbeschriebene Leinwand für deine eigene Schöpfung oder betritt eines unserer drei kuratierten Werk-Ensembles samt verankertem Figuren- und Schauplatzgefüge.
       </p>
 </div>
-<!-- Dual Setup Columns -->
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-<!-- OPTION A: Reine Leinwand (Tabula Rasa) -->
-<section class="lg:col-span-4 bg-surface-container-low border border-outline-variant/80 rounded-2xl p-6 md:p-7 flex flex-col justify-between transition-all duration-300 cursor-pointer shadow-parchment hover:border-primary/50 relative overflow-hidden group" id="card-tabula" onclick="choosePath('tabula')">
-<div class="absolute top-0 left-0 right-0 h-1.5 bg-outline-variant group-hover:bg-primary/40 transition-colors" id="accent-tabula"></div>
+<!-- ========================================================================= -->
+<!-- 3. HAUPTBEREICH (Zwei klar gegliederte Wege)                              -->
+<!-- ========================================================================= -->
+<div class="space-y-10">
+<!-- ======================================================================= -->
+<!-- OPTION A: REINE LEINWAND (TABULA RASA)                                 -->
+<!-- ======================================================================= -->
+<section class="rounded-xl border border-border-light bg-surface-container-lowest p-6 transition-all shadow-sm">
+<!-- Section Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between pb-5 border-b border-rule-light gap-3">
 <div>
-<!-- Option Badge & Header -->
-<div class="flex items-center justify-between mb-4">
-<span class="font-sans text-[11px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded">
-              Option A
-            </span>
-<div class="w-8 h-8 rounded-full bg-surface-container border border-outline-variant/60 flex items-center justify-center text-primary">
-<span class="material-symbols-outlined text-[18px]">edit_note</span>
+<div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-eyebrow-tracked text-[10px] tracking-wider uppercase mb-1">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+              Option A • Reine Leinwand (Tabula Rasa)
+            </div>
+<h2 class="font-headline-title text-headline-title text-on-surface font-semibold">Unbeschriebenes Manuskript konfigurieren</h2>
+<p class="font-body-default text-body-default text-text-muted-light mt-0.5">Beginne ohne Vorgaben mit deinem eigenen Text und individuellen Gesetzmäßigkeiten.</p>
 </div>
+<button class="self-start md:self-auto px-4 py-1.5 rounded text-label-default font-label-default border border-border-light hover:bg-surface-container-high text-on-surface transition-colors flex items-center gap-2" id="btnTabulaRasa" type="button">
+<span class="material-symbols-outlined text-[16px]">edit_note</span>
+<span>Als leeres Werk starten</span>
+</button>
 </div>
-<h2 class="font-serif text-2xl text-on-surface font-semibold tracking-tight mb-2">
-            Reine Leinwand
-            <span class="block text-base font-sans font-normal text-on-surface-variant mt-0.5">(Tabula Rasa)</span>
-</h2>
-<p class="font-sans text-xs text-on-surface-variant leading-relaxed mb-6">
-            Beginnen Sie ohne vorab definierte Entitäten oder Zeitachsen. Sie definieren Titel, Genre und Zielumfang von Grund auf in eigener Autorschaft.
-          </p>
-<!-- Input Fields for Quick Blank Canvas Initialization -->
-<div class="bg-surface-container/70 border border-outline-variant/60 rounded-xl p-4 space-y-3.5" onclick="event.stopPropagation()">
+<!-- Two Column Layout: Editor Form + Real-time Book Preview -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6 items-start">
+<!-- Left: Input Shells & Parameters -->
+<div class="lg:col-span-7 space-y-6">
+<!-- Arbeitstitel Input -->
 <div>
-<label class="block font-sans text-[11px] font-bold uppercase tracking-wider text-on-surface-variant mb-1" for="input-book-title">
-                Arbeitstitel des Manuskripts
-              </label>
-<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface placeholder:text-outline/70 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-sans" id="input-book-title" onfocus="choosePath('tabula')" placeholder="z. B. Die Winterchronik" type="text"/>
+<div class="flex items-center justify-between mb-1.5">
+<label class="font-label-default text-label-default font-semibold text-on-surface" for="manuscriptTitle">Arbeitstitel des Manuskripts</label>
+<span class="font-meta-default text-meta-default text-primary-container italic flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">sync</span> Der Titel synchronisiert sich in Echtzeit auf das Cover
+                </span>
 </div>
-<div class="grid grid-cols-2 gap-3">
+<input class="w-full h-10 px-3.5 rounded bg-surface-bright border border-border-light text-on-surface font-prose-editorial text-prose-editorial focus:border-amber-focus focus:ring-1 focus:ring-amber-focus outline-none transition-shadow" id="manuscriptTitle" placeholder="z. B. Der Klang des Eises..." type="text" value="Die Winterchronik von Station Sieben"/>
+</div>
+<!-- Genre Multi-Select Pill Clusters -->
 <div>
-<label class="block font-sans text-[11px] font-bold uppercase tracking-wider text-on-surface-variant mb-1" for="select-book-genre">
-                  Genre
-                </label>
-<select class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-2.5 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-sans" id="select-book-genre">
-<option value="literary">Belletristik / Literary</option>
-<option value="mystery">Krimi / Mystery</option>
-<option value="scifi">Speculative Sci-Fi</option>
-<option value="historical">Historischer Roman</option>
-<option value="fantasy">High Fantasy</option>
-</select>
+<label class="block font-label-default text-label-default font-semibold text-on-surface mb-2">Literarisches Genre &amp; Tonalität</label>
+<div class="flex flex-wrap gap-2">
+<button class="genre-pill px-3 py-1.5 rounded-full text-label-default font-label-default border border-primary-container bg-primary-container/10 text-primary-container font-medium flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[14px]">check</span>
+                  Science Fiction &amp; Speculative
+                </button>
+<button class="genre-pill px-3 py-1.5 rounded-full text-label-default font-label-default border border-border-light bg-surface-bright hover:bg-surface-container text-on-surface-variant font-normal transition-colors" type="button">
+                  Mystery &amp; Noir
+                </button>
+<button class="genre-pill px-3 py-1.5 rounded-full text-label-default font-label-default border border-border-light bg-surface-bright hover:bg-surface-container text-on-surface-variant font-normal transition-colors" type="button">
+                  Historischer Roman
+                </button>
+<button class="genre-pill px-3 py-1.5 rounded-full text-label-default font-label-default border border-primary-container bg-primary-container/10 text-primary-container font-medium flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[14px]">check</span>
+                  Literarische Belletristik
+                </button>
+<button class="genre-pill px-3 py-1.5 rounded-full text-label-default font-label-default border border-border-light bg-surface-bright hover:bg-surface-container text-on-surface-variant font-normal transition-colors" type="button">
+                  Low Fantasy / Magischer Realismus
+                </button>
 </div>
-<div>
-<label class="block font-sans text-[11px] font-bold uppercase tracking-wider text-on-surface-variant mb-1" for="input-book-scope">
-                  Ziel-Umfang
-                </label>
-<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-sans" id="input-book-scope" type="text" value="75.000 Wörter"/>
+</div>
+<!-- Ziel-Umfang + Gauge Widget -->
+<div class="p-4 rounded-lg bg-surface-container-low border border-border-light flex flex-col md:flex-row items-center justify-between gap-4">
+<div class="space-y-1 w-full md:w-auto">
+<label class="font-label-default text-label-default font-semibold text-on-surface block" for="wordCountInput">Ziel-Umfang des Manuskripts</label>
+<div class="flex items-center gap-2">
+<input class="h-8 w-28 px-2.5 rounded bg-surface-bright border border-border-light font-headline-emph text-headline-emph text-on-surface focus:border-amber-focus outline-none text-right" id="wordCountInput" type="text" value="65.000"/>
+<span class="font-body-default text-body-default text-on-surface-variant">Wörter</span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light">Entspricht ca. 240 Normseiten (Buchdruckformat)</p>
+</div>
+<!-- Refined Gauge Bar Indicator -->
+<div class="w-full md:w-64 bg-surface-bright p-3 rounded border border-border-light">
+<div class="flex justify-between items-center mb-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-primary-container font-semibold">Standard-Roman</span>
+<span class="font-meta-default text-meta-default font-medium text-on-surface">60k – 80k W.</span>
+</div>
+<!-- Arc/Progress Visual -->
+<div class="w-full bg-surface-container h-2 rounded-full overflow-hidden flex">
+<div class="w-[12%] bg-outline-variant/50" title="Kurzgeschichte (&lt;10k)"></div>
+<div class="w-[28%] bg-outline-variant/80 border-l border-white" title="Novelle (20-40k)"></div>
+<div class="w-[35%] bg-primary-container border-l border-white" title="Roman (50-90k)"></div>
+<div class="w-[25%] bg-outline-variant/60 border-l border-white" title="Epos (&gt;100k)"></div>
+</div>
+<div class="flex justify-between text-[9px] text-text-muted-light mt-1 font-meta-default">
+<span>Kurzform</span>
+<span>Novelle</span>
+<span class="font-semibold text-primary-container">Roman</span>
+<span>Epos</span>
 </div>
 </div>
 </div>
 </div>
-<!-- Custom Radio / Selection Action -->
-<div class="pt-6 mt-6 border-t border-outline-variant/60 flex items-center justify-between">
-<label class="flex items-center gap-2.5 cursor-pointer">
-<span class="w-4 h-4 rounded-full border border-outline flex items-center justify-center" id="radio-circle-tabula">
-<span class="w-2 h-2 rounded-full bg-transparent" id="radio-dot-tabula"></span>
-</span>
-<span class="font-sans text-xs font-semibold text-on-surface">Als leeres Werk starten</span>
-</label>
-<span class="material-symbols-outlined text-[18px] text-outline group-hover:text-primary transition-colors">east</span>
+<!-- Right: Lebende Buchcover-Vorschau (Physical Book Object) -->
+<div class="lg:col-span-5 flex flex-col items-center justify-center p-4">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider text-text-muted-light mb-3">Haptische Einband-Vorschau</span>
+<!-- 3D Book Object Container (3:4 Format) -->
+<div class="relative w-56 h-[300px] rounded-r-md rounded-l-sm bg-gradient-to-r from-[#211610] via-[#332219] to-[#3C281E] text-[#F3ECE2] p-5 shadow-2xl flex flex-col justify-between overflow-hidden book-spine-relief border-t border-b border-r border-[#4E3527]/50 select-none transform transition-transform hover:scale-[1.01]">
+<!-- Subtle Paper/Fabric Sheen -->
+<div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none"></div>
+<!-- Embossed Spine Fold Line -->
+<div class="absolute top-0 bottom-0 left-3 w-px bg-black/40"></div>
+<div class="absolute top-0 bottom-0 left-[13px] w-px bg-white/10"></div>
+<!-- Top Eyebrow & Ornament -->
+<div class="pl-4 pt-1 z-10">
+<div class="font-eyebrow-tracked text-[8px] uppercase tracking-[0.25em] text-[#D8BCA8] opacity-80">Narrare Atelier • Edition Prima</div>
+<div class="w-8 h-px bg-[#D8BCA8]/40 my-2"></div>
 </div>
-</section>
-<!-- OPTION B: Kuratiertes Atelier — Mit Vorlage starten -->
-<section class="lg:col-span-8 flex flex-col gap-4">
-<!-- Header Banner for Option B -->
-<div class="bg-surface-container-low border border-outline-variant/80 rounded-2xl px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-parchment">
-<div>
-<div class="flex items-center gap-2.5">
-<span class="font-sans text-[11px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded">Option B</span>
-<span class="inline-flex items-center gap-1 font-sans text-[11px] font-bold uppercase tracking-wider text-primary bg-primary/15 px-2.5 py-0.5 rounded-full border border-primary/20">
-<span class="material-symbols-outlined text-[13px]">stars</span>
-                Empfohlen zum Entdecken
-              </span>
+<!-- Center Title & Serifs (Echtzeit-Synchronisiert) -->
+<div class="pl-4 pr-1 z-10 my-auto text-left">
+<p class="font-prose-heading-1 text-[19px] leading-[23px] text-[#FAF5EE] font-serif italic drop-shadow-sm line-clamp-3" id="liveCoverTitle">
+                  Die Winterchronik von Station Sieben
+                </p>
+<p class="font-meta-default text-[10px] text-[#CDB49E] mt-2 tracking-wide font-light">Ein Manuskript von <span class="font-normal text-[#F4EDE5]">Dir</span></p>
 </div>
-<h2 class="font-serif text-2xl text-on-surface font-semibold tracking-tight mt-1">
-              Kuratiertes Atelier — Mit Vorlage starten
-            </h2>
-<p class="font-sans text-xs text-on-surface-variant">
-              Reich orchestrierte literarische Welten mit fertigen Figurendossiers, Kausalitätsmatrix und 3-Akt-Storyboard.
+<!-- Bottom Publisher Emblem & Date -->
+<div class="pl-4 z-10 pt-2 border-t border-[#D8BCA8]/20 flex items-center justify-between text-[9px] text-[#CDB49E]/70 font-meta-default">
+<span>Narrare Press</span>
+<span>Anno 2026</span>
+</div>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light mt-3 text-center">
+              Pergamentbindung mit Goldblindprägung (Simulierter Vorabdruck)
             </p>
 </div>
 </div>
-<!-- 3 Tactile Book Cards Grid -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-<!-- BOOK 1: DEAD SIGNAL (PRE-SELECTED) -->
-<div class="bg-surface-container-lowest border-2 border-primary rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all duration-300 shadow-md ring-4 ring-primary/10 relative group" id="book-dead-signal" onclick="chooseTemplate('dead-signal')">
-<div class="absolute -top-3 right-4 bg-primary text-on-primary text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1" id="badge-dead-signal">
-<span class="material-symbols-outlined text-[12px]">check</span> Ausgewählt
-            </div>
-<div>
-<!-- 3D Tactile Hardcover Simulation -->
-<div class="w-full h-48 rounded-xl bg-gradient-to-br from-[#3b2014] via-[#241710] to-[#120b08] p-3.5 relative overflow-hidden flex flex-col justify-between shadow-book group-hover:shadow-book-hover transition-all duration-300 text-surface transform group-hover:-translate-y-1">
-<!-- Book Spine Effect -->
-<div class="absolute inset-y-0 left-0 w-3.5 book-spine-sheen z-20"></div>
-<div class="absolute inset-0 book-emboss-border rounded-xl pointer-events-none z-20"></div>
-<!-- Cover Header -->
-<div class="flex items-start justify-between z-10 pl-2.5">
-<span class="font-sans text-[9px] uppercase tracking-[0.2em] text-[#e0a98b] font-bold">Science Fiction</span>
-<div class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] text-[#e0a98b]">
-<span class="material-symbols-outlined text-[13px]">satellite_alt</span>
-</div>
-</div>
-<!-- Symbolic Cover Art -->
-<div class="self-center my-auto flex flex-col items-center opacity-85 z-10">
-<svg class="w-12 h-12 text-[#e0a98b]" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 24 24">
-<circle cx="12" cy="12" r="9" stroke-dasharray="2 2"></circle>
-<circle cx="12" cy="12" r="4.5"></circle>
-<line x1="12" x2="12" y1="2" y2="6"></line>
-<line x1="12" x2="12" y1="18" y2="22"></line>
-</svg>
-</div>
-<!-- Cover Title Plaque -->
-<div class="z-10 pl-2.5">
-<div class="font-serif text-lg leading-tight font-medium text-surface-bright tracking-normal">Dead Signal</div>
-<div class="text-[9px] font-sans tracking-widest text-[#d8c2b9] uppercase mt-0.5">Suborbital Noir</div>
-</div>
-</div>
-<!-- Metadata & Tags -->
-<div class="mt-4 flex items-center gap-2">
-<span class="bg-primary/10 text-primary font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">
-                  Hard Sci-Fi
-                </span>
-<span class="text-on-surface-variant font-sans text-[11px] font-medium">3.384 W.</span>
-</div>
-<p class="font-sans text-xs text-on-surface-variant mt-2 leading-relaxed line-clamp-2">
-                Dichte technische Lore auf Station 7, Kausalitätsprüfung &amp; psychologischer Kammer-Konflikt.
-              </p>
-<!-- Lore & Ensemble Pill Box -->
-<div class="mt-3.5 bg-surface-container/70 border border-outline-variant/60 rounded-xl p-2.5 space-y-1.5 text-[11px] font-sans">
-<div class="flex items-center justify-between text-on-surface-variant">
-<span class="flex items-center gap-1">
-<span class="material-symbols-outlined text-[14px] text-primary">hub</span> 12 Entitäten
-                  </span>
-<span class="text-state-warning font-medium flex items-center gap-0.5">
-<span class="material-symbols-outlined text-[13px]">warning</span> 1 Kausal-Prüfung
-                  </span>
-</div>
-<div class="flex items-center justify-between text-on-surface-variant border-t border-outline-variant/40 pt-1">
-<span>Dr. Maya Chen</span>
-<span class="font-semibold text-primary">Station 7 Lore</span>
-</div>
-</div>
-</div>
-<!-- Footer Radio Selector -->
-<div class="mt-4 pt-3 border-t border-outline-variant/50 flex items-center justify-between">
-<label class="flex items-center gap-2 cursor-pointer">
-<span class="w-4 h-4 rounded-full border-2 border-primary flex items-center justify-center" id="radio-dead-signal-outer">
-<span class="w-2 h-2 rounded-full bg-primary" id="radio-dead-signal-inner"></span>
-</span>
-<span class="text-xs font-bold text-primary" id="lbl-dead-signal">Ausgewählt</span>
-</label>
-<span class="material-symbols-outlined text-[18px] text-primary">verified</span>
-</div>
-</div>
-<!-- BOOK 2: WINTERHAUS -->
-<div class="bg-surface-container-lowest border border-outline-variant/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all duration-300 hover:border-primary/50 shadow-parchment relative group" id="book-winterhaus" onclick="chooseTemplate('winterhaus')">
-<div class="hidden absolute -top-3 right-4 bg-primary text-on-primary text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm items-center gap-1" id="badge-winterhaus">
-<span class="material-symbols-outlined text-[12px]">check</span> Ausgewählt
-            </div>
-<div>
-<!-- 3D Tactile Hardcover Simulation: Pale Linen / Vellum -->
-<div class="w-full h-48 rounded-xl bg-gradient-to-br from-[#201d1a] via-[#1a1715] to-[#12100e] p-3.5 relative overflow-hidden flex flex-col justify-between shadow-book group-hover:shadow-book-hover transition-all duration-300 text-surface transform group-hover:-translate-y-1">
-<!-- Book Spine Effect -->
-<div class="absolute inset-y-0 left-0 w-3.5 book-spine-sheen z-20"></div>
-<div class="absolute inset-0 book-emboss-border rounded-xl pointer-events-none z-20"></div>
-<!-- Cover Header -->
-<div class="flex items-start justify-between z-10 pl-2.5">
-<span class="font-sans text-[9px] uppercase tracking-[0.2em] text-[#e5d9c2] font-bold">Mystery</span>
-<div class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] text-[#e5d9c2]">
-<span class="material-symbols-outlined text-[13px]">cottage</span>
-</div>
-</div>
-<!-- Symbolic Cover Art -->
-<div class="self-center my-auto flex flex-col items-center opacity-80 z-10">
-<svg class="w-12 h-12 text-[#e5d9c2]" fill="none" stroke="currentColor" stroke-width="1.2" viewbox="0 0 24 24">
-<path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z"></path>
-<line x1="9" x2="9" y1="21" y2="13"></line>
-<line x1="15" x2="15" y1="21" y2="13"></line>
-<line x1="9" x2="15" y1="13" y2="13"></line>
-</svg>
-</div>
-<!-- Cover Title Plaque -->
-<div class="z-10 pl-2.5">
-<div class="font-serif text-lg leading-tight font-medium text-[#fff8f2] tracking-normal">Winterhaus</div>
-<div class="text-[9px] font-sans tracking-widest text-[#cfc2aa] uppercase mt-0.5">Kammerspiel</div>
-</div>
-</div>
-<!-- Metadata & Tags -->
-<div class="mt-4 flex items-center gap-2">
-<span class="bg-surface-container-high text-on-surface-variant font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">
-                  Mystery / Plotter
-                </span>
-<span class="text-on-surface-variant font-sans text-[11px] font-medium">0 W. (Konzept)</span>
-</div>
-<p class="font-sans text-xs text-on-surface-variant mt-2 leading-relaxed line-clamp-2">
-                Agatha-Christie-artiges Beziehungsnetz im Sanatorium Graubünden. Reines Figuren-Dossier-Setup.
-              </p>
-<!-- Lore & Ensemble Pill Box -->
-<div class="mt-3.5 bg-surface-container/70 border border-outline-variant/60 rounded-xl p-2.5 space-y-1.5 text-[11px] font-sans">
-<div class="flex items-center justify-between text-on-surface-variant">
-<span class="flex items-center gap-1">
-<span class="material-symbols-outlined text-[14px]">group</span> 8 Figuren
-                  </span>
-<span class="text-state-success font-medium flex items-center gap-0.5">
-<span class="material-symbols-outlined text-[13px]">check_circle</span> Logik intakt
-                  </span>
-</div>
-<div class="flex items-center justify-between text-on-surface-variant border-t border-outline-variant/40 pt-1">
-<span>Dr. Falck</span>
-<span class="text-on-surface-variant">Sanatorium Lore</span>
-</div>
-</div>
-</div>
-<!-- Footer Radio Selector -->
-<div class="mt-4 pt-3 border-t border-outline-variant/50 flex items-center justify-between">
-<label class="flex items-center gap-2 cursor-pointer">
-<span class="w-4 h-4 rounded-full border border-outline flex items-center justify-center" id="radio-winterhaus-outer">
-<span class="w-2 h-2 rounded-full bg-transparent" id="radio-winterhaus-inner"></span>
-</span>
-<span class="text-xs font-medium text-on-surface-variant" id="lbl-winterhaus">Vorlage wählen</span>
-</label>
-<span class="material-symbols-outlined text-[18px] text-outline">chevron_right</span>
-</div>
-</div>
-<!-- BOOK 3: THE SALT ROAD -->
-<div class="bg-surface-container-lowest border border-outline-variant/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all duration-300 hover:border-primary/50 shadow-parchment relative group" id="book-salt-road" onclick="chooseTemplate('salt-road')">
-<div class="hidden absolute -top-3 right-4 bg-primary text-on-primary text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm items-center gap-1" id="badge-salt-road">
-<span class="material-symbols-outlined text-[12px]">check</span> Ausgewählt
-            </div>
-<div>
-<!-- 3D Tactile Hardcover Simulation: Warm Parchment / Linen Tone -->
-<div class="w-full h-48 rounded-xl bg-gradient-to-br from-[#dfd7ca] via-[#d5ccbe] to-[#c7bca9] p-3.5 relative overflow-hidden flex flex-col justify-between shadow-book group-hover:shadow-book-hover transition-all duration-300 text-on-surface transform group-hover:-translate-y-1">
-<!-- Book Spine Effect -->
-<div class="absolute inset-y-0 left-0 w-3.5 bg-gradient-to-r from-white/30 via-black/15 to-transparent z-20"></div>
-<div class="absolute inset-0 book-emboss-border-dark rounded-xl pointer-events-none z-20"></div>
-<!-- Cover Header -->
-<div class="flex items-start justify-between z-10 pl-2.5">
-<span class="font-sans text-[9px] uppercase tracking-[0.2em] text-primary-dark font-bold">Literary Fiction</span>
-<div class="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] text-primary-dark">
-<span class="material-symbols-outlined text-[13px]">waves</span>
-</div>
-</div>
-<!-- Symbolic Cover Art -->
-<div class="self-center my-auto flex flex-col items-center opacity-85 z-10">
-<svg class="w-12 h-12 text-primary" fill="none" stroke="currentColor" stroke-width="1.3" viewbox="0 0 24 24">
-<path d="M2 12C5 9 7 9 10 12C13 15 15 15 18 12C20 10 21 10 22 11"></path>
-<path d="M2 17C5 14 7 14 10 17C13 20 15 20 18 17C20 15 21 15 22 16" opacity="0.5"></path>
-</svg>
-</div>
-<!-- Cover Title Plaque -->
-<div class="z-10 pl-2.5">
-<div class="font-serif text-lg leading-tight font-medium text-primary-dark tracking-normal">The Salt Road</div>
-<div class="text-[9px] font-sans tracking-widest text-on-surface-variant uppercase mt-0.5">Generationen-Saga</div>
-</div>
-</div>
-<!-- Metadata & Tags -->
-<div class="mt-4 flex items-center gap-2">
-<span class="bg-primary/10 text-primary font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">
-                  Literary Fiction
-                </span>
-<span class="text-on-surface-variant font-sans text-[11px] font-medium">24.150 W.</span>
-</div>
-<p class="font-sans text-xs text-on-surface-variant mt-2 leading-relaxed line-clamp-2">
-                Sprachrhythmus, Lektorats-Diagnose, Stammbaum über drei Dekaden &amp; Subtext-Analysen.
-              </p>
-<!-- Lore & Ensemble Pill Box -->
-<div class="mt-3.5 bg-surface-container/70 border border-outline-variant/60 rounded-xl p-2.5 space-y-1.5 text-[11px] font-sans">
-<div class="flex items-center justify-between text-on-surface-variant">
-<span class="flex items-center gap-1">
-<span class="material-symbols-outlined text-[14px]">account_tree</span> 18 Entitäten
-                  </span>
-<span class="text-primary font-medium flex items-center gap-0.5">
-<span class="material-symbols-outlined text-[13px]">spellcheck</span> Lektorat aktiv
-                  </span>
-</div>
-<div class="flex items-center justify-between text-on-surface-variant border-t border-outline-variant/40 pt-1">
-<span>3 Generationen</span>
-<span class="text-on-surface-variant">Subtext-Matrix</span>
-</div>
-</div>
-</div>
-<!-- Footer Radio Selector -->
-<div class="mt-4 pt-3 border-t border-outline-variant/50 flex items-center justify-between">
-<label class="flex items-center gap-2 cursor-pointer">
-<span class="w-4 h-4 rounded-full border border-outline flex items-center justify-center" id="radio-salt-road-outer">
-<span class="w-2 h-2 rounded-full bg-transparent" id="radio-salt-road-inner"></span>
-</span>
-<span class="text-xs font-medium text-on-surface-variant" id="lbl-salt-road">Vorlage wählen</span>
-</label>
-<span class="material-symbols-outlined text-[18px] text-outline">chevron_right</span>
-</div>
-</div>
-</div>
 </section>
+<!-- ======================================================================= -->
+<!-- OPTION B: KURATIERTES ATELIER — MIT VORLAGE STARTEN                    -->
+<!-- ======================================================================= -->
+<section class="rounded-xl border border-primary-container/30 bg-surface-container-low/60 p-6 shadow-sm">
+<!-- Header -->
+<div class="mb-6">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-primary-container text-surface-bright font-eyebrow-tracked text-[10px] tracking-wider uppercase mb-1 font-semibold">
+<span class="material-symbols-outlined text-[12px]">auto_awesome</span>
+            Option B • Empfohlen zum Entdecken
+          </div>
+<h2 class="font-headline-title text-headline-title text-on-surface font-semibold">Kuratiertes Atelier — mit Vorlage starten</h2>
+<p class="font-body-default text-body-default text-on-surface-variant mt-0.5">Echte literarische Welten mit fertiger Szenenarchitektur, erprobter Figuren-Dynamik und sofort schreibbereitem Workspace.</p>
 </div>
-<!-- Active Selection Summary Bar -->
-<div class="bg-surface-container border border-outline-variant/80 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-parchment">
-<div class="flex items-center gap-4">
-<div class="w-11 h-11 rounded-xl bg-primary text-on-primary flex items-center justify-center shadow-sm shrink-0">
-<span class="material-symbols-outlined text-[24px]">auto_stories</span>
+<!-- 3 Curated Demos Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- DEMO 1: DEAD SIGNAL (AUSGEWÄHLT) -->
+<article class="relative flex flex-col justify-between rounded-lg border-2 border-primary-container bg-surface-container-lowest p-5 shadow-md transition-all">
+<!-- Selection Badge Top-Right -->
+<div class="absolute -top-3 right-4 px-2.5 py-0.5 rounded bg-primary-container text-surface-bright font-label-default text-[11px] font-semibold flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[13px]">check_circle</span>
+              Ausgewählt
+            </div>
+<div>
+<!-- Miniatur Book Cover -->
+<div class="w-full h-36 rounded bg-gradient-to-br from-[#1C1815] to-[#2E241E] p-3 text-surface-bright flex flex-col justify-between mb-4 border border-black/20 shadow-inner relative overflow-hidden">
+<div class="flex justify-between items-center text-[9px] text-outline-variant font-meta-default tracking-widest uppercase">
+<span>Atelier-Vorlage 01</span>
+<span class="material-symbols-outlined text-[16px] text-secondary-fixed">satellite_alt</span>
+</div>
+<div class="text-left my-auto">
+<div class="font-prose-heading-1 text-lg italic text-[#FDFBF7] font-serif leading-tight">Dead Signal</div>
+<div class="font-meta-default text-[10px] text-outline-variant">Station 7 Chroniken</div>
+</div>
+<div class="text-[8px] tracking-wider text-[#AFA399] uppercase font-meta-default flex justify-between">
+<span>Sci-Fi Noir</span>
+<span>3 Kapitel</span>
+</div>
+</div>
+<!-- Metadata Block -->
+<div class="space-y-1.5 mb-3">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-emph text-headline-emph text-on-surface font-bold">Dead Signal</h3>
+<span class="font-meta-default text-meta-default text-primary-container font-semibold">3 Kapitel verfasst</span>
+</div>
+<div class="inline-block px-2 py-0.5 rounded text-[11px] font-meta-default bg-surface-container-high text-on-surface-variant font-medium">
+                  Science Fiction (Hard Sci-Fi Noir auf Station 7)
+                </div>
+</div>
+<!-- Verbatim Synopsis -->
+<p class="font-prose-editorial text-[14px] text-on-surface-variant leading-relaxed mb-4">
+                „Eine Ingenieurin auf einer abgelegenen Raumstation empfängt ein Signal von der Erde, das es nicht geben darf.“
+              </p>
+</div>
+<!-- Active Indicator Button -->
+<button class="w-full h-8 rounded bg-primary-container text-surface-bright font-label-default text-label-default font-semibold flex items-center justify-center gap-1.5 cursor-default" type="button">
+<span class="material-symbols-outlined text-[15px]">check</span>
+              Aktive Vorlage
+            </button>
+</article>
+<!-- DEMO 2: ECHOES OF THE THORNWALL -->
+<article class="flex flex-col justify-between rounded-lg border border-border-light bg-surface-container-lowest p-5 hover:border-outline-variant hover:shadow-md transition-all group">
+<div>
+<!-- Miniatur Book Cover -->
+<div class="w-full h-36 rounded bg-gradient-to-br from-[#1C261F] to-[#2B3527] p-3 text-surface-bright flex flex-col justify-between mb-4 border border-black/20 shadow-inner relative overflow-hidden">
+<div class="flex justify-between items-center text-[9px] text-[#A5C3AB] font-meta-default tracking-widest uppercase">
+<span>Atelier-Vorlage 02</span>
+<span class="material-symbols-outlined text-[16px] text-[#C4E2CA]">park</span>
+</div>
+<div class="text-left my-auto">
+<div class="font-prose-heading-1 text-lg italic text-[#FDFBF7] font-serif leading-tight">Echoes of the Thornwall</div>
+<div class="font-meta-default text-[10px] text-[#A5C3AB]">Chronik der Voidsphäre</div>
+</div>
+<div class="text-[8px] tracking-wider text-[#A5C3AB] uppercase font-meta-default flex justify-between">
+<span>High Fantasy</span>
+<span>4 Kapitel</span>
+</div>
+</div>
+<!-- Metadata Block -->
+<div class="space-y-1.5 mb-3">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-emph text-headline-emph text-on-surface font-bold">Echoes of the Thornwall</h3>
+<span class="font-meta-default text-meta-default text-on-surface-variant">4 Kapitel verfasst</span>
+</div>
+<div class="inline-block px-2 py-0.5 rounded text-[11px] font-meta-default bg-surface-container-high text-on-surface-variant font-medium">
+                  Fantasy
+                </div>
+</div>
+<!-- Verbatim Synopsis -->
+<p class="font-prose-editorial text-[14px] text-on-surface-variant leading-relaxed mb-4">
+                „Eine junge Magierin navigiert politische Intrigen zwischen einem uralten Orden und aufständischen Rebellen, während sie verbotene Void-Magie meistert.“
+              </p>
+</div>
+<!-- Action Button -->
+<button class="w-full h-8 rounded border border-border-light bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-default text-label-default font-medium transition-colors flex items-center justify-center" type="button">
+              Vorlage wählen
+            </button>
+</article>
+<!-- DEMO 3: IM STILLEN WALD -->
+<article class="flex flex-col justify-between rounded-lg border border-border-light bg-surface-container-lowest p-5 hover:border-outline-variant hover:shadow-md transition-all group">
+<div>
+<!-- Miniatur Book Cover -->
+<div class="w-full h-36 rounded bg-gradient-to-br from-[#2D2A26] to-[#403B35] p-3 text-surface-bright flex flex-col justify-between mb-4 border border-black/20 shadow-inner relative overflow-hidden">
+<div class="flex justify-between items-center text-[9px] text-[#D8CFB8] font-meta-default tracking-widest uppercase">
+<span>Atelier-Vorlage 03</span>
+<span class="material-symbols-outlined text-[16px] text-[#E5DCB9]">forest</span>
+</div>
+<div class="text-left my-auto">
+<div class="font-prose-heading-1 text-lg italic text-[#FDFBF7] font-serif leading-tight">Im Stillen Wald</div>
+<div class="font-meta-default text-[10px] text-[#D8CFB8]">Münsterland-Aufzeichnungen</div>
+</div>
+<div class="text-[8px] tracking-wider text-[#D8CFB8] uppercase font-meta-default flex justify-between">
+<span>Literarische Fiktion</span>
+<span>2 Kapitel</span>
+</div>
+</div>
+<!-- Metadata Block -->
+<div class="space-y-1.5 mb-3">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-emph text-headline-emph text-on-surface font-bold">Im Stillen Wald</h3>
+<span class="font-meta-default text-meta-default text-on-surface-variant">2 Kapitel verfasst</span>
+</div>
+<div class="inline-block px-2 py-0.5 rounded text-[11px] font-meta-default bg-surface-container-high text-on-surface-variant font-medium">
+                  Literarische Fiktion
+                </div>
+</div>
+<!-- Verbatim Synopsis -->
+<p class="font-prose-editorial text-[14px] text-on-surface-variant leading-relaxed mb-4">
+                „Ein Förster entdeckt in seinem abgelegenen Waldstück Geheimnisse, die die Grenze zwischen Leben und Tod verschwimmen lassen.“
+              </p>
+</div>
+<!-- Action Button -->
+<button class="w-full h-8 rounded border border-border-light bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-default text-label-default font-medium transition-colors flex items-center justify-center" type="button">
+              Vorlage wählen
+            </button>
+</article>
+</div>
+<!-- Binding Notice Caption -->
+<p class="font-meta-default text-meta-default text-text-muted-light mt-5 text-center flex items-center justify-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-outline">info</span>
+          Bei gewählter Vorlage sind Titel und Genre der Vorlage verbindlich; deine Einstellungen aus Schritt 2 und 3 gelten zusätzlich.
+        </p>
+</section>
+<!-- ======================================================================= -->
+<!-- 4. UNTERER BESTÄTIGUNGS-BANNER                                         -->
+<!-- ======================================================================= -->
+<aside class="rounded-lg border border-border-light bg-surface-bright px-5 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-full bg-secondary-container text-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">bookmark_added</span>
 </div>
 <div>
-<div class="flex items-center gap-2">
-<span class="font-sans text-[11px] uppercase tracking-wider font-bold text-on-surface-variant">Gewählte Basis:</span>
-<span class="font-sans text-xs font-bold text-primary" id="summary-title">Vorlage „Dead Signal“ (Hard Sci-Fi Noir)</span>
+<div class="font-label-default text-label-default font-semibold text-on-surface">
+              Gewählte Basis: Vorlage ‚Dead Signal‘ <span class="font-normal text-on-surface-variant">(Science Fiction • 3 Kapitel)</span>
 </div>
-<p class="font-sans text-xs text-on-surface-variant mt-0.5" id="summary-details">
-            3 Kapitel • 3.384 Wörter • 12 Lore-Knoten • 3-Akt-Timeline • Kausalitätsprüfung Station 7 aktiviert
-          </p>
-</div>
-</div>
-<div class="flex items-center gap-2 bg-surface-container-lowest/80 border border-outline-variant/60 rounded-full px-3.5 py-1.5 text-xs text-on-surface-variant font-medium shrink-0">
-<span class="material-symbols-outlined text-[16px] text-state-success">check_circle</span>
-<span>Kausalitäts-Engine bereit</span>
+<div class="font-meta-default text-meta-default text-text-muted-light">
+              Kausalitätsgarantie aktiv: Bestehende Schauplatz- und Figurenbezüge werden in Schritt 2 nahtlos übernommen.
+            </div>
 </div>
 </div>
-<!-- Wizard Navigation & Bottom Actions -->
-<div class="pt-2 pb-6 border-t border-outline-variant/60 flex flex-col sm:flex-row items-center justify-between gap-4">
-<button class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors" type="button">
-<span class="material-symbols-outlined text-[18px]">arrow_back</span>
-        Abbrechen (Zurück zum Bücherregal)
-      </button>
-<div class="flex items-center gap-4 w-full sm:w-auto justify-end">
-<span class="text-xs text-on-surface-variant font-sans hidden md:inline">Schritt 1 von 4 abgeschlossen</span>
-<button class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl bg-primary hover:bg-primary-dark text-on-primary font-sans text-xs font-bold tracking-wide shadow-md hover:shadow-lg transition-all duration-200" id="btn-submit" type="button">
-<span>Weiter zu Schritt 2: Dramaturgie &amp; Struktur</span>
-<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
-</button>
-</div>
+<a class="font-label-default text-label-default text-primary-container font-semibold hover:underline whitespace-nowrap flex items-center gap-1" href="#details">
+          Details einsehen
+          <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</a>
+</aside>
 </div>
 </main>
-<!-- Editorial Footer -->
-<footer class="w-full bg-surface-container-low border-t border-outline-variant/60 py-4">
-<div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-on-surface-variant font-sans">
-<div class="flex items-center gap-2">
-<span class="font-serif italic font-medium">Narrare Atelier</span>
-<span>•</span>
-<span>Literarisches Manuskriptsystem &amp; Kausalarchitektur</span>
+<!-- ========================================================================= -->
+<!-- 5. FUSSLEISTE (Actions & Persistent Status)                               -->
+<!-- ========================================================================= -->
+<footer class="w-full bg-surface-bright sticky bottom-0 z-30 shadow-[0_-4px_16px_rgba(0,0,0,0.03)]">
+<div class="max-w-7xl mx-auto px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-4">
+<!-- Ghost Back Action -->
+<button class="w-full sm:w-auto px-3.5 py-1.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-default text-label-default transition-colors flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+<span>Abbrechen &amp; zurück zum Bücherregal</span>
+</button>
+<!-- Central Save/Status Note -->
+<div class="font-meta-default text-meta-default text-text-muted-light flex items-center gap-1.5 text-center">
+<span class="w-2 h-2 rounded-full bg-state-success"></span>
+<span>Schritt 1 von 4 konfiguriert • Änderungen werden im lokalen Speicher gesichert</span>
 </div>
-<div class="text-[11px] tracking-widest uppercase text-outline">
-        Surgical Precision • Literary Focus
-      </div>
+<!-- Primary Next CTA -->
+<button class="w-full sm:w-auto px-5 py-2 rounded bg-primary-container text-surface-bright font-label-default text-label-default font-semibold hover:bg-primary transition-colors duration-150 shadow-sm flex items-center justify-center gap-2 group" type="button">
+<span>Weiter zu Schritt 2 — Dramaturgie &amp; Struktur</span>
+<span class="material-symbols-outlined text-[16px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+</button>
 </div>
 </footer>
-<!-- Script for Interactive Selection -->
+<!-- ========================================================================= -->
+<!-- Micro-Interactions: Realtime Cover Sync & Genre Toggle                   -->
+<!-- ========================================================================= -->
 <script>
-    let activePath = 'dead-signal';
+    // Live Title Synchronization to Book Cover
+    const titleInput = document.getElementById('manuscriptTitle');
+    const liveCover = document.getElementById('liveCoverTitle');
 
-    function resetAllCards() {
-      // Reset Tabula
-      const cardTabula = document.getElementById('card-tabula');
-      const accentTabula = document.getElementById('accent-tabula');
-      const radioDotTabula = document.getElementById('radio-dot-tabula');
-      const radioCircleTabula = document.getElementById('radio-circle-tabula');
-
-      cardTabula.classList.remove('border-primary', 'ring-4', 'ring-primary/10');
-      cardTabula.classList.add('border-outline-variant/80');
-      accentTabula.classList.remove('bg-primary');
-      accentTabula.classList.add('bg-outline-variant');
-      radioDotTabula.classList.remove('bg-primary');
-      radioDotTabula.classList.add('bg-transparent');
-      radioCircleTabula.classList.remove('border-primary');
-      radioCircleTabula.classList.add('border-outline');
-
-      // Templates list
-      const templates = ['dead-signal', 'winterhaus', 'salt-road'];
-      templates.forEach(id => {
-        const card = document.getElementById('book-' + id);
-        const badge = document.getElementById('badge-' + id);
-        const lbl = document.getElementById('lbl-' + id);
-        const outer = document.getElementById('radio-' + id + '-outer');
-        const inner = document.getElementById('radio-' + id + '-inner');
-
-        card.classList.remove('border-2', 'border-primary', 'ring-4', 'ring-primary/10', 'bg-surface-container-lowest');
-        card.classList.add('border', 'border-outline-variant/80', 'bg-surface-container-lowest');
-        badge.classList.remove('flex');
-        badge.classList.add('hidden');
-        lbl.textContent = 'Vorlage wählen';
-        lbl.classList.remove('text-primary', 'font-bold');
-        lbl.classList.add('text-on-surface-variant', 'font-medium');
-        outer.classList.remove('border-2', 'border-primary');
-        outer.classList.add('border', 'border-outline');
-        inner.classList.remove('bg-primary');
-        inner.classList.add('bg-transparent');
+    if (titleInput && liveCover) {
+      titleInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        liveCover.textContent = val.length > 0 ? val : 'Unbenanntes Manuskript';
       });
     }
 
-    function chooseTemplate(id) {
-      activePath = id;
-      resetAllCards();
-
-      const card = document.getElementById('book-' + id);
-      const badge = document.getElementById('badge-' + id);
-      const lbl = document.getElementById('lbl-' + id);
-      const outer = document.getElementById('radio-' + id + '-outer');
-      const inner = document.getElementById('radio-' + id + '-inner');
-
-      card.classList.remove('border', 'border-outline-variant/80');
-      card.classList.add('border-2', 'border-primary', 'ring-4', 'ring-primary/10');
-      badge.classList.remove('hidden');
-      badge.classList.add('flex');
-      lbl.textContent = 'Ausgewählt';
-      lbl.classList.remove('text-on-surface-variant', 'font-medium');
-      lbl.classList.add('text-primary', 'font-bold');
-      outer.classList.remove('border', 'border-outline');
-      outer.classList.add('border-2', 'border-primary');
-      inner.classList.remove('bg-transparent');
-      inner.classList.add('bg-primary');
-
-      const sumTitle = document.getElementById('summary-title');
-      const sumDetails = document.getElementById('summary-details');
-
-      if (id === 'dead-signal') {
-        sumTitle.textContent = 'Vorlage „Dead Signal“ (Hard Sci-Fi Noir)';
-        sumDetails.textContent = '3 Kapitel • 3.384 Wörter • 12 Lore-Knoten • 3-Akt-Timeline • Kausalitätsprüfung Station 7 aktiviert';
-      } else if (id === 'winterhaus') {
-        sumTitle.textContent = 'Vorlage „Winterhaus“ (Mystery & Kammerspiel)';
-        sumDetails.textContent = 'Plotting-Phase • 0 Wörter • 8 Figuren-Dossiers • Sanatorium Graubünden Matrix';
-      } else if (id === 'salt-road') {
-        sumTitle.textContent = 'Vorlage „The Salt Road“ (Literary Fiction)';
-        sumDetails.textContent = '24.150 Wörter (Lektorat) • 18 Entitäten • Stammbaum über 3 Dekaden • Subtext-Matrix';
-      }
-    }
-
-    function choosePath(path) {
-      if (path === 'tabula') {
-        activePath = 'tabula';
-        resetAllCards();
-
-        const cardTabula = document.getElementById('card-tabula');
-        const accentTabula = document.getElementById('accent-tabula');
-        const radioDotTabula = document.getElementById('radio-dot-tabula');
-        const radioCircleTabula = document.getElementById('radio-circle-tabula');
-
-        cardTabula.classList.remove('border-outline-variant/80');
-        cardTabula.classList.add('border-2', 'border-primary', 'ring-4', 'ring-primary/10');
-        accentTabula.classList.remove('bg-outline-variant');
-        accentTabula.classList.add('bg-primary');
-        radioDotTabula.classList.remove('bg-transparent');
-        radioDotTabula.classList.add('bg-primary');
-        radioCircleTabula.classList.remove('border-outline');
-        radioCircleTabula.classList.add('border-2', 'border-primary');
-
-        const titleVal = document.getElementById('input-book-title').value.trim();
-        const displayTitle = titleVal || 'Neues Werk (Unbetitelt)';
-        document.getElementById('summary-title').textContent = 'Tabula Rasa — ' + displayTitle;
-        document.getElementById('summary-details').textContent = 'Reine Leinwand • Keine vordefinierten Entitäten • Dramaturgie wird in Schritt 2 frei konfiguriert';
-      }
-    }
-
-    document.getElementById('input-book-title').addEventListener('input', function() {
-      choosePath('tabula');
+    // Interactive Genre Pills
+    document.querySelectorAll('.genre-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const hasCheck = pill.querySelector('.material-symbols-outlined');
+        if (hasCheck) {
+          hasCheck.remove();
+          pill.classList.remove('border-primary-container', 'bg-primary-container/10', 'text-primary-container', 'font-medium');
+          pill.classList.add('border-border-light', 'bg-surface-bright', 'text-on-surface-variant', 'font-normal');
+        } else {
+          const icon = document.createElement('span');
+          icon.className = 'material-symbols-outlined text-[14px]';
+          icon.textContent = 'check';
+          pill.prepend(icon);
+          pill.classList.remove('border-border-light', 'bg-surface-bright', 'text-on-surface-variant', 'font-normal');
+          pill.classList.add('border-primary-container', 'bg-primary-container/10', 'text-primary-container', 'font-medium');
+        }
+      });
     });
   </script>
 </body></html>

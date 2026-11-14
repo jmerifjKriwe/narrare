@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-background text-on-surface" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Bücherregal: dein Atelier — Narrare</title>
+<!-- Google Fonts: EB Garamond & Plus Jakarta Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS with Forms and Container Queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-primary-container": "#f8a884",
+            "background": "#fff8f2",
+            "surface-bright": "#fff8f2",
+            "inverse-surface": "#33302b",
+            "cover-sepia": "#743B1F",
+            "state-success": "#21763C",
+            "surface-variant": "#e9e1d9",
+            "state-warning": "#9A6100",
+            "bg-panel-light": "#FDFCF9",
+            "cover-pale": "#EEEBE5",
+            "text-muted-light": "#6E6B65",
+            "on-tertiary-fixed": "#2f1500",
+            "state-danger": "#AC3031",
+            "bg-canvas-light": "#F6F3ED",
+            "bg-card-light": "#FFFFFF",
+            "surface-container-low": "#faf2ea",
+            "surface-container": "#f4ede4",
+            "amber-focus-dark": "#F2AD73",
+            "area-planning": "#834D7E",
+            "primary": "#58250b",
+            "bg-soft-light": "#EFEBE2",
+            "tertiary-container": "#6e3f14",
+            "border-light": "#E0DEDA",
+            "on-secondary": "#ffffff",
+            "outline-variant": "#d8c2b9",
+            "on-tertiary-container": "#eead78",
+            "amber-focus": "#8F4622",
+            "secondary-fixed": "#ffdbce",
+            "rule-dark": "#302D28",
+            "error": "#ba1a1a",
+            "surface": "#fff8f2",
+            "surface-container-high": "#eee7df",
+            "secondary": "#74584e",
+            "on-tertiary": "#ffffff",
+            "on-error-container": "#93000a",
+            "on-secondary-fixed-variant": "#5a4137",
+            "primary-fixed-dim": "#ffb695",
+            "border-dark": "#35332D",
+            "on-primary-fixed-variant": "#6f371c",
+            "secondary-fixed-dim": "#e3bfb2",
+            "on-error": "#ffffff",
+            "bg-card-dark": "#211F1A",
+            "on-surface-variant": "#53433d",
+            "area-writing": "#914F2F",
+            "text-foreground-dark": "#DFDEDA",
+            "outline": "#86736c",
+            "on-secondary-fixed": "#2a170f",
+            "text-muted-dark": "#89867F",
+            "rule-light": "#EEEBE5",
+            "bg-canvas-dark": "#16140F",
+            "inverse-on-surface": "#f7f0e7",
+            "surface-dim": "#e0d9d1",
+            "bg-panel-dark": "#1C1914",
+            "on-tertiary-fixed-variant": "#693c10",
+            "on-surface": "#1e1b16",
+            "secondary-container": "#fed8ca",
+            "area-chat": "#3A637B",
+            "inverse-primary": "#ffb695",
+            "tertiary": "#522900",
+            "on-secondary-container": "#795c52",
+            "surface-container-highest": "#e9e1d9",
+            "bg-soft-dark": "#2C2922",
+            "tertiary-fixed": "#ffdcc3",
+            "tertiary-fixed-dim": "#fcb882",
+            "primary-container": "#743b1f",
+            "on-primary": "#ffffff",
+            "area-knowledge": "#606127",
+            "on-background": "#1e1b16",
+            "cover-ink": "#24211C",
+            "area-settings": "#5A5549",
+            "primary-fixed": "#ffdbcc",
+            "on-primary-fixed": "#351000",
+            "surface-container-lowest": "#ffffff",
+            "surface-tint": "#8c4e30",
+            "error-container": "#ffdad6"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "space-xl": "2rem",
+            "gutter": "1rem",
+            "rail-expanded": "10.5rem",
+            "space-xs": "0.25rem",
+            "space-sm": "0.5rem",
+            "margin": "1.5rem",
+            "container-max": "75rem",
+            "space-lg": "1.5rem",
+            "space-md": "1rem",
+            "dock-width": "21rem",
+            "prose-max-width": "34rem",
+            "rail-collapsed": "3rem"
+          },
+          "fontFamily": {
+            "label-default": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-hero": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-emph": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-title": ["Plus Jakarta Sans", "sans-serif"],
+            "eyebrow-tracked": ["Plus Jakarta Sans", "sans-serif"],
+            "prose-heading-1": ["EB Garamond", "serif"],
+            "prose-editorial": ["EB Garamond", "serif"],
+            "meta-default": ["Plus Jakarta Sans", "sans-serif"],
+            "body-default": ["Plus Jakarta Sans", "sans-serif"],
+            "prose-heading-2": ["EB Garamond", "serif"]
+          },
+          "fontSize": {
+            "label-default": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+            "headline-hero": ["28px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "headline-emph": ["15px", { "lineHeight": "22px", "fontWeight": "600" }],
+            "headline-title": ["20px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "eyebrow-tracked": ["11px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600" }],
+            "prose-heading-1": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "prose-editorial": ["18px", { "lineHeight": "31.5px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "meta-default": ["12px", { "lineHeight": "17px", "fontWeight": "400" }],
+            "body-default": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+            "prose-heading-2": ["21px", { "lineHeight": "28px", "fontWeight": "600" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      -webkit-font-feature-settings: 'liga';
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Tactile Book Metaphor Effects */
+    .book-spine-emboss {
+      background: linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(255,255,255,0.06) 18%, rgba(0,0,0,0.3) 100%);
+    }
+
+    .book-shadow-ambient {
+      box-shadow: 
+        -12px 14px 28px -6px rgba(44, 24, 16, 0.28),
+        -4px 4px 10px -2px rgba(44, 24, 16, 0.15),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    .gold-foil-rule {
+      border-color: rgba(212, 175, 55, 0.45);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col font-body-default antialiased selection:bg-secondary-container selection:text-primary">
+<!-- 1. HEADER (Top Bar with Casing Integrity and Shared Identity) -->
+<header class="w-full h-14 px-6 flex items-center justify-between border-b border-border-light bg-bg-panel-light z-40 sticky top-0">
+<!-- Left: Monogramm, Wortmarke & Breadcrumb -->
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 bg-cover-ink text-surface flex items-center justify-center rounded border border-outline-variant shadow-sm">
+<span class="font-prose-heading-1 text-prose-heading-2 leading-none text-surface-container-lowest font-semibold">N</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="font-prose-heading-1 text-prose-heading-2 tracking-tight text-primary font-semibold">Atelier Narrare</span>
+<span class="text-text-muted-light font-meta-default text-meta-default">/</span>
+<span class="font-label-default text-label-default text-on-surface-variant font-medium">Dein Atelier</span>
+</div>
+</div>
+<!-- Center/Right: Kausalitäts-Status-Pille -->
+<div class="hidden md:flex items-center gap-2 px-3 py-1 bg-surface-container-low border border-border-light rounded-full shadow-sm">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-state-success opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-state-success"></span>
+</span>
+<span class="font-meta-default text-meta-default text-on-surface-variant tracking-wide">
+        Kausalitäts-Engine wach <span class="text-text-muted-light">•</span> v2.4
+      </span>
+</div>
+<!-- Right: Jahr 2026, Sprachumschalter & Autoren-Avatar -->
+<div class="flex items-center gap-4">
+<div class="hidden sm:inline-flex items-center px-2 py-0.5 border border-border-light rounded text-text-muted-light font-meta-default text-meta-default bg-surface-container-lowest">
+        Schreibjahr 2026
+      </div>
+<!-- Sprachumschalter DE | EN | FR (DE hervorgehoben) -->
+<div class="flex items-center border border-border-light rounded bg-surface-container-low px-1 py-0.5 text-meta-default font-meta-default">
+<button class="px-1.5 py-0.5 rounded font-semibold text-primary bg-surface-container-lowest shadow-sm cursor-default">DE</button>
+<span class="text-border-light px-0.5">|</span>
+<button class="px-1.5 py-0.5 text-text-muted-light hover:text-amber-focus transition-colors duration-150">EN</button>
+<span class="text-border-light px-0.5">|</span>
+<button class="px-1.5 py-0.5 text-text-muted-light hover:text-amber-focus transition-colors duration-150">FR</button>
+</div>
+<!-- Autoren-Avatar-Kürzel -->
+<div class="w-7 h-7 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-meta-default text-meta-default font-semibold border border-outline-variant" title="Archivist portrait avatar">
+        AN
+      </div>
+</div>
+</header>
+<!-- MAIN CANVAS -->
+<main class="flex-1 w-full max-w-[1280px] mx-auto px-6 py-8 md:py-10 space-y-12">
+<!-- 2. HERO-BEREICH: Das aktive Werk — „Dead Signal“ -->
+<section class="relative bg-surface-container-low border border-border-light rounded-lg p-6 sm:p-8 lg:p-10 shadow-sm overflow-hidden">
+<!-- Zarte Zettelkasten-Wasserzeichen-Struktur im Hintergrund -->
+<div class="absolute -right-8 -bottom-10 w-96 h-96 opacity-[0.03] pointer-events-none text-primary">
+<span class="material-symbols-outlined" style="font-size: 400px;">menu_book</span>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center relative z-10">
+<!-- Buch-Objekt (3:4 Verhältnis, 3D Haptik) -->
+<div class="lg:col-span-4 flex justify-center lg:justify-start">
+<div class="relative w-64 h-[352px] bg-cover-ink rounded-r-md rounded-l-sm border border-[#3A332A] book-shadow-ambient flex flex-col justify-between p-5 select-none transition-transform duration-300 hover:-translate-y-1">
+<!-- 5px Buchrücken-Schattierung an der linken Kante -->
+<div class="absolute left-0 top-0 bottom-0 w-[6px] book-spine-emboss rounded-l-sm"></div>
+<!-- Feiner Goldrahmen-Einsatz mit 5px Rille -->
+<div class="absolute inset-[6px] border border-[rgba(212,175,55,0.35)] rounded-r-sm pointer-events-none"></div>
+<!-- Buchkopf-Typografie -->
+<div class="pl-2 pt-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-[rgba(212,175,55,0.85)] uppercase block tracking-widest">
+                SCIENCE FICTION • OPUS I
+              </span>
+<div class="w-8 h-px bg-[rgba(212,175,55,0.3)] mt-2"></div>
+</div>
+<!-- Buchmitte: Kreis-Radar-Vignette in Goldprägung -->
+<div class="flex flex-col items-center justify-center my-auto">
+<div class="w-20 h-20 rounded-full border border-[rgba(212,175,55,0.4)] flex items-center justify-center relative">
+<div class="w-14 h-14 rounded-full border border-dashed border-[rgba(212,175,55,0.3)] flex items-center justify-center">
+<div class="w-2 h-2 rounded-full bg-[rgba(212,175,55,0.9)] shadow-sm"></div>
+</div>
+<!-- 72 Impulse Puls-Visualisierung -->
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="w-full h-px bg-[rgba(212,175,55,0.15)] rotate-45"></div>
+<div class="w-full h-px bg-[rgba(212,175,55,0.15)] -rotate-45"></div>
+</div>
+</div>
+<span class="font-meta-default text-[10px] text-[rgba(212,175,55,0.6)] mt-2 tracking-widest">SIGNAL CANON</span>
+</div>
+<!-- Buchtitel & Signatur -->
+<div class="pl-2 pb-1 space-y-1">
+<h2 class="font-prose-heading-1 text-2xl text-[#F6F3ED] tracking-tight leading-tight">Dead Signal</h2>
+<p class="font-meta-default text-[11px] text-[#A69F94] tracking-wide">Calder • Atelier Narrare 2026</p>
+</div>
+</div>
+</div>
+<!-- Rechte Spalte: Werk-Status, Prosa-Einstieg & Aktionen -->
+<div class="lg:col-span-8 space-y-5">
+<!-- Status-Eyebrow -->
+<div class="flex items-center gap-2">
+<span class="inline-block w-2 h-2 rounded-full bg-state-success"></span>
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-state-success uppercase tracking-wider">
+              AKTIVES WERK • SOEBEN BEREITGESTELLT
+            </span>
+</div>
+<!-- Monumentaler Werktitel & Metadaten -->
+<div>
+<h1 class="font-prose-heading-1 text-3xl sm:text-4xl text-primary font-bold tracking-tight">
+              Dead Signal
+            </h1>
+<p class="font-meta-default text-meta-default text-text-muted-light mt-0.5">
+              Science Fiction <span class="text-border-light">•</span> 3 Kapitel vordefiniert
+            </p>
+</div>
+<!-- Poetische Einstiegszeile -->
+<blockquote class="border-l-2 border-primary-container pl-4 py-1">
+<p class="font-prose-editorial text-prose-editorial text-on-surface italic leading-relaxed">
+              „Die Sensorenbatterie der Station Erebus schwieg seit drei Tagen. Als das Tauchteam die äußere Luftschleuse des Tiefseerückens erreichte, fanden sie keine gebrochenen Dichtungen, sondern 72 identische Audioimpulse im Notfall-Logbuch – moduliert in reinem C-Dur.“
+            </p>
+</blockquote>
+<!-- Aufrichtige Fortschrittsleiste (ohne erfundene Prozentzahl) -->
+<div class="space-y-1.5 pt-1">
+<div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary-container h-full w-12 rounded-full"></div>
+</div>
+<div class="flex flex-col sm:flex-row sm:items-center justify-between text-meta-default font-meta-default text-text-muted-light gap-1">
+<span>Wortstand wird beim ersten Schreiben gezählt • 3 Kapitel vordefiniert</span>
+<span class="text-secondary font-medium">Soeben im Setup bereitgestellt • Kausalitätsprüfung aktiv</span>
+</div>
+</div>
+<!-- Aktionsbereich mit Haupt-CTA in Terrakotta -->
+<div class="pt-3 flex flex-wrap items-center gap-3">
+<!-- FOKALER PRIMÄR-CTA -->
+<button class="h-10 px-5 bg-primary-container hover:bg-[#5C2E17] text-surface-container-lowest font-headline-emph text-headline-emph rounded flex items-center gap-2 shadow-sm transition-all duration-150 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-amber-focus focus:ring-offset-1">
+<span>Weiterschreiben — Kapitel 1</span>
+<span class="material-symbols-outlined" style="font-size: 16px;">arrow_forward</span>
+</button>
+<!-- SEKUNDÄR-BUTTON -->
+<button class="h-10 px-4 bg-surface-container-lowest hover:bg-bg-soft-light text-on-surface border border-border-light font-label-default text-label-default rounded flex items-center gap-2 shadow-sm transition-colors duration-150">
+<span class="material-symbols-outlined text-secondary" style="font-size: 18px;">hub</span>
+<span>Entitäten- &amp; Lore-Graph öffnen</span>
+</button>
+<!-- Tertiär-Link dezent -->
+<button class="px-3 py-2 text-text-muted-light hover:text-primary font-meta-default text-meta-default transition-colors duration-150 inline-flex items-center gap-1.5 underline-offset-4 hover:underline">
+<span class="material-symbols-outlined" style="font-size: 16px;">view_timeline</span>
+<span>3-Akt-Storyboard einsehen</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- 3. SEKTION: „Weiter im Atelier (3 Arbeitsräume)“ -->
+<section class="space-y-4">
+<div class="flex items-baseline justify-between border-b border-border-light pb-2">
+<h2 class="font-prose-heading-2 text-prose-heading-2 text-primary font-semibold">
+          Weiter im Atelier <span class="font-meta-default text-meta-default text-text-muted-light font-normal">(3 Arbeitsräume)</span>
+</h2>
+<span class="font-meta-default text-meta-default text-text-muted-light">Architektur im Aufbau</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+<!-- Karte 1: Zen-Fokus & Atmosphäre -->
+<div class="bg-surface-container-low border border-border-light rounded p-5 flex flex-col justify-between transition-all duration-150 hover:border-outline-variant hover:bg-surface-container">
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<div class="w-8 h-8 rounded bg-surface-container-lowest border border-border-light flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">self_improvement</span>
+</div>
+<span class="px-2 py-0.5 rounded text-[11px] font-meta-default bg-surface-container text-text-muted-light border border-border-light">
+                demnächst
+              </span>
+</div>
+<div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Zen-Fokus &amp; Atmosphäre</h3>
+<p class="font-body-default text-body-default text-text-muted-light mt-1.5 leading-relaxed">
+                Ablenkungsfreie Vollbild-Kladde mit Naturton-Geräuschen und Takt-Timer.
+              </p>
+</div>
+</div>
+<div class="pt-4 mt-4 border-t border-border-light/60">
+<span class="font-meta-default text-[11px] text-text-muted-light italic">
+              kommt mit dem weiteren Aufbau
+            </span>
+</div>
+</div>
+<!-- Karte 2: Chronologie & Timeline -->
+<div class="bg-surface-container-low border border-border-light rounded p-5 flex flex-col justify-between transition-all duration-150 hover:border-outline-variant hover:bg-surface-container">
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<div class="w-8 h-8 rounded bg-surface-container-lowest border border-border-light flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">history_edu</span>
+</div>
+<span class="px-2 py-0.5 rounded text-[11px] font-meta-default bg-surface-container text-text-muted-light border border-border-light">
+                demnächst
+              </span>
+</div>
+<div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Chronologie &amp; Timeline</h3>
+<p class="font-body-default text-body-default text-text-muted-light mt-1.5 leading-relaxed">
+                Kausale Zeitebenen, Szenen-Beats und Verzugs-Detektion im Handlungsverlauf.
+              </p>
+</div>
+</div>
+<div class="pt-4 mt-4 border-t border-border-light/60">
+<span class="font-meta-default text-[11px] text-text-muted-light italic">
+              kommt mit dem weiteren Aufbau
+            </span>
+</div>
+</div>
+<!-- Karte 3: Manuskript importieren -->
+<div class="bg-surface-container-low border border-border-light rounded p-5 flex flex-col justify-between transition-all duration-150 hover:border-outline-variant hover:bg-surface-container">
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<div class="w-8 h-8 rounded bg-surface-container-lowest border border-border-light flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">upload_file</span>
+</div>
+<span class="px-2 py-0.5 rounded text-[11px] font-meta-default bg-surface-container text-text-muted-light border border-border-light">
+                demnächst
+              </span>
+</div>
+<div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Manuskript importieren</h3>
+<p class="font-body-default text-body-default text-text-muted-light mt-1.5 leading-relaxed">
+                Bestehende Fragmente aus .docx, .scriv oder Scrivener-Archiven einbinden.
+              </p>
+</div>
+</div>
+<div class="pt-4 mt-4 border-t border-border-light/60">
+<span class="font-meta-default text-[11px] text-text-muted-light italic">
+              kommt mit dem weiteren Aufbau
+            </span>
+</div>
+</div>
+</div>
+</section>
+<!-- 4. SEKTION: „Neues beginnen“ -->
+<section class="space-y-4">
+<div class="flex items-baseline justify-between border-b border-border-light pb-2">
+<h2 class="font-prose-heading-2 text-prose-heading-2 text-primary font-semibold">
+          Neues beginnen
+        </h2>
+<span class="font-meta-default text-meta-default text-text-muted-light">Zweiter Schreibtisch</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+<!-- Karte 1: Neues Werk aufschlagen -->
+<div class="bg-surface-container-lowest border border-border-light rounded p-6 flex flex-col justify-between hover:border-secondary transition-colors duration-150 group cursor-pointer">
+<div class="space-y-3">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded bg-surface-container-low border border-border-light flex items-center justify-center text-primary group-hover:bg-primary-container group-hover:text-surface-container-lowest transition-colors duration-150">
+<span class="material-symbols-outlined">add_circle_outline</span>
+</div>
+<div>
+<h3 class="font-headline-title text-headline-title text-primary">Neues Werk aufschlagen</h3>
+<span class="font-meta-default text-meta-default text-secondary">Geführter Assistent in 4 Schritten</span>
+</div>
+</div>
+<p class="font-body-default text-body-default text-text-muted-light leading-relaxed">
+              Starte ein weiteres literarisches Projekt mit maßgeschneiderter Erzählarchitektur, Figurentabellen und eigenständigem Kausalitäts-Graph.
+            </p>
+</div>
+<div class="pt-4 mt-4 border-t border-border-light flex items-center text-primary font-label-default text-label-default group-hover:translate-x-1 transition-transform duration-150">
+<span>Projekt-Assistenten starten</span>
+<span class="material-symbols-outlined ml-1" style="font-size: 16px;">arrow_forward</span>
+</div>
+</div>
+<!-- Karte 2: Weitere Vorlage erkunden -->
+<div class="bg-surface-container-lowest border border-border-light rounded p-6 flex flex-col justify-between">
+<div class="space-y-3">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded bg-surface-container-low border border-border-light flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">auto_stories</span>
+</div>
+<div>
+<h3 class="font-headline-title text-headline-title text-on-surface">Weitere Vorlage erkunden</h3>
+<span class="font-meta-default text-meta-default text-text-muted-light">Kuratiertes Ensemble für Narrare</span>
+</div>
+</div>
+<!-- Typografie-Liste der drei Ensembles -->
+<ul class="divide-y divide-border-light/60 pt-1 font-body-default text-body-default">
+<li class="py-2 flex items-center justify-between text-on-surface">
+<span class="font-medium">Dead Signal</span>
+<span class="font-meta-default text-meta-default text-state-success flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span> Im Regal aktiv
+                </span>
+</li>
+<li class="py-2 flex items-center justify-between text-text-muted-light hover:text-on-surface transition-colors duration-150 cursor-pointer">
+<span>Echoes of the Thornwall</span>
+<span class="font-meta-default text-meta-default text-secondary">High Fantasy • Epos</span>
+</li>
+<li class="py-2 flex items-center justify-between text-text-muted-light hover:text-on-surface transition-colors duration-150 cursor-pointer">
+<span>Im Stillen Wald</span>
+<span class="font-meta-default text-meta-default text-secondary">Literarischer Noir</span>
+</li>
+</ul>
+</div>
+<div class="pt-3 border-t border-border-light text-right">
+<button class="font-meta-default text-meta-default text-secondary hover:text-primary transition-colors duration-150">
+              Vorlagen-Katalog durchblättern →
+            </button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- 5. FOOTER (Shared Component Alignment & Autorensouveränität) -->
+<footer class="w-full py-8 px-8 border-t border-border-light bg-bg-panel-light flex flex-col justify-between items-center gap-5 mt-16 text-center">
+<!-- Prosa-Zeile als zentrierter Sinnspruch -->
+<div class="max-w-prose-max-width mx-auto">
+<p class="font-prose-editorial text-prose-editorial text-primary italic leading-relaxed">
+        „Ein Roman ist kein statischer Text, sondern ein Organismus aus Kausalität, Takt und dem Atem seiner Figuren.“
+      </p>
+<span class="font-meta-default text-meta-default text-text-muted-light block mt-1">
+        — Atelier Notizen, Grundsatz III
+      </span>
+</div>
+<!-- Feine Trennlinie -->
+<div class="w-16 h-px bg-border-light"></div>
+<!-- Vertrauensleiste & Souveränitäts-Garantie -->
+<div class="flex flex-col sm:flex-row items-center justify-between w-full max-w-[1280px] text-meta-default font-meta-default text-text-muted-light gap-3 pt-1">
+<div class="flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-1">
+<span class="text-primary font-medium">100% Autorensouveränität</span>
+<span>(Kein KI-Training mit deinen Texten)</span>
+<span class="text-border-light">•</span>
+<span>Strikter Kausalitäts-Wächter</span>
+<span class="text-border-light">•</span>
+<span>Lokal zuerst (Verschlüsselter Kausalitätsspeicher)</span>
+</div>
+<div class="text-text-muted-light tracking-wide text-xs">
+        Literary Modernism Engine v2.4
+      </div>
+</div>
+</footer>
+</body></html>
