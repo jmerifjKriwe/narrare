@@ -65,10 +65,12 @@ function themeBlock(): string {
   throw new Error("globals.css's @theme inline block never closes");
 }
 
-/** The block's own declarations, name → value. */
+/** The block's own declarations, name → value. CSS comments are stripped
+ * first, so a commented-out declaration cannot witness a gate. */
 function declarations(source: string): Record<string, string> {
   const found: Record<string, string> = {};
-  for (const match of source.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
+  const live = source.replace(/\/\*[\s\S]*?\*\//g, "");
+  for (const match of live.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
     found[match[1].slice(2)] = match[2].replace(/\s+/g, " ").trim();
   }
   return found;
@@ -324,6 +326,21 @@ const GRAPHICS_PAIRS: [string, string, number][] = [
   ["area-planning", "card", 3],
   ["area-settings", "card", 3],
 ];
+
+describe("the declarations reader", () => {
+  it("strips CSS comments, so a commented-out declaration never witnesses a gate", () => {
+    const source = [
+      "--live: #FFF8F2;",
+      "/* --single-line: #000000; */",
+      "--beside: 4px; /* --trailing: #16140F; */",
+      "/* a multi-line note",
+      "   --buried: #743B1F;",
+      "   that must not count */",
+      "--after: 8px;",
+    ].join("\n");
+    expect(declarations(source)).toEqual({ live: "#FFF8F2", beside: "4px", after: "8px" });
+  });
+});
 
 describe("the shell's tokens", () => {
   const tokens = declarations(rootBlock());
