@@ -141,7 +141,7 @@ describe("murmur3_32", () => {
 
 **Interfaces:**
 - Consumes: `CoverChannel` from Task 2.
-- Produces: `export function GenreMotif({ channel, className }: { channel: CoverChannel; className?: string }): ReactElement` — one hairline SVG per channel, `stroke="currentColor"`, `fill="none"`, strokeWidth ≈1.1, `data-channel={channel}`, `aria-hidden="true"`.
+- Produces: `export function GenreMotif({ channel, className }: { channel: CoverChannel; className?: string }): ReactElement` — one hairline SVG per channel, `stroke="currentColor"`, `fill="none"` on the root (the spec's two filled dots — historical beacon, fallback seal center — keep their element-level `fill="currentColor"`), strokeWidth 1.2 (spec Sektion 02), `data-channel={channel}`, `aria-hidden="true"`.
 
 - [ ] **Step 1: Write the failing test** (jsdom): for each of the 8 channels render `<GenreMotif channel={c}/>`; assert an `svg[data-channel=c]` exists and that the 8 channels produce 8 distinct `innerHTML` shapes (no two identical).
 - [ ] **Step 2: Run to verify it fails.**
