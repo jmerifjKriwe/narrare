@@ -14,11 +14,11 @@
   "docs.table.needs": "Needs",
   "docs.table.path": "Path",
   "locale.name": "English",
-  "nav.back": "All novels",
+  "nav.back": "Back to the atelier",
   "needs.embeddings": "an embedding model",
   "needs.llm": "a text model",
   "shell.error": "This page could not be shown.",
   "shell.notFound": "This page does not exist.",
-  "shell.notFoundBody": "That address belongs to no screen in this app — the library is one click away.",
+  "shell.notFoundBody": "That address belongs to no screen in this app — the atelier is one click away.",
   "shell.paletteOpen": "Open the command palette, {key}"
 }

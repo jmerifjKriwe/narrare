@@ -7,10 +7,6 @@ import { useSetupStatus } from "./useSetupStatus";
 
 // React.lazy keeps the pages out of the shell's bundle: each loads as its
 // own chunk, and the shell root's Suspense boundary covers the gap.
-const SetupPage = lazy(async () => {
-  const page = await import("./SetupPage");
-  return { default: page.SetupPage };
-});
 const WelcomePage = lazy(async () => {
   const page = await import("./WelcomePage");
   return { default: page.WelcomePage };
@@ -30,6 +26,10 @@ const StructureStep = lazy(async () => {
 const AiRulesStep = lazy(async () => {
   const page = await import("./steps/AiRulesStep");
   return { default: page.AiRulesStep };
+});
+const ProvisioningStep = lazy(async () => {
+  const page = await import("./steps/ProvisioningStep");
+  return { default: page.ProvisioningStep };
 });
 
 /**
@@ -62,9 +62,8 @@ const setupRoute = createRoute({
 });
 
 // The four steps, addressable each on its own — a refresh mid-wizard lands
-// on the same step. Steps one to three are the ported basis, structure and
-// AI-rules steps; the interim placeholder stands in for the last until the
-// port task fills it.
+// on the same step. All four are the ported drafts: basis, structure,
+// AI-rules and the provisioning step that posts the one setup write.
 const basisRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup/basis",
@@ -86,7 +85,7 @@ const aiRulesRoute = createRoute({
 const provisioningRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup/provisioning",
-  component: SetupPage,
+  component: ProvisioningStep,
 });
 
 // The capability route contract: every route this capability mounts under the

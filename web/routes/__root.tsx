@@ -64,9 +64,10 @@ function Shell() {
 
 /** The shell's answer to an unknown URL: the copy comes from the catalog —
  * TanStack's English default would break the i18n rule inside the localized
- * shell — and the way home is the interim placeholder. TanStack renders
- * this component in place of the whole Shell, so the title the tab reads
- * is the page's alone. */
+ * shell — and the way home is the atelier: the `/` gate answers with the
+ * welcome or the landing, whichever the instance's state calls for. TanStack
+ * renders this component in place of the whole Shell, so the title the tab
+ * reads is the page's alone. */
 function NotFound() {
   const t = useTranslation();
   usePageTitle(t("shell.notFound"));

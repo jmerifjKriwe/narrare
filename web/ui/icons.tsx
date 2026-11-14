@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The icon set: forty-nine line glyphs on one 16×16 grid, drawn for the
+ * The icon set: fifty-one line glyphs on one 16×16 grid, drawn for the
  * stroke they run on — `currentColor` at 1.5, round caps and joins, no
  * fills — so a glyph wears the ink of whatever it sits beside and carries
  * no color of its own. The whole presentation contract lives on the
@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
  */
 
 /**
- * The forty-nine drawings. Each stays inside the 2.35–13.65 envelope —
+ * The fifty-one drawings. Each stays inside the 2.35–13.65 envelope —
  * knowledge's stack sets both extremes; on the x axis the ink never leaves
  * 2.5–13.5 — so the 1.5 stroke, reaching half its width past the ink, never
  * clips the viewBox. Each is a single-stroke metaphor: detail that
@@ -329,6 +329,29 @@ export const icons = {
       <path d="M9.5 2.75H13.25V6.5" />
       <path d="M13.25 2.75L7.75 8.25" />
       <path d="M11 9.75V13.25H2.75V5H6.25" />
+    </>
+  ),
+
+  // The provisioning step's concepts (setup-step4-bereitstellung-start,
+  // setup-states-reference panels 3–4). Same rule as above: a Material
+  // name pins the concept, the drawing is the app's own face.
+
+  /** The drafts' `report_problem`: a warning triangle, its bang a stroke
+   *  and a point — the failure card's calm alarm, never a panic face. */
+  warning: (
+    <>
+      <path d="M8 2.9L13.4 12.5H2.6Z" />
+      <path d="M8 6.5V9.5" />
+      <circle cx="8" cy="11.3" r="0.4" />
+    </>
+  ),
+  /** The drafts' `refresh`: a ring running clockwise, its arrowhead at
+   *  the top — the retry that asks again. Distinct from `historyEdu`,
+   *  whose ring runs backwards into the work's own past. */
+  refresh: (
+    <>
+      <path d="M12.3 8A4.3 4.3 0 1 1 10.9 4.9" />
+      <path d="M10.9 2.9V4.9H12.9" />
     </>
   ),
 } satisfies Record<string, ReactNode>;

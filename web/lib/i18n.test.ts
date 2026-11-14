@@ -80,7 +80,7 @@ describe("the formal register", () => {
     applyLocale("de");
     applyFormality("formal");
 
-    expect(t("nav.back")).toBe("Alle Romane");
+    expect(t("nav.back")).toBe(catalogs.de["nav.back"]);
   });
 
   it("leaves English unchanged", () => {
@@ -119,7 +119,7 @@ describe("the active language", () => {
     adoptServerLocale("de");
 
     expect(activeLocale()).toBe("de");
-    expect(t("nav.back")).toBe("Alle Romane");
+    expect(t("nav.back")).toBe(catalogs.de["nav.back"]);
   });
 
   it("ignores a code the catalog does not carry", () => {

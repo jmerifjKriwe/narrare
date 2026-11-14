@@ -4,12 +4,10 @@
  * router over the real root route with a memory history — a fresh entry is
  * the browser-refresh shape, so the gate must answer from the status it
  * asks, never from a remembered variant. The gate's two choices are mocked
- * at their module boundary so the choice itself is observable while both
- * pages are still placeholders (the port tasks fill them and test them in
- * their own right); steps one to three render the real basis, structure and
- * AI-rules steps, the last step the interim placeholder. The API client is
- * mocked at its module boundary — the request's truth is the backend's and
- * the E2E's.
+ * at their module boundary so the choice itself stays observable here (the
+ * welcome and the landing are tested in their own right); all four wizard
+ * steps render the real ported components. The API client is mocked at its
+ * module boundary — the request's truth is the backend's and the E2E's.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
@@ -26,7 +24,8 @@ vi.mock("@shell/lib/api/client", () => ({
   },
 }));
 
-// The gate's two branches, distinguishable while both are placeholders.
+// The gate's two branches, mocked so the choice itself is what this file
+// pins — each page's own contract lives in its own test file.
 vi.mock("./WelcomePage", () => ({ WelcomePage: () => <p>welcome placeholder</p> }));
 vi.mock("./LandingPage", () => ({ LandingPage: () => <p>landing placeholder</p> }));
 
@@ -144,10 +143,14 @@ describe("the wizard's steps", () => {
     ).toBe("Dead Signal");
   });
 
-  it("answers /setup/provisioning with the interim placeholder", async () => {
+  it("an empty /setup/provisioning falls back to the basis without posting", async () => {
     scriptStatus(async () => ({ data: { complete: false }, response: ok() }));
-    renderTree("/setup/provisioning");
+    const router = renderTree("/setup/provisioning");
 
-    expect(await screen.findByRole("heading", { name: t("setup.interimTitle") })).toBeTruthy();
+    // The real provisioning step mounts, finds no basis in the address, and
+    // answers with step one — no POST on an empty deep link.
+    await screen.findByRole("heading", { name: t("setup.basis.heroTitle") });
+    expect(router.state.location.pathname).toBe("/setup/basis");
+    expect(api.POST).not.toHaveBeenCalled();
   });
 });

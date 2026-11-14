@@ -11,7 +11,7 @@ import { Icon } from "@shell/ui/icons";
 import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
 
 /**
- * The wizard's shared header chrome — one home for the bar the three ported
+ * The wizard's shared header chrome — one home for the bar the four ported
  * steps repeat. The review found three copies diverging, with the narrow-
  * screen wrap fix landed in only one; the brand and context line, the four-
  * step progress stepper, the DE|EN|FR switcher with its pre-setup mirror
@@ -28,8 +28,9 @@ import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
  * one are done (the check, success, a Link back that keeps the wizard's
  * search), the active step wears `aria-current="step"` — step one keeps the
  * first draft's numbered-badge face, steps two and three the primary pulse
- * face — and the rest wait with their number. Step four never links: it is
- * the interim placeholder until its port task lands.
+ * face, step four the binding draft's calm pill (a ringed chip with the
+ * pulsing primary dot) — and the rest wait with their number. The last step
+ * never links forward: nothing follows the binding.
  */
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
@@ -51,7 +52,7 @@ const STEPS = [
   { key: "setup.wizard.step4", to: "/setup/provisioning" },
 ] as const satisfies readonly { key: MessageKey; to: string }[];
 
-export function WizardHeader({ activeStep }: { activeStep: 1 | 2 | 3 }) {
+export function WizardHeader({ activeStep }: { activeStep: 1 | 2 | 3 | 4 }) {
   const t = useTranslation();
   const locale = activeLocale();
   const switcherRefs = useRef<Partial<Record<Locale, HTMLElement | null>>>({});
@@ -164,6 +165,17 @@ export function WizardHeader({ activeStep }: { activeStep: 1 | 2 | 3 }) {
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                         {n}
                       </span>
+                      <span>{t(entry.key)}</span>
+                    </div>
+                  ) : activeStep === 4 ? (
+                    // Step four wears the binding draft's calm pill: the
+                    // work is underway, the chip rings it rather than
+                    // flooding it — the pulse is the only movement.
+                    <div
+                      aria-current="step"
+                      className="flex items-center gap-1.5 rounded-full border border-outline-variant/70 bg-surface-container-lowest px-3 py-1 text-label font-semibold text-primary shadow-sm"
+                    >
+                      <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
                       <span>{t(entry.key)}</span>
                     </div>
                   ) : (
