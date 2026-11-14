@@ -39,5 +39,20 @@ class SetupRequest(BaseModel):
 
 
 class SetupResult(BaseModel):
+    """The provisioning facts step 4 and the landing render.
+
+    ``genre`` is the effective genre — the archive's own on the demo path,
+    the passed genre on the blank path — and ``chapters`` the count the
+    import/creation produced. The settings are nullable as the model is:
+    a novel without an answer does not lie.
+    """
+
     novel_id: UUID
     novel_title: str
+    genre: str | None
+    target_words: int | None
+    author_typology: str | None
+    dramatic_form: str | None
+    ai_role: str | None
+    canon_strictness: int | None
+    chapters: int

@@ -64,7 +64,18 @@ async def test_setup_stores_the_wizard_settings() -> None:
     async with _client() as client:
         completed = await client.post("/api/setup", json=payload)
         assert completed.status_code == 201
-        novel_id = completed.json()["novel_id"]
+        body = completed.json()
+        novel_id = body["novel_id"]
+        # The response carries the provisioning facts: the settings as
+        # answered and the blank novel's chapter count of zero.
+        assert body["novel_title"] == "Der Nebel"
+        assert body["genre"] == "Literary"
+        assert body["target_words"] == 65000
+        assert body["author_typology"] == "plantser"
+        assert body["dramatic_form"] == "three-act"
+        assert body["ai_role"] == "lektor"
+        assert body["canon_strictness"] == 4
+        assert body["chapters"] == 0
 
     async with Session() as session:
         stored = await session.get(Novel, novel_id)

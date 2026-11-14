@@ -8,6 +8,7 @@ an untouched instance or a finished one.
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.setup.repository import NovelRepository
+from app.capabilities.setup.schemas import SetupResult
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Novel, User
 from app.kernel.interchange.demos import demo_tree
@@ -36,7 +37,7 @@ class SetupService:
         dramatic_form: str | None = None,
         ai_role: str | None = None,
         canon_strictness: int | None = None,
-    ) -> Novel:
+    ) -> SetupResult:
         if await self.is_complete():
             raise AlreadySetUpError
         self.session.add(User(id=LOCAL_USER_ID))
@@ -47,6 +48,7 @@ class SetupService:
             novel = await NovelRepository(self.session, LOCAL_USER_ID).create(
                 novel_title, genre=genre
             )
+            chapters = 0
         else:
             # A demo is the archive's own novel: import creates it from the
             # bundled metadata (title, author, language) inside this same
@@ -62,6 +64,9 @@ class SetupService:
                 raise RuntimeError(
                     f"demo import reported novel {report.novel_id} but it is not in this session"
                 )
+            # A new-novel import lands every archive chapter as new: the
+            # report's tally is the count that landed, no re-read needed.
+            chapters = report.chapters_new
         # The wizard's per-novel settings bind onto the blank novel and the
         # imported demo alike; only the demo's title/genre/chapters stay its own.
         novel.target_words = target_words
@@ -70,4 +75,14 @@ class SetupService:
         novel.ai_role = ai_role
         novel.canon_strictness = canon_strictness
         await self.session.commit()
-        return novel
+        return SetupResult(
+            novel_id=novel.id,
+            novel_title=novel.title,
+            genre=novel.genre,
+            target_words=novel.target_words,
+            author_typology=novel.author_typology,
+            dramatic_form=novel.dramatic_form,
+            ai_role=novel.ai_role,
+            canon_strictness=novel.canon_strictness,
+            chapters=chapters,
+        )
