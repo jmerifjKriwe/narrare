@@ -10,13 +10,16 @@ documentation grows around this index, never inside it.
 
 | Capability | Path | Navigation | Needs |
 | --- | --- | --- | --- |
+| Welcome to the Atelier | /setup | — | — |
 
 ## Deutsch
 
 | Funktion | Pfad | Navigation | Benötigt |
 | --- | --- | --- | --- |
+| Willkommen im Atelier | /setup | — | — |
 
 ## Français
 
 | Fonction | Chemin | Navigation | Nécessite |
 | --- | --- | --- | --- |
+| Bienvenue dans l'Atelier | /setup | — | — |
