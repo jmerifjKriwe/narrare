@@ -9,7 +9,9 @@
  * the drafts never showed. One pair follows the screens rather than
  * DESIGN.md's named value: `--card`, which the drafted shelf paints on the
  * parchment surface `#FFF8F2` instead of `bg-card-light`'s `#FFFFFF` (spec
- * §6.2's screen rule).
+ * §6.2's screen rule). The cover aliases in `@theme inline` are gated too:
+ * a utility reads the alias, and one pointed at another token's variable
+ * would pass the pair gate and paint a wrong-coloured cover.
  *
  * The contrast table is the same measurement the axe leg makes, done here
  * where a failure names the pair instead of a selector: the ink, the ground
@@ -36,6 +38,22 @@ function rootBlock(): string {
     }
   }
   throw new Error("globals.css's :root block never closes");
+}
+
+/** The `@theme inline` block's body — the Tailwind aliases the utilities read. */
+function themeBlock(): string {
+  const at = CSS.indexOf("@theme inline {");
+  if (at < 0) throw new Error("globals.css has no @theme inline block");
+  const open = CSS.indexOf("{", at);
+  let depth = 0;
+  for (let i = open; i < CSS.length; i += 1) {
+    if (CSS[i] === "{") depth += 1;
+    else if (CSS[i] === "}") {
+      depth -= 1;
+      if (depth === 0) return CSS.slice(open + 1, i);
+    }
+  }
+  throw new Error("globals.css's @theme inline block never closes");
 }
 
 /** The block's own declarations, name → value. */
@@ -326,6 +344,26 @@ describe("the shell's tokens", () => {
       parts(painted(tokens, "shadow-card", theme)).filter((layer) => !/transparent$/i.test(layer));
     expect(layers("light")).toEqual(SHADOW_CARD.light);
     expect(layers("dark")).toEqual(SHADOW_CARD.dark);
+  });
+});
+
+describe("the cover's Tailwind aliases", () => {
+  const aliases = declarations(themeBlock());
+
+  it("points every cover token at its own variable", () => {
+    const wrong: string[] = [];
+    for (const name of Object.keys(PAIRS)) {
+      if (!name.startsWith("cover-")) continue;
+      const alias = `color-${name}`;
+      const value = aliases[alias];
+      if (value === undefined) {
+        wrong.push(`--${alias} is missing`);
+        continue;
+      }
+      const expected = `var(--${name})`;
+      if (value !== expected) wrong.push(`--${alias}: ${value} ≠ ${expected}`);
+    }
+    expect(wrong).toEqual([]);
   });
 });
 
