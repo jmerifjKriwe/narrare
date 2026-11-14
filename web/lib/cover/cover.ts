@@ -9,7 +9,8 @@
  *
  * The rulings the edges obey: a short title is exactly one word — "Dead
  * Signal" is not short, "Echo" is, however long a single word grows; a long
- * title is more than 60 trimmed characters and lets the vignette recede;
+ * title is more than 60 trimmed code points (the spec's Zeichen, not UTF-16
+ * units) and lets the vignette recede;
  * Lyrik and every unknown genre fall to the neutral fallback (owner decision
  * 2026-11-14), never to a crash or a blank cover.
  */
@@ -126,7 +127,9 @@ export function coverModel(input: {
   const title = input.title.trim();
   const words = title.split(/\s+/).filter((word) => word.length > 0);
   const authorName = (input.author ?? "").trim();
-  const longTitle = title.length > 60;
+  // Code points (the spec's Zeichen), not UTF-16 units: an astral glyph is
+  // one character even though it occupies two units.
+  const longTitle = Array.from(title).length > 60;
   const mini = input.size === "mini";
   const vignetteSize = input.size === "wizard" || input.size === "hero";
 
@@ -144,8 +147,9 @@ export function coverModel(input: {
     monogramText:
       words
         .slice(0, 2)
-        // The first code point, not UTF-16 unit, so an astral initial survives.
-        .map((word) => Array.from(word)[0].toUpperCase())
+        // Uppercase the word first, then take its first code point: ß → SS
+        // must not grow the monogram, and an astral initial survives.
+        .map((word) => Array.from(word.toUpperCase())[0])
         .join("") || "N",
     authorName,
     anonymous: authorName === "",

@@ -156,6 +156,24 @@ describe("coverModel", () => {
     expect(coverModel({ title: `  ${"x".repeat(60)}  `, size: "wizard" }).longTitle).toBe(false);
   });
 
+  it("counts code points, not UTF-16 units, at the long-title boundary", () => {
+    // 31 astral glyphs + 29 spaces = 60 code points but 91 UTF-16 units:
+    // the spec counts Zeichen, so the vignette must stay.
+    const astral = "🚀 ".repeat(29) + "🚀🚀";
+    expect([...astral]).toHaveLength(60);
+    expect(astral.length).toBe(91);
+    const model = coverModel({ title: astral, size: "wizard" });
+    expect(model.longTitle).toBe(false);
+    expect(model.showVignette).toBe(true);
+    expect(coverModel({ title: astral, size: "hero" }).showVignette).toBe(true);
+    // 61 code points is long even though every glyph is a single Zeichen.
+    const longAstral = "🚀 ".repeat(30) + "🚀";
+    expect([...longAstral]).toHaveLength(61);
+    const long = coverModel({ title: longAstral, size: "wizard" });
+    expect(long.longTitle).toBe(true);
+    expect(long.showVignette).toBe(false);
+  });
+
   it("treats a missing or whitespace author as anonymous", () => {
     for (const author of [null, undefined, "", "   "]) {
       const model = coverModel({ title: "Dead Signal", author, size: "wizard" });
@@ -194,6 +212,13 @@ describe("coverModel", () => {
     expect(coverModel({ title: "Ähre im Wind", size: "mini" }).monogramText).toBe("ÄI");
     expect(coverModel({ title: "", size: "mini" }).monogramText).toBe("N");
     expect(coverModel({ title: "   ", size: "mini" }).monogramText).toBe("N");
+  });
+
+  it("uppercases each word before taking its first code point", () => {
+    // "ß".toUpperCase() is "SS": uppercasing the initial alone would grow
+    // the monogram to three letters. Each initial stays one code point.
+    expect(coverModel({ title: "ßeta Wald", size: "mini" }).monogramText).toBe("SW");
+    expect(coverModel({ title: "ßeta", size: "mini" }).monogramText).toBe("S");
   });
 
   it("is deterministic for the same input", () => {
