@@ -114,7 +114,7 @@ describe("murmur3_32", () => {
   - edges: title of 70 chars → `longTitle:true`, `showVignette:false`; `author:null` and `author:"  "` → `anonymous:true`, `authorName:""`; `title:"Echo"` → `shortTitle:true`; `title:"Dead Signal"` mini → `monogramText:"DS"`; empty title mini → `monogramText:"N"`.
   - mapping table: scifi→`cover-ink`/`cover-ink-ink`, mystery→`cover-pale`/`cover-pale-ink`, literary→`cover-sepia`/`cover-sepia-ink`, historical→`cover-slate`/`cover-slate-ink`, fantasy→`cover-fantasy`/`cover-fantasy-ink`, romance→`cover-romance`/`cover-romance-ink`, thriller→`cover-thriller`/`cover-thriller-ink`, fallback→`cover-fallback`/`cover-fallback-ink`.
 - [ ] **Step 2: Run to verify it fails** — `pnpm vitest run lib/cover/cover.test.ts`.
-- [ ] **Step 3: Implement** `cover.ts`. `channelFor` normalizes (trim+lowercase) against a fixed alias map (English + German labels, e.g. "historischer roman"→historical, "literary fiction"→literary); default fallback. `monogramText` = first letters of the first two title words uppercased, or "N" when empty. `longTitle` = trimmed length > 60; `shortTitle` = single word or ≤12 chars. No i18n here (pure).
+- [ ] **Step 3: Implement** `cover.ts`. `channelFor` normalizes (trim+lowercase) against a fixed alias map (English + German labels, e.g. "historischer roman"→historical, "literary fiction"→literary); default fallback. `monogramText` = first letters of the first two title words uppercased, or "N" when empty. `longTitle` = trimmed length > 60; `shortTitle` = exactly one word (trimmed, non-empty). No i18n here (pure).
 - [ ] **Step 4: Run to verify it passes.**
 - [ ] **Step 5: Commit** — `chore(web): the cover's genre, variant and size model` + trailer.
 
