@@ -91,7 +91,7 @@ wave's index is #855; a row that earns an issue hangs under it).
   procedural cover replaced the drafts' hand-drawn objects (brief-mandated);
   the imprint and the hero sizes are what the cover-system wave still owes
   the drafts.
-- **Rows 7, 8, 11, 14, 24, 25** are reason rows: invented data or a state
+- **Rows 7, 8, 10, 11, 14, 24, 25** are reason rows: invented data or a state
   that would lie. They have no trigger — only rows 10 and 11 name re-open
   conditions (a settings field; a measured metric).
 - **Rows 16, 26** are the landing's honesty wording: the empty track and the

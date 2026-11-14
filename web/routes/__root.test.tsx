@@ -7,10 +7,11 @@
  * over the real root route with a memory history. The not-found face renders
  * inside the Shell, so the pre-paint settings gate opens for it the same way
  * it opens for any page: the client is mocked at its module boundary and the
- * row carries the locale under test — the boot adoption, not a stubbed
- * locale, is what makes the surface speak. Every locale the app carries is
- * walked, and the way home must be the atelier gate (`/`), which answers
- * with the welcome or the landing.
+ * row carries the locale under test, modeling the real boot. The loop also
+ * applies the locale directly for a deterministic first paint, so the pin
+ * proves the faces speak the catalog — not that boot adoption alone delivers
+ * the language. Every locale the app carries is walked, and the way home must
+ * be the atelier gate (`/`), which answers with the welcome or the landing.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
