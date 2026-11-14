@@ -39,6 +39,11 @@ import { useWizardState, type AiRole } from "../wizardState";
  * text-muted-light/on-surface-variant → muted, state-success → success,
  * secondary-container → secondary-container, primary-fixed-dim → the
  * active dot's soft primary halo.
+ *
+ * Two contrast corrections the E2E axe gate measures: the canon stop notes
+ * drop the draft's opacity-75 (muted dimmed below AA on the panel), and the
+ * footer motto keeps full muted ink (the draft's muted/80 falls below AA on
+ * the low rung).
  */
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
@@ -374,7 +379,7 @@ export function AiRulesStep() {
                     >
                       {t(stop.label)}
                       <br />
-                      <span className="font-normal opacity-75">{t(stop.note)}</span>
+                      <span className="font-normal">{t(stop.note)}</span>
                     </span>
                   ))}
                 </div>
@@ -439,7 +444,7 @@ export function AiRulesStep() {
             <span aria-hidden="true">•</span>
             <span>{t("setup.structure.footer.tagline")}</span>
           </div>
-          <div className="text-eyebrow uppercase tracking-widest text-muted/80">
+          <div className="text-eyebrow uppercase tracking-widest text-muted">
             {t("setup.structure.footer.motto")}
           </div>
         </div>

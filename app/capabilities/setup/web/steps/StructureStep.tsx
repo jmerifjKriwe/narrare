@@ -41,6 +41,9 @@ import {
  * variant → muted, state-success → success, secondary-container →
  * secondary-container. The tension curve is the draft's generic illustration
  * on every form — the registry's per-form beats are not setup data.
+ *
+ * One contrast correction the E2E axe gate measures: the footer motto keeps
+ * full muted ink — the draft's muted/80 falls below AA on the low rung.
  */
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
@@ -624,7 +627,7 @@ export function StructureStep() {
             <span aria-hidden="true">•</span>
             <span>{t("setup.structure.footer.tagline")}</span>
           </div>
-          <div className="text-eyebrow uppercase tracking-widest text-muted/80">
+          <div className="text-eyebrow uppercase tracking-widest text-muted">
             {t("setup.structure.footer.motto")}
           </div>
         </div>

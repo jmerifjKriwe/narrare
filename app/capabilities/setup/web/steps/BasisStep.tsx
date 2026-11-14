@@ -44,6 +44,12 @@ import {
  * the cover system's own literal ground/ink tokens (R2) with the hairline
  * GenreMotif where the draft drew Material glyphs; the invented series
  * subtitles and stat chips stay out — the archive's facts only.
+ *
+ * One contrast correction the E2E axe gate measures: the two chips on
+ * surface-container-high (the option-A badge, the demo genre chips) ride
+ * foreground ink — the draft drew on-surface-variant there, and muted, the
+ * port's flattened ink, clears AA on the ground and the card only, not on
+ * the raised rungs.
  */
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
@@ -225,7 +231,7 @@ export function BasisStep() {
           <section className="rounded-xl border border-border bg-surface-container-lowest p-6 shadow-sm transition-all">
             <div className="flex flex-col justify-between gap-3 border-b border-rule pb-5 md:flex-row md:items-center">
               <div>
-                <div className="mb-1 inline-flex items-center gap-1.5 rounded bg-surface-container-high px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                <div className="mb-1 inline-flex items-center gap-1.5 rounded bg-surface-container-high px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground">
                   <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-outline" />
                   {t("setup.basis.optionA.badge")}
                 </div>
@@ -505,7 +511,7 @@ export function BasisStep() {
                             {t("setup.basis.demoChaptersWritten", { count: entry.chapters })}
                           </span>
                         </div>
-                        <div className="inline-block rounded bg-surface-container-high px-2 py-0.5 text-[11px] font-medium text-muted">
+                        <div className="inline-block rounded bg-surface-container-high px-2 py-0.5 text-[11px] font-medium text-foreground">
                           {entry.genre}
                         </div>
                       </div>

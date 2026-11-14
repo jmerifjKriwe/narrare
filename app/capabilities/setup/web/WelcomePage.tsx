@@ -20,10 +20,14 @@ import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
  * surface ladder (`#faf2ea` → surface-container-low, `#eee7df` →
  * surface-container-high, `#e4d9cc`/`#e8ded2` → border, `#d8c2b9` →
  * outline-variant); its secondary prose rides `text-muted`, the one ink the
- * contrast table gates on both the ground and the card. The drafts' Material
- * Symbols keep their concepts and wear the app's own faces (deviation #1,
- * spec §6.9): stylus_note → editNote, local_library → books, the rest named
- * as in the draft.
+ * contrast table gates on both the ground and the card. Two contrast
+ * corrections the E2E axe gate measures: the card-2 meta chip rides
+ * foreground ink on its high rung (the draft drew on-surface-variant there,
+ * darker than muted — muted's AA contract does not cover the raised rungs),
+ * and the engine line drops the draft's opacity-90, which dimmed muted below
+ * AA on the ground. The drafts' Material Symbols keep their concepts and
+ * wear the app's own faces (deviation #1, spec §6.9): stylus_note → editNote,
+ * local_library → books, the rest named as in the draft.
  *
  * The three entries are real doors: the wizard starts at `/setup/basis`,
  * each demo row opens the wizard with its world preselected (`?demo=<slug>`,
@@ -181,7 +185,7 @@ export function WelcomePage() {
               </Fragment>
             ))}
           </div>
-          <span className="inline-flex items-center gap-1.5 opacity-90">
+          <span className="inline-flex items-center gap-1.5">
             <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-success" />
             {t("setup.welcome.engine")}
           </span>
@@ -253,7 +257,7 @@ export function WelcomePage() {
               <div className="flex h-10 w-10 items-center justify-center rounded border border-border bg-surface-container text-primary">
                 <Icon name="books" size={20} />
               </div>
-              <span className="rounded bg-surface-container-high px-2 py-0.5 text-meta font-medium text-muted">
+              <span className="rounded bg-surface-container-high px-2 py-0.5 text-meta font-medium text-foreground">
                 {t("setup.welcome.card2.meta")}
               </span>
             </div>

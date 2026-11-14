@@ -49,7 +49,12 @@ import {
  * stopped checklist with its false check marks stays out because the POST is
  * atomic (nothing is half-bound); the binding progress bar carries no
  * percentage, and the bound face's „Bereit (100 %)" is the draft's own
- * completion label, not a measured metric.
+ * completion label, not a measured metric. Two contrast corrections the E2E
+ * axe gate measures: the context pill rides foreground ink on its highest
+ * rung (the draft drew on-surface-variant; muted clears AA on the ground and
+ * the card only), and the waiting checklist rows drop the draft's opacity-45
+ * — the waiting face is the numbered ring and the mono „ausstehend", not
+ * unreadable text.
  *
  * Token mapping (the draft's hexes → the shell's roles): bg-card-light →
  * surface-container-lowest, border-light → border, rule-light → rule,
@@ -237,7 +242,7 @@ export function ProvisioningStep() {
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 py-8">
         {/* Context & template hint */}
         <div className="mb-5 flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-outline-variant/60 bg-surface-container-highest px-3 py-1 text-eyebrow tracking-wide text-muted">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-outline-variant/60 bg-surface-container-highest px-3 py-1 text-eyebrow tracking-wide text-foreground">
             <Icon name="autoStories" size={14} />
             {archive !== null
               ? t("setup.provisioning.contextDemo", { genre: archive.genre, title: archive.title })
@@ -523,7 +528,7 @@ function CheckRow({ icon, title, meta }: { icon: ReactNode; title: string; meta:
  *  title, and the mono „ausstehend" (panel 3's planned items). */
 function PendingRow({ n, title, pending }: { n: number; title: string; pending: string }) {
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-outline-variant/30 bg-surface-container-low/50 p-2.5 opacity-45">
+    <div className="flex items-start gap-3 rounded-lg border border-outline-variant/30 bg-surface-container-low/50 p-2.5">
       <span className="mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-outline-variant font-mono text-[8px] text-muted">
         {n}
       </span>
