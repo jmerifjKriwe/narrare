@@ -25,7 +25,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { applyLocale } from "../locale";
 import { BookCover } from "./BookCover";
-import { COVER_SIZES, variantFor, type CoverChannel, type CoverSize } from "./cover";
+import { COVER_SIZES, coverModel, variantFor, type CoverChannel, type CoverSize } from "./cover";
 
 /** The spec's own Fall A title: 75 code points, eleven words. */
 const LONG_TITLE =
@@ -150,6 +150,92 @@ describe("BookCover anatomy", () => {
   });
 });
 
+describe("BookCover per-size matrix (Sektion 04)", () => {
+  it("sets the eyebrow type per size (R14): wizard 9px, hero 8px, shelf 7px", () => {
+    const types: Record<"wizard" | "hero" | "shelf", [string, string]> = {
+      wizard: ["text-[9px]", "tracking-widest"], // spec 704
+      hero: ["text-[8px]", "tracking-widest"], // spec 727
+      shelf: ["text-[7px]", "tracking-wider"], // spec 750
+    };
+    for (const size of Object.keys(types) as Array<"wizard" | "hero" | "shelf">) {
+      const { container, unmount } = render(
+        <BookCover title="Dead Signal" genre="Historical" size={size} />,
+      );
+      const eyebrow = within(container).getByText("Historischer Roman");
+      expect(eyebrow.classList.contains(types[size][0])).toBe(true);
+      expect(eyebrow.classList.contains(types[size][1])).toBe(true);
+      // No other size's type leaks onto this eyebrow.
+      for (const [other, [fontSize]] of Object.entries(types)) {
+        if (other !== size) expect(eyebrow.classList.contains(fontSize)).toBe(false);
+      }
+      // The anatomy specimen's old 10px/0.2em baseline is not the matrix.
+      expect(eyebrow.classList.contains("text-[10px]")).toBe(false);
+      expect(eyebrow.classList.contains("tracking-[0.2em]")).toBe(false);
+      unmount();
+    }
+  });
+
+  it("sets the normal title's leading per size: shelf snug, wizard and hero tight", () => {
+    const leadings: Record<"wizard" | "hero" | "shelf", [string, string]> = {
+      wizard: ["leading-tight", "max-h-[3.75em]"], // spec 713
+      hero: ["leading-tight", "max-h-[3.75em]"], // spec 736
+      shelf: ["leading-snug", "max-h-[4.125em]"], // spec 753
+    };
+    for (const size of Object.keys(leadings) as Array<"wizard" | "hero" | "shelf">) {
+      const { container, unmount } = render(<BookCover title="Dead Signal" size={size} />);
+      const title = within(container).getByText("Dead Signal");
+      expect(title.classList.contains(leadings[size][0])).toBe(true);
+      // The three-line clamp tracks the leading (3 × the line-height).
+      expect(title.classList.contains(leadings[size][1])).toBe(true);
+      const other = leadings[size][0] === "leading-tight" ? "leading-snug" : "leading-tight";
+      expect(title.classList.contains(other)).toBe(false);
+      unmount();
+    }
+  });
+
+  it("spaces the title block per size: wizard space-y-1, hero and shelf space-y-0.5", () => {
+    const spacing: Record<"wizard" | "hero" | "shelf", string> = {
+      wizard: "space-y-1", // spec 712
+      hero: "space-y-0.5", // spec 735
+      shelf: "space-y-0.5", // spec 752
+    };
+    for (const size of Object.keys(spacing) as Array<"wizard" | "hero" | "shelf">) {
+      // Variants 0 and 1 both carry a title+author block; the hash is
+      // size-independent, so these two titles hit both at every size.
+      for (const variant of [0, 1] as const) {
+        const title = VARIANT_TITLES[variant];
+        const { container, unmount } = render(
+          <BookCover title={title} genre="Science Fiction" size={size} />,
+        );
+        const block = within(container).getByText(title).parentElement;
+        expect(block?.classList.contains(spacing[size])).toBe(true);
+        const other = spacing[size] === "space-y-1" ? "space-y-0.5" : "space-y-1";
+        expect(block?.classList.contains(other)).toBe(false);
+        unmount();
+      }
+    }
+  });
+
+  it("scales the spine crease with the book (R12); no other size's width leaks", () => {
+    const widths: Record<CoverSize, string> = {
+      wizard: "w-3", // spec 702
+      hero: "w-2.5", // spec 725
+      shelf: "w-2", // spec 748
+      mini: "w-1", // spec 765
+    };
+    for (const size of Object.keys(widths) as CoverSize[]) {
+      const { container, unmount } = render(<BookCover title="Dead Signal" size={size} />);
+      const crease = root(container).querySelector(".inset-y-0");
+      expect(crease).not.toBeNull();
+      expect(crease?.classList.contains(widths[size])).toBe(true);
+      for (const [other, width] of Object.entries(widths)) {
+        if (other !== size) expect(crease?.classList.contains(width)).toBe(false);
+      }
+      unmount();
+    }
+  });
+});
+
 describe("BookCover ground and ink (R2)", () => {
   it("applies a literal bg-cover-* / text-cover-*-ink pair for every channel", () => {
     const pairs: Array<[CoverChannel, string, string, string]> = [
@@ -176,6 +262,37 @@ describe("BookCover ground and ink (R2)", () => {
       unmount();
     }
   });
+
+  it("pins the literal palette to the model's groundToken/inkToken for all eight channels", () => {
+    const genres: Record<CoverChannel, string> = {
+      scifi: "Science Fiction",
+      fantasy: "Fantasy",
+      mystery: "Mystery",
+      literary: "Literary",
+      historical: "Historical",
+      romance: "Romance",
+      thriller: "Thriller",
+      fallback: "Lyrik",
+    };
+    for (const channel of Object.keys(genres) as CoverChannel[]) {
+      const genre = genres[channel];
+      const model = coverModel({ title: "Dead Signal", genre, size: "wizard" });
+      expect(model.channel).toBe(channel);
+      const { container, unmount } = render(
+        <BookCover title="Dead Signal" genre={genre} size="wizard" />,
+      );
+      const el = root(container);
+      // The expected classes are computed from the model's tokens here in
+      // the test; the component itself keeps literals (R2). Exactly one
+      // ground and one ink class, and they are the model's — so the static
+      // PALETTE cannot silently drift from CHANNEL_TOKENS.
+      const grounds = Array.from(el.classList).filter((cls) => cls.startsWith("bg-cover-"));
+      const inks = Array.from(el.classList).filter((cls) => cls.startsWith("text-cover-"));
+      expect(grounds).toEqual([`bg-${model.groundToken}`]);
+      expect(inks).toEqual([`text-${model.inkToken}`]);
+      unmount();
+    }
+  });
 });
 
 describe("BookCover size tiers", () => {
@@ -183,7 +300,10 @@ describe("BookCover size tiers", () => {
     const { container, getByText, queryByText } = render(
       <BookCover title="Dead Signal" genre="Science Fiction" author="K. V. Holm" size="mini" />,
     );
-    expect(getByText("DS")).toBeTruthy();
+    const monogram = getByText("DS");
+    // The miniature's monogram is bold (spec 767), not semibold.
+    expect(monogram.classList.contains("font-bold")).toBe(true);
+    expect(monogram.classList.contains("font-semibold")).toBe(false);
     expect(queryByText("Dead Signal")).toBeNull();
     expect(queryByText("K. V. Holm")).toBeNull();
     expect(queryByText("Science Fiction")).toBeNull();
@@ -197,10 +317,32 @@ describe("BookCover size tiers", () => {
     expect(getByText("N")).toBeTruthy();
   });
 
-  it("shelf culls the vignette; wizard keeps one", () => {
+  it("shows the eyebrow and author exactly when the model's tier flags say so", () => {
+    for (const size of Object.keys(COVER_SIZES) as CoverSize[]) {
+      const props = { title: "Dead Signal", genre: "Science Fiction", author: "K. V. Holm" };
+      const model = coverModel({ ...props, size });
+      const { container, unmount } = render(<BookCover {...props} size={size} />);
+      const view = within(container);
+      expect(view.queryByText("Science Fiction") !== null).toBe(model.showEyebrow);
+      expect(view.queryByText("K. V. Holm") !== null).toBe(model.showAuthor);
+      unmount();
+    }
+  });
+
+  it("wizard and hero keep the vignette; shelf culls it", () => {
     const shelf = render(<BookCover title="Dead Signal" genre="Science Fiction" size="shelf" />);
+    expect(
+      coverModel({ title: "Dead Signal", genre: "Science Fiction", size: "shelf" }).showVignette,
+    ).toBe(false);
     expect(shelf.container.querySelector("svg[data-channel]")).toBeNull();
     shelf.unmount();
+
+    const hero = render(<BookCover title="Dead Signal" genre="Science Fiction" size="hero" />);
+    expect(
+      coverModel({ title: "Dead Signal", genre: "Science Fiction", size: "hero" }).showVignette,
+    ).toBe(true);
+    expect(hero.container.querySelector('svg[data-channel="scifi"]')).not.toBeNull();
+    hero.unmount();
 
     const wizard = render(<BookCover title="Dead Signal" genre="Science Fiction" size="wizard" />);
     expect(wizard.container.querySelector('svg[data-channel="scifi"]')).not.toBeNull();

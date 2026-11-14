@@ -44,7 +44,10 @@ import { useTranslation, type MessageKey } from "../i18n";
 import { coverModel, type CoverChannel, type CoverSize } from "./cover";
 import { GenreMotif } from "./motifs";
 
-/** R2: the literal ground/ink utilities per channel — the scanner sees each. */
+/** R2: the literal ground/ink utilities per channel — the scanner sees each.
+ * These literals render the model's groundToken/inkToken (CHANNEL_TOKENS in
+ * cover.ts); R2 requires literals, so the token names are advisory here and
+ * the palette-pin test in BookCover.test.tsx keeps the two in sync. */
 const PALETTE: Record<CoverChannel, { ground: string; ink: string }> = {
   scifi: { ground: "bg-cover-ink", ink: "text-cover-ink-ink" },
   fantasy: { ground: "bg-cover-fantasy", ink: "text-cover-fantasy-ink" },
@@ -112,6 +115,12 @@ interface SizeMetrics {
   titleMonumental: string;
   titleShort: string;
   titleLong: string;
+  /** The normal title's leading plus its three-line clamp (max-height = 3 ×
+   * the leading): tight at wizard/hero (spec 713/736), snug at shelf (753). */
+  titleClamp: string;
+  /** The title block's spacing: wizard space-y-1 (spec 712), hero and shelf
+   * space-y-0.5 (spec 735/752). */
+  titleSpacing: string;
   author: string;
   motif: string;
   motifEdge: string;
@@ -123,11 +132,13 @@ const METRICS: Record<CoverSize, SizeMetrics> = {
     creaseWidth: "w-3",
     pad: "pl-2",
     rightRadius: "rounded-r-[6px]",
-    eyebrow: "text-[10px] tracking-[0.2em]",
+    eyebrow: "text-[9px] tracking-widest",
     title: "text-[21px]",
     titleMonumental: "text-[24px]",
     titleShort: "text-[28px]",
     titleLong: "text-[15px]",
+    titleClamp: "leading-tight max-h-[3.75em]", // spec 713
+    titleSpacing: "space-y-1", // spec 712
     author: "text-[11px]",
     motif: "size-14",
     motifEdge: "size-8",
@@ -142,6 +153,8 @@ const METRICS: Record<CoverSize, SizeMetrics> = {
     titleMonumental: "text-[20px]",
     titleShort: "text-[24px]",
     titleLong: "text-[14px]",
+    titleClamp: "leading-tight max-h-[3.75em]", // spec 736
+    titleSpacing: "space-y-0.5", // spec 735
     author: "text-[10px]",
     motif: "size-10",
     motifEdge: "size-6",
@@ -156,6 +169,8 @@ const METRICS: Record<CoverSize, SizeMetrics> = {
     titleMonumental: "text-[16px]",
     titleShort: "text-[18px]",
     titleLong: "text-[12px]",
+    titleClamp: "leading-snug max-h-[4.125em]", // spec 753; the clamp tracks the leading
+    titleSpacing: "space-y-0.5", // spec 752
     author: "text-[9px]",
     motif: "size-8",
     motifEdge: "size-5",
@@ -170,6 +185,8 @@ const METRICS: Record<CoverSize, SizeMetrics> = {
     titleMonumental: "text-[9px]",
     titleShort: "text-[9px]",
     titleLong: "text-[9px]",
+    titleClamp: "leading-tight max-h-[3.75em]",
+    titleSpacing: "space-y-0.5",
     author: "text-[6px]",
     motif: "size-4",
     motifEdge: "size-3",
@@ -217,14 +234,16 @@ export function BookCover({
     ? "leading-snug max-h-[4.125em]"
     : model.shortTitle
       ? "leading-none tracking-wide max-h-[3em]"
-      : "leading-tight max-h-[3.75em]";
+      : m.titleClamp;
   const motifOpacity = paleCrease ? "opacity-30" : "opacity-35";
 
-  const eyebrow = (
+  // The model's tier flags decide what the full sizes show; today both equal
+  // !mini, but the presentation honors the model, not a re-derived guess.
+  const eyebrow = model.showEyebrow ? (
     <span className={cx("block uppercase opacity-70", m.eyebrow)}>
       {t(GENRE_KEYS[model.channel])}
     </span>
-  );
+  ) : null;
   const rule = (centered: boolean) => (
     <div aria-hidden="true" className={cx("mt-1 h-[1px] w-8 bg-current/40", centered && "mx-auto")} />
   );
@@ -233,7 +252,9 @@ export function BookCover({
       {titleText}
     </span>
   );
-  const authorEl = <span className={cx("block opacity-70", m.author)}>{authorText}</span>;
+  const authorEl = model.showAuthor ? (
+    <span className={cx("block opacity-70", m.author)}>{authorText}</span>
+  ) : null;
 
   return (
     <div
@@ -268,7 +289,7 @@ export function BookCover({
       {model.monogram ? (
         // The miniature: the monogram alone, low and left (Sektion 04).
         <div className={cx("relative z-10 pb-0.5", m.pad)}>
-          <span className={cx("block text-[9px] font-semibold leading-none", SERIF)}>
+          <span className={cx("block text-[9px] font-bold leading-none", SERIF)}>
             {model.monogramText}
           </span>
         </div>
@@ -284,7 +305,7 @@ export function BookCover({
               <GenreMotif channel={model.channel} className={cx(m.motif, motifOpacity)} />
             </div>
           )}
-          <div className={cx("relative z-10 space-y-1 text-center", m.pad)}>
+          <div className={cx("relative z-10 text-center", m.titleSpacing, m.pad)}>
             {titleEl}
             {authorEl}
           </div>
@@ -301,7 +322,7 @@ export function BookCover({
               <GenreMotif channel={model.channel} className={cx(m.motif, motifOpacity)} />
             </div>
           )}
-          <div className={cx("relative z-10 space-y-1", m.pad)}>
+          <div className={cx("relative z-10", m.titleSpacing, m.pad)}>
             {titleEl}
             {authorEl}
           </div>
@@ -320,9 +341,11 @@ export function BookCover({
             )}
           </div>
           <div className={cx("relative z-10 my-auto", m.pad)}>{titleEl}</div>
-          <div className={cx("relative z-10 border-t border-current/20 pt-2 opacity-60", m.pad, m.author)}>
-            {authorText}
-          </div>
+          {model.showAuthor && (
+            <div className={cx("relative z-10 border-t border-current/20 pt-2 opacity-60", m.pad, m.author)}>
+              {authorText}
+            </div>
+          )}
         </>
       )}
     </div>
