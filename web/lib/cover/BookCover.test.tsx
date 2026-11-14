@@ -47,6 +47,13 @@ const VARIANT_TITLES: Record<0 | 1 | 2, string> = {
   2: "Frequenz Null",
 };
 
+/** Three one-word titles the hash spreads over the three axes (Fall D). */
+const ONE_WORD_TITLES: Record<0 | 1 | 2, string> = {
+  0: "Echo",
+  1: "Frost",
+  2: "Signal",
+};
+
 function root(container: HTMLElement): HTMLElement {
   return container.firstElementChild as HTMLElement;
 }
@@ -478,6 +485,95 @@ describe("BookCover edges (spec Sektion 05)", () => {
       expect(el.getAttribute("data-channel")).toBe("fallback");
       expect(el.classList.contains("bg-cover-fallback")).toBe(true);
       expect(container.querySelector('svg[data-channel="fallback"]')).not.toBeNull();
+      unmount();
+    }
+  });
+});
+
+describe("BookCover one-word hairline (Fall D, spec 864)", () => {
+  /** The hairline's literal utilities (R2) — the rule() grammar's current/40,
+   * so it reads on light and dark grounds alike. */
+  const HAIRLINE = ["w-6", "h-[1px]", "bg-current/40", "mt-3"];
+
+  const hairlines = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll("div")).filter(
+      (el) => el.classList.contains("w-6") && el.classList.contains("h-[1px]"),
+    );
+
+  it("draws the hairline directly under a one-word title, in every composition and full size", () => {
+    for (const variant of [0, 1, 2] as const) {
+      const title = ONE_WORD_TITLES[variant];
+      for (const size of ["wizard", "hero", "shelf"] as const) {
+        // The model decides the axis and the short-title flag; the test
+        // follows it rather than hardcoding a variant it cannot control.
+        const model = coverModel({ title, size });
+        expect(model.shortTitle).toBe(true);
+        expect(model.variant).toBe(variant);
+        const { container, unmount } = render(
+          <BookCover title={title} genre="Fantasy" size={size} />,
+        );
+        const titleEl = within(container).getByText(title);
+        const hairline = titleEl.nextElementSibling;
+        expect(hairline).not.toBeNull();
+        expect(hairline?.getAttribute("aria-hidden")).toBe("true");
+        // Exactly the spec's utilities; centered only in the classic
+        // composition, the rule(centered) grammar.
+        expect(Array.from(hairline?.classList ?? [])).toEqual(
+          variant === 0 ? [...HAIRLINE, "mx-auto"] : HAIRLINE,
+        );
+        // Directly after the title, inside the title's own block.
+        expect(hairline?.parentElement).toBe(titleEl.parentElement);
+        unmount();
+      }
+    }
+  });
+
+  it("draws the hairline for the mammoth word too: shortTitle wins the flag collision", () => {
+    // The one title where the two flags collide (63 code points, one word):
+    // the settled rule is "whenever model.shortTitle", so the hairline stays
+    // even though longTitle is also true. Pins the boundary against a future
+    // shortTitle && !longTitle narrowing that would drop it silently.
+    for (const size of ["wizard", "hero", "shelf"] as const) {
+      const model = coverModel({ title: MAMMOTH_WORD, size });
+      expect(model.shortTitle).toBe(true);
+      expect(model.longTitle).toBe(true);
+      const { container, unmount } = render(
+        <BookCover title={MAMMOTH_WORD} genre="Fantasy" size={size} />,
+      );
+      const titleEl = within(container).getByText(MAMMOTH_WORD);
+      const hairline = titleEl.nextElementSibling;
+      expect(hairline).not.toBeNull();
+      expect(hairline?.getAttribute("aria-hidden")).toBe("true");
+      // Same assertion shape as the positive test above; the alignment
+      // follows the model's variant, which the hash decides for this word.
+      expect(Array.from(hairline?.classList ?? [])).toEqual(
+        model.variant === 0 ? [...HAIRLINE, "mx-auto"] : HAIRLINE,
+      );
+      // Directly after the title, inside the title's own block.
+      expect(hairline?.parentElement).toBe(titleEl.parentElement);
+      unmount();
+    }
+  });
+
+  it("keeps multi-word and long titles without the hairline", () => {
+    for (const title of [...Object.values(VARIANT_TITLES), LONG_TITLE]) {
+      for (const size of ["wizard", "hero", "shelf"] as const) {
+        const { container, unmount } = render(
+          <BookCover title={title} genre="Fantasy" size={size} />,
+        );
+        expect(coverModel({ title, size }).shortTitle).toBe(false);
+        expect(hairlines(container)).toEqual([]);
+        unmount();
+      }
+    }
+  });
+
+  it("gives the miniature no hairline — it renders no title", () => {
+    for (const variant of [0, 1, 2] as const) {
+      const { container, unmount } = render(
+        <BookCover title={ONE_WORD_TITLES[variant]} size="mini" />,
+      );
+      expect(hairlines(container)).toEqual([]);
       unmount();
     }
   });

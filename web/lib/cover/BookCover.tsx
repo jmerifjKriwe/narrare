@@ -312,6 +312,16 @@ export function BookCover({
       {titleText}
     </span>
   );
+  // Fall D's hairline under a one-word title (spec 864): the rule() grammar's
+  // current/40, so it reads on light and dark grounds alike; centered with the
+  // classic composition, left-aligned on the other two. The miniature renders
+  // no title and so no hairline.
+  const shortTitleRule = model.shortTitle ? (
+    <div
+      aria-hidden="true"
+      className={cx("w-6 h-[1px] bg-current/40 mt-3", model.variant === 0 && "mx-auto")}
+    />
+  ) : null;
   // The author dim is per size (R19: wizard/hero 0.75, shelf 0.70, raised per
   // channel where AA needs it); the miniature shows no author at all.
   const authorOpacity = size === "mini" ? undefined : dims.author[size];
@@ -370,6 +380,7 @@ export function BookCover({
           )}
           <div className={cx("relative z-10 text-center", m.titleSpacing, m.pad)}>
             {titleEl}
+            {shortTitleRule}
             {authorEl}
           </div>
         </>
@@ -387,6 +398,7 @@ export function BookCover({
           )}
           <div className={cx("relative z-10", m.titleSpacing, m.pad)}>
             {titleEl}
+            {shortTitleRule}
             {authorEl}
           </div>
         </>
@@ -403,7 +415,10 @@ export function BookCover({
               <GenreMotif channel={model.channel} className={cx(m.motifEdge, "shrink-0 opacity-40")} />
             )}
           </div>
-          <div className={cx("relative z-10 my-auto", m.pad)}>{titleEl}</div>
+          <div className={cx("relative z-10 my-auto", m.pad)}>
+            {titleEl}
+            {shortTitleRule}
+          </div>
           {model.showAuthor && (
             <div className={cx("relative z-10 border-t border-current/20 pt-2", dims.foot, m.pad, m.author)}>
               {authorText}
