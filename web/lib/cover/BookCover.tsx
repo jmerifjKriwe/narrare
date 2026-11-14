@@ -152,8 +152,9 @@ const RIM = "border-t border-r border-b [border-color:light-dark(transparent,rgb
 /**
  * The two tactile shadows (spec 165–178), verbatim, one layer per light-dark()
  * pair: the light half's warm ink wash, the dark half's deeper contact shadow.
- * The arbitrary-property form is deliberate — `shadow-[light-dark(...)]` would
- * be misread as a shadow *color*, since light-dark() is a color function.
+ * The arbitrary-property form is deliberate: a shadow utility with an arbitrary
+ * light-dark() value would misread it as a shadow *color*, since light-dark()
+ * is a color function.
  */
 const SHADOW =
   "[box-shadow:light-dark(0_1px_2px_rgba(44,24,16,0.06),0_2px_4px_rgba(0,0,0,0.6)),light-dark(0_4px_12px_rgba(44,24,16,0.08),0_8px_24px_rgba(0,0,0,0.45)),light-dark(inset_1px_0_0_rgba(255,255,255,0.15),inset_1px_0_0_rgba(255,255,255,0.08)),light-dark(inset_-1px_0_0_rgba(0,0,0,0.1),inset_-1px_0_0_rgba(0,0,0,0.4))]";

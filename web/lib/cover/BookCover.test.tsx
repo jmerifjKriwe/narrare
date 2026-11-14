@@ -107,8 +107,9 @@ describe("BookCover anatomy", () => {
     // color-scheme mechanism, not a media query that a forced theme outruns.
     expect(cls).toContain("[border-color:light-dark(transparent,rgba(255,255,255,0.08))]");
     // Both tactile shadows ported verbatim, switched by light-dark(). The
-    // arbitrary-property form is deliberate: shadow-[light-dark(...)] would be
-    // misread as a shadow *color*, since light-dark() is a color function.
+    // arbitrary-property form is deliberate: a shadow utility with an
+    // arbitrary light-dark() value would misread it as a shadow *color*,
+    // since light-dark() is a color function.
     expect(cls).toContain("[box-shadow:light-dark(");
     expect(cls).toContain("rgba(44,24,16,0.06)");
     expect(cls).toContain("rgba(0,0,0,0.6)");
@@ -337,7 +338,7 @@ describe("BookCover dimmed text (R15)", () => {
     // The expected utility is computed from the model's numeric dim here in
     // the test; the component itself keeps literals (R2). Exactly one opacity
     // class per role, and it is the model's — so TEXT_OPACITY cannot silently
-    // drift from COVER_TEXT_DIMS, and no arbitrary opacity-[…] can slip in.
+    // drift from COVER_TEXT_DIMS, and no arbitrary opacity utility can slip in.
     const utility = (dim: number) => `opacity-${Math.round(dim * 100)}`;
     for (const channel of Object.keys(genres) as CoverChannel[]) {
       const dims = COVER_TEXT_DIMS[channel];
