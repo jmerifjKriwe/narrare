@@ -398,10 +398,11 @@ def test_commands_view_imports_and_aggregates_the_modules_in_palette_order(
 
 def test_no_command_modules_leave_an_empty_aggregation(tmp_path: Path) -> None:
     # The pre-convention shape: no commands anywhere. The view is the empty
-    # registry and carries no capability import — the no-contributor output
-    # is what the generator wrote before the convention existed.
+    # registry and carries no capability import — and, with the type's home
+    # module gone from the shell, no Command import either.
     view = typescript_commands(_commands_repo(tmp_path, ()))
-    assert "export const commands = [] as const satisfies ReadonlyArray<Command>;" in view
+    assert "export const commands = [] as const;" in view
+    assert "Command" not in view
     assert 'from "../../../app/capabilities' not in view
 
 

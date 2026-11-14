@@ -2,14 +2,15 @@
 
 Every structure tiles [0, 1] contiguously from zero with unique stage keys
 (the backend contract the suggestion relies on: the shared boundary belongs
-to the earlier stage), and every stage and structure title key resolves in
-the en/de/fr planning catalogs. A suggestion at 0 lands in the first stage
-and at 1.0 in the last.
+to the earlier stage), and each stage carries its title key in the registry's
+keyed shape (`storyboard.stage.<key>`). The catalog half — every stage and
+structure title key resolving in the en/de/fr planning catalogs — left with
+the demolished planning web folder and returns when the rebuilt storyboard
+screens bring their catalogs back (W2). A suggestion at 0 lands in the first
+stage and at 1.0 in the last.
 """
 
-import json
 from itertools import pairwise
-from pathlib import Path
 
 import pytest
 
@@ -19,13 +20,6 @@ from app.capabilities.planning.structures import (
     require_structure,
     suggest_stage,
 )
-
-CATALOGS = {
-    locale: json.loads(
-        (Path(__file__).parents[1] / "web" / "i18n" / f"{locale}.json").read_text(encoding="utf-8")
-    )
-    for locale in ("en", "de", "fr")
-}
 
 EXPECTED_IDS = ("three-act", "heros-journey", "save-the-cat", "five-act", "seven-point")
 
@@ -48,16 +42,6 @@ def test_stages_tile_the_unit_interval_contiguously(structure_id: str) -> None:
         assert stage.title_key == f"storyboard.stage.{stage.key}"
     for earlier, later in pairwise(stages):
         assert later.from_ratio == earlier.to_ratio
-
-
-@pytest.mark.parametrize("structure_id", EXPECTED_IDS)
-def test_every_title_key_resolves_in_all_catalogs(structure_id: str) -> None:
-    stages = require_structure(structure_id)
-
-    assert f"storyboard.structure.{structure_id}" in CATALOGS["en"]
-    for stage in stages:
-        for locale, catalog in CATALOGS.items():
-            assert stage.title_key in catalog, (structure_id, stage.key, locale)
 
 
 @pytest.mark.parametrize("structure_id", EXPECTED_IDS)
