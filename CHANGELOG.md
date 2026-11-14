@@ -20,6 +20,59 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ---
 
+## [0.6.0](https://github.com/jmerifjKriwe/narrare/compare/v0.5.0...v0.6.0) (2026-11-14)
+
+
+### ✨ Features
+
+* **settings:** the design gallery on the Literary Modernism tokens ([390fb00](https://github.com/jmerifjKriwe/narrare/commit/390fb0035b27d12cbedbb076068bee726605f01e))
+* **web:** covers as book objects, four tones ([444d2f0](https://github.com/jmerifjKriwe/narrare/commit/444d2f09b6f7305a2682025348d3fd43455f1216))
+* **web:** drafted chrome — keycaps, severity rules, rail and top bar ([dc0ea8e](https://github.com/jmerifjKriwe/narrare/commit/dc0ea8eb074e32d780e67cf6cf0474a5357a6d55))
+* **web:** drafted field shells with the custom chevron ([dc462b1](https://github.com/jmerifjKriwe/narrare/commit/dc462b1f0af4e668e6481eb894024fdef804e0a0))
+* **web:** the drafted button ladder ([6a453b9](https://github.com/jmerifjKriwe/narrare/commit/6a453b9916df8316b5f6c15d1e225b4774fb4a5c))
+* **web:** the drafted type scale, eyebrow to hero ([f586b34](https://github.com/jmerifjKriwe/narrare/commit/f586b34ca1e47cbaa53f677cb7f5b5cd84136ee0))
+* **web:** the icon set learns the drafted concepts ([d4554f3](https://github.com/jmerifjKriwe/narrare/commit/d4554f3f3f2910946b54580b172e6c8a42137183))
+* **web:** the shell wears Literary Modernism tokens ([5c577bb](https://github.com/jmerifjKriwe/narrare/commit/5c577bb3cb29a50bba7d2d5eb9bc07cb03b38b22))
+* **web:** the type steps carry their weights ([cc83b29](https://github.com/jmerifjKriwe/narrare/commit/cc83b295fa48aea4d0a90240c125ccf35ce38830))
+* **web:** the UI voice is Plus Jakarta Sans, self-hosted ([f1c7111](https://github.com/jmerifjKriwe/narrare/commit/f1c71112437edaa5bd928d13ec65644ae8ad4607))
+* **writing:** carry a budget reason in the zero-room refusal frame ([49e5ffd](https://github.com/jmerifjKriwe/narrare/commit/49e5ffd09b43488cabe2ee7cfdd64c0a8e449490))
+* **writing:** the shelf in Literary Modernism, 1:1 ([9f97b2d](https://github.com/jmerifjKriwe/narrare/commit/9f97b2dc68768bcaaee153597edecb688b0e104b))
+
+
+### 🐛 Bug Fixes
+
+* **i18n:** harmonise the French writing catalog to vous ([e8418ef](https://github.com/jmerifjKriwe/narrare/commit/e8418efbb7aec3f8ade73018d32777007cf2f91e)), closes [#790](https://github.com/jmerifjKriwe/narrare/issues/790)
+* **kernel:** backup failures surface as BackupFailed, not tracebacks ([7cc42c4](https://github.com/jmerifjKriwe/narrare/commit/7cc42c433c8cffca4738e733aa30103b8cf09b51)), closes [#489](https://github.com/jmerifjKriwe/narrare/issues/489) [#490](https://github.com/jmerifjKriwe/narrare/issues/490)
+* **kernel:** harden the interchange write path and merge ordering (WP3 follow-ups) ([f82ac50](https://github.com/jmerifjKriwe/narrare/commit/f82ac5040536ac70da43688303988bc80dc67d50))
+* **kernel:** harden the interchange write path and merge ordering (WP3 follow-ups) ([15899cf](https://github.com/jmerifjKriwe/narrare/commit/15899cf2f4f9cd1d0471c571120dd3cb47e4da67))
+* **settings:** put the language hint on the meta type step ([b29e821](https://github.com/jmerifjKriwe/narrare/commit/b29e821c1af6b585f6e06c0ed1cb1d5da583d703)), closes [#772](https://github.com/jmerifjKriwe/narrare/issues/772)
+* **settings:** restore the prior key when an update commit fails ([df405f7](https://github.com/jmerifjKriwe/narrare/commit/df405f703d95dbb889cec127d6135f985d221a22))
+* **tooling:** run generate_capabilities before export_openapi (Closes [#393](https://github.com/jmerifjKriwe/narrare/issues/393)) ([8746618](https://github.com/jmerifjKriwe/narrare/commit/87466184785643f4ad9be0098c322cb22c564e28))
+* **tooling:** run generate_capabilities before export_openapi (Closes [#393](https://github.com/jmerifjKriwe/narrare/issues/393)) ([4a7c447](https://github.com/jmerifjKriwe/narrare/commit/4a7c447883f2a27e5d4adefcd46c81bfcb3e6f8f))
+* **ui:** address Sourcery review — novel-scoped extraction latch and custom chapter matching ([b221c60](https://github.com/jmerifjKriwe/narrare/commit/b221c601c5e8f6de5dbfd0a32790c3ec1b5e49d4))
+* **ui:** WP5 follow-up batch — accessibility, copy and E2E pins ([40cfa9f](https://github.com/jmerifjKriwe/narrare/commit/40cfa9f59dbb682119e7cb89cf186cf97c93b9ea))
+* **web:** cover spines darken per tone ([8a17afa](https://github.com/jmerifjKriwe/narrare/commit/8a17afa35f60c54debe67e50faac86849b7f22c9))
+* **web:** prompts page polish — tier-named diff, global label, title capture, focus (Closes [#395](https://github.com/jmerifjKriwe/narrare/issues/395), [#396](https://github.com/jmerifjKriwe/narrare/issues/396), [#397](https://github.com/jmerifjKriwe/narrare/issues/397), [#398](https://github.com/jmerifjKriwe/narrare/issues/398)) ([944bd12](https://github.com/jmerifjKriwe/narrare/commit/944bd12d01aa0b5bca912d7a729585915527db39))
+* **web:** prompts page polish — tier-named diff, global label, title capture, focus (Closes [#395](https://github.com/jmerifjKriwe/narrare/issues/395), [#396](https://github.com/jmerifjKriwe/narrare/issues/396), [#397](https://github.com/jmerifjKriwe/narrare/issues/397), [#398](https://github.com/jmerifjKriwe/narrare/issues/398)) ([d04fc46](https://github.com/jmerifjKriwe/narrare/commit/d04fc46e7b9f4369c9ab9a6f4dd90800d284d4dd))
+* **web:** set cover lettering in EB Garamond italic ([738244e](https://github.com/jmerifjKriwe/narrare/commit/738244ef7d76e52f91f663fe7856a8009944bd09)), closes [#792](https://github.com/jmerifjKriwe/narrare/issues/792)
+* **web:** table headers keep their weight ([f957bc9](https://github.com/jmerifjKriwe/narrare/commit/f957bc9436bfd3f14f320116fdd1a3d27764d45a))
+* **web:** the hero title returns to the scale and the theme ([2fa710b](https://github.com/jmerifjKriwe/narrare/commit/2fa710b57eb8864a10139cd17e77b3481d65ade1))
+* **web:** the severity rule wears the drafted 2px ([6e8a5ac](https://github.com/jmerifjKriwe/narrare/commit/6e8a5ac586c6f12456703ad9583ad9c13b2172eb))
+* **writing,knowledge,web:** WP6 follow-up UI and i18n fixes ([a0ab7eb](https://github.com/jmerifjKriwe/narrare/commit/a0ab7eb527497c98e0c4edf5a6b78fd9c3160024)), closes [#684](https://github.com/jmerifjKriwe/narrare/issues/684) [#685](https://github.com/jmerifjKriwe/narrare/issues/685) [#690](https://github.com/jmerifjKriwe/narrare/issues/690) [#695](https://github.com/jmerifjKriwe/narrare/issues/695) [#696](https://github.com/jmerifjKriwe/narrare/issues/696) [#697](https://github.com/jmerifjKriwe/narrare/issues/697) [#698](https://github.com/jmerifjKriwe/narrare/issues/698) [#699](https://github.com/jmerifjKriwe/narrare/issues/699) [#701](https://github.com/jmerifjKriwe/narrare/issues/701) [#702](https://github.com/jmerifjKriwe/narrare/issues/702) [#704](https://github.com/jmerifjKriwe/narrare/issues/704) [#706](https://github.com/jmerifjKriwe/narrare/issues/706) [#707](https://github.com/jmerifjKriwe/narrare/issues/707)
+* **writing,knowledge:** WP6 follow-up rename and skeleton fixes ([0a484ab](https://github.com/jmerifjKriwe/narrare/commit/0a484ab4cc402b372fdd323fce76d27772acaeaf)), closes [#687](https://github.com/jmerifjKriwe/narrare/issues/687) [#688](https://github.com/jmerifjKriwe/narrare/issues/688) [#708](https://github.com/jmerifjKriwe/narrare/issues/708)
+* **writing:** address PR review feedback on the shelf hero ([eb4c52b](https://github.com/jmerifjKriwe/narrare/commit/eb4c52b77fed25b1e1fdd986a3a7e16c924960fd))
+* **writing:** address Sourcery review findings ([d97c500](https://github.com/jmerifjKriwe/narrare/commit/d97c500029f16f75b8ab8f3c1fc078b76440a40f))
+* **writing:** align the shelf hero to the Stitch parity audit ([f6ca78e](https://github.com/jmerifjKriwe/narrare/commit/f6ca78ea7bb4065b5d4ff4f53e2136c3d3a90d10))
+* **writing:** drop title from pending autosave slot on rename ([ac9e4a8](https://github.com/jmerifjKriwe/narrare/commit/ac9e4a81fc3bdf7cebc0208cdd27f61aa5c1935b))
+* **writing:** empty-shelf create locators disambiguated ([4ba58ac](https://github.com/jmerifjKriwe/narrare/commit/4ba58ac90831595c18256df74cf54c50d398d9cb))
+* **writing:** frame measurement ignores sections an override drops (Closes [#383](https://github.com/jmerifjKriwe/narrare/issues/383)) ([4e64c6a](https://github.com/jmerifjKriwe/narrare/commit/4e64c6a8cda91f402ba65b09e83203e790517a89))
+* **writing:** frame measurement ignores sections an override drops (Closes [#383](https://github.com/jmerifjKriwe/narrare/issues/383)) ([e08f711](https://github.com/jmerifjKriwe/narrare/commit/e08f7117ddd642250a905247041e04be10be6df8))
+* **writing:** Sourcery round 2 ([08dd81a](https://github.com/jmerifjKriwe/narrare/commit/08dd81af1c884bf1c8ddeebeead78ff7e97eb3ee))
+* **writing:** stop the shelf hero repeating as the first grid row ([0b249f0](https://github.com/jmerifjKriwe/narrare/commit/0b249f04fe413334cee14ac667ac3e8f31546573))
+* **writing:** the empty shelf keeps its drafted doors ([e1da188](https://github.com/jmerifjKriwe/narrare/commit/e1da1889229e934a2fca9057b14f5be36b461229))
+* **writing:** the outline door opens the planning surface ([0cd3ef1](https://github.com/jmerifjKriwe/narrare/commit/0cd3ef18a6b0adcbc8545630b5b70e239aa83fa7)), closes [#787](https://github.com/jmerifjKriwe/narrare/issues/787)
+* **writing:** wrap dense-row titles instead of truncating ([13e963e](https://github.com/jmerifjKriwe/narrare/commit/13e963e5dc392ee0e6685460f46b02e9bd59a796)), closes [#791](https://github.com/jmerifjKriwe/narrare/issues/791)
+
 ## [0.5.0](https://github.com/jmerifjKriwe/narrare/compare/v0.4.0...v0.5.0) (2026-11-10)
 
 
