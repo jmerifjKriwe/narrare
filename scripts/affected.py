@@ -309,7 +309,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     elif args.all:
         # Only a repo with suites reaches this branch — the interim rule
         # above owns empty discovery — so this is always a nameable list.
-        resolution = Resolution(sorted(known) or None, "--all: every suite")
+        resolution = Resolution(sorted(known), "--all: every suite")
     elif json_mode or scope == "affected":
         base: str | None = args.base or default_base()
         paths = changed(base, worktree=bool(args.worktree))
@@ -320,7 +320,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             else resolve(paths, known=known, release=bool(args.release_pr))
         )
     elif scope == "all":
-        resolution = Resolution(sorted(known) or None, "scope all: every suite")
+        resolution = Resolution(sorted(known), "scope all: every suite")
     elif scope in known:
         resolution = Resolution([scope], f"scope {scope}: {_suite_dir(scope)}")
     else:

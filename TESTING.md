@@ -85,11 +85,12 @@ runs every suite, covering direct pushes too, when `main` moved.
 **The rebuild interim (W0).** The capability UIs were demolished for the
 frontend rebuild, and their E2E suites left with them — a suite tests a
 screen, and the screens are gone. Each rebuilt screen ships its own suite
-again as it lands, setup first (W2); until then every change resolves to
-zero suites and `just test-e2e` prints the interim reason instead of
-starting a browser. The gate's rules are suspended, not rewritten: the
-narrowing, the workers and the fake-provider rule are unchanged and return
-with the setup suite.
+again as it lands: setup's returned first (W2), the rest follow with their
+waves. Until every suite is back, the resolver owes only the suites that
+exist; the zero-suite interim answer remains for a checkout that holds
+none at all. The gate's rules were suspended, not rewritten: the
+narrowing, the workers and the fake-provider rule are unchanged and
+returned with the setup suite.
 
 All of them must pass. No new gate or
 tool is introduced by this document — it states expectations, not mechanisms.
@@ -105,7 +106,8 @@ tool is introduced by this document — it states expectations, not mechanisms.
   on whichever server that door opens.
 - Frontend tests mock only the API client; the logic under test runs unmocked.
 - E2E suites create their own databases and their own port pair per xdist worker;
-  see the capability conftests and `app/kernel/testing/stack.py`.
+  see the capability conftests — setup's is the first one back, more return with
+  each rebuilt suite — and `app/kernel/testing/stack.py`.
 
 ## Naming and structure
 

@@ -51,7 +51,9 @@ declares a language twice. Fourteen views, none hand-edited, all committed:
 A capability without a ``web/`` directory has no UI: it contributes no nav
 row, no route import, no INDEX row, no catalog import, no dock, command,
 settings or help entry. Its facts stay in the backend registry — the routers
-still mount it.
+still mount it. A capability that owns ``web/`` must carry a title key every
+merged catalog resolves; a typo stops generation with the file and the key
+named.
 
 Adding a language is therefore one central file plus one file per capability
 that owns text, then ``just generate``. A field no view reads is deleted from
@@ -224,14 +226,20 @@ def catalogs(root: Path, known: tuple[str, ...]) -> dict[str, dict[str, str]]:
     return loaded
 
 
-def facts(root: Path) -> tuple[Facts, ...]:
+def facts(
+    root: Path, known: tuple[str, ...], loaded: dict[str, dict[str, str]]
+) -> tuple[Facts, ...]:
     """Load every capability.yaml, validating what the views rely on.
 
     The registry reads every capability: the backend mounts a router for
-    each one, ``web/`` or not. The facts' title key is the UI rows' concern
-    — the views that render it skip a key their catalog does not resolve
-    (see ``ui_facts``).
+    each one, ``web/`` or not. A capability that owns a ``web/`` directory
+    renders UI rows from its facts, so its title key must resolve in every
+    merged catalog — a typo stops generation here, naming the file and the
+    key, instead of vanishing from the nav and the INDEX. A capability
+    without ``web/`` keeps its facts unchecked: its catalog left with the
+    directory, and the registry reads only id and needs.
     """
+    present = web_ids(root)
     entries: list[Facts] = []
     for folder in sorted((root / "app" / "capabilities").iterdir()):
         source = folder / "capability.yaml"
@@ -253,6 +261,13 @@ def facts(root: Path) -> tuple[Facts, ...]:
         unknown_needs = set(entry.needs) - {"llm", "embeddings"}
         if unknown_needs:
             raise SystemExit(f"{source}: unknown needs {sorted(unknown_needs)}")
+        if entry.id in present:
+            for locale in known:
+                if entry.title not in loaded[locale]:
+                    raise SystemExit(
+                        f"{source}: title key {entry.title!r} missing from the"
+                        f" merged {locale} catalog"
+                    )
         entries.append(entry)
     if not entries:
         raise SystemExit("no capability.yaml found under app/capabilities/")
@@ -272,21 +287,16 @@ def web_ids(root: Path) -> frozenset[str]:
     return frozenset(folder.name for folder in capabilities.iterdir() if (folder / "web").is_dir())
 
 
-def ui_facts(
-    entries: tuple[Facts, ...], root: Path, loaded: dict[str, dict[str, str]]
-) -> tuple[Facts, ...]:
+def ui_facts(entries: tuple[Facts, ...], root: Path) -> tuple[Facts, ...]:
     """The facts the UI views render rows for.
 
-    A row needs two things: a capability that owns a ``web/`` directory
-    (the one rule, ``web_ids``) and a title key the source catalog
-    resolves — a row's words come from the catalog, and an interim page
-    whose catalog carries no facts title has no row to render until the
-    rebuilt screens bring the title back.
+    A row needs a capability that owns a ``web/`` directory — the one
+    rule, ``web_ids``. The title key every row renders is already
+    guaranteed: ``facts`` stops generation when a web-owning capability's
+    key resolves nowhere, so no row reaches a view with blank words.
     """
     present = web_ids(root)
-    return tuple(
-        entry for entry in entries if entry.id in present and entry.title in loaded[SOURCE_LOCALE]
-    )
+    return tuple(entry for entry in entries if entry.id in present)
 
 
 def python_locales(known: tuple[str, ...]) -> str:
@@ -357,7 +367,7 @@ def typescript_catalogs(root: Path, known: tuple[str, ...]) -> str:
 def overlay_sources(
     root: Path, known: tuple[str, ...], loaded: dict[str, dict[str, str]]
 ) -> dict[str, dict[str, str]]:
-    """The sparse formal variants, emitted against the merged catalogs.
+    """The sparse formal variants, checked against the merged catalogs.
 
     A key absent from an overlay falls through to the base catalog, so the
     overlay is opt-in and a new base string works in both registers until
@@ -366,11 +376,9 @@ def overlay_sources(
     French already speaks the neutral register in its base catalog, so a
     parity rule would force it to repeat strings it already has.
 
-    A variant whose base string the merged catalog no longer carries is
-    dead copy, not an error: its capability catalog left with the
-    capability's ``web/`` directory, and the shared-catalog cleanup removes
-    the row from the overlay file in its own task. Skipping it keeps the
-    view emitting only live variants without demanding the cleanup first.
+    A variant whose base string the merged catalog does not carry is a
+    typo or dead copy — either way it would fall through silently, so
+    generation stops with the keys named instead.
     """
     directory = root / "i18n" / "overlays" / "formality"
     if not directory.is_dir():
@@ -390,7 +398,9 @@ def overlay_sources(
         if not source.is_file():
             continue
         overlay = load_catalog(source)
-        overlay = {key: value for key, value in overlay.items() if key in loaded[locale]}
+        unknown = [key for key in overlay if key not in loaded[locale]]
+        if unknown:
+            raise SystemExit(f"{source}: keys not in the {locale} catalog: {unknown}")
         empty = [key for key, value in overlay.items() if not value.strip()]
         if empty:
             raise SystemExit(f"{source}: empty values {empty}")
@@ -402,8 +412,8 @@ def overlay_sources(
 def typescript_overlays(known: tuple[str, ...], overlays: dict[str, dict[str, str]]) -> str:
     """The web-side view: one sparse overlay import per language that has one.
 
-    A locale whose variants all went dead emits no import at all — an empty
-    mapping would be a second, quieter way of saying nothing.
+    A locale whose overlay file carries no variants emits no import at all —
+    an empty mapping would be a second, quieter way of saying nothing.
     """
     imports = "".join(
         f"import {_identifier(locale)}_overlay from"
@@ -1437,11 +1447,11 @@ def docs_index(
     """The reader-side view: one row per UI capability per locale.
 
     The rows come from ``ui_facts``: a capability without a ``web/``
-    directory has no row, and neither has an interim page whose facts
-    title the catalog does not resolve — the table waits for the rebuilt
-    screens to carry a title key again.
+    directory has no row. Every capability with one carries a title key
+    the catalogs resolve — ``facts`` raises otherwise — so each row's
+    words are the catalog's own.
     """
-    entries = ui_facts(entries, root, loaded)
+    entries = ui_facts(entries, root)
     sections: list[str] = []
     for locale in known:
         catalog = loaded[locale]
@@ -1514,11 +1524,11 @@ def main() -> None:
     known = locales(root)
     loaded = catalogs(root, known)
     overlays = overlay_sources(root, known, loaded)
-    loaded_facts: tuple[Facts, ...] = facts(root)
+    loaded_facts: tuple[Facts, ...] = facts(root, known, loaded)
     outputs: dict[str, str] = {
         "app/generated/capabilities.py": python_registry(loaded_facts),
         "app/generated/locales.py": python_locales(known),
-        "web/lib/generated/capabilities.ts": typescript_nav(ui_facts(loaded_facts, root, loaded)),
+        "web/lib/generated/capabilities.ts": typescript_nav(ui_facts(loaded_facts, root)),
         "web/lib/generated/catalogs.ts": typescript_catalogs(root, known),
         "web/lib/generated/overlays.ts": typescript_overlays(known, overlays),
         "web/lib/generated/routes.ts": typescript_routes(root),
