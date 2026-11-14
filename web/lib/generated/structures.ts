@@ -8,13 +8,7 @@
 // fails the build.
 import { catalogs } from "./catalogs";
 
-export const structures = [
-  { id: "five-act", titleKey: "storyboard.structure.five-act" },
-  { id: "heros-journey", titleKey: "storyboard.structure.heros-journey" },
-  { id: "save-the-cat", titleKey: "storyboard.structure.save-the-cat" },
-  { id: "seven-point", titleKey: "storyboard.structure.seven-point" },
-  { id: "three-act", titleKey: "storyboard.structure.three-act" },
-] as const satisfies ReadonlyArray<{
+export const structures = [] as const satisfies ReadonlyArray<{
   id: string;
   titleKey: keyof typeof catalogs.en;
 }>;

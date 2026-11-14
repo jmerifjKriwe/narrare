@@ -9,9 +9,7 @@
 // title keys are checked against the merged English catalog by the compiler.
 import { catalogs } from "./catalogs";
 
-export const settingsPages = [
-  { id: "prompts", path: "/settings/prompts", titleKey: "prompts.heading" },
-] as const satisfies ReadonlyArray<{
+export const settingsPages = [] as const satisfies ReadonlyArray<{
   id: string;
   path: string;
   titleKey: keyof typeof catalogs.en;

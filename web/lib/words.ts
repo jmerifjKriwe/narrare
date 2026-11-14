@@ -32,9 +32,9 @@ export function countWords(markdown: string): number {
 }
 
 /**
- * The count as the locale groups it — exactly the number the ICU `#` in
- * `chapters.wordCount` prints (both go through the active formatting locale),
- * alone, for the places that show the figure without the word.
+ * The count as the locale groups it — the same figure a word-count message
+ * prints through the ICU `#` in the active formatting locale — alone, for
+ * the places that show the figure without the word.
  */
 export function formatWordCount(count: number): string {
   return formatNumber(count);

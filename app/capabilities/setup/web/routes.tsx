@@ -10,6 +10,12 @@ const SetupPage = lazy(async () => {
   return { default: page.SetupPage };
 });
 
+const homeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  component: SetupPage,
+});
+
 const setupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup",
@@ -21,7 +27,7 @@ const setupRoute = createRoute({
 // routes.ts) imports this array; a capability without this file mounts
 // nothing.
 //
-// The route const stands on its own on purpose: a contextual type here
+// The route consts stand on their own on purpose: a contextual type here
 // (a `Route[]` annotation or satisfies) degrades createRoute's inference to
 // `any` paths, and with it the router's checked `to=` props.
-export const routes = [setupRoute] as const;
+export const routes = [homeRoute, setupRoute] as const;

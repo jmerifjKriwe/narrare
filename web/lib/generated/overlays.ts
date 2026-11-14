@@ -3,10 +3,6 @@
 // Sparse formal variants; a key absent here falls through to the base
 // catalog. English has no overlay: it has no formality distinction.
 import type { Locale } from "./catalogs";
-import de_overlay from "../../../i18n/overlays/formality/de.json";
-import fr_overlay from "../../../i18n/overlays/formality/fr.json";
 
 export const overlays: Partial<Record<Locale, Record<string, string>>> = {
-  "de": de_overlay,
-  "fr": fr_overlay,
 };

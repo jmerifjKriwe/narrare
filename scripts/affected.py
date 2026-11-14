@@ -11,7 +11,14 @@ resolution, including every fallback, prints its reason to stderr and exits
 0, except when the script cannot do its job: bad usage exits 2, an import
 error fails on its own, and an every-suite answer with no nameable suite
 exits 3 — a green gate while every suite is owed and none can be named is
-the design's anti-goal. This closes two holes the previous
+the design's anti-goal. One state answers differently on purpose: while the
+frontend rebuild runs (W0), the repo holds no capability e2e directory at
+all, so no suite can be owed — every answer, the every-suite fallbacks
+included, is then the empty set with the interim reason and exit 0; a green
+gate over nothing owed is honest, and the first rebuilt suite (W2, setup)
+brings the old contract back with no further change. Exit 3 stays reserved
+for suites owed but unnameable, a state the interim itself cannot produce.
+This closes two holes the previous
 per-capability rules had:
 `app/conftest.py` owed nothing, so fixture changes silently slipped under
 every suite, and `app/capabilities/conftest.py` produced a suite path that
@@ -283,11 +290,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     known = known_capabilities()
     json_mode: bool = args.json
     scope: str = args.paths if args.paths is not None else "affected"
-    if args.none:
+    if not known:
+        # The rebuild interim (W0): with no capability e2e suite in the
+        # repo, nothing can be owed — not by the shared surfaces, not by
+        # the harness smoke, not by the every-suite fallbacks. One rule at
+        # the front door, ahead of every mode dispatch; the first rebuilt
+        # suite (W2, setup) makes `known` non-empty and this branch never
+        # runs again. Exit 3 below stays reserved for suites owed but
+        # unnameable, which the interim cannot produce.
+        resolution = Resolution(
+            [],
+            "rebuild interim: no capability carries an e2e suite (the UIs "
+            "left in W0) — nothing owes a suite until the first rebuilt "
+            "screen ships its own",
+        )
+    elif args.none:
         resolution = Resolution([], "--none: no suites owed")
     elif args.all:
-        # Through the same every-suite path as a fallback: an empty discovery
-        # must reach the warning below, not silently expand to nothing.
+        # Only a repo with suites reaches this branch — the interim rule
+        # above owns empty discovery — so this is always a nameable list.
         resolution = Resolution(sorted(known) or None, "--all: every suite")
     elif json_mode or scope == "affected":
         base: str | None = args.base or default_base()

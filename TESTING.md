@@ -81,6 +81,16 @@ on every PR, plus the production build; the E2E narrows to the capabilities a
 change touches and runs in parallel per capability behind one `e2e` check. A push
 to `main` owes no E2E — the merge tree is the tree the PR tested — and the nightly
 runs every suite, covering direct pushes too, when `main` moved.
+
+**The rebuild interim (W0).** The capability UIs were demolished for the
+frontend rebuild, and their E2E suites left with them — a suite tests a
+screen, and the screens are gone. Each rebuilt screen ships its own suite
+again as it lands, setup first (W2); until then every change resolves to
+zero suites and `just test-e2e` prints the interim reason instead of
+starting a browser. The gate's rules are suspended, not rewritten: the
+narrowing, the workers and the fake-provider rule are unchanged and return
+with the setup suite.
+
 All of them must pass. No new gate or
 tool is introduced by this document — it states expectations, not mechanisms.
 

@@ -1,10 +1,11 @@
 """The resolver's contract: one answer per set of changed paths, and every
 fallback says why. Mapping tests pin the path tables against a fixed
 capability set — the real checkout's directories are never the subject,
-with one exception: a single test asserts the real checkout's six suites,
-guarding the discovery rule itself — while the git-backed tests and every
-CLI mode run against a miniature repository built in tmp_path, so the
-fixture, not Narrare, is what changes.
+with one exception: a single test asserts the real checkout's suite
+discovery — empty during the rebuild interim (W0), the rebuilt set as
+suites return — guarding the discovery rule itself — while the git-backed
+tests and every CLI mode run against a miniature repository built in
+tmp_path, so the fixture, not Narrare, is what changes.
 """
 
 import json
@@ -122,6 +123,38 @@ def repo_without_remote(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path
     made = _make_repo(tmp_path, remote=False, ahead=False)
     monkeypatch.chdir(made)
     return made
+
+
+def _make_suiteless_repo(tmp_path: Path, *, touched: list[str]) -> Path:
+    """A miniature Narrare with no e2e suite anywhere: the rebuild interim.
+
+    The same shape `_make_repo` builds — base commit, remote refs, then one
+    commit touching `touched` — minus every suite, so the interim tests
+    resolve a real diff through the same git path CI uses.
+    """
+    repo = tmp_path / "narrare"
+    for directory in (
+        "app/capabilities/notes/tests",
+        "app/kernel",
+        "web",
+        ".github/workflows",
+    ):
+        (repo / directory).mkdir(parents=True)
+    (repo / "justfile").write_text("check:\n    echo ok\n", encoding="utf-8")
+    _git(repo, "init", "-b", "main")
+    _git(repo, "config", "user.name", "Test")
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "commit.gpgsign", "false")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "base")
+    _git(repo, "update-ref", "refs/remotes/narrare/main", "HEAD")
+    _git(repo, "symbolic-ref", "refs/remotes/narrare/HEAD", "refs/remotes/narrare/main")
+    _git(repo, "remote", "add", "narrare", str(tmp_path / "upstream"))
+    for path in touched:
+        (repo / path).write_text("", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "interim change")
+    return repo
 
 
 def run(args: list[str], *, stderr: bool = False, cwd: Path | None = None) -> str:
@@ -247,50 +280,91 @@ def test_a_capability_dir_without_e2e_is_not_a_suite():
     assert resolve(["app/capabilities/notes/x.py"]).capabilities is None
 
 
-def test_the_real_checkout_discovers_its_seven_suites(
+def test_the_real_checkout_discovers_no_suite_in_the_interim(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """The one test where the checkout's own directories are the subject: a
     fixture cannot see the discovery rule itself break.
 
-    A new capability carrying an e2e/ suite means updating this expected
-    set — the bare set-equality failure will not say so.
+    W0 demolished the capability UIs and their suites with them, so the
+    real discovery is empty — the state the resolver's interim rule keys
+    on. When W2 re-adds the first rebuilt suite (setup), this expectation
+    names it again; the bare set-equality failure will say so.
     """
     monkeypatch.chdir(REPO_ROOT)
-    assert known_capabilities() == {
-        "chat",
-        "knowledge",
-        "planning",
-        "prompts",
-        "settings",
-        "setup",
-        "writing",
-    }
+    assert known_capabilities() == set()
+
+
+def test_a_shared_surface_change_in_the_interim_owes_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A shared surface still answers every suite in the mapping — but with
+    no suite in the repo nothing can be owed, so the script prints the
+    interim reason and exits 0. A green gate over an empty set is honest
+    here, not the anti-goal the old exit 3 guarded: nothing is owed, so
+    nothing is being waved through."""
+    repo = _make_suiteless_repo(tmp_path, touched=["web/vite.config.ts"])
+    monkeypatch.chdir(repo)
+    completed = run_status(["--json"])
+    assert completed.returncode == 0
+    assert json.loads(completed.stdout) == []
+    assert "rebuild interim" in completed.stderr
+
+
+def test_a_harness_change_in_the_interim_owes_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A CI-definition change resolves to the smoke suite — but the smoke
+    (settings today) was demolished with the UIs, so with no suite anywhere
+    the harness answer is the interim empty set at exit 0, not the old
+    smoke-not-found answer that reddened the gate."""
+    repo = _make_suiteless_repo(tmp_path, touched=[".github/workflows/ci.yml"])
+    monkeypatch.chdir(repo)
+    completed = run_status(["--json"])
+    assert completed.returncode == 0
+    assert json.loads(completed.stdout) == []
+    assert "rebuild interim" in completed.stderr
+
+
+def test_paths_all_in_the_interim_prints_nothing_and_exits_zero(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """`--paths all` — the nightly's scope — owes every suite by
+    definition; with none in the repo it prints nothing, says why on
+    stderr and exits 0."""
+    broken = tmp_path / "broken"
+    (broken / "app/capabilities/notes/tests").mkdir(parents=True)
+    monkeypatch.chdir(broken)
+    completed = run_status(["--paths", "all"])
+    assert completed.returncode == 0
+    assert completed.stdout.strip() == ""
+    assert "rebuild interim" in completed.stderr
 
 
 @pytest.mark.parametrize(
     ("args", "json_mode"),
     [
         (["--all", "--json"], True),
-        (["--paths", "all"], False),
-        # Fail-open route: an unrecognized capability answers every suite.
+        # Fail-open route: an unrecognized capability answered every suite.
         (["--paths", "app/capabilities/nope/x.py"], False),
     ],
-    ids=["all", "paths-all", "unknown-scope-fail-open"],
+    ids=["all", "unknown-scope-fail-open"],
 )
-def test_every_suite_with_no_nameable_suite_reddens_the_gate(
+def test_the_interim_answers_every_suite_route_with_the_empty_set(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, args: list[str], json_mode: bool
 ):
-    """Empty discovery (no e2e/ anywhere) must not print [] and exit 0 on
-    ANY route that answers every suite: a nightly owes every suite by
-    definition, so a green gate with no browser is the design's anti-goal —
-    the script cannot do its job, and every such route exits 3."""
+    """The old gate's remaining routes, re-pinned for the interim: empty
+    discovery no longer reddens the gate, because with no suite in the
+    repo nothing is owed and the empty set with the interim reason is the
+    honest answer (`--paths all`, the shared-surface and the harness routes
+    are pinned separately). Exit 3 stays reserved for suites owed but
+    unnameable — a state the interim cannot produce."""
     broken = tmp_path / "broken"
     (broken / "app/capabilities/notes/tests").mkdir(parents=True)
     monkeypatch.chdir(broken)
     completed = run_status(args)
-    assert completed.returncode == 3
-    assert "every suite is owed" in completed.stderr
+    assert completed.returncode == 0
+    assert "rebuild interim" in completed.stderr
     if json_mode:
         assert json.loads(completed.stdout) == []
 

@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 
 from scripts.generate_capabilities import (
+    SOURCE_LOCALE,
     Facts,
     catalogs,
     docs_index,
@@ -36,6 +37,8 @@ from scripts.generate_capabilities import (
     typescript_routes,
     typescript_settings_pages,
     typescript_workspace,
+    ui_facts,
+    web_ids,
     workspace_route_id,
 )
 
@@ -45,7 +48,7 @@ ROOT = Path(__file__).parents[2]
 def _views() -> tuple[tuple[str, ...], dict[str, dict[str, str]], tuple[Facts, ...]]:
     known = locales(ROOT)
     loaded = catalogs(ROOT, known)
-    return known, loaded, facts(ROOT, known, loaded)
+    return known, loaded, facts(ROOT)
 
 
 def _committed(*parts: str) -> str:
@@ -67,9 +70,9 @@ def test_committed_locale_list_matches_the_catalogs() -> None:
 
 
 def test_committed_typescript_nav_matches_the_facts() -> None:
-    _, _, loaded_facts = _views()
+    _, loaded, loaded_facts = _views()
     assert _committed("web", "lib", "generated", "capabilities.ts") == typescript_nav(
-        loaded_facts
+        ui_facts(loaded_facts, ROOT, loaded)
     ), "web/lib/generated/capabilities.ts is stale: run `just generate` and commit the result"
 
 
@@ -125,19 +128,22 @@ def test_committed_typescript_commands_match_the_command_modules() -> None:
 
 def test_committed_docs_index_matches_the_facts() -> None:
     known, loaded, loaded_facts = _views()
-    assert _committed("docs", "user", "INDEX.md") == docs_index(loaded_facts, known, loaded), (
-        "docs/user/INDEX.md is stale: run `just generate` and commit the result"
-    )
+    assert _committed("docs", "user", "INDEX.md") == docs_index(
+        loaded_facts, known, loaded, ROOT
+    ), "docs/user/INDEX.md is stale: run `just generate` and commit the result"
 
 
-def test_every_facts_title_key_exists_in_every_catalog() -> None:
-    # facts() raises on a missing key; this test names the rule for the reader:
-    # a capability's label is user-visible text, and user-visible text exists
-    # in en, de and fr or nowhere.
-    known, loaded, loaded_facts = _views()
-    for locale in known:
-        for capability in loaded_facts:
-            assert capability.title in loaded[locale]
+def test_ui_rows_need_a_web_directory_and_a_resolvable_title() -> None:
+    # The rule ui_facts carries, named for the reader: a capability without
+    # a web/ directory contributes no nav or INDEX row — its facts stay in
+    # the backend registry, which still carries every capability — and
+    # neither does an interim page whose facts title the catalog does not
+    # resolve, because a row's words come from the catalog.
+    _, loaded, loaded_facts = _views()
+    rows = ui_facts(loaded_facts, ROOT, loaded)
+    for capability in rows:
+        assert capability.id in web_ids(ROOT)
+        assert capability.title in loaded[SOURCE_LOCALE]
 
 
 def test_two_docks_at_one_path_stop_the_scan_naming_both_capabilities() -> None:
@@ -392,10 +398,11 @@ def test_commands_view_imports_and_aggregates_the_modules_in_palette_order(
 
 def test_no_command_modules_leave_an_empty_aggregation(tmp_path: Path) -> None:
     # The pre-convention shape: no commands anywhere. The view is the empty
-    # registry and carries no capability import — the no-contributor output
-    # is what the generator wrote before the convention existed.
+    # registry and carries no capability import — and, with the type's home
+    # module gone from the shell, no Command import either.
     view = typescript_commands(_commands_repo(tmp_path, ()))
-    assert "export const commands = [] as const satisfies ReadonlyArray<Command>;" in view
+    assert "export const commands = [] as const;" in view
+    assert "Command" not in view
     assert 'from "../../../app/capabilities' not in view
 
 

@@ -5,6 +5,12 @@ the README). A visual comparison needs a *populated* instance, because empty
 shelves and empty graphs tell nothing about density, spacing or chrome. The
 showcase specs seed one.
 
+> **Suspended for the rebuild interim (W0).** The capability screens were
+> demolished for the frontend rebuild, and the showcase specs left with them
+> (`app/capabilities/*/e2e/`). The comparison workflow below is suspended
+> until the screens return and new showcase specs ship with them; the drafts
+> under `screens/` stay here as the reference W1 harmonizes and W2 ports.
+
 ## Showcase specs
 
 Three E2E specs seed a real instance with Stitch-canonical data and capture

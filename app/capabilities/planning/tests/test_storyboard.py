@@ -9,8 +9,6 @@ missing (404); an unknown chapter, stage or structure is a 422 that writes
 nothing; writes without the setup-created user are 409.
 """
 
-import json
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -420,21 +418,15 @@ async def test_remap_preview_from_stage_uses_effective_current_stage() -> None:
 
 STRUCTURE_BEAT_COUNTS = {"save-the-cat": 15, "five-act": 5, "seven-point": 7}
 
-STRUCTURE_CATALOGS = {
-    locale: json.loads(
-        (Path(__file__).parents[1] / "web" / "i18n" / f"{locale}.json").read_text(encoding="utf-8")
-    )
-    for locale in ("en", "de", "fr")
-}
-
 
 @pytest.mark.parametrize("structure_id,expected", sorted(STRUCTURE_BEAT_COUNTS.items()))
 async def test_confirmed_structures_hold_their_exact_stage_counts(
     structure_id: str, expected: int
 ) -> None:
-    """Each confirmed structure lays out exactly its beats — and every title
-    key it sends (the structure's own and each stage's) resolves in the
-    en/de/fr planning catalogs, not only the English one."""
+    """Each confirmed structure lays out exactly its beats. The catalog half —
+    every title key the stage list sends resolving in the en/de/fr planning
+    catalogs — left with the demolished planning web folder and returns with
+    the rebuilt storyboard screens (W2)."""
     async with _client() as client:
         novel_id = await _novel(client)
         await _chapter(client, novel_id, "Eins")
@@ -447,10 +439,6 @@ async def test_confirmed_structures_hold_their_exact_stage_counts(
         body = (await client.get(_storyboard(novel_id))).json()
         assert body["structure_id"] == structure_id
         assert len(body["stages"]) == expected
-        for locale, catalog in STRUCTURE_CATALOGS.items():
-            assert f"storyboard.structure.{structure_id}" in catalog, (structure_id, locale)
-            for stage in body["stages"]:
-                assert stage["title_key"] in catalog, (structure_id, stage["key"], locale)
 
 
 async def test_writes_before_setup_are_409_and_reads_are_404() -> None:
