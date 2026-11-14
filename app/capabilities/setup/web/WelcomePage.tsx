@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { Fragment, useId, useLayoutEffect } from "react";
+import { Fragment, useId, useLayoutEffect, useRef, type KeyboardEvent } from "react";
 
 import { client } from "@shell/lib/api/client";
-import { catalogs, locales } from "@shell/lib/generated/catalogs";
+import { catalogs } from "@shell/lib/generated/catalogs";
 import { demos } from "@shell/lib/generated/demos";
 import { useTranslation } from "@shell/lib/i18n";
 import { activeLocale, applyLocale, chosenLocale, type Locale } from "@shell/lib/locale";
@@ -32,6 +32,11 @@ import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
  * build-out, and the card says so instead of pretending. The language
  * switcher works before setup, when the settings row cannot hold a choice
  * yet: see `preSetupLocale.ts` for the mirror and the write's contract.
+ *
+ * The composition is the draft's `main` — full-bleed, the footer pinned to
+ * the bottom of a tall viewport — and the switcher is a radio group in the
+ * draft's DE|EN|FR order. The copy stays selectable, the selection wearing
+ * the draft body's own colours.
  */
 
 /** The brand serif, the BookCover pattern: one stack, read from the token
@@ -43,6 +48,11 @@ const SERIF = "[font-family:var(--font-serif)]";
 const FOCUS =
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
 
+/** The draft draws DE|EN|FR with DE leading (welcome-atelier.html's header).
+ *  The generated catalog order is the compiler's, not the design's, so the
+ *  switcher keeps its own display order. */
+const SWITCHER_ORDER: readonly Locale[] = ["de", "en", "fr"];
+
 /** The formats the import card names — file extensions, not copy. */
 const FORMATS = [".docx", ".scriv", ".epub", ".md"] as const;
 
@@ -53,6 +63,7 @@ export function WelcomePage() {
   const t = useTranslation();
   const locale = activeLocale();
   const importNoteId = useId();
+  const radioRefs = useRef<Partial<Record<Locale, HTMLButtonElement | null>>>({});
   usePageTitle(t("setup.welcome"));
 
   // The row holds no choice before setup (the shell adopted its null), so
@@ -88,8 +99,29 @@ export function WelcomePage() {
     }
   }
 
+  /** The radio group's keyboard contract: the arrows cycle the draft's order
+   *  and wrap, Home/End jump to its ends; the move selects and focuses, and
+   *  the roving tabindex keeps the group one tab stop. */
+  function radioKey(event: KeyboardEvent<HTMLButtonElement>, at: number) {
+    const span = SWITCHER_ORDER.length;
+    let next: number;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (at + 1) % span;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (at - 1 + span) % span;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = span - 1;
+    else return;
+    event.preventDefault();
+    const code = SWITCHER_ORDER[next];
+    void choose(code);
+    radioRefs.current[code]?.focus();
+  }
+
   return (
-    <div className="mx-auto flex w-full max-w-6xl select-none flex-col items-center px-4 py-8">
+    // The draft's `main`: full-bleed and pinned — header at the top, footer
+    // at the bottom of a tall viewport, the grid spanning the whole breadth.
+    // The copy stays selectable; the selection wears the draft's own colours
+    // (its body's selection: pair), translated onto the shell's tokens.
+    <div className="flex min-h-screen w-full flex-col justify-between p-4 selection:bg-secondary-container selection:text-secondary-container-foreground lg:p-8">
       {/* Top monograph emblem & ambient meta strip */}
       <header className="flex w-full flex-col items-center justify-between gap-4 pb-8 text-muted sm:flex-row">
         <div className="group flex cursor-default items-center gap-3">
@@ -114,11 +146,11 @@ export function WelcomePage() {
         </div>
         <div className="flex items-center gap-6 text-meta">
           <div
-            role="group"
+            role="radiogroup"
             aria-label={t("setup.welcome.language")}
             className="flex items-center gap-1 rounded border border-border/60 bg-surface-container px-2 py-1"
           >
-            {locales.map((code, at) => (
+            {SWITCHER_ORDER.map((code, at) => (
               <Fragment key={code}>
                 {at > 0 ? (
                   <span aria-hidden="true" className="text-outline-variant opacity-40">
@@ -127,10 +159,16 @@ export function WelcomePage() {
                 ) : null}
                 <button
                   type="button"
-                  // The endonym names the button for assistive tech — the
+                  role="radio"
+                  // The endonym names the radio for assistive tech — the
                   // visible face stays the draft's compact code.
                   aria-label={catalogs[code]["locale.name"]}
-                  aria-pressed={code === locale}
+                  aria-checked={code === locale}
+                  tabIndex={code === locale ? 0 : -1}
+                  ref={(node) => {
+                    radioRefs.current[code] = node;
+                  }}
+                  onKeyDown={(event) => radioKey(event, at)}
                   onClick={() => void choose(code)}
                   className={
                     code === locale
@@ -151,7 +189,7 @@ export function WelcomePage() {
       </header>
 
       {/* Monumental welcome header */}
-      <div className="flex w-full max-w-3xl flex-col items-center pb-8 pt-4 text-center">
+      <div className="mx-auto flex w-full max-w-3xl flex-col items-center pb-8 pt-4 text-center">
         <span className="mb-3 text-eyebrow font-semibold uppercase tracking-widest text-primary">
           {t("setup.welcome.eyebrow")}
         </span>
@@ -314,7 +352,7 @@ export function WelcomePage() {
       </div>
 
       {/* Quiet editorial quote / tone anchor */}
-      <figure className="my-6 max-w-xl py-2 text-center">
+      <figure className="mx-auto my-6 max-w-xl py-2 text-center">
         <blockquote className={`${SERIF} text-lg italic leading-relaxed text-foreground`}>
           {t("setup.welcome.quote")}
         </blockquote>

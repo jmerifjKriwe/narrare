@@ -3,6 +3,6 @@
 # docs/user/INDEX.md. Behaviour, schemas and prompts never go here.
 id: setup
 title: setup.welcome # i18n key; must exist in en, de and fr
-path: /setup
+path: / # the capability's surface is the gate at /; /setup is its redirect door
 needs: []
 nav: false # setup is the uninstalled state, not a destination

@@ -11,7 +11,7 @@
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -25,7 +25,7 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
+import { catalogs, locales } from "@shell/lib/generated/catalogs";
 import { demos } from "@shell/lib/generated/demos";
 import { t } from "@shell/lib/i18n";
 import { activeLocale, applyLocale, chosenLocale } from "@shell/lib/locale";
@@ -117,7 +117,7 @@ describe("the welcome screen", () => {
     // The du-tone is the copy's own: "deiner", not "Ihrer".
     expect(screen.getByText(/zu deiner eigenen Erzählarchitektur/)).toBeTruthy();
     expect(document.title).toBe(`${catalogs.de["setup.welcome"]} — ${t("app.title")}`);
-    expect(screen.getByRole("button", { name: "Deutsch" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("radio", { name: "Deutsch" }).getAttribute("aria-checked")).toBe("true");
   });
 
   it("offers the three entries — wizard, demos, import", async () => {
@@ -153,14 +153,83 @@ describe("the welcome screen", () => {
       expect(screen.queryByText(demo.blurb)).toBeNull();
     }
   });
+
+  it("keeps the draft's full-bleed pinned composition and selectable copy", async () => {
+    renderWelcome();
+    await screen.findByRole("heading", { level: 1 });
+
+    // The page root is the draft's `main`: full breadth, pinned ends, and
+    // no selection lock — the copy is meant to be read and copied.
+    const root = document.querySelector("#main > div") as HTMLElement;
+    expect(root.className).toContain("min-h-screen");
+    expect(root.className).toContain("justify-between");
+    expect(root.className).toContain("w-full");
+    expect(root.className).toContain("selection:bg-secondary-container");
+    expect(root.className).not.toContain("max-w-6xl");
+    expect(root.className).not.toContain("select-none");
+    // Header at the top, footer at the bottom, the grid spanning between.
+    expect(root.firstElementChild?.tagName).toBe("HEADER");
+    expect(root.lastElementChild?.tagName).toBe("FOOTER");
+    const grid = root.children[2] as HTMLElement;
+    expect(grid.className).toContain("grid");
+    expect(grid.className).toContain("w-full");
+    expect(grid.className).not.toContain("max-w-");
+  });
 });
 
 describe("the language switcher", () => {
+  it("draws the draft's DE|EN|FR order as a radio group with one tab stop", async () => {
+    renderWelcome();
+    await screen.findByRole("heading", { level: 1 });
+
+    // The generated order is the compiler's (en first); the design's is not.
+    expect(locales[0]).toBe("en");
+    const group = screen.getByRole("radiogroup", {
+      name: catalogs.de["setup.welcome.language"],
+    });
+    const radios = within(group).getAllByRole("radio");
+    expect(radios.map((radio) => radio.textContent)).toEqual(["DE", "EN", "FR"]);
+    expect(radios.map((radio) => radio.getAttribute("aria-label"))).toEqual([
+      "Deutsch",
+      "English",
+      "Français",
+    ]);
+    expect(radios.map((radio) => radio.getAttribute("aria-checked"))).toEqual([
+      "true",
+      "false",
+      "false",
+    ]);
+    expect(radios.map((radio) => radio.tabIndex)).toEqual([0, -1, -1]);
+  });
+
+  it("cycles with the arrows, wrapping, and focus follows the choice", async () => {
+    renderWelcome();
+    await screen.findByRole("heading", { level: 1 });
+
+    const radio = (name: string) => screen.getByRole("radio", { name });
+    radio("Deutsch").focus();
+    fireEvent.keyDown(radio("Deutsch"), { key: "ArrowRight" });
+    await waitFor(() => expect(radio("English").getAttribute("aria-checked")).toBe("true"));
+    expect(document.activeElement).toBe(radio("English"));
+
+    // Wrap at the left end: DE's left neighbour is FR, the draft's last.
+    fireEvent.keyDown(radio("Deutsch"), { key: "ArrowLeft" });
+    await waitFor(() => expect(radio("Français").getAttribute("aria-checked")).toBe("true"));
+    expect(document.activeElement).toBe(radio("Français"));
+    expect(readPreSetupLocale()).toBe("fr");
+
+    // Home returns to the draft's lead; the tab stop travels with it.
+    fireEvent.keyDown(radio("Français"), { key: "Home" });
+    await waitFor(() => expect(radio("Deutsch").getAttribute("aria-checked")).toBe("true"));
+    expect(radio("Deutsch").tabIndex).toBe(0);
+    expect(radio("English").tabIndex).toBe(-1);
+  });
+
   it("works before setup: applies, attempts the write, keeps the choice on the structural 409", async () => {
     renderWelcome();
     await screen.findByRole("heading", { level: 1 });
 
-    fireEvent.click(screen.getByRole("button", { name: "English" }));
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
 
     // Applied at once, and the write goes through the settings API.
     await screen.findByRole("heading", { level: 1, name: "Step in. Your unwritten work awaits." });
@@ -172,7 +241,7 @@ describe("the language switcher", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
       "Step in. Your unwritten work awaits.",
     );
-    expect(screen.getByRole("button", { name: "English" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("radio", { name: "English" }).getAttribute("aria-checked")).toBe("true");
     // The row could not take the write, so no settings refetch is owed.
     expect(api.GET.mock.calls.filter(([path]) => path === "/api/settings")).toHaveLength(1);
   });
@@ -180,7 +249,7 @@ describe("the language switcher", () => {
   it("a refresh keeps the mirrored choice without another write", async () => {
     renderWelcome();
     await screen.findByRole("heading", { level: 1 });
-    fireEvent.click(screen.getByRole("button", { name: "English" }));
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
     await waitFor(() => expect(readPreSetupLocale()).toBe("en"));
 
     // The browser-refresh shape: a fresh mount, the same instance state.
@@ -198,7 +267,7 @@ describe("the language switcher", () => {
     // Setup completes while the page is open (another tab, the wizard's own
     // finish): the row exists now, so the write lands in it.
     setUp = true;
-    fireEvent.click(screen.getByRole("button", { name: "English" }));
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
 
     await screen.findByRole("heading", { level: 1, name: "Step in. Your unwritten work awaits." });
     await waitFor(() => expect(readPreSetupLocale()).toBeNull());
@@ -222,7 +291,7 @@ describe("the language switcher", () => {
       error: { detail: "refused" },
       response: new Response(null, { status: 503 }),
     });
-    fireEvent.click(screen.getByRole("button", { name: "English" }));
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
 
     // The write did not happen, so neither the store nor the page pretends.
     await waitFor(() => expect(activeLocale()).toBe("de"));
@@ -231,14 +300,14 @@ describe("the language switcher", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
       catalogs.de["setup.welcome.heroTitle"],
     );
-    expect(screen.getByRole("button", { name: "Deutsch" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("radio", { name: "Deutsch" }).getAttribute("aria-checked")).toBe("true");
   });
 
   it("speaks French tu-tone after the switch", async () => {
     renderWelcome();
     await screen.findByRole("heading", { level: 1 });
 
-    fireEvent.click(screen.getByRole("button", { name: "Français" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Français" }));
 
     await screen.findByRole("heading", { level: 1, name: "Entre. Ton œuvre non écrite t'attend." });
     expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "fr" } });
