@@ -25,7 +25,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { applyLocale } from "../locale";
 import { BookCover } from "./BookCover";
-import { COVER_SIZES, coverModel, variantFor, type CoverChannel, type CoverSize } from "./cover";
+import {
+  COVER_SIZES,
+  COVER_TEXT_DIMS,
+  coverModel,
+  variantFor,
+  type CoverChannel,
+  type CoverSize,
+} from "./cover";
 
 /** The spec's own Fall A title: 75 code points, eleven words. */
 const LONG_TITLE =
@@ -64,6 +71,10 @@ describe("BookCover anatomy", () => {
     // Literary rides the legacy sepia ground, via literal utilities (R2).
     expect(root(container).classList.contains("bg-cover-sepia")).toBe(true);
     expect(root(container).classList.contains("text-cover-sepia-ink")).toBe(true);
+    // The title reads the shell's one serif token (R17), not a second stack.
+    expect(getByText("Am Flussufer").classList.contains("[font-family:var(--font-serif)]")).toBe(
+      true,
+    );
   });
 
   it("sizes the root from COVER_SIZES for every canonical view", () => {
@@ -164,9 +175,16 @@ describe("BookCover per-size matrix (Sektion 04)", () => {
       const eyebrow = within(container).getByText("Historischer Roman");
       expect(eyebrow.classList.contains(types[size][0])).toBe(true);
       expect(eyebrow.classList.contains(types[size][1])).toBe(true);
-      // No other size's type leaks onto this eyebrow.
+      // No other size's font size leaks onto this eyebrow.
       for (const [other, [fontSize]] of Object.entries(types)) {
         if (other !== size) expect(eyebrow.classList.contains(fontSize)).toBe(false);
+      }
+      // Nor does a foreign tracking (R20): wizard and hero share
+      // tracking-widest per the matrix, so exclusivity runs over the distinct
+      // tracking values — a leaked one from the other group still fails.
+      const trackings = new Set(Object.values(types).map(([, tracking]) => tracking));
+      for (const tracking of trackings) {
+        if (tracking !== types[size][1]) expect(eyebrow.classList.contains(tracking)).toBe(false);
       }
       // The anatomy specimen's old 10px/0.2em baseline is not the matrix.
       expect(eyebrow.classList.contains("text-[10px]")).toBe(false);
@@ -291,6 +309,59 @@ describe("BookCover ground and ink (R2)", () => {
       expect(grounds).toEqual([`bg-${model.groundToken}`]);
       expect(inks).toEqual([`text-${model.inkToken}`]);
       unmount();
+    }
+  });
+});
+
+describe("BookCover dimmed text (R15)", () => {
+  it("pins the literal opacity utilities to the model's per-channel dims", () => {
+    const genres: Record<CoverChannel, string> = {
+      scifi: "Science Fiction",
+      fantasy: "Fantasy",
+      mystery: "Mystery",
+      literary: "Literary",
+      historical: "Historical",
+      romance: "Romance",
+      thriller: "Thriller",
+      fallback: "Lyrik",
+    };
+    const opacityClasses = (el: Element) =>
+      Array.from(el.classList).filter((cls) => cls.startsWith("opacity-"));
+    // The expected utility is computed from the model's numeric dim here in
+    // the test; the component itself keeps literals (R2). Exactly one opacity
+    // class per role, and it is the model's — so TEXT_OPACITY cannot silently
+    // drift from COVER_TEXT_DIMS, and no arbitrary opacity-[…] can slip in.
+    const utility = (dim: number) => `opacity-${Math.round(dim * 100)}`;
+    for (const channel of Object.keys(genres) as CoverChannel[]) {
+      const dims = COVER_TEXT_DIMS[channel];
+      for (const size of ["wizard", "hero", "shelf"] as const) {
+        // Variant 0 carries the author as a span beside the title.
+        const full = render(
+          <BookCover
+            title={VARIANT_TITLES[0]}
+            genre={genres[channel]}
+            author="K. V. Holm"
+            size={size}
+          />,
+        );
+        const eyebrow = full.container.querySelector(".uppercase");
+        expect(eyebrow).not.toBeNull();
+        expect(opacityClasses(eyebrow as Element)).toEqual([utility(dims.eyebrow)]);
+        expect(opacityClasses(full.getByText("K. V. Holm"))).toEqual([utility(dims.author[size])]);
+        full.unmount();
+
+        // Variant 2 carries the author as the rule-bound foot line instead.
+        const monumental = render(
+          <BookCover
+            title={VARIANT_TITLES[2]}
+            genre={genres[channel]}
+            author="K. V. Holm"
+            size={size}
+          />,
+        );
+        expect(opacityClasses(monumental.getByText("K. V. Holm"))).toEqual([utility(dims.foot)]);
+        monumental.unmount();
+      }
     }
   });
 });

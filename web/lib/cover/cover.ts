@@ -39,9 +39,12 @@ export const COVER_SIZES: Record<CoverSize, { width: number; height: number }> =
 
 /**
  * The genre labels the cover knows, already trimmed and lowercased. English
- * canonical labels plus the German ones the setup speaks; anything else —
- * including Lyrik and Essayistik, deliberately outside the matrix — falls
- * back. A fixed map, not a guess: an unknown genre must never pick a pigment.
+ * canonical labels plus the German ones the setup speaks — including the
+ * wizard's own five pill labels (R16, the Stitch setup draft's own wording),
+ * so a genre the reader just chose never falls to the neutral linen by
+ * accident. Anything else — including Lyrik and Essayistik, deliberately
+ * outside the matrix — falls back. A fixed map, not a guess: an unknown genre
+ * must never pick a pigment.
  */
 const CHANNEL_ALIASES: Record<string, CoverChannel | undefined> = {
   "science fiction": "scifi",
@@ -49,9 +52,12 @@ const CHANNEL_ALIASES: Record<string, CoverChannel | undefined> = {
   "sci-fi": "scifi",
   scifi: "scifi",
   "sci fi": "scifi",
+  "science fiction & speculative": "scifi",
   fantasy: "fantasy",
+  "low fantasy / magischer realismus": "fantasy",
   mystery: "mystery",
   krimi: "mystery",
+  "mystery & noir": "mystery",
   literary: "literary",
   "literary fiction": "literary",
   "literarische belletristik": "literary",
@@ -65,7 +71,7 @@ const CHANNEL_ALIASES: Record<string, CoverChannel | undefined> = {
 
 /** The genre's ground and ink token names; mystery/literary/historical/scifi
  * reuse the legacy palette, the four new channels are theme-constant. */
-const CHANNEL_TOKENS: Record<CoverChannel, { ground: string; ink: string }> = {
+export const CHANNEL_TOKENS: Record<CoverChannel, { ground: string; ink: string }> = {
   scifi: { ground: "cover-ink", ink: "cover-ink-ink" },
   fantasy: { ground: "cover-fantasy", ink: "cover-fantasy-ink" },
   mystery: { ground: "cover-pale", ink: "cover-pale-ink" },
@@ -74,6 +80,40 @@ const CHANNEL_TOKENS: Record<CoverChannel, { ground: string; ink: string }> = {
   romance: { ground: "cover-romance", ink: "cover-romance-ink" },
   thriller: { ground: "cover-thriller", ink: "cover-thriller-ink" },
   fallback: { ground: "cover-fallback", ink: "cover-fallback-ink" },
+};
+
+/**
+ * The dim each rendered text role wears, per channel — the numeric half of
+ * the per-channel minimum-dim decision (R15, owner 2026-11-14). The baselines
+ * are the spec's own: eyebrow 0.70 (Sektion 04 matrix, spec 704/727/750),
+ * author 0.75 at wizard/hero and 0.70 at shelf (spec 714/737/754, R19), the
+ * variant-2 foot 0.60 (spec 673). A channel/role rises ONLY where its
+ * composite — dim*ink + (1-dim)*ground in sRGB — would breach WCAG AA 4.5:1
+ * in either theme: historical rises to 0.80 on every role (its light slate
+ * ground swallows dimmed parchment ink), and the mystery/literary/romance/
+ * fallback feet rise to 0.65. Everything else keeps the spec dim.
+ *
+ * The component renders these fractions as LITERAL opacity utilities (R2);
+ * the dim-pin test in BookCover.test.tsx keeps the two representations in
+ * sync, and the gate in tokens.test.ts composites them against globals.css
+ * to prove the DIMMED render clears AA. The miniature renders no dimmed
+ * text: its monogram rides full ink.
+ */
+export interface CoverTextDims {
+  eyebrow: number;
+  author: Record<Exclude<CoverSize, "mini">, number>;
+  foot: number;
+}
+
+export const COVER_TEXT_DIMS: Record<CoverChannel, CoverTextDims> = {
+  scifi: { eyebrow: 0.7, author: { wizard: 0.75, hero: 0.75, shelf: 0.7 }, foot: 0.6 },
+  fantasy: { eyebrow: 0.7, author: { wizard: 0.75, hero: 0.75, shelf: 0.7 }, foot: 0.6 },
+  mystery: { eyebrow: 0.7, author: { wizard: 0.75, hero: 0.75, shelf: 0.7 }, foot: 0.65 },
+  literary: { eyebrow: 0.7, author: { wizard: 0.75, hero: 0.75, shelf: 0.7 }, foot: 0.65 },
+  historical: { eyebrow: 0.8, author: { wizard: 0.8, hero: 0.8, shelf: 0.8 }, foot: 0.8 },
+  romance: { eyebrow: 0.7, author: { wizard: 0.75, hero: 0.75, shelf: 0.7 }, foot: 0.65 },
+  thriller: { eyebrow: 0.7, author: { wizard: 0.75, hero: 0.75, shelf: 0.7 }, foot: 0.6 },
+  fallback: { eyebrow: 0.7, author: { wizard: 0.75, hero: 0.75, shelf: 0.7 }, foot: 0.65 },
 };
 
 /** The channel a genre label lands on; absent, empty or unknown → fallback. */

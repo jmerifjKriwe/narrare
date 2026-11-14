@@ -187,6 +187,10 @@
     "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
     "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji";
+  /* The brand serif: the manuscript's voice. One home for the stack (R17) —
+   * the prose surface below and the procedural cover's title both read it,
+   * so the two can never drift into different serifs. */
+  --font-serif: "EB Garamond", Georgia, "Times New Roman", serif;
 }
 
 /* The reader's choice, as the browser's own `color-scheme`: "system" leaves
@@ -478,7 +482,7 @@ body {
  * brand serif and a comfortable measure. TipTap manages the DOM; the surface
  * and the document structure it writes are styled here. */
 .ProseMirror {
-  font-family: "EB Garamond", Georgia, "Times New Roman", serif;
+  font-family: var(--font-serif);
   font-size: 1.125rem;
   line-height: 1.75;
   max-width: 34rem;

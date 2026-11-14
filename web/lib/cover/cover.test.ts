@@ -44,6 +44,23 @@ describe("channelFor", () => {
     expect(channelFor("Krimi")).toBe("mystery");
     expect(channelFor("Liebesroman")).toBe("romance");
   });
+  it("resolves the setup wizard's own five pills to their channels and grounds (R16)", () => {
+    // The Stitch setup draft's exact pill labels: a genre the reader just
+    // chose must never fall to the neutral linen by accident.
+    const pills: Array<[string, CoverChannel, string]> = [
+      ["Science Fiction & Speculative", "scifi", "cover-ink"],
+      ["Mystery & Noir", "mystery", "cover-pale"],
+      ["Historischer Roman", "historical", "cover-slate"],
+      ["Literarische Belletristik", "literary", "cover-sepia"],
+      ["Low Fantasy / Magischer Realismus", "fantasy", "cover-fantasy"],
+    ];
+    for (const [pill, channel, ground] of pills) {
+      expect(channelFor(pill)).toBe(channel);
+      expect(coverModel({ title: "Dead Signal", genre: pill, size: "wizard" }).groundToken).toBe(
+        ground,
+      );
+    }
+  });
   it("falls back for absent, empty and unknown genres", () => {
     // Lyrik and Essayistik sit deliberately outside the genre matrix.
     for (const genre of [null, undefined, "", "   ", "Lyrik", "Essayistik", "unknown"]) {

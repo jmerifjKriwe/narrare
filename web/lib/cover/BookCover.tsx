@@ -22,6 +22,11 @@
  * Ground/ink ride LITERAL Tailwind utilities (R2): Tailwind v4 only emits the
  * classes it sees verbatim, so the palette is a static record of `bg-cover-*`
  * and `text-cover-*-ink` names — never a concatenation, never an inline var().
+ * The dimmed text roles (eyebrow, author, variant-2 foot) ride the same
+ * literal discipline: they keep the spec's opacity wherever it clears WCAG AA
+ * and rise per channel only where it would not (R15, owner decision). The
+ * fractions live in cover.ts's COVER_TEXT_DIMS, the utilities below render
+ * them, and the token gate measures the composite the reader actually sees.
  *
  * Dark mode keeps the pigment (R9, Sektion 06): a book is a material object and
  * is never inverted. It gains only a uniform 1px white-8% rim on three sides and
@@ -59,6 +64,57 @@ const PALETTE: Record<CoverChannel, { ground: string; ink: string }> = {
   fallback: { ground: "bg-cover-fallback", ink: "text-cover-fallback-ink" },
 };
 
+/** R2/R15: the literal opacity utilities per channel and text role — the
+ * scanner sees each. These are the class-name half of COVER_TEXT_DIMS in
+ * cover.ts (the numeric half the contrast gate measures); the dim-pin test
+ * below keeps the two in sync. Raised above the spec dim only where AA
+ * demands it: historical on every role, four channels' variant-2 feet. */
+const TEXT_OPACITY: Record<
+  CoverChannel,
+  { eyebrow: string; author: Record<Exclude<CoverSize, "mini">, string>; foot: string }
+> = {
+  scifi: {
+    eyebrow: "opacity-70",
+    author: { wizard: "opacity-75", hero: "opacity-75", shelf: "opacity-70" },
+    foot: "opacity-60",
+  },
+  fantasy: {
+    eyebrow: "opacity-70",
+    author: { wizard: "opacity-75", hero: "opacity-75", shelf: "opacity-70" },
+    foot: "opacity-60",
+  },
+  mystery: {
+    eyebrow: "opacity-70",
+    author: { wizard: "opacity-75", hero: "opacity-75", shelf: "opacity-70" },
+    foot: "opacity-65",
+  },
+  literary: {
+    eyebrow: "opacity-70",
+    author: { wizard: "opacity-75", hero: "opacity-75", shelf: "opacity-70" },
+    foot: "opacity-65",
+  },
+  historical: {
+    eyebrow: "opacity-80",
+    author: { wizard: "opacity-80", hero: "opacity-80", shelf: "opacity-80" },
+    foot: "opacity-80",
+  },
+  romance: {
+    eyebrow: "opacity-70",
+    author: { wizard: "opacity-75", hero: "opacity-75", shelf: "opacity-70" },
+    foot: "opacity-65",
+  },
+  thriller: {
+    eyebrow: "opacity-70",
+    author: { wizard: "opacity-75", hero: "opacity-75", shelf: "opacity-70" },
+    foot: "opacity-60",
+  },
+  fallback: {
+    eyebrow: "opacity-70",
+    author: { wizard: "opacity-75", hero: "opacity-75", shelf: "opacity-70" },
+    foot: "opacity-65",
+  },
+};
+
 /** The eyebrow's localized genre label, keyed literally for the typed `t`. */
 const GENRE_KEYS: Record<CoverChannel, MessageKey> = {
   scifi: "cover.genre.scifi",
@@ -71,8 +127,9 @@ const GENRE_KEYS: Record<CoverChannel, MessageKey> = {
   fallback: "cover.genre.fallback",
 };
 
-/** The brand serif, the cover title's voice (the prose surface's own stack). */
-const SERIF = '[font-family:"EB_Garamond",Georgia,"Times_New_Roman",serif]';
+/** The brand serif, the cover title's voice — the shell's one serif token
+ * (globals.css `--font-serif`, R17), the same stack the prose surface reads. */
+const SERIF = "[font-family:var(--font-serif)]";
 
 /**
  * The spine crease (spec 147–164), verbatim. The pale grounds — mystery's
@@ -214,8 +271,11 @@ export function BookCover({
   const model = coverModel({ title, genre, author, size });
   const m = METRICS[size];
   const palette = PALETTE[model.channel];
-  // The pale crease belongs to the two light grounds (Sektion 02 specimens).
-  const paleCrease = model.channel === "mystery" || model.channel === "fallback";
+  const dims = TEXT_OPACITY[model.channel];
+  // The two light grounds (Sektion 02 specimens): mystery's Steinpergament
+  // and the fallback linen take the warm pale crease and the quieter motif;
+  // every dark ground takes the black crease.
+  const lightGround = model.channel === "mystery" || model.channel === "fallback";
   const titleText = title.trim();
   const authorText = model.anonymous ? t("cover.anonymous") : model.authorName;
 
@@ -235,12 +295,12 @@ export function BookCover({
     : model.shortTitle
       ? "leading-none tracking-wide max-h-[3em]"
       : m.titleClamp;
-  const motifOpacity = paleCrease ? "opacity-30" : "opacity-35";
+  const motifOpacity = lightGround ? "opacity-30" : "opacity-35";
 
   // The model's tier flags decide what the full sizes show; today both equal
   // !mini, but the presentation honors the model, not a re-derived guess.
   const eyebrow = model.showEyebrow ? (
-    <span className={cx("block uppercase opacity-70", m.eyebrow)}>
+    <span className={cx("block uppercase", dims.eyebrow, m.eyebrow)}>
       {t(GENRE_KEYS[model.channel])}
     </span>
   ) : null;
@@ -252,8 +312,11 @@ export function BookCover({
       {titleText}
     </span>
   );
+  // The author dim is per size (R19: wizard/hero 0.75, shelf 0.70, raised per
+  // channel where AA needs it); the miniature shows no author at all.
+  const authorOpacity = size === "mini" ? undefined : dims.author[size];
   const authorEl = model.showAuthor ? (
-    <span className={cx("block opacity-70", m.author)}>{authorText}</span>
+    <span className={cx("block", authorOpacity, m.author)}>{authorText}</span>
   ) : null;
 
   return (
@@ -276,7 +339,7 @@ export function BookCover({
       {/* 1. The spine crease — above everything, never interactive. */}
       <div
         aria-hidden="true"
-        className={cx("pointer-events-none absolute inset-y-0 left-0 z-20", m.creaseWidth, paleCrease ? CREASE_PALE : CREASE)}
+        className={cx("pointer-events-none absolute inset-y-0 left-0 z-20", m.creaseWidth, lightGround ? CREASE_PALE : CREASE)}
       />
       {/* 2. The blind-deboss boundary — culled at the miniature. */}
       {!model.monogram && (
@@ -342,7 +405,7 @@ export function BookCover({
           </div>
           <div className={cx("relative z-10 my-auto", m.pad)}>{titleEl}</div>
           {model.showAuthor && (
-            <div className={cx("relative z-10 border-t border-current/20 pt-2 opacity-60", m.pad, m.author)}>
+            <div className={cx("relative z-10 border-t border-current/20 pt-2", dims.foot, m.pad, m.author)}>
               {authorText}
             </div>
           )}

@@ -15,11 +15,20 @@
  *
  * The contrast table is the same measurement the axe leg makes, done here
  * where a failure names the pair instead of a selector: the ink, the ground
- * it rides and the bar it must clear.
+ * it rides and the bar it must clear. The cover's gate goes one step further
+ * (R15): it composites each text role's ink over its ground at the dim the
+ * component renders (`COVER_TEXT_DIMS` in cover.ts), so the AA promise covers
+ * the dimmed render a reader actually sees, not just the full-ink token pair.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  CHANNEL_TOKENS,
+  COVER_TEXT_DIMS,
+  type CoverChannel,
+  type CoverTextDims,
+} from "./cover/cover";
 
 const WEB = new URL("..", import.meta.url).pathname;
 const CSS = readFileSync(join(WEB, "globals.css"), "utf8");
@@ -149,6 +158,20 @@ function luminance(hex: string): number {
 function contrast(ink: string, ground: string): number {
   const [high, low] = [luminance(ink), luminance(ground)].sort((a, b) => b - a);
   return (high + 0.05) / (low + 0.05);
+}
+
+/**
+ * The colour a dimmed text role actually paints: the ink composited over the
+ * ground in sRGB, `dim * ink + (1 - dim) * ground` per channel, rounded to the
+ * 8-bit value the screen shows. The pair gate measures full ink; this is the
+ * colour the reader's eye meets at the rendered opacity.
+ */
+function dimmed(ink: string, ground: string, dim: number): string {
+  const channels = (hex: string) => [0, 2, 4].map((at) => parseInt(hex.slice(at + 1, at + 3), 16));
+  const from = channels(ink);
+  const over = channels(ground);
+  const mixed = from.map((value, i) => Math.round(dim * value + (1 - dim) * over[i]));
+  return `#${mixed.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
 }
 
 /**
@@ -345,6 +368,13 @@ describe("the shell's tokens", () => {
     expect(layers("light")).toEqual(SHADOW_CARD.light);
     expect(layers("dark")).toEqual(SHADOW_CARD.dark);
   });
+
+  it("carries the brand serif once, as the token both surfaces read (R17)", () => {
+    // One home for the stack: the prose surface consumes it here, the cover
+    // title via `[font-family:var(--font-serif)]` (pinned in BookCover.test).
+    expect(tokens["font-serif"]).toBe('"EB Garamond", Georgia, "Times New Roman", serif');
+    expect(CSS).toContain("font-family: var(--font-serif);");
+  });
 });
 
 describe("the cover's Tailwind aliases", () => {
@@ -380,6 +410,51 @@ describe("the shell's contrast table", () => {
         );
         if (measured < bar) {
           wrong.push(`${theme}: ${ink} on ${ground} measures ${measured.toFixed(2)}:1 (needs ${bar})`);
+        }
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+});
+
+describe("the cover's dimmed text (R15)", () => {
+  const tokens = declarations(rootBlock());
+
+  /** The dimmed roles a channel renders; the miniature keeps none of them. */
+  const roles = (dims: CoverTextDims): Array<[string, number]> => [
+    ["eyebrow", dims.eyebrow],
+    ["author at wizard", dims.author.wizard],
+    ["author at hero", dims.author.hero],
+    ["author at shelf", dims.author.shelf],
+    ["variant-2 foot", dims.foot],
+  ];
+
+  it("clears AA on every channel's dimmed roles in both themes", () => {
+    const wrong: string[] = [];
+    for (const theme of ["light", "dark"] as const) {
+      for (const channel of Object.keys(CHANNEL_TOKENS) as CoverChannel[]) {
+        const ground = painted(tokens, CHANNEL_TOKENS[channel].ground, theme);
+        const ink = painted(tokens, CHANNEL_TOKENS[channel].ink, theme);
+        for (const [role, dim] of roles(COVER_TEXT_DIMS[channel])) {
+          const measured = contrast(dimmed(ink, ground, dim), ground);
+          if (measured < 4.5) {
+            wrong.push(
+              `${theme} ${channel} ${role} at ${dim}: ${measured.toFixed(2)}:1 (needs 4.5)`,
+            );
+          }
+        }
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  it("keeps every dim on the opacity scale the literal utilities emit", () => {
+    const wrong: string[] = [];
+    for (const [channel, dims] of Object.entries(COVER_TEXT_DIMS)) {
+      for (const [role, dim] of roles(dims)) {
+        const step = dim * 100;
+        if (!(step > 0 && step <= 100 && Number.isInteger(step) && step % 5 === 0)) {
+          wrong.push(`${channel} ${role}: ${dim} is not an opacity-<step> utility`);
         }
       }
     }
