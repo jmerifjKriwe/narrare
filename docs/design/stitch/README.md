@@ -15,7 +15,7 @@ Each screen is a pair in `screens/<area>/`:
 
 - `<name>.webp` — the rendered draft, WebP quality 82, at its export size: 2560 px
   wide (2× the 1280 px canvas) in the first archive; later additions keep their
-  native export size (the 2026-11-13 onboarding drafts are 1600 px, one 1179 × 1600
+  native export size (the 2026-11-13 onboarding drafts are 1600 px, one 1179×1600
   portrait). Opens offline and in the browser.
 - `<name>.html` — the generated source, as Stitch produced it. It loads Tailwind
   and Google Fonts from CDNs, so it needs a network connection to render; the

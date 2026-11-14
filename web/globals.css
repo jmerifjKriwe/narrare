@@ -34,7 +34,7 @@
   /* Secondary text rides the page ground and the card above it, so it keeps
    * AA on both: 4.80:1 on the ground and 5.05:1 on the card in the light
    * half, 5.07:1 and 4.53:1 in the dark one. The numbers live in
-   * `web/ui/tokens.test.ts`, where a drift fails a test instead of a
+   * `web/lib/tokens.test.ts`, where a drift fails a test instead of a
    * review. */
   --muted: light-dark(#6E6B65, #89867F);
   /* The chrome: the rail, the top bar, the dock. Flat panels above the

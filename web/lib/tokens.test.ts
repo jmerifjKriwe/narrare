@@ -218,9 +218,10 @@ const SHADOW_CARD = {
  * Two pairs the norm itself puts below the bar are not in the table, and
  * their measured values are the ones to keep in mind: the muted ink on the
  * selection wash (4.46:1 light, 3.99:1 dark — the app keeps off it; a row's
- * ink on the wash is foreground ink, `web/ui/Row.tsx` says why) and the
- * hairline outline (4.05:1 light, 2.25:1 dark — a rule that carries no
- * information of its own, and outside axe's A/AA rule set).
+ * ink on the wash is foreground ink, the rule the design docs draw —
+ * `docs/design/stitch/DESIGN.md`, `dark-tokens.md`) and the hairline
+ * outline (4.05:1 light, 2.25:1 dark — a rule that carries no information
+ * of its own, and outside axe's A/AA rule set).
  */
 
 /** The pairs the shell paints, and the bar each must clear. */
