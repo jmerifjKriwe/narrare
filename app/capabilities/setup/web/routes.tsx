@@ -1,24 +1,78 @@
-import { createRoute } from "@tanstack/react-router";
+import { createRoute, redirect } from "@tanstack/react-router";
 import { lazy } from "react";
 
 import { rootRoute } from "@shell/routes/__root";
 
-// React.lazy keeps the page out of the shell's bundle: the capability loads
-// as its own chunk, and the shell root's Suspense boundary covers the gap.
+import { useSetupStatus } from "./useSetupStatus";
+
+// React.lazy keeps the pages out of the shell's bundle: each loads as its
+// own chunk, and the shell root's Suspense boundary covers the gap.
 const SetupPage = lazy(async () => {
   const page = await import("./SetupPage");
   return { default: page.SetupPage };
 });
+const WelcomePage = lazy(async () => {
+  const page = await import("./WelcomePage");
+  return { default: page.WelcomePage };
+});
+const LandingPage = lazy(async () => {
+  const page = await import("./LandingPage");
+  return { default: page.LandingPage };
+});
+
+/**
+ * The `/` gate: the welcome while the instance is unset, the landing once
+ * it is set up. The status query suspends while its answer is in flight —
+ * the root's boundary holds the gap, nothing invented — and every fresh
+ * load of `/` asks the status anew, so a browser refresh after setup lands
+ * on the landing, never on a remembered welcome.
+ */
+function HomeGate() {
+  const { complete } = useSetupStatus();
+  return complete ? <LandingPage /> : <WelcomePage />;
+}
 
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: SetupPage,
+  component: HomeGate,
 });
 
+// `/setup` is the wizard's door, not a step of its own: it answers with the
+// first step. The redirect keeps the current search — the wizard's answers
+// ride search params (refresh-safe), and the door must not drop them.
 const setupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup",
+  beforeLoad: () => {
+    throw redirect({ to: "/setup/basis", search: true });
+  },
+});
+
+// The four steps, addressable each on its own — a refresh mid-wizard lands
+// on the same step. The interim placeholder stands in for every step until
+// the port tasks fill them.
+const basisRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup/basis",
+  component: SetupPage,
+});
+
+const structureRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup/structure",
+  component: SetupPage,
+});
+
+const aiRulesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup/ai-rules",
+  component: SetupPage,
+});
+
+const provisioningRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup/provisioning",
   component: SetupPage,
 });
 
@@ -30,4 +84,11 @@ const setupRoute = createRoute({
 // The route consts stand on their own on purpose: a contextual type here
 // (a `Route[]` annotation or satisfies) degrades createRoute's inference to
 // `any` paths, and with it the router's checked `to=` props.
-export const routes = [homeRoute, setupRoute] as const;
+export const routes = [
+  homeRoute,
+  setupRoute,
+  basisRoute,
+  structureRoute,
+  aiRulesRoute,
+  provisioningRoute,
+] as const;
