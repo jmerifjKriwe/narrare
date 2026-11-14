@@ -13,11 +13,9 @@ decide.
 
 Each screen is a pair in `screens/<area>/`:
 
-- `<name>.webp` — the rendered draft, WebP quality 82, at its native export size:
-  2560 px wide (2× the 1280 px canvas) in the first archive, the smaller exports
-  of later rounds. Opens offline and in the browser. The 2026-11-14 harmonized
-  drafts supersede the 2026-11-13 first drafts; git history keeps the earlier
-  versions.
+- `<name>.webp` — the rendered draft, WebP quality 82, at its native export size.
+  Opens offline and in the browser. The 2026-11-14 harmonized drafts supersede
+  the 2026-11-13 first drafts; git history keeps the earlier versions.
   The 2026-11-14 `cover-system` sheet is a clarification of the cover object, not
   a screen template: Stitch offers it only as a downscaled export (412×1600 of a
   2560×9934 desktop canvas), so its preview is a thumbnail and the HTML is the
@@ -64,9 +62,9 @@ Documents from the same project are under [`documents/`](documents/):
 | Area | Screen | Original label (German) | Height |
 |---|---|---|---|
 | Library and entry | [`shelf`](screens/library/shelf.webp) | Bücherregal | 2474 px |
-|  | [`shelf-dark`](screens/library/shelf-dark.webp) | Bücherregal — Midnight Ink (S0, dark) | 1246 px |
-|  | [`shelf-empty`](screens/library/shelf-empty.webp) | Bücherregal — Leerstand (G-4) | 1024 px |
-|  | [`shelf-states`](screens/library/shelf-states.webp) | Bücherregal — Zustände: laden, Fehler, viele Bücher, langer Titel (G-4) | 1024 px |
+|  | [`shelf-dark`](screens/library/shelf-dark.webp) | Bücherregal — Midnight Ink (S0, dark) | 2492 px |
+|  | [`shelf-empty`](screens/library/shelf-empty.webp) | Bücherregal — Leerstand (G-4) | 2048 px |
+|  | [`shelf-states`](screens/library/shelf-states.webp) | Bücherregal — Zustände: laden, Fehler, viele Bücher, langer Titel (G-4) | 2048 px |
 |  | [`welcome-onboarding`](screens/library/welcome-onboarding.webp) | Willkommen & Autoren-Onboarding | 2570 px |
 |  | [`integrated-suite`](screens/library/integrated-suite.webp) | Narrare — Integrierte Gesamtsuite (Regal, Workspace & KI-Dock) | 3664 px |
 |  | [`welcome-atelier`](screens/library/welcome-atelier.webp) | Willkommen im Atelier (Überarbeitet) | 1600 px |
