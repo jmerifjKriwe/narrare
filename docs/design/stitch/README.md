@@ -13,11 +13,11 @@ decide.
 
 Each screen is a pair in `screens/<area>/`:
 
-- `<name>.webp` — the rendered draft, WebP quality 82, at its export size: 2560 px
-  wide (2× the 1280 px canvas) in the first archive; later additions keep their
-  native export size (the 2026-11-13 onboarding drafts are 1600 px, one 1179×1600
-  portrait). Opens offline and in the browser. The 2026-11-14 harmonized drafts
-  supersede the 2026-11-13 first drafts; git history keeps the earlier versions.
+- `<name>.webp` — the rendered draft, WebP quality 82, at its native export size:
+  2560 px wide (2× the 1280 px canvas) in the first archive, the smaller exports
+  of later rounds. Opens offline and in the browser. The 2026-11-14 harmonized
+  drafts supersede the 2026-11-13 first drafts; git history keeps the earlier
+  versions.
   The 2026-11-14 `cover-system` sheet is a clarification of the cover object, not
   a screen template: Stitch offers it only as a downscaled export (412×1600 of a
   2560×9934 desktop canvas), so its preview is a thumbnail and the HTML is the
@@ -71,7 +71,7 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`integrated-suite`](screens/library/integrated-suite.webp) | Narrare — Integrierte Gesamtsuite (Regal, Workspace & KI-Dock) | 3664 px |
 |  | [`welcome-atelier`](screens/library/welcome-atelier.webp) | Willkommen im Atelier (Überarbeitet) | 1600 px |
 |  | [`setup-step1-basis-vorlage`](screens/library/setup-step1-basis-vorlage.webp) | Projekt-Setup: Start oder Demo-Vorlage wählen | 1600 px |
-|  | [`setup-step2-dramaturgie-struktur`](screens/library/setup-step2-dramaturgie-struktur.webp) | Projekt-Setup: Dramaturgie & Struktur (Korrigiert) | 1600 px |
+|  | [`setup-step2-dramaturgie-struktur`](screens/library/setup-step2-dramaturgie-struktur.webp) | Projekt-Setup: Dramaturgie & Struktur (5 Paradigmen) | 1600 px |
 |  | [`setup-step3-ki-regeln-tonalitaet`](screens/library/setup-step3-ki-regeln-tonalitaet.webp) | Projekt-Setup: KI-Partner & Kausalitätsregeln | 1280 px |
 |  | [`setup-step4-bereitstellung-start`](screens/library/setup-step4-bereitstellung-start.webp) | Projekt-Setup: Bereitstellung & Start (Überarbeitet) | 1280 px |
 |  | [`shelf-filter-open`](screens/library/shelf-filter-open.webp) | Bücherregal — Filter geöffnet | 1546 px |
