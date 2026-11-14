@@ -5,7 +5,7 @@
  * presentation, not behavior — every channel answers with its own
  * svg[data-channel], the eight shapes stay pairwise distinct (no genre
  * borrows another's motif), and each vignette wears the hairline grammar:
- * fill none, stroke currentColor so the ink token drives it, a ~1.1 stroke,
+ * fill none, stroke currentColor so the ink token drives it, a 1.2 stroke,
  * the 48×48 viewBox, and aria-hidden so the decoration never reaches a
  * screen reader. No hardcoded pigment may sit inside a motif.
  */
@@ -60,7 +60,7 @@ describe("GenreMotif", () => {
       expect(svg?.getAttribute("fill")).toBe("none");
       expect(svg?.getAttribute("stroke")).toBe("currentColor");
       expect(svg?.getAttribute("aria-hidden")).toBe("true");
-      expect(Number(svg?.getAttribute("stroke-width"))).toBeCloseTo(1.1, 5);
+      expect(Number(svg?.getAttribute("stroke-width"))).toBeCloseTo(1.2, 5);
       // The ink token is the only pigment: no hex, no rgb() inside a motif.
       expect(svg?.innerHTML).not.toMatch(/#[0-9a-f]{3,8}\b|rgb\(/i);
       unmount();

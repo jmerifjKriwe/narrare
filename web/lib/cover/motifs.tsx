@@ -85,7 +85,7 @@ const MOTIFS: Record<CoverChannel, ReactElement> = {
 
 /**
  * One hairline vignette. The wrapper carries the whole grammar — 48×48
- * viewBox, fill none, currentColor stroke at 1.1, aria-hidden — so the
+ * viewBox, fill none, currentColor stroke at 1.2, aria-hidden — so the
  * caller only picks the channel and the size (className); the ink comes
  * from the text color the cover sets.
  */
@@ -101,7 +101,7 @@ export function GenreMotif({
       viewBox="0 0 48 48"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.1}
+      strokeWidth={1.2}
       aria-hidden="true"
       data-channel={channel}
       className={className}
