@@ -6,9 +6,9 @@
  * asks, never from a remembered variant. The gate's two choices are mocked
  * at their module boundary so the choice itself is observable while both
  * pages are still placeholders (the port tasks fill them and test them in
- * their own right); the four steps render the real interim placeholder.
- * The API client is mocked at its module boundary — the request's truth is
- * the backend's and the E2E's.
+ * their own right); step one renders the real basis step, the other three
+ * steps the interim placeholder. The API client is mocked at its module
+ * boundary — the request's truth is the backend's and the E2E's.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
@@ -133,12 +133,17 @@ describe("the wizard's steps", () => {
     scriptStatus(async () => ({ data: { complete: false }, response: ok() }));
     const router = renderTree("/setup?demo=dead-signal");
 
-    await screen.findByRole("heading", { name: t("setup.interimTitle") });
+    // The door answers with the real basis step, and the search it kept is
+    // the demo the step preselects — the binding is visible at once.
+    await screen.findByRole("heading", { name: t("setup.basis.heroTitle") });
     expect(router.state.location.pathname).toBe("/setup/basis");
     expect(router.state.location.search).toEqual({ demo: "dead-signal" });
+    expect(
+      (screen.getByRole("textbox", { name: t("setup.basis.boundTitle") }) as HTMLInputElement).value,
+    ).toBe("Dead Signal");
   });
 
-  it.each(["/setup/basis", "/setup/structure", "/setup/ai-rules", "/setup/provisioning"])(
+  it.each(["/setup/structure", "/setup/ai-rules", "/setup/provisioning"])(
     "answers %s with the interim placeholder",
     async (path) => {
       scriptStatus(async () => ({ data: { complete: false }, response: ok() }));
