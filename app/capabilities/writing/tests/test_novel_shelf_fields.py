@@ -212,6 +212,41 @@ async def test_a_carried_null_returns_the_book_to_the_shelf() -> None:
         assert [novel["id"] for novel in listed.json()] == [novel_id]
 
 
+async def test_the_create_carries_the_target_words() -> None:
+    """The new-book dialog's third field rides the create: the target the
+    reader picks is the row's own, read back on both paths; a create
+    without one keeps the honest None the shelf's neutral reads."""
+    async with _client() as client:
+        created = await client.post(
+            "/api/writing/novels", json={"title": "Die Winterchronik", "target_words": 65000}
+        )
+        assert created.status_code == 201
+        assert created.json()["target_words"] == 65000
+        novel_id = created.json()["id"]
+
+        fetched = await client.get(f"/api/writing/novels/{novel_id}")
+        assert fetched.json()["target_words"] == 65000
+        listed = await client.get("/api/writing/novels")
+        assert listed.json()[0]["target_words"] == 65000
+
+        bare = await client.post("/api/writing/novels", json={"title": "Ohne Ziel"})
+        assert bare.status_code == 201
+        assert bare.json()["target_words"] is None
+
+
+@pytest.mark.parametrize("value", [0, -1, 2_147_483_648])
+async def test_a_create_target_outside_the_column_is_refused(value: int) -> None:
+    """The same bounds SetupRequest carries: the Integer column's own
+    ceiling, refused at the schema, never an overflow at the insert."""
+    async with _client() as client:
+        refused = await client.post(
+            "/api/writing/novels", json={"title": "Die Winterchronik", "target_words": value}
+        )
+        assert refused.status_code == 422
+        # Nothing was written: the shelf stays empty.
+        assert (await client.get("/api/writing/novels")).json() == []
+
+
 async def test_the_target_words_ride_the_read() -> None:
     """The shelf's word pair reads the novel's own target: the column the
     setup wizard binds rides both read paths, and a book without a target

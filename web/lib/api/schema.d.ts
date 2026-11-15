@@ -1881,6 +1881,8 @@ export interface components {
             blurb?: string | null;
             /** Genre */
             genre?: string | null;
+            /** Target Words */
+            target_words?: number | null;
             /** Title */
             title: string;
         };

@@ -1334,6 +1334,19 @@
             ],
             "title": "Genre"
           },
+          "target_words": {
+            "anyOf": [
+              {
+                "maximum": 2147483647,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Words"
+          },
           "title": {
             "maxLength": 200,
             "minLength": 1,

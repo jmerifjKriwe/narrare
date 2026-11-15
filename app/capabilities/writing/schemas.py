@@ -28,6 +28,11 @@ class NovelCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     genre: str | None = Field(default=None, max_length=80)
     blurb: str | None = None
+    # The new-book dialog's word target (W3). The same bounds SetupRequest
+    # carries: the Integer column's own ceiling (2**31 - 1), so a larger
+    # goal is a 422 here, not an int32 overflow at the insert. Absent keeps
+    # the shelf's honest neutral — no guessed goal.
+    target_words: int | None = Field(default=None, ge=1, le=2_147_483_647)
 
 
 class NovelRead(BaseModel):

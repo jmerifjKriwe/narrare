@@ -120,9 +120,14 @@ class WritingService:
             raise SetupRequiredError
 
     async def create_novel(
-        self, title: str, genre: str | None = None, blurb: str | None = None
+        self,
+        title: str,
+        genre: str | None = None,
+        blurb: str | None = None,
+        target_words: int | None = None,
     ) -> Novel:
-        """Commit a novel with optional genre and blurb; return the created row.
+        """Commit a novel with optional genre, blurb and word target; return
+        the created row.
 
         Raise SetupRequiredError if setup has not created the owning user.
         """
@@ -130,7 +135,7 @@ class WritingService:
         # Fold an empty/whitespace genre to None at the create boundary, the
         # way PATCH does, so "no genre" is one value everywhere.
         genre = (genre or "").strip() or None
-        novel = await self.novels.create(title, genre=genre, blurb=blurb)
+        novel = await self.novels.create(title, genre=genre, blurb=blurb, target_words=target_words)
         await self.session.commit()
         return novel
 

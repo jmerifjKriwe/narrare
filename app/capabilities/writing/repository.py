@@ -159,6 +159,7 @@ class NovelRepository(ScopedRepository[Novel]):
         *,
         author: str | None = None,
         language: str | None = None,
+        target_words: int | None = None,
     ) -> Novel:
         """Flush a new novel for this user, leaving the commit to the caller."""
         novel = Novel(
@@ -168,6 +169,7 @@ class NovelRepository(ScopedRepository[Novel]):
             blurb=blurb,
             author=author,
             language=language,
+            target_words=target_words,
         )
         self.session.add(novel)
         await self.session.flush()

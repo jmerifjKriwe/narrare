@@ -167,6 +167,16 @@ let archiveAnswer: (
 ) => Promise<{ data?: unknown; response: Response }> = async () => {
   throw new Error("archive not scripted");
 };
+/** The new-book dialog's create (Task 9), scriptable per test. The default
+ *  refuses loudly so an unscripted write is a test defect, not a silent
+ *  pass; a test that creates scripts its answer. */
+let createAnswer: (body: {
+  title?: string;
+  genre?: string;
+  target_words?: number;
+}) => Promise<{ data?: unknown; response: Response }> = async () => {
+  throw new Error("create not scripted");
+};
 
 function scriptApi() {
   api.GET.mockImplementation(async (path: string, init?: { params?: { query?: { include_archived?: boolean } } }) => {
@@ -178,8 +188,9 @@ function scriptApi() {
     }
     throw new Error(`unexpected request: ${path}`);
   });
-  api.POST.mockImplementation(async (path: string, init?: { params?: { path?: { novel_id?: string } } }) => {
+  api.POST.mockImplementation(async (path: string, init?: { params?: { path?: { novel_id?: string } }; body?: { title?: string; genre?: string; target_words?: number } }) => {
     const novelId = init?.params?.path?.novel_id ?? "";
+    if (path === "/api/writing/novels") return createAnswer(init?.body ?? {});
     if (path === "/api/writing/novels/{novel_id}/duplicate") return duplicateAnswer(novelId);
     if (path === "/api/writing/novels/{novel_id}/export") return exportAnswer(novelId);
     throw new Error(`unexpected request: ${path}`);
@@ -228,6 +239,9 @@ beforeEach(() => {
   };
   archiveAnswer = async () => {
     throw new Error("archive not scripted");
+  };
+  createAnswer = async () => {
+    throw new Error("create not scripted");
   };
   // de-DE formatting: the word pair groups the way the reader's region does.
   vi.stubGlobal("navigator", { language: "de-DE", languages: ["de-DE"] });
@@ -437,16 +451,23 @@ describe("the shelf — every door honest about what is not built yet", () => {
     }
   });
 
-  it("the top bar's new-book and import doors stay disabled with the note", async () => {
+  it("the top bar's new-book door opens the dialog; import stays disabled with the note", async () => {
     renderShelf();
     await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
 
-    for (const name of [de["writing.shelf.newBook"], de["writing.shelf.import"]]) {
-      const button = screen.getByRole("button", { name });
-      expect(button.hasAttribute("disabled")).toBe(true);
-      const noteId = button.getAttribute("aria-describedby");
-      expect(document.getElementById(noteId as string)?.textContent).toBe(de["writing.shelf.comingSoon"]);
-    }
+    // Task 9 made the new-book door real: enabled, and the dialog's own face.
+    const newBook = screen.getByRole("button", { name: de["writing.shelf.newBook"] });
+    expect(newBook.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(newBook);
+    expect(screen.getByRole("dialog").getAttribute("aria-modal")).toBe("true");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    // The import wave has not landed: its door keeps the drafted note.
+    const imported = screen.getByRole("button", { name: de["writing.shelf.import"] });
+    expect(imported.hasAttribute("disabled")).toBe(true);
+    const noteId = imported.getAttribute("aria-describedby");
+    expect(document.getElementById(noteId as string)?.textContent).toBe(de["writing.shelf.comingSoon"]);
   });
 
   it("the view chrome stands inert — the quick menu is live", async () => {
@@ -601,7 +622,7 @@ describe("the shelf — loading, error and empty answer per the drafts", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Dead Signal" })).toBeTruthy();
   });
 
-  it("an empty shelf opens the honest empty state — the new-book door disabled", async () => {
+  it("an empty shelf opens the honest empty state — the new-book door live", async () => {
     novelsAnswer = async () => ({ data: [], response: ok() });
     renderShelf();
 
@@ -615,15 +636,18 @@ describe("the shelf — loading, error and empty answer per the drafts", () => {
     expect(screen.getByText(t("writing.shelf.metrics.books", { count: 0 }))).toBeTruthy();
     expect(screen.getByText("0")).toBeTruthy();
 
-    // Both doors of the empty panel stay disabled with the drafted note.
-    for (const name of [de["writing.shelf.newBook"], de["writing.shelf.empty.import"]]) {
-      const buttons = screen.getAllByRole("button", { name });
-      for (const button of buttons) {
-        expect(button.hasAttribute("disabled")).toBe(true);
-        const noteId = button.getAttribute("aria-describedby");
-        expect(document.getElementById(noteId as string)?.textContent).toBe(de["writing.shelf.comingSoon"]);
-      }
-    }
+    // The empty panel's new-book door is real (Task 9) — both copies of it
+    // open the dialog; the import door keeps the drafted note.
+    const doors = screen.getAllByRole("button", { name: de["writing.shelf.newBook"] });
+    expect(doors).toHaveLength(2);
+    for (const door of doors) expect(door.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(doors[1]);
+    expect(screen.getByRole("dialog").getAttribute("aria-modal")).toBe("true");
+    fireEvent.keyDown(document, { key: "Escape" });
+    const imported = screen.getByRole("button", { name: de["writing.shelf.empty.import"] });
+    expect(imported.hasAttribute("disabled")).toBe(true);
+    const noteId = imported.getAttribute("aria-describedby");
+    expect(document.getElementById(noteId as string)?.textContent).toBe(de["writing.shelf.comingSoon"]);
     expect(screen.getByText(de["writing.shelf.empty.formats"])).toBeTruthy();
     // No grid, no search chrome — the empty draft carries neither.
     expect(screen.queryAllByRole("article")).toHaveLength(0);
@@ -1633,5 +1657,335 @@ describe("the shelf — the quick menu's review fixes", () => {
     // The menu stays open and focus lands back on the live export row.
     await waitFor(() => expect(document.activeElement).toBe(exportRow));
     expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+});
+
+/** The new-book dialog (Task 9) — the picked draft's modal over the scrimmed
+ *  shelf. Opened from either door; the create is the real POST seam, the
+ *  shelf's refetch the honest insert (the hook invalidates `["novels"]`). */
+const topNewBook = () => screen.getAllByRole("button", { name: de["writing.shelf.newBook"] })[0];
+function openNewBook(from: HTMLElement = topNewBook()): HTMLElement {
+  fireEvent.click(from);
+  return screen.getByRole("dialog");
+}
+const titleField = (dialog: HTMLElement) => within(dialog).getByRole("textbox");
+const createButton = (dialog: HTMLElement) =>
+  within(dialog).getByRole("button", { name: de["writing.shelf.dialog.create"] });
+const coverOf = (dialog: HTMLElement) => dialog.querySelector("[data-channel]") as HTMLElement;
+
+/** The row the create answers — newest updated_at, so the shelf's honest
+ *  outcome is the hero, never a hand-patched grid insert. */
+const CREATED = novelRow({
+  id: "99999999-9999-9999-9999-999999999999",
+  title: "Die Winterchronik von Station Sieben",
+  genre: "Science Fiction & Speculative, Mystery & Noir",
+  target_words: 80000,
+  created_at: "2026-11-15T12:00:00Z",
+  updated_at: "2026-11-15T12:00:00Z",
+});
+/** A create that lands: the server's list grows, the refetch carries it. */
+function scriptCreate() {
+  createAnswer = async (body) => {
+    novelsAnswer = async () => ({ data: [CREATED, ...SHELF_ROWS], response: ok() });
+    return {
+      data: { ...CREATED, title: body.title ?? CREATED.title, genre: body.genre ?? null, target_words: body.target_words ?? null },
+      response: new Response(null, { status: 201 }),
+    };
+  };
+}
+
+describe("the shelf — the new-book dialog is the drafted modal", () => {
+  it("opens over the 40% scrim with the draft's three fields and the verbatim note", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openNewBook();
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    const labelledBy = dialog.getAttribute("aria-labelledby");
+    expect(document.getElementById(labelledBy as string)?.textContent).toBe(de["writing.shelf.dialog.title"]);
+    expect(within(dialog).getByRole("heading", { level: 2, name: de["writing.shelf.dialog.title"] })).toBeTruthy();
+    // The scrim is the token's own 40% pair, and the page behind it holds still.
+    expect((dialog.parentElement as HTMLElement).className).toContain("bg-scrim");
+    expect(document.body.style.overflow).toBe("hidden");
+
+    // Exactly three fields: the title, the five pills, the word slider.
+    expect(within(dialog).getAllByRole("textbox")).toHaveLength(1);
+    expect(within(dialog).getAllByRole("slider")).toHaveLength(1);
+    const group = within(dialog).getByRole("group");
+    expect(within(group).getAllByRole("button")).toHaveLength(5);
+    // The inheritance note, verbatim — the draft's own sentence.
+    expect(de["writing.shelf.dialog.inheritance"]).toBe(
+      "Dramaturgie, KI-Rolle und Kanon-Strenge übernimmt das Buch aus deinen Atelier-Einstellungen — änderbar, sobald der Workspace da ist.",
+    );
+    expect(within(dialog).getByText(de["writing.shelf.dialog.inheritance"])).toBeTruthy();
+    // The CTA waits for a standing title; Abbrechen stands beside it.
+    expect(createButton(dialog).hasAttribute("disabled")).toBe(true);
+    expect(within(dialog).getByRole("button", { name: de["writing.shelf.dialog.cancel"] })).toBeTruthy();
+    // On short viewports the body is the scroll region; the footer with
+    // the actions stays pinned outside it, never below the fold.
+    const scroll = dialog.querySelector(".overflow-y-auto") as HTMLElement;
+    expect(scroll.contains(titleField(dialog))).toBe(true);
+    expect(scroll.contains(dialog.querySelector("footer") as HTMLElement)).toBe(false);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(document.body.style.overflow).toBe("");
+  });
+
+  it("the title rides the cover live; the CTA and the error follow the trimmed title", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openNewBook();
+    // Step 1's deterministic validation: the missing-title line stands while
+    // the title is empty, and the cover speaks the honest untitled face.
+    expect(within(dialog).getByText(de["writing.shelf.dialog.titleError"])).toBeTruthy();
+    expect(titleField(dialog).getAttribute("aria-invalid")).toBe("true");
+    expect(coverOf(dialog).textContent).toContain(de["writing.shelf.dialog.coverUntitled"]);
+    expect(coverOf(dialog).getAttribute("style")).toContain("224px");
+
+    fireEvent.change(titleField(dialog), { target: { value: "Die Winterchronik" } });
+    expect(coverOf(dialog).textContent).toContain("Die Winterchronik");
+    expect(within(dialog).queryByText(de["writing.shelf.dialog.titleError"])).toBeNull();
+    expect(createButton(dialog).hasAttribute("disabled")).toBe(false);
+
+    // Whitespace is no title — the draft's trim discipline, both faces back.
+    fireEvent.change(titleField(dialog), { target: { value: "   " } });
+    expect(createButton(dialog).hasAttribute("disabled")).toBe(true);
+    expect(within(dialog).getByText(de["writing.shelf.dialog.titleError"])).toBeTruthy();
+    expect(coverOf(dialog).textContent).toContain(de["writing.shelf.dialog.coverUntitled"]);
+  });
+
+  it("the genre pills multi-select under the 80-char cap and tint the cover", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openNewBook();
+    const pill = (key: keyof typeof de) => within(dialog).getByRole("button", { name: de[key] });
+    const scifi = pill("writing.shelf.dialog.genre.scifi");
+    const mystery = pill("writing.shelf.dialog.genre.mystery");
+    const historical = pill("writing.shelf.dialog.genre.historical");
+    const literary = pill("writing.shelf.dialog.genre.literary");
+
+    expect(scifi.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(scifi);
+    expect(scifi.getAttribute("aria-pressed")).toBe("true");
+    expect(coverOf(dialog).getAttribute("data-channel")).toBe("scifi");
+    fireEvent.click(mystery);
+    fireEvent.click(historical);
+    // 65 chars stand; the fourth and fifth would overflow — disabled, noted.
+    expect(literary.hasAttribute("disabled")).toBe(true);
+    expect(pill("writing.shelf.dialog.genre.lowfantasy").hasAttribute("disabled")).toBe(true);
+    expect(within(dialog).getByText(t("writing.shelf.dialog.genreCapNote", { cap: 80 }))).toBeTruthy();
+    // Removing a selection frees the cap again — never a dropped choice.
+    fireEvent.click(historical);
+    expect(literary.hasAttribute("disabled")).toBe(false);
+    expect(within(dialog).queryByText(t("writing.shelf.dialog.genreCapNote", { cap: 80 }))).toBeNull();
+    // The cover follows the first selected pill; none left, the neutral linen.
+    fireEvent.click(scifi);
+    fireEvent.click(mystery);
+    expect(coverOf(dialog).getAttribute("data-channel")).toBe("fallback");
+  });
+
+  it("the word target defaults to 65.000 with its format category and Normseiten", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openNewBook();
+    const slider = within(dialog).getByRole("slider") as HTMLInputElement;
+    expect(slider.value).toBe("65000");
+    expect(within(dialog).getByText("65.000")).toBeTruthy();
+    expect(within(dialog).getByText(de["writing.shelf.dialog.band.novel"])).toBeTruthy();
+    expect(within(dialog).getByText(`(${de["writing.shelf.dialog.range.novel"]})`)).toBeTruthy();
+    expect(within(dialog).getByText(t("writing.shelf.dialog.normseiten", { count: 240 }))).toBeTruthy();
+
+    fireEvent.change(slider, { target: { value: "30000" } });
+    expect(within(dialog).getByText("30.000")).toBeTruthy();
+    expect(within(dialog).getByText(de["writing.shelf.dialog.band.novella"])).toBeTruthy();
+    expect(within(dialog).getByText(t("writing.shelf.dialog.normseiten", { count: 111 }))).toBeTruthy();
+    // The scale mark of the active band wears the primary ink.
+    expect(within(dialog).getByText(de["writing.shelf.dialog.scale.novella"]).className).toContain("text-primary");
+  });
+});
+
+describe("the shelf — the dialog creates for real and closes honestly", () => {
+  it("Anlegen posts exactly the three answers; the refetch grows the shelf", async () => {
+    scriptCreate();
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openNewBook();
+    fireEvent.change(titleField(dialog), { target: { value: "  Die Winterchronik von Station Sieben  " } });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.dialog.genre.scifi"] }));
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.dialog.genre.mystery"] }));
+    fireEvent.change(within(dialog).getByRole("slider"), { target: { value: "80000" } });
+    fireEvent.click(createButton(dialog));
+
+    await waitFor(() => expect(api.POST).toHaveBeenCalledWith("/api/writing/novels", {
+      body: {
+        title: "Die Winterchronik von Station Sieben",
+        genre: "Science Fiction & Speculative, Mystery & Noir",
+        target_words: 80000,
+      },
+    }));
+    // The dialog's answers never write wizard settings — three keys, no more.
+    const body = (api.POST.mock.calls as unknown as [string, { body: Record<string, unknown> }][])
+      .find(([path]) => path === "/api/writing/novels")?.[1].body;
+    expect(Object.keys(body ?? {}).sort()).toEqual(["genre", "target_words", "title"]);
+
+    // The dialog closes; the shelf's own refetch carries the new book — the
+    // newest updated_at leads as the hero, the honest outcome of the column.
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(await screen.findByRole("heading", { level: 2, name: CREATED.title })).toBeTruthy();
+    expect(screen.getByText(t("writing.shelf.metrics.books", { count: 5 }))).toBeTruthy();
+    expect(screen.getAllByRole("article")).toHaveLength(4);
+  });
+
+  it("the CTA names its busy state and holds the dialog while the ask runs", async () => {
+    let resolveCreate!: (answer: { data: unknown; response: Response }) => void;
+    createAnswer = () =>
+      new Promise<{ data: unknown; response: Response }>((resolve) => {
+        resolveCreate = resolve;
+      });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openNewBook();
+    fireEvent.change(titleField(dialog), { target: { value: "Die Winterchronik" } });
+    fireEvent.click(createButton(dialog));
+    const busy = await within(dialog).findByRole("button", { name: de["writing.shelf.dialog.busy"] });
+    expect(busy.hasAttribute("disabled")).toBe(true);
+    expect(within(dialog).getByRole("button", { name: de["writing.shelf.dialog.cancel"] }).hasAttribute("disabled")).toBe(true);
+
+    // Nothing closes mid-flight: Escape, the scrim and Abbrechen all wait.
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(dialog.parentElement as HTMLElement);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+
+    resolveCreate({ data: CREATED, response: new Response(null, { status: 201 }) });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("a refusal keeps every answer and offers the family's retry", async () => {
+    let attempts = 0;
+    createAnswer = async (body) => {
+      attempts += 1;
+      if (attempts === 1) return { data: undefined, response: new Response(null, { status: 503 }) };
+      novelsAnswer = async () => ({ data: [CREATED, ...SHELF_ROWS], response: ok() });
+      return { data: { ...CREATED, title: body.title ?? CREATED.title }, response: new Response(null, { status: 201 }) };
+    };
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openNewBook();
+    fireEvent.change(titleField(dialog), { target: { value: "Die Winterchronik" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.dialog.genre.mystery"] }));
+    fireEvent.click(createButton(dialog));
+
+    const alert = await within(dialog).findByRole("alert");
+    expect(alert.textContent).toContain(de["writing.shelf.dialog.error"]);
+    // The real refusal rides the line — never an invented gateway story.
+    expect(alert.textContent).toContain("503");
+    // State preserved: the answers stand exactly as typed.
+    expect((titleField(dialog) as HTMLInputElement).value).toBe("Die Winterchronik");
+    expect(
+      within(dialog).getByRole("button", { name: de["writing.shelf.dialog.genre.mystery"] }).getAttribute("aria-pressed"),
+    ).toBe("true");
+
+    fireEvent.click(within(alert).getByRole("button", { name: de["writing.shelf.error.retry"] }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(attempts).toBe(2);
+    expect(await screen.findByRole("heading", { level: 2, name: CREATED.title })).toBeTruthy();
+  });
+
+  it("Escape, the scrim, Abbrechen and the cross close — focus returns to the opener", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    const opener = topNewBook();
+
+    // Opening lands focus on the title field, the wizard's own first move.
+    let dialog = openNewBook(opener);
+    expect(document.activeElement).toBe(titleField(dialog));
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
+
+    dialog = openNewBook(opener);
+    fireEvent.click(dialog.parentElement as HTMLElement);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
+
+    dialog = openNewBook(opener);
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.dialog.cancel"] }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
+
+    dialog = openNewBook(opener);
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.dialog.close"] }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
+    // A click inside the panel is no scrim press — the dialog stands.
+    dialog = openNewBook(opener);
+    fireEvent.click(dialog);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("focus stays inside the dialog — Tab wraps at both ends", async () => {
+    const user = userEvent.setup();
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openNewBook();
+    fireEvent.change(titleField(dialog), { target: { value: "Die Winterchronik" } });
+    const close = within(dialog).getByRole("button", { name: de["writing.shelf.dialog.close"] });
+    const cta = createButton(dialog);
+
+    // From the last live control, Tab wraps to the first; Shift+Tab back.
+    cta.focus();
+    await user.tab();
+    expect(document.activeElement).toBe(close);
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(cta);
+    // A whole round never leaves the panel.
+    for (let at = 0; at < 12; at += 1) {
+      await user.tab();
+      expect(dialog.contains(document.activeElement)).toBe(true);
+    }
+  });
+
+  it("the dialog's state is transient — a reopen starts from the draft's defaults", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    let dialog = openNewBook();
+    fireEvent.change(titleField(dialog), { target: { value: "Verworfen" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.dialog.genre.scifi"] }));
+    fireEvent.change(within(dialog).getByRole("slider"), { target: { value: "120000" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.dialog.cancel"] }));
+
+    dialog = openNewBook();
+    expect((titleField(dialog) as HTMLInputElement).value).toBe("");
+    expect(
+      within(dialog).getByRole("button", { name: de["writing.shelf.dialog.genre.scifi"] }).getAttribute("aria-pressed"),
+    ).toBe("false");
+    expect((within(dialog).getByRole("slider") as HTMLInputElement).value).toBe("65000");
+  });
+
+  it("creating from the empty shelf lands focus on the stable top-bar door", async () => {
+    novelsAnswer = async () => ({ data: [], response: ok() });
+    scriptCreate();
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dein erstes Buch wartet." });
+
+    // The empty panel's own door opens the dialog; after the create the
+    // panel is gone, so focus lands on the door that survives the refetch.
+    const doors = screen.getAllByRole("button", { name: de["writing.shelf.newBook"] });
+    const dialog = openNewBook(doors[1]);
+    fireEvent.change(titleField(dialog), { target: { value: CREATED.title } });
+    fireEvent.click(createButton(dialog));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(await screen.findByRole("heading", { level: 2, name: CREATED.title })).toBeTruthy();
+    expect(screen.queryByText("Dein erstes Buch wartet.")).toBeNull();
+    expect(document.activeElement).toBe(topNewBook());
   });
 });

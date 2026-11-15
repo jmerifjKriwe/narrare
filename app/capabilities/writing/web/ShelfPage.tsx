@@ -1,4 +1,4 @@
-import { Fragment, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useCallback, useId, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 
 import { client, type Novel } from "@shell/lib/api/client";
 import { catalogs } from "@shell/lib/generated/catalogs";
@@ -11,6 +11,7 @@ import { Icon, type IconName } from "@shell/ui/icons";
 
 import { pickHero, shelfGrid } from "./shelf";
 import { filterGrid, genreFacets, hasActiveFilters, statusFacets } from "./shelfFilter";
+import { NewBookDialog } from "./NewBookDialog";
 import { ShelfBanner } from "./ShelfBanner";
 import { BookCard } from "./ShelfBookCard";
 import { ShelfEmpty } from "./ShelfEmpty";
@@ -38,9 +39,11 @@ import { ShelfError, ShelfLoading } from "./ShelfStates";
  * ever reached once the row exists.
  *
  * Doors the further build-out has not reached stay honestly disabled with
- * the drafted note, each comment naming its owning task: the new-book
- * dialog (Task 9), the activity banner and the streak chip (Task 10),
- * import (the import wave). The search and filter chrome is real (Task 7):
+ * the drafted note, each comment naming its owning task: the activity
+ * banner and the streak chip (Task 10), import (the import wave). The
+ * new-book door is real (Task 9): both copies open the drafted modal over
+ * the scrimmed shelf, three fields and a live cover, one POST and the
+ * shelf's own refetch. The search and filter chrome is real (Task 7):
  * client-side over the loaded list, the archive toggle a real refetch; the
  * per-book quick menu is real (Task 8): duplicate, export and archive with
  * the draft's confirm, busy and error states; the empty shelf's archive
@@ -118,6 +121,25 @@ export function ShelfPage() {
   const emptyNoteId = useId();
   const radioRefs = useRef<Partial<Record<Locale, HTMLButtonElement | null>>>({});
   usePageTitle(t("writing.shelf.title"));
+
+  // The new-book dialog (Task 9): transient page state — the dialog holds
+  // its own answers and forgets them on unmount. The opener is remembered
+  // so closing hands focus back to the very door that opened it; a create
+  // from the empty panel retires that door with the panel, so the success
+  // path lands on the top-bar door that survives the refetch instead.
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const openerRef = useRef<HTMLButtonElement | null>(null);
+  const topNewBookRef = useRef<HTMLButtonElement | null>(null);
+  function openDialog(event: MouseEvent<HTMLButtonElement>) {
+    openerRef.current = event.currentTarget;
+    setDialogOpen(true);
+  }
+  const closeDialog = useCallback((created: boolean) => {
+    setDialogOpen(false);
+    const opener = openerRef.current;
+    if (!created && opener !== null && opener.isConnected) opener.focus();
+    else topNewBookRef.current?.focus();
+  }, []);
 
   /** Apply a locale and write the row — the post-setup contract. The row
    *  exists once setup has run: a success invalidates the cached row so the
@@ -316,9 +338,9 @@ export function ShelfPage() {
               value="—"
               label={t("writing.shelf.metrics.streakLabel")}
             />
-            {/* The primary actions — Task 9 wires the new-book dialog; the
-                import wave opens the import door. Both honest until then,
-                the drafted note standing right under them. */}
+            {/* The primary actions — the new-book door opens Task 9's
+                dialog; the import wave opens the import door, honestly
+                disabled with the drafted note until then. */}
             <div className="flex flex-col items-start gap-1 pl-2">
               <div className="flex items-center gap-2">
                 <button
@@ -332,9 +354,9 @@ export function ShelfPage() {
                 </button>
                 <button
                   type="button"
-                  disabled
-                  aria-describedby={doorsNoteId}
-                  className="flex h-9 cursor-not-allowed items-center gap-1.5 rounded-lg bg-primary px-3.5 text-label font-semibold text-primary-foreground opacity-50 shadow-sm"
+                  ref={topNewBookRef}
+                  onClick={openDialog}
+                  className={`flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-label font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-95 ${FOCUS}`}
                 >
                   <Icon name="plus" size={17} />
                   <span>{t("writing.shelf.newBook")}</span>
@@ -363,6 +385,7 @@ export function ShelfPage() {
             noteId={emptyNoteId}
             archiveIncluded={includeArchived}
             onBrowseArchive={() => setIncludeArchived(true)}
+            onNewBook={openDialog}
           />
         ) : (
           <>
@@ -398,6 +421,10 @@ export function ShelfPage() {
         {/* The activity banner — Task 10's surface, neutral until then. */}
         <ShelfBanner noteId={bannerNoteId} />
       </div>
+
+      {/* The new-book dialog — mounted only while open, so its answers are
+          transient by construction; the scrim covers the shelf above. */}
+      {dialogOpen && <NewBookDialog onClose={closeDialog} />}
     </div>
   );
 }

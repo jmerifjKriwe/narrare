@@ -1,8 +1,8 @@
 /**
  * The unpopulated shelf — the `shelf-empty` draft's panel: the blank book
  * object under two soft glows, the du-tone invitation, and the two doors
- * (new book → Task 9's dialog, import → the import wave), both honestly
- * disabled with the drafted note. The metrics strip above answers zero.
+ * (new book → Task 9's dialog, real; import → the import wave, honestly
+ * disabled with the drafted note). The metrics strip above answers zero.
  *
  * The blank book is the draft's own object for the *absence* of a book —
  * ported as a static decoration (aria-hidden), not a BookCover: the cover
@@ -22,6 +22,7 @@
 
 import { useTranslation } from "@shell/lib/i18n";
 import { Icon } from "@shell/ui/icons";
+import type { MouseEvent } from "react";
 
 /** The shell's focus ring on the one live control the empty shelf offers. */
 const FOCUS =
@@ -71,10 +72,12 @@ export function ShelfEmpty({
   noteId,
   archiveIncluded,
   onBrowseArchive,
+  onNewBook,
 }: {
   noteId: string;
   archiveIncluded: boolean;
   onBrowseArchive: () => void;
+  onNewBook: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
   const t = useTranslation();
   return (
@@ -98,12 +101,12 @@ export function ShelfEmpty({
         </p>
       </div>
       <div className="relative z-10 flex flex-wrap items-center justify-center gap-3 pt-4">
-        {/* Task 9 wires the new-book dialog here. */}
+        {/* Task 9's dialog: the empty shelf's own door into the same modal
+            the top bar opens — the page remembers it as the focus return. */}
         <button
           type="button"
-          disabled
-          aria-describedby={noteId}
-          className="inline-flex h-10 cursor-not-allowed items-center gap-2 rounded-lg bg-primary px-5 text-label font-semibold text-primary-foreground opacity-50 shadow-sm"
+          onClick={onNewBook}
+          className={`inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-label font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-95 ${FOCUS}`}
         >
           <Icon name="plus" size={18} />
           <span>{t("writing.shelf.newBook")}</span>
