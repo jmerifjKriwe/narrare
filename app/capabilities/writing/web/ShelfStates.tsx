@@ -29,12 +29,9 @@ export function ShelfLoading() {
   const t = useTranslation();
   return (
     <div role="status" className="space-y-8">
-      {/* The metrics strip, values still outstanding. */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Bone className="h-14 w-44 rounded-xl" />
-        <Bone className="h-14 w-44 rounded-xl" />
-        <Bone className="h-14 w-44 rounded-xl" />
-      </div>
+      {/* No metrics strip here: the title bar's chips are always rendered and
+          placeholder their own values while the ask is outstanding — a second
+          strip of slabs would stack two placeholders on every cold load. */}
       {/* The hero skeleton — the cover's own footprint, no layout shift. */}
       <div className="rounded-xl border border-border bg-surface-container-low p-6 lg:p-8">
         <div className="flex flex-col items-center gap-8 md:flex-row">

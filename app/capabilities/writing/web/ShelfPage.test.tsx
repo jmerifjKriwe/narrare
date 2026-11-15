@@ -467,6 +467,24 @@ describe("the shelf — loading, error and empty answer per the drafts", () => {
     expect(screen.queryByRole("heading", { level: 2, name: "Dead Signal" })).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
 
+    // ONE metrics strip: the title bar's real chips, their values the pending
+    // placeholders — the skeleton never draws a second strip of chip slabs
+    // (the review's doubled-placeholder defect: a cold load stacked both).
+    for (const label of [
+      de["writing.shelf.metrics.booksLabel"],
+      de["writing.shelf.metrics.wordsLabel"],
+      de["writing.shelf.metrics.streakLabel"],
+    ]) {
+      expect(screen.getAllByText(label)).toHaveLength(1);
+    }
+    const strip = screen
+      .getByText(de["writing.shelf.metrics.booksLabel"])
+      .closest(".flex-wrap") as HTMLElement;
+    // Books and words wait as placeholders; the streak stands neutral already.
+    expect(strip.querySelectorAll(".animate-pulse")).toHaveLength(2);
+    // No chip-height slab anywhere in the skeleton — the strip above is the only one.
+    expect(status.querySelectorAll(".h-14")).toHaveLength(0);
+
     resolveNovels({ data: SHELF_ROWS, response: ok() });
     expect(await screen.findByRole("heading", { level: 2, name: "Dead Signal" })).toBeTruthy();
     expect(screen.queryByRole("status")).toBeNull();
@@ -559,5 +577,30 @@ describe("the shelf — loading, error and empty answer per the drafts", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Winterhaus" })).toBeTruthy();
     expect(screen.queryByRole("heading", { level: 2, name: "Dead Signal" })).toBeNull();
     expect(screen.queryAllByRole("article")).toHaveLength(0);
+  });
+
+  it("a list of only archived books composes the empty state with zeroed metrics", async () => {
+    // The composed answer at the page level: no hero, no grid, the honest
+    // empty panel — and the metrics count what is on the shelf, which is
+    // nothing, never the archived rows' own figures.
+    novelsAnswer = async () => ({
+      data: [
+        { ...HERO, archived_at: "2026-11-15T08:00:00Z" },
+        { ...SECOND, archived_at: "2026-11-14T08:00:00Z" },
+      ],
+      response: ok(),
+    });
+    renderShelf();
+
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Dein erstes Buch wartet." }),
+    ).toBeTruthy();
+    expect(screen.getByText(t("writing.shelf.metrics.books", { count: 0 }))).toBeTruthy();
+    expect(screen.getByText("0")).toBeTruthy();
+    expect(screen.queryAllByRole("article")).toHaveLength(0);
+    expect(screen.queryByRole("heading", { level: 2, name: "Dead Signal" })).toBeNull();
+    // The empty panel's doors stay honest, the banner neutral beside them.
+    expect(screen.getAllByRole("button", { name: de["writing.shelf.newBook"] }).length).toBe(2);
+    expect(screen.getByText(de["writing.shelf.banner.title"])).toBeTruthy();
   });
 });
