@@ -39,11 +39,14 @@ import { ShelfError, ShelfLoading } from "./ShelfStates";
  *
  * Doors the further build-out has not reached stay honestly disabled with
  * the drafted note, each comment naming its owning task: the new-book
- * dialog (Task 9), the per-book quick menu (Task 8), the activity banner
- * and the streak chip (Task 10), import (the import wave). The search and
- * filter chrome is real (Task 7): client-side over the loaded list, the
- * archive toggle a real refetch; the view toggle stays inert — no task
- * owns the list view yet. Loading, error and empty answer per `shelf-states`
+ * dialog (Task 9), the activity banner and the streak chip (Task 10),
+ * import (the import wave). The search and filter chrome is real (Task 7):
+ * client-side over the loaded list, the archive toggle a real refetch; the
+ * per-book quick menu is real (Task 8): duplicate, export and archive with
+ * the draft's confirm, busy and error states; the empty shelf's archive
+ * door opens the archive-included list (Task 7's carried gap). The view
+ * toggle stays inert — no task owns the list view yet. Loading, error and
+ * empty answer per `shelf-states`
  * and `shelf-empty`; dark rides the tokens' light-dark pairs (`shelf-dark`
  * is the reference, not a second palette).
  *
@@ -111,7 +114,6 @@ export function ShelfPage() {
   const novels = useNovelsQuery(includeArchived);
   const heroNoteId = useId();
   const doorsNoteId = useId();
-  const menuNoteId = useId();
   const bannerNoteId = useId();
   const emptyNoteId = useId();
   const radioRefs = useRef<Partial<Record<Locale, HTMLButtonElement | null>>>({});
@@ -357,7 +359,11 @@ export function ShelfPage() {
         ) : showError ? (
           <ShelfError message={lastError.current} retrying={retrying} onRetry={retry} />
         ) : hero === null && gridAll.length === 0 ? (
-          <ShelfEmpty noteId={emptyNoteId} />
+          <ShelfEmpty
+            noteId={emptyNoteId}
+            archiveIncluded={includeArchived}
+            onBrowseArchive={() => setIncludeArchived(true)}
+          />
         ) : (
           <>
             {hero !== null && <ShelfHero novel={hero} noteId={heroNoteId} />}
@@ -381,14 +387,10 @@ export function ShelfPage() {
               ) : (
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
                   {grid.map((novel) => (
-                    <BookCard key={novel.id} novel={novel} menuNoteId={menuNoteId} />
+                    <BookCard key={novel.id} novel={novel} />
                   ))}
                 </div>
               )}
-              {/* The quick menus' shared note — Task 8's door, once per card. */}
-              <p id={menuNoteId} className="text-meta text-muted">
-                {t("writing.shelf.comingSoon")}
-              </p>
             </div>
           </>
         )}

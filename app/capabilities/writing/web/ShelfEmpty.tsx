@@ -11,10 +11,21 @@
  * workroom precedent); its white rim is the cover system's dark-half rim,
  * transparent in light. The draft's „0 / 750" banner numbers are mock —
  * the shared banner placeholder stands neutral instead.
+ *
+ * The archive door (Task 8) is real — the `shelf-quick-menu` draft's
+ * empty-shelf entry, a ghost text link that opens the list with
+ * `include_archived` on, closing Task 7's carried gap (the archive was
+ * unreachable from an empty active shelf). Once the archive has been asked
+ * and holds nothing, the draft's own honest line answers („Keine ruhenden
+ * Entwürfe") — never a dead door, never an invented count.
  */
 
 import { useTranslation } from "@shell/lib/i18n";
 import { Icon } from "@shell/ui/icons";
+
+/** The shell's focus ring on the one live control the empty shelf offers. */
+const FOCUS =
+  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
 const SERIF = "[font-family:var(--font-serif)]";
@@ -56,7 +67,15 @@ function BlankBook() {
   );
 }
 
-export function ShelfEmpty({ noteId }: { noteId: string }) {
+export function ShelfEmpty({
+  noteId,
+  archiveIncluded,
+  onBrowseArchive,
+}: {
+  noteId: string;
+  archiveIncluded: boolean;
+  onBrowseArchive: () => void;
+}) {
   const t = useTranslation();
   return (
     <section className="relative flex flex-col items-center justify-center overflow-hidden rounded-xl border border-rule bg-surface-container-low p-6 text-center shadow-sm lg:p-8">
@@ -110,6 +129,26 @@ export function ShelfEmpty({ noteId }: { noteId: string }) {
         <p id={noteId} className="mt-2 text-meta text-muted">
           {t("writing.shelf.comingSoon")}
         </p>
+      </div>
+      {/* The archive door — real, the draft's ghost link. With the archive
+          already asked and empty, the draft's own honest line stands. */}
+      <div className="relative z-10 pt-4">
+        {archiveIncluded ? (
+          <p className="flex items-center justify-center gap-1.5 text-meta text-muted">
+            <Icon name="archive" size={15} />
+            <span>{t("writing.shelf.empty.archiveEmpty")}</span>
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={onBrowseArchive}
+            className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-label font-medium text-primary transition-colors hover:text-foreground hover:underline ${FOCUS}`}
+          >
+            <Icon name="archive" size={16} />
+            <span>{t("writing.shelf.empty.archiveDoor")}</span>
+            <Icon name="arrowRight" size={14} />
+          </button>
+        )}
       </div>
     </section>
   );

@@ -10,8 +10,9 @@
  * The cover's own three-line clamp is the cover system's contract.
  *
  * A book without a target keeps the honest neutral: the count alone, a —
- * where the percentage would stand, and an empty track. The quick menu is
- * Task 8's door — rendered disabled with the shared note until then.
+ * where the percentage would stand, and an empty track. The quick menu
+ * (Task 8) is real: its 28px trigger sits at the card's top-right and its
+ * popover docks within the card, so the card is the positioning context.
  */
 
 import type { Novel } from "@shell/lib/api/client";
@@ -21,6 +22,7 @@ import { formatRelative } from "@shell/lib/time";
 import { Icon } from "@shell/ui/icons";
 
 import { progress } from "./shelf";
+import { ShelfQuickMenu } from "./ShelfQuickMenu";
 
 /** The status vocabulary's pill faces — the server validates the values;
  *  an unknown one renders nothing rather than guessing a label. Draft wears
@@ -78,26 +80,16 @@ export function ProgressTrack({
   );
 }
 
-export function BookCard({ novel, menuNoteId }: { novel: Novel; menuNoteId: string }) {
+export function BookCard({ novel }: { novel: Novel }) {
   const t = useTranslation();
   const result = progress(novel.word_count, novel.target_words);
   return (
-    <article className="group flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-surface shadow-sm transition-all duration-200 hover:shadow-md">
+    <article className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-surface shadow-sm transition-all duration-200 hover:shadow-md">
       {/* The cover pedestal — the book object at shelf size. */}
       <div className="relative flex items-center justify-center overflow-hidden border-b border-rule bg-surface-container-low p-4">
         <div className="transition-transform duration-200 group-hover:-translate-y-1">
           <BookCover title={novel.title} genre={novel.genre} author={novel.author} size="shelf" />
         </div>
-        {/* Task 8 wires the quick menu (duplicate / export / archive) here. */}
-        <button
-          type="button"
-          disabled
-          aria-label={t("writing.shelf.card.options")}
-          aria-describedby={menuNoteId}
-          className="absolute right-2 top-2 cursor-not-allowed rounded-md p-1 text-muted opacity-50"
-        >
-          <Icon name="moreHoriz" size={18} />
-        </button>
       </div>
       {/* The card body — the row's own facts. */}
       <div className="flex flex-1 flex-col justify-between space-y-3 p-4">
@@ -158,6 +150,9 @@ export function BookCard({ novel, menuNoteId }: { novel: Novel; menuNoteId: stri
           </div>
         </div>
       </div>
+      {/* The quick menu — its trigger at the card's top-right, its popover
+          docked within the card (Task 8). */}
+      <ShelfQuickMenu novel={novel} />
     </article>
   );
 }

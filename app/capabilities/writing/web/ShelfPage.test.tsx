@@ -33,6 +33,7 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Novel } from "@shell/lib/api/client";
+import { formatDate } from "@shell/lib/format";
 import { catalogs } from "@shell/lib/generated/catalogs";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
@@ -149,6 +150,23 @@ let archivedAnswer: () => Promise<{ data?: unknown; response: Response }> = asyn
   data: [...SHELF_ROWS, ARCHIVED],
   response: ok(),
 });
+/** The quick menu's three writes (Task 8), each scriptable per test. The
+ *  defaults refuse loudly so an unscripted write is a test defect, not a
+ *  silent pass; a test that exercises an action scripts its answer. */
+let duplicateAnswer: (novelId: string) => Promise<{ data?: unknown; response: Response }> =
+  async () => {
+    throw new Error("duplicate not scripted");
+  };
+let exportAnswer: (novelId: string) => Promise<{ data?: unknown; response: Response }> =
+  async () => {
+    throw new Error("export not scripted");
+  };
+let archiveAnswer: (
+  novelId: string,
+  body: { archived_at?: string | null },
+) => Promise<{ data?: unknown; response: Response }> = async () => {
+  throw new Error("archive not scripted");
+};
 
 function scriptApi() {
   api.GET.mockImplementation(async (path: string, init?: { params?: { query?: { include_archived?: boolean } } }) => {
@@ -160,10 +178,21 @@ function scriptApi() {
     }
     throw new Error(`unexpected request: ${path}`);
   });
-  api.PATCH.mockImplementation(async (path: string, init?: { body?: { locale?: string } }) => {
-    if (path !== "/api/settings") throw new Error(`unexpected request: ${path}`);
-    rowLocale = init?.body?.locale ?? null;
-    return { data: { locale: rowLocale, theme: null }, response: ok() };
+  api.POST.mockImplementation(async (path: string, init?: { params?: { path?: { novel_id?: string } } }) => {
+    const novelId = init?.params?.path?.novel_id ?? "";
+    if (path === "/api/writing/novels/{novel_id}/duplicate") return duplicateAnswer(novelId);
+    if (path === "/api/writing/novels/{novel_id}/export") return exportAnswer(novelId);
+    throw new Error(`unexpected request: ${path}`);
+  });
+  api.PATCH.mockImplementation(async (path: string, init?: { params?: { path?: { novel_id?: string } }; body?: { locale?: string; archived_at?: string | null } }) => {
+    if (path === "/api/settings") {
+      rowLocale = init?.body?.locale ?? null;
+      return { data: { locale: rowLocale, theme: null }, response: ok() };
+    }
+    if (path === "/api/writing/novels/{novel_id}") {
+      return archiveAnswer(init?.params?.path?.novel_id ?? "", init?.body ?? {});
+    }
+    throw new Error(`unexpected request: ${path}`);
   });
 }
 
@@ -191,8 +220,23 @@ beforeEach(() => {
   rowLocale = "de";
   novelsAnswer = async () => ({ data: SHELF_ROWS, response: ok() });
   archivedAnswer = async () => ({ data: [...SHELF_ROWS, ARCHIVED], response: ok() });
+  duplicateAnswer = async () => {
+    throw new Error("duplicate not scripted");
+  };
+  exportAnswer = async () => {
+    throw new Error("export not scripted");
+  };
+  archiveAnswer = async () => {
+    throw new Error("archive not scripted");
+  };
   // de-DE formatting: the word pair groups the way the reader's region does.
   vi.stubGlobal("navigator", { language: "de-DE", languages: ["de-DE"] });
+  // The export's download seam: jsdom has no object URLs and a real anchor
+  // click would navigate — both stand mocked so the artifact's hand-off is
+  // observable (the blob, the proposed name, the one click).
+  URL.createObjectURL = vi.fn(() => "blob:mock-url");
+  URL.revokeObjectURL = vi.fn();
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
   scriptApi();
   localStorage.clear();
 });
@@ -201,6 +245,7 @@ afterEach(() => {
   cleanup();
   queryClient.clear();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   applyLocale(null);
   localStorage.clear();
@@ -404,23 +449,22 @@ describe("the shelf — every door honest about what is not built yet", () => {
     }
   });
 
-  it("the view and menu chrome stands inert — their tasks own it", async () => {
+  it("the view chrome stands inert — the quick menu is live", async () => {
     renderShelf();
     await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
 
-    // Task 7 made search and filter real; the view toggle and the quick
-    // menu stay honestly disabled until their own work lands.
+    // Task 7 made search and filter real; Task 8 made the quick menu real;
+    // the view toggle stays honestly disabled until its own work lands.
     expect(screen.getByPlaceholderText(de["writing.shelf.search.placeholder"]).hasAttribute("disabled")).toBe(false);
     expect(screen.getByRole("button", { name: de["writing.shelf.search.filter"] }).hasAttribute("disabled")).toBe(false);
     expect(screen.getByRole("button", { name: de["writing.shelf.search.viewGrid"] }).hasAttribute("disabled")).toBe(true);
     expect(screen.getByRole("button", { name: de["writing.shelf.search.viewList"] }).hasAttribute("disabled")).toBe(true);
-    // Task 8's quick menu: one per grid card, disabled with the shared note.
+    // Task 8's quick menu: one live trigger per grid card, no coming-soon note.
     const menus = screen.getAllByRole("button", { name: de["writing.shelf.card.options"] });
     expect(menus).toHaveLength(3);
     for (const menu of menus) {
-      expect(menu.hasAttribute("disabled")).toBe(true);
-      const noteId = menu.getAttribute("aria-describedby");
-      expect(document.getElementById(noteId as string)?.textContent).toBe(de["writing.shelf.comingSoon"]);
+      expect(menu.hasAttribute("disabled")).toBe(false);
+      expect(menu.getAttribute("aria-haspopup")).toBe("dialog");
     }
     // Task 10's banner: neutral values, the statistics door disabled.
     expect(screen.getByText(de["writing.shelf.banner.title"])).toBeTruthy();
@@ -1080,5 +1124,408 @@ describe("the shelf — the filter state is transient and speaks du-tone", () =>
     expect(within(dialog).getByText("Status")).toBeTruthy();
     expect(within(dialog).getByText("Archiv einbeziehen")).toBeTruthy();
     expect(within(dialog).getByRole("button", { name: "Zurücksetzen" })).toBeTruthy();
+  });
+});
+
+/** The quick menu (Task 8) — the per-card Schnellauswahl, real. The trigger
+ *  lives in the card's top-right; the menu and its confirm are non-modal
+ *  dialogs on the filter popover's discipline. The grid cards are articles
+ *  with h3s, so a card's own trigger and notices read through `within`. */
+const menuTriggerOf = (title: string) =>
+  within(cardOf(title)).getByRole("button", { name: de["writing.shelf.card.options"] });
+function openMenu(title: string): HTMLElement {
+  fireEvent.click(menuTriggerOf(title));
+  return screen.getByRole("dialog");
+}
+/** The meta line's date face — the draft's „14. Feb. 2026" grammar. */
+const DATE_OPTS = { day: "numeric", month: "short", year: "numeric" } as const;
+const COPY = novelRow({
+  id: "99999999-9999-9999-9999-999999999999",
+  title: "Winterhaus (Kopie)",
+  genre: "Mystery",
+  // Older than the hero so the copy joins the grid (a fresh server copy
+  // would lead as hero — the live look shows that; here the grid refetch
+  // is the pin).
+  updated_at: "2026-11-13T12:00:00Z",
+});
+
+describe("the shelf — the quick menu opens with the draft's dialog discipline", () => {
+  it("the trigger opens a labelled menu and focuses its first action", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const trigger = menuTriggerOf("Winterhaus");
+    expect(trigger.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    const dialog = openMenu("Winterhaus");
+    expect(dialog.getAttribute("aria-label")).toBe(de["writing.shelf.menu.title"]);
+    expect(trigger.getAttribute("aria-controls")).toBe(dialog.id);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    // The draft's three actions, in order, and the honest export meta.
+    for (const name of [
+      de["writing.shelf.menu.duplicate"],
+      de["writing.shelf.menu.export"],
+      de["writing.shelf.menu.archive"],
+    ]) {
+      expect(within(dialog).getByRole("button", { name })).toBeTruthy();
+    }
+    expect(within(dialog).getByText(de["writing.shelf.menu.lastExport"])).toBeTruthy();
+    // Opening moves focus to the first action — the popover discipline.
+    expect(document.activeElement).toBe(
+      within(dialog).getByRole("button", { name: de["writing.shelf.menu.duplicate"] }),
+    );
+  });
+
+  it("Escape closes the menu and returns focus to the trigger", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    openMenu("Winterhaus");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(menuTriggerOf("Winterhaus"));
+    expect(menuTriggerOf("Winterhaus").getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("an outside press closes without stealing focus", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    openMenu("Winterhaus");
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).not.toBe(menuTriggerOf("Winterhaus"));
+  });
+
+  it("the trigger wears the draft's open face while the menu stands", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const trigger = menuTriggerOf("Winterhaus");
+    expect(trigger.className).toContain("border-border");
+    expect(trigger.className).not.toContain("border-primary");
+    openMenu("Winterhaus");
+    expect(menuTriggerOf("Winterhaus").className).toContain("border-primary");
+  });
+});
+
+describe("the shelf — the menu's meta line answers the row's own truth", () => {
+  it("a never-exported book shows the honest dash", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openMenu("Winterhaus");
+    expect(within(dialog).getByText(de["writing.shelf.menu.lastExport"])).toBeTruthy();
+    expect(within(dialog).getByText("—")).toBeTruthy();
+  });
+
+  it("an exported book shows the localized date", async () => {
+    novelsAnswer = async () => ({
+      data: [HERO, { ...SECOND, last_exported_at: "2026-02-14T10:00:00Z" }, THIRD, FOURTH],
+      response: ok(),
+    });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openMenu("Winterhaus");
+    expect(
+      within(dialog).getByText(formatDate("2026-02-14T10:00:00Z", DATE_OPTS)),
+    ).toBeTruthy();
+  });
+
+  it("the archived menu shows the archive date in the archive's own header", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    fireEvent.click(within(openPopover()).getByRole("switch", { name: de["writing.shelf.filter.archive"] }));
+    await screen.findByRole("heading", { level: 3, name: "Das stille Archiv" });
+    fireEvent.keyDown(document, { key: "Escape" }); // close the filter popover
+
+    const dialog = openMenu("Das stille Archiv");
+    expect(dialog.getAttribute("aria-label")).toBe(de["writing.shelf.menu.titleArchived"]);
+    expect(within(dialog).getByText(de["writing.shelf.menu.archivedAt"])).toBeTruthy();
+    expect(
+      within(dialog).getByText(formatDate(ARCHIVED.archived_at as string, DATE_OPTS)),
+    ).toBeTruthy();
+  });
+});
+
+describe("the shelf — duplicate acts for real", () => {
+  it("duplicate runs busy, then the copy joins the shelf with its own figures", async () => {
+    let resolveDup!: (answer: { data: unknown; response: Response }) => void;
+    duplicateAnswer = () =>
+      new Promise<{ data: unknown; response: Response }>((resolve) => {
+        resolveDup = resolve;
+      });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    novelsAnswer = async () => ({ data: [...SHELF_ROWS, COPY], response: ok() });
+
+    const dialog = openMenu("Winterhaus");
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.duplicate"] }));
+    // Busy: the acting row spins, the menu stays open, the rest wait.
+    expect(within(dialog).getByText(de["writing.shelf.menu.wait"])).toBeTruthy();
+    expect(dialog.querySelector(".animate-spin")).not.toBeNull();
+    expect(
+      within(dialog).getByRole("button", { name: new RegExp(de["writing.shelf.menu.duplicate"]) }).hasAttribute("disabled"),
+    ).toBe(true);
+    expect(
+      within(dialog).getByRole("button", { name: de["writing.shelf.menu.export"] }).hasAttribute("disabled"),
+    ).toBe(true);
+
+    // The mutation's ask runs in a microtask — yield until it lands so the
+    // controlled promise's resolve handle is assigned.
+    await waitFor(() => expect(api.POST).toHaveBeenCalled());
+    resolveDup({ data: COPY, response: ok() });
+    expect(await screen.findByRole("heading", { level: 3, name: "Winterhaus (Kopie)" })).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(api.POST).toHaveBeenCalledWith("/api/writing/novels/{novel_id}/duplicate", {
+      params: { path: { novel_id: SECOND.id } },
+    });
+  });
+
+  it("a refused duplicate closes the menu and names the loss-free error with a working retry", async () => {
+    let attempts = 0;
+    duplicateAnswer = async () => {
+      attempts += 1;
+      if (attempts === 1) return { data: undefined, response: new Response(null, { status: 500 }) };
+      return { data: COPY, response: ok() };
+    };
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    novelsAnswer = async () => ({ data: [...SHELF_ROWS, COPY], response: ok() });
+
+    const dialog = openMenu("Winterhaus");
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.duplicate"] }));
+
+    const card = cardOf("Winterhaus");
+    const alert = await within(card).findByRole("alert");
+    expect(alert.textContent).toContain(de["writing.shelf.menu.error.duplicate"]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(within(alert).getByRole("button", { name: de["writing.shelf.error.retry"] }));
+    expect(await screen.findByRole("heading", { level: 3, name: "Winterhaus (Kopie)" })).toBeTruthy();
+    expect(within(cardOf("Winterhaus")).queryByRole("alert")).toBeNull();
+    expect(attempts).toBe(2);
+  });
+});
+
+describe("the shelf — export lands the artifact and refreshes the meta line", () => {
+  it("export downloads the ZIP the server names and keeps the menu open on the fresh date", async () => {
+    const blob = new Blob(["zip-bytes"], { type: "application/zip" });
+    exportAnswer = async () => ({
+      data: blob,
+      response: new Response(null, {
+        status: 200,
+        headers: { "Content-Disposition": 'attachment; filename="winterhaus.zip"' },
+      }),
+    });
+    let downloadedName = "";
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      downloadedName = this.download;
+    });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    novelsAnswer = async () => ({
+      data: [HERO, { ...SECOND, last_exported_at: "2026-11-15T12:00:00Z" }, THIRD, FOURTH],
+      response: ok(),
+    });
+
+    const dialog = openMenu("Winterhaus");
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.export"] }));
+    await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalledWith(blob));
+    expect(downloadedName).toBe("winterhaus.zip");
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled();
+    // The menu stays open and the meta line refetches to the new date.
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    await waitFor(() =>
+      expect(within(screen.getByRole("dialog")).getByText(formatDate("2026-11-15T12:00:00Z", DATE_OPTS))).toBeTruthy(),
+    );
+    expect(api.POST).toHaveBeenCalledWith("/api/writing/novels/{novel_id}/export", {
+      params: { path: { novel_id: SECOND.id } },
+      body: { mode: "zip" },
+      parseAs: "blob",
+    });
+  });
+
+  it("a refused export names the loss-free error with a retry", async () => {
+    exportAnswer = async () => ({ data: undefined, response: new Response(null, { status: 500 }) });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openMenu("Winterhaus");
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.export"] }));
+    const alert = await within(cardOf("Winterhaus")).findByRole("alert");
+    expect(alert.textContent).toContain(de["writing.shelf.menu.error.export"]);
+    expect(within(alert).getByRole("button", { name: de["writing.shelf.error.retry"] })).toBeTruthy();
+  });
+});
+
+describe("the shelf — archive confirms in the draft's own words, then moves the card", () => {
+  it("Archivieren opens the drafted confirm with the book's own name — no alarm red", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openMenu("Winterhaus");
+    const archiveRow = within(dialog).getByRole("button", { name: de["writing.shelf.menu.archive"] });
+    expect(archiveRow.className).not.toContain("text-danger");
+    fireEvent.click(archiveRow);
+
+    const confirm = screen.getByRole("dialog");
+    expect(within(confirm).getByText(de["writing.shelf.menu.confirm.title"])).toBeTruthy();
+    expect(
+      within(confirm).getByText(t("writing.shelf.menu.confirm.body", { title: "Winterhaus" })),
+    ).toBeTruthy();
+    expect(within(confirm).getByRole("button", { name: de["writing.shelf.menu.confirm.cancel"] })).toBeTruthy();
+    const action = within(confirm).getByRole("button", { name: de["writing.shelf.menu.archive"] });
+    expect(action.className).not.toContain("text-danger");
+    expect(document.activeElement).toBe(action);
+  });
+
+  it("Abbrechen returns to the menu without archiving", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openMenu("Winterhaus");
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.archive"] }));
+    fireEvent.click(screen.getByRole("button", { name: de["writing.shelf.menu.confirm.cancel"] }));
+    expect(screen.getByRole("dialog").getAttribute("aria-label")).toBe(de["writing.shelf.menu.title"]);
+    expect(api.PATCH).not.toHaveBeenCalledWith("/api/writing/novels/{novel_id}", expect.anything());
+  });
+
+  it("confirming archives — the PATCH carries a timestamp and the card leaves the default grid", async () => {
+    archiveAnswer = async (_id, body) => ({
+      data: { ...SECOND, archived_at: body.archived_at },
+      response: ok(),
+    });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    novelsAnswer = async () => ({ data: [HERO, THIRD, FOURTH], response: ok() });
+
+    const dialog = openMenu("Winterhaus");
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.archive"] }));
+    const confirm = screen.getByRole("dialog");
+    fireEvent.click(within(confirm).getByRole("button", { name: de["writing.shelf.menu.archive"] }));
+    // Busy on the confirm action while the ask is outstanding.
+    expect(confirm.querySelector(".animate-spin")).not.toBeNull();
+
+    await waitFor(() => expect(screen.queryByRole("heading", { level: 3, name: "Winterhaus" })).toBeNull());
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(api.PATCH).toHaveBeenCalledWith("/api/writing/novels/{novel_id}", {
+      params: { path: { novel_id: SECOND.id } },
+      body: { archived_at: expect.any(String) },
+    });
+  });
+
+  it("a refused archive names the loss-free error with a retry", async () => {
+    archiveAnswer = async () => ({ data: undefined, response: new Response(null, { status: 500 }) });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openMenu("Winterhaus");
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.archive"] }));
+    fireEvent.click(screen.getByRole("button", { name: de["writing.shelf.menu.archive"] }));
+    const alert = await within(cardOf("Winterhaus")).findByRole("alert");
+    expect(alert.textContent).toContain(de["writing.shelf.menu.error.archive"]);
+    expect(within(alert).getByRole("button", { name: de["writing.shelf.error.retry"] })).toBeTruthy();
+  });
+
+  it("Escape is staged — the confirm first, then the menu", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openMenu("Winterhaus");
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.archive"] }));
+    // First Escape: the confirm yields to the menu, focus on the archive row.
+    fireEvent.keyDown(document, { key: "Escape" });
+    const menu = screen.getByRole("dialog");
+    expect(menu.getAttribute("aria-label")).toBe(de["writing.shelf.menu.title"]);
+    expect(document.activeElement).toBe(
+      within(menu).getByRole("button", { name: de["writing.shelf.menu.archive"] }),
+    );
+    // Second Escape: the menu closes, focus back to the trigger.
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(menuTriggerOf("Winterhaus"));
+  });
+});
+
+describe("the shelf — the archived book restores without a confirm", () => {
+  it("the archived menu offers Wiederherstellen and restores on one click", async () => {
+    archiveAnswer = async (_id, body) => ({
+      data: { ...ARCHIVED, archived_at: body.archived_at },
+      response: ok(),
+    });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    fireEvent.click(within(openPopover()).getByRole("switch", { name: de["writing.shelf.filter.archive"] }));
+    await screen.findByRole("heading", { level: 3, name: "Das stille Archiv" });
+    fireEvent.keyDown(document, { key: "Escape" });
+    archivedAnswer = async () => ({
+      data: [...SHELF_ROWS, { ...ARCHIVED, archived_at: null }],
+      response: ok(),
+    });
+
+    const dialog = openMenu("Das stille Archiv");
+    expect(within(dialog).getByRole("button", { name: de["writing.shelf.menu.restore"] })).toBeTruthy();
+    expect(within(dialog).queryByRole("button", { name: de["writing.shelf.menu.archive"] })).toBeNull();
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.restore"] }));
+    // No confirm — the draft's symmetric return is immediate.
+    expect(screen.queryByText(de["writing.shelf.menu.confirm.title"])).toBeNull();
+
+    const card = cardOf("Das stille Archiv");
+    await waitFor(() => expect(within(card).queryByText(de["writing.shelf.archived"])).toBeNull());
+    expect(api.PATCH).toHaveBeenCalledWith("/api/writing/novels/{novel_id}", {
+      params: { path: { novel_id: ARCHIVED.id } },
+      body: { archived_at: null },
+    });
+    // The restored book's menu now offers the forward action again.
+    const reopened = openMenu("Das stille Archiv");
+    expect(within(reopened).getByRole("button", { name: de["writing.shelf.menu.archive"] })).toBeTruthy();
+  });
+
+  it("a refused restore names the loss-free error", async () => {
+    archiveAnswer = async () => ({ data: undefined, response: new Response(null, { status: 500 }) });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    fireEvent.click(within(openPopover()).getByRole("switch", { name: de["writing.shelf.filter.archive"] }));
+    await screen.findByRole("heading", { level: 3, name: "Das stille Archiv" });
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    const dialog = openMenu("Das stille Archiv");
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.restore"] }));
+    const alert = await within(cardOf("Das stille Archiv")).findByRole("alert");
+    expect(alert.textContent).toContain(de["writing.shelf.menu.error.restore"]);
+  });
+});
+
+describe("the shelf — the empty shelf's archive door closes Task 7's gap", () => {
+  it("the empty shelf offers a live archive door that opens the archive-included list", async () => {
+    novelsAnswer = async () => ({ data: [], response: ok() });
+    archivedAnswer = async () => ({ data: [ARCHIVED], response: ok() });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dein erstes Buch wartet." });
+
+    const door = screen.getByRole("button", { name: de["writing.shelf.empty.archiveDoor"] });
+    expect(door.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(door);
+    await waitFor(() =>
+      expect(api.GET).toHaveBeenCalledWith("/api/writing/novels", {
+        params: { query: { include_archived: true } },
+      }),
+    );
+    expect(await screen.findByRole("heading", { level: 3, name: "Das stille Archiv" })).toBeTruthy();
+  });
+
+  it("an empty archive answers the draft's honest line, not a dead door", async () => {
+    novelsAnswer = async () => ({ data: [], response: ok() });
+    archivedAnswer = async () => ({ data: [], response: ok() });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dein erstes Buch wartet." });
+
+    fireEvent.click(screen.getByRole("button", { name: de["writing.shelf.empty.archiveDoor"] }));
+    expect(await screen.findByText(de["writing.shelf.empty.archiveEmpty"])).toBeTruthy();
+    expect(screen.queryByRole("button", { name: de["writing.shelf.empty.archiveDoor"] })).toBeNull();
   });
 });

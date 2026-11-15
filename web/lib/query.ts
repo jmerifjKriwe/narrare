@@ -229,6 +229,103 @@ export function useDeleteNovel(): UseMutationResult<void, Error, string> {
 }
 
 /**
+ * Duplicating a novel (Task 3): a new book with the same metadata and a full
+ * copy of its chapters, named „<title> (Kopie)", starting on the shelf —
+ * unarchived, never exported. The 201 row comes back whole; success
+ * invalidates the `["novels"]` prefix so the copy joins the shelf's list and
+ * every figure is the server's own count, never a client guess. A refusal
+ * (404 absent, 409 setup required) throws with its status.
+ */
+export function useDuplicateNovel(): UseMutationResult<Novel, Error, string> {
+  return useMutation({
+    mutationFn: async (novelId: string) => {
+      const { data, response } = await client.POST("/api/writing/novels/{novel_id}/duplicate", {
+        params: { path: { novel_id: novelId } },
+      });
+      if (!response.ok || !data) throw new Error(`duplicate refused: ${response.status}`);
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["novels"] });
+    },
+  });
+}
+
+/** The ZIP answer: the bytes for the browser's download seam, and the name
+ *  the Content-Disposition proposed — or a neutral fallback. */
+export type ZipDownload = { blob: Blob; filename: string };
+
+/** The name inside `attachment; filename="…"`, when the header carries one. */
+function filenameFromDisposition(header: string | null): string | null {
+  if (header === null) return null;
+  return /filename="([^"]+)"/.exec(header)?.[1] ?? null;
+}
+
+/**
+ * Exporting a novel as a ZIP download (the quick menu's Exportieren). The
+ * endpoint answers two bodies under one URL — a JSON receipt for a path
+ * export, ZIP bytes for a ZIP export — so the call reads the answer as a
+ * blob (`parseAs`), never as the JSON receipt it is not; the typed client
+ * stays the one door. The filename rides the Content-Disposition the server
+ * names after the title's slug. Success invalidates `["novels"]`: every
+ * export advances the row's `last_exported_at`, and the menu's meta line
+ * reads it through that refetch. A refusal throws with its status (the ZIP
+ * mode's failures are the absent book and the service's own refusals).
+ */
+export function useExportNovel(): UseMutationResult<ZipDownload, Error, string> {
+  return useMutation({
+    mutationFn: async (novelId: string) => {
+      const { data, response } = await client.POST("/api/writing/novels/{novel_id}/export", {
+        params: { path: { novel_id: novelId } },
+        body: { mode: "zip" },
+        parseAs: "blob",
+      });
+      if (!response.ok || !data) throw new Error(`export refused: ${response.status}`);
+      // `parseAs: "blob"` reads the ZIP bytes at runtime; openapi-fetch's
+      // init intersection widens the literal, so the inferred result still
+      // names the JSON receipt the ZIP answer is not — one cast at the
+      // boundary, the import upload's own precedent.
+      return {
+        blob: data as unknown as Blob,
+        filename: filenameFromDisposition(response.headers.get("content-disposition")) ?? "export.zip",
+      };
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["novels"] });
+    },
+  });
+}
+
+/**
+ * Archiving or restoring a novel (Task 2's `archived_at` PATCH): carrying a
+ * timestamp archives the book, carrying `null` restores it — the symmetric
+ * reversibility the draft pins. The archive moment is the client's now; the
+ * row's `onupdate` advances `updated_at` (D8), so success invalidates the
+ * whole `["novels"]` prefix — the default list drops the archived book, the
+ * archive-included list keeps it with its pill, and the hero re-picks. A
+ * refusal throws with its status.
+ */
+export function useArchiveNovel(): UseMutationResult<
+  Novel,
+  Error,
+  { novelId: string; archived: boolean }
+> {
+  return useMutation({
+    mutationFn: async (input: { novelId: string; archived: boolean }) => {
+      const { data, response } = await client.PATCH("/api/writing/novels/{novel_id}", {
+        params: { path: { novel_id: input.novelId } },
+        body: { archived_at: input.archived ? new Date().toISOString() : null },
+      });
+      if (!response.ok || !data) throw new Error(`archive refused: ${response.status}`);
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["novels"] });
+    },
+  });
+}
+
+/**
  * A novel's chapters in position order, cached under `["chapters", novelId]`.
  * The workbench's rail and editor read the list here, and the write paths
  * refresh the key: a created chapter invalidates it outright; a settled save
