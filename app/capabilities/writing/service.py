@@ -11,9 +11,14 @@ from zipfile import BadZipFile
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-from app.capabilities.writing.metadata import normalized_novel_updates
+from app.capabilities.writing.metadata import InvalidNovelUpdateError, normalized_novel_updates
 from app.capabilities.writing.prompts import render_continuation, scaffold_length
-from app.capabilities.writing.repository import ChapterRepository, EntityRepository, NovelRepository
+from app.capabilities.writing.repository import (
+    ChapterRepository,
+    EntityRepository,
+    NovelRepository,
+    SeriesRepository,
+)
 from app.capabilities.writing.schemas import ChapterUpdate, ExportDone, NovelRead, NovelUpdate
 from app.kernel.auth import SetupRequiredError
 from app.kernel.context import allocate
@@ -91,6 +96,7 @@ class WritingService:
         self.novels = NovelRepository(session, user_id)
         self.chapters = ChapterRepository(session, user_id)
         self.entities = EntityRepository(session, user_id)
+        self.series = SeriesRepository(session, user_id)
 
     async def _require_user(self) -> None:
         """Writes belong to a user that setup created; without one there is
@@ -114,38 +120,58 @@ class WritingService:
         await self.session.commit()
         return novel
 
-    async def list_novels(self) -> Sequence[NovelRead]:
-        """The shelf's rows, each carrying its derived counts.
+    async def list_novels(self, *, include_archived: bool = False) -> Sequence[NovelRead]:
+        """The shelf's rows, each carrying its derived counts and series.
 
         The counts arrive as one grouped query (never one per novel, the
-        bodies never in Python); the rows are the response shape because
-        only they can carry what the raw novel has no column for.
+        bodies never in Python) and the series titles as one scoped
+        lookup; the rows are the response shape because only they can
+        carry what the raw novel has no column for. Archived books stay
+        out unless ``include_archived`` asks for them.
         """
+        novels = await self.novels.list(include_archived=include_archived)
         counts = await self.novels.counts()
+        titles = await self.novels.series_titles(novels)
         return [
-            self._with_counts(novel, counts.get(novel.id, (0, 0)))
-            for novel in await self.novels.list()
+            self._with_counts(novel, counts.get(novel.id, (0, 0)), titles.get(novel.id))
+            for novel in novels
         ]
 
     async def get_novel(self, novel_id: UUID) -> NovelRead:
         novel = await self.novels.get(novel_id)
         if novel is None:
             raise NotFoundError
-        return self._with_counts(novel, (await self.novels.counts(novel_id)).get(novel_id, (0, 0)))
+        titles = await self.novels.series_titles([novel])
+        return self._with_counts(
+            novel,
+            (await self.novels.counts(novel_id)).get(novel_id, (0, 0)),
+            titles.get(novel.id),
+        )
 
-    def _with_counts(self, novel: Novel, counts: tuple[int, int]) -> NovelRead:
-        """One novel row as the response shape, its two counts filled in."""
+    def _with_counts(
+        self, novel: Novel, counts: tuple[int, int], series_title: str | None = None
+    ) -> NovelRead:
+        """One novel row as the response shape, its derived facts filled in."""
         chapter_count, word_count = counts
         return NovelRead.model_validate(novel).model_copy(
-            update={"chapter_count": chapter_count, "word_count": word_count}
+            update={
+                "chapter_count": chapter_count,
+                "word_count": word_count,
+                "series_title": series_title,
+            }
         )
 
     async def update_novel(self, novel_id: UUID, changes: NovelUpdate) -> NovelRead:
-        """Correct a novel's five metadata fields: only the fields the body carries.
+        """Correct a novel's metadata fields: only the fields the body carries.
 
         The values are checked by ``metadata.normalized_novel_updates``, so a
         hand-written call cannot skip the contract: it normalizes only the
-        carried fields and refuses an invalid one by name.
+        carried fields and refuses an invalid one by name. The series link
+        is checked here, where the database is: a carried ``series_id``
+        must name a series the user owns, a carried ``series_volume``
+        needs a series to belong to after the update, and leaving a
+        series takes the volume number with it — the number belongs to
+        the link, not the book.
         ``model_fields_set`` is what makes the update partial: a field the
         body does not carry is not a change, and a carried ``null`` is one —
         the cleared state. The write is one UPDATE through the repository's
@@ -153,7 +179,7 @@ class WritingService:
         so an edit makes the export trace honestly stale; an empty body
         carries no field and writes nothing.
 
-        Commit and return the novel, its derived counts filled the way the
+        Commit and return the novel, its derived facts filled the way the
         read paths fill them. Raise NotFoundError if it is absent or
         unowned, or InvalidNovelUpdateError for an invalid field, named.
         """
@@ -161,12 +187,25 @@ class WritingService:
         if novel is None:
             raise NotFoundError
         updates = normalized_novel_updates(changes)
+        if changes.series_id is not None and await self.series.get(changes.series_id) is None:
+            raise InvalidNovelUpdateError("series_id")
+        if changes.series_volume is not None:
+            linked = updates.get("series_id", novel.series_id)
+            if linked is None:
+                raise InvalidNovelUpdateError("series_volume")
+        if "series_id" in updates and updates["series_id"] is None:
+            updates["series_volume"] = None
         # An empty body carries no field and must not advance updated_at:
         # save nothing, commit nothing, so "last written" stays where it was.
         if updates:
             novel = await self.novels.save(novel, updates)
             await self.session.commit()
-        return self._with_counts(novel, (await self.novels.counts(novel_id)).get(novel_id, (0, 0)))
+        titles = await self.novels.series_titles([novel])
+        return self._with_counts(
+            novel,
+            (await self.novels.counts(novel_id)).get(novel_id, (0, 0)),
+            titles.get(novel.id),
+        )
 
     async def delete_novel(self, novel_id: UUID) -> None:
         """Delete a novel: the row goes, and everything it carried goes with it.

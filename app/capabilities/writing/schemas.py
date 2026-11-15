@@ -52,6 +52,15 @@ class NovelRead(BaseModel):
     # else, so a metadata edit leaves it honestly stale — None until the
     # first export reads it.
     last_exported_at: datetime | None
+    # The shelf's tracking answers (W3). ``status`` is the writing state
+    # (draft|revision|final), None until the book says where it stands;
+    # ``series_title`` is derived — the linked series' name, joined on
+    # read, None when the book stands alone; ``archived_at`` is when the
+    # book left the main grid, None while it is on the shelf.
+    status: str | None = None
+    series_title: str | None = None
+    series_volume: int | None = None
+    archived_at: datetime | None = None
 
 
 class NovelUpdate(BaseModel):
@@ -64,6 +73,13 @@ class NovelUpdate(BaseModel):
     limits: this schema carries the fields, the contract decides what a
     value may be. A carried ``null`` clears author, genre, blurb or
     language; the title is never clearable.
+
+    The shelf's fields (W3) ride the same rule: ``status`` answers to the
+    vocabulary (draft|revision|final) at the service boundary,
+    ``series_id`` must name a series the user owns, ``series_volume`` is
+    a positive number that needs a series link, and ``archived_at`` is a
+    timestamp — carrying one archives the book, carrying ``null``
+    unarchives it.
     """
 
     title: str | None = None
@@ -71,6 +87,10 @@ class NovelUpdate(BaseModel):
     blurb: str | None = None
     author: str | None = None
     language: str | None = None
+    status: str | None = None
+    series_id: UUID | None = None
+    series_volume: int | None = None
+    archived_at: datetime | None = None
 
 
 class ChapterCreate(BaseModel):

@@ -7,7 +7,7 @@ from uuid import UUID  # noqa: TC003
 
 from sqlalchemy import func, select, update
 
-from app.kernel.contracts.models import Chapter, Entity, Novel
+from app.kernel.contracts.models import Chapter, Entity, Novel, Series
 from app.kernel.contracts.positions import next_chapter_position
 from app.kernel.db.base import ScopedRepository
 
@@ -42,12 +42,59 @@ class EntityRepository(ScopedRepository[Entity]):
         return result.all()
 
 
+class SeriesRepository(ScopedRepository[Series]):
+    model = Series
+
+    async def get(self, series_id: UUID) -> Series | None:
+        return await self.session.scalar(self.query().where(Series.id == series_id))
+
+    async def create(self, title: str) -> Series:
+        """Flush a new series for this user, leaving the commit to the caller."""
+        series = Series(user_id=self.user_id, title=title)
+        self.session.add(series)
+        await self.session.flush()
+        return series
+
+
 class NovelRepository(ScopedRepository[Novel]):
     model = Novel
 
-    async def list(self) -> Sequence[Novel]:
-        result = await self.session.scalars(self.query().order_by(Novel.created_at.desc()))
+    async def list(self, *, include_archived: bool = False) -> Sequence[Novel]:
+        """The shelf's novels, newest first. Archived books stay out of
+        the main grid unless ``include_archived`` asks for them — the
+        archive view's one knob, default the shelf's own answer."""
+        statement = self.query().order_by(Novel.created_at.desc())
+        if not include_archived:
+            statement = statement.where(Novel.archived_at.is_(None))
+        result = await self.session.scalars(statement)
         return result.all()
+
+    async def series_titles(self, novels: Sequence[Novel]) -> dict[UUID, str]:
+        """The linked series' title per novel, one scoped query.
+
+        Only the ids the novels actually carry are asked for, and the
+        user predicate rides the series row too: a link can only name a
+        series the update path already proved owned, and the read keeps
+        that promise without trusting it. Novels without a link — or
+        whose series is gone — have no entry; the caller reports None.
+        """
+        series_ids = {novel.series_id for novel in novels if novel.series_id is not None}
+        if not series_ids:
+            return {}
+        rows = await self.session.execute(
+            select(Series.id, Series.title).where(
+                Series.user_id == self.user_id, Series.id.in_(series_ids)
+            )
+        )
+        # ``.all()`` before ``dict``: the Result itself carries keys(), so
+        # dict() would read it as a mapping and subscript it — the rows
+        # are the pairs, not the result.
+        titles = dict(rows.all())
+        return {
+            novel.id: titles[novel.series_id]
+            for novel in novels
+            if novel.series_id is not None and novel.series_id in titles
+        }
 
     async def counts(self, novel_id: UUID | None = None) -> dict[UUID, tuple[int, int]]:
         """Chapter and word counts per novel, one grouped query.

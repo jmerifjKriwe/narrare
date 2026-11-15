@@ -1076,7 +1076,8 @@ export interface paths {
         };
         /**
          * List Novels
-         * @description Return the current user's novels.
+         * @description Return the current user's novels; archived books stay out of the
+         *     main grid unless ``include_archived`` asks for them.
          */
         get: operations["list_novels_api_writing_novels_get"];
         put?: never;
@@ -1149,8 +1150,9 @@ export interface paths {
          *
          *     Return the novel with its derived counts; raise HTTP 404 for an absent
          *     or unowned novel, or HTTP 422 naming the field for a blank or over-long
-         *     title, an over-long genre or author, or a language that is over-long
-         *     or not a BCP-47-ish code.
+         *     title, an over-long genre or author, a language that is over-long
+         *     or not a BCP-47-ish code, a status outside the vocabulary, a series
+         *     link that names no series of the user, or a volume without a series.
          */
         patch: operations["update_novel_api_writing_novels__novel_id__patch"];
         trace?: never;
@@ -1796,6 +1798,8 @@ export interface components {
         };
         /** NovelRead */
         NovelRead: {
+            /** Archived At */
+            archived_at?: string | null;
             /** Author */
             author: string | null;
             /** Blurb */
@@ -1821,6 +1825,12 @@ export interface components {
             language: string | null;
             /** Last Exported At */
             last_exported_at: string | null;
+            /** Series Title */
+            series_title?: string | null;
+            /** Series Volume */
+            series_volume?: number | null;
+            /** Status */
+            status?: string | null;
             /** Title */
             title: string;
             /**
@@ -1845,8 +1855,17 @@ export interface components {
          *     limits: this schema carries the fields, the contract decides what a
          *     value may be. A carried ``null`` clears author, genre, blurb or
          *     language; the title is never clearable.
+         *
+         *     The shelf's fields (W3) ride the same rule: ``status`` answers to the
+         *     vocabulary (draft|revision|final) at the service boundary,
+         *     ``series_id`` must name a series the user owns, ``series_volume`` is
+         *     a positive number that needs a series link, and ``archived_at`` is a
+         *     timestamp — carrying one archives the book, carrying ``null``
+         *     unarchives it.
          */
         NovelUpdate: {
+            /** Archived At */
+            archived_at?: string | null;
             /** Author */
             author?: string | null;
             /** Blurb */
@@ -1855,6 +1874,12 @@ export interface components {
             genre?: string | null;
             /** Language */
             language?: string | null;
+            /** Series Id */
+            series_id?: string | null;
+            /** Series Volume */
+            series_volume?: number | null;
+            /** Status */
+            status?: string | null;
             /** Title */
             title?: string | null;
         };
@@ -4863,7 +4888,9 @@ export interface operations {
     };
     list_novels_api_writing_novels_get: {
         parameters: {
-            query?: never;
+            query?: {
+                include_archived?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4877,6 +4904,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovelRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

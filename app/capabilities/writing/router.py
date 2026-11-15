@@ -131,9 +131,10 @@ async def _continuation_events(
 
 
 @router.get("/novels", response_model=list[NovelRead])
-async def list_novels(service: ServiceDep) -> list[NovelRead]:
-    """Return the current user's novels."""
-    return list(await service.list_novels())
+async def list_novels(service: ServiceDep, include_archived: bool = False) -> list[NovelRead]:
+    """Return the current user's novels; archived books stay out of the
+    main grid unless ``include_archived`` asks for them."""
+    return list(await service.list_novels(include_archived=include_archived))
 
 
 @router.get(
@@ -178,8 +179,9 @@ async def update_novel(novel_id: UUID, payload: NovelUpdate, service: ServiceDep
 
     Return the novel with its derived counts; raise HTTP 404 for an absent
     or unowned novel, or HTTP 422 naming the field for a blank or over-long
-    title, an over-long genre or author, or a language that is over-long
-    or not a BCP-47-ish code.
+    title, an over-long genre or author, a language that is over-long
+    or not a BCP-47-ish code, a status outside the vocabulary, a series
+    link that names no series of the user, or a volume without a series.
     """
     try:
         novel = await service.update_novel(novel_id, payload)
