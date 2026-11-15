@@ -352,6 +352,48 @@ describe("the provisioning step — the loading state (states-reference panel 3)
   });
 });
 
+describe("the provisioning step — the header locks while the book binds", () => {
+  it("in flight: the stepper offers no links, the done steps are disabled, the switcher stays live", async () => {
+    let resolvePost!: (value: { data: typeof RESULT; response: Response }) => void;
+    api.POST.mockImplementationOnce(
+      () =>
+        new Promise<{ data: typeof RESULT; response: Response }>((resolve) => {
+          resolvePost = resolve;
+        }),
+    );
+    renderProvisioning(DEMO_ENTRY);
+
+    expect(await screen.findByText(de["setup.provisioning.loading.item3Status"])).toBeTruthy();
+    const stepper = screen.getByRole("navigation", { name: de["setup.wizard.progress"] });
+    // The POST commits the answers: walking back to edit them must wait.
+    // The done steps keep their check and label but stop being links.
+    expect(within(stepper).queryAllByRole("link")).toHaveLength(0);
+    for (const key of ["setup.wizard.step1", "setup.wizard.step2", "setup.wizard.step3"] as const) {
+      const done = within(stepper).getByText(de[key]);
+      expect(done.closest("[aria-disabled]")?.getAttribute("aria-disabled")).toBe("true");
+    }
+    // The lock is the stepper's alone: the switcher stays as it is.
+    expect(screen.getByRole("radiogroup", { name: de["setup.welcome.language"] })).toBeTruthy();
+
+    // Once the POST lands, the done steps link again.
+    resolvePost({ data: RESULT, response: new Response(null, { status: 201 }) });
+    await screen.findByText(de["setup.provisioning.bound.item1"]);
+    const unlocked = screen.getByRole("navigation", { name: de["setup.wizard.progress"] });
+    expect(within(unlocked).getAllByRole("link")).toHaveLength(3);
+  });
+
+  it("a refused binding unlocks the stepper again — the way back stays real", async () => {
+    api.POST.mockImplementationOnce(async () => {
+      throw new Error("offline");
+    });
+    renderProvisioning(DEMO_ENTRY);
+
+    await screen.findByRole("alert");
+    const stepper = screen.getByRole("navigation", { name: de["setup.wizard.progress"] });
+    expect(within(stepper).getAllByRole("link")).toHaveLength(3);
+  });
+});
+
 describe("the provisioning step — the failure card (states-reference panel 4)", () => {
   it("names the failure honestly and retry re-posts", async () => {
     api.POST.mockImplementationOnce(async () => {

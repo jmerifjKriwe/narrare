@@ -67,6 +67,23 @@ describe("channelFor", () => {
       expect(channelFor(genre)).toBe("fallback");
     }
   });
+  it("resolves a joined multi-genre to its first named genre", () => {
+    // The wizard joins the pills with ", " — the seam resolves the first,
+    // so a multi-genre book wears its first genre's cover, not the linen.
+    expect(channelFor("Science Fiction & Speculative, Mystery & Noir")).toBe("scifi");
+    expect(channelFor("Mystery & Noir, Historischer Roman")).toBe("mystery");
+    expect(
+      coverModel({
+        title: "Dead Signal",
+        genre: "Science Fiction & Speculative, Mystery & Noir",
+        size: "wizard",
+      }).groundToken,
+    ).toBe("cover-ink");
+    // The first component decides: an unknown first falls back even when a
+    // known genre follows.
+    expect(channelFor("Lyrik, Fantasy")).toBe("fallback");
+    expect(channelFor("Essayistik, Mystery & Noir")).toBe("fallback");
+  });
 });
 
 describe("variantFor", () => {

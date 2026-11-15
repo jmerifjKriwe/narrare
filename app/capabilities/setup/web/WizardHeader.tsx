@@ -31,6 +31,12 @@ import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
  * face, step four the binding draft's calm pill (a ringed chip with the
  * pulsing primary dot) — and the rest wait with their number. The last step
  * never links forward: nothing follows the binding.
+ *
+ * While the binding POST is in flight the step locks the header (`locked`):
+ * the done steps keep their check and label but stop being Links — disabled
+ * items in the wizard's own disabled language (`cursor-not-allowed
+ * opacity-50`), so no one walks back to edit answers the POST is already
+ * committing. The switcher and help stay as they are.
  */
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
@@ -52,7 +58,15 @@ const STEPS = [
   { key: "setup.wizard.step4", to: "/setup/provisioning" },
 ] as const satisfies readonly { key: MessageKey; to: string }[];
 
-export function WizardHeader({ activeStep }: { activeStep: 1 | 2 | 3 | 4 }) {
+export function WizardHeader({
+  activeStep,
+  locked = false,
+}: {
+  activeStep: 1 | 2 | 3 | 4;
+  /** True while the binding POST is in flight: the done steps stop
+   *  navigating, so the answers cannot be edited mid-commit. */
+  locked?: boolean;
+}) {
   const t = useTranslation();
   const locale = activeLocale();
   const switcherRefs = useRef<Partial<Record<Locale, HTMLElement | null>>>({});
@@ -147,14 +161,27 @@ export function WizardHeader({ activeStep }: { activeStep: 1 | 2 | 3 | 4 }) {
                   </span>
                 )}
                 {n < activeStep ? (
-                  <Link
-                    to={entry.to}
-                    search={true}
-                    className={`flex items-center gap-2 rounded px-2.5 py-1 text-label font-medium text-success transition-colors hover:bg-surface-container ${FOCUS}`}
-                  >
-                    <Icon name="check" size={15} />
-                    <span>{t(entry.key)}</span>
-                  </Link>
+                  locked ? (
+                    // Mid-bind the done steps stop navigating: the check and
+                    // label stay, the wizard's disabled language draws the
+                    // rest — no hover, no focus ring, nothing to activate.
+                    <span
+                      aria-disabled="true"
+                      className="flex cursor-not-allowed items-center gap-2 rounded px-2.5 py-1 text-label font-medium text-success opacity-50"
+                    >
+                      <Icon name="check" size={15} />
+                      <span>{t(entry.key)}</span>
+                    </span>
+                  ) : (
+                    <Link
+                      to={entry.to}
+                      search={true}
+                      className={`flex items-center gap-2 rounded px-2.5 py-1 text-label font-medium text-success transition-colors hover:bg-surface-container ${FOCUS}`}
+                    >
+                      <Icon name="check" size={15} />
+                      <span>{t(entry.key)}</span>
+                    </Link>
+                  )
                 ) : n === activeStep ? (
                   activeStep === 1 ? (
                     // Step one keeps the first draft's numbered-badge face.

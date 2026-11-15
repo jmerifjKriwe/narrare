@@ -191,6 +191,12 @@ export function ProvisioningStep() {
   // Post once on arrival. An empty deep link has no basis to bind, so it
   // falls back to step one with the search intact — never a POST. The ref
   // guard keeps StrictMode's double effect to a single POST.
+  //
+  // Binding automatically on arrival is BY DRAFT, and accepted by design:
+  // in the local-first single-user model the URL is the user's own state —
+  // the wizard itself writes it — so a crafted link holds no power the
+  // wizard's own URLs don't. The 409 path guards repeats, and db-reset is
+  // the local escape hatch.
   useEffect(() => {
     if (!basisComplete(state)) {
       void navigate({ to: "/setup/basis", search: true, replace: true });
@@ -235,8 +241,9 @@ export function ProvisioningStep() {
     // The draft's body: full-bleed, pinned ends, the selection pair in tokens.
     // The shell owns the one <main> landmark; this is its content.
     <div className="flex min-h-screen w-full flex-col justify-between selection:bg-secondary-container selection:text-secondary-container-foreground">
-      {/* 1. Header & stepper — the wizard's shared chrome, step four active */}
-      <WizardHeader activeStep={4} />
+      {/* 1. Header & stepper — the wizard's shared chrome, step four active;
+          the lock rides the same phase that disables the CTAs below */}
+      <WizardHeader activeStep={4} locked={phase === "binding"} />
 
       {/* 2. The book stage: context pill, cover + meta column, the actions */}
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 py-8">

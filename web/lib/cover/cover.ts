@@ -116,9 +116,11 @@ export const COVER_TEXT_DIMS: Record<CoverChannel, CoverTextDims> = {
   fallback: { eyebrow: 0.7, author: { wizard: 0.75, hero: 0.75, shelf: 0.7 }, foot: 0.65 },
 };
 
-/** The channel a genre label lands on; absent, empty or unknown → fallback. */
+/** The channel a genre label lands on; absent, empty or unknown → fallback.
+ *  The wizard joins multiple pills with ", ": a joined multi-genre resolves
+ *  to its FIRST named genre; an unknown first component still falls back. */
 export function channelFor(genre: string | null | undefined): CoverChannel {
-  const key = (genre ?? "").trim().toLowerCase();
+  const key = (genre ?? "").trim().toLowerCase().split(", ")[0] ?? "";
   return CHANNEL_ALIASES[key] ?? "fallback";
 }
 
