@@ -94,6 +94,35 @@ describe("shelfGrid — the rest, newest first", () => {
     const second = row("b", "2026-11-12T10:00:00Z");
     expect(shelfGrid([hero, first, second], hero).map((novel) => novel.id)).toEqual(["a", "b"]);
   });
+
+  it("includeArchived lets the archived rows join the grid, newest first among the rest", () => {
+    // Task 7's archive toggle: the list query answered with the archive,
+    // so the grid carries it too — the hero still never doubles, and an
+    // archived book never leads (pickHero's own rule).
+    const hero = row("hero", "2026-11-14T10:00:00Z");
+    const active = row("active", "2026-11-13T10:00:00Z");
+    const archived = row("gone", "2026-11-15T10:00:00Z", {
+      archived_at: "2026-11-15T10:00:00Z",
+    });
+    const olderArchived = row("old-gone", "2026-11-12T10:00:00Z", {
+      archived_at: "2026-11-12T10:00:00Z",
+    });
+    expect(shelfGrid([hero, active, archived, olderArchived], hero, true).map((n) => n.id)).toEqual([
+      "gone",
+      "active",
+      "old-gone",
+    ]);
+    // The default still keeps the archive out — the toggle is the only door.
+    expect(shelfGrid([hero, active, archived, olderArchived], hero).map((n) => n.id)).toEqual(["active"]);
+  });
+
+  it("includeArchived with no hero answers the whole archived shelf", () => {
+    const archived = row("gone", "2026-11-15T10:00:00Z", {
+      archived_at: "2026-11-15T10:00:00Z",
+    });
+    expect(shelfGrid([archived], null, true).map((n) => n.id)).toEqual(["gone"]);
+    expect(shelfGrid([archived], null)).toEqual([]);
+  });
 });
 
 describe("progress — the bar claims only what the target measures", () => {

@@ -23,7 +23,13 @@ vi.mock("./api/client", () => ({
 }));
 
 import { client } from "./api/client";
-import { queryClient, sameNovelPlaceholder, useChaptersQuery, useNovelQuery } from "./query";
+import {
+  queryClient,
+  sameNovelPlaceholder,
+  useChaptersQuery,
+  useNovelQuery,
+  useNovelsQuery,
+} from "./query";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
 const api = client as unknown as Record<
@@ -97,6 +103,78 @@ describe("useNovelQuery", () => {
     await waitFor(() => expect(hook.result.current.isError).toBe(true));
     expect(hook.result.current.data).toBeUndefined();
     expect(hook.result.current.error?.message).toContain("404");
+  });
+});
+
+describe("useNovelsQuery — the shelf's list, the archive toggle a real refetch", () => {
+  const ACTIVE = [{ ...NOVEL, title: "Das aktive Buch" }];
+  const ARCHIVED = [{ ...NOVEL, id: "archived-row", title: "Das archivierte Buch" }];
+
+  it("the default asks without a parameter and caches under the false key", async () => {
+    api.GET.mockResolvedValue({ data: ACTIVE, response: ok() });
+    const hook = renderHook(() => useNovelsQuery(), { wrapper });
+
+    await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
+    expect(hook.result.current.data).toEqual(ACTIVE);
+    // The default ask keeps its bare shape — include_archived=false is the
+    // server's own default, no parameter sent.
+    expect(api.GET).toHaveBeenCalledWith("/api/writing/novels");
+    expect(queryClient.getQueryState(["novels", { include_archived: false }])?.status).toBe("success");
+  });
+
+  it("includeArchived asks the parameter and caches under its own key", async () => {
+    api.GET.mockResolvedValue({ data: [...ACTIVE, ...ARCHIVED], response: ok() });
+    const hook = renderHook(() => useNovelsQuery(true), { wrapper });
+
+    await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
+    expect(api.GET).toHaveBeenCalledWith("/api/writing/novels", {
+      params: { query: { include_archived: true } },
+    });
+    expect(queryClient.getQueryState(["novels", { include_archived: true }])?.status).toBe("success");
+  });
+
+  it("the toggle holds the previous list while the new ask is in flight", async () => {
+    // The archive toggle must not flash the skeleton: the shelf keeps the
+    // answer it has until the widened (or narrowed) list lands.
+    let resolveArchived!: (answer: { data: unknown; response: Response }) => void;
+    api.GET.mockImplementation(async (_path: string, init?: { params?: { query?: { include_archived?: boolean } } }) => {
+      if (init?.params?.query?.include_archived) {
+        return new Promise<{ data: unknown; response: Response }>((resolve) => {
+          resolveArchived = resolve;
+        });
+      }
+      return { data: ACTIVE, response: ok() };
+    });
+    const hook = renderHook(({ archived }: { archived: boolean }) => useNovelsQuery(archived), {
+      wrapper,
+      initialProps: { archived: false },
+    });
+    await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
+
+    hook.rerender({ archived: true });
+    await waitFor(() => expect(hook.result.current.isPlaceholderData).toBe(true));
+    expect(hook.result.current.data).toEqual(ACTIVE);
+    expect(hook.result.current.isPending).toBe(false);
+
+    resolveArchived({ data: [...ACTIVE, ...ARCHIVED], response: ok() });
+    await waitFor(() => expect(hook.result.current.isPlaceholderData).toBe(false));
+    expect(hook.result.current.data).toEqual([...ACTIVE, ...ARCHIVED]);
+  });
+
+  it("the writes' [\"novels\"] prefix invalidation reaches both list keys", async () => {
+    api.GET.mockResolvedValue({ data: ACTIVE, response: ok() });
+    const off = renderHook(() => useNovelsQuery(false), { wrapper });
+    const on = renderHook(() => useNovelsQuery(true), { wrapper });
+    await waitFor(() => expect(off.result.current.isSuccess).toBe(true));
+    await waitFor(() => expect(on.result.current.isSuccess).toBe(true));
+
+    // Unmounted, the queries hold the invalidated state instead of
+    // refetching it away at once — the prefix's reach is what is pinned.
+    off.unmount();
+    on.unmount();
+    await queryClient.invalidateQueries({ queryKey: ["novels"] });
+    expect(queryClient.getQueryState(["novels", { include_archived: false }])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(["novels", { include_archived: true }])?.isInvalidated).toBe(true);
   });
 });
 

@@ -1,4 +1,5 @@
 import {
+  keepPreviousData,
   QueryClient,
   useMutation,
   useQuery,
@@ -66,15 +67,27 @@ export function useSettingsQuery(): UseQueryResult<{
 }
 
 /**
- * The library list, cached under the writing capability's `["novels"]` key.
+ * The library list, cached under the writing capability's `["novels"]`
+ * prefix with the archive question in the key: the shelf's „Archiv
+ * einbeziehen" toggle is a real refetch (`include_archived`), not a client
+ * hide — the default ask keeps its bare shape (false is the server's own
+ * default), the widened ask carries the parameter. The writes' prefix
+ * invalidation reaches both answers. While the toggle's ask is in flight
+ * the previous list stands (`keepPreviousData`) — widening or narrowing
+ * the population never flashes the skeleton over the shelf it changes.
  * An answer that is not ok throws, so the cache holds either the list or
  * the failure — never a half-current list.
  */
-export function useNovelsQuery(): UseQueryResult<Novel[]> {
+export function useNovelsQuery(includeArchived = false): UseQueryResult<Novel[]> {
   return useQuery({
-    queryKey: ["novels"],
+    queryKey: ["novels", { include_archived: includeArchived }],
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, response } = await client.GET("/api/writing/novels");
+      const { data, response } = includeArchived
+        ? await client.GET("/api/writing/novels", {
+            params: { query: { include_archived: true } },
+          })
+        : await client.GET("/api/writing/novels");
       if (!response.ok) throw new Error(`novels unavailable: ${response.status}`);
       return data ?? [];
     },

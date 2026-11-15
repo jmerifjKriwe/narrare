@@ -10,10 +10,13 @@ import { formatWordCount } from "@shell/lib/words";
 import { Icon, type IconName } from "@shell/ui/icons";
 
 import { pickHero, shelfGrid } from "./shelf";
+import { filterGrid, genreFacets, hasActiveFilters, statusFacets } from "./shelfFilter";
 import { ShelfBanner } from "./ShelfBanner";
 import { BookCard } from "./ShelfBookCard";
 import { ShelfEmpty } from "./ShelfEmpty";
 import { ShelfHero } from "./ShelfHero";
+import { ShelfSearch } from "./ShelfSearch";
+import { ShelfSearchEmpty } from "./ShelfSearchEmpty";
 import { ShelfError, ShelfLoading } from "./ShelfStates";
 
 /**
@@ -36,9 +39,11 @@ import { ShelfError, ShelfLoading } from "./ShelfStates";
  *
  * Doors the further build-out has not reached stay honestly disabled with
  * the drafted note, each comment naming its owning task: the new-book
- * dialog (Task 9), the search/filter chrome (Task 7), the per-book quick
- * menu (Task 8), the activity banner and the streak chip (Task 10), import
- * (the import wave). Loading, error and empty answer per `shelf-states`
+ * dialog (Task 9), the per-book quick menu (Task 8), the activity banner
+ * and the streak chip (Task 10), import (the import wave). The search and
+ * filter chrome is real (Task 7): client-side over the loaded list, the
+ * archive toggle a real refetch; the view toggle stays inert — no task
+ * owns the list view yet. Loading, error and empty answer per `shelf-states`
  * and `shelf-empty`; dark rides the tokens' light-dark pairs (`shelf-dark`
  * is the reference, not a second palette).
  *
@@ -88,65 +93,22 @@ function MetricChip({
   );
 }
 
-/** The search/filter/view chrome — Task 7's surface, honestly inert until
- *  then: the drafted geometry, disabled controls, no invented results. */
-function SearchChrome() {
-  const t = useTranslation();
-  return (
-    <div className="flex flex-col items-center justify-between gap-3 pb-1 sm:flex-row">
-      <div className="flex w-full items-center gap-2 sm:w-auto">
-        <div className="flex h-9 w-full items-center gap-2 rounded-lg border border-border bg-surface px-3 shadow-sm sm:w-72">
-          <span className="text-muted">
-            <Icon name="search" size={18} />
-          </span>
-          <input
-            type="text"
-            disabled
-            placeholder={t("writing.shelf.search.placeholder")}
-            aria-label={t("writing.shelf.search.placeholder")}
-            className="w-full cursor-not-allowed bg-transparent text-label text-foreground opacity-50 placeholder:text-muted focus:outline-none"
-          />
-        </div>
-        <button
-          type="button"
-          disabled
-          className="flex h-9 shrink-0 cursor-not-allowed items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-label text-foreground opacity-50 shadow-sm"
-        >
-          <Icon name="tune" size={18} />
-          <span>{t("writing.shelf.search.filter")}</span>
-        </button>
-      </div>
-      <div className="flex items-center gap-2 self-end sm:self-auto">
-        <span className="text-meta text-muted">{t("writing.shelf.search.view")}</span>
-        <button
-          type="button"
-          disabled
-          aria-pressed="true"
-          aria-label={t("writing.shelf.search.viewGrid")}
-          className="cursor-not-allowed rounded-lg bg-surface-container-high p-1.5 text-primary opacity-50 shadow-sm"
-        >
-          <Icon name="gridView" size={18} />
-        </button>
-        <button
-          type="button"
-          disabled
-          aria-pressed="false"
-          aria-label={t("writing.shelf.search.viewList")}
-          className="cursor-not-allowed rounded-lg p-1.5 text-muted opacity-50"
-        >
-          <Icon name="viewList" size={18} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export function ShelfPage() {
   // useTranslation subscribes to the locale store, so reading activeLocale
   // in render stays fresh across a switch — the landing's same subscription.
   const t = useTranslation();
   const locale = activeLocale();
-  const novels = useNovelsQuery();
+
+  // Task 7's filter state — transient, the page's own memory: no URL, no
+  // storage, a remount starts fresh (pinned). The archive toggle is the
+  // list query's parameter, a real refetch; the rest narrows client-side
+  // over the answer that query carried.
+  const [query, setQuery] = useState("");
+  const [genres, setGenres] = useState<readonly string[]>([]);
+  const [statuses, setStatuses] = useState<readonly string[]>([]);
+  const [includeArchived, setIncludeArchived] = useState(false);
+
+  const novels = useNovelsQuery(includeArchived);
   const heroNoteId = useId();
   const doorsNoteId = useId();
   const menuNoteId = useId();
@@ -207,14 +169,48 @@ export function ShelfPage() {
 
   // The shelf's own seam: the novels query the capability's write paths
   // invalidate (["novels"]). Archived books stay out by the API's default;
-  // the model guards the boundary anyway. While the ask is in flight the
-  // skeleton stands; a failure is the page's own notice with a working
-  // retry, never a dressed-up shelf; an empty list is the honest empty state.
+  // the archive toggle asks for them and the model guards the boundary
+  // anyway. While the ask is in flight the skeleton stands (the toggle's
+  // own refetch keeps the previous list — no skeleton flash); a failure is
+  // the page's own notice with a working retry, never a dressed-up shelf;
+  // an empty list is the honest empty state.
   const rows: readonly Novel[] = novels.data ?? [];
   const hero = pickHero(rows);
-  const grid = shelfGrid(rows, hero);
+  const filterState = { query, genres, statuses };
+  const gridAll = shelfGrid(rows, hero, includeArchived);
+  const grid = filterGrid(gridAll, filterState);
+  const narrowing = hasActiveFilters(filterState);
+  // The facets answer the whole loaded population — the hero included,
+  // the archive too when the toggle asked for it. The grid never doubles
+  // the hero (the shelf's fixed lead), so a facet may count a book the
+  // grid itself does not show.
+  const genreOptions = genreFacets(rows);
+  const statusOptions = statusFacets(rows);
   const active = rows.filter((novel) => novel.archived_at == null);
   const totalWords = active.reduce((sum, novel) => sum + novel.word_count, 0);
+
+  function toggleGenre(label: string) {
+    setGenres((previous) =>
+      previous.includes(label) ? previous.filter((entry) => entry !== label) : [...previous, label],
+    );
+  }
+  function toggleStatus(value: string) {
+    setStatuses((previous) =>
+      previous.includes(value) ? previous.filter((entry) => entry !== value) : [...previous, value],
+    );
+  }
+  /** The popover's reset clears its own controls — the facets and the
+   *  archive toggle. The search box is its own control and keeps its text. */
+  function resetFilters() {
+    setGenres([]);
+    setStatuses([]);
+    setIncludeArchived(false);
+  }
+  /** The empty-search panel's door: everything back to the whole shelf. */
+  function clearSearchAndFilters() {
+    setQuery("");
+    resetFilters();
+  }
   const pendingValue = <span aria-hidden="true" className="block h-4 w-16 animate-pulse rounded bg-soft" />;
   const booksValue = novels.isPending
     ? pendingValue
@@ -349,23 +345,46 @@ export function ShelfPage() {
           </div>
         </div>
 
-        {/* The content, by the list's own state. */}
+        {/* The content, by the list's own state. Nothing to show — no
+            active hero and no grid rows (the archive included only when
+            the toggle asked) — is the drafted empty panel, no chrome.
+            With books, the hero leads when an active one exists (the
+            archive-only shelf answers with the grid alone), and the grid
+            under the chrome is the filtered rest — or the honest
+            empty-search panel when a real narrowing answers nothing. */}
         {showLoading ? (
           <ShelfLoading />
         ) : showError ? (
           <ShelfError message={lastError.current} retrying={retrying} onRetry={retry} />
-        ) : hero === null ? (
+        ) : hero === null && gridAll.length === 0 ? (
           <ShelfEmpty noteId={emptyNoteId} />
         ) : (
           <>
-            <ShelfHero novel={hero} noteId={heroNoteId} />
+            {hero !== null && <ShelfHero novel={hero} noteId={heroNoteId} />}
             <div className="space-y-6">
-              <SearchChrome />
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-                {grid.map((novel) => (
-                  <BookCard key={novel.id} novel={novel} menuNoteId={menuNoteId} />
-                ))}
-              </div>
+              <ShelfSearch
+                query={query}
+                onQueryChange={setQuery}
+                genres={genres}
+                statuses={statuses}
+                includeArchived={includeArchived}
+                genreFacets={genreOptions}
+                statusFacets={statusOptions}
+                resultCount={grid.length}
+                onToggleGenre={toggleGenre}
+                onToggleStatus={toggleStatus}
+                onToggleArchived={() => setIncludeArchived((previous) => !previous)}
+                onResetFilters={resetFilters}
+              />
+              {narrowing && grid.length === 0 ? (
+                <ShelfSearchEmpty onClear={clearSearchAndFilters} />
+              ) : (
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+                  {grid.map((novel) => (
+                    <BookCard key={novel.id} novel={novel} menuNoteId={menuNoteId} />
+                  ))}
+                </div>
+              )}
               {/* The quick menus' shared note — Task 8's door, once per card. */}
               <p id={menuNoteId} className="text-meta text-muted">
                 {t("writing.shelf.comingSoon")}

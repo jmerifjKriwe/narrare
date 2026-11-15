@@ -25,8 +25,9 @@ import { progress } from "./shelf";
 /** The status vocabulary's pill faces — the server validates the values;
  *  an unknown one renders nothing rather than guessing a label. Draft wears
  *  the secondary container (the draft's own Entwurf pill), revision the
- *  raised rung with the second voice, final the sync badge's success pair. */
-const STATUS_PILL: Record<string, { key: MessageKey; className: string }> = {
+ *  raised rung with the second voice, final the sync badge's success pair.
+ *  The filter popover's status facets read the same keys (Task 7). */
+export const STATUS_PILL: Record<string, { key: MessageKey; className: string }> = {
   draft: {
     key: "writing.shelf.status.draft",
     className: "bg-secondary-container text-secondary-container-foreground",
@@ -106,7 +107,18 @@ export function BookCard({ novel, menuNoteId }: { novel: Novel; menuNoteId: stri
             <h3 className="break-words text-emph text-foreground transition-colors group-hover:text-primary">
               {novel.title}
             </h3>
-            <StatusPill status={novel.status} />
+            <span className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+              {/* The archived marking — undrafted, the honest minimal: the
+                  status pill's own shape in a neutral tone, from the row's
+                  archived_at presence (Task 7's disclosure). The card is
+                  otherwise the same card; the archive never leads. */}
+              {novel.archived_at != null && (
+                <span className="shrink-0 rounded-full bg-surface-container-high px-2 py-0.5 text-eyebrow uppercase tracking-wide text-muted">
+                  {t("writing.shelf.archived")}
+                </span>
+              )}
+              <StatusPill status={novel.status} />
+            </span>
           </div>
           {novel.genre != null && (
             <span className="mt-1 inline-block rounded-full bg-surface-container-high px-2 py-0.5 text-eyebrow tracking-wide text-secondary">

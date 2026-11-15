@@ -30,11 +30,19 @@ export function pickHero(novels: readonly Novel[]): Novel | null {
   return hero;
 }
 
-/** The grid: every unarchived novel except the hero, newest first. Ties
- *  keep the list's order (a stable sort), so the shelf never reshuffles. */
-export function shelfGrid(novels: readonly Novel[], hero: Novel | null): Novel[] {
+/** The grid: every novel except the hero, newest first — the archived
+ *  rows included only when the archive toggle asked the list for them
+ *  (`includeArchived`, Task 7). Ties keep the list's order (a stable
+ *  sort), so the shelf never reshuffles. */
+export function shelfGrid(
+  novels: readonly Novel[],
+  hero: Novel | null,
+  includeArchived = false,
+): Novel[] {
   return novels
-    .filter((novel) => novel.archived_at == null && novel.id !== hero?.id)
+    .filter(
+      (novel) => (includeArchived || novel.archived_at == null) && novel.id !== hero?.id,
+    )
     .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at));
 }
 

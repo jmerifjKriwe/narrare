@@ -124,6 +124,17 @@ const FOURTH = novelRow({
   updated_at: "2026-11-08T09:00:00Z",
 });
 const SHELF_ROWS = [HERO, SECOND, THIRD, FOURTH];
+/** An archived book — the toggle's population, never the default's. */
+const ARCHIVED = novelRow({
+  id: "55555555-5555-5555-5555-555555555555",
+  title: "Das stille Archiv",
+  genre: "Mystery",
+  chapter_count: 4,
+  word_count: 9000,
+  status: "draft",
+  archived_at: "2026-11-12T08:00:00Z",
+  updated_at: "2026-11-12T08:00:00Z",
+});
 
 /** The settings row's locale, as the backend holds it. */
 let rowLocale: string | null = "de";
@@ -132,13 +143,20 @@ let novelsAnswer: () => Promise<{ data?: unknown; response: Response }> = async 
   data: SHELF_ROWS,
   response: ok(),
 });
+/** What the endpoint answers when include_archived asks for the archive. */
+let archivedAnswer: () => Promise<{ data?: unknown; response: Response }> = async () => ({
+  data: [...SHELF_ROWS, ARCHIVED],
+  response: ok(),
+});
 
 function scriptApi() {
-  api.GET.mockImplementation(async (path: string) => {
+  api.GET.mockImplementation(async (path: string, init?: { params?: { query?: { include_archived?: boolean } } }) => {
     if (path === "/api/settings") {
       return { data: { locale: rowLocale, theme: null }, response: ok() };
     }
-    if (path === "/api/writing/novels") return novelsAnswer();
+    if (path === "/api/writing/novels") {
+      return init?.params?.query?.include_archived ? archivedAnswer() : novelsAnswer();
+    }
     throw new Error(`unexpected request: ${path}`);
   });
   api.PATCH.mockImplementation(async (path: string, init?: { body?: { locale?: string } }) => {
@@ -171,6 +189,7 @@ const cardOf = (title: string) =>
 beforeEach(() => {
   rowLocale = "de";
   novelsAnswer = async () => ({ data: SHELF_ROWS, response: ok() });
+  archivedAnswer = async () => ({ data: [...SHELF_ROWS, ARCHIVED], response: ok() });
   // de-DE formatting: the word pair groups the way the reader's region does.
   vi.stubGlobal("navigator", { language: "de-DE", languages: ["de-DE"] });
   scriptApi();
@@ -384,13 +403,14 @@ describe("the shelf — every door honest about what is not built yet", () => {
     }
   });
 
-  it("the search, filter, view and menu chrome stands inert — their tasks own it", async () => {
+  it("the view and menu chrome stands inert — their tasks own it", async () => {
     renderShelf();
     await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
 
-    // Task 7's search and filter: the drafted geometry, honestly disabled.
-    expect(screen.getByPlaceholderText(de["writing.shelf.search.placeholder"]).hasAttribute("disabled")).toBe(true);
-    expect(screen.getByRole("button", { name: de["writing.shelf.search.filter"] }).hasAttribute("disabled")).toBe(true);
+    // Task 7 made search and filter real; the view toggle and the quick
+    // menu stay honestly disabled until their own work lands.
+    expect(screen.getByPlaceholderText(de["writing.shelf.search.placeholder"]).hasAttribute("disabled")).toBe(false);
+    expect(screen.getByRole("button", { name: de["writing.shelf.search.filter"] }).hasAttribute("disabled")).toBe(false);
     expect(screen.getByRole("button", { name: de["writing.shelf.search.viewGrid"] }).hasAttribute("disabled")).toBe(true);
     expect(screen.getByRole("button", { name: de["writing.shelf.search.viewList"] }).hasAttribute("disabled")).toBe(true);
     // Task 8's quick menu: one per grid card, disabled with the shared note.
@@ -487,7 +507,10 @@ describe("the shelf — loading, error and empty answer per the drafts", () => {
 
     resolveNovels({ data: SHELF_ROWS, response: ok() });
     expect(await screen.findByRole("heading", { level: 2, name: "Dead Signal" })).toBeTruthy();
-    expect(screen.queryByRole("status")).toBeNull();
+    // The skeleton's status is gone. The one status that stands with the
+    // shelf now is the search's polite result announcer (Task 7).
+    expect(screen.queryByText(de["writing.shelf.loading"])).toBeNull();
+    expect(screen.getByRole("status").textContent).toBe(t("writing.shelf.search.results", { count: 3 }));
   });
 
   it("an unreachable list names the failure and offers a working retry", async () => {
@@ -602,5 +625,429 @@ describe("the shelf — loading, error and empty answer per the drafts", () => {
     // The empty panel's doors stay honest, the banner neutral beside them.
     expect(screen.getAllByRole("button", { name: de["writing.shelf.newBook"] }).length).toBe(2);
     expect(screen.getByText(de["writing.shelf.banner.title"])).toBeTruthy();
+  });
+});
+
+/** The search box, the filter trigger, and the grid's titles — the faces
+ *  Task 7 makes real. The hero is a section with an h2; the grid cards are
+ *  articles with h3s, so the two never mix in these reads. */
+const searchInput = () => screen.getByPlaceholderText(de["writing.shelf.search.placeholder"]);
+const filterTrigger = () => screen.getByRole("button", { name: de["writing.shelf.search.filter"] });
+const gridTitles = () =>
+  screen.queryAllByRole("article").map((card) => within(card).getByRole("heading", { level: 3 }).textContent);
+function openPopover(): HTMLElement {
+  fireEvent.click(filterTrigger());
+  return screen.getByRole("dialog");
+}
+
+describe("the shelf — search matches titles, genres and figures", () => {
+  it("a title word narrows the grid live; the hero stays the fixed hero", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    fireEvent.change(searchInput(), { target: { value: "salt" } });
+    expect(gridTitles()).toEqual(["The Salt Road"]);
+    // The hero is not filtered — the latest-edited active novel keeps leading.
+    expect(screen.getByRole("heading", { level: 2, name: "Dead Signal" })).toBeTruthy();
+
+    // Case-insensitive, and the whole query is the needle.
+    fireEvent.change(searchInput(), { target: { value: "WINTER" } });
+    expect(gridTitles()).toEqual(["Winterhaus"]);
+    fireEvent.change(searchInput(), { target: { value: "" } });
+    expect(gridTitles()).toEqual(["Winterhaus", "The Salt Road", "Der Nebel von Arkona"]);
+  });
+
+  it("a genre word matches the books that carry it", async () => {
+    novelsAnswer = async () => ({
+      data: [...SHELF_ROWS, novelRow({ id: "multi", title: "Grenzgänger", genre: "Mystery, Historisch", updated_at: "2026-11-07T09:00:00Z" })],
+      response: ok(),
+    });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    fireEvent.change(searchInput(), { target: { value: "mystery" } });
+    expect(gridTitles()).toEqual(["Winterhaus", "Grenzgänger"]);
+    // A component of a joined genre matches too — and only the component:
+    // Arkona's „Historical" does not answer „historisch".
+    fireEvent.change(searchInput(), { target: { value: "historisch" } });
+    expect(gridTitles()).toEqual(["Grenzgänger"]);
+  });
+
+  it("a figure matches word_count or chapter_count by equality — never a substring", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    // 24.150 words: The Salt Road, in the locale's grouped form.
+    fireEvent.change(searchInput(), { target: { value: "24.150" } });
+    expect(gridTitles()).toEqual(["The Salt Road"]);
+    // 12 chapters: the same book, the other figure.
+    fireEvent.change(searchInput(), { target: { value: "12" } });
+    expect(gridTitles()).toEqual(["The Salt Road"]);
+    // A substring of a count is no match — 2415 is not 24150.
+    fireEvent.change(searchInput(), { target: { value: "2415" } });
+    expect(gridTitles()).toEqual([]);
+    expect(screen.getByText(de["writing.shelf.search.empty.title"])).toBeTruthy();
+  });
+
+  it("Escape clears the search — the keyboard path back to the whole shelf", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    fireEvent.change(searchInput(), { target: { value: "salt" } });
+    expect(gridTitles()).toEqual(["The Salt Road"]);
+    fireEvent.keyDown(searchInput(), { key: "Escape" });
+    expect((searchInput() as HTMLInputElement).value).toBe("");
+    expect(gridTitles()).toEqual(["Winterhaus", "The Salt Road", "Der Nebel von Arkona"]);
+  });
+
+  it("no match renders the honest empty-search panel with a working clear", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    fireEvent.change(searchInput(), { target: { value: "gibt es nicht" } });
+    expect(screen.getByText(de["writing.shelf.search.empty.title"])).toBeTruthy();
+    expect(screen.getByText(de["writing.shelf.search.empty.body"])).toBeTruthy();
+    expect(screen.queryAllByRole("article")).toHaveLength(0);
+    // The hero keeps standing — the search narrows the grid, not the shelf's lead.
+    expect(screen.getByRole("heading", { level: 2, name: "Dead Signal" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: de["writing.shelf.search.empty.clear"] }));
+    expect((searchInput() as HTMLInputElement).value).toBe("");
+    expect(gridTitles()).toEqual(["Winterhaus", "The Salt Road", "Der Nebel von Arkona"]);
+    expect(screen.queryByText(de["writing.shelf.search.empty.title"])).toBeNull();
+  });
+
+  it("the result count is announced politely, in the catalog's du-tone", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const live = screen.getByRole("status");
+    expect(live.textContent).toBe(t("writing.shelf.search.results", { count: 3 }));
+    fireEvent.change(searchInput(), { target: { value: "salt" } });
+    expect(live.textContent).toBe(t("writing.shelf.search.results", { count: 1 }));
+  });
+});
+
+describe("the shelf — the filter popover facets the real values", () => {
+  it("genre facets derive from the rows, joined genres facet by component, with counts", async () => {
+    novelsAnswer = async () => ({
+      data: [
+        ...SHELF_ROWS,
+        novelRow({ id: "multi", title: "Grenzgänger", genre: "Mystery, Historisch", updated_at: "2026-11-07T09:00:00Z" }),
+      ],
+      response: ok(),
+    });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openPopover();
+    // First appearance wins the order: the hero's genre leads, the joined
+    // book's second component joins at its own first appearance. The
+    // status rows are checkboxes too — the genre ones come first.
+    const statusLabels = [
+      de["writing.shelf.status.draft"],
+      de["writing.shelf.status.revision"],
+      de["writing.shelf.status.final"],
+    ];
+    const boxes = within(dialog)
+      .getAllByRole("checkbox")
+      .filter((box) => !statusLabels.includes(box.getAttribute("aria-label") ?? ""));
+    expect(boxes.map((box) => box.getAttribute("aria-label"))).toEqual([
+      "Science Fiction",
+      "Mystery",
+      "Literary",
+      "Historical",
+      "Historisch",
+    ]);
+    // Mystery rides two books (Winterhaus + Grenzgänger) — the count says so.
+    const mystery = within(dialog).getByRole("checkbox", { name: "Mystery" });
+    expect(mystery.closest("label")?.textContent).toContain("2");
+  });
+
+  it("a genre facet narrows the grid; two genres OR; unchecking restores", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openPopover();
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "Mystery" }));
+    expect(gridTitles()).toEqual(["Winterhaus"]);
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "Historical" }));
+    expect(gridTitles()).toEqual(["Winterhaus", "Der Nebel von Arkona"]);
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "Mystery" }));
+    expect(gridTitles()).toEqual(["Der Nebel von Arkona"]);
+  });
+
+  it("status facets answer only the values the rows carry, in vocabulary order", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openPopover();
+    // Winterhaus carries no status — no facet guesses one for it.
+    const statusBoxes = within(dialog)
+      .getAllByRole("checkbox")
+      .filter((box) => [de["writing.shelf.status.draft"], de["writing.shelf.status.revision"], de["writing.shelf.status.final"]].includes(box.getAttribute("aria-label") ?? ""));
+    expect(statusBoxes.map((box) => box.getAttribute("aria-label"))).toEqual([
+      de["writing.shelf.status.draft"],
+      de["writing.shelf.status.revision"],
+      de["writing.shelf.status.final"],
+    ]);
+
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: de["writing.shelf.status.revision"] }));
+    expect(gridTitles()).toEqual(["The Salt Road"]);
+  });
+
+  it("search and facets compose — AND across, OR within", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openPopover();
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: de["writing.shelf.status.draft"] }));
+    // The grid's draft books: none (the hero is draft but never in the grid).
+    expect(gridTitles()).toEqual([]);
+    expect(screen.getByText(de["writing.shelf.search.empty.title"])).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: de["writing.shelf.status.draft"] }));
+    fireEvent.change(searchInput(), { target: { value: "nebel" } });
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "Historical" }));
+    expect(gridTitles()).toEqual(["Der Nebel von Arkona"]);
+    // The facet excludes what the search alone would keep.
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "Historical" }));
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "Mystery" }));
+    expect(gridTitles()).toEqual([]);
+  });
+
+  it("the footer counts the selection and Zurücksetzen clears the facets, not the search", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    fireEvent.change(searchInput(), { target: { value: "haus" } });
+    const dialog = openPopover();
+    expect(within(dialog).getByText(t("writing.shelf.filter.selected", { count: 0 }))).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "Mystery" }));
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: de["writing.shelf.status.revision"] }));
+    expect(within(dialog).getByText(t("writing.shelf.filter.selected", { count: 2 }))).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.filter.reset"] }));
+    expect(within(dialog).getByText(t("writing.shelf.filter.selected", { count: 0 }))).toBeTruthy();
+    expect((within(dialog).getByRole("checkbox", { name: "Mystery" }) as HTMLInputElement).checked).toBe(false);
+    // The search box is its own control — the popover's reset leaves it be.
+    expect((searchInput() as HTMLInputElement).value).toBe("haus");
+    expect(gridTitles()).toEqual(["Winterhaus"]);
+  });
+
+  it("the trigger wears the drafted active face and dot while filters stand", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const trigger = filterTrigger();
+    expect(trigger.className).not.toContain("bg-secondary-container");
+    const dialog = openPopover();
+    // Open: the draft's secondary-container face, aria-expanded true.
+    expect(filterTrigger().className).toContain("bg-secondary-container");
+    expect(filterTrigger().getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "Mystery" }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    // Closed with a selection: the face and the dot stay — the filter is real.
+    expect(filterTrigger().className).toContain("bg-secondary-container");
+    expect(filterTrigger().querySelector(".bg-primary")).not.toBeNull();
+    expect(filterTrigger().getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
+describe("the shelf — the popover's dialog semantics", () => {
+  it("opens as a labelled dialog, focuses its close button, and names its controls", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const trigger = filterTrigger();
+    expect(trigger.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    const dialog = openPopover();
+    expect(dialog.getAttribute("aria-label")).toBe(de["writing.shelf.filter.title"]);
+    expect(trigger.getAttribute("aria-controls")).toBe(dialog.id);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: de["writing.shelf.filter.close"] }));
+  });
+
+  it("Escape closes and returns focus to the trigger", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    openPopover();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(filterTrigger());
+    expect(filterTrigger().getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("the close button closes and returns focus to the trigger", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openPopover();
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.filter.close"] }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(filterTrigger());
+  });
+
+  it("a click outside closes without stealing focus", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    openPopover();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).not.toBe(filterTrigger());
+  });
+
+  it("the facet rows are real checkboxes — Space toggles from the keyboard", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openPopover();
+    const mystery = within(dialog).getByRole("checkbox", { name: "Mystery" }) as HTMLInputElement;
+    mystery.focus();
+    fireEvent.click(mystery);
+    expect(mystery.checked).toBe(true);
+    expect(gridTitles()).toEqual(["Winterhaus"]);
+  });
+});
+
+describe("the shelf — the archive toggle is a real refetch", () => {
+  it("Archiv einbeziehen asks include_archived and the archived book joins with its pill", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    expect(screen.queryByText(de["writing.shelf.archived"])).toBeNull();
+
+    const dialog = openPopover();
+    const toggle = within(dialog).getByRole("switch", { name: de["writing.shelf.filter.archive"] });
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(toggle);
+
+    await waitFor(() =>
+      expect(api.GET).toHaveBeenCalledWith("/api/writing/novels", {
+        params: { query: { include_archived: true } },
+      }),
+    );
+    const archivedCard = await screen.findByRole("heading", { level: 3, name: "Das stille Archiv" });
+    const card = archivedCard.closest("article") as HTMLElement;
+    expect(within(card).getByText(de["writing.shelf.archived"])).toBeTruthy();
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    // The hero is untouched — the archive never leads.
+    expect(screen.getByRole("heading", { level: 2, name: "Dead Signal" })).toBeTruthy();
+    // The metrics still count the active shelf, never the archived rows.
+    expect(screen.getByText(t("writing.shelf.metrics.books", { count: 4 }))).toBeTruthy();
+  });
+
+  it("the archived book never leads, even when it is the newest row", async () => {
+    archivedAnswer = async () => ({
+      data: [{ ...ARCHIVED, updated_at: "2026-11-16T08:00:00Z" }, ...SHELF_ROWS],
+      response: ok(),
+    });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    fireEvent.click(within(openPopover()).getByRole("switch", { name: de["writing.shelf.filter.archive"] }));
+    await screen.findByRole("heading", { level: 3, name: "Das stille Archiv" });
+    expect(screen.getByRole("heading", { level: 2, name: "Dead Signal" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 2, name: "Das stille Archiv" })).toBeNull();
+  });
+
+  it("toggling back asks the default list again and the archive leaves the grid", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openPopover();
+    const toggle = within(dialog).getByRole("switch", { name: de["writing.shelf.filter.archive"] });
+    fireEvent.click(toggle);
+    await screen.findByRole("heading", { level: 3, name: "Das stille Archiv" });
+    fireEvent.click(toggle);
+    await waitFor(() => expect(screen.queryByRole("heading", { level: 3, name: "Das stille Archiv" })).toBeNull());
+    expect(api.GET).toHaveBeenCalledWith("/api/writing/novels");
+    expect(gridTitles()).toEqual(["Winterhaus", "The Salt Road", "Der Nebel von Arkona"]);
+  });
+
+  it("the widened list holds the shelf while the ask is in flight — no skeleton flash", async () => {
+    let resolveArchived!: (answer: { data: unknown; response: Response }) => void;
+    archivedAnswer = () =>
+      new Promise<{ data: unknown; response: Response }>((resolve) => {
+        resolveArchived = resolve;
+      });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    fireEvent.click(within(openPopover()).getByRole("switch", { name: de["writing.shelf.filter.archive"] }));
+    await waitFor(() => expect(api.GET).toHaveBeenCalledWith("/api/writing/novels", {
+      params: { query: { include_archived: true } },
+    }));
+    // The previous answer stands — no loading skeleton mid-toggle.
+    expect(screen.getByRole("heading", { level: 2, name: "Dead Signal" })).toBeTruthy();
+    expect(screen.queryByText(de["writing.shelf.loading"])).toBeNull();
+
+    resolveArchived({ data: [...SHELF_ROWS, ARCHIVED], response: ok() });
+    await screen.findByRole("heading", { level: 3, name: "Das stille Archiv" });
+  });
+
+  it("search and facets compose with the archive population", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    fireEvent.click(within(openPopover()).getByRole("switch", { name: de["writing.shelf.filter.archive"] }));
+    await screen.findByRole("heading", { level: 3, name: "Das stille Archiv" });
+    // The archived book's genre joins the facet counts.
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("checkbox", { name: "Mystery" }).closest("label")?.textContent).toContain("2");
+    fireEvent.change(searchInput(), { target: { value: "archiv" } });
+    expect(gridTitles()).toEqual(["Das stille Archiv"]);
+  });
+
+  it("an empty active shelf keeps the drafted empty panel — the chrome stands only with books", async () => {
+    // The disclosed consequence of the drafted empty state (no chrome in
+    // `shelf-empty`): with zero active books the archive toggle is not
+    // reachable from the shelf; Task 8's archive view owns that path.
+    novelsAnswer = async () => ({ data: [], response: ok() });
+    archivedAnswer = async () => ({ data: [ARCHIVED], response: ok() });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dein erstes Buch wartet." });
+    expect(screen.queryByPlaceholderText(de["writing.shelf.search.placeholder"])).toBeNull();
+  });
+});
+
+describe("the shelf — the filter state is transient and speaks du-tone", () => {
+  it("a remount starts fresh — no URL, no storage, the shelf's own memory only", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    fireEvent.change(searchInput(), { target: { value: "salt" } });
+    fireEvent.click(within(openPopover()).getByRole("checkbox", { name: "Mystery" }));
+    expect(gridTitles()).toEqual([]);
+
+    cleanup();
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    expect((searchInput() as HTMLInputElement).value).toBe("");
+    expect(gridTitles()).toEqual(["Winterhaus", "The Salt Road", "Der Nebel von Arkona"]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("the new copy speaks the catalog's du-tone German, not an English fallback", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    fireEvent.change(searchInput(), { target: { value: "gibt es nicht" } });
+    expect(screen.getByText("Kein Buch passt zu deiner Suche.")).toBeTruthy();
+    expect(
+      screen.getByText("Versuche es mit einem anderen Titel, Genre oder einer anderen Zahl — oder setze die Filter zurück."),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Suche und Filter zurücksetzen" }));
+
+    const dialog = openPopover();
+    expect(within(dialog).getByText("Filtern")).toBeTruthy();
+    expect(within(dialog).getByText("Genre")).toBeTruthy();
+    expect(within(dialog).getByText("Status")).toBeTruthy();
+    expect(within(dialog).getByText("Archiv einbeziehen")).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Zurücksetzen" })).toBeTruthy();
   });
 });
