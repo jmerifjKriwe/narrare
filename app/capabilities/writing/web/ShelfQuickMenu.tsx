@@ -36,7 +36,7 @@
  * arrow/↺ → refresh; progress_activity is the shell's border spinner.
  */
 
-import { forwardRef, useEffect, useId, useRef, useState } from "react";
+import { forwardRef, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import type { Novel } from "@shell/lib/api/client";
 import { formatDate } from "@shell/lib/format";
@@ -137,11 +137,23 @@ export function ShelfQuickMenu({ novel }: { novel: Novel }) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const firstRowRef = useRef<HTMLButtonElement | null>(null);
+  const exportRowRef = useRef<HTMLButtonElement | null>(null);
   const archiveRowRef = useRef<HTMLButtonElement | null>(null);
   const confirmActionRef = useRef<HTMLButtonElement | null>(null);
   /** Returning from the confirm (Escape or Abbrechen) lands focus back on
    *  the archive row, not the menu's first action — the staged return. */
   const returnToArchiveRef = useRef(false);
+  /** Export keeps the menu open, but its row was disabled while busy — the
+   *  browser drops a disabled row's focus to the body. Once the ask settles
+   *  and the row re-enables, focus returns to it so a keyboard reader is
+   *  never stranded mid-menu. */
+  const focusExportOnIdleRef = useRef(false);
+  /** The popover overhangs its narrow card freely (the article carries no
+   *  clip), but it must never leave the viewport: at the lg-band's leftmost
+   *  column a right-aligned 256px menu would run off the left edge. Clamp
+   *  its left edge into the viewport, measured from the trigger when a
+   *  surface opens and on resize. `null` keeps the draft's right-0 anchor. */
+  const [menuLeft, setMenuLeft] = useState<number | null>(null);
 
   const duplicate = useDuplicateNovel();
   const exportNovel = useExportNovel();
@@ -204,6 +216,40 @@ export function ShelfQuickMenu({ novel }: { novel: Novel }) {
     }
   }, [view]);
 
+  // Export's focus restore: the row re-enables when busy clears (this effect
+  // runs after that render), so the focus lands on a live control, not the
+  // disabled one the browser just blurred.
+  useEffect(() => {
+    if (busy === null && focusExportOnIdleRef.current) {
+      focusExportOnIdleRef.current = false;
+      exportRowRef.current?.focus();
+    }
+  }, [busy]);
+
+  // Clamp the popover into the viewport — the leftmost lg-band card would
+  // otherwise overhang off the left edge once the article's clip is gone.
+  // Measured before paint (no flash at the wrong anchor), recomputed on
+  // resize; the draft's right-aligned overhang stands wherever it fits.
+  const surfaceVisible = view !== "closed" || error !== null;
+  useLayoutEffect(() => {
+    if (!surfaceVisible || wrapperRef.current === null) {
+      setMenuLeft(null);
+      return;
+    }
+    const compute = () => {
+      const rect = wrapperRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = 256; // w-64
+      const margin = 8;
+      const desired = rect.right - width; // the draft's right-aligned anchor
+      const clamped = Math.max(margin, Math.min(desired, window.innerWidth - width - margin));
+      setMenuLeft(clamped - rect.left);
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, [surfaceVisible]);
+
   /** Run an action: busy on its row, the menu open; success refetches the
    *  shelf (the hook invalidates `["novels"]`), a refusal leaves the card's
    *  error line. Export alone keeps the menu open — its meta line refreshes. */
@@ -227,6 +273,7 @@ export function ShelfQuickMenu({ novel }: { novel: Novel }) {
       exportNovel.mutate(novel.id, {
         onSuccess: (data) => {
           downloadBlob(data.blob, data.filename);
+          focusExportOnIdleRef.current = true;
           setBusy(null);
         },
         onError: fail,
@@ -252,6 +299,10 @@ export function ShelfQuickMenu({ novel }: { novel: Novel }) {
     restore: "writing.shelf.menu.error.restore",
   } as const;
 
+  /** The clamped horizontal anchor for every popover surface (menu,
+   *  confirm, error notice) — they share the trigger's wrapper. */
+  const surfaceStyle = menuLeft !== null ? { left: menuLeft, right: "auto" as const } : undefined;
+
   return (
     <div ref={wrapperRef} className="absolute right-2 top-2 z-50">
       {/* The 28px trigger — the draft's two faces: neutral closed, the
@@ -263,7 +314,19 @@ export function ShelfQuickMenu({ novel }: { novel: Novel }) {
         aria-expanded={open}
         aria-controls={popoverId}
         aria-label={t("writing.shelf.card.options")}
-        onClick={() => (open ? close(false) : setView("menu"))}
+        onClick={() => {
+          // The busy guard matches Escape and the outside press: an action
+          // in flight holds the menu. Opening dismisses a standing error
+          // notice for good — engaging the menu is the reader's answer to
+          // it, so it never reappears stale on the next close.
+          if (busy !== null) return;
+          if (open) {
+            close(false);
+          } else {
+            setError(null);
+            setView("menu");
+          }
+        }}
         className={
           open
             ? `flex h-7 w-7 items-center justify-center rounded-md border border-primary bg-surface text-primary shadow-sm transition-colors ${FOCUS}`
@@ -278,6 +341,7 @@ export function ShelfQuickMenu({ novel }: { novel: Novel }) {
           id={popoverId}
           role="dialog"
           aria-label={archived ? t("writing.shelf.menu.titleArchived") : t("writing.shelf.menu.title")}
+          style={surfaceStyle}
           className="absolute right-0 top-full z-50 mt-1 w-64 rounded-xl border border-outline-variant bg-surface-container-lowest p-1.5 shadow-lg"
         >
           <div className="mb-1 border-b border-rule px-2.5 py-1 text-eyebrow font-semibold uppercase tracking-wider text-muted">
@@ -292,6 +356,7 @@ export function ShelfQuickMenu({ novel }: { novel: Novel }) {
             onClick={() => run("duplicate")}
           />
           <MenuRow
+            ref={exportRowRef}
             icon="export"
             label={t("writing.shelf.menu.export")}
             busy={busy === "export"}
@@ -338,6 +403,7 @@ export function ShelfQuickMenu({ novel }: { novel: Novel }) {
           id={popoverId}
           role="dialog"
           aria-label={t("writing.shelf.menu.confirm.title")}
+          style={surfaceStyle}
           className="absolute right-0 top-full z-50 mt-1 w-64 rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-lg"
         >
           <div className="flex items-start gap-2.5">
@@ -381,10 +447,14 @@ export function ShelfQuickMenu({ novel }: { novel: Novel }) {
 
       {/* The gentle error line under the closed menu — the muted danger as
           an accent rule and symbol only, the loss-free message, the retry
-          that re-runs the very action (archive returns to its confirm). */}
+          that re-runs the very action (archive returns to its confirm).
+          Opening the menu clears it for good (the trigger's onClick), so it
+          is dismissed by retry or by engaging the menu — never stale on a
+          later close. */}
       {error !== null && view === "closed" && (
         <div
           role="alert"
+          style={surfaceStyle}
           className="absolute right-0 top-full z-40 mt-1 w-64 rounded-lg border border-rule border-l-2 border-l-danger bg-surface-container-lowest p-2.5 shadow-lg"
         >
           <div className="flex items-start gap-1.5">

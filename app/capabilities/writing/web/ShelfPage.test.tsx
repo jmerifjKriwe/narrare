@@ -1529,3 +1529,109 @@ describe("the shelf — the empty shelf's archive door closes Task 7's gap", () 
     expect(screen.queryByRole("button", { name: de["writing.shelf.empty.archiveDoor"] })).toBeNull();
   });
 });
+
+describe("the shelf — the quick menu's review fixes", () => {
+  it("the popover's container chain never clips it — no overflow clip up to the page", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openMenu("Winterhaus");
+    // The lg-band columns run 222–264px while the popover needs 264px; the
+    // draft lets it overhang freely. Walk the ancestor chain: no element
+    // between the popover and the page may carry an overflow clip, or the
+    // narrow card would sever the menu's icons and first characters.
+    const clippers: string[] = [];
+    let node: HTMLElement | null = dialog;
+    while (node && node !== document.body) {
+      if (/overflow-(hidden|clip|x-hidden|y-hidden|x-clip|y-clip)/.test(node.className)) {
+        clippers.push(`${node.tagName}.${node.className}`);
+      }
+      node = node.parentElement;
+    }
+    expect(clippers).toEqual([]);
+    // The cover geometry is preserved by the pedestal itself: it rounds its
+    // own top corners and keeps its own clip (the cover's hover lift), while
+    // the article carries none.
+    const article = cardOf("Winterhaus");
+    expect(article.className).not.toMatch(/overflow-(hidden|clip)/);
+    const pedestal = article.firstElementChild as HTMLElement;
+    expect(pedestal.className).toContain("rounded-t-xl");
+    expect(pedestal.className).toContain("overflow-hidden");
+  });
+
+  it("the trigger holds the menu open while an action is busy", async () => {
+    let resolveExport!: (answer: { data: unknown; response: Response }) => void;
+    exportAnswer = () =>
+      new Promise<{ data: unknown; response: Response }>((resolve) => {
+        resolveExport = resolve;
+      });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openMenu("Winterhaus");
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.export"] }));
+    await waitFor(() => expect(api.POST).toHaveBeenCalled());
+    expect(screen.getByRole("dialog")).toBeTruthy();
+
+    // Clicking the trigger mid-flight must not close the menu — the busy
+    // guard matches Escape and the outside press.
+    fireEvent.click(menuTriggerOf("Winterhaus"));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(menuTriggerOf("Winterhaus").getAttribute("aria-expanded")).toBe("true");
+
+    resolveExport({
+      data: new Blob(["zip"], { type: "application/zip" }),
+      response: new Response(null, { status: 200, headers: { "Content-Disposition": 'attachment; filename="w.zip"' } }),
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeTruthy());
+  });
+
+  it("opening the menu dismisses a standing error notice for good", async () => {
+    duplicateAnswer = async () => ({ data: undefined, response: new Response(null, { status: 500 }) });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openMenu("Winterhaus");
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.duplicate"] }));
+    await within(cardOf("Winterhaus")).findByRole("alert");
+
+    // Engaging the menu clears the notice…
+    fireEvent.click(menuTriggerOf("Winterhaus"));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(within(cardOf("Winterhaus")).queryByRole("alert")).toBeNull();
+    // …so closing without acting never brings it back stale.
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(within(cardOf("Winterhaus")).queryByRole("alert")).toBeNull();
+  });
+
+  it("export restores focus to its row once busy clears — no keyboard strand", async () => {
+    let resolveExport!: (answer: { data: unknown; response: Response }) => void;
+    exportAnswer = () =>
+      new Promise<{ data: unknown; response: Response }>((resolve) => {
+        resolveExport = resolve;
+      });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openMenu("Winterhaus");
+    const exportRow = within(dialog).getByRole("button", { name: de["writing.shelf.menu.export"] });
+    fireEvent.click(exportRow);
+    await waitFor(() => expect(api.POST).toHaveBeenCalled());
+    // The row is disabled while busy; the browser drops a disabled row's
+    // focus to the body. jsdom neither auto-blurs nor blurs a disabled
+    // element, so strand focus on the body explicitly (via an enabled
+    // control) to reproduce the keyboard trap the fix repairs.
+    menuTriggerOf("Winterhaus").focus();
+    (document.activeElement as HTMLElement).blur();
+    expect(document.activeElement).toBe(document.body);
+
+    resolveExport({
+      data: new Blob(["zip"], { type: "application/zip" }),
+      response: new Response(null, { status: 200, headers: { "Content-Disposition": 'attachment; filename="w.zip"' } }),
+    });
+    // The menu stays open and focus lands back on the live export row.
+    await waitFor(() => expect(document.activeElement).toBe(exportRow));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+});

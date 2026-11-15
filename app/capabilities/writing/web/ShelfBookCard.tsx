@@ -11,8 +11,10 @@
  *
  * A book without a target keeps the honest neutral: the count alone, a —
  * where the percentage would stand, and an empty track. The quick menu
- * (Task 8) is real: its 28px trigger sits at the card's top-right and its
- * popover docks within the card, so the card is the positioning context.
+ * (Task 8) is real: its 28px trigger sits at the card's top-right (the card
+ * is the positioning context) and its popover overhangs the card freely —
+ * the article carries no overflow clip, so a narrow lg-band column never
+ * severs the menu; the cover pedestal rounds and clips itself instead.
  */
 
 import type { Novel } from "@shell/lib/api/client";
@@ -84,9 +86,14 @@ export function BookCard({ novel }: { novel: Novel }) {
   const t = useTranslation();
   const result = progress(novel.word_count, novel.target_words);
   return (
-    <article className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-surface shadow-sm transition-all duration-200 hover:shadow-md">
-      {/* The cover pedestal — the book object at shelf size. */}
-      <div className="relative flex items-center justify-center overflow-hidden border-b border-rule bg-surface-container-low p-4">
+    <article className="group relative flex flex-col justify-between rounded-xl border border-border bg-surface shadow-sm transition-all duration-200 hover:shadow-md">
+      {/* The cover pedestal — the book object at shelf size. It rounds its
+          own top corners (the article's radius) and keeps its own clip for
+          the cover's hover lift; the article carries NO overflow clip, so
+          the quick menu's popover overhangs a narrow card freely at every
+          width (the lg-band columns run 222–264px, the popover needs 264px)
+          instead of being severed by it. */}
+      <div className="relative flex items-center justify-center overflow-hidden rounded-t-xl border-b border-rule bg-surface-container-low p-4">
         <div className="transition-transform duration-200 group-hover:-translate-y-1">
           <BookCover title={novel.title} genre={novel.genre} author={novel.author} size="shelf" />
         </div>
