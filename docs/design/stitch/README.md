@@ -154,3 +154,48 @@ its HTML and screenshot, and `download_file` returns their content. The same
 project is editable at <https://stitch.withgoogle.com>. Re-export into the folder
 that matches the screen's area, keep the file name stable, and update the table
 above when a screen is added or renamed.
+
+## Bulk download (context-sparing)
+
+The REST endpoint downloads to a file without routing the payload through an
+agent's context window. Use it for archive refreshes and bulk exports; use the
+MCP (`download_file`) only when the content is meant to be read.
+
+Auth: `X-Goog-Api-Key` (same key as the MCP; stored in
+`~/.config/opencode/opencode.json` under `mcp.servers.google-stitch`).
+
+    export STITCH_API_KEY="…"
+    export PROJECT="15314899202287259920"
+
+    # list screens → JSON with downloadUrl per screen
+    curl -sS -H "X-Goog-Api-Key: $STITCH_API_KEY" \
+      "https://stitch.googleapis.com/v1/projects/$PROJECT/screens" \
+      -o /tmp/screens.json
+
+    # HTML (dataString is an escaped string)
+    curl -sS -H "X-Goog-Api-Key: $STITCH_API_KEY" \
+      "https://stitch.googleapis.com/v1/projects/$PROJECT/files/<FILE>:download" \
+      | jq -r .dataString > docs/design/stitch/screens/<area>/<name>.html
+
+    # image (dataString is base64)
+    curl -sS -H "X-Goog-Api-Key: $STITCH_API_KEY" \
+      "https://stitch.googleapis.com/v1/projects/$PROJECT/files/<FILE>:download" \
+      | jq -r .dataString | base64 -d \
+      > docs/design/stitch/screens/<area>/<name>.webp
+
+`<FILE>` is the trailing segment of `htmlCode.name` / `screenshot.name`
+(e.g. `…/files/6cee41d0b0f94e1b9ceb322b6d993a52`). The endpoint returns
+`{dataString}` for HTML and `{dataString, imageMetadata}` for images.
+
+A batch helper is available as `scripts/stitch_download.py` (stdlib only).
+
+## MCP setup (interactive path)
+
+For interactive design work (generate/edit/variants) the MCP is the right tool;
+for bulk file downloads use the REST path above.
+
+Server: remote MCP at `https://stitch.googleapis.com/mcp`, auth header
+`X-Goog-Api-Key`. Configured user-wide in `~/.config/opencode/opencode.json`
+(`mcp.servers.google-stitch`); the MCP stays there (not mirrored into the repo's
+`opencode.json`). See `MCP-SETUP.md` for details. Project ID for narrare:
+`15314899202287259920`.
