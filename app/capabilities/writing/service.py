@@ -3,6 +3,7 @@
 import contextlib
 import zlib
 from collections.abc import Sequence  # noqa: TC003
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Literal
 from uuid import UUID  # noqa: TC003
@@ -19,11 +20,19 @@ from app.capabilities.writing.metadata import (
 from app.capabilities.writing.prompts import render_continuation, scaffold_length
 from app.capabilities.writing.repository import (
     ChapterRepository,
+    DailyWordsRepository,
     EntityRepository,
     NovelRepository,
     SeriesRepository,
 )
-from app.capabilities.writing.schemas import ChapterUpdate, ExportDone, NovelRead, NovelUpdate
+from app.capabilities.writing.schemas import (
+    ActivityPoint,
+    ActivityRead,
+    ChapterUpdate,
+    ExportDone,
+    NovelRead,
+    NovelUpdate,
+)
 from app.kernel.auth import SetupRequiredError
 from app.kernel.context import allocate
 from app.kernel.contracts.models import Chapter, Entity, Novel, User
@@ -101,6 +110,7 @@ class WritingService:
         self.chapters = ChapterRepository(session, user_id)
         self.entities = EntityRepository(session, user_id)
         self.series = SeriesRepository(session, user_id)
+        self.daily_words = DailyWordsRepository(session, user_id)
 
     async def _require_user(self) -> None:
         """Writes belong to a user that setup created; without one there is
@@ -260,6 +270,46 @@ class WritingService:
             titles.get(copy.id),
         )
 
+    async def activity(self, days: int = 30) -> ActivityRead:
+        """The atelier's activity across all the user's novels.
+
+        ``points`` cover the requested window oldest-first, zero-days
+        included; ``streak_days`` counts consecutive days with a nonzero
+        net ending today — or yesterday, which keeps the streak alive
+        until the day after tomorrow without writing; ``weekly_average``
+        is the mean net words per day over ALL days of the window, one
+        decimal; ``today_words`` is today's net. The day boundary is the
+        server's UTC date, the clock every other timestamp here rides.
+        """
+        today = datetime.now(UTC).date()
+        totals = await self.daily_words.daily_totals(today)
+        start = today - timedelta(days=days - 1)
+        points = [
+            ActivityPoint(date=day, words=totals.get(day, 0))
+            for day in (start + timedelta(days=offset) for offset in range(days))
+        ]
+        # The streak anchors on today when today has a nonzero net, else on
+        # yesterday — a streak survives until the day after tomorrow without
+        # writing — and walks back through consecutive nonzero days. A day
+        # nets across novels first: +50 in one book and -50 in another is a
+        # zero day, not two active ones. The walk is not bounded by the
+        # window: a 40-day streak reads 40 on a 7-day window.
+        anchor = today if totals.get(today, 0) != 0 else today - timedelta(days=1)
+        streak = 0
+        day = anchor
+        while totals.get(day, 0) != 0:
+            streak += 1
+            day -= timedelta(days=1)
+        # The average's basis is every day of the window, zero-days included:
+        # the honest daily rate, rest days and all. The net is the numerator,
+        # so a window that removed more than it wrote averages negative.
+        return ActivityRead(
+            points=points,
+            streak_days=streak,
+            weekly_average=round(sum(point.words for point in points) / days, 1),
+            today_words=totals.get(today, 0),
+        )
+
     async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:
         await self._require_user()
         if await self.novels.get(novel_id) is None:
@@ -267,6 +317,8 @@ class WritingService:
         # The same rule as the update: spaces are not a name, and "" after
         # the trim is the honest unnamed.
         chapter = await self.chapters.create(novel_id, title.strip())
+        # A chapter is born empty: zero words, a zero diff — the activity
+        # has nothing to record until the first body lands (update_chapter).
         await self.session.commit()
         return chapter
 
@@ -360,13 +412,28 @@ class WritingService:
         order (book first, the delete's and the reorder's) is what keeps
         the pair from waiting on each other's row (Postgres 40P01).
 
+        A carried body also feeds the atelier's activity: the diff of the
+        one whitespace rule, old body against new, accumulates on today's
+        row in the same transaction.
+
         Return the chapter; raise NotFoundError if it is absent or another user's.
         """
         chapter = await self.get_chapter(chapter_id)
         await lock_novel(self.session, user_id=self.user_id, novel_id=chapter.novel_id)
         if changes.title is not None:
             changes.title = changes.title.strip()
-        chapter = await self.chapters.save(chapter, changes.model_dump(exclude_none=True))
+        updates = changes.model_dump(exclude_none=True)
+        # The activity's diff: the OLD body is read before the save lands,
+        # and both sides count through the shelf's one whitespace rule.
+        # A title-only edit — or a body that counts the same — is a zero
+        # diff and writes no activity row.
+        delta = 0
+        if "body" in updates:
+            old_words, new_words = await self.chapters.count_words(chapter.body, updates["body"])
+            delta = new_words - old_words
+        chapter = await self.chapters.save(chapter, updates)
+        if delta:
+            await self.daily_words.add_words(chapter.novel_id, datetime.now(UTC).date(), delta)
         await self.session.commit()
         return chapter
 
@@ -383,12 +450,16 @@ class WritingService:
         survivor's ``updated_at`` to itself, and the novel's row is the
         one that advances: the archive lost a chapter (D8). The chapter's
         pending suggestions ride the foreign key's cascade; findings are
-        the novel's and stay. Raise NotFoundError for an absent or
-        unowned chapter.
+        the novel's and stay. The removed words count negative on today's
+        activity row, in the same transaction. Raise NotFoundError for an
+        absent or unowned chapter.
         """
         chapter = await self.get_chapter(chapter_id)
         novel_id = chapter.novel_id
         await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
+        # The removed body counts negative on today's activity row — the
+        # atelier's honest delta, read before the delete lands.
+        (removed_words,) = await self.chapters.count_words(chapter.body)
         result = await self.session.execute(
             delete(Chapter).where(Chapter.id == chapter_id, Chapter.user_id == self.user_id)
         )
@@ -397,6 +468,8 @@ class WritingService:
         survivors = await self.chapters.list_for_novel(novel_id)
         await self.chapters.renumber(novel_id, [survivor.id for survivor in survivors])
         await self.chapters.touch_novel(novel_id)
+        if removed_words:
+            await self.daily_words.add_words(novel_id, datetime.now(UTC).date(), -removed_words)
         await self.session.commit()
 
     async def reorder_chapters(self, novel_id: UUID, chapter_ids: Sequence[UUID]) -> None:

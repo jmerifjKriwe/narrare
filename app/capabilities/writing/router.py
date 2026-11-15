@@ -6,12 +6,13 @@ from logging import getLogger
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.writing.metadata import InvalidNovelUpdateError
 from app.capabilities.writing.schemas import (
+    ActivityRead,
     ChapterCreate,
     ChapterOrderUpdate,
     ChapterRead,
@@ -234,6 +235,19 @@ async def duplicate_novel(novel_id: UUID, service: ServiceDep) -> NovelRead:
         raise HTTPException(status_code=404, detail="novel not found") from None
     except SetupRequiredError:
         raise HTTPException(status_code=409, detail="setup required") from None
+
+
+@router.get("/activity", response_model=ActivityRead)
+async def activity(
+    service: ServiceDep, days: Annotated[int, Query(ge=1, le=365)] = 30
+) -> ActivityRead:
+    """The atelier's daily words across all owned novels: the window's
+    points (zero-days included), the streak of consecutive days with a
+    nonzero net ending today or yesterday, the mean net words per day
+    over the whole window, and today's net. ``days`` bounds the window
+    to 1..365; the default is 30.
+    """
+    return await service.activity(days)
 
 
 @router.post(

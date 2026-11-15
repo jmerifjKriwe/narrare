@@ -1014,6 +1014,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/writing/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Activity
+         * @description The atelier's daily words across all owned novels: the window's
+         *     points (zero-days included), the streak of consecutive days with a
+         *     nonzero net ending today or yesterday, the mean net words per day
+         *     over the whole window, and today's net. ``days`` bounds the window
+         *     to 1..365; the default is 30.
+         */
+        get: operations["activity_api_writing_activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/writing/chapters/{chapter_id}": {
         parameters: {
             query?: never;
@@ -1274,6 +1298,43 @@ export interface components {
             entity: components["schemas"]["EntityRead"];
             /** Skipped Relations */
             skipped_relations: components["schemas"]["SkippedRelationRead"][];
+        };
+        /**
+         * ActivityPoint
+         * @description One day of the activity window: the date and the atelier's net words.
+         *
+         *     The net is honest — a day that removed more text than it added carries
+         *     a negative count, and a day without a row carries zero.
+         */
+        ActivityPoint: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Words */
+            words: number;
+        };
+        /**
+         * ActivityRead
+         * @description The atelier's activity across all the user's novels (W3).
+         *
+         *     ``points`` cover the requested window oldest-first, zero-days
+         *     included; ``streak_days`` counts consecutive days with a nonzero net
+         *     ending today — or yesterday, which keeps the streak alive until the
+         *     day after tomorrow without writing; ``weekly_average`` is the mean
+         *     net words per day over ALL days of the window (zero-days in the
+         *     basis), one decimal; ``today_words`` is today's net across novels.
+         */
+        ActivityRead: {
+            /** Points */
+            points: components["schemas"]["ActivityPoint"][];
+            /** Streak Days */
+            streak_days: number;
+            /** Today Words */
+            today_words: number;
+            /** Weekly Average */
+            weekly_average: number;
         };
         /**
          * ArchiveInvalidRead
@@ -4745,6 +4806,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SetupStatus"];
+                };
+            };
+        };
+    };
+    activity_api_writing_activity_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

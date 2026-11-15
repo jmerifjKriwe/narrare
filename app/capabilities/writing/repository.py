@@ -1,12 +1,14 @@
 """Novel, chapter and entity persistence. Each repository is scoped to one user."""
 
 from collections.abc import Sequence  # noqa: TC003
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID  # noqa: TC003
 
-from sqlalchemy import func, select, update
+from sqlalchemy import case, func, literal, select, update
+from sqlalchemy.dialects.postgresql import insert
 
+from app.capabilities.writing.models import DailyWords
 from app.kernel.contracts.models import Chapter, Entity, Novel, Series
 from app.kernel.contracts.positions import next_chapter_position
 from app.kernel.db.base import ScopedRepository
@@ -30,6 +32,24 @@ def apply_changes(row: Any, changes: dict[str, Any]) -> None:
 _WS = "[" + r"\s" + chr(0x00A0) + chr(0x2007) + chr(0x202F) + "]"
 _TRIM_PATTERN = f"^{_WS}+|{_WS}+$"
 _SPLIT_PATTERN = _WS + "+"
+
+
+def _word_count_expression(body: Any) -> Any:
+    """The one whitespace rule as a SQL expression over any body value:
+    tokens of the trimmed body, zero when the trim is empty. The shelf's
+    grouped sum and the activity's write-path diff count through this one
+    expression, so the two cannot drift; the bodies never leave the
+    database."""
+    trimmed = func.regexp_replace(body, _TRIM_PATTERN, "", "g")
+    return case(
+        (
+            trimmed != "",
+            func.coalesce(
+                func.array_length(func.regexp_split_to_array(trimmed, _SPLIT_PATTERN), 1), 0
+            ),
+        ),
+        else_=0,
+    )
 
 
 class EntityRepository(ScopedRepository[Entity]):
@@ -102,19 +122,12 @@ class NovelRepository(ScopedRepository[Novel]):
         With ``novel_id``, aggregate that novel's chapters only — the
         single-row ask needs none of the shelf's other bodies. The words
         are tokens separated by the one whitespace class (``_WS``),
-        summed where the body trimmed by that same class is non-empty —
-        the filter is what keeps an empty (or whitespace-only) chapter
-        worth zero, which a bare split would count as its one empty
-        token. Novels with no chapters have no row here; the caller
-        reports the zeros.
+        counted by the one expression the activity's diff uses too —
+        an empty (or whitespace-only) body is worth zero, which a bare
+        split would count as its one empty token. Novels with no
+        chapters have no row here; the caller reports the zeros.
         """
-        trimmed = func.regexp_replace(Chapter.body, _TRIM_PATTERN, "", "g")
-        words = func.coalesce(
-            func.sum(
-                func.array_length(func.regexp_split_to_array(trimmed, _SPLIT_PATTERN), 1)
-            ).filter(trimmed != ""),
-            0,
-        )
+        words = func.coalesce(func.sum(_word_count_expression(Chapter.body)), 0)
         statement = (
             select(Chapter.novel_id, func.count(Chapter.id), words)
             .where(Chapter.user_id == self.user_id)
@@ -231,6 +244,20 @@ class ChapterRepository(ScopedRepository[Chapter]):
     async def get(self, chapter_id: UUID) -> Chapter | None:
         return await self.session.scalar(self.query().where(Chapter.id == chapter_id))
 
+    async def count_words(self, *bodies: str) -> list[int]:
+        """Word counts of the given bodies in one SELECT — the shelf's own
+        rule, so the activity's diff and the shelf's totals agree. The
+        bodies ride as bind parameters and the database does the counting;
+        the order of the answers is the order of the bodies."""
+        if not bodies:
+            return []
+        row = (
+            await self.session.execute(
+                select(*(_word_count_expression(literal(body)) for body in bodies))
+            )
+        ).one()
+        return [int(words) for words in row]
+
     async def create(self, novel_id: UUID, title: str) -> Chapter:
         """Append a chapter at the next position and update its novel's timestamp.
 
@@ -326,3 +353,42 @@ class ChapterRepository(ScopedRepository[Chapter]):
         )
         if novel is not None:
             novel.updated_at = datetime.now(UTC)
+
+
+class DailyWordsRepository(ScopedRepository[DailyWords]):
+    model = DailyWords
+
+    async def add_words(self, novel_id: UUID, day: date, delta: int) -> None:
+        """Accumulate one day's net words for a novel; the commit is the caller's.
+
+        One upsert against the (novel_id, date) primary key: the day's
+        first write inserts, every later one adds to the row in the
+        database — two writers on one day serialize at the constraint
+        instead of racing a read-modify-write. The delta may be negative
+        (text removed); the row keeps the honest net, no floor of zero.
+        A zero delta is the caller's skip: nothing was written.
+        """
+        statement = insert(DailyWords).values(
+            user_id=self.user_id, novel_id=novel_id, date=day, words=delta
+        )
+        await self.session.execute(
+            statement.on_conflict_do_update(
+                index_elements=["novel_id", "date"],
+                set_={"words": DailyWords.words + statement.excluded.words},
+            )
+        )
+
+    async def daily_totals(self, through: date) -> dict[date, int]:
+        """Net words per day across the user's novels, through ``through``.
+
+        One grouped query over the scoped rows — the user predicate rides
+        the activity row itself, no join through the novel. Days without
+        a row are the caller's zeros. The streak walks past the display
+        window, so the read is bounded by today, not by the window.
+        """
+        rows = await self.session.execute(
+            select(DailyWords.date, func.sum(DailyWords.words))
+            .where(self.owned(), DailyWords.date <= through)
+            .group_by(DailyWords.date)
+        )
+        return {day: int(words) for day, words in rows}

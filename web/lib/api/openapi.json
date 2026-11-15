@@ -22,6 +22,58 @@
         "title": "AcceptRead",
         "type": "object"
       },
+      "ActivityPoint": {
+        "description": "One day of the activity window: the date and the atelier's net words.\n\nThe net is honest — a day that removed more text than it added carries\na negative count, and a day without a row carries zero.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "words": {
+            "title": "Words",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "words"
+        ],
+        "title": "ActivityPoint",
+        "type": "object"
+      },
+      "ActivityRead": {
+        "description": "The atelier's activity across all the user's novels (W3).\n\n``points`` cover the requested window oldest-first, zero-days\nincluded; ``streak_days`` counts consecutive days with a nonzero net\nending today — or yesterday, which keeps the streak alive until the\nday after tomorrow without writing; ``weekly_average`` is the mean\nnet words per day over ALL days of the window (zero-days in the\nbasis), one decimal; ``today_words`` is today's net across novels.",
+        "properties": {
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "streak_days": {
+            "title": "Streak Days",
+            "type": "integer"
+          },
+          "today_words": {
+            "title": "Today Words",
+            "type": "integer"
+          },
+          "weekly_average": {
+            "title": "Weekly Average",
+            "type": "number"
+          }
+        },
+        "required": [
+          "points",
+          "streak_days",
+          "weekly_average",
+          "today_words"
+        ],
+        "title": "ActivityRead",
+        "type": "object"
+      },
       "ArchiveInvalidRead": {
         "description": "The 422 detail when the archive itself is unreadable or malformed.",
         "properties": {
@@ -6399,6 +6451,52 @@
         "summary": "Status",
         "tags": [
           "setup"
+        ]
+      }
+    },
+    "/api/writing/activity": {
+      "get": {
+        "description": "The atelier's daily words across all owned novels: the window's\npoints (zero-days included), the streak of consecutive days with a\nnonzero net ending today or yesterday, the mean net words per day\nover the whole window, and today's net. ``days`` bounds the window\nto 1..365; the default is 30.",
+        "operationId": "activity_api_writing_activity_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activity",
+        "tags": [
+          "writing"
         ]
       }
     },

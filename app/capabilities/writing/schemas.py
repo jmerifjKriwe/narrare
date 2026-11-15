@@ -1,6 +1,6 @@
 """Request and response shapes for the writing capability."""
 
-from datetime import datetime  # noqa: TC003  Pydantic resolves these at runtime
+from datetime import date, datetime  # noqa: TC003  Pydantic resolves these at runtime
 from typing import Literal
 from uuid import UUID  # noqa: TC003
 
@@ -130,6 +130,34 @@ class ChapterRead(BaseModel):
     body: str
     created_at: datetime
     updated_at: datetime
+
+
+class ActivityPoint(BaseModel):
+    """One day of the activity window: the date and the atelier's net words.
+
+    The net is honest — a day that removed more text than it added carries
+    a negative count, and a day without a row carries zero.
+    """
+
+    date: date
+    words: int
+
+
+class ActivityRead(BaseModel):
+    """The atelier's activity across all the user's novels (W3).
+
+    ``points`` cover the requested window oldest-first, zero-days
+    included; ``streak_days`` counts consecutive days with a nonzero net
+    ending today — or yesterday, which keeps the streak alive until the
+    day after tomorrow without writing; ``weekly_average`` is the mean
+    net words per day over ALL days of the window (zero-days in the
+    basis), one decimal; ``today_words`` is today's net across novels.
+    """
+
+    points: list[ActivityPoint]
+    streak_days: int
+    weekly_average: float
+    today_words: int
 
 
 class ExportRequest(BaseModel):
