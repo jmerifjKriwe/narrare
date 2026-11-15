@@ -55,7 +55,7 @@
   "writing.shelf.search.empty.clear": "Effacer la recherche et les filtres",
   "writing.shelf.search.empty.title": "Aucun livre ne correspond à ta recherche.",
   "writing.shelf.search.filter": "Filtre",
-  "writing.shelf.search.placeholder": "Rechercher titres, genres ou nombres...",
+  "writing.shelf.search.placeholder": "Chercher titres, genres ou nombres...",
   "writing.shelf.search.results": "{count, plural, one {# livre trouvé} other {# livres trouvés}}",
   "writing.shelf.search.view": "Vue :",
   "writing.shelf.search.viewGrid": "Vue grille",
