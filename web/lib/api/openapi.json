@@ -6456,7 +6456,7 @@
     },
     "/api/writing/activity": {
       "get": {
-        "description": "The atelier's daily words across all owned novels: the window's\npoints (zero-days included), the streak of consecutive days with a\nnonzero net ending today or yesterday, the mean net words per day\nover the whole window, and today's net. ``days`` bounds the window\nto 1..365; the default is 30.",
+        "description": "The atelier's daily words across all owned novels: the window's\npoints (zero-days included), the streak of consecutive days with a\nnonzero net ending today or yesterday, the mean net words per day\nover the whole window, and today's net. ``days`` bounds the window\nto 1..365; the default is 30. The day boundary is the server's UTC\ndate.",
         "operationId": "activity_api_writing_activity_get",
         "parameters": [
           {

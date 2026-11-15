@@ -22,6 +22,8 @@ from sqlalchemy import func, select, update
 from app.api.main import app
 from app.capabilities.writing.models import DailyWords
 from app.capabilities.writing.repository import DailyWordsRepository, NovelRepository
+from app.capabilities.writing.schemas import ChapterUpdate
+from app.capabilities.writing.service import WritingService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
@@ -361,3 +363,67 @@ async def test_a_new_day_starts_a_fresh_row() -> None:
         assert body["points"][-2]["words"] == 3
         assert body["today_words"] == 2
         assert body["streak_days"] == 2
+
+
+async def test_a_double_fired_save_counts_the_diff_once() -> None:
+    """The race the novel lock closes, at service level: two saves of the
+    same body, the second holding its pre-lock read while the first
+    commits. The day's row must gain the words ONCE — the diff counts
+    from the body re-read under the lock, not the stale snapshot.
+
+    The pre-read is held in a local on purpose: the session's identity
+    map is weak-valued, so a discarded read would be collected and the
+    save's own get would reload fresh — the race would hide. Production
+    holds the read the same way, in update_chapter's own local."""
+    async with Session() as first, Session() as second:
+        writer = WritingService(first, LOCAL_USER_ID)
+        novel = await writer.create_novel("Der Nebel")
+        chapter = await writer.create_chapter(novel.id, "Kapitel")
+        await writer.update_chapter(chapter.id, ChapterUpdate(body="eins zwei drei"))
+
+        # The second-fired save reads the chapter BEFORE the first-fired
+        # save lands: its session's identity map holds the three-word body.
+        reader = WritingService(second, LOCAL_USER_ID)
+        stale_read = await reader.get_chapter(chapter.id)
+        assert stale_read.body == "eins zwei drei"
+
+        # The first-fired save wins the lock and commits five words.
+        await writer.update_chapter(chapter.id, ChapterUpdate(body="eins zwei drei vier fünf"))
+
+        # The second-fired save lands the same body: its pre-lock read is
+        # stale, but under the lock the committed body is already five
+        # words — the diff is zero, the day keeps five, not seven.
+        await reader.update_chapter(chapter.id, ChapterUpdate(body="eins zwei drei vier fünf"))
+
+    async with _client() as client:
+        body = await _activity(client)
+        assert body["today_words"] == 5
+
+
+async def test_a_delete_counts_the_words_the_book_actually_holds() -> None:
+    """The delete's pre-lock read can be stale the same way: a concurrent
+    save grew the chapter after the read. The day's row must lose the
+    words the book holds at the delete, not the ones the session
+    remembers. The pre-read is held for the identity map's weak values,
+    as in the double-fired save's pin."""
+    async with Session() as first, Session() as second:
+        writer = WritingService(first, LOCAL_USER_ID)
+        novel = await writer.create_novel("Der Nebel")
+        chapter = await writer.create_chapter(novel.id, "Kapitel")
+        await writer.update_chapter(chapter.id, ChapterUpdate(body="eins zwei drei"))
+
+        # The delete's pre-lock read: three words in this session's map.
+        reader = WritingService(second, LOCAL_USER_ID)
+        stale_read = await reader.get_chapter(chapter.id)
+        assert stale_read.body == "eins zwei drei"
+
+        # A concurrent save grows the book to five words and commits.
+        await writer.update_chapter(chapter.id, ChapterUpdate(body="eins zwei drei vier fünf"))
+
+        # The delete lands: five words go, the day nets zero — not the two
+        # a stale three-word subtraction would leave behind.
+        await reader.delete_chapter(chapter.id)
+
+    async with _client() as client:
+        body = await _activity(client)
+        assert body["today_words"] == 0

@@ -413,23 +413,28 @@ class WritingService:
         the pair from waiting on each other's row (Postgres 40P01).
 
         A carried body also feeds the atelier's activity: the diff of the
-        one whitespace rule, old body against new, accumulates on today's
-        row in the same transaction.
+        one whitespace rule, the old body re-read under the novel lock,
+        accumulates on today's row in the same transaction.
 
         Return the chapter; raise NotFoundError if it is absent or another user's.
         """
         chapter = await self.get_chapter(chapter_id)
         await lock_novel(self.session, user_id=self.user_id, novel_id=chapter.novel_id)
+        # The OLD body is re-read under the lock: the get above may have
+        # loaded it before a concurrent save committed (a double-fired
+        # autosave), and a diff counted from that stale snapshot would
+        # land on the day's row twice. The second writer waits, then
+        # reads the first writer's committed chapter (positions.py).
+        old_body = await self.chapters.committed_body(chapter_id)
         if changes.title is not None:
             changes.title = changes.title.strip()
         updates = changes.model_dump(exclude_none=True)
-        # The activity's diff: the OLD body is read before the save lands,
-        # and both sides count through the shelf's one whitespace rule.
-        # A title-only edit — or a body that counts the same — is a zero
-        # diff and writes no activity row.
+        # The activity's diff: both sides count through the shelf's one
+        # whitespace rule. A title-only edit — or a body that counts the
+        # same — is a zero diff and writes no activity row.
         delta = 0
         if "body" in updates:
-            old_words, new_words = await self.chapters.count_words(chapter.body, updates["body"])
+            old_words, new_words = await self.chapters.count_words(old_body or "", updates["body"])
             delta = new_words - old_words
         chapter = await self.chapters.save(chapter, updates)
         if delta:
@@ -458,8 +463,11 @@ class WritingService:
         novel_id = chapter.novel_id
         await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
         # The removed body counts negative on today's activity row — the
-        # atelier's honest delta, read before the delete lands.
-        (removed_words,) = await self.chapters.count_words(chapter.body)
+        # atelier's honest delta, re-read under the lock: the get above
+        # may predate a concurrent save, and the day must lose the words
+        # the book holds, not the ones this session remembers.
+        removed_body = await self.chapters.committed_body(chapter_id)
+        (removed_words,) = await self.chapters.count_words(removed_body or "")
         result = await self.session.execute(
             delete(Chapter).where(Chapter.id == chapter_id, Chapter.user_id == self.user_id)
         )

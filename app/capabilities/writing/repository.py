@@ -38,8 +38,7 @@ def _word_count_expression(body: Any) -> Any:
     """The one whitespace rule as a SQL expression over any body value:
     tokens of the trimmed body, zero when the trim is empty. The shelf's
     grouped sum and the activity's write-path diff count through this one
-    expression, so the two cannot drift; the bodies never leave the
-    database."""
+    expression, so the two cannot drift."""
     trimmed = func.regexp_replace(body, _TRIM_PATTERN, "", "g")
     return case(
         (
@@ -257,6 +256,20 @@ class ChapterRepository(ScopedRepository[Chapter]):
             )
         ).one()
         return [int(words) for words in row]
+
+    async def committed_body(self, chapter_id: UUID) -> str | None:
+        """The chapter's body as committed, read fresh — the caller holds
+        the novel lock, so this is the body the activity's diff counts
+        from. A column SELECT bypasses the identity map by construction:
+        the row the session loaded before the lock may predate a
+        concurrent save (a double-fired autosave), and a diff counted
+        from that stale snapshot would land on the day's row twice. The
+        lock is the allocator's own — the second writer waits, then reads
+        the first writer's committed chapter (positions.py). None when
+        the row is gone; the caller's own write path answers for that."""
+        return await self.session.scalar(
+            select(Chapter.body).where(Chapter.id == chapter_id, Chapter.user_id == self.user_id)
+        )
 
     async def create(self, novel_id: UUID, title: str) -> Chapter:
         """Append a chapter at the next position and update its novel's timestamp.

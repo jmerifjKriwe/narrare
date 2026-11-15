@@ -245,7 +245,8 @@ async def activity(
     points (zero-days included), the streak of consecutive days with a
     nonzero net ending today or yesterday, the mean net words per day
     over the whole window, and today's net. ``days`` bounds the window
-    to 1..365; the default is 30.
+    to 1..365; the default is 30. The day boundary is the server's UTC
+    date.
     """
     return await service.activity(days)
 
