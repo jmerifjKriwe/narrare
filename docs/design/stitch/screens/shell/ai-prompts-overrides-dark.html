@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-[#100e09]" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KI-Prompts anpassen — Narrare</title>
+<!-- Tailwind CSS v3 with Forms & Container Queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            ink: {
+              base: '#100e09',
+              canvas: '#16130e',
+              panel: '#1e1b16',
+              surface: '#211f1a',
+              card: '#27241e',
+              border: '#3d372e',
+              hairline: '#564e43',
+            },
+            parchment: {
+              DEFAULT: '#e8dec8',
+              muted: '#c8c0b5',
+              dim: '#9a9184',
+              highlight: '#f3ede2',
+            },
+            terracotta: {
+              DEFAULT: '#d7a892',
+              warm: '#d4855a',
+              amber: '#c06c38',
+              deep: '#4a2511',
+            },
+            moss: {
+              DEFAULT: '#52d47e',
+              container: '#172d1e',
+              border: '#274830',
+            }
+          },
+          fontFamily: {
+            serif: ['"EB Garamond"', 'Georgia', 'serif'],
+            mono: ['"JetBrains Mono"', '"Fira Code"', 'ui-monospace', 'monospace'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+<!-- Google Fonts: EB Garamond & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<style data-purpose="custom-scrollbars">
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #16130e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3d372e;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #564e43;
+    }
+  </style>
+<style data-purpose="typography-adjustments">
+    body {
+      font-family: 'Inter', sans-serif;
+      color: #c8c0b5;
+      background-color: #100e09;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, .font-editorial {
+      font-family: 'EB Garamond', Georgia, serif;
+    }
+    .font-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body class="h-full min-h-screen flex flex-col bg-[#100e09] text-[#c8c0b5]">
+<!-- BEGIN: ApplicationLayout -->
+<div class="flex-1 flex overflow-hidden">
+<!-- BEGIN: LeftSidebar -->
+<aside class="w-16 md:w-60 bg-[#16130e] border-r border-[#3d372e] flex flex-col justify-between flex-shrink-0 z-20" data-purpose="primary-sidebar">
+<div class="flex flex-col">
+<!-- Logo Header -->
+<div class="h-14 flex items-center px-4 border-b border-[#3d372e] gap-3">
+<div class="w-8 h-8 rounded bg-[#27241e] border border-[#564e43] flex items-center justify-center font-editorial text-lg font-bold text-[#f3ede2]">
+            N
+          </div>
+<div class="hidden md:flex flex-col">
+<span class="font-editorial text-xl font-bold tracking-tight text-[#f3ede2] leading-none">Narrare</span>
+<span class="text-[9px] uppercase tracking-widest text-[#9a9184] font-mono mt-0.5">Atelier Edition</span>
+</div>
+</div>
+<!-- Navigation Menu -->
+<nav class="p-2 space-y-1 text-sm font-medium">
+<!-- Bibliothek -->
+<a class="flex items-center gap-3 px-3 py-2 rounded text-[#9a9184] hover:text-[#f3ede2] hover:bg-[#1e1b16] transition-colors" href="#" title="Bibliothek">
+<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+<span class="hidden md:inline">Bibliothek</span>
+</a>
+<!-- Manuskript -->
+<a class="flex items-center gap-3 px-3 py-2 rounded text-[#9a9184] hover:text-[#f3ede2] hover:bg-[#1e1b16] transition-colors" href="#" title="Manuskript">
+<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+<span class="hidden md:inline">Manuskript</span>
+</a>
+<!-- Lore-Graph -->
+<a class="flex items-center gap-3 px-3 py-2 rounded text-[#9a9184] hover:text-[#f3ede2] hover:bg-[#1e1b16] transition-colors" href="#" title="Lore-Graph">
+<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+<span class="hidden md:inline">Lore-Graph</span>
+</a>
+<!-- Konsistenz -->
+<a class="flex items-center gap-3 px-3 py-2 rounded text-[#9a9184] hover:text-[#f3ede2] hover:bg-[#1e1b16] transition-colors" href="#" title="Konsistenz">
+<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+<span class="hidden md:inline">Konsistenz</span>
+</a>
+<!-- Einstellungen (Active) -->
+<a class="flex items-center gap-3 px-3 py-2 rounded bg-[#27241e] text-[#f3ede2] border border-[#564e43]/50 shadow-sm" href="#" title="Einstellungen">
+<svg class="w-4 h-4 flex-shrink-0 text-[#d7a892]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+<span class="hidden md:inline font-semibold text-[#f3ede2]">Einstellungen</span>
+</a>
+</nav>
+</div>
+<!-- Bottom System Links -->
+<div class="p-2 border-t border-[#3d372e] space-y-1 text-xs">
+<a class="flex items-center gap-3 px-3 py-2 rounded text-[#9a9184] hover:text-[#f3ede2] hover:bg-[#1e1b16] transition-colors" href="#" title="Dokumentation">
+<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+<span class="hidden md:inline">Dokumentation</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-[#9a9184] hover:text-[#f3ede2] hover:bg-[#1e1b16] transition-colors" href="#" title="Hilfe">
+<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+<span class="hidden md:inline">Hilfe</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-[#9a9184] hover:text-[#f3ede2] hover:bg-[#1e1b16] transition-colors" href="#" title="Abmelden">
+<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+<span class="hidden md:inline">Abmelden</span>
+</a>
+</div>
+</aside>
+<!-- END: LeftSidebar -->
+<!-- BEGIN: MainContentWrapper -->
+<div class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+<!-- BEGIN: TopBar -->
+<header class="h-14 border-b border-[#3d372e] bg-[#16130e] px-5 flex items-center justify-between flex-shrink-0" data-purpose="top-navigation">
+<!-- Breadcrumbs -->
+<nav aria-label="Breadcrumb" class="flex items-center space-x-2 text-sm">
+<span class="text-[#9a9184]">Atelier</span>
+<span class="text-[#564e43]">›</span>
+<span class="text-[#9a9184]">Einstellungen</span>
+<span class="text-[#564e43]">›</span>
+<span class="font-editorial text-lg text-[#f3ede2] font-semibold tracking-tight">KI-Prompts</span>
+</nav>
+<!-- Right utility controls -->
+<div class="flex items-center space-x-4">
+<!-- Language selector -->
+<div class="flex items-center text-xs font-mono border border-[#3d372e] rounded bg-[#1e1b16] p-0.5">
+<button class="px-2 py-0.5 rounded bg-[#3c3933] text-[#f3ede2] font-bold">DE</button>
+<button class="px-2 py-0.5 text-[#9a9184] hover:text-[#f3ede2] transition-colors">EN</button>
+<button class="px-2 py-0.5 text-[#9a9184] hover:text-[#f3ede2] transition-colors">FR</button>
+</div>
+<!-- Theme toggle (Dark active) -->
+<button class="p-1.5 rounded border border-[#3d372e] bg-[#1e1b16] text-[#e8dec8] hover:border-[#564e43]" title="Dunkler Modus aktiv">
+<svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20">
+<path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+</svg>
+</button>
+<!-- Notification bell -->
+<button class="p-1.5 rounded border border-[#3d372e] bg-[#1e1b16] text-[#9a9184] hover:text-[#f3ede2]" title="Benachrichtigungen">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+</button>
+<!-- User avatar -->
+<div class="w-8 h-8 rounded bg-[#4a2511] border border-[#d4855a]/40 text-[#f3ede2] flex items-center justify-center font-editorial font-bold text-sm">
+            N
+          </div>
+</div>
+</header>
+<!-- END: TopBar -->
+<!-- BEGIN: ScopeBar -->
+<section class="bg-[#1e1b16] border-b border-[#3d372e] px-5 py-2.5 flex flex-wrap items-center justify-between gap-4" data-purpose="scope-indicator-bar">
+<div class="flex items-center space-x-3">
+<span class="text-xs uppercase font-mono tracking-wider text-[#9a9184] font-semibold">Geltungsbereich</span>
+<!-- Dropdown -->
+<div class="relative inline-block text-left">
+<select aria-label="Roman wählen" class="bg-[#16130e] text-[#f3ede2] text-xs font-serif text-sm border border-[#3d372e] rounded px-3 py-1.5 pr-8 focus:border-[#d7a892] focus:ring-0 focus:outline-none appearance-none cursor-pointer">
+<option selected="" value="dead-signal">Dead Signal</option>
+<option value="echoes">Echoes of the Thornwall</option>
+<option value="forest">Im Stillen Wald</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#9a9184]">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<!-- Status badge -->
+<div class="flex items-center space-x-1.5 text-xs text-[#d7a892]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#d7a892]"></span>
+<span>1 roman-spezifischer Override aktiv</span>
+</div>
+</div>
+<div class="text-xs font-mono text-[#9a9184] border border-[#3d372e] bg-[#16130e] px-2.5 py-1 rounded">
+          Lokaler Prompt-Speicher
+        </div>
+</section>
+<!-- END: ScopeBar -->
+<!-- BEGIN: TwoColumnWorkArea -->
+<div class="flex-1 flex flex-col lg:flex-row min-w-0">
+<!-- BEGIN: LeftPromptCatalog -->
+<aside class="w-full lg:w-80 lg:max-w-xs border-b lg:border-b-0 lg:border-r border-[#3d372e] bg-[#16130e] flex flex-col justify-between flex-shrink-0" data-purpose="prompt-catalog">
+<div class="p-4 overflow-y-auto">
+<div class="mb-4">
+<h2 class="font-editorial text-lg font-bold text-[#f3ede2]">Prompt-Katalog</h2>
+<p class="text-xs text-[#9a9184] mt-0.5">Wähle die System-Direktive für dieses Atelier</p>
+</div>
+<!-- List of Prompts -->
+<div class="space-y-3">
+<!-- Item 1 (Selected) -->
+<div class="rounded border-2 border-[#d4855a] bg-[#211f1a] p-3 shadow-md relative cursor-pointer">
+<div class="flex items-start justify-between">
+<div class="flex items-center space-x-2">
+<svg class="w-4 h-4 text-[#d7a892]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h8m-8 6h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="font-editorial text-base font-semibold text-[#f3ede2]">Text fortsetzen</span>
+</div>
+<svg class="w-4 h-4 text-[#d7a892]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div class="text-[11px] font-mono text-[#9a9184] mt-1">writing.continuation</div>
+<p class="text-xs text-[#c8c0b5] mt-2 leading-relaxed">Ghost-Writing &amp; dynamische Satzfortführung im Manuskript.</p>
+<div class="mt-3 flex flex-wrap gap-1.5">
+<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#16130e] border border-[#3d372e] text-[#9a9184]">Global: Standard</span>
+<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#4a2511]/50 border border-[#d4855a]/60 text-[#d7a892]">Dead Signal: Eigener Override aktiv</span>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="rounded border border-[#3d372e] bg-[#1e1b16] p-3 hover:border-[#564e43] transition-colors cursor-pointer">
+<div class="flex items-center space-x-2">
+<svg class="w-4 h-4 text-[#9a9184]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="font-editorial text-base font-semibold text-[#f3ede2]">Chat</span>
+</div>
+<div class="text-[11px] font-mono text-[#9a9184] mt-1">chat.ask</div>
+<p class="text-xs text-[#9a9184] mt-2 leading-relaxed">Dialogische Befragung der Lore und Manuskript-Zusammenhänge.</p>
+<div class="mt-3">
+<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#16130e] border border-[#3d372e] text-[#9a9184]">Nur Global gültig (kein Roman-Scope)</span>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="rounded border border-[#3d372e] bg-[#1e1b16] p-3 hover:border-[#564e43] transition-colors cursor-pointer">
+<div class="flex items-center space-x-2">
+<svg class="w-4 h-4 text-[#9a9184]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="font-editorial text-base font-semibold text-[#f3ede2]">Entitäten extrahieren</span>
+</div>
+<div class="text-[11px] font-mono text-[#9a9184] mt-1">knowledge.extract-entities</div>
+<p class="text-xs text-[#9a9184] mt-2 leading-relaxed">Erkennt Figuren, Orte, Artefakte und Relationen aus Textabschnitten.</p>
+<div class="mt-3 flex flex-wrap gap-1.5">
+<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#16130e] border border-[#3d372e] text-[#9a9184]">Global: Standard</span>
+<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#16130e] border border-[#3d372e] text-[#9a9184]">Dead Signal: erbt Global</span>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="rounded border border-[#3d372e] bg-[#1e1b16] p-3 hover:border-[#564e43] transition-colors cursor-pointer">
+<div class="flex items-center space-x-2">
+<svg class="w-4 h-4 text-[#9a9184]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="font-editorial text-base font-semibold text-[#f3ede2]">Konsistenz prüfen</span>
+</div>
+<div class="text-[11px] font-mono text-[#9a9184] mt-1">knowledge.check-consistency</div>
+<p class="text-xs text-[#9a9184] mt-2 leading-relaxed">Kausalitäts-Audit gegen verankerte Figurenbiografien und Chronologie.</p>
+<div class="mt-3 flex flex-wrap gap-1.5">
+<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#16130e] border border-[#3d372e] text-[#9a9184]">Global: Standard</span>
+<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#16130e] border border-[#3d372e] text-[#9a9184]">Dead Signal: erbt Global</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Sovereignty Guarantee Box -->
+<div class="p-3 m-3 rounded border border-[#3d372e] bg-[#1e1b16]">
+<div class="flex items-start gap-2">
+<svg class="w-4 h-4 text-[#d7a892] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+<div>
+<span class="font-editorial text-sm font-semibold text-[#f3ede2]">Souveränitäts-Garantie</span>
+<p class="text-[11px] text-[#9a9184] mt-0.5 leading-tight">
+                  Deine Anpassungen werden ausschließlich lokal im <code class="text-[#e8dec8] bg-[#16130e] px-1 py-0.2 rounded border border-[#3d372e]">.narrare/prompts/</code> Ordner deines Rechners gesichert.
+                </p>
+</div>
+</div>
+</div>
+</aside>
+<!-- END: LeftPromptCatalog -->
+<!-- BEGIN: MainEditorArea -->
+<main class="flex-1 p-5 lg:p-6 flex flex-col space-y-5 bg-[#16130e] min-w-0" data-purpose="prompt-editor">
+<!-- Section: Prompt Title & Scope Switcher -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#3d372e] pb-4">
+<div>
+<div class="flex items-center space-x-3">
+<h1 class="font-editorial text-2xl font-bold text-[#f3ede2]">Text fortsetzen</h1>
+<span class="font-mono text-xs text-[#9a9184] bg-[#1e1b16] border border-[#3d372e] px-2 py-0.5 rounded">writing.continuation</span>
+</div>
+<p class="text-xs text-[#c8c0b5] mt-1">
+                Passe an, wie der Ghost-Writing-Assistent das Tempo, Vokabular und Wissen von <em>Dead Signal</em> aufgreift.
+              </p>
+</div>
+<!-- Scope Toggle Controls -->
+<div class="flex items-center space-x-2">
+<span class="text-xs uppercase font-mono text-[#9a9184] mr-1">Scope:</span>
+<div class="inline-flex rounded border border-[#3d372e] bg-[#100e09] p-0.5 text-xs">
+<button class="px-3 py-1 text-[#9a9184] hover:text-[#f3ede2] transition-colors rounded">Global</button>
+<button class="px-3 py-1 font-semibold rounded bg-[#4a2511] text-[#f3ede2] border border-[#d4855a]/60 shadow flex items-center space-x-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-[#d7a892]"></span>
+<span>Dieser Roman: Dead Signal</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Section: Override Notice Box -->
+<div class="bg-[#211f1a] border border-[#3d372e] rounded p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs" data-purpose="scope-banner">
+<div class="flex items-center space-x-2.5">
+<svg class="w-4 h-4 text-[#d7a892] flex-shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="text-[#c8c0b5]">
+                Aktuell ist für <strong>Dead Signal</strong> ein spezifischer Roman-Override angelegt. (Standard-Text bleibt unverändert im Global-Scope).
+              </span>
+</div>
+<button class="text-[#d7a892] hover:text-[#f3ede2] font-medium border border-[#564e43] bg-[#16130e] px-3 py-1 rounded transition-colors whitespace-nowrap self-start sm:self-auto">
+              Aus effektivem Text neu anlegen
+            </button>
+</div>
+<!-- Section: Jinja2 Variables Bar -->
+<div class="flex flex-wrap items-center gap-2 text-xs" data-purpose="variable-insertion">
+<span class="font-mono text-[#9a9184] uppercase tracking-wider text-[11px] font-semibold">Variablen (Klick = Einfügen):</span>
+<button class="font-mono bg-[#1e1b16] hover:bg-[#27241e] border border-[#3d372e] text-[#f3ede2] px-2 py-1 rounded flex items-center gap-1.5 group transition-colors">
+<code class="text-[#d7a892]">{{chapter_title}}</code>
+<span class="text-[#9a9184] group-hover:text-[#c8c0b5] text-[10px]">("Kapitel 2...")</span>
+</button>
+<button class="font-mono bg-[#1e1b16] hover:bg-[#27241e] border border-[#3d372e] text-[#f3ede2] px-2 py-1 rounded flex items-center gap-1.5 group transition-colors">
+<code class="text-[#d7a892]">{{tail}}</code>
+<span class="text-[#9a9184] group-hover:text-[#c8c0b5] text-[10px]">("Fließtext-Puffer")</span>
+</button>
+<button class="font-mono bg-[#1e1b16] hover:bg-[#27241e] border border-[#3d372e] text-[#f3ede2] px-2 py-1 rounded flex items-center gap-1.5 group transition-colors">
+<code class="text-[#d7a892]">{{entities_section}}</code>
+<span class="text-[#9a9184] group-hover:text-[#c8c0b5] text-[10px]">("Lore-Figuren")</span>
+</button>
+<button class="font-mono bg-[#1e1b16] hover:bg-[#27241e] border border-[#3d372e] text-[#f3ede2] px-2 py-1 rounded flex items-center gap-1.5 group transition-colors">
+<code class="text-[#d7a892]">{{tone_directive}}</code>
+<span class="text-[#9a9184] group-hover:text-[#c8c0b5] text-[10px]">("Tonfall")</span>
+</button>
+</div>
+<!-- Section: Code Editor Container -->
+<div class="border border-[#3d372e] rounded bg-[#100e09] flex flex-col font-mono text-xs overflow-hidden shadow-inner" data-purpose="code-editor">
+<!-- Editor Title bar -->
+<div class="bg-[#1e1b16] border-b border-[#3d372e] px-4 py-2 flex items-center justify-between text-[#9a9184]">
+<div class="flex items-center space-x-2">
+<span class="w-2 h-2 rounded-full bg-[#d7a892]"></span>
+<span class="text-[#f3ede2] font-semibold">Dead Signal Override Template (Jinja2)</span>
+</div>
+<div class="flex items-center space-x-4 text-[11px]">
+<span>Zeilen: 18</span>
+<span class="text-[#564e43]">|</span>
+<span>Zeichensatz: UTF-8</span>
+</div>
+</div>
+<!-- Editor Code Content -->
+<div class="p-3 leading-relaxed flex overflow-x-auto text-[#c8c0b5]">
+<!-- Line Numbers -->
+<div class="select-none text-right pr-4 text-[#564e43] border-r border-[#3d372e]/50 font-mono space-y-0.5">
+<div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+</div>
+<!-- Monospace Code -->
+<div class="pl-4 font-mono space-y-0.5 flex-1 min-w-[500px]">
+<div><span class="text-[#9a9184] italic">## System-Direktive: Hard Sci-Fi Noir Fortführung für Dead Signal</span></div>
+<div><span class="text-[#f3ede2]">Du bist das narrative Schreibatelier für den Roman «Dead Signal».</span></div>
+<div><span class="text-[#f3ede2]">Sprachstil: </span><span class="text-[#d7a892] bg-[#4a2511]/40 px-1 rounded border border-[#d4855a]/40">{{tone_directive}}</span></div>
+<div class="text-transparent">.</div>
+<div><span class="text-[#e5a84b]">{%</span> <span class="text-[#d7a892] font-semibold">if</span> <span class="text-[#f3ede2]">entities_section</span> <span class="text-[#e5a84b]">%}</span></div>
+<div class="pl-4"><span class="text-[#9a9184]">### Verifizierte Figuren &amp; Kausalitäten:</span></div>
+<div class="pl-4"><span class="text-[#d7a892] bg-[#4a2511]/40 px-1 rounded border border-[#d4855a]/40">{{entities_section}}</span></div>
+<div><span class="text-[#e5a84b]">{%</span> <span class="text-[#d7a892] font-semibold">endif</span> <span class="text-[#e5a84b]">%}</span></div>
+<div class="text-transparent">.</div>
+<div><span class="text-[#9a9184]">""" Aktueller Manuskript-Segment: </span><span class="text-[#d7a892] bg-[#4a2511]/40 px-1 rounded border border-[#d4855a]/40">{{chapter_title}}</span></div>
+</div>
+</div>
+</div>
+<!-- Section: Validation Status line -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs" data-purpose="editor-status-bar">
+<div class="flex items-center space-x-2 text-[#52d47e] bg-[#172d1e] border border-[#274830] px-3 py-1.5 rounded">
+<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Prüfung erfolgreich (Syntax valide, alle 4 Variablen deklariert)</span>
+</div>
+<div class="relative group">
+<button class="text-[#9a9184] hover:text-[#f3ede2] underline decoration-dotted underline-offset-4 flex items-center space-x-1">
+<span>?</span>
+<span>Mögliche Ablehnungsgründe einsehen</span>
+</button>
+<!-- Popout/Tooltip for rejection criteria -->
+<div class="hidden group-hover:block absolute right-0 bottom-full mb-2 w-72 p-3 bg-[#1e1b16] border border-[#3d372e] rounded shadow-xl z-30 text-[11px] text-[#c8c0b5] space-y-1">
+<p class="font-semibold text-[#f3ede2] border-b border-[#3d372e] pb-1">Validierungs-Kriterien:</p>
+<p>• Unbekannte / nicht geschlossene Jinja2-Tags</p>
+<p>• Undeklarierte Variablen ausserhalb des Atelier-Schemas</p>
+<p>• Zirkuläre Includes oder rekursive Expansionen</p>
+<p>• Fehlender Manuskript-Kontext-Marker</p>
+</div>
+</div>
+</div>
+<!-- Section: Action Toolbar -->
+<div class="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-[#3d372e]" data-purpose="editor-action-buttons">
+<div class="flex items-center space-x-2">
+<button class="bg-[#1e1b16] hover:bg-[#27241e] text-[#f3ede2] border border-[#3d372e] px-3.5 py-1.5 rounded text-xs flex items-center space-x-1.5 transition-colors">
+<svg class="w-3.5 h-3.5 text-[#9a9184]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Diff-Ansicht (Standard vs. Override)</span>
+</button>
+<button class="bg-[#1e1b16] hover:bg-[#27241e] text-[#9a9184] hover:text-[#f3ede2] border border-[#3d372e] px-3 py-1.5 rounded text-xs flex items-center space-x-1.5 transition-colors">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Zurücksetzen auf Global</span>
+</button>
+</div>
+<button class="bg-[#c06c38] hover:bg-[#d4855a] text-[#f3ede2] font-semibold px-4 py-2 rounded text-xs shadow flex items-center space-x-2 transition-colors">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Speichern (mit Prüfung)</span>
+</button>
+</div>
+<!-- BEGIN: PromptValidationTools -->
+<section class="mt-4 pt-4 border-t border-[#3d372e] space-y-3" data-purpose="validation-tools">
+<div class="flex items-center justify-between border-b border-[#3d372e] pb-2">
+<!-- Tabs -->
+<div class="flex items-center space-x-6 text-xs">
+<button class="font-editorial text-sm font-semibold text-[#f3ede2] border-b-2 border-[#d7a892] pb-2 flex items-center space-x-1.5 -mb-2">
+<svg class="w-3.5 h-3.5 text-[#d7a892]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Werkzeug 1: Vorschau (providerfrei)</span>
+</button>
+<button class="text-[#9a9184] hover:text-[#f3ede2] pb-2 flex items-center space-x-1.5 transition-colors">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Werkzeug 2: Live-Test (mit Provider)</span>
+</button>
+</div>
+<span class="text-[11px] text-[#9a9184] italic hidden md:inline">Werkzeuge für Prompt-Validierung</span>
+</div>
+<!-- Diagnostics Bar -->
+<div class="bg-[#1e1b16] border border-[#3d372e] rounded p-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+<div class="flex items-center space-x-2 text-[#9a9184]">
+<svg class="w-4 h-4 text-[#52d47e]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="text-[#c8c0b5]"><strong class="text-[#f3ede2]">Diagnostik:</strong> Providerfrei gerendert. Kein API-Aufruf, keine Datenübertragung.</span>
+</div>
+<div class="flex items-center space-x-4 font-mono text-[11px] text-[#9a9184]">
+<span>String-Länge: <strong class="text-[#f3ede2]">842 Zeichen</strong></span>
+<span class="text-[#564e43]">|</span>
+<span>Geschätzte Prompt-Tokens: <strong class="text-[#f3ede2]">~214 Tokens</strong></span>
+</div>
+</div>
+<!-- Resolved Preview Container -->
+<div class="bg-[#100e09] border border-[#3d372e] rounded p-4 font-mono text-xs leading-relaxed text-[#c8c0b5] space-y-2" data-purpose="preview-box">
+<div class="text-[#9a9184]">## System-Direktive: Hard Sci-Fi Noir Fortführung für Dead Signal</div>
+<div class="text-[#f3ede2]">Du bist das narrative Schreibatelier für den Roman «Dead Signal».</div>
+<div class="flex flex-wrap items-center gap-1.5">
+<span class="text-[#f3ede2]">Sprachstil: Lakonisch, messerscharfer Technojargon, kühle Beobachterperspektive</span>
+<span class="bg-[#27241e] border border-[#564e43] text-[#d7a892] text-[10px] px-1.5 py-0.2 rounded font-sans">Herkunft: Roman-Metadaten</span>
+</div>
+<div class="text-[#9a9184] pt-2">### Verifizierte Figuren &amp; Kausalitäten:</div>
+</div>
+</section>
+<!-- END: PromptValidationTools -->
+</main>
+<!-- END: MainEditorArea -->
+</div>
+<!-- END: TwoColumnWorkArea -->
+<!-- BEGIN: ApplicationFooter -->
+<footer class="border-t border-[#3d372e] bg-[#16130e] px-5 py-3 text-xs text-[#9a9184] flex flex-col md:flex-row items-center justify-between gap-3" data-purpose="primary-footer">
+<div class="flex items-center space-x-2">
+<span class="font-editorial text-sm font-bold text-[#f3ede2]">Narrare</span>
+<span>© Narrare Atelier. Written sovereignty guaranteed. Local-first, zero-surveillance manuscript vault.</span>
+</div>
+<div class="flex items-center space-x-4">
+<a class="hover:text-[#f3ede2] transition-colors" href="#">Sovereignty Manifest</a>
+<a class="hover:text-[#f3ede2] transition-colors" href="#">Causality Canon</a>
+<a class="hover:text-[#f3ede2] transition-colors" href="#">Typography Rigor</a>
+<a class="text-[#d7a892] hover:text-[#f3ede2] font-semibold transition-colors" href="#">Export Lexicon</a>
+</div>
+</footer>
+<!-- END: ApplicationFooter -->
+</div>
+<!-- END: MainContentWrapper -->
+</div>
+<!-- END: ApplicationLayout -->
+</body></html>

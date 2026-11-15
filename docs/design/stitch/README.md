@@ -16,6 +16,9 @@ Each screen is a pair in `screens/<area>/`:
 - `<name>.webp` — the rendered draft, WebP quality 82, at its native export size.
   Opens offline and in the browser. The 2026-11-14 harmonized drafts supersede
   the 2026-11-13 first drafts; git history keeps the earlier versions.
+  The 2026-11-15 settings and prompt-override redesign supersedes the earlier
+  `settings-ai-rules` and `ai-prompts-overrides` drafts, which depicted fictional
+  models and an eight-module prompt cascade; git history keeps them.
   The 2026-11-14 `cover-system` sheet is a clarification of the cover object, not
   a screen template: Stitch offers it only as a downscaled export (412×1600 of a
   2560×9934 desktop canvas), so its preview is a thumbnail and the HTML is the
@@ -116,8 +119,12 @@ Documents from the same project are under [`documents/`](documents/):
 | Import and capture | [`manuscript-lore-import`](screens/io/manuscript-lore-import.webp) | Manuskript- & Lore-Import Studio | 2048 px |
 |  | [`audio-dictation-voice-to-lore`](screens/io/audio-dictation-voice-to-lore.webp) | Audio- & Diktat-Studio (Voice-to-Lore) | 2988 px |
 | Shell and settings | [`command-palette`](screens/shell/command-palette.webp) | Befehlspalette & Universalsuche (⌘K) | 2048 px |
-|  | [`settings-ai-rules`](screens/shell/settings-ai-rules.webp) | Atelier-Einstellungen & KI-Regeln | 3734 px |
-|  | [`ai-prompts-overrides`](screens/shell/ai-prompts-overrides.webp) | KI-Prompts & Feature-Überschreibung | 3008 px |
+|  | [`settings-ai-rules`](screens/shell/settings-ai-rules.webp) | Atelier-Einstellungen (Neuentwurf 2026-11-15) | 2048 px |
+|  | [`ai-prompts-overrides`](screens/shell/ai-prompts-overrides.webp) | KI-Prompts anpassen (Neuentwurf 2026-11-15) | 2048 px |
+|  | [`settings-ai-rules-dark`](screens/shell/settings-ai-rules-dark.webp) | Atelier-Einstellungen — Midnight Ink (2026-11-15) | 2048 px |
+|  | [`ai-prompts-overrides-dark`](screens/shell/ai-prompts-overrides-dark.webp) | KI-Prompts anpassen — Midnight Ink (2026-11-15) | 2048 px |
+|  | [`settings-states-reference`](screens/shell/settings-states-reference.webp) | Zustands-Referenz: Atelier-Einstellungen (2026-11-15) | 6040 px |
+|  | [`ai-prompts-states-reference`](screens/shell/ai-prompts-states-reference.webp) | Zustands-Referenz: KI-Prompts anpassen (2026-11-15) | 5094 px |
 |  | [`help-center`](screens/shell/help-center.webp) | Hilfe-Zentrum & Kontext-Handbuch | 2144 px |
 | Mobile | [`pocket-quick-capture`](screens/mobile/pocket-quick-capture.webp) | Narrare Pocket — Unterwegs-Studio & Quick Capture | 3238 px |
 
@@ -200,3 +207,19 @@ Server: remote MCP at `https://stitch.googleapis.com/mcp`, auth header
 (`mcp.servers.google-stitch`); the MCP stays there (not mirrored into the repo's
 `opencode.json`). See `MCP-SETUP.md` for details. Project ID for narrare:
 `15314899202287259920`.
+
+### Correction rounds and downloads (measured 2026-11-15)
+
+- Screens generated through the API in a session are **API-visible**, so
+  `edit_screens` works on them for targeted corrections (it is only the
+  owner-exported, session-blind screens that need a fresh
+  `generate_screen_from_text`). An edit returns a new screen id; the corrected
+  one becomes authoritative.
+- The REST `files/<id>:download` returns `{dataString}`: raw HTML for an HTML
+  file, base64 for an image (`imageMetadata.mimeType` names the type). The MCP
+  `download_file` wraps HTML as `{html}` instead. A freshly generated
+  screenshot can return a null `dataString` for a short window — retry the
+  download until bytes arrive.
+- This box has no `cwebp`/ImageMagick; convert the PNG screenshot to the
+  archive's WebP q82 with Pillow (`Image.open(...).convert("RGB").save(dst,
+  "WEBP", quality=82)`).

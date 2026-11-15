@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="de" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zustands-Referenz: Atelier-Einstellungen — Narrare</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            surface: {
+              DEFAULT: '#fff8f2',
+              dim: '#e0d9d1',
+              bright: '#fff8f2',
+              lowest: '#ffffff',
+              low: '#faf2ea',
+              container: '#f4ede4',
+              high: '#eee7de',
+              highest: '#e8e1d8',
+            },
+            terracotta: {
+              DEFAULT: '#743b1f',
+              hover: '#5e2e16',
+              light: '#f5eae2',
+              border: '#d9c2b2',
+            },
+            parchment: {
+              DEFAULT: '#f6f3ed',
+              dark: '#ebdccb',
+              line: '#e2d7c9',
+            },
+            ink: {
+              DEFAULT: '#2c2523',
+              muted: '#736b63',
+              subtle: '#9e958c',
+            },
+            border: {
+              DEFAULT: '#e6dbcd',
+              subtle: '#eee5d8',
+              strong: '#cfc1b0',
+            },
+            status: {
+              success: '#2e6930',
+              'success-bg': '#eef6ef',
+              'success-border': '#c4e0c6',
+              error: '#a83232',
+              'error-bg': '#fdf2f2',
+              'error-border': '#f5c6c6',
+              warn: '#9c6517',
+              'warn-bg': '#fef8ec',
+              'warn-border': '#fae3b8',
+              info: '#2d6086',
+              'info-bg': '#f0f6fa',
+              'info-border': '#c7dfef',
+            }
+          },
+          fontFamily: {
+            serif: ['"EB Garamond"', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      vertical-align: middle;
+    }
+    .material-symbols-outlined.fill-1 {
+      font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+    }
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+    .animate-pulse-slow {
+      animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+<body class="bg-surface text-ink font-sans min-h-screen selection:bg-terracotta/15 selection:text-terracotta">
+
+  <!-- Header / Meta Bar -->
+  <header class="border-b border-border bg-surface-lowest sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+    <div class="max-w-[1600px] mx-auto px-8 py-3.5 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div class="w-8 h-8 rounded bg-terracotta text-surface-lowest flex items-center justify-center font-serif text-lg font-bold shadow-sm">
+          N
+        </div>
+        <div class="flex items-center gap-2.5 text-xs text-ink-muted">
+          <span class="font-medium text-ink">Narrare Atelier</span>
+          <span>/</span>
+          <span>Spezifikation V2.4</span>
+          <span>/</span>
+          <span class="px-2 py-0.5 rounded bg-terracotta-light text-terracotta font-medium">Designsystem: Literary Modernism (Hell)</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-6 text-xs text-ink-muted">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-status-success inline-block"></span>
+          <span>10 System- & Fehlerzustände verifiziert</span>
+        </div>
+        <div class="h-3 w-px bg-border"></div>
+        <div class="font-mono text-[11px] text-ink-subtle">
+          HTTP 401 · 409 · 422 · 502 · 503 · Skelette
+        </div>
+        <div class="h-3 w-px bg-border"></div>
+        <span class="text-ink font-medium">DE (Du-Form)</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="max-w-[1600px] mx-auto px-8 py-8">
+    <div class="mb-10 pb-6 border-b border-border flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div>
+        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-parchment border border-border text-[11px] font-mono uppercase tracking-wider text-ink-muted mb-3">
+          <span class="material-symbols-outlined text-sm text-terracotta">tune</span>
+          SETTINGS SPEC SHEET · COMPONENT STATES
+        </div>
+        <h1 class="font-serif text-3xl md:text-4xl text-ink font-semibold tracking-tight">
+          Zustands-Referenz: Atelier-Einstellungen
+        </h1>
+        <p class="font-serif italic text-lg text-ink-muted mt-2 max-w-3xl leading-relaxed">
+          Deterministische Härtung der Konfigurationsebenen: Von der verlustfreien Offline-Kompensation bis zu semantischen Fehlercodes und synchronen Validierungssperren.
+        </p>
+      </div>
+
+      <!-- Quick Legend Box -->
+      <div class="flex items-center gap-3 bg-surface-lowest px-4 py-2.5 rounded-lg border border-border text-xs text-ink-muted">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded bg-status-success"></span>
+          <span>Aktiv / Valide</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded bg-status-warn"></span>
+          <span>Warnung / Timeout</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded bg-status-error"></span>
+          <span>Konflikt / HTTP-Fehler</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded bg-surface-container border border-border"></span>
+          <span>Lade-Skelett</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- State Grid (Responsive 2-3 Column Masonry-like Grid) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
+
+      <!-- ==========================================
+           PANEL 1: Keine Provider konfiguriert
+      ========================================== -->
+      <article class="bg-surface-lowest rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+        <div class="px-5 py-3.5 bg-surface-low border-b border-border flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-xs px-2 py-0.5 rounded bg-surface-container text-ink font-semibold">01</span>
+            <h2 class="font-serif text-lg font-semibold text-ink">Keine Provider konfiguriert</h2>
+          </div>
+          <span class="text-xs px-2.5 py-0.5 rounded-full bg-status-warn-bg text-status-warn border border-status-warn-border font-medium">
+            Initialer Leerstand
+          </span>
+        </div>
+
+        <div class="p-5 flex-1 flex flex-col justify-between gap-5">
+          <div class="space-y-4">
+            <p class="text-xs text-ink-muted leading-relaxed">
+              Tritt auf bei frischer Atelier-Installation. Narrare schützt das Schreibvolumen durch einen lokalen Fake-Treiber ohne Remote-Netzwerkaufrufe.
+            </p>
+
+            <!-- Box: Provider-Bereich Leerzustand -->
+            <div class="rounded-lg border border-dashed border-border-strong bg-surface-container p-4">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded bg-status-warn-bg border border-status-warn-border flex items-center justify-center text-status-warn shrink-0 mt-0.5">
+                  <span class="material-symbols-outlined text-lg">bolt</span>
+                </div>
+                <div class="flex-1">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-ink">Keine Provider hinterlegt</h3>
+                    <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-surface-lowest text-ink-muted border border-border">0 Schnittstellen</span>
+                  </div>
+                  <p class="text-xs text-ink-muted mt-1 leading-relaxed">
+                    Die KI antwortet ohne Konfiguration mit einem lokalen Fake-Treiber. Dein geschriebenes Wort verlässt nicht dieses Atelier und es entstehen keine Token-Kosten.
+                  </p>
+                  <div class="mt-3">
+                    <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-terracotta text-surface-lowest text-xs font-medium hover:bg-terracotta-hover transition-colors shadow-sm">
+                      <span class="material-symbols-outlined text-sm">add</span>
+                      <span>Ersten Provider anbinden</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Aufgaben-Kaskade Auswirkung -->
+            <div class="rounded-lg border border-border bg-surface-low p-3.5 space-y-2">
+              <div class="flex items-center justify-between text-[11px] font-mono text-ink-muted uppercase">
+                <span>Aufgaben-Effektivanzeige</span>
+                <span>Aktive Bindung</span>
+              </div>
+              <div class="flex items-center justify-between bg-surface-lowest p-2.5 rounded border border-border">
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="material-symbols-outlined text-base text-ink-muted">edit_note</span>
+                  <span class="font-medium text-ink">1. Text fortsetzen (Ghost-Writing)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono text-xs text-ink-muted bg-surface-container px-2 py-0.5 rounded border border-border">
+                    Fake — läuft ohne Konfiguration
+                  </span>
+                  <span class="w-2 h-2 rounded-full bg-status-warn"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-border flex items-center justify-between text-[11px] text-ink-muted font-mono">
+            <span>Sicherheits-Garantie: Voll offline</span>
+            <span>Kosten: 0,00 €</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- ==========================================
+           PANEL 2: Verbindungstest läuft
+      ========================================== -->
+      <article class="bg-surface-lowest rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+        <div class="px-5 py-3.5 bg-surface-low border-b border-border flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-xs px-2 py-0.5 rounded bg-surface-container text-ink font-semibold">02</span>
+            <h2 class="font-serif text-lg font-semibold text-ink">Verbindungstest läuft</h2>
+          </div>
+          <span class="text-xs px-2.5 py-0.5 rounded-full bg-status-info-bg text-status-info border border-status-info-border font-medium flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-status-info animate-ping"></span>
+            Asynchroner Handshake
+          </span>
+        </div>
+
+        <div class="p-5 flex-1 flex flex-col justify-between gap-5">
+          <div class="space-y-4">
+            <p class="text-xs text-ink-muted leading-relaxed">
+              Beim Klick auf Verbindungstest sendet Narrare einen minimalen Heartbeat-Request an den konfigurierten Endpunkt, um Erreichbarkeit und Token-Signatur zu prüfen.
+            </p>
+
+            <!-- Card: Modell in Prüfung -->
+            <div class="rounded-lg border border-status-info-border bg-status-info-bg/30 p-4 relative">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-surface-lowest border border-border flex items-center justify-center font-mono text-xs font-semibold text-terracotta">
+                    ANT
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <h3 class="text-sm font-semibold text-ink">Claude 3.5 Sonnet</h3>
+                      <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-lowest text-ink-muted border border-border">claude-3-5-sonnet-20241022</span>
+                    </div>
+                    <div class="text-xs text-ink-muted mt-0.5">Anthropic API · https://api.anthropic.com/v1</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-surface-lowest border border-status-info-border shadow-xs text-xs text-status-info font-medium">
+                  <svg class="animate-spin h-3.5 w-3.5 text-status-info" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Teste Verbindung…</span>
+                </div>
+              </div>
+
+              <!-- Inline Progress / Timeout bar -->
+              <div class="mt-4 pt-3 border-t border-border/80 flex items-center justify-between text-xs text-ink-muted">
+                <div class="flex items-center gap-2">
+                  <span class="font-mono text-[11px] text-ink-subtle">Ping: —</span>
+                  <span>·</span>
+                  <span class="font-mono text-[11px] text-ink-subtle">Timeout: 30s</span>
+                </div>
+                <button disabled class="text-xs text-ink-subtle cursor-not-allowed">
+                  Wird ausgeführt…
+                </button>
+              </div>
+            </div>
+
+            <!-- Interaktions-Sperre Information -->
+            <div class="p-3 bg-surface-low rounded border border-border text-xs text-ink-muted flex items-start gap-2">
+              <span class="material-symbols-outlined text-sm text-ink-subtle mt-0.5">lock_clock</span>
+              <span>Parallele Eingaben in die Token-Maske sind während des Handshakes vorübergehend schreibgeschützt.</span>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-border flex items-center justify-between text-[11px] text-ink-muted font-mono">
+            <span>Status: Inflight</span>
+            <span>Messwert: —</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- ==========================================
+           PANEL 3: Verbindungstest erfolgreich
+      ========================================== -->
+      <article class="bg-surface-lowest rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+        <div class="px-5 py-3.5 bg-surface-low border-b border-border flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-xs px-2 py-0.5 rounded bg-surface-container text-ink font-semibold">03</span>
+            <h2 class="font-serif text-lg font-semibold text-ink">Verbindungstest erfolgreich</h2>
+          </div>
+          <span class="text-xs px-2.5 py-0.5 rounded-full bg-status-success-bg text-status-success border border-status-success-border font-medium flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">check_circle</span>
+            Ready for Inference
+          </span>
+        </div>
+
+        <div class="p-5 flex-1 flex flex-col justify-between gap-5">
+          <div class="space-y-4">
+            <p class="text-xs text-ink-muted leading-relaxed">
+              Erfolgreicher Austausch des Signatur-Handshakes. Das Modell meldet seine Latenz und schaltet sich als einsatzbereites Hauptmodell frei.
+            </p>
+
+            <!-- Card: Modell erfolgreich verbunden -->
+            <div class="rounded-lg border border-status-success-border bg-status-success-bg/25 p-4">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-surface-lowest border border-border flex items-center justify-center font-mono text-xs font-semibold text-terracotta">
+                    ANT
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <h3 class="text-sm font-semibold text-ink">Claude 3.5 Sonnet</h3>
+                      <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-terracotta-light text-terracotta border border-terracotta/20 font-medium">Standard</span>
+                    </div>
+                    <div class="text-xs text-ink-muted mt-0.5">Anthropic API · sk-ant-api03-•••3x9A</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-status-success-bg text-status-success border border-status-success-border text-xs font-medium">
+                  <span class="w-1.5 h-1.5 rounded-full bg-status-success"></span>
+                  <span>Verbunden</span>
+                  <span class="font-mono text-[11px] text-status-success font-semibold border-l border-status-success-border pl-1.5">240 ms</span>
+                </div>
+              </div>
+
+              <!-- Metriken Zeile -->
+              <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-border/80 text-xs">
+                <div class="bg-surface-lowest p-2 rounded border border-border">
+                  <div class="text-[10px] text-ink-subtle font-mono uppercase">Kontext</div>
+                  <div class="font-mono font-medium text-ink mt-0.5">200k Tokens</div>
+                </div>
+                <div class="bg-surface-lowest p-2 rounded border border-border">
+                  <div class="text-[10px] text-ink-subtle font-mono uppercase">Max Output</div>
+                  <div class="font-mono font-medium text-ink mt-0.5">8.192 Tokens</div>
+                </div>
+                <div class="bg-surface-lowest p-2 rounded border border-border">
+                  <div class="text-[10px] text-ink-subtle font-mono uppercase">Latenz</div>
+                  <div class="font-mono font-semibold text-status-success mt-0.5">240 ms</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Erfolgs-Hinweis Banner -->
+            <div class="p-3 bg-surface-low rounded border border-border text-xs text-ink-muted flex items-center justify-between">
+              <span class="flex items-center gap-1.5 text-status-success">
+                <span class="material-symbols-outlined text-sm">verified</span>
+                <span>Authentifizierung gültig bis Schlüssel-Widerruf</span>
+              </span>
+              <button class="text-xs text-terracotta hover:underline font-medium">Erneut testen</button>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-border flex items-center justify-between text-[11px] text-ink-muted font-mono">
+            <span>HTTP: 200 OK</span>
+            <span>Verzögerung: 240 ms</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- ==========================================
+           PANEL 4: Verbindungstest fehlgeschlagen
+      ========================================== -->
+      <article class="bg-surface-lowest rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+        <div class="px-5 py-3.5 bg-surface-low border-b border-border flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-xs px-2 py-0.5 rounded bg-surface-container text-ink font-semibold">04</span>
+            <h2 class="font-serif text-lg font-semibold text-ink">Verbindungstest fehlgeschlagen</h2>
+          </div>
+          <span class="text-xs px-2.5 py-0.5 rounded-full bg-status-error-bg text-status-error border border-status-error-border font-medium flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">cancel</span>
+            Auth-Fehler
+          </span>
+        </div>
+
+        <div class="p-5 flex-1 flex flex-col justify-between gap-5">
+          <div class="space-y-4">
+            <p class="text-xs text-ink-muted leading-relaxed">
+              Authentifizierung scheitert serverseitig. Die App benennt den Fehlergrund unmissverständlich, ohne kryptische Stacktraces anzuzeigen.
+            </p>
+
+            <!-- Card: Modell fehlgeschlagen -->
+            <div class="rounded-lg border border-status-error-border bg-status-error-bg/30 p-4">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-surface-lowest border border-border flex items-center justify-center font-mono text-xs font-semibold text-ink-muted">
+                    OAI
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <h3 class="text-sm font-semibold text-ink">GPT-4o Omniscience</h3>
+                      <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-container text-ink-muted border border-border">gpt-4o</span>
+                    </div>
+                    <div class="text-xs text-ink-muted mt-0.5">OpenAI · sk-proj-•••••••••••••77Q</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-status-error-bg text-status-error border border-status-error-border text-xs font-medium">
+                  <span class="w-1.5 h-1.5 rounded-full bg-status-error"></span>
+                  <span>Fehlgeschlagen</span>
+                </div>
+              </div>
+
+              <!-- Exakte Fehlermeldung mit Code -->
+              <div class="mt-3.5 p-3 rounded bg-surface-lowest border border-status-error-border/80 flex items-start gap-2.5">
+                <span class="material-symbols-outlined text-base text-status-error shrink-0 mt-0.5">error</span>
+                <div class="flex-1 text-xs">
+                  <div class="font-semibold text-status-error">401 — Schlüssel ungültig</div>
+                  <p class="text-ink-muted mt-0.5 leading-relaxed">
+                    Der angegebene API-Schlüssel wurde vom Provider abgewiesen (Invalid Authentication). Bitte prüfe, ob der Schlüssel aktiv ist und keine führenden Leerzeichen enthält.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Aktionszeile -->
+              <div class="mt-3 flex items-center justify-between text-xs">
+                <button class="px-2.5 py-1 rounded bg-surface-lowest border border-border text-ink hover:bg-surface-container transition-colors">
+                  Schlüssel bearbeiten
+                </button>
+                <button class="text-terracotta hover:underline font-medium">
+                  Erneut versuchen
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-border flex items-center justify-between text-[11px] text-ink-muted font-mono">
+            <span>HTTP: 401 Unauthorized</span>
+            <span>Latenz: —</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- ==========================================
+           PANEL 5: Provider löschen gesperrt
+      ========================================== -->
+      <article class="bg-surface-lowest rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+        <div class="px-5 py-3.5 bg-surface-low border-b border-border flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-xs px-2 py-0.5 rounded bg-surface-container text-ink font-semibold">05</span>
+            <h2 class="font-serif text-lg font-semibold text-ink">Provider löschen gesperrt</h2>
+          </div>
+          <span class="text-xs px-2.5 py-0.5 rounded-full bg-surface-container text-ink-muted border border-border font-medium flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">lock</span>
+            Integritäts-Veto
+          </span>
+        </div>
+
+        <div class="p-5 flex-1 flex flex-col justify-between gap-5">
+          <div class="space-y-4">
+            <p class="text-xs text-ink-muted leading-relaxed">
+              Verhindert verwaiste Modellbindungen. Ein Provider kann erst entfernt werden, wenn alle zugewiesenen Modelle umgehängt oder gelöscht wurden.
+            </p>
+
+            <!-- Sperr-Banner & Dialogausschnitt -->
+            <div class="rounded-lg border border-border bg-surface-low p-4 space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-7 h-7 rounded bg-terracotta text-surface-lowest font-mono font-bold text-xs flex items-center justify-center">
+                    A
+                  </div>
+                  <span class="text-xs font-semibold text-ink">Anthropic Claude API</span>
+                </div>
+                <span class="text-[11px] font-mono text-ink-subtle">ID: prov_anthropic_01</span>
+              </div>
+
+              <!-- Dialog Warning Box -->
+              <div class="p-3 bg-surface-lowest rounded border border-status-warn-border flex items-start gap-3">
+                <span class="material-symbols-outlined text-lg text-status-warn shrink-0 mt-0.5">link_off</span>
+                <div class="flex-1 text-xs">
+                  <div class="font-semibold text-ink">Löschen nicht möglich: Modelle zeigen noch darauf</div>
+                  <p class="text-ink-muted mt-1 leading-relaxed">
+                    Folgende Modelle beziehen ihre Inferenz über diese Schnittstelle und würden ohne Provider ins Leere greifen:
+                  </p>
+                  <ul class="mt-2 space-y-1 font-mono text-[11px] text-ink">
+                    <li class="flex items-center gap-1.5">
+                      <span class="w-1.5 h-1.5 rounded-full bg-terracotta"></span>
+                      <span>Claude 3.5 Sonnet (Standard-Modell)</span>
+                    </li>
+                    <li class="flex items-center gap-1.5">
+                      <span class="w-1.5 h-1.5 rounded-full bg-ink-subtle"></span>
+                      <span>Claude 3 Opus (Aufgabe 3: Entitäten)</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Button-Zustand -->
+              <div class="flex items-center justify-between pt-1">
+                <span class="text-[11px] text-ink-muted">Weise die Modelle zuerst einem anderen Provider zu.</span>
+                <button disabled class="px-3 py-1.5 rounded bg-surface-container text-ink-subtle border border-border text-xs font-medium cursor-not-allowed flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-sm">delete</span>
+                  <span>Löschen gesperrt</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-border flex items-center justify-between text-[11px] text-ink-muted font-mono">
+            <span>Referenzen aktiv: 2 Modelle</span>
+            <span>Aktion: Schreibgeschützt</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- ==========================================
+           PANEL 6: Standard-Konflikt (409)
+      ========================================== -->
+      <article class="bg-surface-lowest rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+        <div class="px-5 py-3.5 bg-surface-low border-b border-border flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-xs px-2 py-0.5 rounded bg-surface-container text-ink font-semibold">06</span>
+            <h2 class="font-serif text-lg font-semibold text-ink">Standard-Konflikt</h2>
+          </div>
+          <span class="text-xs px-2.5 py-0.5 rounded-full bg-status-error-bg text-status-error border border-status-error-border font-medium font-mono">
+            HTTP 409 Conflict
+          </span>
+        </div>
+
+        <div class="p-5 flex-1 flex flex-col justify-between gap-5">
+          <div class="space-y-4">
+            <p class="text-xs text-ink-muted leading-relaxed">
+              Tritt auf, wenn versucht wird, ein Modell als Standard festzulegen, während die atomare Primärzuweisung bereits belegt ist oder synchron überschrieben werden muss.
+            </p>
+
+            <div class="rounded-lg border border-status-error-border bg-status-error-bg/30 p-4 space-y-3">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded bg-status-error-bg border border-status-error-border flex items-center justify-center text-status-error shrink-0">
+                  <span class="material-symbols-outlined text-lg">merge_type</span>
+                </div>
+                <div>
+                  <h3 class="text-sm font-semibold text-ink">Es gibt bereits ein Standardmodell</h3>
+                  <p class="text-xs text-ink-muted mt-1 leading-relaxed">
+                    <strong class="text-ink">Claude 3.5 Sonnet</strong> ist gegenwärtig als globales Primärmodell für alle vier Schreib- und Konsistenzaufgaben definiert.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Auflösungs-Optionen -->
+              <div class="p-3 bg-surface-lowest rounded border border-border space-y-2 text-xs">
+                <div class="text-[11px] font-mono text-ink-muted uppercase">Konfliktbereinigung:</div>
+                <div class="space-y-1.5">
+                  <label class="flex items-center gap-2 p-1.5 rounded hover:bg-surface-container cursor-pointer">
+                    <input type="radio" name="conflict" checked class="text-terracotta focus:ring-terracotta">
+                    <span class="text-ink">Bestehenden Standard ablösen und durch <em>Claude 3 Opus</em> ersetzen</span>
+                  </label>
+                  <label class="flex items-center gap-2 p-1.5 rounded hover:bg-surface-container cursor-pointer">
+                    <input type="radio" name="conflict" class="text-terracotta focus:ring-terracotta">
+                    <span class="text-ink">Nur für spezifische Aufgaben zuweisen (ohne globalen Standard-Rang)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-end gap-2 pt-1">
+                <button class="px-2.5 py-1.5 rounded text-xs text-ink-muted hover:text-ink">Abbrechen</button>
+                <button class="px-3 py-1.5 rounded bg-terracotta text-surface-lowest text-xs font-medium hover:bg-terracotta-hover transition-colors shadow-sm">
+                  Standard übertragen
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-border flex items-center justify-between text-[11px] text-ink-muted font-mono">
+            <span>Fehlercode: ATELIER_STD_CONFLICT</span>
+            <span>Konflikt-Objekt: #mdl-sonnet</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- ==========================================
+           PANEL 7: Modell-Discovery fehlgeschlagen (502)
+      ========================================== -->
+      <article class="bg-surface-lowest rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+        <div class="px-5 py-3.5 bg-surface-low border-b border-border flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-xs px-2 py-0.5 rounded bg-surface-container text-ink font-semibold">07</span>
+            <h2 class="font-serif text-lg font-semibold text-ink">Modell-Discovery fehlgeschlagen</h2>
+          </div>
+          <span class="text-xs px-2.5 py-0.5 rounded-full bg-status-error-bg text-status-error border border-status-error-border font-medium font-mono">
+            HTTP 502 Bad Gateway
+          </span>
+        </div>
+
+        <div class="p-5 flex-1 flex flex-col justify-between gap-5">
+          <div class="space-y-4">
+            <p class="text-xs text-ink-muted leading-relaxed">
+              Die automatische Katalogabfrage (<code class="font-mono text-[11px] bg-surface-container px-1 py-0.5 rounded">GET /v1/models</code>) bricht ab, weil der Provider-Proxy nicht antwortet oder TLS blockiert.
+            </p>
+
+            <div class="rounded-lg border border-border bg-surface-low p-4 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-ink">Lokale Ollama-Instanz</span>
+                <span class="font-mono text-[11px] text-ink-muted">http://localhost:11434/v1</span>
+              </div>
+
+              <!-- 502 Banner -->
+              <div class="p-3 bg-surface-lowest rounded border border-status-error-border flex items-start gap-2.5">
+                <span class="material-symbols-outlined text-base text-status-error mt-0.5 shrink-0">cloud_off</span>
+                <div class="text-xs flex-1">
+                  <div class="font-semibold text-status-error">Endpunkt nicht erreichbar (502)</div>
+                  <p class="text-ink-muted mt-1 leading-relaxed">
+                    Der Server lieferte eine ungültige Antwort oder verweigert die lokale Socket-Verbindung. Prüfe, ob dein lokaler Dienst läuft und CORS-Header für Narrare freigegeben sind.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Fallback-Lösung -->
+              <div class="bg-surface-lowest p-3 rounded border border-border text-xs space-y-2">
+                <div class="text-ink font-medium">Empfohlene Abhilfe:</div>
+                <div class="flex items-center justify-between text-ink-muted font-mono text-[11px] bg-surface-container px-2 py-1 rounded">
+                  <span>ollama serve --host 127.0.0.1</span>
+                  <span class="material-symbols-outlined text-sm text-ink-subtle cursor-pointer hover:text-ink">content_copy</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-border flex items-center justify-between text-[11px] text-ink-muted font-mono">
+            <span>Netzwerk: ECONNREFUSED</span>
+            <span>Discovery-Katalog: 0 geladen</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- ==========================================
+           PANEL 8: Key-Store nicht verfügbar (503)
+      ========================================== -->
+      <article class="bg-surface-lowest rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+        <div class="px-5 py-3.5 bg-surface-low border-b border-border flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-xs px-2 py-0.5 rounded bg-surface-container text-ink font-semibold">08</span>
+            <h2 class="font-serif text-lg font-semibold text-ink">Key-Store nicht verfügbar</h2>
+          </div>
+          <span class="text-xs px-2.5 py-0.5 rounded-full bg-status-error-bg text-status-error border border-status-error-border font-medium font-mono">
+            HTTP 503 Unavailable
+          </span>
+        </div>
+
+        <div class="p-5 flex-1 flex flex-col justify-between gap-5">
+          <div class="space-y-4">
+            <p class="text-xs text-ink-muted leading-relaxed">
+              Tritt auf, wenn das lokale OS-Schlüsselbund-Subsystem (z. B. SecretService oder Keychain) gesperrt ist oder der Speicher-Daemon nicht antwortet.
+            </p>
+
+            <div class="rounded-lg border border-status-error-border bg-status-error-bg/30 p-4 space-y-3">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded bg-status-error-bg border border-status-error-border flex items-center justify-center text-status-error shrink-0">
+                  <span class="material-symbols-outlined text-lg">vpn_key_off</span>
+                </div>
+                <div class="flex-1">
+                  <h3 class="text-sm font-semibold text-ink">Lokaler Schlüsselbund gesperrt (503)</h3>
+                  <p class="text-xs text-ink-muted mt-1 leading-relaxed">
+                    Narrare kann die gespeicherten API-Tokens nicht entschlüsseln. Der Hardware-Sicherheitsspeicher antwortet nicht rechtzeitig.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Maskierter Platzhalter ohne Leck -->
+              <div class="p-3 bg-surface-lowest rounded border border-border flex items-center justify-between text-xs font-mono">
+                <span class="text-ink-subtle">Aktiver Token: [Verschlüsselt im Ruhezustand]</span>
+                <span class="px-2 py-0.5 rounded bg-surface-container text-ink-muted">Inaccessible</span>
+              </div>
+
+              <div class="p-2.5 bg-surface-low rounded border border-border text-[11px] text-ink-muted flex items-center justify-between">
+                <span>Atelier bleibt im Schreibmodus aktiv (Read-Only Cache).</span>
+                <button class="text-terracotta font-medium hover:underline">Vault entsperren</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-border flex items-center justify-between text-[11px] text-ink-muted font-mono">
+            <span>Daemon: org.freedesktop.secrets</span>
+            <span>Status: Timeout (5000ms)</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- ==========================================
+           PANEL 9: Speichern abgelehnt (422)
+      ========================================== -->
+      <article class="bg-surface-lowest rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+        <div class="px-5 py-3.5 bg-surface-low border-b border-border flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-xs px-2 py-0.5 rounded bg-surface-container text-ink font-semibold">09</span>
+            <h2 class="font-serif text-lg font-semibold text-ink">Speichern abgelehnt</h2>
+          </div>
+          <span class="text-xs px-2.5 py-0.5 rounded-full bg-status-error-bg text-status-error border border-status-error-border font-medium font-mono">
+            HTTP 422 Unprocessable
+          </span>
+        </div>
+
+        <div class="p-5 flex-1 flex flex-col justify-between gap-5">
+          <div class="space-y-4">
+            <p class="text-xs text-ink-muted leading-relaxed">
+              Semantische Validierung fehlgeschlagen. Der Klick auf „Änderungen speichern“ hebt das ungültige Feld hervor und blockiert den Schreibvorgang deterministisch.
+            </p>
+
+            <!-- Formularfeld-Ausschnitt mit Fehler -->
+            <div class="rounded-lg border border-border bg-surface-low p-4 space-y-3">
+              <div>
+                <label class="block text-xs font-semibold text-ink mb-1">
+                  API-Endpunkt URL <span class="text-status-error">*</span>
+                </label>
+                <div class="relative">
+                  <input type="text"
+                         value="htt://api.anthropic.com/v1"
+                         class="w-full text-xs font-mono px-3 py-2 rounded bg-surface-lowest border border-status-error text-ink focus:outline-none focus:ring-1 focus:ring-status-error pr-8"
+                         readonly>
+                  <span class="material-symbols-outlined text-base text-status-error absolute right-2.5 top-2">
+                    error
+                  </span>
+                </div>
+                <!-- Benannter Feldfehler -->
+                <p class="text-[11px] text-status-error font-medium mt-1.5 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-xs">info</span>
+                  <span>Feldfehler: Ungültiges Protokoll. URL muss mit «https://» beginnen.</span>
+                </p>
+              </div>
+
+              <!-- Zweites Feld im Status OK zur Kontrastierung -->
+              <div>
+                <label class="block text-xs font-semibold text-ink mb-1">
+                  Timeout (Sekunden)
+                </label>
+                <input type="text"
+                       value="60"
+                       class="w-full text-xs font-mono px-3 py-2 rounded bg-surface-lowest border border-border text-ink-muted"
+                       readonly>
+              </div>
+
+              <div class="flex items-center justify-between pt-1">
+                <span class="text-[11px] text-status-error font-mono">Speichern gesperrt</span>
+                <button disabled class="px-3 py-1.5 rounded bg-surface-container text-ink-subtle text-xs font-medium cursor-not-allowed border border-border">
+                  Änderungen speichern
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-border flex items-center justify-between text-[11px] text-ink-muted font-mono">
+            <span>Feld: endpoint_url</span>
+            <span>Regel: RFC_3986_HTTPS</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- ==========================================
+           PANEL 10: Laden (Skeleton-Zustand)
+      ========================================== -->
+      <article class="bg-surface-lowest rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+        <div class="px-5 py-3.5 bg-surface-low border-b border-border flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-xs px-2 py-0.5 rounded bg-surface-container text-ink font-semibold">10</span>
+            <h2 class="font-serif text-lg font-semibold text-ink">Laden</h2>
+          </div>
+          <span class="text-xs px-2.5 py-0.5 rounded-full bg-surface-container text-ink-muted border border-border font-medium flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm animate-spin">refresh</span>
+            Skeleton Layout
+          </span>
+        </div>
+
+        <div class="p-5 flex-1 flex flex-col justify-between gap-5">
+          <div class="space-y-4">
+            <p class="text-xs text-ink-muted leading-relaxed">
+              Vollständiger Verzicht auf unruhige Vollbild-Spinner. Ein ruhiges Pergament-Skelett verhindert Layout-Shifts während der asynchronen Initialisierung.
+            </p>
+
+            <!-- Skeleton Content Mockup -->
+            <div class="rounded-lg border border-border bg-surface-low p-4 space-y-4">
+              <!-- Sektionstitel Skeleton -->
+              <div class="space-y-1.5">
+                <div class="h-4 w-32 bg-surface-container rounded animate-pulse-slow"></div>
+                <div class="h-3 w-56 bg-surface-container/60 rounded animate-pulse-slow"></div>
+              </div>
+
+              <!-- Karten Skelett 1 -->
+              <div class="p-3.5 bg-surface-lowest rounded border border-border space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded bg-surface-container animate-pulse-slow"></div>
+                    <div class="space-y-1">
+                      <div class="h-3.5 w-28 bg-surface-container rounded animate-pulse-slow"></div>
+                      <div class="h-2.5 w-40 bg-surface-container/70 rounded animate-pulse-slow"></div>
+                    </div>
+                  </div>
+                  <div class="h-5 w-16 bg-surface-container rounded-full animate-pulse-slow"></div>
+                </div>
+
+                <div class="h-8 w-full bg-surface-container/50 rounded animate-pulse-slow"></div>
+              </div>
+
+              <!-- Karten Skelett 2 -->
+              <div class="p-3 bg-surface-lowest rounded border border-border flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="h-3.5 w-20 bg-surface-container rounded animate-pulse-slow"></div>
+                  <div class="h-3 w-32 bg-surface-container/60 rounded animate-pulse-slow"></div>
+                </div>
+                <div class="h-6 w-16 bg-surface-container rounded animate-pulse-slow"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-border flex items-center justify-between text-[11px] text-ink-muted font-mono">
+            <span>Initialisierung: —</span>
+            <span>CLS: 0.00 (Layout-Stabil)</span>
+          </div>
+        </div>
+      </article>
+
+    </div>
+
+    <!-- Bottom Architectural Standards & Integrity Note -->
+    <div class="mt-12 p-6 rounded-xl bg-surface-lowest border border-border shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2 text-xs font-semibold text-terracotta">
+          <span class="material-symbols-outlined text-sm">verified_user</span>
+          <span>KANONISCHE RICHTLINIE FÜR SETTINGS-DIALOGE</span>
+        </div>
+        <p class="text-xs text-ink-muted max-w-4xl leading-relaxed">
+          Alle 10 Zustände garantieren 100% Autorensouveränität: Kein Datenverlust bei Verbindungsabbruch, niemals unmaskierte Geheimschlüssel im DOM, und ehrliche Kennzeichnung von Platzhalterwerten mit Gedankenstrich («—») statt erfundener Scheinzahlen.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3 shrink-0">
+        <a href="#" class="px-3.5 py-2 rounded border border-border text-xs font-medium text-ink hover:bg-surface-low transition-colors">
+          Zurück zu Atelier-Einstellungen
+        </a>
+        <button class="px-4 py-2 rounded bg-terracotta text-surface-lowest text-xs font-medium hover:bg-terracotta-hover transition-colors shadow-sm">
+          Spezifikation druckfertig (PDF)
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-8 border-t border-border py-6 bg-surface-low text-xs text-ink-muted">
+    <div class="max-w-[1600px] mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-3">
+      <div class="flex items-center gap-2">
+        <span class="font-serif font-semibold text-ink">Narrare Atelier</span>
+        <span>·</span>
+        <span>Literary Modernism Engine v2.4</span>
+        <span>·</span>
+        <span>Zustands-Referenzkarte 04</span>
+      </div>
+      <div class="flex items-center gap-4 text-[11px] font-mono">
+        <span>WCAG AA Konformität</span>
+        <span>·</span>
+        <span>Zero-Surveillance Spezifikation</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
