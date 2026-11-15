@@ -7142,6 +7142,70 @@
         ]
       }
     },
+    "/api/writing/novels/{novel_id}/duplicate": {
+      "post": {
+        "description": "Duplicate an owned novel: a new book with the same metadata and a\nfull copy of its chapters, in one transaction.\n\nThe copy is named ``„<title> (Kopie)\"``, keeps the series link but no\nvolume, and starts on the shelf — unarchived, never exported. Respond\nwith HTTP 404 for an absent or unowned novel, or HTTP 409 if setup is\nrequired.",
+        "operationId": "duplicate_novel_api_writing_novels__novel_id__duplicate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NovelRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Setup required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duplicate Novel",
+        "tags": [
+          "writing"
+        ]
+      }
+    },
     "/api/writing/novels/{novel_id}/export": {
       "post": {
         "description": "Export an owned novel as a ZIP download or into a directory on disk.\n\nThe ZIP answer carries ``Content-Disposition: attachment`` named after the\ntitle's slug; the path answer is the receipt: where it went and how much.\nRespond with HTTP 404 for an absent or unowned novel, HTTP 409 when the\ntarget exists and is non-empty, or HTTP 422 naming the field for a\nmissing, unwritable or file target path.",

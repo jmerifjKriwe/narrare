@@ -1208,6 +1208,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/writing/novels/{novel_id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Duplicate Novel
+         * @description Duplicate an owned novel: a new book with the same metadata and a
+         *     full copy of its chapters, in one transaction.
+         *
+         *     The copy is named ``„<title> (Kopie)"``, keeps the series link but no
+         *     volume, and starts on the shelf — unarchived, never exported. Respond
+         *     with HTTP 404 for an absent or unowned novel, or HTTP 409 if setup is
+         *     required.
+         */
+        post: operations["duplicate_novel_api_writing_novels__novel_id__duplicate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/writing/novels/{novel_id}/export": {
         parameters: {
             query?: never;
@@ -5252,6 +5278,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChapterRead"];
+                };
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Setup required */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duplicate_novel_api_writing_novels__novel_id__duplicate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovelRead"];
                 };
             };
             /** @description Novel not found */

@@ -80,6 +80,24 @@ def _normalize_series_volume(value: int | None) -> int | None:
     return value
 
 
+_COPY_PREFIX = "„"
+_COPY_SUFFIX = ' (Kopie)"'
+"""The copy's name, as the shelf's plan pins it: ``„<title> (Kopie)"`` —
+the German opening quote, the suffix the quick menu's action names."""
+
+
+def duplicated_title(title: str) -> str:
+    """The copy's name for an original title.
+
+    The title column holds 200 characters and the quotes and suffix take
+    ten of them, so a long original keeps the first 190 characters of
+    itself — the copy always fits, whatever the original's length, and
+    duplicating a valid book never fails on its name.
+    """
+    room = 200 - len(_COPY_PREFIX) - len(_COPY_SUFFIX)
+    return f"{_COPY_PREFIX}{title[:room]}{_COPY_SUFFIX}"
+
+
 def normalized_novel_updates(changes: NovelUpdate) -> dict[str, object]:
     """The carried fields as the values `update_novel` writes.
 

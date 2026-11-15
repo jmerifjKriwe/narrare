@@ -5,6 +5,7 @@ import pytest
 
 from app.capabilities.writing.metadata import (
     InvalidNovelUpdateError,
+    duplicated_title,
     normalized_novel_updates,
 )
 from app.capabilities.writing.schemas import NovelUpdate
@@ -98,3 +99,14 @@ def test_archived_at_passes_through_as_carried() -> None:
     stamp = datetime(2026, 11, 15, 10, 0, tzinfo=UTC)
     assert normalized_novel_updates(NovelUpdate(archived_at=stamp)) == {"archived_at": stamp}
     assert normalized_novel_updates(NovelUpdate(archived_at=None)) == {"archived_at": None}
+
+
+def test_the_copy_title_wraps_the_original_in_quotes_and_suffix() -> None:
+    assert duplicated_title("Der Nebel") == '„Der Nebel (Kopie)"'
+
+
+def test_a_long_original_keeps_as_much_of_itself_as_fits_the_column() -> None:
+    # The quotes and suffix take ten of the column's 200 characters.
+    title = duplicated_title("x" * 200)
+    assert len(title) == 200
+    assert title == f'„{"x" * 190} (Kopie)"'

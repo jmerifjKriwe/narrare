@@ -211,6 +211,32 @@ async def delete_novel(novel_id: UUID, service: ServiceDep) -> None:
 
 
 @router.post(
+    "/novels/{novel_id}/duplicate",
+    response_model=NovelRead,
+    status_code=201,
+    responses={
+        404: {"model": WritingErrorRead, "description": "Novel not found"},
+        409: {"model": WritingErrorRead, "description": "Setup required"},
+    },
+)
+async def duplicate_novel(novel_id: UUID, service: ServiceDep) -> NovelRead:
+    """Duplicate an owned novel: a new book with the same metadata and a
+    full copy of its chapters, in one transaction.
+
+    The copy is named ``„<title> (Kopie)"``, keeps the series link but no
+    volume, and starts on the shelf — unarchived, never exported. Respond
+    with HTTP 404 for an absent or unowned novel, or HTTP 409 if setup is
+    required.
+    """
+    try:
+        return await service.duplicate_novel(novel_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
+
+
+@router.post(
     "/novels/{novel_id}/export",
     response_model=ExportDone,
     responses={

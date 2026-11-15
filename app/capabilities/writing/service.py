@@ -11,7 +11,11 @@ from zipfile import BadZipFile
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-from app.capabilities.writing.metadata import InvalidNovelUpdateError, normalized_novel_updates
+from app.capabilities.writing.metadata import (
+    InvalidNovelUpdateError,
+    duplicated_title,
+    normalized_novel_updates,
+)
 from app.capabilities.writing.prompts import render_continuation, scaffold_length
 from app.capabilities.writing.repository import (
     ChapterRepository,
@@ -223,6 +227,38 @@ class WritingService:
         if getattr(result, "rowcount", 0) == 0:
             raise NotFoundError
         await self.session.commit()
+
+    async def duplicate_novel(self, novel_id: UUID) -> NovelRead:
+        """Copy a novel and all its chapters as one new book, in one transaction.
+
+        The copy carries the book's own facts — genre, blurb, the export's
+        front matter, the wizard's settings, status and the series link —
+        under the name ``„<title> (Kopie)"``. The shelf's tracking starts
+        fresh: no volume (the number belongs to the original's place in
+        the series), no archive stamp (the copy is on the shelf) and no
+        export trace (it has never been exported). The chapters ride with
+        titles, bodies and positions as read; the new novel has no other
+        writers yet, so the positions need no allocator's lock. Novel and
+        chapters commit together or not at all.
+
+        Return the copy with its derived facts, the read paths' shape.
+        Raise SetupRequiredError if setup has not created the owning user,
+        or NotFoundError for an absent or unowned novel.
+        """
+        await self._require_user()
+        novel = await self.novels.get(novel_id)
+        if novel is None:
+            raise NotFoundError
+        chapters = await self.chapters.list_for_novel(novel_id)
+        copy = await self.novels.duplicate(novel, duplicated_title(novel.title))
+        await self.chapters.copy_into(copy.id, chapters)
+        await self.session.commit()
+        titles = await self.novels.series_titles([copy])
+        return self._with_counts(
+            copy,
+            (await self.novels.counts(copy.id)).get(copy.id, (0, 0)),
+            titles.get(copy.id),
+        )
 
     async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:
         await self._require_user()

@@ -161,6 +161,35 @@ class NovelRepository(ScopedRepository[Novel]):
         await self.session.flush()
         return novel
 
+    async def duplicate(self, source: Novel, title: str) -> Novel:
+        """Flush a copy of the novel for this user, leaving the commit to the caller.
+
+        The book's own facts ride along: genre, blurb, the export's front
+        matter, the wizard's settings, status and the series link. The
+        shelf's tracking starts fresh — no volume (the number belongs to
+        the original's place in the series), no archive stamp (the copy
+        is on the shelf) and no export trace (it has never been exported).
+        The timestamps are the copy's own, from the columns' defaults.
+        """
+        novel = Novel(
+            user_id=self.user_id,
+            title=title,
+            genre=source.genre,
+            blurb=source.blurb,
+            author=source.author,
+            language=source.language,
+            target_words=source.target_words,
+            author_typology=source.author_typology,
+            dramatic_form=source.dramatic_form,
+            ai_role=source.ai_role,
+            canon_strictness=source.canon_strictness,
+            status=source.status,
+            series_id=source.series_id,
+        )
+        self.session.add(novel)
+        await self.session.flush()
+        return novel
+
     async def delete(self, novel: Novel) -> None:
         """Mark the supplied novel for deletion; the caller commits the change.
 
@@ -221,6 +250,28 @@ class ChapterRepository(ScopedRepository[Chapter]):
         await self.touch_novel(novel_id)
         await self.session.flush()
         return chapter
+
+    async def copy_into(self, novel_id: UUID, chapters: Sequence[Chapter]) -> None:
+        """Flush copies of the chapters into a new novel, positions preserved.
+
+        The copies are new rows — titles, bodies and positions as read,
+        timestamps their own. No allocator and no lock: the target novel
+        is brand new, so no other writer can append to it before this
+        transaction commits, and the position invariant holds without
+        the lock every append to a live book takes. The caller commits
+        the copies together with the novel row.
+        """
+        for chapter in chapters:
+            self.session.add(
+                Chapter(
+                    user_id=self.user_id,
+                    novel_id=novel_id,
+                    title=chapter.title,
+                    body=chapter.body,
+                    position=chapter.position,
+                )
+            )
+        await self.session.flush()
 
     async def save(self, chapter: Chapter, changes: dict[str, Any]) -> Chapter:
         """Apply an edit and mark the novel written-in; one write, one bump."""
