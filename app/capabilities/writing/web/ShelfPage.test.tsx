@@ -19,6 +19,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -903,15 +904,40 @@ describe("the shelf — the popover's dialog semantics", () => {
   });
 
   it("the facet rows are real checkboxes — Space toggles from the keyboard", async () => {
+    const user = userEvent.setup();
     renderShelf();
     await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
 
     const dialog = openPopover();
     const mystery = within(dialog).getByRole("checkbox", { name: "Mystery" }) as HTMLInputElement;
     mystery.focus();
-    fireEvent.click(mystery);
+    // Real key events, not a click in disguise: Space checks and unchecks.
+    await user.keyboard(" ");
     expect(mystery.checked).toBe(true);
     expect(gridTitles()).toEqual(["Winterhaus"]);
+    await user.keyboard(" ");
+    expect(mystery.checked).toBe(false);
+    expect(gridTitles()).toEqual(["Winterhaus", "The Salt Road", "Der Nebel von Arkona"]);
+  });
+
+  it("Escape is staged — the box's text first, the panel second", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    fireEvent.change(searchInput(), { target: { value: "salt" } });
+    openPopover();
+    // Focus back in the box with the panel standing: the first Escape
+    // clears the query and stops there — panel open, focus in the box.
+    searchInput().focus();
+    fireEvent.keyDown(searchInput(), { key: "Escape" });
+    expect((searchInput() as HTMLInputElement).value).toBe("");
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(document.activeElement).toBe(searchInput());
+    // The second Escape, the box now empty, closes the panel and returns
+    // focus to the trigger — the innermost context had its turn first.
+    fireEvent.keyDown(searchInput(), { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(filterTrigger());
   });
 });
 
@@ -933,7 +959,12 @@ describe("the shelf — the archive toggle is a real refetch", () => {
     );
     const archivedCard = await screen.findByRole("heading", { level: 3, name: "Das stille Archiv" });
     const card = archivedCard.closest("article") as HTMLElement;
-    expect(within(card).getByText(de["writing.shelf.archived"])).toBeTruthy();
+    const pill = within(card).getByText(de["writing.shelf.archived"]);
+    expect(pill).toBeTruthy();
+    // The review's contrast fix pinned: the revision pill's own passing
+    // pair on this surface, never the muted ink that failed AA.
+    expect(pill.className).toContain("bg-surface-container-high");
+    expect(pill.className).toContain("text-secondary");
     expect(toggle.getAttribute("aria-checked")).toBe("true");
     // The hero is untouched — the archive never leads.
     expect(screen.getByRole("heading", { level: 2, name: "Dead Signal" })).toBeTruthy();

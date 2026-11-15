@@ -142,6 +142,13 @@ describe("parseFigure — a number is a whole count, grouped as the locale print
     expect(parseFigure("1.234.567")).toBe(1234567);
   });
 
+  it("accepts mixed separator marks within one figure — the class is per group", () => {
+    // Disclosed leniency: each thousands group picks its own mark, so a
+    // paste mixing locale conventions still reads as the one whole count.
+    expect(parseFigure("1.234,567")).toBe(1234567);
+    expect(parseFigure("1,234 567")).toBe(1234567);
+  });
+
   it("refuses decimals, signs and mixed text — counts are whole and unsigned", () => {
     expect(parseFigure("3.5")).toBeNull();
     expect(parseFigure("3,5")).toBeNull();

@@ -20,7 +20,10 @@
  * `aria-haspopup`/`aria-expanded`/`aria-controls`), Escape closes and
  * returns focus to the trigger, the close button likewise, a click
  * outside closes without stealing focus, and opening moves focus to the
- * close button — the states-reference discipline. The facet rows are real
+ * close button — the states-reference discipline. Escape is staged, the
+ * innermost context first: with text in the search box it clears the query
+ * and stops (the panel stays, the focus stays); the next Escape, the box
+ * empty, closes the panel. The facet rows are real
  * checkboxes (sr-only inputs under the drafted boxes), the archive row a
  * real switch. Below the draft's own breakpoint the panel anchors right
  * so it never leaves the viewport; from `sm` up it keeps the draft's
@@ -189,6 +192,14 @@ export function ShelfSearch({
             onKeyDown={(event) => {
               if (event.key === "Escape" && query !== "") {
                 event.preventDefault();
+                // Staged Escape, the innermost context first (the review's
+                // disclosure): with text in the box, Escape clears the query
+                // and stops there — the popover stays open and the focus
+                // stays in the box, so a reader mid-search is never yanked
+                // to the trigger by the panel's own Escape listener. The
+                // next Escape, the box now empty, falls through to that
+                // listener and closes the panel with focus return.
+                event.stopPropagation();
                 onQueryChange("");
               }
             }}

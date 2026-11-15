@@ -109,11 +109,13 @@ export function BookCard({ novel, menuNoteId }: { novel: Novel; menuNoteId: stri
             </h3>
             <span className="flex shrink-0 flex-wrap items-center justify-end gap-1">
               {/* The archived marking — undrafted, the honest minimal: the
-                  status pill's own shape in a neutral tone, from the row's
-                  archived_at presence (Task 7's disclosure). The card is
-                  otherwise the same card; the archive never leads. */}
+                  status pill's own shape from the row's archived_at presence
+                  (Task 7's disclosure). The ink is the revision pill's own
+                  passing pair on this surface — muted failed the AA bar at
+                  eyebrow size in both halves (the review's finding). The
+                  card is otherwise the same card; the archive never leads. */}
               {novel.archived_at != null && (
-                <span className="shrink-0 rounded-full bg-surface-container-high px-2 py-0.5 text-eyebrow uppercase tracking-wide text-muted">
+                <span className="shrink-0 rounded-full bg-surface-container-high px-2 py-0.5 text-eyebrow uppercase tracking-wide text-secondary">
                   {t("writing.shelf.archived")}
                 </span>
               )}
