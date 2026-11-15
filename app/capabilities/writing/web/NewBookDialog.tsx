@@ -16,8 +16,10 @@
  * every close path while the ask runs); success closes and the shelf's own
  * refetch carries the new book — the newest `updated_at` leads as the hero,
  * the honest outcome of the column, never a hand-patched insert. A refusal
- * keeps every answer and offers the family's error line: the loss-free
- * message, the real status, and „Erneut versuchen" re-running the same ask.
+ * keeps every answer and offers the family's error line, pinned above the
+ * actions so it is seen without scrolling: the loss-free message, the real
+ * status, and „Erneut versuchen" re-running the same ask under the CTA's
+ * own completeness guard.
  *
  * Semantics at modal weight, the Task 7/8 popover discipline grown up:
  * `role="dialog"` + `aria-modal`, labelled by its own heading, focus lands
@@ -57,7 +59,10 @@ import {
   DEFAULT_TARGET_WORDS,
   GENRE_CAP,
   GENRE_PILL_DEFS,
+  WORDS_MAX,
+  WORDS_MIN,
   WORDS_PER_NORMSEITE,
+  WORDS_STEP,
   joinGenres,
   wordBand,
   wouldOverflow,
@@ -76,10 +81,8 @@ const FOCUS =
 const FOCUSABLE =
   'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
 
-/** The draft's slider: its own range and step, the default inside it. */
-const WORDS_MIN = 20_000;
-const WORDS_MAX = 140_000;
-const WORDS_STEP = 5_000;
+/** The draft's slider range and step live in the model (newBook.ts), pinned
+ *  beside the default and the column's ceiling. */
 
 /** The gauge's format categories — the wizard step 1's bands and ranges,
  *  re-keyed into this catalog so the dialog speaks its own words. */
@@ -450,12 +453,17 @@ export function NewBookDialog({ onClose }: { onClose: (created: boolean) => void
             </div>
           </div>
   
-          {/* The family's error line: loss-free message, the real refusal,
-              and the retry that re-runs the very ask. The answers stand. */}
+        </div>
+
+        {/* The pinned foot: the family's error line stands above the actions,
+            outside the scroll region — on a short viewport the reader hears
+            it and sees it at once, no scroll owed. The drafted card geometry
+            stays; only its place moves. */}
+        <div className="shrink-0 border-t border-rule">
           {error !== null && (
             <div
               role="alert"
-              className="mx-6 mb-4 rounded-lg border border-rule border-l-2 border-l-danger bg-surface-container-lowest p-3 md:mx-8"
+              className="mx-6 mt-3 rounded-lg border border-rule border-l-2 border-l-danger bg-surface-container-lowest p-3 md:mx-8"
             >
               <div className="flex items-start gap-2">
                 <span className="mt-0.5 shrink-0 text-danger">
@@ -466,10 +474,14 @@ export function NewBookDialog({ onClose }: { onClose: (created: boolean) => void
                     {t("writing.shelf.dialog.error")}
                   </p>
                   <p className="mt-0.5 font-mono text-meta text-danger">{error}</p>
+                  {/* The retry obeys the CTA's own completeness guard: with
+                      no standing title it is disabled, never an idle promise
+                      the submit guard would silently eat. */}
                   <button
                     type="button"
+                    disabled={!complete}
                     onClick={submit}
-                    className={`mt-1 inline-flex items-center gap-1 text-meta font-medium text-primary underline underline-offset-2 transition-colors hover:text-foreground ${FOCUS}`}
+                    className={`mt-1 inline-flex items-center gap-1 text-meta font-medium text-primary underline underline-offset-2 transition-colors hover:text-foreground ${FOCUS} ${!complete ? "cursor-not-allowed opacity-50" : ""}`}
                   >
                     {t("writing.shelf.error.retry")}
                     <Icon name="refresh" size={12} />
@@ -478,36 +490,35 @@ export function NewBookDialog({ onClose }: { onClose: (created: boolean) => void
               </div>
             </div>
           )}
+          <footer className="flex items-center justify-end gap-3 px-6 py-4 md:px-8">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onClose(false)}
+              className={`rounded border border-transparent px-4 py-2 text-label text-muted transition-colors hover:border-border hover:bg-surface-container hover:text-foreground ${FOCUS} ${busy ? "cursor-not-allowed opacity-50" : ""}`}
+            >
+              {t("writing.shelf.dialog.cancel")}
+            </button>
+            {/* The state flip (disabled ↔ ready) switches colour instantly:
+                only hover opacity and shadow animate. A colour transition
+                here would spend 150 ms in a blend that clears no AA bar —
+                the contrast gate measures the face mid-flight. */}
+            <button
+              type="submit"
+              form={formId}
+              disabled={!complete || busy}
+              className={`flex items-center gap-2 rounded px-5 py-2.5 text-label font-semibold shadow-sm transition-[opacity,box-shadow] ${FOCUS} ${
+                complete && !busy
+                  ? "cursor-pointer bg-primary text-primary-foreground hover:opacity-95 hover:shadow-md"
+                  : "cursor-not-allowed bg-surface-container-high text-muted shadow-none"
+              }`}
+            >
+              {busy ? <Spinner /> : <Icon name="plus" size={16} />}
+              <span>{busy ? t("writing.shelf.dialog.busy") : t("writing.shelf.dialog.create")}</span>
+              {!busy && <Icon name="arrowRight" size={16} />}
+            </button>
+          </footer>
         </div>
-
-        <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-rule px-6 py-4 md:px-8">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => onClose(false)}
-            className={`rounded border border-transparent px-4 py-2 text-label text-muted transition-colors hover:border-border hover:bg-surface-container hover:text-foreground ${FOCUS} ${busy ? "cursor-not-allowed opacity-50" : ""}`}
-          >
-            {t("writing.shelf.dialog.cancel")}
-          </button>
-          {/* The state flip (disabled ↔ ready) switches colour instantly:
-              only hover opacity and shadow animate. A colour transition
-              here would spend 150 ms in a blend that clears no AA bar —
-              the contrast gate measures the face mid-flight. */}
-          <button
-            type="submit"
-            form={formId}
-            disabled={!complete || busy}
-            className={`flex items-center gap-2 rounded px-5 py-2.5 text-label font-semibold shadow-sm transition-[opacity,box-shadow] ${FOCUS} ${
-              complete && !busy
-                ? "cursor-pointer bg-primary text-primary-foreground hover:opacity-95 hover:shadow-md"
-                : "cursor-not-allowed bg-surface-container-high text-muted shadow-none"
-            }`}
-          >
-            {busy ? <Spinner /> : <Icon name="plus" size={16} />}
-            <span>{busy ? t("writing.shelf.dialog.busy") : t("writing.shelf.dialog.create")}</span>
-            {!busy && <Icon name="arrowRight" size={16} />}
-          </button>
-        </footer>
       </div>
     </div>
   );

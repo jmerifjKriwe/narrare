@@ -42,6 +42,14 @@ export const GENRE_CAP = 80;
 export const DEFAULT_TARGET_WORDS = 65_000;
 export const TARGET_WORDS_MAX = 2_147_483_647;
 
+/** The dialog slider's own range, the draft's gauge: 20k to 140k in 5k
+ *  steps. Narrower than the column on purpose — the quick path offers the
+ *  draft's affordance, the wizard's numeric field keeps the full bounds.
+ *  The default sits on this grid, reachable by keyboard from the floor. */
+export const WORDS_MIN = 20_000;
+export const WORDS_MAX = 140_000;
+export const WORDS_STEP = 5_000;
+
 /** The Normseite's word count the draft's „240 Normseiten" at 65.000 implies. */
 export const WORDS_PER_NORMSEITE = 270;
 

@@ -13,7 +13,10 @@ import {
   GENRE_PILLS,
   GENRE_PILL_DEFS,
   TARGET_WORDS_MAX,
+  WORDS_MAX,
+  WORDS_MIN,
   WORDS_PER_NORMSEITE,
+  WORDS_STEP,
   joinGenres,
   wordBand,
   wouldOverflow,
@@ -82,5 +85,15 @@ describe("the word target — the draft's default and format bands", () => {
   it("the Normseite figure is floored — 65.000 reads 240, never 241", () => {
     expect(Math.floor(DEFAULT_TARGET_WORDS / WORDS_PER_NORMSEITE)).toBe(240);
     expect(Math.floor(30_000 / WORDS_PER_NORMSEITE)).toBe(111);
+  });
+
+  it("the slider's range is the draft's own — 20k to 140k in 5k steps", () => {
+    expect(WORDS_MIN).toBe(20_000);
+    expect(WORDS_MAX).toBe(140_000);
+    expect(WORDS_STEP).toBe(5_000);
+    // The default sits on the slider's own grid, reachable by keyboard.
+    expect(DEFAULT_TARGET_WORDS).toBeGreaterThanOrEqual(WORDS_MIN);
+    expect(DEFAULT_TARGET_WORDS).toBeLessThanOrEqual(WORDS_MAX);
+    expect((DEFAULT_TARGET_WORDS - WORDS_MIN) % WORDS_STEP).toBe(0);
   });
 });

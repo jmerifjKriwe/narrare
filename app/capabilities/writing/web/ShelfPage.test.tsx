@@ -1885,6 +1885,12 @@ describe("the shelf — the dialog creates for real and closes honestly", () => 
     expect(alert.textContent).toContain(de["writing.shelf.dialog.error"]);
     // The real refusal rides the line — never an invented gateway story.
     expect(alert.textContent).toContain("503");
+    // The error stands in the pinned foot, outside the scroll region: on a
+    // short viewport the reader hears it and sees it at once, no scroll owed.
+    const scrollRegion = dialog.querySelector(".overflow-y-auto") as HTMLElement;
+    expect(scrollRegion.contains(alert)).toBe(false);
+    const foot = dialog.querySelector("footer") as HTMLElement;
+    expect(foot.parentElement?.contains(alert)).toBe(true);
     // State preserved: the answers stand exactly as typed.
     expect((titleField(dialog) as HTMLInputElement).value).toBe("Die Winterchronik");
     expect(
@@ -1895,6 +1901,32 @@ describe("the shelf — the dialog creates for real and closes honestly", () => 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(attempts).toBe(2);
     expect(await screen.findByRole("heading", { level: 2, name: CREATED.title })).toBeTruthy();
+  });
+
+  it("the retry never idles — it waits for the same standing title as the CTA", async () => {
+    createAnswer = async () => ({ data: undefined, response: new Response(null, { status: 503 }) });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openNewBook();
+    fireEvent.change(titleField(dialog), { target: { value: "Die Winterchronik" } });
+    fireEvent.click(createButton(dialog));
+    const alert = await within(dialog).findByRole("alert");
+    const retry = within(alert).getByRole("button", { name: de["writing.shelf.error.retry"] });
+    expect(retry.hasAttribute("disabled")).toBe(false);
+
+    // Clearing the title disarms the retry exactly as it disarms the CTA —
+    // the button never promises an ask the completeness guard would eat.
+    fireEvent.change(titleField(dialog), { target: { value: "   " } });
+    expect(retry.hasAttribute("disabled")).toBe(true);
+    expect(createButton(dialog).hasAttribute("disabled")).toBe(true);
+    fireEvent.click(retry);
+    expect(api.POST).toHaveBeenCalledTimes(1);
+
+    // A standing title arms it again; the error and the answers stand.
+    fireEvent.change(titleField(dialog), { target: { value: "Die Winterchronik" } });
+    expect(retry.hasAttribute("disabled")).toBe(false);
+    expect(alert.textContent).toContain("503");
   });
 
   it("Escape, the scrim, Abbrechen and the cross close — focus returns to the opener", async () => {
