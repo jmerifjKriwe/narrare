@@ -9,15 +9,26 @@
  * the drafts never showed. One pair follows the screens rather than
  * DESIGN.md's named value: `--card`, which the drafted shelf paints on the
  * parchment surface `#FFF8F2` instead of `bg-card-light`'s `#FFFFFF` (spec
- * §6.2's screen rule).
+ * §6.2's screen rule). The cover aliases in `@theme inline` are gated too:
+ * a utility reads the alias, and one pointed at another token's variable
+ * would pass the pair gate and paint a wrong-coloured cover.
  *
  * The contrast table is the same measurement the axe leg makes, done here
  * where a failure names the pair instead of a selector: the ink, the ground
- * it rides and the bar it must clear.
+ * it rides and the bar it must clear. The cover's gate goes one step further
+ * (R15): it composites each text role's ink over its ground at the dim the
+ * component renders (`COVER_TEXT_DIMS` in cover.ts), so the AA promise covers
+ * the dimmed render a reader actually sees, not just the full-ink token pair.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  CHANNEL_TOKENS,
+  COVER_TEXT_DIMS,
+  type CoverChannel,
+  type CoverTextDims,
+} from "./cover/cover";
 
 const WEB = new URL("..", import.meta.url).pathname;
 const CSS = readFileSync(join(WEB, "globals.css"), "utf8");
@@ -38,10 +49,28 @@ function rootBlock(): string {
   throw new Error("globals.css's :root block never closes");
 }
 
-/** The block's own declarations, name → value. */
+/** The `@theme inline` block's body — the Tailwind aliases the utilities read. */
+function themeBlock(): string {
+  const at = CSS.indexOf("@theme inline {");
+  if (at < 0) throw new Error("globals.css has no @theme inline block");
+  const open = CSS.indexOf("{", at);
+  let depth = 0;
+  for (let i = open; i < CSS.length; i += 1) {
+    if (CSS[i] === "{") depth += 1;
+    else if (CSS[i] === "}") {
+      depth -= 1;
+      if (depth === 0) return CSS.slice(open + 1, i);
+    }
+  }
+  throw new Error("globals.css's @theme inline block never closes");
+}
+
+/** The block's own declarations, name → value. CSS comments are stripped
+ * first, so a commented-out declaration cannot witness a gate. */
 function declarations(source: string): Record<string, string> {
   const found: Record<string, string> = {};
-  for (const match of source.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
+  const live = source.replace(/\/\*[\s\S]*?\*\//g, "");
+  for (const match of live.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
     found[match[1].slice(2)] = match[2].replace(/\s+/g, " ").trim();
   }
   return found;
@@ -134,6 +163,20 @@ function contrast(ink: string, ground: string): number {
 }
 
 /**
+ * The colour a dimmed text role actually paints: the ink composited over the
+ * ground in sRGB, `dim * ink + (1 - dim) * ground` per channel, rounded to the
+ * 8-bit value the screen shows. The pair gate measures full ink; this is the
+ * colour the reader's eye meets at the rendered opacity.
+ */
+function dimmed(ink: string, ground: string, dim: number): string {
+  const channels = (hex: string) => [0, 2, 4].map((at) => parseInt(hex.slice(at + 1, at + 3), 16));
+  const from = channels(ink);
+  const over = channels(ground);
+  const mixed = from.map((value, i) => Math.round(dim * value + (1 - dim) * over[i]));
+  return `#${mixed.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/**
  * The pairs the spec's §6.2 names, light and dark: the norm's own values
  * (DESIGN.md for the light half, the measured dark half from
  * `dark-tokens.md`).
@@ -195,6 +238,25 @@ const PAIRS: Record<string, [string, string]> = {
   "cover-ink-ink": ["#FFF8F2", "#DFDEDA"],
   "cover-slate": ["#3A637B", "#284457"],
   "cover-slate-ink": ["#FFF8F2", "#FFF8F2"],
+  // The procedural cover's four genre grounds (cover-system spec, Sektion
+  // 02): theme-constant in both halves, the spec's no-inversion rule
+  // (Sektion 06) — a book keeps its pigment on the midnight shelf, and the
+  // rim-light that keeps it off the canvas is the component's own.
+  "cover-fantasy": ["#2C382E", "#2C382E"],
+  "cover-fantasy-ink": ["#FFF8F2", "#FFF8F2"],
+  "cover-romance": ["#633B3E", "#633B3E"],
+  "cover-romance-ink": ["#FFF8F2", "#FFF8F2"],
+  "cover-thriller": ["#1D2228", "#1D2228"],
+  "cover-thriller-ink": ["#FFF8F2", "#FFF8F2"],
+  "cover-fallback": ["#DFD7CB", "#DFD7CB"],
+  "cover-fallback-ink": ["#1E1B16", "#1E1B16"],
+  // The blind-deboss boundary's gold (cover-system spec, Sektion 01): the
+  // draft's Tailwind amber-300, theme-constant like the genre grounds. Kept
+  // in oklch — the value sits a hair outside sRGB, and a hex would clip its
+  // red channel into a different gold. A decorative hairline that carries
+  // no information of its own, so it has no contrast row (the outline
+  // hairline's rule).
+  "cover-deboss": ["oklch(87.9% 0.169 91.605)", "oklch(87.9% 0.169 91.605)"],
 };
 
 /** The shape ladder (spec §6.4): 4 px small controls, 8 px controls, 12 px surfaces. */
@@ -249,6 +311,10 @@ const TEXT_PAIRS: [string, string, number][] = [
   ["cover-sepia-ink", "cover-sepia", 4.5],
   ["cover-ink-ink", "cover-ink", 4.5],
   ["cover-slate-ink", "cover-slate", 4.5],
+  ["cover-fantasy-ink", "cover-fantasy", 4.5],
+  ["cover-romance-ink", "cover-romance", 4.5],
+  ["cover-thriller-ink", "cover-thriller", 4.5],
+  ["cover-fallback-ink", "cover-fallback", 4.5],
 ];
 
 /** The marks that carry no text and still have to be seen: 3:1 (WCAG 1.4.11). */
@@ -268,6 +334,21 @@ const GRAPHICS_PAIRS: [string, string, number][] = [
   ["area-settings", "card", 3],
 ];
 
+describe("the declarations reader", () => {
+  it("strips CSS comments, so a commented-out declaration never witnesses a gate", () => {
+    const source = [
+      "--live: #FFF8F2;",
+      "/* --single-line: #000000; */",
+      "--beside: 4px; /* --trailing: #16140F; */",
+      "/* a multi-line note",
+      "   --buried: #743B1F;",
+      "   that must not count */",
+      "--after: 8px;",
+    ].join("\n");
+    expect(declarations(source)).toEqual({ live: "#FFF8F2", beside: "4px", after: "8px" });
+  });
+});
+
 describe("the shell's tokens", () => {
   const tokens = declarations(rootBlock());
 
@@ -281,8 +362,12 @@ describe("the shell's tokens", () => {
       }
       const paintedLight = painted(tokens, name, "light").toUpperCase();
       const paintedDark = painted(tokens, name, "dark").toUpperCase();
-      if (paintedLight !== light) wrong.push(`--${name} light: ${paintedLight} ≠ ${light}`);
-      if (paintedDark !== dark) wrong.push(`--${name} dark: ${paintedDark} ≠ ${dark}`);
+      // CSS colour values are case-insensitive: the oklch deboss gold reads
+      // lowercase, the hex pairs uppercase; the comparison folds both.
+      if (paintedLight !== light.toUpperCase())
+        wrong.push(`--${name} light: ${paintedLight} ≠ ${light}`);
+      if (paintedDark !== dark.toUpperCase())
+        wrong.push(`--${name} dark: ${paintedDark} ≠ ${dark}`);
     }
     expect(wrong).toEqual([]);
   });
@@ -311,6 +396,33 @@ describe("the shell's tokens", () => {
     expect(layers("light")).toEqual(SHADOW_CARD.light);
     expect(layers("dark")).toEqual(SHADOW_CARD.dark);
   });
+
+  it("carries the brand serif once, as the token both surfaces read (R17)", () => {
+    // One home for the stack: the prose surface consumes it here, the cover
+    // title via `[font-family:var(--font-serif)]` (pinned in BookCover.test).
+    expect(tokens["font-serif"]).toBe('"EB Garamond", Georgia, "Times New Roman", serif');
+    expect(CSS).toContain("font-family: var(--font-serif);");
+  });
+});
+
+describe("the cover's Tailwind aliases", () => {
+  const aliases = declarations(themeBlock());
+
+  it("points every cover token at its own variable", () => {
+    const wrong: string[] = [];
+    for (const name of Object.keys(PAIRS)) {
+      if (!name.startsWith("cover-")) continue;
+      const alias = `color-${name}`;
+      const value = aliases[alias];
+      if (value === undefined) {
+        wrong.push(`--${alias} is missing`);
+        continue;
+      }
+      const expected = `var(--${name})`;
+      if (value !== expected) wrong.push(`--${alias}: ${value} ≠ ${expected}`);
+    }
+    expect(wrong).toEqual([]);
+  });
 });
 
 describe("the shell's contrast table", () => {
@@ -326,6 +438,51 @@ describe("the shell's contrast table", () => {
         );
         if (measured < bar) {
           wrong.push(`${theme}: ${ink} on ${ground} measures ${measured.toFixed(2)}:1 (needs ${bar})`);
+        }
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+});
+
+describe("the cover's dimmed text (R15)", () => {
+  const tokens = declarations(rootBlock());
+
+  /** The dimmed roles a channel renders; the miniature keeps none of them. */
+  const roles = (dims: CoverTextDims): Array<[string, number]> => [
+    ["eyebrow", dims.eyebrow],
+    ["author at wizard", dims.author.wizard],
+    ["author at hero", dims.author.hero],
+    ["author at shelf", dims.author.shelf],
+    ["variant-2 foot", dims.foot],
+  ];
+
+  it("clears AA on every channel's dimmed roles in both themes", () => {
+    const wrong: string[] = [];
+    for (const theme of ["light", "dark"] as const) {
+      for (const channel of Object.keys(CHANNEL_TOKENS) as CoverChannel[]) {
+        const ground = painted(tokens, CHANNEL_TOKENS[channel].ground, theme);
+        const ink = painted(tokens, CHANNEL_TOKENS[channel].ink, theme);
+        for (const [role, dim] of roles(COVER_TEXT_DIMS[channel])) {
+          const measured = contrast(dimmed(ink, ground, dim), ground);
+          if (measured < 4.5) {
+            wrong.push(
+              `${theme} ${channel} ${role} at ${dim}: ${measured.toFixed(2)}:1 (needs 4.5)`,
+            );
+          }
+        }
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  it("keeps every dim on the opacity scale the literal utilities emit", () => {
+    const wrong: string[] = [];
+    for (const [channel, dims] of Object.entries(COVER_TEXT_DIMS)) {
+      for (const [role, dim] of roles(dims)) {
+        const step = dim * 100;
+        if (!(step > 0 && step <= 100 && Number.isInteger(step) && step % 5 === 0)) {
+          wrong.push(`${channel} ${role}: ${dim} is not an opacity-<step> utility`);
         }
       }
     }

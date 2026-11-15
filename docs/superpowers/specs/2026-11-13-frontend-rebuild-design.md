@@ -234,8 +234,8 @@ also covers kernel/repository tests that survive. Mechanism:
   script comes with this program.
 - Frontend & UI work runs through subagents (one implementer + one reviewer
   per task, one whole-branch review), models per AGENTS.md standing
-  preference rev. 5: UI Agent `opencode/deepseek-v4.1-flash-free`, Reviewer
-  `zai-coding-plan/glm-5.3`, Coding Agent `zai-coding-plan/glm-5.3-flash`.
+  preference rev. 6: UI Agent `qwencloud/qwen4-max-preview`, Reviewer
+  `zai-coding-plan/glm-5.3`, Coding Agent `qwencloud/qwen4-max-preview`.
 - Conventional commits; frontend deletion waves use hidden types
   (`chore`, `refactor`, `test`); user-visible ports use `feat(web)`/`fix(web)`
   with a real `User-visible:` line. Nothing is committed before review is

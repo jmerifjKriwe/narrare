@@ -12,11 +12,13 @@ drift test guards — so forgetting `just generate` must be a red suite, not a
 wrong UI.
 """
 
+import json
 from pathlib import Path
 
 import pytest
 
 from scripts.generate_capabilities import (
+    REQUIRED_DOC_KEYS,
     SOURCE_LOCALE,
     Facts,
     catalogs,
@@ -48,7 +50,7 @@ ROOT = Path(__file__).parents[2]
 def _views() -> tuple[tuple[str, ...], dict[str, dict[str, str]], tuple[Facts, ...]]:
     known = locales(ROOT)
     loaded = catalogs(ROOT, known)
-    return known, loaded, facts(ROOT)
+    return known, loaded, facts(ROOT, known, loaded)
 
 
 def _committed(*parts: str) -> str:
@@ -70,9 +72,9 @@ def test_committed_locale_list_matches_the_catalogs() -> None:
 
 
 def test_committed_typescript_nav_matches_the_facts() -> None:
-    _, loaded, loaded_facts = _views()
+    _, _, loaded_facts = _views()
     assert _committed("web", "lib", "generated", "capabilities.ts") == typescript_nav(
-        ui_facts(loaded_facts, ROOT, loaded)
+        ui_facts(loaded_facts, ROOT)
     ), "web/lib/generated/capabilities.ts is stale: run `just generate` and commit the result"
 
 
@@ -133,17 +135,62 @@ def test_committed_docs_index_matches_the_facts() -> None:
     ), "docs/user/INDEX.md is stale: run `just generate` and commit the result"
 
 
-def test_ui_rows_need_a_web_directory_and_a_resolvable_title() -> None:
-    # The rule ui_facts carries, named for the reader: a capability without
-    # a web/ directory contributes no nav or INDEX row — its facts stay in
-    # the backend registry, which still carries every capability — and
-    # neither does an interim page whose facts title the catalog does not
-    # resolve, because a row's words come from the catalog.
+def test_ui_rows_are_exactly_the_web_owning_capabilities() -> None:
+    # The one rule ui_facts carries, named for the reader: a capability
+    # without a web/ directory contributes no nav or INDEX row — its facts
+    # stay in the backend registry, which still carries every capability.
+    # The title every row renders is facts()'s guarantee: a web-owning
+    # capability whose key resolves nowhere stops generation instead of
+    # losing its row quietly.
     _, loaded, loaded_facts = _views()
-    rows = ui_facts(loaded_facts, ROOT, loaded)
+    rows = ui_facts(loaded_facts, ROOT)
+    assert {row.id for row in rows} == set(web_ids(ROOT))
     for capability in rows:
-        assert capability.id in web_ids(ROOT)
         assert capability.title in loaded[SOURCE_LOCALE]
+
+
+def _facts_tree(tmp_path: Path, *, title: str, owns_web: bool) -> Path:
+    """A miniature repo: one capability, one locale, the facts' title as given."""
+    catalog = {key: key for key in REQUIRED_DOC_KEYS}
+    (tmp_path / "i18n").mkdir()
+    (tmp_path / "i18n" / "en.json").write_text(
+        json.dumps(dict(sorted(catalog.items()))), encoding="utf-8"
+    )
+    folder = tmp_path / "app" / "capabilities" / "demo"
+    folder.mkdir(parents=True)
+    (folder / "capability.yaml").write_text(
+        f"id: demo\ntitle: {title}\npath: /demo\nneeds: []\nnav: true\n",
+        encoding="utf-8",
+    )
+    if owns_web:
+        (folder / "web").mkdir()
+    return tmp_path
+
+
+def test_a_web_owning_capability_with_a_typoed_title_stops_generation(tmp_path: Path) -> None:
+    # The pre-W0 raise, restored for the capabilities that render rows: a
+    # title key the merged catalog does not resolve is a typo, and it stops
+    # generation naming the file and the key — not a row quietly dropped
+    # from the nav and the INDEX while the keyof check sees nothing.
+    root = _facts_tree(tmp_path, title="demo.typo", owns_web=True)
+    known = locales(root)
+    loaded = catalogs(root, known)
+    with pytest.raises(SystemExit, match=r"title key 'demo\.typo' missing"):
+        facts(root, known, loaded)
+
+
+def test_a_capability_without_web_keeps_facts_the_catalog_does_not_resolve(
+    tmp_path: Path,
+) -> None:
+    # The registry reads every capability, web/ or not: a capability whose
+    # UI is gone keeps its facts — its catalog left with the web/
+    # directory, and only the UI rows need the title.
+    root = _facts_tree(tmp_path, title="demo.gone", owns_web=False)
+    known = locales(root)
+    loaded = catalogs(root, known)
+    entries = facts(root, known, loaded)
+    assert [entry.id for entry in entries] == ["demo"]
+    assert ui_facts(entries, root) == ()
 
 
 def test_two_docks_at_one_path_stop_the_scan_naming_both_capabilities() -> None:

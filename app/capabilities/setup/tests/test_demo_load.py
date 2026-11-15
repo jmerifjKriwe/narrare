@@ -16,10 +16,10 @@ pytestmark = pytest.mark.timeout(60)
 
 async def test_complete_with_demo_loads_archive() -> None:
     async with Session() as session:
-        novel = await SetupService(session).complete("ignored for a demo", demo="dead-signal")
+        result = await SetupService(session).complete("ignored for a demo", demo="dead-signal")
 
     async with Session() as session:
-        stored = await session.get(Novel, novel.id)
+        stored = await session.get(Novel, result.novel_id)
         assert stored is not None
         # the archive's metadata wins: the demo carries its own identity
         assert stored.title == "Dead Signal"
@@ -27,10 +27,12 @@ async def test_complete_with_demo_loads_archive() -> None:
         assert stored.genre == "Science Fiction"
         assert stored.language == "en"
         chapters = (
-            await session.scalars(select(Chapter).where(Chapter.novel_id == novel.id))
+            await session.scalars(select(Chapter).where(Chapter.novel_id == result.novel_id))
         ).all()
         assert len(chapters) == 3
-        entities = (await session.scalars(select(Entity).where(Entity.novel_id == novel.id))).all()
+        entities = (
+            await session.scalars(select(Entity).where(Entity.novel_id == result.novel_id))
+        ).all()
         assert len(entities) == 8
         relations = (await session.scalars(select(EntityRelation))).all()
         assert len(relations) == 3
@@ -50,10 +52,10 @@ async def test_complete_with_demo_loads_archive() -> None:
 
 async def test_complete_without_demo_is_unchanged() -> None:
     async with Session() as session:
-        novel = await SetupService(session).complete("Der Nebel")
+        result = await SetupService(session).complete("Der Nebel")
 
     async with Session() as session:
-        stored = await session.get(Novel, novel.id)
+        stored = await session.get(Novel, result.novel_id)
         assert stored is not None
         assert stored.title == "Der Nebel"
         assert stored.author is None and stored.language is None
@@ -62,6 +64,95 @@ async def test_complete_without_demo_is_unchanged() -> None:
         assert await session.scalar(select(func.count()).select_from(Chapter)) == 0
         assert await session.scalar(select(func.count()).select_from(Entity)) == 0
         assert await session.scalar(select(func.count()).select_from(EntityRelation)) == 0
+
+
+async def test_demo_binds_user_settings_but_keeps_archive_identity() -> None:
+    async with Session() as session:
+        result = await SetupService(session).complete(
+            "ignored for a demo",
+            demo="dead-signal",
+            target_words=65000,
+            author_typology="plotter",
+            dramatic_form="three-act",
+            ai_role="lektor",
+            canon_strictness=4,
+        )
+
+    async with Session() as session:
+        stored = await session.get(Novel, result.novel_id)
+        assert stored is not None
+        # the archive's identity wins over anything the wizard might send
+        assert stored.title == "Dead Signal"
+        assert stored.genre == "Science Fiction"
+        # the user's per-novel settings still bind onto the imported project
+        assert stored.target_words == 65000
+        assert stored.author_typology == "plotter"
+        assert stored.dramatic_form == "three-act"
+        assert stored.ai_role == "lektor"
+        assert stored.canon_strictness == 4
+
+
+async def test_blank_result_carries_the_provisioning_facts() -> None:
+    async with Session() as session:
+        result = await SetupService(session).complete(
+            "Der Nebel",
+            genre="Literary",
+            target_words=65000,
+            author_typology="plantser",
+            dramatic_form="three-act",
+            ai_role="lektor",
+            canon_strictness=4,
+        )
+
+    # The result is what step 4 and the landing render: the settings as
+    # answered, the blank novel's own genre, and no chapters created.
+    assert result.novel_title == "Der Nebel"
+    assert result.genre == "Literary"
+    assert result.target_words == 65000
+    assert result.author_typology == "plantser"
+    assert result.dramatic_form == "three-act"
+    assert result.ai_role == "lektor"
+    assert result.canon_strictness == 4
+    assert result.chapters == 0
+
+    async with Session() as session:
+        stored = await session.get(Novel, result.novel_id)
+        assert stored is not None
+        assert stored.title == result.novel_title
+        assert stored.genre == result.genre
+
+
+async def test_demo_result_carries_the_archives_chapters_and_genre() -> None:
+    async with Session() as session:
+        result = await SetupService(session).complete(
+            "ignored for a demo",
+            demo="im-stillen-wald",
+            # The wizard's genre loses to the archive's own, in the result
+            # as in the row.
+            genre="Science Fiction",
+            target_words=65000,
+            author_typology="plotter",
+            dramatic_form="three-act",
+            ai_role="lektor",
+            canon_strictness=4,
+        )
+
+    assert result.novel_title == "Im Stillen Wald"
+    assert result.genre == "Literary"
+    assert result.chapters == 2
+    # The user's settings still bind onto the imported project.
+    assert result.target_words == 65000
+    assert result.author_typology == "plotter"
+    assert result.dramatic_form == "three-act"
+    assert result.ai_role == "lektor"
+    assert result.canon_strictness == 4
+
+    # The count is what actually landed, not a metadata re-read.
+    async with Session() as session:
+        chapters = (
+            await session.scalars(select(Chapter).where(Chapter.novel_id == result.novel_id))
+        ).all()
+        assert len(chapters) == result.chapters
 
 
 async def test_unknown_demo_slug_is_422() -> None:

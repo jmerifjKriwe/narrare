@@ -2395,13 +2395,45 @@ export interface components {
         };
         /** SetupRequest */
         SetupRequest: {
+            /** Ai Role */
+            ai_role?: ("archivar" | "coautor" | "lektor" | "sparring") | null;
+            /** Author Typology */
+            author_typology?: ("plotter" | "pantser" | "plantser") | null;
+            /** Canon Strictness */
+            canon_strictness?: number | null;
             /** Demo */
             demo?: string | null;
+            /** Dramatic Form */
+            dramatic_form?: string | null;
+            /** Genre */
+            genre?: string | null;
             /** Novel Title */
             novel_title: string;
+            /** Target Words */
+            target_words?: number | null;
         };
-        /** SetupResult */
+        /**
+         * SetupResult
+         * @description The provisioning facts step 4 and the landing render.
+         *
+         *     ``genre`` is the effective genre — the archive's own on the demo path,
+         *     the passed genre on the blank path — and ``chapters`` the count the
+         *     import/creation produced. The settings are nullable as the model is:
+         *     a novel without an answer does not lie.
+         */
         SetupResult: {
+            /** Ai Role */
+            ai_role: string | null;
+            /** Author Typology */
+            author_typology: string | null;
+            /** Canon Strictness */
+            canon_strictness: number | null;
+            /** Chapters */
+            chapters: number;
+            /** Dramatic Form */
+            dramatic_form: string | null;
+            /** Genre */
+            genre: string | null;
             /**
              * Novel Id
              * Format: uuid
@@ -2409,6 +2441,8 @@ export interface components {
             novel_id: string;
             /** Novel Title */
             novel_title: string;
+            /** Target Words */
+            target_words: number | null;
         };
         /** SetupStatus */
         SetupStatus: {

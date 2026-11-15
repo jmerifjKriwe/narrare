@@ -1,0 +1,116 @@
+"""The setup page's picker manifest mirrors the kernel's — and the truth.
+
+The generated TS `demos` constant in `web/lib/generated/demos.ts` and the
+kernel's `app/kernel/interchange/demos.py` must carry the same demos in the
+same order (same slugs, titles, languages), every card's chapter/entity
+counts must equal the bundled archive's real counts, and its genre/blurb
+must equal the archive's metadata — a card cannot claim five chapters for a
+four-chapter demo, or a genre the archive does not carry. This suite owns
+the check because it is about this capability's page; depending on the
+kernel is the allowed direction, the reverse never is.
+"""
+
+import re
+from pathlib import Path
+
+import pytest
+
+from app.kernel.interchange import parse_archive
+from app.kernel.interchange.demos import DEMOS, DemoInfo, demo_tree
+
+ROOT = Path(__file__).resolve().parents[4]
+PAGE = ROOT / "web" / "lib" / "generated" / "demos.ts"
+
+# One double-quoted TS literal, honouring the generator's backslash escapes.
+_STR = r'"((?:[^"\\]|\\.)*)"'
+ENTRY = re.compile(
+    r"\{\s*slug:\s*"
+    + _STR
+    + r"\s*,\s*title:\s*"
+    + _STR
+    + r"\s*,\s*language:\s*"
+    + _STR
+    + r"\s*,\s*genre:\s*"
+    + _STR
+    + r"\s*,\s*blurb:\s*"
+    + _STR
+    + r"\s*,\s*chapters:\s*(\d+)\s*,\s*entities:\s*(\d+)\s*,?\s*\}"
+)
+
+
+_UNESCAPE = {"\\": "\\", '"': '"', "n": "\n", "r": "\r", "t": "\t"}
+
+
+def _unquote(literal: str) -> str:
+    """Undo `_ts_string`'s escaping so the comparison is against real prose.
+
+    One left-to-right pass: a chained ``str.replace`` would re-read the output
+    of an earlier step and turn a literal backslash+n (``\\\\n``) into a
+    newline. Matching each escape once keeps ``\\\\n`` a backslash followed
+    by an ``n``.
+    """
+    return re.sub(
+        r"\\(.)", lambda m: _UNESCAPE.get(m.group(1), m.group(1)), literal, flags=re.DOTALL
+    )
+
+
+def web_manifest() -> list[tuple[str, str, str, str, str, int, int]]:
+    """The picker's entries as (slug, title, language, genre, blurb, chapters, entities)."""
+    return [
+        (
+            _unquote(slug),
+            _unquote(title),
+            _unquote(language),
+            _unquote(genre),
+            _unquote(blurb),
+            int(chapters),
+            int(entities),
+        )
+        for slug, title, language, genre, blurb, chapters, entities in ENTRY.findall(
+            PAGE.read_text(encoding="utf-8")
+        )
+    ]
+
+
+def test_web_manifest_matches_the_python_manifest() -> None:
+    web = [
+        DemoInfo(slug=slug, title=title, language=language)
+        for slug, title, language, _genre, _blurb, _chapters, _entities in web_manifest()
+    ]
+    assert web == list(DEMOS)
+
+
+def test_web_manifest_counts_match_the_bundled_archives() -> None:
+    entries = web_manifest()
+    # A regex that parsed nothing must fail here, not pass the loop vacuously.
+    assert len(entries) == len(DEMOS)
+    for slug, _title, _language, _genre, _blurb, chapters, entities in entries:
+        archive = parse_archive(demo_tree(slug))
+        assert chapters == len(archive.chapters), f"{slug}: card says {chapters} chapters"
+        assert entities == len(archive.entities), f"{slug}: card says {entities} entities"
+
+
+def test_web_manifest_genre_and_blurb_match_the_archives() -> None:
+    entries = web_manifest()
+    assert len(entries) == len(DEMOS)
+    for slug, _title, _language, genre, blurb, _chapters, _entities in entries:
+        archive = parse_archive(demo_tree(slug))
+        assert genre == archive.genre, f"{slug}: card genre does not match the archive"
+        assert blurb == archive.blurb, f"{slug}: card blurb does not match the archive"
+
+
+@pytest.mark.parametrize(
+    ("escaped", "expected"),
+    [
+        ("plain", "plain"),
+        (r"with \"quote\"", 'with "quote"'),
+        (r"back\\slash", "back\\slash"),
+        # A literal backslash before an 'n' must stay backslash+n, not a newline.
+        (r"a\\nb", "a\\nb"),
+        (r"line\nbreak", "line\nbreak"),
+        (r"cr\rhere", "cr\rhere"),
+        (r"tab\there", "tab\there"),
+    ],
+)
+def test_unquote_reverses_the_generator_escaping(escaped: str, expected: str) -> None:
+    assert _unquote(escaped) == expected

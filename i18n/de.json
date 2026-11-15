@@ -1,15 +1,23 @@
 {
   "app.title": "Narrare",
+  "cover.anonymous": "Anonymus",
+  "cover.genre.fallback": "Tabula Rasa",
+  "cover.genre.fantasy": "Fantasy",
+  "cover.genre.historical": "Historischer Roman",
+  "cover.genre.literary": "Literarischer Roman",
+  "cover.genre.mystery": "Mystery",
+  "cover.genre.romance": "Romance",
+  "cover.genre.scifi": "Science Fiction",
+  "cover.genre.thriller": "Thriller",
   "docs.table.capability": "Funktion",
   "docs.table.nav": "Navigation",
   "docs.table.needs": "Benötigt",
   "docs.table.path": "Pfad",
   "locale.name": "Deutsch",
-  "nav.back": "Alle Romane",
+  "nav.back": "Zurück ins Atelier",
   "needs.embeddings": "ein Embedding-Modell",
   "needs.llm": "ein Textmodell",
   "shell.error": "Diese Seite konnte nicht angezeigt werden.",
   "shell.notFound": "Diese Seite existiert nicht.",
-  "shell.notFoundBody": "Diese Adresse gehört zu keinem Bildschirm der App — die Bibliothek ist einen Klick entfernt.",
-  "shell.paletteOpen": "Befehlspalette öffnen, {key}"
+  "shell.notFoundBody": "Diese Adresse gehört zu keinem Bildschirm der App — das Atelier ist einen Klick entfernt."
 }

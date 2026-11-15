@@ -2624,6 +2624,52 @@
       },
       "SetupRequest": {
         "properties": {
+          "ai_role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "archivar",
+                  "coautor",
+                  "lektor",
+                  "sparring"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Role"
+          },
+          "author_typology": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plotter",
+                  "pantser",
+                  "plantser"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Typology"
+          },
+          "canon_strictness": {
+            "anyOf": [
+              {
+                "maximum": 5,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canon Strictness"
+          },
           "demo": {
             "anyOf": [
               {
@@ -2635,11 +2681,48 @@
             ],
             "title": "Demo"
           },
+          "dramatic_form": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dramatic Form"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
           "novel_title": {
             "maxLength": 200,
             "minLength": 1,
             "title": "Novel Title",
             "type": "string"
+          },
+          "target_words": {
+            "anyOf": [
+              {
+                "maximum": 2147483647,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Words"
           }
         },
         "required": [
@@ -2649,7 +2732,67 @@
         "type": "object"
       },
       "SetupResult": {
+        "description": "The provisioning facts step 4 and the landing render.\n\n``genre`` is the effective genre — the archive's own on the demo path,\nthe passed genre on the blank path — and ``chapters`` the count the\nimport/creation produced. The settings are nullable as the model is:\na novel without an answer does not lie.",
         "properties": {
+          "ai_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Role"
+          },
+          "author_typology": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Typology"
+          },
+          "canon_strictness": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canon Strictness"
+          },
+          "chapters": {
+            "title": "Chapters",
+            "type": "integer"
+          },
+          "dramatic_form": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dramatic Form"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
           "novel_id": {
             "format": "uuid",
             "title": "Novel Id",
@@ -2658,11 +2801,29 @@
           "novel_title": {
             "title": "Novel Title",
             "type": "string"
+          },
+          "target_words": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Words"
           }
         },
         "required": [
           "novel_id",
-          "novel_title"
+          "novel_title",
+          "genre",
+          "target_words",
+          "author_typology",
+          "dramatic_form",
+          "ai_role",
+          "canon_strictness",
+          "chapters"
         ],
         "title": "SetupResult",
         "type": "object"

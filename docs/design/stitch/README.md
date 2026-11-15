@@ -13,11 +13,14 @@ decide.
 
 Each screen is a pair in `screens/<area>/`:
 
-- `<name>.webp` — the rendered draft, WebP quality 82, at its export size: 2560 px
-  wide (2× the 1280 px canvas) in the first archive; later additions keep their
-  native export size (the 2026-11-13 onboarding drafts are 1600 px, one 1179×1600
-  portrait). Opens offline and in the browser. The 2026-11-14 harmonized drafts
-  supersede the 2026-11-13 first drafts; git history keeps the earlier versions.
+- `<name>.webp` — the rendered draft, WebP quality 82, at its native export size.
+  Opens offline and in the browser. The 2026-11-14 harmonized drafts supersede
+  the 2026-11-13 first drafts; git history keeps the earlier versions.
+  The 2026-11-14 `cover-system` sheet is a clarification of the cover object, not
+  a screen template: Stitch offers it only as a downscaled export (412×1600 of a
+  2560×9934 desktop canvas), so its preview is a thumbnail and the HTML is the
+  authoritative detail. Lyrik is deliberately left out of the genre matrix and
+  falls to the neutral fallback.
 - `<name>.html` — the generated source, as Stitch produced it. It loads Tailwind
   and Google Fonts from CDNs, so it needs a network connection to render; the
   preview is the offline view. The source is the editable form: change it in
@@ -59,14 +62,14 @@ Documents from the same project are under [`documents/`](documents/):
 | Area | Screen | Original label (German) | Height |
 |---|---|---|---|
 | Library and entry | [`shelf`](screens/library/shelf.webp) | Bücherregal | 2474 px |
-|  | [`shelf-dark`](screens/library/shelf-dark.webp) | Bücherregal — Midnight Ink (S0, dark) | 1246 px |
-|  | [`shelf-empty`](screens/library/shelf-empty.webp) | Bücherregal — Leerstand (G-4) | 1024 px |
-|  | [`shelf-states`](screens/library/shelf-states.webp) | Bücherregal — Zustände: laden, Fehler, viele Bücher, langer Titel (G-4) | 1024 px |
+|  | [`shelf-dark`](screens/library/shelf-dark.webp) | Bücherregal — Midnight Ink (S0, dark) | 2492 px |
+|  | [`shelf-empty`](screens/library/shelf-empty.webp) | Bücherregal — Leerstand (G-4) | 2048 px |
+|  | [`shelf-states`](screens/library/shelf-states.webp) | Bücherregal — Zustände: laden, Fehler, viele Bücher, langer Titel (G-4) | 2048 px |
 |  | [`welcome-onboarding`](screens/library/welcome-onboarding.webp) | Willkommen & Autoren-Onboarding | 2570 px |
 |  | [`integrated-suite`](screens/library/integrated-suite.webp) | Narrare — Integrierte Gesamtsuite (Regal, Workspace & KI-Dock) | 3664 px |
 |  | [`welcome-atelier`](screens/library/welcome-atelier.webp) | Willkommen im Atelier (Überarbeitet) | 1600 px |
 |  | [`setup-step1-basis-vorlage`](screens/library/setup-step1-basis-vorlage.webp) | Projekt-Setup: Start oder Demo-Vorlage wählen | 1600 px |
-|  | [`setup-step2-dramaturgie-struktur`](screens/library/setup-step2-dramaturgie-struktur.webp) | Projekt-Setup: Dramaturgie & Struktur (Korrigiert) | 1600 px |
+|  | [`setup-step2-dramaturgie-struktur`](screens/library/setup-step2-dramaturgie-struktur.webp) | Projekt-Setup: Dramaturgie & Struktur (5 Paradigmen) | 1600 px |
 |  | [`setup-step3-ki-regeln-tonalitaet`](screens/library/setup-step3-ki-regeln-tonalitaet.webp) | Projekt-Setup: KI-Partner & Kausalitätsregeln | 1280 px |
 |  | [`setup-step4-bereitstellung-start`](screens/library/setup-step4-bereitstellung-start.webp) | Projekt-Setup: Bereitstellung & Start (Überarbeitet) | 1280 px |
 |  | [`shelf-filter-open`](screens/library/shelf-filter-open.webp) | Bücherregal — Filter geöffnet | 1546 px |
@@ -75,6 +78,7 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`setup-step1-basis-vorlage-dark`](screens/library/setup-step1-basis-vorlage-dark.webp) | Projekt-Setup: Start oder Demo-Vorlage wählen (Midnight Ink) | 1600 px |
 |  | [`landing-atelier-dark`](screens/library/landing-atelier-dark.webp) | Bücherregal: Dein Atelier (Midnight Ink Dark Mode) | 1600 px |
 |  | [`setup-states-reference`](screens/library/setup-states-reference.webp) | Zustands-Referenz: Projekt-Setup (Korrigiert) | 1280 px |
+|  | [`cover-system`](screens/library/cover-system.webp) | Prozedurales Buchcover-System (Spezifikation) | 1600 px |
 | Writing | [`workspace`](screens/writing/workspace.webp) | Schreib-Workspace | 3434 px |
 |  | [`workspace-ai-dock`](screens/writing/workspace-ai-dock.webp) | Schreib-Workspace & KI-Dock | 4410 px |
 |  | [`workspace-lore-dock`](screens/writing/workspace-lore-dock.webp) | Schreib-Workspace & Lore-Dock (Kausalitäts-Konflikt gelöst) | 4104 px |

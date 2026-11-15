@@ -147,13 +147,12 @@ def test_a_hyphenated_locale_becomes_a_valid_identifier(tmp_path: Path) -> None:
     assert '  "pt-BR": pt_BR_merged,' in generated
 
 
-def test_an_overlay_key_whose_base_is_gone_is_skipped(tmp_path: Path) -> None:
-    # A variant whose base string the merged catalog no longer carries is
-    # dead copy, not an error: its capability catalog left with the
-    # capability's web/ directory (the demolition interim), and the
-    # shared-catalog cleanup removes the row from the overlay file in its
-    # own task. The scan skips it instead of stopping generation — an
-    # overlay whose variants are all dead yields no entry at all.
+def test_an_overlay_key_whose_base_is_gone_stops_generation(tmp_path: Path) -> None:
+    # A variant whose base string the merged catalog does not carry is a
+    # typo or dead copy — it would fall through to the base silently, so
+    # the scan stops generation naming the keys instead. The demolition
+    # interim skipped them while the shared-catalog cleanup was pending;
+    # the cleanup landed, and the raise returned with the first suite.
     write_catalog(tmp_path / "i18n/en.json", {"app.title": "App"})
     write_catalog(tmp_path / "i18n/de.json", {"app.title": "App"})
     write_catalog(
@@ -162,13 +161,24 @@ def test_an_overlay_key_whose_base_is_gone_is_skipped(tmp_path: Path) -> None:
         required=False,
     )
 
+    with pytest.raises(SystemExit, match="keys not in the de catalog"):
+        overlay_sources(tmp_path, ("en", "de"), catalogs(tmp_path, ("en", "de")))
+
+
+def test_an_empty_overlay_file_emits_no_entry(tmp_path: Path) -> None:
+    # An overlay file with no variants is not an error and not an import:
+    # the locale simply carries no formal register yet.
+    write_catalog(tmp_path / "i18n/en.json", {"app.title": "App"})
+    write_catalog(tmp_path / "i18n/de.json", {"app.title": "App"})
+    write_catalog(tmp_path / "i18n/overlays/formality/de.json", {}, required=False)
+
     overlays = overlay_sources(tmp_path, ("en", "de"), catalogs(tmp_path, ("en", "de")))
     assert overlays == {}
 
 
 def test_a_live_overlay_key_survives_the_scan(tmp_path: Path) -> None:
-    # The skip is a filter, not an amnesty: a variant whose base the merged
-    # catalog still resolves stays in the overlay.
+    # The check names dead keys, not live ones: a variant whose base the
+    # merged catalog still resolves stays in the overlay.
     write_catalog(tmp_path / "i18n/en.json", {"app.title": "App"})
     write_catalog(tmp_path / "i18n/de.json", {"app.title": "App"})
     write_catalog(

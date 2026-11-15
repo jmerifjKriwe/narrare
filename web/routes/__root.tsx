@@ -64,9 +64,11 @@ function Shell() {
 
 /** The shell's answer to an unknown URL: the copy comes from the catalog —
  * TanStack's English default would break the i18n rule inside the localized
- * shell — and the way home is the interim placeholder. TanStack renders
- * this component in place of the whole Shell, so the title the tab reads
- * is the page's alone. */
+ * shell — and the way home is the atelier: the `/` gate answers with the
+ * welcome or the landing, whichever the instance's state calls for. An
+ * unmatched URL renders this component through the root Outlet, inside the
+ * Shell — the settings gate and the main landmark stay — and the tab reads
+ * the page's own title. */
 function NotFound() {
   const t = useTranslation();
   usePageTitle(t("shell.notFound"));
@@ -86,9 +88,10 @@ function NotFound() {
 
 /** A route that throws lands here, not on TanStack's English default: the
  * failure is named in the catalog's language and the thrown message rides
- * along — a local-first app shows its own errors. Same system as the
- * unknown URL above, mounted the same way: in place of the Shell, and the
- * tab reads the title. */
+ * along — a local-first app shows its own errors. A thrown error or notFound
+ * reaches the catch boundary, which mounts this component in place of the
+ * whole Shell — unlike the unknown URL above, which renders inside it — and
+ * the tab reads the title. */
 function RouteError({ error }: ErrorComponentProps) {
   const t = useTranslation();
   const message = error instanceof Error ? error.message : String(error);
