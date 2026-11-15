@@ -3,6 +3,6 @@
 # docs/user/INDEX.md. Behaviour, schemas and prompts never go here.
 id: setup
 title: setup.welcome # i18n key; must exist in en, de and fr
-path: / # the capability's surface is the gate at /; /setup is its redirect door
+path: /setup # the welcome and the wizard live under /setup; / belongs to writing
 needs: []
-nav: false # the gate at / is the home itself, not a destination
+nav: false # the welcome is the pre-setup home itself, not a nav destination

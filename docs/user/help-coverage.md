@@ -8,3 +8,4 @@ One row per capability that ships help; capabilities without help are listed at 
 ## Capabilities without help
 
 - setup
+- writing

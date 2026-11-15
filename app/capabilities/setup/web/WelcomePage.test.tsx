@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 /**
  * The welcome screen's wiring, driven through the real router over the real
- * root route (the routes.test.tsx pattern): the `/` gate opens onto the
- * welcome while setup is incomplete, and the page's own doors, demos and
- * switcher run unmocked. Only the API client is mocked at its module
+ * root route (the routes.test.tsx pattern): the `/setup` door opens onto the
+ * welcome while setup is incomplete (the W3 handover moved it off `/`, which
+ * the writing capability's shelf gate now owns), and the page's own doors,
+ * demos and switcher run unmocked. Only the API client is mocked at its module
  * boundary — and the mock keeps the backend's own contract: before setup
  * the user row does not exist, so `PATCH /api/settings` refuses with 409
  * "setup required" (settings/service.py). The switcher must still work in
@@ -71,11 +72,11 @@ function scriptApi() {
   });
 }
 
-/** The fresh-load shape: the gate asks the status, the welcome answers. */
+/** The fresh-load shape: the door asks the status, the welcome answers. */
 function renderWelcome() {
   const router = createRouter({
     routeTree: rootRoute.addChildren([...routes]),
-    history: createMemoryHistory({ initialEntries: ["/"] }),
+    history: createMemoryHistory({ initialEntries: ["/setup"] }),
   });
   render(
     <QueryClientProvider client={queryClient}>
