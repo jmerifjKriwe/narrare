@@ -8,9 +8,9 @@
  * status it asks, never from a remembered variant. The welcome is mocked at
  * its module boundary so the door's choice stays observable here (the welcome
  * is tested in its own right); the wizard steps render the real ported
- * components, and the shelf the redirect lands on renders for real (it is
- * render-only interim chrome). The API client is mocked at its module
- * boundary — the request's truth is the backend's and the E2E's.
+ * components, and the shelf the redirect lands on renders for real (its own
+ * contract lives in writing's ShelfPage.test). The API client is mocked at
+ * its module boundary — the request's truth is the backend's and the E2E's.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
@@ -50,13 +50,16 @@ function ok(): Response {
 type StatusAnswer = { data?: { complete: boolean }; response: Response };
 
 /** The shell root's settings read always answers (the pre-paint gate opens
- *  on it); the gate's status read answers what the case scripts. */
+ *  on it); the gate's status read answers what the case scripts. The shelf
+ *  the redirect lands on reads the novels list — an empty one here, so the
+ *  gate's choice stays the fact under test, not the shelf's own content. */
 function scriptStatus(answer: () => Promise<StatusAnswer>) {
   api.GET.mockImplementation(async (path: string) => {
     if (path === "/api/settings") {
       return { data: { locale: null, theme: null }, response: ok() };
     }
     if (path === "/api/setup/status") return answer();
+    if (path === "/api/writing/novels") return { data: [], response: ok() };
     throw new Error(`unexpected request: ${path}`);
   });
 }
@@ -87,7 +90,7 @@ describe("the /setup door — the inverse gate", () => {
 
     expect(await screen.findByText("welcome placeholder")).toBeTruthy();
     expect(router.state.location.pathname).toBe("/setup");
-    expect(screen.queryByRole("heading", { level: 1, name: t("writing.interimTitle") })).toBeNull();
+    expect(screen.queryByRole("heading", { level: 1, name: t("writing.shelf.title") })).toBeNull();
     expect(api.GET).toHaveBeenCalledWith("/api/setup/status");
   });
 
@@ -96,9 +99,9 @@ describe("the /setup door — the inverse gate", () => {
     const router = renderTree("/setup");
 
     // An installed instance has no wizard: the door hands it to writing's
-    // shelf, and the real placeholder answers there.
+    // shelf, and the real shelf answers there.
     expect(
-      await screen.findByRole("heading", { level: 1, name: t("writing.interimTitle") }),
+      await screen.findByRole("heading", { level: 1, name: t("writing.shelf.title") }),
     ).toBeTruthy();
     expect(router.state.location.pathname).toBe("/");
     expect(screen.queryByText("welcome placeholder")).toBeNull();
@@ -111,7 +114,7 @@ describe("the wizard's steps — the inverse gate", () => {
     for (const path of ["/setup/basis", "/setup/structure", "/setup/ai-rules", "/setup/provisioning"]) {
       const router = renderTree(path);
       expect(
-        await screen.findByRole("heading", { level: 1, name: t("writing.interimTitle") }),
+        await screen.findByRole("heading", { level: 1, name: t("writing.shelf.title") }),
       ).toBeTruthy();
       expect(router.state.location.pathname).toBe("/");
       // A fresh load per step: the next deep link asks the status anew.

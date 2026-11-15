@@ -12,7 +12,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.api.main import app
-from app.capabilities.writing.repository import SeriesRepository
+from app.capabilities.writing.repository import NovelRepository, SeriesRepository
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
@@ -210,3 +210,28 @@ async def test_a_carried_null_returns_the_book_to_the_shelf() -> None:
         assert restored.json()["archived_at"] is None
         listed = await client.get("/api/writing/novels")
         assert [novel["id"] for novel in listed.json()] == [novel_id]
+
+
+async def test_the_target_words_ride_the_read() -> None:
+    """The shelf's word pair reads the novel's own target: the column the
+    setup wizard binds rides both read paths, and a book without a target
+    answers None — the shelf's honest neutral, never a guessed goal."""
+    async with _client() as client:
+        novel_id = await _create_novel(client, "Der Nebel")
+        fetched = await client.get(f"/api/writing/novels/{novel_id}")
+        assert fetched.json()["target_words"] is None
+        listed = await client.get("/api/writing/novels")
+        assert listed.json()[0]["target_words"] is None
+
+        # The target the wizard binds is the row's own — the read carries it.
+        async with Session() as session:
+            novels = NovelRepository(session, LOCAL_USER_ID)
+            novel = await novels.get(UUID(novel_id))
+            assert novel is not None
+            await novels.save(novel, {"target_words": 65000})
+            await session.commit()
+
+        fetched = await client.get(f"/api/writing/novels/{novel_id}")
+        assert fetched.json()["target_words"] == 65000
+        listed = await client.get("/api/writing/novels")
+        assert listed.json()[0]["target_words"] == 65000

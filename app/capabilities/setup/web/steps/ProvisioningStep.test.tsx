@@ -221,11 +221,11 @@ describe("the provisioning step — the one POST", () => {
     const router = renderProvisioning(DEMO_ENTRY);
 
     // The gate re-reads the invalidated status and answers with the shelf —
-    // writing's `/` placeholder after the W3 handover, never a re-post. The
+    // writing's `/` surface after the W3 handover, never a re-post. The
     // catalog read rides waitFor so it re-evaluates once the mirror adoption
     // has settled the language (the step flips it mid-flow).
     await waitFor(() =>
-      expect(screen.getByRole("heading", { level: 1, name: t("writing.interimTitle") })).toBeTruthy(),
+      expect(screen.getByRole("heading", { level: 1, name: t("writing.shelf.title") })).toBeTruthy(),
     );
     expect(router.state.location.pathname).toBe("/");
     expect(api.POST).toHaveBeenCalledTimes(1);

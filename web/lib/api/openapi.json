@@ -1465,6 +1465,17 @@
             ],
             "title": "Status"
           },
+          "target_words": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Words"
+          },
           "title": {
             "title": "Title",
             "type": "string"

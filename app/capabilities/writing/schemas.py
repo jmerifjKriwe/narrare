@@ -61,6 +61,11 @@ class NovelRead(BaseModel):
     series_title: str | None = None
     series_volume: int | None = None
     archived_at: datetime | None = None
+    # The word pair's second figure: the target the wizard bound (or a
+    # later dialog sets), read straight off the row. None until the book
+    # carries one — the shelf then shows the count alone with an empty
+    # track, never a guessed goal.
+    target_words: int | None = None
 
 
 class NovelUpdate(BaseModel):

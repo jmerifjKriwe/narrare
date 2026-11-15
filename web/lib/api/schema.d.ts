@@ -1919,6 +1919,8 @@ export interface components {
             series_volume?: number | null;
             /** Status */
             status?: string | null;
+            /** Target Words */
+            target_words?: number | null;
             /** Title */
             title: string;
             /**

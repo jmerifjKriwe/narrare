@@ -6,8 +6,8 @@
  * on setup's real `/setup` door, not a harness stub. A fresh entry is the
  * browser-refresh shape: the gate must answer from the status it asks, never
  * from a remembered variant. The shelf itself is mocked at its module boundary
- * so the gate's choice is what this file pins (the placeholder is render-only,
- * and Task 6 fills it); the welcome it redirects to renders for real. The API
+ * so the gate's choice is what this file pins (the shelf's own contract lives
+ * in ShelfPage.test); the welcome it redirects to renders for real. The API
  * client is mocked at its module boundary — the request's truth is the
  * backend's and the E2E's.
  */
@@ -27,7 +27,7 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 // The shelf's own face, mocked so the gate's choice is observable here; the
-// placeholder's copy is render-only and the E2E pins it on the real stack.
+// shelf's contract lives in ShelfPage.test and the E2E pins it on the real stack.
 vi.mock("./ShelfPage", () => ({ ShelfPage: () => <p>shelf placeholder</p> }));
 
 import { client } from "@shell/lib/api/client";

@@ -9,7 +9,7 @@ blocks continue with the drafted message; and the address keeps the wizard's
 state until step four posts it — after which a returning visit, in this
 browser or a fresh one, lands on the shelf. The database assertions are the
 honest check: the screen and the row must agree. Every face the wizard shows
-— the welcome, all four steps and the interim shelf — also clears the axe WCAG
+— the welcome, all four steps and the real shelf — also clears the axe WCAG
 A/AA floor (``assert_accessible``).
 """
 
@@ -39,11 +39,11 @@ CONTINUE_TO_PROVISIONING = "Weiter zu Schritt 4 — Bereitstellung & Start"
 TITLE_MISSING = "Ein Arbeitstitel fehlt noch — er trägt dein Werk bis zur ersten Seite."
 BACK_TO_SHELF = "Zurück zur Bibliotheksübersicht"
 
-# The interim shelf placeholder the writing capability shows at `/` once the
-# instance is set up (Task 6 ports the real shelf). The welcome moved to
-# `/setup` with the W3 handover; the landing hero's facts moved to
-# LandingPage.test, which renders the component directly.
-SHELF_INTERIM_TITLE = "Das Regal wird gerade neu gebaut"
+# The real shelf the writing capability shows at `/` once the instance is
+# set up (Task 6's port of the shelf draft family). The welcome moved to
+# `/setup` with the W3 handover; the shelf's own contract lives in
+# ShelfPage.test and the writing E2E suite.
+SHELF_TITLE = "Das Bücherregal"
 
 # The bundled archive's own facts (app/kernel/interchange/demos/im-stillen-wald):
 # the demo path must land exactly these, never the typed ones.
@@ -99,7 +99,7 @@ def test_welcome_offers_the_three_real_demos_and_an_honest_import(page: Page, st
 def test_the_blank_path_binds_every_answer_into_the_novel_row(page: Page, stack: Stack) -> None:
     """Spec (b): title, two genre pills, target, typology, form, role and canon
     through all four steps — the provisioning checklist shows the facts, the
-    way home leads to the interim shelf, and the persisted row carries every
+    way home leads to the real shelf, and the persisted row carries every
     answer."""
     page.goto(BASE + "/")
     expect(page).to_have_url(BASE + "/setup")
@@ -152,13 +152,14 @@ def test_the_blank_path_binds_every_answer_into_the_novel_row(page: Page, stack:
     expect(page.get_by_text("Bereit (100 %)")).to_be_visible()
     assert_accessible(page)
 
-    # The shelf takes the root: the way home leads to the interim shelf
-    # placeholder (Task 6 ports the real shelf). The landing hero's facts —
-    # the novel's title, genre and chapter count — moved to LandingPage.test
-    # with the route; the row below remains the honest check.
+    # The shelf takes the root: the way home leads to the real shelf, and
+    # its hero speaks the bound novel's own title and target — the row's
+    # facts, never the draft's mock. The row below remains the honest check.
     page.get_by_role("link", name=BACK_TO_SHELF).click()
     expect(page).to_have_url(BASE + "/")
-    expect(page.get_by_role("heading", name=SHELF_INTERIM_TITLE)).to_be_visible()
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
+    expect(page.get_by_role("heading", name="Der Klang des Eises")).to_be_visible()
+    expect(page.get_by_text("/ 80.000 Wörter")).to_be_visible()
     assert_accessible(page)
 
     # The honest check: the row carries every answer — the joined genres, the
@@ -187,7 +188,7 @@ def test_the_demo_path_keeps_the_archives_identity_and_binds_the_settings(
     page: Page, stack: Stack
 ) -> None:
     """Spec (c): the demo card locks title and genre to the archive; the POST
-    carries the slug, the way home leads to the interim shelf, and the
+    carries the slug, the way home leads to the real shelf, and the
     settings bind onto the imported novel — chapters and knowledge included."""
     page.goto(BASE + "/")
     expect(page).to_have_url(BASE + "/setup")
@@ -235,13 +236,13 @@ def test_the_demo_path_keeps_the_archives_identity_and_binds_the_settings(
     expect(page.get_by_text("Stiller Archivar & Faktenchecker", exact=True)).to_be_visible()
     assert_accessible(page)
 
-    # The shelf takes the root: the way home leads to the interim shelf
-    # placeholder. The landing hero's demo identity — title, genre, chapter
-    # count and the roster's active mark — moved to LandingPage.test with the
-    # route; the rows below remain the honest check.
+    # The shelf takes the root: the way home leads to the real shelf, and
+    # its hero speaks the archive's own identity. The rows below remain the
+    # honest check.
     page.get_by_role("link", name=BACK_TO_SHELF).click()
     expect(page).to_have_url(BASE + "/")
-    expect(page.get_by_role("heading", name=SHELF_INTERIM_TITLE)).to_be_visible()
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
+    expect(page.get_by_role("heading", name=DEMO_TITLE)).to_be_visible()
     assert_accessible(page)
 
     # The honest check: the archive's identity wins, the settings bind onto it,
@@ -313,7 +314,7 @@ def test_the_wizard_state_survives_deep_links_and_a_returning_visit_shows_the_sh
 ) -> None:
     """Spec (e): the address is the wizard's memory — a refresh or a deep link
     mid-wizard keeps every answer and posts nothing; step four is the trigger.
-    Once bound, `/` shows the interim shelf, in this browser and a fresh one;
+    Once bound, `/` shows the real shelf, in this browser and a fresh one;
     `/setup` and a step deep link redirect back to the shelf (an installed
     instance has no wizard)."""
     page.goto(BASE + "/setup/basis")
@@ -353,17 +354,18 @@ def test_the_wizard_state_survives_deep_links_and_a_returning_visit_shows_the_sh
     ) == [("Die Rückkehrerin", "pantser", "save-the-cat", "coautor", 3)]
 
     # The returning visit: the instance remembers, not the browser. The shelf
-    # takes the root; the interim placeholder stands until Task 6's port.
+    # takes the root, and its hero speaks the bound novel on every load.
     page.goto(BASE + "/")
-    expect(page.get_by_role("heading", name=SHELF_INTERIM_TITLE)).to_be_visible()
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
+    expect(page.get_by_role("heading", name="Die Rückkehrerin")).to_be_visible()
     page.reload()
-    expect(page.get_by_role("heading", name=SHELF_INTERIM_TITLE)).to_be_visible()
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
 
     # The inverse gate: an installed instance has no wizard. `/setup` and a
     # step deep link both redirect back to the shelf.
     page.goto(BASE + "/setup")
     expect(page).to_have_url(BASE + "/")
-    expect(page.get_by_role("heading", name=SHELF_INTERIM_TITLE)).to_be_visible()
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
     page.goto(BASE + "/setup/basis")
     expect(page).to_have_url(BASE + "/")
 
@@ -373,7 +375,7 @@ def test_the_wizard_state_survives_deep_links_and_a_returning_visit_shows_the_sh
     try:
         other = other_context.new_page()
         other.goto(BASE + "/")
-        expect(other.get_by_role("heading", name=SHELF_INTERIM_TITLE)).to_be_visible()
+        expect(other.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
     finally:
         other_context.close()
 
