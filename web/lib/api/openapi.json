@@ -1356,6 +1356,17 @@
       },
       "NovelRead": {
         "properties": {
+          "ai_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Role"
+          },
           "archived_at": {
             "anyOf": [
               {
@@ -1379,6 +1390,17 @@
             ],
             "title": "Author"
           },
+          "author_typology": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Typology"
+          },
           "blurb": {
             "anyOf": [
               {
@@ -1390,6 +1412,17 @@
             ],
             "title": "Blurb"
           },
+          "canon_strictness": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canon Strictness"
+          },
           "chapter_count": {
             "default": 0,
             "title": "Chapter Count",
@@ -1399,6 +1432,17 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "dramatic_form": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dramatic Form"
           },
           "genre": {
             "anyOf": [
@@ -1513,8 +1557,19 @@
         "type": "object"
       },
       "NovelUpdate": {
-        "description": "The PATCH body: only the fields present are the change.\n\n``None`` is ambiguous by shape alone — an absent field and a cleared\nauthor both look like None — so the service reads\n``model_fields_set`` to tell a carried change from a missing one. The\nvalues are checked there, against the novel contract's trims and\nlimits: this schema carries the fields, the contract decides what a\nvalue may be. A carried ``null`` clears author, genre, blurb or\nlanguage; the title is never clearable.\n\nThe shelf's fields (W3) ride the same rule: ``status`` answers to the\nvocabulary (draft|revision|final) at the service boundary,\n``series_id`` must name a series the user owns, ``series_volume`` is\na positive number that needs a series link, and ``archived_at`` is a\ntimestamp — carrying one archives the book, carrying ``null``\nunarchives it.",
+        "description": "The PATCH body: only the fields present are the change.\n\n``None`` is ambiguous by shape alone — an absent field and a cleared\nauthor both look like None — so the service reads\n``model_fields_set`` to tell a carried change from a missing one. The\nvalues are checked there, against the novel contract's trims and\nlimits: this schema carries the fields, the contract decides what a\nvalue may be. A carried ``null`` clears author, genre, blurb or\nlanguage; the title is never clearable.\n\nThe shelf's fields (W3) ride the same rule: ``status`` answers to the\nvocabulary (draft|revision|final) at the service boundary,\n``series_id`` must name a series the user owns, ``series_volume`` is\na positive number that needs a series link, and ``archived_at`` is a\ntimestamp — carrying one archives the book, carrying ``null``\nunarchives it.\n\nThe wizard's per-novel answers (W4 §5) ride it too: ``target_words``\nand the four setup settings — typology, dramatic form, AI role, canon\nstrictness — are checked at the service boundary against the kernel\ncontract's shared vocabularies and bounds, the same constants setup's\nrequest validates against. A carried ``null`` clears the answer back\nto the honest unset; the book-settings dialog edits what setup bound.",
         "properties": {
+          "ai_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Role"
+          },
           "archived_at": {
             "anyOf": [
               {
@@ -1538,6 +1593,17 @@
             ],
             "title": "Author"
           },
+          "author_typology": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Typology"
+          },
           "blurb": {
             "anyOf": [
               {
@@ -1548,6 +1614,28 @@
               }
             ],
             "title": "Blurb"
+          },
+          "canon_strictness": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canon Strictness"
+          },
+          "dramatic_form": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dramatic Form"
           },
           "genre": {
             "anyOf": [
@@ -1604,6 +1692,17 @@
               }
             ],
             "title": "Status"
+          },
+          "target_words": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Words"
           },
           "title": {
             "anyOf": [
@@ -2771,6 +2870,28 @@
       },
       "SettingsRead": {
         "properties": {
+          "author_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Name"
+          },
+          "daily_goal_words": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Goal Words"
+          },
           "locale": {
             "anyOf": [
               {
@@ -2796,7 +2917,9 @@
         },
         "required": [
           "locale",
-          "theme"
+          "theme",
+          "author_name",
+          "daily_goal_words"
         ],
         "title": "SettingsRead",
         "type": "object"
@@ -2843,6 +2966,30 @@
       },
       "SettingsUpdate": {
         "properties": {
+          "author_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Name"
+          },
+          "daily_goal_words": {
+            "anyOf": [
+              {
+                "maximum": 2147483647,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Goal Words"
+          },
           "locale": {
             "anyOf": [
               {
@@ -2866,12 +3013,6 @@
           "ai_role": {
             "anyOf": [
               {
-                "enum": [
-                  "archivar",
-                  "coautor",
-                  "lektor",
-                  "sparring"
-                ],
                 "type": "string"
               },
               {
@@ -2883,11 +3024,6 @@
           "author_typology": {
             "anyOf": [
               {
-                "enum": [
-                  "plotter",
-                  "pantser",
-                  "plantser"
-                ],
                 "type": "string"
               },
               {
@@ -6020,6 +6156,7 @@
         ]
       },
       "patch": {
+        "description": "The preference row's write in one transaction: the locale is always\ncarried (present-and-nullable — a ``null`` hands it back to the browser,\nan absent one is the schema's refusal); the author name and the daily\ngoal are partial — a carried ``null`` clears, an absent field keeps.",
         "operationId": "update_settings_api_settings_patch",
         "requestBody": {
           "content": {
@@ -7365,7 +7502,7 @@
         ]
       },
       "patch": {
-        "description": "Correct a novel by hand: only the fields the body carries change.\n\nReturn the novel with its derived counts; raise HTTP 404 for an absent\nor unowned novel, or HTTP 422 naming the field for a blank or over-long\ntitle, an over-long genre or author, a language that is over-long\nor not a BCP-47-ish code, a status outside the vocabulary, a series\nlink that names no series of the user, or a volume without a series.",
+        "description": "Correct a novel by hand: only the fields the body carries change.\n\nReturn the novel with its derived counts; raise HTTP 404 for an absent\nor unowned novel, or HTTP 422 naming the field for a blank or over-long\ntitle, an over-long genre or author, a language that is over-long\nor not a BCP-47-ish code, a status outside the vocabulary, a word\ntarget outside the column's bounds, a wizard answer outside the shared\nvocabularies (typology, AI role, canon strictness) or over-long\n(dramatic form), a series link that names no series of the user, or a\nvolume without a series.",
         "operationId": "update_novel_api_writing_novels__novel_id__patch",
         "parameters": [
           {

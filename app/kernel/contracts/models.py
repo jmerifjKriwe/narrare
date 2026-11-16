@@ -15,12 +15,30 @@ from app.kernel.contracts.knowledge import (
     EntityRelation,
     EntitySuggestion,
 )
-from app.kernel.contracts.novel import Chapter, Novel, Scene
+from app.kernel.contracts.novel import (
+    AI_ROLES,
+    AUTHOR_TYPOLOGIES,
+    CANON_STRICTNESS_MAX,
+    CANON_STRICTNESS_MIN,
+    DRAMATIC_FORM_MAX_LENGTH,
+    WORD_GOAL_MAX,
+    WORD_GOAL_MIN,
+    Chapter,
+    Novel,
+    Scene,
+)
 from app.kernel.contracts.series import Series
 from app.kernel.contracts.user import User
 
 __all__ = [
+    "AI_ROLES",
+    "AUTHOR_TYPOLOGIES",
+    "CANON_STRICTNESS_MAX",
+    "CANON_STRICTNESS_MIN",
+    "DRAMATIC_FORM_MAX_LENGTH",
     "ENTITY_TYPES",
+    "WORD_GOAL_MAX",
+    "WORD_GOAL_MIN",
     "Chapter",
     "Chunk",
     "ConsistencyFinding",

@@ -116,6 +116,8 @@ async def test_setup_settings_are_optional() -> None:
         ("ai_role", "bogus"),
         ("canon_strictness", 0),
         ("canon_strictness", 6),
+        # The free string's width is the column's own (the shared bound).
+        ("dramatic_form", "x" * 81),
     ],
 )
 async def test_setup_rejects_invalid_settings(field: str, value: object) -> None:

@@ -191,8 +191,11 @@ async def update_novel(novel_id: UUID, payload: NovelUpdate, service: ServiceDep
     Return the novel with its derived counts; raise HTTP 404 for an absent
     or unowned novel, or HTTP 422 naming the field for a blank or over-long
     title, an over-long genre or author, a language that is over-long
-    or not a BCP-47-ish code, a status outside the vocabulary, a series
-    link that names no series of the user, or a volume without a series.
+    or not a BCP-47-ish code, a status outside the vocabulary, a word
+    target outside the column's bounds, a wizard answer outside the shared
+    vocabularies (typology, AI role, canon strictness) or over-long
+    (dramatic form), a series link that names no series of the user, or a
+    volume without a series.
     """
     try:
         novel = await service.update_novel(novel_id, payload)

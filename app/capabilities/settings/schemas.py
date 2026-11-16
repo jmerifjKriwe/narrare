@@ -1,13 +1,14 @@
-"""The settings payloads: the language, the providers, the models, the
-assignments.
+"""The settings payloads: the language, the theme, the profile, the
+providers, the models, the assignments.
 
-``None`` on the locale means "follow the browser". On a provider update, an
-``api_key`` that is absent or empty means "keep the stored one" — clearing a
-key is not an operation, only replacing it is. Every read of a provider
-shows the mask (``sk-…`` plus the last four characters), never the key: the
-one response that carries the full key is the provider create's, once
-(design §Masked keys). A model carries no key at all — it names a provider,
-and the provider holds the secret.
+``None`` on the locale means "follow the browser"; on the author name it
+falls back to the email label, and on the daily goal it means no goal. On a
+provider update, an ``api_key`` that is absent or empty means "keep the
+stored one" — clearing a key is not an operation, only replacing it is.
+Every read of a provider shows the mask (``sk-…`` plus the last four
+characters), never the key: the one response that carries the full key is
+the provider create's, once (design §Masked keys). A model carries no key at
+all — it names a provider, and the provider holds the secret.
 """
 
 from datetime import datetime  # noqa: TC003  Pydantic resolves these at runtime
@@ -16,12 +17,18 @@ from uuid import UUID  # noqa: TC003
 from pydantic import BaseModel, Field, field_validator
 
 from app.generated.locales import LOCALES
+from app.kernel.contracts.models import WORD_GOAL_MAX, WORD_GOAL_MIN
 from app.kernel.llm.models import PROVIDER_KINDS
 
 
 class SettingsRead(BaseModel):
     locale: str | None
     theme: str | None
+    # The profile's answers (W4 D9/D22, D8): the user block's label and the
+    # atelier's daily goal. None is the honest unset — the email label and
+    # no goal — never a guessed value.
+    author_name: str | None
+    daily_goal_words: int | None
 
 
 class SettingsUpdate(BaseModel):
@@ -29,6 +36,15 @@ class SettingsUpdate(BaseModel):
     # back to the browser, while ``{}`` is a client bug and must not mean the
     # same thing. A field with a default could not tell the two apart.
     locale: str | None
+    # The profile fields (W4) are present-and-nullable through
+    # ``model_fields_set``, the novel update's rule: an absent field keeps the
+    # stored answer — the language switchers carry the locale alone — while a
+    # carried ``null`` clears it, the author name back to the email label and
+    # the daily goal back to no goal. Absent and null are different answers.
+    author_name: str | None = None
+    # A goal counts from one; the ceiling is the Integer column's own
+    # (WORD_GOAL_MAX), a 422 here rather than an overflow at the write.
+    daily_goal_words: int | None = Field(default=None, ge=WORD_GOAL_MIN, le=WORD_GOAL_MAX)
 
     @field_validator("locale")
     @classmethod
@@ -39,6 +55,17 @@ class SettingsUpdate(BaseModel):
             known = ", ".join(LOCALES)
             raise ValueError(f"unknown locale {value!r}; the catalog carries {known}")
         return value
+
+    @field_validator("author_name")
+    @classmethod
+    def _trimmed_and_bounded(cls, value: str | None) -> str | None:
+        # The user block's label, trimmed like the novel's author:
+        # whitespace-only is the honest unset (the email label answers),
+        # and the width is the column's own (String(200)).
+        name = (value or "").strip() or None
+        if name is not None and len(name) > 200:
+            raise ValueError("author_name is at most 200 characters")
+        return name
 
 
 THEMES: tuple[str, ...] = ("light", "dark")

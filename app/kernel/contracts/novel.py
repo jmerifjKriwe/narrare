@@ -8,6 +8,30 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.kernel.db.base import UserOwned
 
+AUTHOR_TYPOLOGIES = ("plotter", "pantser", "plantser")
+"""The wizard's planning-style answers — the Stitch drafts' radio values.
+A closed tuple in code, the ENTITY_TYPES shape: setup's request schema and
+writing's novel update validate against this one home (W4 §5), and the UI
+maps each value to its localized label."""
+
+AI_ROLES = ("archivar", "coautor", "lektor", "sparring")
+"""The wizard's AI-role answers, the same shared shape as AUTHOR_TYPOLOGIES."""
+
+CANON_STRICTNESS_MIN = 1
+CANON_STRICTNESS_MAX = 5
+"""How strictly the AI holds the canon: the wizard's one-to-five track."""
+
+DRAMATIC_FORM_MAX_LENGTH = 80
+"""The dramatic form stays a free string until the template wave pins its
+vocabulary; the width is the column's own (String(80))."""
+
+WORD_GOAL_MIN = 1
+WORD_GOAL_MAX = 2_147_483_647
+"""Every word goal's bounds — the book's target, the chapter's, the user's
+daily: a goal counts from one, and the ceiling is the Integer column's own
+(2**31 - 1), so a larger goal is a 422 at the gate, not an int32 overflow
+at the write."""
+
 
 class Novel(UserOwned):
     __tablename__ = "novels"
@@ -21,8 +45,9 @@ class Novel(UserOwned):
     author: Mapped[str | None] = mapped_column(String(200))
     language: Mapped[str | None] = mapped_column(String(16))
     # The setup wizard's per-novel answers. All nullable: a novel without an
-    # answer does not lie. The vocabulary the setup schema validates against
-    # comes from the Stitch drafts; the template wave pins ``dramatic_form``.
+    # answer does not lie. The vocabularies and bounds above are the one home
+    # setup's request and writing's novel update validate against; the
+    # template wave pins ``dramatic_form``.
     target_words: Mapped[int | None] = mapped_column()
     author_typology: Mapped[str | None] = mapped_column(String(40))
     dramatic_form: Mapped[str | None] = mapped_column(String(80))

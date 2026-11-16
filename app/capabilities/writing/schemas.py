@@ -6,6 +6,8 @@ from uuid import UUID  # noqa: TC003
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.kernel.contracts.models import WORD_GOAL_MAX, WORD_GOAL_MIN
+
 
 class WritingErrorRead(BaseModel):
     """The JSON body for missing resources and incomplete setup."""
@@ -39,11 +41,12 @@ class NovelCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     genre: str | None = Field(default=None, max_length=80)
     blurb: str | None = None
-    # The new-book dialog's word target (W3). The same bounds SetupRequest
-    # carries: the Integer column's own ceiling (2**31 - 1), so a larger
-    # goal is a 422 here, not an int32 overflow at the insert. Absent keeps
-    # the shelf's honest neutral — no guessed goal.
-    target_words: int | None = Field(default=None, ge=1, le=2_147_483_647)
+    # The new-book dialog's word target (W3). The same shared bounds
+    # SetupRequest carries (the kernel contract's WORD_GOAL_MIN/MAX): the
+    # Integer column's own ceiling, so a larger goal is a 422 here, not an
+    # int32 overflow at the insert. Absent keeps the shelf's honest neutral
+    # — no guessed goal.
+    target_words: int | None = Field(default=None, ge=WORD_GOAL_MIN, le=WORD_GOAL_MAX)
 
 
 class NovelRead(BaseModel):
@@ -82,6 +85,13 @@ class NovelRead(BaseModel):
     # carries one — the shelf then shows the count alone with an empty
     # track, never a guessed goal.
     target_words: int | None = None
+    # The wizard's other per-novel answers (W4 §5), read straight off the
+    # row — the book-settings surface edits what setup bound. None until
+    # the book carries an answer; the defaults keep old clients unbroken.
+    author_typology: str | None = None
+    dramatic_form: str | None = None
+    ai_role: str | None = None
+    canon_strictness: int | None = None
 
 
 class NovelUpdate(BaseModel):
@@ -101,6 +111,13 @@ class NovelUpdate(BaseModel):
     a positive number that needs a series link, and ``archived_at`` is a
     timestamp — carrying one archives the book, carrying ``null``
     unarchives it.
+
+    The wizard's per-novel answers (W4 §5) ride it too: ``target_words``
+    and the four setup settings — typology, dramatic form, AI role, canon
+    strictness — are checked at the service boundary against the kernel
+    contract's shared vocabularies and bounds, the same constants setup's
+    request validates against. A carried ``null`` clears the answer back
+    to the honest unset; the book-settings dialog edits what setup bound.
     """
 
     title: str | None = None
@@ -112,6 +129,11 @@ class NovelUpdate(BaseModel):
     series_id: UUID | None = None
     series_volume: int | None = None
     archived_at: datetime | None = None
+    target_words: int | None = None
+    author_typology: str | None = None
+    dramatic_form: str | None = None
+    ai_role: str | None = None
+    canon_strictness: int | None = None
 
 
 class ChapterCreate(BaseModel):

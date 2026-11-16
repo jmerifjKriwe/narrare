@@ -730,7 +730,13 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update Settings */
+        /**
+         * Update Settings
+         * @description The preference row's write in one transaction: the locale is always
+         *     carried (present-and-nullable — a ``null`` hands it back to the browser,
+         *     an absent one is the schema's refusal); the author name and the daily
+         *     goal are partial — a carried ``null`` clears, an absent field keeps.
+         */
         patch: operations["update_settings_api_settings_patch"];
         trace?: never;
     };
@@ -1211,8 +1217,11 @@ export interface paths {
          *     Return the novel with its derived counts; raise HTTP 404 for an absent
          *     or unowned novel, or HTTP 422 naming the field for a blank or over-long
          *     title, an over-long genre or author, a language that is over-long
-         *     or not a BCP-47-ish code, a status outside the vocabulary, a series
-         *     link that names no series of the user, or a volume without a series.
+         *     or not a BCP-47-ish code, a status outside the vocabulary, a word
+         *     target outside the column's bounds, a wizard answer outside the shared
+         *     vocabularies (typology, AI role, canon strictness) or over-long
+         *     (dramatic form), a series link that names no series of the user, or a
+         *     volume without a series.
          */
         patch: operations["update_novel_api_writing_novels__novel_id__patch"];
         trace?: never;
@@ -1990,12 +1999,18 @@ export interface components {
         };
         /** NovelRead */
         NovelRead: {
+            /** Ai Role */
+            ai_role?: string | null;
             /** Archived At */
             archived_at?: string | null;
             /** Author */
             author: string | null;
+            /** Author Typology */
+            author_typology?: string | null;
             /** Blurb */
             blurb: string | null;
+            /** Canon Strictness */
+            canon_strictness?: number | null;
             /**
              * Chapter Count
              * @default 0
@@ -2006,6 +2021,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Dramatic Form */
+            dramatic_form?: string | null;
             /** Genre */
             genre: string | null;
             /**
@@ -2056,14 +2073,29 @@ export interface components {
          *     a positive number that needs a series link, and ``archived_at`` is a
          *     timestamp — carrying one archives the book, carrying ``null``
          *     unarchives it.
+         *
+         *     The wizard's per-novel answers (W4 §5) ride it too: ``target_words``
+         *     and the four setup settings — typology, dramatic form, AI role, canon
+         *     strictness — are checked at the service boundary against the kernel
+         *     contract's shared vocabularies and bounds, the same constants setup's
+         *     request validates against. A carried ``null`` clears the answer back
+         *     to the honest unset; the book-settings dialog edits what setup bound.
          */
         NovelUpdate: {
+            /** Ai Role */
+            ai_role?: string | null;
             /** Archived At */
             archived_at?: string | null;
             /** Author */
             author?: string | null;
+            /** Author Typology */
+            author_typology?: string | null;
             /** Blurb */
             blurb?: string | null;
+            /** Canon Strictness */
+            canon_strictness?: number | null;
+            /** Dramatic Form */
+            dramatic_form?: string | null;
             /** Genre */
             genre?: string | null;
             /** Language */
@@ -2074,6 +2106,8 @@ export interface components {
             series_volume?: number | null;
             /** Status */
             status?: string | null;
+            /** Target Words */
+            target_words?: number | null;
             /** Title */
             title?: string | null;
         };
@@ -2625,6 +2659,10 @@ export interface components {
         };
         /** SettingsRead */
         SettingsRead: {
+            /** Author Name */
+            author_name: string | null;
+            /** Daily Goal Words */
+            daily_goal_words: number | null;
             /** Locale */
             locale: string | null;
             /** Theme */
@@ -2642,15 +2680,19 @@ export interface components {
         };
         /** SettingsUpdate */
         SettingsUpdate: {
+            /** Author Name */
+            author_name?: string | null;
+            /** Daily Goal Words */
+            daily_goal_words?: number | null;
             /** Locale */
             locale: string | null;
         };
         /** SetupRequest */
         SetupRequest: {
             /** Ai Role */
-            ai_role?: ("archivar" | "coautor" | "lektor" | "sparring") | null;
+            ai_role?: string | null;
             /** Author Typology */
-            author_typology?: ("plotter" | "pantser" | "plantser") | null;
+            author_typology?: string | null;
             /** Canon Strictness */
             canon_strictness?: number | null;
             /** Demo */
