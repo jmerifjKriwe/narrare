@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="de">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>App-weite Chrome-Referenz &amp; Globale Navigation (Midnight Ink) — Narrare</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            surface: {
+              DEFAULT: '#16130e',
+              dim: '#16130e',
+              bright: '#3c3933',
+              lowest: '#100e09',
+              low: '#1e1b16',
+              container: '#24211b',
+              high: '#2f2b25',
+              highest: '#3a362f'
+            },
+            terracotta: {
+              DEFAULT: '#d7a892',
+              primary: '#743b1f',
+              glow: '#c27958',
+              dim: '#4a2614'
+            },
+            outline: {
+              DEFAULT: '#564e43',
+              variant: '#3d372e'
+            },
+            ink: {
+              text: '#e8dec8',
+              muted: '#a39987',
+              faint: '#6e6556'
+            }
+          },
+          fontFamily: {
+            serif: ['"EB Garamond"', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+    }
+    .material-symbols-outlined.fill {
+      font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+    }
+  </style>
+</head>
+<body class="bg-surface-lowest text-ink-text font-sans antialiased min-h-screen p-8 lg:p-12 selection:bg-terracotta/20 selection:text-ink-text">
+<!-- Header / Meta Bar -->
+<header class="max-w-7xl mx-auto mb-10 pb-6 border-b border-outline-variant/60 flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<div class="flex items-center gap-2 text-xs uppercase tracking-widest text-ink-muted mb-2 font-mono">
+<span>Narrare Spezifikation</span>
+<span class="text-terracotta">•</span>
+<span>Midnight Ink Kanon</span>
+<span class="text-terracotta">•</span>
+<span class="text-terracotta">Chrome &amp; Navigation</span>
+</div>
+<h1 class="text-3xl md:text-4xl font-normal text-ink-text tracking-tight font-sans">
+        App-weite Chrome-Referenz &amp; Globale Navigation
+      </h1>
+<p class="text-sm text-ink-muted mt-2 max-w-2xl leading-relaxed">
+        Verbindliche Definition der permanenten Anwendungsarchitektur für Desktop im Midnight-Ink-Dunkelmodus. 
+        Links die funktionale Icon-Rail, oben die semantische Topbar sowie die 5 kanonischen Zustands-Referenzen. 
+        Typografische Trennung: <em class="font-serif italic text-ink-text font-normal">EB Garamond</em> ausschließlich für Buchtitel, <span class="font-sans font-medium text-ink-text">Plus Jakarta Sans</span> für alle UI-Elemente.
+      </p>
+</div>
+<div class="flex items-center gap-3">
+<div class="px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-low text-xs text-ink-muted flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+<span>Autorensouveränität lokal verankert</span>
+</div>
+<div class="px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-low text-xs text-terracotta font-mono">
+        Midnight Ink v2.4
+      </div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto space-y-12">
+<!-- SEKTION 1: DIE LIVE-CHROME-BÜHNE (ICON-RAIL + TOPBAR + INHALTSSIMULATION) -->
+<section class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-xs font-mono text-terracotta font-semibold uppercase tracking-wider">Fundament</span>
+<span class="text-outline text-xs">/</span>
+<h2 class="text-sm font-semibold tracking-wide uppercase text-ink-text font-sans">Interaktive Chrome-Bühne im Vollkontext</h2>
+</div>
+<span class="text-xs text-ink-faint font-mono">Viewport Simulation (1200 × 580 px)</span>
+</div>
+<!-- Container: Browser/App Simulation Window -->
+<div class="rounded-xl border border-outline-variant/80 bg-surface-dim shadow-2xl overflow-hidden flex flex-col h-[580px]">
+<!-- App Chrome: Main Flex Row -->
+<div class="flex flex-1 overflow-hidden relative">
+<!-- 1. ICON-RAIL (LINKS) -->
+<aside class="w-16 bg-surface-low border-r border-outline-variant/60 flex flex-col justify-between items-center py-4 z-20 shrink-0 select-none">
+<!-- Rail Top: Monogramm & Buch-Wechsler-Chip -->
+<div class="flex flex-col items-center gap-4 w-full">
+<!-- Monogramm "N" -->
+<div class="w-10 h-10 rounded-lg bg-surface-high border border-outline-variant/80 flex items-center justify-center text-ink-text font-serif text-2xl font-bold tracking-tight shadow-sm hover:border-terracotta/40 transition-colors cursor-pointer" title="Narrare Atelier">
+                N
+              </div>
+<!-- Buch-Wechsler-Chip "Dead Signal" mit unfold_more -->
+<div class="relative group">
+<button class="w-11 h-12 rounded-lg bg-surface-container border border-outline-variant/80 flex flex-col items-center justify-center p-1 hover:border-terracotta/60 hover:bg-surface-high transition-all text-left" title="Aktives Buch wechseln">
+<span class="font-serif italic text-terracotta text-xs font-semibold leading-none truncate max-w-[36px]">DS</span>
+<span class="material-symbols-outlined text-[14px] text-ink-muted group-hover:text-ink-text mt-0.5">unfold_more</span>
+</button>
+<!-- Tooltip -->
+<div class="absolute left-full ml-2 top-2 hidden group-hover:flex items-center px-2 py-1 rounded bg-surface-highest border border-outline text-[11px] text-ink-text whitespace-nowrap z-50 shadow-lg pointer-events-none">
+                  Werk: <span class="font-serif italic ml-1">Dead Signal</span> (Klicken zum Wechseln)
+                </div>
+</div>
+<div class="w-8 h-[1px] bg-outline-variant/60 my-1"></div>
+<!-- Navigation List -->
+<nav class="flex flex-col items-center gap-1.5 w-full px-2">
+<!-- Bücherregal -->
+<button class="w-10 h-10 rounded-lg flex items-center justify-center text-ink-muted hover:text-ink-text hover:bg-surface-container transition-colors relative group" title="Bücherregal">
+<span class="material-symbols-outlined text-xl">auto_stories</span>
+<div class="absolute left-full ml-2 hidden group-hover:flex items-center px-2 py-1 rounded bg-surface-highest border border-outline text-[11px] text-ink-text whitespace-nowrap z-50 shadow-lg pointer-events-none font-sans">
+                    Bücherregal
+                  </div>
+</button>
+<!-- Editor (aktiv, terracotta) -->
+<button class="w-10 h-10 rounded-lg flex items-center justify-center text-terracotta bg-terracotta/10 border border-terracotta/30 transition-all relative group" title="Editor (Aktiv)">
+<span class="material-symbols-outlined text-xl fill text-terracotta">edit_note</span>
+<div class="absolute left-full ml-2 hidden group-hover:flex items-center px-2 py-1 rounded bg-surface-highest border border-outline text-[11px] text-ink-text whitespace-nowrap z-50 shadow-lg pointer-events-none font-sans">
+                    Editor <span class="text-terracotta ml-1 font-mono text-[10px]">(Aktiv)</span>
+</div>
+</button>
+<!-- Wissen -->
+<button class="w-10 h-10 rounded-lg flex items-center justify-center text-ink-muted hover:text-ink-text hover:bg-surface-container transition-colors relative group" title="Wissen">
+<span class="material-symbols-outlined text-xl">hub</span>
+<div class="absolute left-full ml-2 hidden group-hover:flex items-center px-2 py-1 rounded bg-surface-highest border border-outline text-[11px] text-ink-text whitespace-nowrap z-50 shadow-lg pointer-events-none font-sans">
+                    Wissen
+                  </div>
+</button>
+<!-- Planung -->
+<button class="w-10 h-10 rounded-lg flex items-center justify-center text-ink-muted hover:text-ink-text hover:bg-surface-container transition-colors relative group" title="Planung">
+<span class="material-symbols-outlined text-xl">account_tree</span>
+<div class="absolute left-full ml-2 hidden group-hover:flex items-center px-2 py-1 rounded bg-surface-highest border border-outline text-[11px] text-ink-text whitespace-nowrap z-50 shadow-lg pointer-events-none font-sans">
+                    Planung
+                  </div>
+</button>
+<!-- Einstellungen -->
+<button class="w-10 h-10 rounded-lg flex items-center justify-center text-ink-muted hover:text-ink-text hover:bg-surface-container transition-colors relative group" title="Einstellungen">
+<span class="material-symbols-outlined text-xl">settings</span>
+<div class="absolute left-full ml-2 hidden group-hover:flex items-center px-2 py-1 rounded bg-surface-highest border border-outline text-[11px] text-ink-text whitespace-nowrap z-50 shadow-lg pointer-events-none font-sans">
+                    Einstellungen
+                  </div>
+</button>
+</nav>
+</div>
+<!-- Rail Fuß: Statuspunkt, Theme-Umschalter, User-Block "H. Calder" ohne Tier-Zeile -->
+<div class="flex flex-col items-center gap-3 w-full px-2">
+<!-- Statuspunkt (Grün: Gespeichert) -->
+<div class="flex items-center justify-center w-6 h-6 rounded-full hover:bg-surface-container transition-colors cursor-pointer group relative" title="Status: Gespeichert">
+<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+<div class="absolute left-full ml-2 hidden group-hover:flex items-center px-2 py-1 rounded bg-surface-highest border border-outline text-[11px] text-ink-text whitespace-nowrap z-50 shadow-lg pointer-events-none font-sans">
+                  Gespeichert
+                </div>
+</div>
+<!-- Theme-Umschalter -->
+<button class="w-9 h-9 rounded-lg flex items-center justify-center text-ink-muted hover:text-ink-text hover:bg-surface-container transition-colors group relative" title="Erscheinungsbild wechseln">
+<span class="material-symbols-outlined text-lg">dark_mode</span>
+<div class="absolute left-full ml-2 hidden group-hover:flex items-center px-2 py-1 rounded bg-surface-highest border border-outline text-[11px] text-ink-text whitespace-nowrap z-50 shadow-lg pointer-events-none font-sans">
+                  Thema: Midnight Ink (Aktiv)
+                </div>
+</button>
+<div class="w-8 h-[1px] bg-outline-variant/60 my-0.5"></div>
+<!-- User-Block "H. Calder" ohne Tier-Zeile -->
+<div class="relative group">
+<button class="w-10 h-10 rounded-lg bg-surface-high border border-outline-variant flex items-center justify-center text-xs font-semibold text-ink-text hover:border-terracotta/50 hover:bg-surface-highest transition-all" title="Benutzerprofil: H. Calder">
+                  HC
+                </button>
+<div class="absolute left-full ml-2 bottom-0 hidden group-hover:flex items-center px-2.5 py-1.5 rounded-lg bg-surface-highest border border-outline text-[11px] text-ink-text whitespace-nowrap z-50 shadow-xl pointer-events-none font-sans flex-col items-start">
+<span class="font-medium text-ink-text">H. Calder</span>
+<span class="text-ink-faint text-[10px]">h.calder@station7.de</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- 2. RECHTER BEREICH: TOPBAR + WORKSPACE-INHALT -->
+<div class="flex-1 flex flex-col bg-surface-dim overflow-hidden">
+<!-- TOPBAR (56px) -->
+<header class="h-14 bg-surface border-b border-outline-variant/60 px-6 flex items-center justify-between z-10 shrink-0">
+<!-- Links: Breadcrumb "Manuscripts / Dead Signal" -->
+<div class="flex items-center gap-2 text-sm font-sans">
+<span class="text-ink-muted hover:text-ink-text cursor-pointer transition-colors">Manuscripts</span>
+<span class="text-outline text-xs">/</span>
+<span class="font-serif italic text-ink-text text-base tracking-wide font-normal">Dead Signal</span>
+<span class="ml-2 px-2 py-0.5 rounded text-[11px] font-sans font-medium bg-surface-container text-ink-muted border border-outline-variant/50">
+                  Band I
+                </span>
+</div>
+<!-- Rechts: ⌘K-Such-Chip DEAKTIVIERT, Wortzahl-Chip "3.384 Wörter", passiver Sprach-Chip "DE" -->
+<div class="flex items-center gap-3">
+<!-- ⌘K-Such-Chip DEAKTIVIERT -->
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-low border border-outline-variant/40 text-ink-faint text-xs cursor-not-allowed select-none opacity-60" title="Suche in diesem Modus deaktiviert">
+<span class="material-symbols-outlined text-[16px] text-ink-faint">search</span>
+<span class="font-sans">Suchen</span>
+<kbd class="px-1.5 py-0.5 rounded bg-surface-container text-[10px] font-mono text-ink-faint border border-outline-variant/40">⌘K</kbd>
+</div>
+<!-- Wortzahl-Chip "3.384 Wörter" -->
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container border border-outline-variant/70 text-xs font-sans">
+<span class="material-symbols-outlined text-[15px] text-terracotta">draw</span>
+<span class="font-medium text-ink-text font-mono">3.384</span>
+<span class="text-ink-muted">Wörter</span>
+</div>
+<!-- Passiver Sprach-Chip "DE" -->
+<div class="px-2.5 py-1.5 rounded-lg bg-surface-low border border-outline-variant/60 text-xs font-sans text-ink-muted font-medium select-none" title="Dokumentsprache: Deutsch (passiv)">
+                  DE
+                </div>
+</div>
+</header>
+<!-- Workspace Inhalts-Simulation (Manuskript) -->
+<div class="flex-1 overflow-y-auto p-12 bg-surface-dim flex justify-center">
+<div class="max-w-2xl w-full space-y-6 pt-4">
+<!-- Metadaten / Kapitel-Header -->
+<div class="space-y-2 text-center pb-4 border-b border-outline-variant/30">
+<div class="text-[11px] font-sans tracking-widest uppercase text-terracotta font-medium">Kapitel 1 • Szene 2 • Permafrost Station 7</div>
+<h3 class="text-3xl font-normal text-ink-text font-serif italic tracking-tight">Das Signal im Permafrost</h3>
+</div>
+<!-- Typografischer Fließtext -->
+<div class="space-y-5 text-[15px] text-ink-text/90 leading-relaxed font-sans font-light">
+<p>
+<span class="float-left text-4xl font-serif text-terracotta leading-none pr-3 pt-1 font-normal">D</span>ie Quecksilbersäule im Außenmesspunkt war vor drei Tagen erstarrt. Was blieb, war das trockene Knacken der Kiefernstämme im arktischen Wind und das monotone Zirpen der Bodenstation. Calder strich mit dem Daumen über die kalte Messingkante des Frequenzempfängers.
+                  </p>
+<p>
+                    Es gab kein Netz hier draußen. Kein Signal, das nicht von den eigenen Relaisstationen stammte. Und doch pulsierte in 142 Megahertz ein Takt, der nicht in den Logbüchern von 1984 verzeichnet stand. Ein Echo aus geschichtetem Eis, niedergeschrieben in reinem Graphit.
+                  </p>
+<blockquote class="pl-4 border-l-2 border-terracotta/60 italic text-ink-muted my-6 font-sans">
+                    »Wenn das Eis bricht, schweigen die Instrumente zuerst. Was danach spricht, ist kein Fehler im System, sondern sein Ursprung.«
+                  </blockquote>
+<p>
+                    Er tippte den nächsten Befehl ein. Der Schreibkopf setzte mit leisem Ruck auf die Walze auf.
+                  </p>
+</div>
+<!-- Workspace Footer-Indikatoren -->
+<div class="pt-8 flex items-center justify-between text-xs text-ink-faint border-t border-outline-variant/30 font-sans">
+<span class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Autorenhoheit gewahrt • Lokales Atelier
+                  </span>
+<span class="font-mono text-[11px]">Tastenkürzel: F9 Fokusmodus</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- SEKTION 2: DIE 5 BESCHRIFTETEN ZUSTANDS-KACHELN -->
+<section class="space-y-6 pt-4">
+<div class="flex items-center justify-between border-b border-outline-variant/60 pb-3">
+<div>
+<span class="text-xs font-mono text-terracotta font-semibold uppercase tracking-wider">Interaktionskatalog</span>
+<h2 class="text-xl font-normal text-ink-text tracking-tight font-sans mt-0.5">5 verbindliche System- &amp; Chrome-Zustände</h2>
+</div>
+<div class="text-xs font-mono text-ink-muted">100% Deterministisch • Midnight Ink Farbraum</div>
+</div>
+<!-- Grid für 5 Kacheln -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- KACHEL 1: BUCH-WECHSLER OFFEN -->
+<div class="rounded-xl border border-outline-variant/80 bg-surface-low p-5 flex flex-col justify-between space-y-4 hover:border-terracotta/40 transition-colors">
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="text-xs font-mono text-terracotta uppercase tracking-wider font-semibold">Zustand 01</span>
+<span class="text-[11px] font-sans px-2 py-0.5 rounded bg-surface-container text-ink-muted border border-outline-variant/50">Overlay Popover</span>
+</div>
+<h3 class="text-base font-semibold text-ink-text font-sans mb-1">Buch-Wechsler offen</h3>
+<p class="text-xs text-ink-muted mb-4 font-sans leading-relaxed">
+              Overlay dockt an den Buch-Chip in der Icon-Rail an. Listet die drei realen Werke mit Genre und Cover-Chip.
+            </p>
+<!-- Simulierte UI-Komponente: Overlay mit 3 Büchern + Button -->
+<div class="w-full rounded-lg bg-surface border border-outline-variant/80 p-3 shadow-xl space-y-2.5">
+<div class="text-[10px] font-mono uppercase tracking-wider text-ink-faint px-1">Romane im Atelier</div>
+<!-- Buch 1: Dead Signal (Aktiv) -->
+<div class="flex items-center justify-between p-2 rounded-lg bg-surface-container border border-terracotta/40 transition-colors cursor-pointer">
+<div class="flex items-center gap-2.5 min-w-0">
+<!-- Cover-Chip -->
+<div class="w-6 h-8 rounded bg-surface-highest border border-terracotta/60 flex items-center justify-center shrink-0">
+<span class="font-serif italic text-[11px] text-terracotta font-bold">DS</span>
+</div>
+<div class="min-w-0">
+<div class="font-serif italic text-sm text-ink-text truncate font-normal">Dead Signal</div>
+<div class="text-[10px] font-sans text-ink-muted truncate">Hard Sci-Fi • 3 Kapitel</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-terracotta text-sm">check</span>
+</div>
+<!-- Buch 2: Echoes of the Thornwall -->
+<div class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container border border-transparent transition-colors cursor-pointer group">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="w-6 h-8 rounded bg-surface-high border border-outline-variant flex items-center justify-center shrink-0">
+<span class="font-serif italic text-[11px] text-ink-muted font-bold group-hover:text-ink-text">ET</span>
+</div>
+<div class="min-w-0">
+<div class="font-serif italic text-sm text-ink-muted group-hover:text-ink-text truncate font-normal">Echoes of the Thornwall</div>
+<div class="text-[10px] font-sans text-ink-faint truncate">High Fantasy • 4 Kapitel</div>
+</div>
+</div>
+</div>
+<!-- Buch 3: Im Stillen Wald -->
+<div class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container border border-transparent transition-colors cursor-pointer group">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="w-6 h-8 rounded bg-surface-high border border-outline-variant flex items-center justify-center shrink-0">
+<span class="font-serif italic text-[11px] text-ink-muted font-bold group-hover:text-ink-text">IW</span>
+</div>
+<div class="min-w-0">
+<div class="font-serif italic text-sm text-ink-muted group-hover:text-ink-text truncate font-normal">Im Stillen Wald</div>
+<div class="text-[10px] font-sans text-ink-faint truncate">Literarischer Noir • 2 Kapitel</div>
+</div>
+</div>
+</div>
+<!-- Trennlinie & + Neues Buch anlegen -->
+<div class="pt-1.5 border-t border-outline-variant/50">
+<button class="w-full py-1.5 px-2 rounded-md bg-surface-low hover:bg-surface-container border border-outline-variant/60 text-xs font-sans text-ink-text flex items-center justify-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-sm text-terracotta">add</span>
+<span>Neues Buch anlegen</span>
+</button>
+</div>
+</div>
+</div>
+<div class="pt-3 border-t border-outline-variant/40 text-[11px] text-ink-faint font-sans">
+            Kontextwechsel ohne Verlust des Schreibzustands.
+          </div>
+</div>
+<!-- KACHEL 2: SYNC-ZUSTÄNDE -->
+<div class="rounded-xl border border-outline-variant/80 bg-surface-low p-5 flex flex-col justify-between space-y-4 hover:border-terracotta/40 transition-colors">
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="text-xs font-mono text-terracotta uppercase tracking-wider font-semibold">Zustand 02</span>
+<span class="text-[11px] font-sans px-2 py-0.5 rounded bg-surface-container text-ink-muted border border-outline-variant/50">Statusanzeige</span>
+</div>
+<h3 class="text-base font-semibold text-ink-text font-sans mb-1">Sync-Zustände</h3>
+<p class="text-xs text-ink-muted mb-4 font-sans leading-relaxed">
+              Exakt drei Zeilen ohne Erwähnung von Speichertechnik oder Cloud-Jargon. Der UI-Text nennt ausschließlich den ehrlichen Autorenzustand.
+            </p>
+<!-- Simulierte UI-Komponente: Exakt 3 Zeilen -->
+<div class="w-full rounded-lg bg-surface border border-outline-variant/80 p-4 shadow-xl space-y-3 font-sans">
+<!-- Zeile 1: Grüner Punkt "Gespeichert" -->
+<div class="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-surface-low border border-outline-variant/40">
+<div class="flex items-center gap-2.5">
+<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></span>
+<span class="text-xs font-medium text-ink-text">Gespeichert</span>
+</div>
+<span class="text-[10px] font-mono text-emerald-400/80">Kanon intakt</span>
+</div>
+<!-- Zeile 2: Amber Punkt "Sicherung läuft …" -->
+<div class="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-surface-low border border-outline-variant/40">
+<div class="flex items-center gap-2.5">
+<span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.4)]"></span>
+<span class="text-xs font-medium text-ink-text">Sicherung läuft …</span>
+</div>
+<span class="text-[10px] font-mono text-amber-400/80">Graph sichert</span>
+</div>
+<!-- Zeile 3: Roter Punkt "Sicherung fehlgeschlagen — Erneut versuchen" -->
+<div class="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-surface-low border border-red-900/40">
+<div class="flex items-center gap-2.5 min-w-0">
+<span class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)] shrink-0"></span>
+<span class="text-xs font-medium text-rose-200 truncate">Sicherung fehlgeschlagen</span>
+</div>
+<button class="text-[10px] font-sans font-medium text-terracotta hover:underline ml-2 shrink-0 bg-surface-container px-2 py-0.5 rounded border border-outline-variant">
+                  Erneut versuchen
+                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- KACHEL 3: USER-MENÜ OFFEN -->
+<div class="rounded-xl border border-outline-variant/80 bg-surface-low p-5 flex flex-col justify-between space-y-4 hover:border-terracotta/40 transition-colors">
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="text-xs font-mono text-terracotta uppercase tracking-wider font-semibold">Zustand 03</span>
+<span class="text-[11px] font-sans px-2 py-0.5 rounded bg-surface-container text-ink-muted border border-outline-variant/50">Profil-Popover</span>
+</div>
+<h3 class="text-base font-semibold text-ink-text font-sans mb-1">User-Menü offen</h3>
+<p class="text-xs text-ink-muted mb-4 font-sans leading-relaxed">
+              Öffnet sich vom HC-Chip im Rail-Fuß. Name und E-Mail oben, strikt ohne Tier- oder Abo-Zeile.
+            </p>
+<!-- Simulierte UI-Komponente: User Popover -->
+<div class="w-full rounded-lg bg-surface border border-outline-variant/80 p-3 shadow-xl space-y-3 font-sans">
+<!-- Profil-Kopf (Name + Mail, KEIN Tier) -->
+<div class="flex items-center gap-3 p-2 bg-surface-low rounded-lg border border-outline-variant/50">
+<div class="w-9 h-9 rounded-lg bg-surface-high border border-outline-variant flex items-center justify-center font-semibold text-xs text-ink-text">
+                  HC
+                </div>
+<div class="min-w-0">
+<div class="text-xs font-semibold text-ink-text truncate">H. Calder</div>
+<div class="text-[11px] text-ink-muted truncate font-mono">h.calder@station7.de</div>
+</div>
+</div>
+<!-- Menüpunkte: Autorenname bearbeiten, Tagesziel festlegen, Einstellungen -->
+<div class="space-y-1 pt-1">
+<button class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs text-ink-muted hover:text-ink-text hover:bg-surface-container transition-colors text-left">
+<span class="material-symbols-outlined text-[16px] text-ink-faint">badge</span>
+<span>Autorenname bearbeiten</span>
+</button>
+<button class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs text-ink-muted hover:text-ink-text hover:bg-surface-container transition-colors text-left">
+<span class="material-symbols-outlined text-[16px] text-ink-faint">track_changes</span>
+<span>Tagesziel festlegen</span>
+</button>
+<button class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs text-ink-muted hover:text-ink-text hover:bg-surface-container transition-colors text-left">
+<span class="material-symbols-outlined text-[16px] text-ink-faint">settings</span>
+<span>Einstellungen</span>
+</button>
+</div>
+</div>
+</div>
+<div class="pt-3 border-t border-outline-variant/40 text-[11px] text-ink-faint font-sans">
+            Radikaler Verzicht auf Gamification, Abo-Stufen oder Upgrade-Banner.
+          </div>
+</div>
+<!-- KACHEL 4: BÜCHERREGAL HINTER DER CHROME -->
+<div class="rounded-xl border border-outline-variant/80 bg-surface-low p-5 flex flex-col justify-between space-y-4 hover:border-terracotta/40 transition-colors md:col-span-2 lg:col-span-2">
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="text-xs font-mono text-terracotta uppercase tracking-wider font-semibold">Zustand 04</span>
+<span class="text-[11px] font-sans px-2 py-0.5 rounded bg-surface-container text-ink-muted border border-outline-variant/50">Rahmen-Persistenz</span>
+</div>
+<h3 class="text-base font-semibold text-ink-text font-sans mb-1">Bücherregal hinter der Chrome</h3>
+<p class="text-xs text-ink-muted mb-4 font-sans leading-relaxed">
+              Die Chrome (Rail + Topbar) gerahmt um eine angedeutete Bücherregal-Fläche mit 3–4 Regal-Karten.
+            </p>
+<!-- Simulierte UI-Komponente: Miniatur-Chrome mit Bücherregal -->
+<div class="w-full h-48 rounded-lg bg-surface border border-outline-variant/80 overflow-hidden flex shadow-xl">
+<!-- Mini-Rail -->
+<div class="w-10 bg-surface-low border-r border-outline-variant/60 flex flex-col items-center py-2.5 justify-between shrink-0 select-none">
+<div class="space-y-2 flex flex-col items-center">
+<div class="w-6 h-6 rounded bg-surface-high text-[10px] font-serif font-bold flex items-center justify-center text-ink-text">N</div>
+<div class="w-5 h-5 rounded bg-terracotta/10 text-terracotta flex items-center justify-center">
+<span class="material-symbols-outlined text-[12px] fill">auto_stories</span>
+</div>
+<div class="w-5 h-5 rounded text-ink-faint flex items-center justify-center">
+<span class="material-symbols-outlined text-[12px]">edit_note</span>
+</div>
+</div>
+<div class="w-4 h-4 rounded-full bg-surface-high text-[8px] flex items-center justify-center text-ink-muted">HC</div>
+</div>
+<!-- Mini-Main: Topbar + Regal -->
+<div class="flex-1 flex flex-col bg-surface-dim overflow-hidden">
+<!-- Mini-Topbar -->
+<div class="h-8 bg-surface border-b border-outline-variant/60 px-3 flex items-center justify-between shrink-0">
+<div class="flex items-center gap-1.5 text-[10px] font-sans">
+<span class="text-ink-muted">Atelier</span>
+<span class="text-outline text-[9px]">/</span>
+<span class="text-ink-text font-medium">Bücherregal</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[9px] font-mono text-ink-faint">4 Werke</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-low text-[9px] text-ink-muted border border-outline-variant/40">DE</span>
+</div>
+</div>
+<!-- Mini-Regal-Karten (4 Karten) -->
+<div class="flex-1 p-3 overflow-hidden flex items-center gap-3">
+<!-- Karte 1: Dead Signal -->
+<div class="h-28 w-24 rounded-lg bg-surface-low border border-terracotta/40 p-2 flex flex-col justify-between shadow-sm">
+<div class="w-full h-14 rounded bg-surface-container border border-outline-variant flex flex-col items-center justify-center p-1 text-center">
+<span class="font-serif italic text-terracotta text-[10px] leading-tight">Dead Signal</span>
+<span class="text-[7px] text-ink-faint mt-0.5">Sci-Fi</span>
+</div>
+<div class="text-[8px] font-sans text-ink-muted truncate">3.384 Wörter</div>
+</div>
+<!-- Karte 2: Echoes of the Thornwall -->
+<div class="h-28 w-24 rounded-lg bg-surface-low border border-outline-variant/60 p-2 flex flex-col justify-between shadow-sm">
+<div class="w-full h-14 rounded bg-surface-container border border-outline-variant flex flex-col items-center justify-center p-1 text-center">
+<span class="font-serif italic text-ink-text text-[9px] leading-tight">Echoes of ...</span>
+<span class="text-[7px] text-ink-faint mt-0.5">Fantasy</span>
+</div>
+<div class="text-[8px] font-sans text-ink-muted truncate">24.150 Wörter</div>
+</div>
+<!-- Karte 3: Im Stillen Wald -->
+<div class="h-28 w-24 rounded-lg bg-surface-low border border-outline-variant/60 p-2 flex flex-col justify-between shadow-sm">
+<div class="w-full h-14 rounded bg-surface-container border border-outline-variant flex flex-col items-center justify-center p-1 text-center">
+<span class="font-serif italic text-ink-text text-[9px] leading-tight">Im Stillen ...</span>
+<span class="text-[7px] text-ink-faint mt-0.5">Noir</span>
+</div>
+<div class="text-[8px] font-sans text-ink-muted truncate">8.420 Wörter</div>
+</div>
+<!-- Karte 4: Der Nebel von Arkona -->
+<div class="h-28 w-24 rounded-lg bg-surface-low border border-outline-variant/60 p-2 flex flex-col justify-between shadow-sm hidden sm:flex">
+<div class="w-full h-14 rounded bg-surface-container border border-outline-variant flex flex-col items-center justify-center p-1 text-center">
+<span class="font-serif italic text-ink-text text-[9px] leading-tight">Der Nebel ...</span>
+<span class="text-[7px] text-ink-faint mt-0.5">Historisch</span>
+</div>
+<div class="text-[8px] font-sans text-ink-muted truncate">11.200 Wörter</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Erforderliche Beschriftung -->
+<div class="pt-3 border-t border-outline-variant/40 text-xs font-medium text-ink-text font-sans flex items-center justify-between">
+<span>Chrome gilt app-weit — auch für das Regal</span>
+<span class="text-ink-faint font-normal font-mono text-[11px]">Identischer Rahmen</span>
+</div>
+</div>
+<!-- KACHEL 5: FOKUS-ZUSTAND (ZEN-MODUS) -->
+<div class="rounded-xl border border-outline-variant/80 bg-surface-low p-5 flex flex-col justify-between space-y-4 hover:border-terracotta/40 transition-colors">
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="text-xs font-mono text-terracotta uppercase tracking-wider font-semibold">Zustand 05</span>
+<span class="text-[11px] font-sans px-2 py-0.5 rounded bg-surface-container text-terracotta border border-terracotta/30">F9 Zen</span>
+</div>
+<h3 class="text-base font-semibold text-ink-text font-sans mb-1">Fokus-Zustand</h3>
+<p class="text-xs text-ink-muted mb-4 font-sans leading-relaxed">
+              Workspace ohne Rail und Topbar. Radikale Reduktion auf reinen Text für ungestörte Immersion.
+            </p>
+<!-- Simulierte UI-Komponente: Zen Modus -->
+<div class="w-full h-48 rounded-lg bg-surface-dim border border-outline-variant/80 p-4 shadow-xl flex flex-col justify-between relative overflow-hidden">
+<!-- Subtiler Hinweis auf F9 -->
+<div class="flex justify-between items-center text-[10px] font-mono text-ink-faint border-b border-outline-variant/20 pb-1">
+<span>KEINE LEISTEN • KEINE MENÜS</span>
+<span class="text-terracotta">F9 — Zen-Fokus</span>
+</div>
+<!-- Reiner Text im Zentrum -->
+<div class="text-center my-auto space-y-2">
+<div class="font-serif italic text-ink-text text-base">»Das Signal im Permafrost«</div>
+<div class="text-[11px] text-ink-muted leading-relaxed max-w-xs mx-auto font-sans font-light">
+                  Reiner Text auf 680px Lesekanal. Unberührte Stille. Alle Ablenkungen sind ausgeblendet.
+                </div>
+</div>
+<!-- Tastenkürzel Hinweis Fuß -->
+<div class="flex justify-between items-center text-[10px] text-ink-faint pt-1 border-t border-outline-variant/20">
+<span class="font-mono text-terracotta">F9 — Zen-Fokus</span>
+<span class="font-sans">Esc zum Verlassen</span>
+</div>
+</div>
+</div>
+<div class="pt-3 border-t border-outline-variant/40 text-[11px] text-ink-faint font-sans">
+            Vollständiges Ausblenden aller Chrome-Elemente.
+          </div>
+</div>
+</div>
+</section>
+<!-- ARCHITEKTUR-PRINZIPIEN & TYPOGRAFISCHE DISZIPLIN -->
+<footer class="pt-6 border-t border-outline-variant/60 grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-ink-muted font-sans">
+<div class="space-y-1.5">
+<h4 class="text-ink-text font-medium flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-terracotta">format_italic</span>
+<span>Typografische Disziplin</span>
+</h4>
+<p class="text-ink-faint leading-relaxed">
+<strong class="font-serif italic text-ink-text font-normal">EB Garamond</strong> ist im gesamten Atelier strikt exklusiv für Buchtitel reserviert. Sämtliche Navigationselemente, Zähler und Beschriftungen nutzen ausnahmslos <span class="text-ink-text font-medium">Plus Jakarta Sans</span>.
+        </p>
+</div>
+<div class="space-y-1.5">
+<h4 class="text-ink-text font-medium flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-terracotta">security</span>
+<span>Ehrliche Autorenhoheit</span>
+</h4>
+<p class="text-ink-faint leading-relaxed">
+          Keine Cloud-Täuschung oder erfundene Synchronisationszeiten. Der angezeigte Wortzähler (<span class="font-mono text-ink-text">3.384 Wörter</span>) basiert auf deterministischer Echtzählung im lokalen Atelier.
+        </p>
+</div>
+<div class="space-y-1.5">
+<h4 class="text-ink-text font-medium flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-terracotta">palette</span>
+<span>Midnight Ink Farbbalance</span>
+</h4>
+<p class="text-ink-faint leading-relaxed">
+          Stufenweise Helligkeitsstaffelung: <span class="font-mono text-terracotta">#100e09</span> (Lowest) • <span class="font-mono text-terracotta">#16130e</span> (Surface) • <span class="font-mono text-terracotta">#1e1b16</span> (Low) • <span class="font-mono text-terracotta">#d7a892</span> (Terracotta Akzent).
+        </p>
+</div>
+</footer>
+</main>
+</body>
+</html>
+

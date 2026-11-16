@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+
+<html class="dark h-full" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>narrare — Dead Signal Workspace</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "error-container": "#93000a",
+            "secondary-fixed-dim": "#ecc15a",
+            "surface-container-lowest": "#100e09",
+            "error": "#ffb4ab",
+            "primary-container": "#e8dec8",
+            "on-primary-container": "#686250",
+            "on-primary": "#353021",
+            "inverse-surface": "#e9e1d9",
+            "surface": "#16130e",
+            "primary": "#fffaf9",
+            "surface-bright": "#3c3933",
+            "on-secondary-fixed": "#251a00",
+            "primary-fixed": "#ece2cc",
+            "outline-variant": "#4a463e",
+            "surface-tint": "#cfc6b0",
+            "tertiary-fixed": "#ffdbcf",
+            "on-tertiary-container": "#895542",
+            "surface-container-highest": "#38342e",
+            "background": "#16130e",
+            "on-error-container": "#ffdad6",
+            "surface-variant": "#38342e",
+            "tertiary-container": "#ffd6c8",
+            "inverse-on-surface": "#34302a",
+            "surface-container-low": "#1e1b16",
+            "on-secondary-fixed-variant": "#5a4300",
+            "primary-fixed-dim": "#cfc6b0",
+            "on-secondary-container": "#fff3df",
+            "tertiary-fixed-dim": "#fab7a0",
+            "surface-container": "#221f1a",
+            "on-tertiary-fixed": "#341104",
+            "on-surface-variant": "#ccc6ba",
+            "on-tertiary": "#4e2515",
+            "on-error": "#690005",
+            "surface-container-high": "#2d2924",
+            "on-surface": "#e9e1d9",
+            "surface-dim": "#16130e",
+            "on-primary-fixed-variant": "#4c4636",
+            "tertiary": "#fffaf9",
+            "inverse-primary": "#655e4d",
+            "on-primary-fixed": "#201b0e",
+            "secondary": "#ecc15a",
+            "on-secondary": "#3f2e00",
+            "on-tertiary-fixed-variant": "#693b29",
+            "secondary-fixed": "#ffdf99",
+            "outline": "#959086",
+            "on-background": "#e9e1d9",
+            "secondary-container": "#8c6b01",
+            "terracotta": {
+              "light": "#d7a892",
+              "DEFAULT": "#c97d60",
+              "deep": "#b25838"
+            }
+          },
+          borderRadius: {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          fontFamily: {
+            "body-md": ["EB Garamond", "serif"],
+            "body-lg": ["EB Garamond", "serif"],
+            "display-lg": ["EB Garamond", "serif"],
+            "headline-lg": ["EB Garamond", "serif"],
+            "headline-md": ["EB Garamond", "serif"],
+            "headline-sm": ["EB Garamond", "serif"],
+            "ui-label-sm": ["Plus Jakarta Sans", "sans-serif"],
+            "ui-label-md": ["Plus Jakarta Sans", "sans-serif"],
+            "ui-label-lg": ["Plus Jakarta Sans", "sans-serif"],
+            "mono": ["Space Mono", "monospace"]
+          },
+          fontSize: {
+            "body-md": ["17px", { "lineHeight": "28px", "fontWeight": "400" }],
+            "body-lg": ["20px", { "lineHeight": "32px", "fontWeight": "400" }],
+            "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "400" }],
+            "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "headline-md": ["26px", { "lineHeight": "34px", "fontWeight": "500" }],
+            "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+            "ui-label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600" }],
+            "ui-label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "ui-label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-block;
+    }
+    .material-symbols-outlined.fill {
+      font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #16130e;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #38342e;
+      border-radius: 2px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #4a463e;
+    }
+    @keyframes subtlePulse {
+      0%, 100% { opacity: 0.9; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.15); }
+    }
+    .animate-subtle-pulse {
+      animation: subtlePulse 2.4s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface h-full w-full overflow-hidden select-none antialiased">
+<div class="h-full w-full grid grid-cols-12 bg-surface text-on-surface">
+<!-- ==================== LINKE SPALTE (~320px / 3 cols) ==================== -->
+<aside class="col-span-3 h-full flex flex-col bg-surface-container-low border-r border-outline-variant/60 overflow-hidden">
+<!-- Scrollbarer Bereich Linke Spalte -->
+<div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2.5">
+<!-- 1. Projekt-Karte -->
+<div class="bg-surface-container rounded-lg border border-outline-variant/60 p-3 flex items-center gap-3">
+<div class="w-10 h-13 rounded bg-surface-container-highest border border-outline-variant flex flex-col items-center justify-center text-center p-1 shadow-sm flex-shrink-0">
+<span class="font-mono text-[9px] text-terracotta leading-tight font-bold tracking-tight">SCI-FI</span>
+<span class="font-mono text-[8px] text-on-surface-variant/80">DS</span>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-1.5">
+<h2 class="font-headline-sm text-headline-sm text-primary truncate leading-snug">Dead Signal</h2>
+</div>
+<p class="font-ui-label-sm text-on-surface-variant/80 truncate">H. Calder</p>
+<div class="mt-1">
+<span class="inline-block px-1.5 py-0.5 rounded-full bg-surface-container-low border border-outline-variant/70 font-ui-label-sm text-[10px] text-on-surface-variant">Hard Sci-Fi / Mystery</span>
+</div>
+</div>
+</div>
+<!-- 2. Tagesziel-Karte -->
+<div class="bg-surface-container rounded-lg border border-outline-variant/60 p-3">
+<div class="flex items-center gap-3">
+<div class="relative w-12 h-12 flex-shrink-0 flex items-center justify-center">
+<svg class="w-12 h-12 transform -rotate-90" viewbox="0 0 36 36">
+<path class="text-surface-container-highest stroke-current" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3"></path>
+<path class="text-terracotta-deep stroke-current" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-dasharray="82, 100" stroke-linecap="round" stroke-width="3"></path>
+</svg>
+<span class="absolute font-ui-label-sm text-[11px] font-bold text-primary">82%</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-ui-label-md text-ui-label-md font-semibold text-primary">412 / 500 W.</span>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-0.5" type="button">
+<span class="material-symbols-outlined text-[15px]">edit</span>
+</button>
+</div>
+<p class="font-ui-label-sm text-[11px] text-on-surface-variant/90 leading-tight mt-0.5">Noch 88 Wörter bis zum Etappenziel</p>
+</div>
+</div>
+</div>
+<!-- 3. Dramaturgie & Spannungsbogen-Karte -->
+<div class="bg-surface-container rounded-lg border border-outline-variant/60 p-3">
+<div class="flex items-center justify-between mb-2">
+<span class="font-ui-label-sm text-[10px] tracking-wider uppercase text-on-surface-variant font-semibold">Dramaturgie</span>
+<span class="font-ui-label-sm text-[11px] text-terracotta bg-surface-container-low px-1.5 py-0.5 rounded border border-outline-variant/50">Akt I · Höhepunkt</span>
+</div>
+<!-- Sparkline / Kurve -->
+<div class="w-full h-11 relative py-1">
+<svg class="w-full h-full overflow-visible" fill="none" viewbox="0 0 240 38">
+<!-- Grid hairline -->
+<line stroke="#38342e" stroke-dasharray="2 2" stroke-width="1" x1="0" x2="240" y1="36" y2="36"></line>
+<!-- Background gradient fill under curve -->
+<path d="M 0 32 Q 40 30, 80 24 T 150 11 T 200 16 T 240 7 L 240 36 L 0 36 Z" fill="rgba(178, 88, 56, 0.08)"></path>
+<!-- Main Curve -->
+<path d="M 0 32 Q 40 30, 80 24 T 150 11 T 200 16 T 240 7" fill="none" stroke="#959086" stroke-linecap="round" stroke-width="1.5"></path>
+<path d="M 0 32 Q 40 30, 80 24 T 150 11" fill="none" stroke="#c97d60" stroke-linecap="round" stroke-width="2"></path>
+<!-- Pulsing active node at K1 · S2 -->
+<circle class="animate-subtle-pulse" cx="150" cy="11" fill="#b25838" opacity="0.6" r="5"></circle>
+<circle cx="150" cy="11" fill="#fffaf9" r="3" stroke="#b25838" stroke-width="1.5"></circle>
+</svg>
+</div>
+<!-- Skala -->
+<div class="grid grid-cols-3 text-center pt-1 border-t border-outline-variant/40 mt-1">
+<span class="font-mono text-[9px] text-on-surface-variant/70">K1 · S1</span>
+<span class="font-mono text-[9px] text-terracotta font-bold">K1 · S2 (Aktiv)</span>
+<span class="font-mono text-[9px] text-on-surface-variant/70">K2 · S2</span>
+</div>
+</div>
+<!-- 4. Manuskript-Struktur (Szenen-Baum) -->
+<div class="bg-surface-container rounded-lg border border-outline-variant/60 p-3">
+<div class="flex items-center justify-between pb-2 mb-2 border-b border-outline-variant/40">
+<span class="font-ui-label-sm text-[10px] tracking-wider uppercase text-on-surface-variant font-semibold">Manuskript-Struktur</span>
+<span class="font-mono text-[10px] text-on-surface-variant/80">Gesamt: 1.855 W.</span>
+</div>
+<div class="space-y-2.5">
+<!-- Kapitel 1 (Aufgeklappt) -->
+<div>
+<div class="flex items-center justify-between text-left py-1 px-1.5 rounded bg-surface-container-high/60 cursor-pointer hover:bg-surface-container-highest transition-colors">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant">expand_more</span>
+<span class="font-ui-label-md text-ui-label-md text-primary font-medium truncate">Kapitel 1 — Ghost in the Machine</span>
+</div>
+<span class="font-mono text-[10px] text-on-surface-variant flex-shrink-0 ml-1">765 W.</span>
+</div>
+<!-- Szenen Liste -->
+<div class="ml-3 pl-2.5 border-l border-outline-variant/50 mt-1 space-y-1">
+<!-- Szene 1 -->
+<div class="flex items-center justify-between py-1 px-1.5 rounded hover:bg-surface-container-high transition-colors cursor-pointer group">
+<div class="flex items-center gap-1.5 truncate">
+<span class="font-mono text-[10px] text-on-surface-variant/70">S1</span>
+<span class="font-ui-label-sm text-[11px] text-on-surface-variant group-hover:text-primary truncate">An Bord der Vang...</span>
+</div>
+<span class="font-mono text-[10px] text-on-surface-variant/70">342 W.</span>
+</div>
+<!-- Szene 2 (Aktiv) -->
+<div class="flex items-center justify-between py-1 px-1.5 rounded-lg bg-surface-container-highest border border-terracotta-deep/80 shadow-sm">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[13px] text-on-surface-variant/80 cursor-grab">drag_indicator</span>
+<span class="font-mono text-[10px] text-terracotta font-bold">S2</span>
+<span class="font-ui-label-sm text-[11px] text-primary font-semibold truncate">Das Signal im P...</span>
+</div>
+<div class="flex items-center gap-1 flex-shrink-0">
+<span class="font-mono text-[10px] text-terracotta font-medium">423 W.</span>
+<span class="w-1.5 h-1.5 rounded-full bg-terracotta animate-pulse"></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Kapitel 2 -->
+<div>
+<div class="flex items-center justify-between text-left py-1 px-1.5 rounded hover:bg-surface-container-high transition-colors cursor-pointer">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant">expand_more</span>
+<span class="font-ui-label-md text-ui-label-md text-on-surface-variant font-medium truncate">Kapitel 2 — Nevada Echoes</span>
+</div>
+<span class="font-mono text-[10px] text-on-surface-variant/80 flex-shrink-0 ml-1">1.054 W.</span>
+</div>
+<div class="ml-3 pl-2.5 border-l border-outline-variant/30 mt-1 space-y-1">
+<div class="flex items-center justify-between py-1 px-1.5 rounded hover:bg-surface-container-high transition-colors cursor-pointer">
+<div class="flex items-center gap-1.5 truncate">
+<span class="font-mono text-[10px] text-on-surface-variant/60">S1</span>
+<span class="font-ui-label-sm text-[11px] text-on-surface-variant/80 truncate">Sub-Basement</span>
+</div>
+<span class="font-mono text-[10px] text-on-surface-variant/60">512 W.</span>
+</div>
+<div class="flex items-center justify-between py-1 px-1.5 rounded hover:bg-surface-container-high transition-colors cursor-pointer">
+<div class="flex items-center gap-1.5 truncate">
+<span class="font-mono text-[10px] text-on-surface-variant/60">S2</span>
+<span class="font-ui-label-sm text-[11px] text-on-surface-variant/80 truncate">Nevada Echoes</span>
+</div>
+<span class="font-mono text-[10px] text-on-surface-variant/60">289 W.</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Buttons Struktur -->
+<div class="grid grid-cols-2 gap-2 mt-3 pt-2 border-t border-outline-variant/40">
+<button class="px-2 py-1.5 rounded border border-outline-variant/60 hover:bg-surface-container-high text-on-surface-variant hover:text-primary font-ui-label-sm text-[11px] transition-colors flex items-center justify-center gap-1" type="button">
+<span class="material-symbols-outlined text-[13px]">add</span>
+<span>Neues Kapitel</span>
+</button>
+<button class="px-2 py-1.5 rounded border border-outline-variant/60 hover:bg-surface-container-high text-on-surface-variant hover:text-primary font-ui-label-sm text-[11px] transition-colors flex items-center justify-center gap-1" type="button">
+<span class="material-symbols-outlined text-[13px]">add</span>
+<span>Neue Szene</span>
+</button>
+</div>
+</div>
+</div>
+<!-- 5. Ganz unten verankert: Mini-Regal-Karte / Rücksprung -->
+<div class="p-3 border-t border-outline-variant/60 bg-surface-container-low flex-shrink-0">
+<a class="group block p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline-variant/60 transition-all duration-150" href="#">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded bg-surface-container-highest border border-outline-variant/60 flex items-center justify-center text-on-surface-variant group-hover:text-primary transition-colors flex-shrink-0">
+<span class="material-symbols-outlined text-[16px]">menu_book</span>
+</div>
+<div class="min-w-0">
+<span class="font-ui-label-md text-ui-label-md font-medium text-primary block truncate group-hover:text-terracotta transition-colors">← Zurück zum Bücherregal</span>
+<span class="font-ui-label-sm text-[10px] text-on-surface-variant/80 block truncate">Atelier-Übersicht &amp; Manuskripte</span>
+</div>
+</div>
+</a>
+</div>
+</aside>
+<!-- ==================== MITTLERE SPALTE (Haupt-Schreibbereich / 6 cols) ==================== -->
+<main class="col-span-6 h-full flex flex-col bg-surface overflow-hidden relative">
+<!-- 1. Oberes Steuerungs-Ribbon -->
+<header class="h-12 border-b border-outline-variant/60 px-5 flex items-center justify-between bg-surface-container-low flex-shrink-0 z-10">
+<!-- Breadcrumb & Metadaten Links -->
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-ui-label-sm text-[11px] truncate">
+<span class="text-on-surface-variant/80">Dead Signal</span>
+<span class="text-outline">/</span>
+<span class="text-on-surface-variant/80">Kapitel 1</span>
+<span class="text-outline">/</span>
+<span class="text-primary font-semibold">Szene 2</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest font-mono text-[10px] text-terracotta font-semibold border border-outline-variant/50">K1-S2</span>
+<!-- Kapitel-Ziel-Pill -->
+<div class="hidden xl:flex items-center gap-2 px-2.5 py-1 rounded-full bg-surface-container border border-outline-variant/60 text-on-surface-variant font-ui-label-sm text-[11px]">
+<span>Kapitel-Ziel: 765 / 1.000 Wörter</span>
+<div class="w-12 h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="w-[76.5%] h-full bg-terracotta-deep rounded-full"></div>
+</div>
+<span class="material-symbols-outlined text-[13px] text-outline cursor-pointer hover:text-primary">edit</span>
+</div>
+</div>
+<!-- Rechts drei Aktionen -->
+<div class="flex items-center gap-2 flex-shrink-0">
+<!-- Fokus Button -->
+<button class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high border border-outline-variant/60 text-on-surface font-ui-label-sm text-[11px] transition-colors cursor-pointer" type="button">
+<span class="material-symbols-outlined text-[14px]">center_focus_strong</span>
+<span>Fokus (F9)</span>
+</button>
+<!-- Verlauf (DEAKTIVIERT) -->
+<div class="relative group">
+<button class="flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container/40 border border-outline-variant/30 text-on-surface-variant/40 font-ui-label-sm text-[11px] cursor-not-allowed opacity-40" disabled="" type="button">
+<span class="material-symbols-outlined text-[13px]">lock</span>
+<span>Verlauf</span>
+</button>
+<div class="absolute right-0 top-full mt-1.5 hidden group-hover:block z-50 whitespace-nowrap bg-surface-container-high border border-outline-variant text-[11px] font-ui-label-sm text-on-surface px-2.5 py-1 rounded shadow-lg">
+              In dieser Szene noch nicht verfügbar
+            </div>
+</div>
+<!-- Export (DEAKTIVIERT) -->
+<div class="relative group">
+<button class="flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container/40 border border-outline-variant/30 text-on-surface-variant/40 font-ui-label-sm text-[11px] cursor-not-allowed opacity-40" disabled="" type="button">
+<span class="material-symbols-outlined text-[13px]">lock</span>
+<span>Export</span>
+</button>
+<div class="absolute right-0 top-full mt-1.5 hidden group-hover:block z-50 whitespace-nowrap bg-surface-container-high border border-outline-variant text-[11px] font-ui-label-sm text-on-surface px-2.5 py-1 rounded shadow-lg">
+              Export im Prosa-Modus gesperrt
+            </div>
+</div>
+</div>
+</header>
+<!-- Schreibbereich mit Scrollbar & Manuskript-Papier-Karte -->
+<div class="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 pb-36 flex justify-center bg-surface">
+<!-- 2. Große Manuskript-Papier-Karte -->
+<article class="w-full max-w-[680px] bg-[#1a1712] border border-[#3d372e] rounded-lg p-8 sm:p-12 shadow-2xl relative text-[#ede0d4] transition-all">
+<!-- Running Head: Zentriert, kursiv, keine Seitenzahl -->
+<div class="text-center pb-8 border-b border-[#2c2922]">
+<p class="font-body-md italic text-body-md text-on-surface-variant/70 tracking-wide">Dead Signal — H. Calder</p>
+</div>
+<!-- Eyebrow & Titel-Cluster -->
+<div class="text-center pt-8 pb-7">
+<span class="font-ui-label-sm text-[11px] tracking-[0.22em] uppercase text-terracotta block mb-2 font-semibold">Kapitel Eins</span>
+<h1 class="font-headline-lg text-headline-lg text-primary font-normal tracking-tight">Das Signal im Permafrost</h1>
+<!-- Ortszeile unterstrichen -->
+<div class="inline-block mt-3 pb-1 border-b border-outline-variant/60">
+<p class="font-body-md italic text-[15px] text-on-surface-variant/85">Forschungsstation 7 · 27. Oktober 2094, 03:14 UTC</p>
+</div>
+</div>
+<!-- Literarischer Text -->
+<div class="space-y-6 pt-4 font-body-md text-body-md text-[#ede0d4] leading-[30px] text-justify">
+<!-- Absatz 1 mit Drop-Cap Initiale -->
+<p class="relative">
+<span class="float-left text-5xl leading-[42px] pt-1 pr-3 pb-0 font-headline-lg font-bold text-terracotta select-none">I</span>ch war gerade dabei, die Quantensensoren neu zu kalibrieren – schon wieder –, als ARIAs Stimme durch das tiefe, metallische Brummen des Maschinendecks schnitt. Irgendwo hinter der verkleideten Konsole klickte ein Schutzrelais, einmal, trocken und endgültig, und das Dröhnen der Kühlmittelleitungen verebbte zu einem lautlosen Zittern. Es war dieses ganz spezifische Geräusch eines Systems, das nicht rechnete, sondern zögerte.
+            </p>
+<!-- Absatz 2 -->
+<p>
+              »Quelle triangulieren«, befahl ich leise und wischte mir den schmierigen Rückstand von Graphitstaub an der Hosennaht ab. Die Spektrogramme auf dem Hauptschirm flackerten nicht; sie zitterten synchron im Takt einer Dämpfungswelle, die nach allen physikalischen Gesetzen unseres Sektors gar nicht existieren durfte. Keine Trägerwelle der Flotte, keine Reflexion der Ringe. Ein kalter, modulierter Impuls.
+            </p>
+<!-- Ghost-Text-Vorschlag von ARIA -->
+<div class="pt-2">
+<div class="p-3.5 rounded-lg bg-surface-container-low/70 border border-outline-variant/40 relative">
+<div class="flex items-center gap-1.5 mb-1.5">
+<span class="material-symbols-outlined text-[14px] text-terracotta">auto_awesome</span>
+<span class="font-ui-label-sm text-[10px] tracking-wider uppercase text-terracotta font-semibold">ARIA · Entwurfsvorschlag</span>
+</div>
+<p class="font-body-md italic text-body-md text-on-surface-variant/90 leading-[28px]">
+                  »Signalursprung liegt nicht im Orbit, Maya«, flüsterte ARIA, und in den Resonanzkammern des Sub-Basements schaltete ein Ventilator ab. »Es kommt aus dem Eis. Dreihundert Meter unter der Station.«
+                </p>
+<div class="mt-2.5 flex justify-end">
+<button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container-high border border-outline-variant/80 hover:border-terracotta text-primary font-ui-label-sm text-[11px] transition-colors cursor-pointer" type="button">
+<span class="font-mono text-terracotta text-[10px]">[Tab]</span>
+<span>Vorschlag übernehmen</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Kartenfuß: Wörter & Auto-Save -->
+<div class="mt-12 pt-4 border-t border-[#2c2922] flex items-center justify-between text-on-surface-variant/70 font-ui-label-sm text-[11px]">
+<span>1.256 Wörter</span>
+<span>Automatisch gesichert vor 1 Min.</span>
+</div>
+</article>
+</div>
+<!-- 3. Schwebende Prompt-Leiste am unteren Rand -->
+<div class="absolute bottom-4 left-6 right-6 z-20 max-w-[680px] mx-auto">
+<div class="bg-surface-container-high/95 backdrop-blur-md border border-outline-variant/80 rounded-xl p-2.5 shadow-2xl space-y-2">
+<!-- Eingabezeile -->
+<div class="flex items-center gap-2">
+<!-- Stil-Pill -->
+<button class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container border border-outline-variant/60 font-ui-label-sm text-[11px] text-on-surface hover:text-primary transition-colors flex-shrink-0" type="button">
+<span class="text-on-surface-variant/80">Stil:</span>
+<span class="text-primary font-medium">—</span>
+<span class="material-symbols-outlined text-[13px] text-outline">unfold_more</span>
+</button>
+<!-- Input Field -->
+<div class="flex-1 relative">
+<input class="w-full bg-surface-container-lowest border border-outline-variant/60 focus:border-terracotta text-primary font-ui-label-md text-ui-label-md rounded-lg px-3 py-1.5 placeholder-on-surface-variant/50 focus:outline-none focus:ring-0 transition-colors" placeholder="Anweisung oder Szene fortsetzen …" type="text"/>
+</div>
+<!-- Primary Action Button -->
+<button class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-terracotta-deep hover:bg-terracotta text-primary font-ui-label-sm text-[12px] font-semibold transition-all shadow-md active:scale-95 flex-shrink-0" type="button">
+<span class="font-mono text-[11px] opacity-90">⌘K</span>
+<span>Weiterschreiben</span>
+</button>
+</div>
+<!-- Quick-Pills -->
+<div class="flex items-center gap-2 overflow-x-auto pb-0.5 custom-scrollbar">
+<button class="px-2.5 py-1 rounded-full bg-surface-container hover:bg-surface-container-highest border border-outline-variant/50 text-on-surface-variant hover:text-primary font-ui-label-sm text-[11px] transition-colors whitespace-nowrap flex items-center gap-1" type="button">
+<span>⚡</span>
+<span>Spannungsspitze einbauen</span>
+</button>
+<button class="px-2.5 py-1 rounded-full bg-surface-container hover:bg-surface-container-highest border border-outline-variant/50 text-on-surface-variant hover:text-primary font-ui-label-sm text-[11px] transition-colors whitespace-nowrap flex items-center gap-1" type="button">
+<span>💬</span>
+<span>Dialog mit ARIA vertiefen</span>
+</button>
+<button class="px-2.5 py-1 rounded-full bg-surface-container hover:bg-surface-container-highest border border-outline-variant/50 text-on-surface-variant hover:text-primary font-ui-label-sm text-[11px] transition-colors whitespace-nowrap flex items-center gap-1" type="button">
+<span>🔍</span>
+<span>Sensor-Details ausschmücken</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- ==================== RECHTE SPALTE (~320px / 3 cols - Konsistenz & Kausalität) ==================== -->
+<aside class="col-span-3 h-full flex flex-col bg-surface-container-low border-l border-outline-variant/60 overflow-hidden">
+<!-- 1. Header-Karte -->
+<div class="h-12 border-b border-outline-variant/60 px-4 flex items-center justify-between bg-surface-container-low flex-shrink-0">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-terracotta">fact_check</span>
+<h2 class="font-ui-label-md text-ui-label-md font-semibold text-primary">Konsistenz-Prüfer</h2>
+</div>
+<button class="w-6 h-6 rounded bg-surface-container flex items-center justify-center border border-outline-variant/50 hover:bg-surface-container-highest text-on-surface-variant transition-colors" type="button">
+<span class="font-mono text-[11px]">—</span>
+</button>
+</div>
+<!-- Scrollbarer Inhalt Rechte Spalte -->
+<div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2.5">
+<!-- 2. Karte "AKTUELLER KAUSALITÄTS-FUND" -->
+<div class="bg-surface-container rounded-lg border border-outline-variant/60 p-3">
+<div class="flex items-center justify-between mb-2">
+<span class="font-ui-label-sm text-[10px] tracking-wider uppercase text-on-surface-variant font-semibold">Aktueller Kausalitäts-Fund</span>
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+</div>
+<div class="flex items-start gap-2.5 p-2 rounded bg-surface-container-low border border-outline-variant/40">
+<span class="material-symbols-outlined text-[18px] text-terracotta flex-shrink-0 mt-0.5">hourglass_empty</span>
+<div>
+<p class="font-ui-label-md text-ui-label-md text-primary font-medium">Keine offenen Brüche</p>
+<p class="font-ui-label-sm text-[11px] text-on-surface-variant/80 mt-0.5 leading-snug">Wird mit der Wissens-Welle aktiv</p>
+</div>
+</div>
+</div>
+<!-- 3. Karte "FOKUSSIERTE ENTITÄT" -->
+<div class="bg-surface-container rounded-lg border border-outline-variant/60 p-3">
+<div class="flex items-center justify-between mb-2 pb-1.5 border-b border-outline-variant/40">
+<span class="font-ui-label-sm text-[10px] tracking-wider uppercase text-on-surface-variant font-semibold">Fokussierte Entität</span>
+<span class="font-mono text-[10px] text-on-surface-variant/60">ID: —</span>
+</div>
+<div class="space-y-1.5 text-[11px] font-ui-label-sm">
+<div class="flex justify-between py-0.5">
+<span class="text-on-surface-variant">Name &amp; Typ:</span>
+<span class="text-primary font-mono">—</span>
+</div>
+<div class="flex justify-between py-0.5">
+<span class="text-on-surface-variant">Erstes Vorkommen:</span>
+<span class="text-primary font-mono">—</span>
+</div>
+<div class="flex justify-between py-0.5">
+<span class="text-on-surface-variant">Kanonische Bindung:</span>
+<span class="text-primary font-mono">—</span>
+</div>
+</div>
+<div class="mt-3">
+<button class="w-full py-1.5 px-2 rounded bg-surface-container-high/60 border border-outline-variant/40 text-on-surface-variant hover:text-primary font-ui-label-sm text-[11px] transition-colors flex items-center justify-center gap-1.5 opacity-80 hover:opacity-100" type="button">
+<span class="material-symbols-outlined text-[14px]">menu_book</span>
+<span>📖 Wiki öffnen</span>
+</button>
+</div>
+</div>
+<!-- 4. Karte "SZENEN-ATMOSPHÄRE" -->
+<div class="bg-surface-container rounded-lg border border-outline-variant/60 p-3">
+<div class="flex items-center justify-between mb-2">
+<span class="font-ui-label-sm text-[10px] tracking-wider uppercase text-on-surface-variant font-semibold">Szenen-Atmosphäre</span>
+<span class="font-ui-label-sm text-[10px] text-terracotta truncate max-w-[130px]">Permafrost Station 7</span>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div class="p-2 rounded bg-surface-container-low border border-outline-variant/40">
+<span class="font-ui-label-sm text-[10px] uppercase tracking-wider text-on-surface-variant block mb-1">Licht &amp; Raum</span>
+<span class="font-mono text-[12px] text-primary block">—</span>
+</div>
+<div class="p-2 rounded bg-surface-container-low border border-outline-variant/40">
+<span class="font-ui-label-sm text-[10px] uppercase tracking-wider text-on-surface-variant block mb-1">Akustik</span>
+<span class="font-mono text-[12px] text-primary block">—</span>
+</div>
+</div>
+</div>
+<!-- 5. Karte "ROMAN-METADATEN" -->
+<div class="bg-surface-container rounded-lg border border-outline-variant/60 p-3">
+<div class="flex items-center justify-between mb-2.5">
+<span class="font-ui-label-sm text-[10px] tracking-wider uppercase text-on-surface-variant font-semibold">Roman-Metadaten</span>
+<span class="font-mono text-[11px] text-terracotta font-semibold">4% Gesamt</span>
+</div>
+<div class="flex items-center gap-3 mb-3">
+<div class="w-9 h-12 rounded bg-surface-container-highest border border-outline-variant/70 flex flex-col items-center justify-center p-1 flex-shrink-0">
+<span class="font-mono text-[7px] text-terracotta font-bold leading-tight">DEAD</span>
+<span class="font-mono text-[7px] text-on-surface-variant">SIGNAL</span>
+</div>
+<div class="min-w-0">
+<h3 class="font-headline-sm text-[15px] leading-tight text-primary truncate">Dead Signal</h3>
+<p class="font-ui-label-sm text-[11px] text-on-surface-variant/80">Geplante Länge: 85.000 W.</p>
+</div>
+</div>
+<!-- Fortschrittsbalken terracotta -->
+<div class="space-y-1">
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="w-[4%] h-full bg-terracotta rounded-full"></div>
+</div>
+<div class="flex justify-between items-center font-mono text-[10px] text-on-surface-variant/80 pt-0.5">
+<span>Erfasst: 3.384 Wörter</span>
+<span>Ziel: 85.000</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 6. Fußbereich: Deaktivierte Chips & Layout-Button -->
+<div class="p-3 border-t border-outline-variant/60 bg-surface-container-low flex items-center justify-between gap-2 flex-shrink-0">
+<button class="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-container/50 border border-outline-variant/30 text-on-surface-variant/40 font-ui-label-sm text-[11px] cursor-not-allowed opacity-50" disabled="" type="button">
+<span class="material-symbols-outlined text-[14px]">psychology</span>
+<span>⌘J KI-Assistent BALD</span>
+</button>
+<button class="w-8 h-8 rounded bg-surface-container hover:bg-surface-container-high border border-outline-variant/60 flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors flex-shrink-0" title="Workspace-Layout / Paneele" type="button">
+<span class="material-symbols-outlined text-[16px]">view_column</span>
+</button>
+</div>
+</aside>
+</div>
+</body></html>

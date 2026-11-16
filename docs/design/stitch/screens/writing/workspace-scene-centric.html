@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="de" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schreib-Workspace — szenenzentriert — Narrare</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            pergament: '#fcfaf6',
+            'pergament-card': '#fffefb',
+            'pergament-tint': '#f6f1e8',
+            'pergament-border': '#e7dfd2',
+            'pergament-border-light': '#eee7dc',
+            terracotta: '#743b1f',
+            'terracotta-hover': '#5e2e17',
+            'terracotta-soft': '#f6ece5',
+            'terracotta-tint': '#fdf6f2',
+            ink: '#1f1b18',
+            'ink-muted': '#5c544d',
+            'ink-faint': '#8f857b',
+            'ink-line': '#dfd7ca',
+            kausal: '#2e6930',
+          },
+          fontFamily: {
+            serif: ['"EB Garamond"', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #dfd7ca;
+      border-radius: 9999px;
+    }
+    .drop-cap::first-letter {
+      float: left;
+      font-size: 4.25rem;
+      line-height: 0.82;
+      padding-top: 0.12rem;
+      padding-right: 0.75rem;
+      padding-bottom: 0.15rem;
+      color: #743b1f;
+      font-family: "EB Garamond", serif;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body class="h-full bg-pergament text-ink font-sans antialiased overflow-hidden select-none">
+  <!-- 1440px desktop frame container without global rail / topbar as requested -->
+  <div class="h-screen w-screen flex flex-row overflow-hidden bg-pergament">
+
+    <!-- ========================================================================= -->
+    <!-- LINKE SPALTE (280px, „Explorer")                                         -->
+    <!-- ========================================================================= -->
+    <aside class="w-[280px] min-w-[280px] max-w-[280px] h-full flex flex-col border-r border-pergament-border bg-pergament-tint/60 text-ink text-xs">
+      
+      <!-- Scrollable Explorer Body -->
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
+        
+        <!-- (1) Projekt-Karte -->
+        <div class="bg-pergament-card border border-pergament-border rounded-lg p-2.5 shadow-sm flex items-center gap-2.5">
+          <!-- Cover-Chip -->
+          <div class="w-9 h-12 bg-[#5c2d18] border border-[#442010] rounded flex flex-col justify-between p-1 shadow-sm flex-shrink-0 relative overflow-hidden">
+            <div class="w-full flex justify-between items-center">
+              <span class="text-[5px] text-amber-200/80 font-mono tracking-tight">SCI-FI</span>
+              <span class="w-1 h-1 rounded-full bg-amber-400/90"></span>
+            </div>
+            <div class="my-auto text-center">
+              <div class="w-3.5 h-3.5 border border-amber-300/40 rounded-full mx-auto flex items-center justify-center">
+                <div class="w-1 h-1 bg-amber-200 rounded-full"></div>
+              </div>
+            </div>
+            <span class="text-[5.5px] text-white/90 font-serif leading-none truncate font-medium">DS</span>
+          </div>
+
+          <!-- Metadata -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+              <h2 class="text-sm font-serif font-bold text-ink truncate tracking-tight">Dead Signal</h2>
+              <span class="text-[10px] text-ink-faint">H. Calder</span>
+            </div>
+            <p class="text-[11px] text-ink-muted truncate mt-0.5">Hard Sci-Fi / Mystery</p>
+          </div>
+        </div>
+
+        <!-- (2) Tagesziel-Karte -->
+        <div class="bg-pergament-card border border-pergament-border rounded-lg p-3 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] uppercase font-semibold tracking-wider text-ink-faint">Tagesziel</span>
+            <button title="Tagesziel anpassen" class="text-ink-faint hover:text-terracotta transition-colors p-0.5 rounded">
+              <span class="material-symbols-outlined text-sm leading-none">edit</span>
+            </button>
+          </div>
+          <div class="flex items-center gap-3">
+            <!-- Progress Ring 82% -->
+            <div class="relative w-11 h-11 flex-shrink-0 flex items-center justify-center">
+              <svg class="w-11 h-11 transform -rotate-90" viewBox="0 0 36 36">
+                <path class="text-pergament-border" stroke-width="3.5" stroke="currentColor" fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="text-terracotta" stroke-dasharray="82, 100" stroke-width="3.5" stroke-linecap="round" stroke="currentColor" fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <span class="absolute text-[11px] font-mono font-semibold text-terracotta">82%</span>
+            </div>
+            <!-- Numbers -->
+            <div>
+              <div class="flex items-baseline gap-1">
+                <span class="font-mono text-base font-bold text-ink">412</span>
+                <span class="text-ink-faint text-xs font-mono">/ 500 W.</span>
+              </div>
+              <p class="text-[10px] text-ink-muted mt-0.5">Noch 88 Wörter bis zum Etappenziel</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- (3) Spannungsbogen-Karte -->
+        <div class="bg-pergament-card border border-pergament-border rounded-lg p-3 shadow-sm">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[10px] uppercase font-semibold tracking-wider text-ink-faint">Dramaturgie</span>
+            <span class="text-[11px] font-medium text-terracotta font-serif">Akt I · Höhepunkt</span>
+          </div>
+          <!-- Sparkline Arc Curve -->
+          <div class="relative h-9 w-full flex items-center">
+            <svg class="w-full h-8 overflow-visible" viewBox="0 0 240 32" fill="none">
+              <!-- Grid line -->
+              <line x1="0" y1="28" x2="240" y2="28" stroke="#e7dfd2" stroke-width="1" stroke-dasharray="3 3"/>
+              <!-- Curve -->
+              <path d="M 0 26 Q 40 24 80 18 T 150 7 T 200 14 T 240 22" stroke="#d5c4b1" stroke-width="1.75" stroke-linecap="round"/>
+              <path d="M 0 26 Q 40 24 80 18 T 142 8" stroke="#743b1f" stroke-width="2" stroke-linecap="round"/>
+              <!-- Active Pulse Dot on active scene -->
+              <circle cx="142" cy="8" r="3.5" fill="#743b1f" class="animate-pulse" />
+              <circle cx="142" cy="8" r="7" stroke="#743b1f" stroke-width="1" stroke-opacity="0.35" class="animate-ping" />
+            </svg>
+          </div>
+          <div class="flex justify-between text-[9.5px] text-ink-faint font-mono mt-1">
+            <span>K1·S1</span>
+            <span class="text-terracotta font-semibold">K1·S2 (Aktiv)</span>
+            <span>K2·S2</span>
+          </div>
+        </div>
+
+        <!-- (4) Szenen-Baum -->
+        <div class="space-y-2 pt-1">
+          <div class="flex items-center justify-between px-1">
+            <span class="text-[10px] uppercase font-bold tracking-wider text-ink-faint">Manuskript-Struktur</span>
+            <span class="text-[10px] text-ink-faint font-mono">Gesamt: 1.855 W.</span>
+          </div>
+
+          <!-- Kapitel 1 Gruppe -->
+          <div class="bg-pergament-card border border-pergament-border rounded-lg overflow-hidden">
+            <!-- Kapitel Header -->
+            <div class="px-2.5 py-2 bg-pergament-tint/50 border-b border-pergament-border flex items-center justify-between cursor-pointer group">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="material-symbols-outlined text-sm text-ink-faint group-hover:text-ink">expand_more</span>
+                <span class="font-serif font-semibold text-xs text-ink truncate">Kapitel 1 — Ghost in the Machine</span>
+              </div>
+              <span class="text-[10px] font-mono text-ink-faint flex-shrink-0">765 W.</span>
+            </div>
+
+            <!-- Szenen Liste -->
+            <div class="p-1 space-y-0.5">
+              <!-- Szene 1 -->
+              <div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-pergament-tint/60 text-ink-muted cursor-pointer transition-colors group">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="material-symbols-outlined text-[13px] text-ink-faint/60 opacity-0 group-hover:opacity-100 cursor-grab">drag_indicator</span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-ink-faint/60 flex-shrink-0"></span>
+                  <span class="truncate font-sans text-xs">Szene 1 · An Bord der Vanguard</span>
+                </div>
+                <span class="font-mono text-[10px] text-ink-faint flex-shrink-0 pl-1">342 W.</span>
+              </div>
+
+              <!-- Szene 2 (AKTIV) -->
+              <div class="flex items-center justify-between px-2 py-1.5 rounded bg-terracotta-soft/80 border border-terracotta/30 text-terracotta cursor-pointer font-medium shadow-2xs">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="material-symbols-outlined text-[13px] text-terracotta/70 cursor-grab">drag_indicator</span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-terracotta flex-shrink-0"></span>
+                  <span class="truncate font-sans text-xs font-semibold text-terracotta">Szene 2 · Das Signal im Permafrost</span>
+                </div>
+                <span class="font-mono text-[10px] text-terracotta font-semibold flex-shrink-0 pl-1">423 W.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Kapitel 2 Gruppe -->
+          <div class="bg-pergament-card border border-pergament-border rounded-lg overflow-hidden">
+            <!-- Kapitel Header -->
+            <div class="px-2.5 py-2 bg-pergament-tint/50 border-b border-pergament-border flex items-center justify-between cursor-pointer group">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="material-symbols-outlined text-sm text-ink-faint group-hover:text-ink">expand_more</span>
+                <span class="font-serif font-semibold text-xs text-ink truncate">Kapitel 2 — Nevada Echoes</span>
+              </div>
+              <span class="text-[10px] font-mono text-ink-faint flex-shrink-0">1.054 W.</span>
+            </div>
+
+            <!-- Szenen Liste -->
+            <div class="p-1 space-y-0.5">
+              <!-- Szene 1 -->
+              <div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-pergament-tint/60 text-ink-muted cursor-pointer transition-colors group">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="material-symbols-outlined text-[13px] text-ink-faint/60 opacity-0 group-hover:opacity-100 cursor-grab">drag_indicator</span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-ink-faint/60 flex-shrink-0"></span>
+                  <span class="truncate font-sans text-xs">Szene 1 · Sub-Basement</span>
+                </div>
+                <span class="font-mono text-[10px] text-ink-faint flex-shrink-0 pl-1">512 W.</span>
+              </div>
+
+              <!-- Szene 2 -->
+              <div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-pergament-tint/60 text-ink-muted cursor-pointer transition-colors group">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="material-symbols-outlined text-[13px] text-ink-faint/60 opacity-0 group-hover:opacity-100 cursor-grab">drag_indicator</span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-ink-faint/60 flex-shrink-0"></span>
+                  <span class="truncate font-sans text-xs">Szene 2 · Nevada Echoes</span>
+                </div>
+                <span class="font-mono text-[10px] text-ink-faint flex-shrink-0 pl-1">289 W.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Buttons für neue Elemente -->
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button class="flex items-center justify-center gap-1 py-1.5 px-2 bg-pergament-card hover:bg-pergament border border-pergament-border rounded text-[11px] text-ink-muted hover:text-ink transition-colors">
+              <span class="material-symbols-outlined text-xs">add</span>
+              <span>Neues Kapitel</span>
+            </button>
+            <button class="flex items-center justify-center gap-1 py-1.5 px-2 bg-pergament-card hover:bg-pergament border border-pergament-border rounded text-[11px] text-ink-muted hover:text-ink transition-colors">
+              <span class="material-symbols-outlined text-xs">add</span>
+              <span>Neue Szene</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- (5) Unten: Mini-Regal-Karte -->
+      <div class="p-3 border-t border-pergament-border bg-pergament-card/70 flex-shrink-0">
+        <a href="#" class="flex items-center gap-2.5 p-2 rounded-md hover:bg-pergament-tint transition-colors group">
+          <div class="w-6 h-8 bg-[#4a2414] border border-[#381a0d] rounded-xs flex items-center justify-center shadow-xs flex-shrink-0">
+            <span class="material-symbols-outlined text-amber-200/90 text-xs">auto_stories</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1 text-ink group-hover:text-terracotta transition-colors">
+              <span class="material-symbols-outlined text-xs">arrow_back</span>
+              <span class="font-medium text-xs truncate">Zurück zum Bücherregal</span>
+            </div>
+            <span class="text-[10px] text-ink-faint block truncate">Atelier-Übersicht & Manuskripte</span>
+          </div>
+        </a>
+      </div>
+
+    </aside>
+
+
+    <!-- ========================================================================= -->
+    <!-- MITTLERE SPALTE (Editor & Papier-Bühne)                                   -->
+    <!-- ========================================================================= -->
+    <main class="flex-1 h-full flex flex-col min-w-0 relative overflow-hidden bg-[#faf7f2]">
+      
+      <!-- Oben: Ribbon (Höhe 44px) -->
+      <header class="h-11 min-h-[44px] max-h-[44px] px-5 border-b border-pergament-border bg-pergament-card flex items-center justify-between z-20 flex-shrink-0">
+        <!-- Links: Breadcrumbs & Mono-Badge -->
+        <div class="flex items-center gap-2 text-xs">
+          <span class="font-serif text-ink-muted">Dead Signal</span>
+          <span class="text-ink-faint">/</span>
+          <span class="text-ink-muted">Kapitel 1</span>
+          <span class="text-ink-faint">/</span>
+          <span class="font-medium text-ink">Szene 2</span>
+          <span class="ml-1 px-1.5 py-0.5 rounded bg-pergament-tint border border-pergament-border font-mono text-[10px] text-ink-muted">K1-S2</span>
+        </div>
+
+        <!-- Mittig: Kapitel-Ziel-Pill -->
+        <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-pergament border border-pergament-border text-xs text-ink-muted shadow-2xs">
+          <span>Kapitel-Ziel: <strong class="font-mono text-ink">765</strong> / 1.000 Wörter</span>
+          <div class="w-16 h-1.5 bg-pergament-border rounded-full overflow-hidden">
+            <div class="bg-terracotta h-full rounded-full" style="width: 76.5%"></div>
+          </div>
+          <button title="Kapitelziel anpassen" class="text-ink-faint hover:text-terracotta transition-colors ml-0.5">
+            <span class="material-symbols-outlined text-xs leading-none">edit</span>
+          </button>
+        </div>
+
+        <!-- Rechts: Werkzeuge (Fokus, Verlauf [deaktiviert], Export [deaktiviert]) -->
+        <div class="flex items-center gap-1.5">
+          <button class="flex items-center gap-1 px-2.5 py-1 rounded bg-pergament hover:bg-pergament-tint border border-pergament-border text-xs text-ink transition-colors shadow-2xs">
+            <span class="material-symbols-outlined text-xs text-terracotta">fullscreen</span>
+            <span>Fokus (F9)</span>
+          </button>
+
+          <!-- Deaktivierter Button: Verlauf mit Tooltip -->
+          <div class="relative group">
+            <button disabled class="flex items-center gap-1 px-2.5 py-1 rounded bg-pergament/40 border border-pergament-border/70 text-xs text-ink-faint/60 cursor-not-allowed">
+              <span class="material-symbols-outlined text-xs">history</span>
+              <span>Verlauf</span>
+            </button>
+            <div class="absolute right-0 top-full mt-1.5 hidden group-hover:block z-30 px-2 py-1 rounded bg-ink text-pergament text-[10px] whitespace-nowrap shadow-md pointer-events-none">
+              Versionsverlauf kommt später
+            </div>
+          </div>
+
+          <!-- Deaktivierter Button: Export mit Tooltip -->
+          <div class="relative group">
+            <button disabled class="flex items-center gap-1 px-2.5 py-1 rounded bg-pergament/40 border border-pergament-border/70 text-xs text-ink-faint/60 cursor-not-allowed">
+              <span class="material-symbols-outlined text-xs">ios_share</span>
+              <span>Export</span>
+            </button>
+            <div class="absolute right-0 top-full mt-1.5 hidden group-hover:block z-30 px-2 py-1 rounded bg-ink text-pergament text-[10px] whitespace-nowrap shadow-md pointer-events-none">
+              Export-Studio kommt später
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Scrollable Manuscript Stage -->
+      <div class="flex-1 overflow-y-auto custom-scrollbar px-6 pt-7 pb-28 flex justify-center">
+        
+        <!-- Papier-Karte (max-w 48rem, helles Papier, weicher Schatten) -->
+        <article class="w-full max-w-[48rem] bg-pergament-card border border-pergament-border rounded-xl shadow-[0_4px_24px_rgba(31,27,24,0.05)] p-12 md:p-16 relative flex flex-col justify-between min-h-[780px]">
+          
+          <div>
+            <!-- Running Head: Dead Signal — H. Calder (kursiv, dezent, KEIN Folio, KEINE Seitenzahl) -->
+            <div class="text-center font-serif italic text-xs tracking-wide text-ink-faint border-b border-pergament-border-light pb-4 mb-10 select-none">
+              Dead Signal — H. Calder
+            </div>
+
+            <!-- Kapitel-Eyebrow & Szenen-Titel -->
+            <header class="text-center space-y-2 mb-8">
+              <div class="font-sans text-[11px] font-bold tracking-[0.22em] uppercase text-terracotta">
+                Kapitel Eins
+              </div>
+              <h1 class="font-serif text-3xl md:text-4xl text-ink font-normal tracking-tight">
+                Das Signal im Permafrost
+              </h1>
+              <div class="font-sans text-xs text-ink-faint tracking-normal">
+                Forschungsstation 7 · 27. Oktober 2094, 03:14 UTC
+              </div>
+              <div class="flex items-center justify-center pt-2">
+                <span class="w-12 h-px bg-terracotta/40"></span>
+              </div>
+            </header>
+
+            <!-- Fließtext / Prosa (EB Garamond, 1.85 Zeilenhöhe) -->
+            <div class="font-serif text-[1.18rem] md:text-[1.22rem] leading-[1.85] text-ink/95 space-y-6">
+              
+              <!-- Absatz 1 mit Drop Cap -->
+              <p class="drop-cap text-justify">
+                Ich war gerade dabei, die Quantensensoren neu zu kalibrieren – schon wieder –, als ARIAs Stimme durch das tiefe, metallische Brummen des Maschinendecks schnitt. Irgendwo hinter der verkleideten Konsole klickte ein Schutzrelais, einmal, trocken und endgültig, und das Dröhnen der Kühlmittelleitungen verebbte zu einem lautlosen Zittern. Es war dieses ganz spezifische Geräusch eines Systems, das nicht rechnete, sondern zögerte.
+              </p>
+
+              <!-- Absatz 2 -->
+              <p class="text-justify">
+                »Quelle triangulieren«, befahl ich leise und wischte mir den schmierigen Rückstand von Graphitstaub an der Hosennaht ab. Die Spektrogramme auf dem Hauptschirm flackerten nicht; sie zitterten synchron im Takt einer Dämpfungswelle, die nach allen physikalischen Gesetzen unseres Sektors gar nicht existieren durfte. Keine Trägerwelle der Flotte, keine Reflexion der Ringe. Ein kalter, modulierter Impuls.
+              </p>
+
+              <!-- Absatz 3 & GHOST-TEXT -->
+              <p class="text-justify relative">
+                Ich beugte mich näher über die phosphorgrüne Matrix, während das Eis an der äußeren Panzerung unter der thermischen Last knarrte. »ARIA? Liegt der Ursprung jenseits des Trümmerfelds?«
+                
+                <!-- Ghost-Text Vorschlag in kursiv terracotta -->
+                <span class="italic text-terracotta/90 bg-terracotta-soft/40 px-1 py-0.5 rounded transition-all">
+                  »Das Signal befindet sich nicht im freien Raum, Calder. Es kommt aus dem Inneren unserer Hülle. Sektion D-4.«
+                </span>
+
+                <!-- Keycap-Pill zum Übernehmen -->
+                <span class="inline-flex items-center gap-1.5 ml-2 align-middle px-2 py-0.5 rounded-full bg-terracotta text-pergament font-sans text-[11px] font-medium shadow-xs">
+                  <kbd class="font-mono bg-terracotta-hover px-1 rounded text-[10px]">Tab</kbd>
+                  <span>Vorschlag übernehmen</span>
+                </span>
+              </p>
+
+            </div>
+          </div>
+
+          <!-- Kartenfuß -->
+          <footer class="mt-14 pt-4 border-t border-pergament-border-light flex items-center justify-between text-xs text-ink-faint select-none">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-kausal animate-pulse"></span>
+              <span class="font-sans">1.256 Wörter im Gesamtabschnitt</span>
+            </div>
+            <div class="font-sans text-[11px]">
+              Automatisch gesichert vor 1 Min.
+            </div>
+          </footer>
+
+        </article>
+
+      </div>
+
+      <!-- Unten: Schwebende Prompt-Leiste (Pill, Backdrop-Blur) -->
+      <div class="absolute bottom-5 inset-x-0 flex flex-col items-center pointer-events-none z-30 px-4">
+        
+        <div class="w-full max-w-[42rem] bg-pergament-card/95 backdrop-blur-md border border-pergament-border rounded-2xl shadow-[0_8px_30px_rgba(31,27,24,0.12)] p-2.5 pointer-events-auto space-y-2">
+          
+          <!-- Haupt-Eingabezeile -->
+          <div class="flex items-center gap-2">
+            <!-- Kontext-Trigger -->
+            <button class="px-2.5 py-1.5 rounded-lg bg-pergament hover:bg-pergament-tint border border-pergament-border text-xs text-ink-muted flex items-center gap-1 transition-colors flex-shrink-0">
+              <span class="text-ink-faint">Stil:</span>
+              <span class="font-mono text-ink">—</span>
+              <span class="material-symbols-outlined text-xs text-ink-faint">unfold_more</span>
+            </button>
+
+            <!-- Eingabefeld -->
+            <input type="text" 
+                   placeholder="Anweisung oder Szene fortsetzen …" 
+                   class="flex-1 bg-transparent px-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none font-sans" />
+
+            <!-- Terracotta Button Weiterschreiben -->
+            <button class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-terracotta hover:bg-terracotta-hover text-pergament text-xs font-medium transition-colors shadow-sm flex-shrink-0">
+              <span class="material-symbols-outlined text-sm">spark</span>
+              <span>Weiterschreiben</span>
+            </button>
+          </div>
+
+          <!-- Quick-Pills -->
+          <div class="flex items-center gap-1.5 pt-0.5 overflow-x-auto custom-scrollbar text-[11px]">
+            <button class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-pergament hover:bg-pergament-tint border border-pergament-border text-ink-muted hover:text-ink transition-colors whitespace-nowrap">
+              <span>⚡</span>
+              <span>Spannungsspitze einbauen</span>
+            </button>
+            <button class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-pergament hover:bg-pergament-tint border border-pergament-border text-ink-muted hover:text-ink transition-colors whitespace-nowrap">
+              <span>💬</span>
+              <span>Dialog mit ARIA vertiefen</span>
+            </button>
+            <button class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-pergament hover:bg-pergament-tint border border-pergament-border text-ink-muted hover:text-ink transition-colors whitespace-nowrap">
+              <span>🔍</span>
+              <span>Sensor-Details ausschmücken</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+
+
+    <!-- ========================================================================= -->
+    <!-- RECHTE SPALTE (320px, „Inspektor")                                       -->
+    <!-- ========================================================================= -->
+    <aside class="w-[320px] min-w-[320px] max-w-[320px] h-full flex flex-col border-l border-pergament-border bg-pergament-tint/60 text-ink text-xs">
+      
+      <!-- Inspektor Header -->
+      <div class="h-11 min-h-[44px] max-h-[44px] px-3.5 border-b border-pergament-border bg-pergament-card flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm text-terracotta">fact_check</span>
+          <h3 class="font-serif font-bold text-ink text-sm">Konsistenz-Prüfer</h3>
+        </div>
+        <!-- Neutrales Badge „—" -->
+        <span class="px-2 py-0.5 rounded-full bg-pergament border border-pergament-border text-[11px] font-mono text-ink-faint">—</span>
+      </div>
+
+      <!-- Inspektor Body -->
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
+        
+        <!-- Fund-Karte im PLATZHALTER-Zustand -->
+        <div class="bg-pergament-card border border-dashed border-pergament-border rounded-lg p-3">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[10px] uppercase font-bold tracking-wider text-ink-faint">Aktueller Kausalitäts-Fund</span>
+            <span class="font-mono text-ink-faint text-xs">—</span>
+          </div>
+          <div class="py-3 text-center space-y-1">
+            <span class="material-symbols-outlined text-ink-faint/60 text-xl">hourglass_empty</span>
+            <p class="text-xs text-ink-muted font-medium">Keine offenen Brüche</p>
+            <p class="text-[10px] text-ink-faint">Wird mit der Wissens-Welle aktiv</p>
+          </div>
+        </div>
+
+        <!-- Karte: Aktive Entität -->
+        <div class="bg-pergament-card border border-pergament-border rounded-lg p-3 shadow-sm space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] uppercase font-bold tracking-wider text-ink-faint">Fokussierte Entität</span>
+            <span class="font-mono text-xs text-ink-faint">—</span>
+          </div>
+
+          <div class="space-y-1.5 py-1">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-ink-muted">Name & Typ:</span>
+              <span class="font-mono text-ink-faint">—</span>
+            </div>
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-ink-muted">Erstes Vorkommen:</span>
+              <span class="font-mono text-ink-faint">—</span>
+            </div>
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-ink-muted">Kanonische Bindung:</span>
+              <span class="font-mono text-ink-faint">—</span>
+            </div>
+          </div>
+
+          <button disabled class="w-full py-1.5 px-2 rounded bg-pergament/60 border border-pergament-border/70 text-ink-faint text-[11px] font-medium flex items-center justify-center gap-1 cursor-not-allowed">
+            <span class="material-symbols-outlined text-xs">menu_book</span>
+            <span>Wiki öffnen</span>
+          </button>
+        </div>
+
+        <!-- Karte: Szenen-Atmosphäre (2er-Raster) -->
+        <div class="bg-pergament-card border border-pergament-border rounded-lg p-3 shadow-sm space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] uppercase font-bold tracking-wider text-ink-faint">Szenen-Atmosphäre</span>
+            <span class="text-[10px] font-mono text-ink-faint">Permafrost Station 7</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <!-- Licht & Raum -->
+            <div class="p-2 rounded bg-pergament border border-pergament-border space-y-1">
+              <span class="text-[9.5px] uppercase font-semibold text-ink-faint block">Licht & Raum</span>
+              <span class="font-mono text-xs text-ink-faint font-medium">—</span>
+            </div>
+            <!-- Akustik -->
+            <div class="p-2 rounded bg-pergament border border-pergament-border space-y-1">
+              <span class="text-[9.5px] uppercase font-semibold text-ink-faint block">Akustik</span>
+              <span class="font-mono text-xs text-ink-faint font-medium">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Karte: Cover-Miniatur MIT echten Werten -->
+        <div class="bg-pergament-card border border-pergament-border rounded-lg p-3 shadow-sm space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] uppercase font-bold tracking-wider text-ink-faint">Roman-Metadaten</span>
+            <span class="font-mono text-[10px] text-terracotta font-semibold">4% Gesamt</span>
+          </div>
+
+          <div class="flex gap-3 items-center">
+            <!-- Cover Dead Signal -->
+            <div class="w-12 h-16 bg-[#5c2d18] border border-[#442010] rounded p-1 flex flex-col justify-between shadow flex-shrink-0">
+              <span class="text-[6px] text-amber-200/90 font-mono">OPUS IV</span>
+              <div class="w-4 h-4 border border-amber-300/40 rounded-full mx-auto flex items-center justify-center">
+                <div class="w-1.5 h-1.5 bg-amber-300/80 rounded-full"></div>
+              </div>
+              <span class="text-[6px] text-white font-serif font-bold text-center truncate">Dead Signal</span>
+            </div>
+
+            <!-- Echte Werte -->
+            <div class="space-y-1 min-w-0 flex-1">
+              <p class="font-serif font-semibold text-ink text-sm truncate">Dead Signal</p>
+              <p class="text-[11px] text-ink-muted">Geplante Länge: <strong class="font-mono text-ink">85.000</strong> W.</p>
+              <div class="w-full bg-pergament-border rounded-full h-1.5 overflow-hidden">
+                <div class="bg-terracotta h-full rounded-full" style="width: 4%"></div>
+              </div>
+              <p class="text-[10px] text-ink-faint font-mono">Erfasst: 3.384 Wörter</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Dock-Fuß: Deaktivierte Chips -->
+      <div class="p-3 border-t border-pergament-border bg-pergament-card/70 flex-shrink-0 space-y-2">
+        <div class="flex items-center justify-between gap-1.5">
+          <!-- Chip ⌘J KI-Assistent DEAKTIVIERT mit Zusatz „bald" -->
+          <div class="flex-1 flex items-center justify-between px-2.5 py-1.5 rounded bg-pergament/50 border border-pergament-border/70 text-ink-faint/60 cursor-not-allowed select-none">
+            <div class="flex items-center gap-1.5">
+              <kbd class="font-mono text-[10px] bg-pergament-tint px-1 rounded border border-pergament-border">⌘J</kbd>
+              <span class="text-xs">KI-Assistent</span>
+            </div>
+            <span class="text-[9px] uppercase font-mono tracking-wider px-1 py-0.2 bg-pergament-tint rounded text-ink-faint">bald</span>
+          </div>
+
+          <!-- Chip Workspace-Layout DEAKTIVIERT -->
+          <button disabled class="p-1.5 rounded bg-pergament/50 border border-pergament-border/70 text-ink-faint/60 cursor-not-allowed" title="Workspace-Layout (später verfügbar)">
+            <span class="material-symbols-outlined text-sm leading-none">view_column</span>
+          </button>
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+</body>
+</html>
+
