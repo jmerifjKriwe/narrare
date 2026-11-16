@@ -1,479 +1,859 @@
 <!DOCTYPE html>
 
-<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"state-success":"#21763C","background":"#fff8f2","area-knowledge":"#606127","on-secondary-fixed-variant":"#5a4137","area-writing":"#914F2F","surface-container-low":"#faf2ea","surface":"#fff8f2","text-muted-light":"#6E6B65","on-primary":"#ffffff","primary-fixed-dim":"#ffb695","primary-container":"#743b1f","rule-dark":"#302D28","on-tertiary-container":"#eead78","secondary":"#74584e","outline":"#86736c","state-warning":"#9A6100","on-primary-fixed":"#351000","area-chat":"#3A637B","amber-focus":"#8F4622","on-secondary":"#ffffff","cover-ink":"#24211C","cover-pale":"#EEEBE5","primary":"#58250b","bg-panel-dark":"#1C1914","on-primary-fixed-variant":"#6f371c","bg-card-dark":"#211F1A","area-settings":"#5A5549","inverse-surface":"#33302b","bg-panel-light":"#FDFCF9","on-tertiary-fixed":"#2f1500","text-muted-dark":"#89867F","on-error-container":"#93000a","on-tertiary":"#ffffff","area-planning":"#834D7E","on-secondary-fixed":"#2a170f","on-surface":"#1e1b16","on-secondary-container":"#795c52","amber-focus-dark":"#F2AD73","surface-tint":"#8c4e30","surface-bright":"#fff8f2","surface-container-highest":"#e9e1d9","bg-soft-dark":"#2C2922","secondary-fixed":"#ffdbce","text-foreground-dark":"#DFDEDA","bg-soft-light":"#EFEBE2","bg-canvas-light":"#F6F3ED","error":"#ba1a1a","surface-variant":"#e9e1d9","rule-light":"#EEEBE5","surface-dim":"#e0d9d1","surface-container-high":"#eee7df","surface-container-lowest":"#ffffff","secondary-container":"#fed8ca","cover-sepia":"#743B1F","inverse-on-surface":"#f7f0e7","border-dark":"#35332D","border-light":"#E0DEDA","on-background":"#1e1b16","on-surface-variant":"#53433d","on-tertiary-fixed-variant":"#693c10","primary-fixed":"#ffdbcc","error-container":"#ffdad6","state-danger":"#AC3031","outline-variant":"#d8c2b9","bg-card-light":"#FFFFFF","on-error":"#ffffff","surface-container":"#f4ede4","secondary-fixed-dim":"#e3bfb2","inverse-primary":"#ffb695","bg-canvas-dark":"#16140F","tertiary-container":"#6e3f14","tertiary":"#522900","on-primary-container":"#f8a884","tertiary-fixed-dim":"#fcb882","tertiary-fixed":"#ffdcc3"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"margin":"1.5rem","space-sm":"0.5rem","rail-collapsed":"3rem","space-xs":"0.25rem","dock-width":"21rem","container-max":"75rem","rail-expanded":"10.5rem","prose-max-width":"34rem","space-md":"1rem","gutter":"1rem","space-lg":"1.5rem","space-xl":"2rem"},fontFamily:{"meta-default":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-2":["EB Garamond"],"eyebrow-tracked":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"],"headline-hero":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"]},fontSize:{"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}],"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}]}}}}</script></head><body class="bg-surface font-body-default text-body-default text-on-surface antialiased selection:bg-secondary-container selection:text-primary"><aside class="fixed left-0 top-0 h-full w-rail-collapsed bg-surface-container-low z-50 flex flex-col justify-between items-center py-space-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col items-center gap-space-lg w-full"><a class="w-8 h-8 rounded-lg bg-cover-sepia text-surface flex items-center justify-center font-prose-heading-1 text-prose-heading-1 shadow-[0_1px_3px_0_rgba(44,24,16,0.15)] hover:bg-primary transition-colors" data-path="manuscript-shelf" href="#" title="Narrare Atelier"><span class="italic font-normal">N</span></a><nav class="flex flex-col items-center gap-space-xs w-full px-space-xs" data-active-classes="bg-primary-container text-on-primary rounded-lg"><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="manuscript-shelf" href="#" title="Manuscript Shelf"><span class="material-symbols-outlined text-[20px]">book_2</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="writing-workspace" href="#" title="Writing Workspace"><span class="material-symbols-outlined text-[20px]">edit_note</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="lore-entity-graph" href="#" title="Entity Lore Graph"><span class="material-symbols-outlined text-[20px]">hub</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="timeline-chronology" href="#" title="Timeline &amp; Structure"><span class="material-symbols-outlined text-[20px]">account_tree</span></a></nav></div><div class="flex flex-col items-center gap-space-xs w-full px-space-xs"><nav class="flex flex-col items-center gap-space-xs w-full" data-active-classes="bg-primary-container text-on-primary rounded-lg"><a aria-current="page" class="w-9 h-9 flex items-center justify-center transition-all bg-primary-container text-on-primary rounded-lg" data-path="atelier-settings" href="#" title="Settings"><span class="material-symbols-outlined text-[20px]">settings</span></a></nav></div></aside><div class="pl-rail-collapsed min-h-screen flex flex-col"><header class="fixed top-0 left-rail-collapsed right-0 h-14 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-sm font-meta-default text-meta-default"><span class="font-headline-emph text-headline-emph text-on-surface tracking-tight">Atelier</span><span class="material-symbols-outlined text-outline text-[14px]">chevron_right</span><span class="text-on-surface-variant">Dead Signal</span><span class="material-symbols-outlined text-outline text-[14px]">chevron_right</span><span class="text-on-surface font-label-default text-label-default">Kapitel III: Das Observatorium</span></div><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low text-on-surface-variant font-meta-default text-meta-default"><span class="material-symbols-outlined text-[15px] text-area-writing">ink_pen</span><span class="tabular-nums text-on-surface font-label-default text-label-default">42,850</span><span class="text-text-muted-light">Wörter</span></div><button class="flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-meta-default text-meta-default" title="Command Palette (⌘K)"><span class="material-symbols-outlined text-[15px]">search</span><span class="hidden sm:inline font-label-default text-label-default">Suche</span><kbd class="px-1.5 py-0.5 rounded bg-surface-container-highest font-meta-default text-[10px] text-on-surface-variant uppercase tracking-wider">⌘K</kbd></button><div class="flex items-center rounded bg-surface-container-low p-0.5 font-label-default text-label-default"><button class="px-2 py-0.5 rounded text-on-surface font-bold bg-surface shadow-[0_1px_2px_rgba(44,24,16,0.05)]">DE</button><button class="px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface transition-colors">EN</button></div><button class="w-7 h-7 flex items-center justify-center rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Toggle Mode"><span class="material-symbols-outlined text-[18px]">light_mode</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-14 bg-surface flex-1 w-full"><div class="flex flex-col w-full">
-<!-- Subtle decorative ambient glow contained within settings viewport -->
-<div class="relative w-full overflow-hidden">
-<div class="absolute -top-40 right-1/4 w-96 h-96 rounded-full bg-secondary-container/40 blur-3xl pointer-events-none"></div>
-<div class="absolute top-1/2 -left-20 w-80 h-80 rounded-full bg-primary-fixed/30 blur-3xl pointer-events-none"></div>
-<!-- Main Workspace Container -->
-<div class="max-w-[84rem] mx-auto px-space-md lg:px-space-xl py-space-lg w-full">
-<!-- Settings Header Banner with tactile literary flavor -->
-<div class="mb-space-lg flex flex-col md:flex-row md:items-end justify-between gap-space-md">
-<div>
-<div class="flex items-center gap-space-xs text-area-writing font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider mb-1">
-<span class="material-symbols-outlined text-[15px]">tune</span>
-<span>Konfiguration des Schreibateliers</span>
+<html class="h-full bg-background" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Narrare — Atelier Einstellungen</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "border-light": "#E0DEDA",
+            "on-primary-fixed": "#351000",
+            "on-surface-variant": "#53433d",
+            "cover-sepia": "#743B1F",
+            "tertiary-fixed-dim": "#fcb882",
+            "on-secondary": "#ffffff",
+            "error-container": "#ffdad6",
+            "cover-ink": "#24211C",
+            "bg-canvas-dark": "#16140F",
+            "state-warning": "#9A6100",
+            "amber-focus-dark": "#F2AD73",
+            "outline": "#86736c",
+            "bg-card-dark": "#211F1A",
+            "inverse-surface": "#33302b",
+            "on-primary": "#ffffff",
+            "surface-tint": "#8c4e30",
+            "outline-variant": "#d8c2b9",
+            "surface-dim": "#e0d9d1",
+            "area-settings": "#5A5549",
+            "secondary": "#74584e",
+            "bg-soft-light": "#EFEBE2",
+            "surface": "#fff8f2",
+            "state-success": "#21763C",
+            "area-chat": "#3A637B",
+            "on-tertiary": "#ffffff",
+            "on-secondary-container": "#795c52",
+            "secondary-fixed-dim": "#e3bfb2",
+            "on-tertiary-fixed": "#2f1500",
+            "text-muted-dark": "#89867F",
+            "bg-canvas-light": "#F6F3ED",
+            "primary-fixed": "#ffdbcc",
+            "surface-container": "#f4ede4",
+            "on-secondary-fixed-variant": "#5a4137",
+            "on-tertiary-fixed-variant": "#693c10",
+            "on-primary-container": "#f8a884",
+            "cover-pale": "#EEEBE5",
+            "inverse-primary": "#ffb695",
+            "bg-panel-dark": "#1C1914",
+            "secondary-container": "#fed8ca",
+            "text-muted-light": "#6E6B65",
+            "surface-variant": "#e9e1d9",
+            "tertiary-fixed": "#ffdcc3",
+            "area-knowledge": "#606127",
+            "error": "#ba1a1a",
+            "tertiary-container": "#6e3f14",
+            "surface-container-low": "#faf2ea",
+            "surface-bright": "#fff8f2",
+            "state-danger": "#AC3031",
+            "on-tertiary-container": "#eead78",
+            "background": "#fff8f2",
+            "bg-card-light": "#FFFFFF",
+            "text-foreground-dark": "#DFDEDA",
+            "primary-fixed-dim": "#ffb695",
+            "border-dark": "#35332D",
+            "secondary-fixed": "#ffdbce",
+            "surface-container-highest": "#e9e1d9",
+            "on-surface": "#1e1b16",
+            "surface-container-high": "#eee7df",
+            "area-planning": "#834D7E",
+            "primary-container": "#743b1f",
+            "on-error": "#ffffff",
+            "primary": "#58250b",
+            "area-writing": "#914F2F",
+            "tertiary": "#522900",
+            "bg-panel-light": "#FDFCF9",
+            "rule-dark": "#302D28",
+            "on-error-container": "#93000a",
+            "surface-container-lowest": "#ffffff",
+            "inverse-on-surface": "#f7f0e7",
+            "on-primary-fixed-variant": "#6f371c",
+            "amber-focus": "#8F4622",
+            "on-background": "#1e1b16",
+            "on-secondary-fixed": "#2a170f",
+            "bg-soft-dark": "#2C2922",
+            "rule-light": "#EEEBE5"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "margin": "1.5rem",
+            "gutter": "1rem",
+            "rail-collapsed": "3rem",
+            "dock-width": "21rem",
+            "container-max": "75rem",
+            "prose-max-width": "34rem",
+            "space-xs": "0.25rem",
+            "space-sm": "0.5rem",
+            "space-md": "1rem",
+            "space-lg": "1.5rem",
+            "space-xl": "2rem",
+            "rail-expanded": "10.5rem"
+          },
+          "fontFamily": {
+            "body-default": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-hero": ["Plus Jakarta Sans", "sans-serif"],
+            "label-default": ["Plus Jakarta Sans", "sans-serif"],
+            "prose-heading-2": ["EB Garamond", "serif"],
+            "prose-heading-1": ["EB Garamond", "serif"],
+            "headline-title": ["Plus Jakarta Sans", "sans-serif"],
+            "prose-editorial": ["EB Garamond", "serif"],
+            "eyebrow-tracked": ["Plus Jakarta Sans", "sans-serif"],
+            "meta-default": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-emph": ["Plus Jakarta Sans", "sans-serif"]
+          },
+          "fontSize": {
+            "body-default": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+            "headline-hero": ["28px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "label-default": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+            "prose-heading-2": ["21px", { "lineHeight": "28px", "fontWeight": "600" }],
+            "prose-heading-1": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "headline-title": ["20px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "prose-editorial": ["18px", { "lineHeight": "31.5px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "eyebrow-tracked": ["11px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600" }],
+            "meta-default": ["12px", { "lineHeight": "17px", "fontWeight": "400" }],
+            "headline-emph": ["15px", { "lineHeight": "22px", "fontWeight": "600" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+      font-size: 19px;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    input[type=range] {
+      -webkit-appearance: none;
+      background: #E0DEDA;
+      height: 4px;
+      border-radius: 2px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 14px;
+      width: 14px;
+      border-radius: 50%;
+      background: #743B1F;
+      cursor: pointer;
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 1px 3px rgba(44, 24, 16, 0.2);
+    }
+  </style>
+</head>
+<body class="h-full bg-background text-on-surface antialiased overflow-hidden flex flex-col font-body-default text-body-default">
+<!-- GLOBAL TOP APP BAR (Shared Component: TopNavBar) -->
+<header class="sticky top-0 right-0 w-full pl-64 pr-space-lg h-14 flex items-center justify-between border-b border-border-light bg-bg-panel-light z-30 select-none">
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-xs text-text-muted-light">
+<span class="font-headline-title text-headline-title text-primary tracking-tight font-semibold">Atelier</span>
+<span class="text-text-muted-light font-meta-default text-meta-default">›</span>
+<span class="font-prose-heading-2 text-prose-heading-2 text-on-surface tracking-normal">Einstellungen</span>
 </div>
-<h1 class="font-prose-heading-1 text-prose-heading-1 text-on-surface text-3xl font-semibold tracking-tight">
-            Atelier-Präferenzen &amp; Modellarchitektur
-          </h1>
-<p class="font-body-default text-body-default text-on-surface-variant max-w-2xl mt-1">
-            Steuern Sie die kognitiven Schreibassistenten, feine Kausalitätsprüfungen im Lore-Graph und ergonomische Tastenbelegungen für einen unterbrechungsfreien Kreativfluss.
-          </p>
+<span class="px-2 py-0.5 rounded text-[10px] tracking-wider uppercase font-semibold bg-bg-soft-light text-text-muted-light border border-border-light">v0.9.4</span>
 </div>
-<!-- System Status Pill with Live Latency Counter -->
-<div class="flex items-center gap-space-md self-start md:self-auto bg-surface-container-low px-space-md py-space-sm rounded-xl shadow-sm">
+<!-- Right Controls: Locale switch, theme toggle, actions -->
+<div class="flex items-center gap-space-md">
+<!-- Language Pill -->
+<div class="inline-flex rounded border border-border-light bg-surface-container-lowest p-0.5 text-meta-default font-meta-default">
+<button class="px-2 py-0.5 rounded text-primary font-headline-emph bg-surface-container shadow-xs">DE</button>
+<span class="text-border-light py-0.5">|</span>
+<button class="px-2 py-0.5 text-text-muted-light hover:text-on-surface transition-colors">EN</button>
+<span class="text-border-light py-0.5">|</span>
+<button class="px-2 py-0.5 text-text-muted-light hover:text-on-surface transition-colors">FR</button>
+</div>
+<!-- Action Buttons -->
 <div class="flex items-center gap-space-xs">
-<span class="relative flex h-2.5 w-2.5">
-<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-state-success opacity-75"></span>
-<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-state-success"></span>
-</span>
-<span class="font-meta-default text-meta-default font-medium text-on-surface">Ontologie-Engine Aktiv</span>
-</div>
-<span class="text-outline-variant font-meta-default text-meta-default">|</span>
-<div class="flex items-center gap-1 text-on-surface-variant font-meta-default text-meta-default">
-<span class="material-symbols-outlined text-[15px] text-area-knowledge">bolt</span>
-<span class="tabular-nums font-semibold text-on-surface">14ms</span>
-<span>Latenz</span>
-</div>
-</div>
-</div>
-<!-- Settings Layout: Subnav & Master Detail Grid -->
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
-<!-- Left Sidebar Sub-Navigation (4 Cols) -->
-<aside class="lg:col-span-4 flex flex-col gap-space-md">
-<!-- Navigation Card -->
-<div class="bg-surface-container-lowest rounded-xl p-space-sm shadow-sm">
-<div class="px-space-sm py-space-xs font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface-variant tracking-wider">
-              Bereiche &amp; Module
-            </div>
-<nav class="flex flex-col gap-1 mt-space-xs">
-<!-- Item 1 -->
-<button class="w-full flex items-center justify-between px-space-sm py-2.5 rounded-lg text-left text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" type="button">
-<div class="flex items-center gap-space-sm min-w-0">
-<span class="material-symbols-outlined text-[19px] text-area-settings group-hover:text-primary transition-colors">palette</span>
-<div class="min-w-0">
-<p class="font-headline-emph text-headline-emph truncate text-sm">Allgemein &amp; Typografie</p>
-<p class="font-meta-default text-meta-default text-text-muted-light truncate">Editor-Schriftart, Zeilenfall, Fokus</p>
-</div>
-</div>
-<span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
-</button>
-<!-- Item 2 (Active) -->
-<button class="w-full flex items-center justify-between px-space-sm py-2.5 rounded-lg text-left bg-surface-container-high text-primary shadow-sm group" type="button">
-<div class="flex items-center gap-space-sm min-w-0">
-<span class="material-symbols-outlined text-[19px] text-area-writing" style="font-variation-settings: 'FILL' 1;">psychology</span>
-<div class="min-w-0">
-<p class="font-headline-emph text-headline-emph truncate text-sm font-semibold text-primary">KI-Modelle &amp; Kausalität</p>
-<p class="font-meta-default text-meta-default text-on-surface-variant truncate">Muse 4.5, Wissensgraph, Tastatur</p>
-</div>
-</div>
-<div class="w-1.5 h-4 rounded-full bg-primary"></div>
-</button>
-<!-- Item 3 -->
-<button class="w-full flex items-center justify-between px-space-sm py-2.5 rounded-lg text-left text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" type="button">
-<div class="flex items-center gap-space-sm min-w-0">
-<span class="material-symbols-outlined text-[19px] text-area-knowledge group-hover:text-primary transition-colors">account_tree</span>
-<div class="min-w-0">
-<p class="font-headline-emph text-headline-emph truncate text-sm">Lore &amp; Alias-Regeln</p>
-<p class="font-meta-default text-meta-default text-text-muted-light truncate">Widerspruchstoleranz, Entitäten</p>
-</div>
-</div>
-<span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
-</button>
-<!-- Item 4 -->
-<button class="w-full flex items-center justify-between px-space-sm py-2.5 rounded-lg text-left text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" type="button">
-<div class="flex items-center gap-space-sm min-w-0">
-<span class="material-symbols-outlined text-[19px] text-area-chat group-hover:text-primary transition-colors">keyboard</span>
-<div class="min-w-0">
-<p class="font-headline-emph text-headline-emph truncate text-sm">Tastaturkürzel &amp; Makros</p>
-<p class="font-meta-default text-meta-default text-text-muted-light truncate">Ghost-Text, Schnellnavigation</p>
-</div>
-</div>
-<span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
-</button>
-<!-- Item 5 -->
-<button class="w-full flex items-center justify-between px-space-sm py-2.5 rounded-lg text-left text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" type="button">
-<div class="flex items-center gap-space-sm min-w-0">
-<span class="material-symbols-outlined text-[19px] text-area-planning group-hover:text-primary transition-colors">history_edu</span>
-<div class="min-w-0">
-<p class="font-headline-emph text-headline-emph truncate text-sm">Backups &amp; Revisionsspeicher</p>
-<p class="font-meta-default text-meta-default text-text-muted-light truncate">Git-basiert, Lokaler Cache, Export</p>
-</div>
-</div>
-<span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
-</button>
-</nav>
-</div>
-<!-- Manuscript Health & Token Sparkline Widget -->
-<div class="bg-surface-container-low rounded-xl p-space-md shadow-sm relative overflow-hidden">
-<div class="flex items-center justify-between mb-space-xs">
-<span class="font-eyebrow-tracked text-eyebrow-tracked text-on-surface-variant uppercase tracking-wider">Modell-Kontingent</span>
-<span class="font-meta-default text-meta-default text-area-writing font-medium">94.2k / 128k</span>
-</div>
-<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden mb-space-sm">
-<div class="h-full bg-primary-container rounded-full" style="width: 73.5%;"></div>
-</div>
-<!-- Inline SVG Sparkline of token usage over 7 days -->
-<div class="mt-space-sm pt-space-xs flex items-center justify-between">
-<div>
-<p class="font-headline-emph text-headline-emph text-on-surface tabular-nums">1.48 Mio.</p>
-<p class="font-meta-default text-meta-default text-on-surface-variant">Generierte Prompt-Tokens (Monat)</p>
-</div>
-<div class="w-24 h-8">
-<svg class="w-full h-full text-area-writing" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 100 32">
-<path d="M0 24 Q 15 28, 30 18 T 60 14 T 80 8 L 100 12"></path>
-<path class="text-primary-fixed opacity-30" d="M0 24 Q 15 28, 30 18 T 60 14 T 80 8 L 100 12 L 100 32 L 0 32 Z" fill="currentColor" stroke="none"></path>
-</svg>
-</div>
-</div>
-</div>
-<!-- Atelier Scholar's Quote / Bookmaking Metaphor Card -->
-<div class="bg-cover-sepia text-surface rounded-xl p-space-md shadow-md relative overflow-hidden">
-<div class="absolute -right-4 -bottom-6 font-prose-editorial text-8xl text-surface/10 select-none pointer-events-none">¶</div>
-<p class="font-prose-editorial text-prose-editorial italic leading-relaxed text-surface/90">
-              »Die Maschine soll nicht den Funken gebären, sondern die Asche der Inkonsistenz hinwegblasen, damit der Geist frei durch das Werk wandeln kann.«
-            </p>
-<div class="mt-space-sm flex items-center gap-space-xs font-meta-default text-meta-default text-surface/70">
-<span class="w-4 h-[1px] bg-surface/40"></span>
-<span>Narrare Atelier Kodex</span>
-</div>
-</div>
-</aside>
-<!-- Right Main Detail Area (8 Cols) -->
-<div class="lg:col-span-8 flex flex-col gap-space-lg">
-<!-- Section 1: KI-Kreativpartner & Ontologie-Engine -->
-<section class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm">
-<div class="flex flex-col sm:flex-row sm:items-center justify-between pb-space-md gap-space-xs">
-<div>
-<div class="flex items-center gap-space-xs text-area-writing font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider">
-<span class="material-symbols-outlined text-[16px]">neurology</span>
-<span>Sprachmodell &amp; Inferenz</span>
-</div>
-<h2 class="font-headline-title text-headline-title text-on-surface font-semibold mt-0.5">
-                  KI-Kreativpartner &amp; Ontologie-Engine
-                </h2>
-</div>
-<span class="self-start sm:self-auto px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container font-meta-default text-meta-default font-medium">
-                Voll integriert
-              </span>
-</div>
-<!-- Model Selection Grid -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md mb-space-lg">
-<!-- Option A: Narrare Muse 4.5 (Active) -->
-<div class="relative bg-surface-container rounded-lg p-space-md shadow-sm cursor-pointer transition-all hover:shadow-md">
-<div class="flex items-start justify-between">
-<div class="flex items-center gap-space-sm">
-<div class="w-8 h-8 rounded bg-primary-container text-on-primary flex items-center justify-center font-prose-heading-1">
-<span class="italic font-normal">M</span>
-</div>
-<div>
-<h3 class="font-headline-emph text-headline-emph text-on-surface">Narrare Muse 4.5</h3>
-<p class="font-meta-default text-meta-default text-text-muted-light">Literarisches Fine-Tuning</p>
-</div>
-</div>
-<span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-</div>
-<p class="font-body-default text-body-default text-on-surface-variant mt-space-sm text-xs leading-relaxed">
-                  Optimiert auf narrative Nuancen, historische Vokabulare, Figurenperspektiven und rhythmischen Satzbau ohne formelhafte Floskeln.
-                </p>
-<div class="mt-space-sm flex items-center gap-space-md font-meta-default text-meta-default pt-space-xs">
-<span class="text-on-surface font-semibold tabular-nums">128k</span>
-<span class="text-on-surface-variant">Kontextfenster</span>
-<span class="text-outline-variant">•</span>
-<span class="text-state-success font-medium">0.42s Reaktionszeit</span>
-</div>
-</div>
-<!-- Option B: Chronos OntoLog (Deep Lore) -->
-<div class="bg-surface-container-low rounded-lg p-space-md cursor-pointer transition-all hover:bg-surface-container hover:shadow-sm opacity-85 hover:opacity-100">
-<div class="flex items-start justify-between">
-<div class="flex items-center gap-space-sm">
-<div class="w-8 h-8 rounded bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-prose-heading-1">
-<span class="italic font-normal">Ω</span>
-</div>
-<div>
-<h3 class="font-headline-emph text-headline-emph text-on-surface">Chronos OntoLog 2</h3>
-<p class="font-meta-default text-meta-default text-text-muted-light">Deterministische Kausalitäts-Engine</p>
-</div>
-</div>
-<span class="w-4 h-4 rounded-full bg-surface-container-highest"></span>
-</div>
-<p class="font-body-default text-body-default text-on-surface-variant mt-space-sm text-xs leading-relaxed">
-                  Strenge formal-logische Konsistenzprüfung über mehrteilige Epen hinweg; verhindert Paradoxa in Zeitlinien und Stammbäumen.
-                </p>
-<div class="mt-space-sm flex items-center gap-space-md font-meta-default text-meta-default pt-space-xs">
-<span class="text-on-surface font-semibold tabular-nums">256k</span>
-<span class="text-on-surface-variant">Kontextfenster</span>
-<span class="text-outline-variant">•</span>
-<span class="text-on-surface-variant">Hohe Prüftiefe</span>
-</div>
-</div>
-</div>
-<!-- In-Depth Controls: Sliders & Sliders Panel -->
-<div class="bg-surface-container-low rounded-lg p-space-md flex flex-col gap-space-md">
-<!-- Temperature Slider -->
-<div>
-<div class="flex items-center justify-between mb-space-xs">
-<div>
-<label class="font-label-default text-label-default text-on-surface font-medium block">
-                      Kreative Temperatur (Stilistische Varianz)
-                    </label>
-<span class="font-meta-default text-meta-default text-on-surface-variant">
-                      Geringere Werte erzeugen disziplinierte Kontinuität; höhere Werte wagen poetische Metaphern.
-                    </span>
-</div>
-<span class="font-headline-emph text-headline-emph tabular-nums text-primary bg-surface px-2 py-0.5 rounded shadow-sm" id="temp-val">
-                    0.65
-                  </span>
-</div>
-<input class="w-full h-1.5 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary" max="1.2" min="0.1" oninput="document.getElementById('temp-val').textContent = parseFloat(this.value).toFixed(2)" step="0.05" type="range" value="0.65"/>
-<div class="flex justify-between text-on-surface-variant font-meta-default text-meta-default mt-1">
-<span>Präzise &amp; Treu</span>
-<span>Ausbalanciert</span>
-<span>Frei assoziativ</span>
-</div>
-</div>
-<!-- Context Memory Threshold -->
-<div class="pt-space-sm">
-<div class="flex items-center justify-between mb-space-xs">
-<div>
-<label class="font-label-default text-label-default text-on-surface font-medium block">
-                      Vorlaufender Resonanzraum (Kapitel-Memory)
-                    </label>
-<span class="font-meta-default text-meta-default text-on-surface-variant">
-                      Wie viele vorangegangene Manuskriptszenen als semantischer Anker geladen werden.
-                    </span>
-</div>
-<span class="font-headline-emph text-headline-emph tabular-nums text-on-surface bg-surface px-2 py-0.5 rounded shadow-sm">
-                    4 Szenen (~12.000 Wörter)
-                  </span>
-</div>
-<div class="grid grid-cols-4 gap-space-xs mt-2">
-<button class="py-1.5 px-2 rounded bg-surface hover:bg-surface-container-high text-on-surface-variant font-label-default text-label-default text-xs transition-colors" type="button">
-                    Nur aktuelle Szene
-                  </button>
-<button class="py-1.5 px-2 rounded bg-primary-container text-on-primary font-label-default text-label-default text-xs font-semibold shadow-sm" type="button">
-                    4 Szenen
-                  </button>
-<button class="py-1.5 px-2 rounded bg-surface hover:bg-surface-container-high text-on-surface-variant font-label-default text-label-default text-xs transition-colors" type="button">
-                    Ganzes Kapitel
-                  </button>
-<button class="py-1.5 px-2 rounded bg-surface hover:bg-surface-container-high text-on-surface-variant font-label-default text-label-default text-xs transition-colors" type="button">
-                    Globaler Vektor-Index
-                  </button>
-</div>
-</div>
-</div>
-</section>
-<!-- Section 2: Konsistenz- & Kausalitätsregeln -->
-<section class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm">
-<div class="flex flex-col sm:flex-row sm:items-center justify-between pb-space-md gap-space-xs">
-<div>
-<div class="flex items-center gap-space-xs text-area-knowledge font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider">
-<span class="material-symbols-outlined text-[16px]">account_tree</span>
-<span>Wissensgraph &amp; Verifikation</span>
-</div>
-<h2 class="font-headline-title text-headline-title text-on-surface font-semibold mt-0.5">
-                  Konsistenz- &amp; Kausalitätsregeln
-                </h2>
-</div>
-<span class="self-start sm:self-auto px-2.5 py-1 rounded bg-surface-container-low text-area-knowledge font-meta-default text-meta-default font-medium">
-                Schutz gegen Kontinuitätsbrüche
-              </span>
-</div>
-<!-- List of Rules with Custom Accessible Toggle Switches -->
-<div class="flex flex-col gap-space-md">
-<!-- Rule 1 -->
-<div class="flex items-center justify-between p-space-md rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
-<div class="max-w-xl pr-space-md">
-<div class="flex items-center gap-space-xs">
-<span class="font-headline-emph text-headline-emph text-on-surface">Auto-Konsistenzabgleich im Hintergrund</span>
-<span class="px-1.5 py-0.5 rounded bg-state-success/15 text-state-success font-meta-default text-[10px] font-semibold uppercase">Echtzeit</span>
-</div>
-<p class="font-body-default text-body-default text-on-surface-variant text-xs mt-1">
-                    Prüft beim Tippen stillschweigend Figurennamen, geographische Relationen und zeitliche Abfolgen gegen das Projekt-Grimoire.
-                  </p>
-</div>
-<button aria-checked="true" class="w-12 h-6 bg-primary rounded-full relative p-0.5 flex items-center transition-colors focus:outline-none focus:ring-2 focus:ring-amber-focus" role="switch" type="button">
-<span class="w-5 h-5 bg-white rounded-full shadow-sm transform translate-x-6 transition-transform"></span>
-</button>
-</div>
-<!-- Rule 2 -->
-<div class="flex items-center justify-between p-space-md rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
-<div class="max-w-xl pr-space-md">
-<div class="flex items-center gap-space-xs">
-<span class="font-headline-emph text-headline-emph text-on-surface">Warnung bei Entitäten-Konflikten</span>
-<span class="px-1.5 py-0.5 rounded bg-state-warning/15 text-state-warning font-meta-default text-[10px] font-semibold uppercase">Empfohlen</span>
-</div>
-<p class="font-body-default text-body-default text-on-surface-variant text-xs mt-1">
-                    Schlägt optisch im Randstreifen an, wenn z. B. eine Figur an zwei Orten am selben Kalendertag agiert oder Augenfarbe abweicht.
-                  </p>
-</div>
-<button aria-checked="true" class="w-12 h-6 bg-primary rounded-full relative p-0.5 flex items-center transition-colors focus:outline-none focus:ring-2 focus:ring-amber-focus" role="switch" type="button">
-<span class="w-5 h-5 bg-white rounded-full shadow-sm transform translate-x-6 transition-transform"></span>
-</button>
-</div>
-<!-- Rule 3 -->
-<div class="flex items-center justify-between p-space-md rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
-<div class="max-w-xl pr-space-md">
-<div class="flex items-center gap-space-xs">
-<span class="font-headline-emph text-headline-emph text-on-surface">Synchrone Timeline-Validierung</span>
-</div>
-<p class="font-body-default text-body-default text-on-surface-variant text-xs mt-1">
-                    Berechnet Reisedauern zwischen Schauplätzen basierend auf dem gewählten Welten-Transportmittel (z. B. Postkutsche vs. Magnetbahn).
-                  </p>
-</div>
-<button aria-checked="false" class="w-12 h-6 bg-surface-container-highest rounded-full relative p-0.5 flex items-center transition-colors focus:outline-none focus:ring-2 focus:ring-amber-focus" role="switch" type="button">
-<span class="w-5 h-5 bg-white rounded-full shadow-sm transform translate-x-0 transition-transform"></span>
-</button>
-</div>
-<!-- Rule 4 -->
-<div class="flex items-center justify-between p-space-md rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
-<div class="max-w-xl pr-space-md">
-<div class="flex items-center gap-space-xs">
-<span class="font-headline-emph text-headline-emph text-on-surface">Automatische Alias- &amp; Pseudonymauflösung</span>
-</div>
-<p class="font-body-default text-body-default text-on-surface-variant text-xs mt-1">
-                    Verknüpft Codenamen, historische Titel und Kosenamen (z. B. »Der Rote Graf« = »Valerius«) ohne manuelle Tag-Vergabe.
-                  </p>
-</div>
-<button aria-checked="true" class="w-12 h-6 bg-primary rounded-full relative p-0.5 flex items-center transition-colors focus:outline-none focus:ring-2 focus:ring-amber-focus" role="switch" type="button">
-<span class="w-5 h-5 bg-white rounded-full shadow-sm transform translate-x-6 transition-transform"></span>
-</button>
-</div>
-</div>
-<!-- Interactive Conflict Inspection Preview Card -->
-<div class="mt-space-md p-space-md rounded-lg bg-surface-container flex flex-col md:flex-row gap-space-md items-start">
-<div class="w-8 h-8 rounded bg-state-warning/20 text-state-warning flex items-center justify-center shrink-0">
-<span class="material-symbols-outlined text-[20px]">notification_important</span>
-</div>
-<div class="min-w-0 flex-1">
-<div class="flex items-center justify-between">
-<p class="font-label-default text-label-default font-semibold text-on-surface">
-                    Vorschau: Konsistenz-Befund im Editor
-                  </p>
-<span class="font-meta-default text-meta-default text-on-surface-variant">Kapitel II ↔ Kapitel VII</span>
-</div>
-<p class="font-prose-editorial text-prose-editorial italic text-on-surface text-sm mt-1 bg-surface-container-lowest p-2 rounded">
-                  »Valerius trug den silbernen Schlüsselbund stets an seiner linken Hüfte ...« <span class="text-state-danger not-italic font-bold">vs.</span> »Er griff mit der Rechten nach dem Schlüsselbund an seiner rechten Seite.«
-                </p>
-<div class="flex items-center gap-space-sm mt-space-sm">
-<button class="px-space-sm py-1 rounded bg-primary-container text-on-primary font-label-default text-label-default text-xs shadow-sm" type="button">
-                    Automatisch Angleichen (Kap. II als Master)
-                  </button>
-<button class="px-space-sm py-1 rounded bg-surface hover:bg-surface-container-high text-on-surface-variant font-label-default text-label-default text-xs transition-colors" type="button">
-                    Als beabsichtigten Widerspruch markieren
-                  </button>
-</div>
-</div>
-</div>
-</section>
-<!-- Section 3: Tastaturkürzel (Cheat-Sheet) -->
-<section class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm">
-<div class="flex flex-col sm:flex-row sm:items-center justify-between pb-space-md gap-space-xs">
-<div>
-<div class="flex items-center gap-space-xs text-area-chat font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider">
-<span class="material-symbols-outlined text-[16px]">keyboard</span>
-<span>Ergonomie &amp; Schnellnavigation</span>
-</div>
-<h2 class="font-headline-title text-headline-title text-on-surface font-semibold mt-0.5">
-                  Tastaturkürzel (Cheat-Sheet)
-                </h2>
-</div>
-<button class="self-start sm:self-auto flex items-center gap-1 text-primary hover:text-primary-container font-label-default text-label-default text-xs transition-colors" type="button">
-<span class="material-symbols-outlined text-[15px]">edit</span>
-<span>Kürzel anpassen</span>
-</button>
-</div>
-<!-- Shortcuts Table / Matrix -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-space-sm">
-<!-- Shortcut Card 1 -->
-<div class="flex items-center justify-between p-space-sm bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors">
-<div class="min-w-0 pr-space-sm">
-<span class="font-label-default text-label-default text-on-surface block font-medium">Befehlspalette öffnen</span>
-<span class="font-meta-default text-meta-default text-on-surface-variant truncate block">Szenen, Lore-Knoten, Schnellsuche</span>
-</div>
-<div class="flex items-center gap-1 shrink-0">
-<kbd class="px-2 py-1 rounded bg-surface font-meta-default text-[11px] font-semibold text-on-surface shadow-sm uppercase tracking-wide">⌘</kbd>
-<span class="text-outline text-xs">+</span>
-<kbd class="px-2 py-1 rounded bg-surface font-meta-default text-[11px] font-semibold text-on-surface shadow-sm uppercase tracking-wide">K</kbd>
-</div>
-</div>
-<!-- Shortcut Card 2 -->
-<div class="flex items-center justify-between p-space-sm bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors">
-<div class="min-w-0 pr-space-sm">
-<span class="font-label-default text-label-default text-on-surface block font-medium">Ghost-Text annehmen</span>
-<span class="font-meta-default text-meta-default text-on-surface-variant truncate block">Vorschlag des Muse-Modells einfügen</span>
-</div>
-<div class="flex items-center gap-1 shrink-0">
-<kbd class="px-2.5 py-1 rounded bg-primary-container text-on-primary font-meta-default text-[11px] font-semibold shadow-sm uppercase tracking-wide">Tab</kbd>
-</div>
-</div>
-<!-- Shortcut Card 3 -->
-<div class="flex items-center justify-between p-space-sm bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors">
-<div class="min-w-0 pr-space-sm">
-<span class="font-label-default text-label-default text-on-surface block font-medium">Tiefenfokus aktivieren</span>
-<span class="font-meta-default text-meta-default text-on-surface-variant truncate block">Alle Sidebars &amp; Menüs ausblenden</span>
-</div>
-<div class="flex items-center gap-1 shrink-0">
-<kbd class="px-2.5 py-1 rounded bg-surface font-meta-default text-[11px] font-semibold text-on-surface shadow-sm uppercase tracking-wide">F9</kbd>
-</div>
-</div>
-<!-- Shortcut Card 4 -->
-<div class="flex items-center justify-between p-space-sm bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors">
-<div class="min-w-0 pr-space-sm">
-<span class="font-label-default text-label-default text-on-surface block font-medium">Vorschlag verwerfen / Zurück</span>
-<span class="font-meta-default text-meta-default text-on-surface-variant truncate block">Ghost-Text ablehnen, Drawer schließen</span>
-</div>
-<div class="flex items-center gap-1 shrink-0">
-<kbd class="px-2 py-1 rounded bg-surface font-meta-default text-[11px] font-semibold text-on-surface shadow-sm uppercase tracking-wide">Esc</kbd>
-</div>
-</div>
-<!-- Shortcut Card 5 -->
-<div class="flex items-center justify-between p-space-sm bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors">
-<div class="min-w-0 pr-space-sm">
-<span class="font-label-default text-label-default text-on-surface block font-medium">Zwischen Szenen springen</span>
-<span class="font-meta-default text-meta-default text-on-surface-variant truncate block">Vorherige / Nächste Szene ansteuern</span>
-</div>
-<div class="flex items-center gap-1 shrink-0">
-<kbd class="px-1.5 py-1 rounded bg-surface font-meta-default text-[11px] font-semibold text-on-surface shadow-sm uppercase tracking-wide">Alt</kbd>
-<span class="text-outline text-xs">+</span>
-<kbd class="px-1.5 py-1 rounded bg-surface font-meta-default text-[11px] font-semibold text-on-surface shadow-sm uppercase tracking-wide">↑ / ↓</kbd>
-</div>
-</div>
-<!-- Shortcut Card 6 -->
-<div class="flex items-center justify-between p-space-sm bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors">
-<div class="min-w-0 pr-space-sm">
-<span class="font-label-default text-label-default text-on-surface block font-medium">Lore-Inspektor einblenden</span>
-<span class="font-meta-default text-meta-default text-on-surface-variant truncate block">Wissensgraph zur aktuellen Entität</span>
-</div>
-<div class="flex items-center gap-1 shrink-0">
-<kbd class="px-2 py-1 rounded bg-surface font-meta-default text-[11px] font-semibold text-on-surface shadow-sm uppercase tracking-wide">⌘</kbd>
-<span class="text-outline text-xs">+</span>
-<kbd class="px-2 py-1 rounded bg-surface font-meta-default text-[11px] font-semibold text-on-surface shadow-sm uppercase tracking-wide">I</kbd>
-</div>
-</div>
-</div>
-</section>
-<!-- Bottom Sticky Action Bar -->
-<div class="sticky bottom-4 z-20 bg-surface/90 backdrop-blur-md rounded-xl p-space-md shadow-lg flex flex-col sm:flex-row items-center justify-between gap-space-md">
-<div class="flex items-center gap-space-xs text-on-surface-variant font-meta-default text-meta-default">
-<span class="material-symbols-outlined text-[18px] text-area-writing">sync_saved_locally</span>
-<span>Automatische Momentaufnahme aktiv (vor 2 Minuten)</span>
-</div>
-<div class="flex items-center gap-space-sm w-full sm:w-auto justify-end">
-<button class="px-space-md py-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-default text-label-default transition-colors" type="button">
-                Auf Werkseinstellungen zurücksetzen
-              </button>
-<button class="px-space-lg py-2 rounded-lg bg-primary-container hover:bg-primary text-on-primary font-headline-emph text-headline-emph text-sm shadow-md transition-all flex items-center gap-space-xs" id="save-settings-btn" onclick="this.innerText='Gespeichert!'; this.classList.add('bg-state-success'); setTimeout(()=&gt;{ this.innerText='Änderungen speichern'; this.classList.remove('bg-state-success'); }, 2000)" type="button">
-<span class="material-symbols-outlined text-[18px]">check</span>
+<button class="px-3 py-1.5 rounded border border-border-light bg-surface-container-lowest text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light font-label-default text-label-default transition-all duration-150 active:scale-95">
+          Verwerfen
+        </button>
+<button class="px-3 py-1.5 rounded bg-cover-sepia text-on-primary hover:bg-primary font-label-default text-label-default transition-all duration-150 active:scale-95 shadow-sm flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">check</span>
 <span>Änderungen speichern</span>
 </button>
 </div>
+<div class="h-4 w-px bg-border-light"></div>
+<!-- Dark Mode & Notifications -->
+<div class="flex items-center gap-1">
+<button aria-label="Dark Mode wechseln" class="p-1.5 rounded text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light transition-colors">
+<span class="material-symbols-outlined">dark_mode</span>
+</button>
+<button aria-label="Mitteilungen" class="p-1.5 rounded text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="w-1.5 h-1.5 rounded-full bg-cover-sepia absolute top-1.5 right-1.5"></span>
+</button>
+</div>
+<!-- Author Avatar -->
+<div class="flex items-center gap-2 pl-2 border-l border-border-light">
+<div class="w-7 h-7 rounded-full bg-cover-sepia/10 border border-cover-sepia/30 flex items-center justify-center text-primary font-headline-emph text-xs">
+          N
+        </div>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden relative">
+<!-- SIDE NAVIGATION (Shared Component: SideNavBar) -->
+<aside class="fixed top-0 left-0 h-full w-64 flex flex-col justify-between p-space-md border-r border-border-light bg-bg-panel-light z-40 select-none">
+<div class="flex flex-col gap-space-lg">
+<!-- Brand Siegel -->
+<div class="flex items-center gap-space-sm px-1 py-1">
+<div class="w-8 h-8 rounded bg-cover-sepia flex items-center justify-center text-surface text-base font-serif font-bold shadow-xs">
+            §
+          </div>
+<div>
+<h1 class="text-headline-title font-headline-title font-semibold text-primary tracking-tight leading-none">Narrare</h1>
+<p class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light tracking-wider text-[10px] mt-0.5">Atelier Edition</p>
+</div>
+</div>
+<!-- Global Product Rails -->
+<div class="flex flex-col gap-1">
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light tracking-wider text-[10px] px-space-sm mb-1">Navigation</span>
+<a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-text-muted-light font-label-default text-label-default hover:text-on-surface hover:bg-bg-soft-light transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">auto_stories</span>
+<span>Bibliothek</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-text-muted-light font-label-default text-label-default hover:text-on-surface hover:bg-bg-soft-light transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">edit_note</span>
+<span>Manuskript</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-text-muted-light font-label-default text-label-default hover:text-on-surface hover:bg-bg-soft-light transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">hub</span>
+<span>Lore-Graph</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-text-muted-light font-label-default text-label-default hover:text-on-surface hover:bg-bg-soft-light transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">psychology</span>
+<span>Konsistenz</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-2 rounded bg-surface-container text-primary font-headline-emph text-headline-emph border border-border-light transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-cover-sepia">tune</span>
+<span>Einstellungen</span>
+</a>
+</div>
+<!-- Documentation CTA Button -->
+<div class="px-1">
+<a class="flex items-center justify-center gap-1.5 w-full py-1.5 px-3 rounded border border-border-light bg-surface-container-lowest text-text-muted-light hover:text-primary hover:bg-bg-soft-light text-label-default font-label-default transition-colors" href="#doc">
+<span class="material-symbols-outlined text-[16px]">menu_book</span>
+<span>Dokumentation</span>
+</a>
+</div>
+</div>
+<!-- Footer Subnav -->
+<div class="border-t border-border-light pt-space-sm flex flex-col gap-1">
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded text-text-muted-light font-label-default text-label-default hover:text-on-surface hover:bg-bg-soft-light transition-colors" href="#help">
+<span class="material-symbols-outlined">help</span>
+<span>Hilfe</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded text-text-muted-light font-label-default text-label-default hover:text-state-danger hover:bg-error-container/30 transition-colors" href="#logout">
+<span class="material-symbols-outlined">logout</span>
+<span>Abmelden</span>
+</a>
+</div>
+</aside>
+<!-- MAIN TWO-COLUMN SETTINGS WORKBENCH -->
+<main class="ml-64 flex-1 flex overflow-hidden bg-background">
+<!-- COLUMN 1: Settings Navigation Rail -->
+<nav aria-label="Einstellungskategorien" class="w-64 border-r border-border-light bg-surface-container-low/60 flex flex-col justify-between py-space-lg px-space-md select-none shrink-0 overflow-y-auto">
+<div>
+<div class="px-space-sm mb-space-md">
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light tracking-wider text-[10px]">Bereiche</span>
+<p class="text-label-default font-label-default text-on-surface mt-0.5">Atelier-Konfiguration</p>
+</div>
+<div class="flex flex-col gap-1.5" id="settings-nav-items">
+<!-- 1. Allgemein -->
+<a class="flex items-center justify-between px-space-sm py-2 rounded bg-surface-container-lowest border border-border-light text-primary font-headline-emph shadow-xs" href="#section-allgemein">
+<div class="flex items-center gap-2">
+<span class="w-5 h-5 rounded-full bg-cover-sepia/10 text-cover-sepia text-xs font-semibold flex items-center justify-center">1</span>
+<span class="text-label-default font-headline-emph">Allgemein</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-cover-sepia">chevron_right</span>
+</a>
+<!-- 2. Provider -->
+<a class="flex items-center justify-between px-space-sm py-2 rounded hover:bg-bg-soft-light text-text-muted-light hover:text-on-surface transition-colors" href="#section-provider">
+<div class="flex items-center gap-2">
+<span class="w-5 h-5 rounded-full bg-border-light/60 text-text-muted-light text-xs font-semibold flex items-center justify-center">2</span>
+<span class="text-label-default font-label-default">Provider</span>
+</div>
+<span class="px-1.5 py-0.5 rounded text-[10px] bg-bg-soft-light text-text-muted-light border border-border-light font-meta-default">0 aktiv</span>
+</a>
+<!-- 3. Modelle -->
+<a class="flex items-center justify-between px-space-sm py-2 rounded hover:bg-bg-soft-light text-text-muted-light hover:text-on-surface transition-colors" href="#section-modelle">
+<div class="flex items-center gap-2">
+<span class="w-5 h-5 rounded-full bg-border-light/60 text-text-muted-light text-xs font-semibold flex items-center justify-center">3</span>
+<span class="text-label-default font-label-default">Modelle</span>
+</div>
+<span class="w-2 h-2 rounded-full bg-state-success" title="Standard verfügbar"></span>
+</a>
+<!-- 4. Aufgaben -->
+<a class="flex items-center justify-between px-space-sm py-2 rounded hover:bg-bg-soft-light text-text-muted-light hover:text-on-surface transition-colors" href="#section-aufgaben">
+<div class="flex items-center gap-2">
+<span class="w-5 h-5 rounded-full bg-border-light/60 text-text-muted-light text-xs font-semibold flex items-center justify-center">4</span>
+<span class="text-label-default font-label-default">Aufgaben</span>
+</div>
+<span class="text-meta-default font-meta-default text-text-muted-light">4 Rollen</span>
+</a>
+<!-- 5. Projekt -->
+<a class="flex items-center justify-between px-space-sm py-2 rounded hover:bg-bg-soft-light text-text-muted-light hover:text-on-surface transition-colors" href="#section-projekt">
+<div class="flex items-center gap-2">
+<span class="w-5 h-5 rounded-full bg-border-light/60 text-text-muted-light text-xs font-semibold flex items-center justify-center">5</span>
+<span class="text-label-default font-label-default">Projekt</span>
+</div>
+<span class="text-[11px] font-serif italic text-cover-sepia truncate max-w-[80px]">Dead Signal</span>
+</a>
+</div>
+</div>
+<!-- Honest Status Box in Nav Rail -->
+<div class="rounded border border-border-light bg-surface-container-lowest p-3">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-state-warning text-[18px] shrink-0 mt-0.5">info</span>
+<div>
+<p class="font-headline-emph text-xs text-on-surface">Offline-Kompensation</p>
+<p class="font-meta-default text-[11px] leading-tight text-text-muted-light mt-1">
+                Lokaler Fake-Treiber aktiv. Eingaben verbleiben auf diesem Rechner.
+              </p>
+</div>
+</div>
+</div>
+</nav>
+<!-- COLUMN 2: Scrollable Main Canvas -->
+<section class="flex-1 overflow-y-auto px-space-xl py-space-lg">
+<div class="max-w-[840px] mx-auto flex flex-col gap-space-xl pb-24">
+<!-- SECTION 1: ALLGEMEIN -->
+<article class="rounded border border-border-light bg-bg-card-light shadow-sm overflow-hidden" id="section-allgemein">
+<header class="px-space-lg py-space-md border-b border-border-light bg-surface-container-lowest flex items-center justify-between">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light text-[10px]">Abschnitt 1</span>
+<h2 class="font-prose-heading-1 text-prose-heading-1 text-primary">Allgemein</h2>
+</div>
+<span class="text-meta-default font-meta-default text-text-muted-light">Sprache &amp; Aussehen</span>
+</header>
+<div class="p-space-lg flex flex-col gap-space-lg">
+<!-- Sprache -->
+<div>
+<label class="block font-headline-emph text-headline-emph text-on-surface mb-1">
+                  Atelier-Sprache
+                </label>
+<p class="font-body-default text-text-muted-light text-xs mb-3">
+                  Wähle die Sprache für die Bedienoberfläche und typografische Hilfsmittel.
+                </p>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+<!-- Deutsch (Aktiv) -->
+<div class="relative flex items-center justify-between p-3 rounded border-2 border-cover-sepia bg-surface-container-low cursor-pointer">
+<div class="flex items-center gap-2.5">
+<span class="w-3.5 h-3.5 rounded-full border-4 border-cover-sepia bg-surface-container-lowest"></span>
+<div>
+<p class="font-headline-emph text-label-default text-primary">Deutsch</p>
+<p class="font-meta-default text-[11px] text-text-muted-light">Aktiviert</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-cover-sepia text-[18px]">verified</span>
+</div>
+<!-- English -->
+<div class="relative flex items-center justify-between p-3 rounded border border-border-light bg-surface-container-lowest hover:bg-bg-soft-light cursor-pointer transition-colors">
+<div class="flex items-center gap-2.5">
+<span class="w-3.5 h-3.5 rounded-full border border-border-light bg-surface-container-lowest"></span>
+<div>
+<p class="font-headline-emph text-label-default text-on-surface">English</p>
+<p class="font-meta-default text-[11px] text-text-muted-light">UK / US Prose</p>
+</div>
+</div>
+</div>
+<!-- Français -->
+<div class="relative flex items-center justify-between p-3 rounded border border-border-light bg-surface-container-lowest hover:bg-bg-soft-light cursor-pointer transition-colors">
+<div class="flex items-center gap-2.5">
+<span class="w-3.5 h-3.5 rounded-full border border-border-light bg-surface-container-lowest"></span>
+<div>
+<p class="font-headline-emph text-label-default text-on-surface">Français</p>
+<p class="font-meta-default text-[11px] text-text-muted-light">Typographie fine</p>
 </div>
 </div>
 </div>
 </div>
+<!-- Dem Browser folgen checkbox -->
+<label class="flex items-center gap-2.5 mt-3 cursor-pointer select-none">
+<input class="w-4 h-4 rounded text-cover-sepia focus:ring-amber-focus border-border-light" type="checkbox"/>
+<span class="font-body-default text-label-default text-text-muted-light">Dem Browser folgen (Spracherkennung bei Start)</span>
+</label>
 </div>
-</div></main></div></body></html>
+<div class="h-px bg-border-light"></div>
+<!-- Erscheinungsbild -->
+<div>
+<label class="block font-headline-emph text-headline-emph text-on-surface mb-1">
+                  Erscheinungsbild
+                </label>
+<p class="font-body-default text-text-muted-light text-xs mb-3">
+                  Wähle zwischen hellem Pergament oder nächtlichem Samtschwarz für konzentriertes Schreiben.
+                </p>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+<!-- Hell (Aktiv) -->
+<div class="p-3 rounded border-2 border-cover-sepia bg-surface-container-low flex flex-col justify-between h-20 cursor-pointer">
+<div class="flex items-center justify-between">
+<span class="font-headline-emph text-label-default text-primary">Hell (Pergament)</span>
+<span class="w-2 h-2 rounded-full bg-cover-sepia"></span>
+</div>
+<span class="font-meta-default text-[11px] text-cover-sepia">Aktiv ausgewählt</span>
+</div>
+<!-- Dunkel -->
+<div class="p-3 rounded border border-border-light bg-surface-container-lowest hover:bg-bg-soft-light flex flex-col justify-between h-20 cursor-pointer transition-colors">
+<div class="flex items-center justify-between">
+<span class="font-headline-emph text-label-default text-on-surface">Dunkel (Tinte)</span>
+<span class="material-symbols-outlined text-text-muted-light text-[16px]">bedtime</span>
+</div>
+<span class="font-meta-default text-[11px] text-text-muted-light">Samtschwarz</span>
+</div>
+<!-- Dem System folgen -->
+<div class="p-3 rounded border border-border-light bg-surface-container-lowest hover:bg-bg-soft-light flex flex-col justify-between h-20 cursor-pointer transition-colors">
+<div class="flex items-center justify-between">
+<span class="font-headline-emph text-label-default text-on-surface">Systemstandard</span>
+<span class="material-symbols-outlined text-text-muted-light text-[16px]">desktop_windows</span>
+</div>
+<span class="font-meta-default text-[11px] text-text-muted-light">Automatische Umschaltung</span>
+</div>
+</div>
+</div>
+</div>
+</article>
+<!-- SECTION 2: PROVIDER -->
+<article class="rounded border border-border-light bg-bg-card-light shadow-sm overflow-hidden" id="section-provider">
+<header class="px-space-lg py-space-md border-b border-border-light bg-surface-container-lowest flex items-center justify-between">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light text-[10px]">Abschnitt 2</span>
+<h2 class="font-prose-heading-1 text-prose-heading-1 text-primary">Provider</h2>
+</div>
+<button class="px-3 py-1.5 rounded bg-cover-sepia text-on-primary hover:bg-primary font-label-default text-label-default transition-all duration-150 flex items-center gap-1.5 shadow-xs">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span>+ Anbieter hinzufügen</span>
+</button>
+</header>
+<div class="p-space-lg flex flex-col gap-space-lg">
+<!-- Honest Warning State Banner -->
+<div class="rounded border border-amber-focus/30 bg-bg-soft-light/80 p-space-md flex items-start gap-3">
+<span class="material-symbols-outlined text-state-warning text-[20px] shrink-0 mt-0.5">offline_bolt</span>
+<div class="flex-1">
+<h3 class="font-headline-emph text-label-default text-on-surface">
+                    Keine Provider konfiguriert
+                  </h3>
+<p class="font-body-default text-xs text-text-muted-light mt-0.5">
+                    Narrare antwortet derzeit über den lokalen Fake-Treiber ohne API-Aufruf. Es entstehen keine Verbindungskosten und kein Wort verlässt dein Atelier.
+                  </p>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-container-lowest text-text-muted-light border border-border-light">0 externe Schlüssel</span>
+</div>
+</div>
+<!-- Provider Example / Template Card -->
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="font-headline-emph text-label-default text-on-surface">Konfigurierte Endpunkte</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">1 Profil hinterlegt</span>
+</div>
+<div class="rounded border border-border-light bg-surface-container-lowest p-space-md flex flex-col gap-3">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded bg-bg-soft-light border border-border-light flex items-center justify-center font-bold text-cover-sepia text-xs">
+                        ANT
+                      </div>
+<div>
+<div class="flex items-center gap-2">
+<h4 class="font-headline-emph text-label-default text-on-surface">Anthropic Claude API</h4>
+<span class="px-1.5 py-0.2 rounded text-[10px] font-medium bg-bg-soft-light text-cover-sepia border border-border-light">Anthropic</span>
+</div>
+<p class="font-mono text-[11px] text-text-muted-light">https://api.anthropic.com/v1</p>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-1.5">
+<button class="px-2.5 py-1 rounded border border-border-light bg-surface-container-lowest hover:bg-bg-soft-light text-text-muted-light hover:text-on-surface font-label-default text-xs transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">travel_explore</span>
+<span>Modelle entdecken</span>
+</button>
+<button class="px-2.5 py-1 rounded border border-border-light bg-surface-container-lowest hover:bg-bg-soft-light text-text-muted-light hover:text-on-surface font-label-default text-xs transition-colors">
+                        Bearbeiten
+                      </button>
+</div>
+</div>
+<!-- Masked Key & Security Rule -->
+<div class="flex items-center justify-between p-2 rounded bg-bg-soft-light border border-border-light text-xs">
+<div class="flex items-center gap-2 font-mono text-text-muted-light">
+<span class="material-symbols-outlined text-[16px] text-text-muted-light">key</span>
+<span class="text-on-surface">sk-ant-api03-••••••••••••••••3x9A</span>
+</div>
+<span class="font-meta-default text-[10px] text-text-muted-light italic">Niemals im Klartext exportierbar</span>
+</div>
+<!-- Disabled Delete Notice -->
+<div class="flex items-center justify-between text-xs pt-1 border-t border-rule-light">
+<span class="text-text-muted-light flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-state-warning">lock</span>
+<span>Löschen gesperrt — Noch zugewiesen an: <strong>Claude 3.5 Sonnet (Standard)</strong>, <strong>Claude 3 Opus</strong></span>
+</span>
+<button class="px-2 py-0.5 rounded text-meta-default text-text-muted-light/50 border border-border-light/50 bg-bg-soft-light cursor-not-allowed" disabled="">
+                      Löschen
+                    </button>
+</div>
+</div>
+</div>
+<!-- Quick Presets Info -->
+<div class="text-xs text-text-muted-light flex items-center gap-2">
+<span class="material-symbols-outlined text-[15px]">tips_and_updates</span>
+<span>Unterstützte Treiber-Presets: Anthropic, OpenAI-kompatibel, Lokaler Endpunkt (Ollama, LM Studio) oder freie Konfiguration mit Klartext-Prüfung vor Speicherung.</span>
+</div>
+</div>
+</article>
+<!-- SECTION 3: MODELLE -->
+<article class="rounded border border-border-light bg-bg-card-light shadow-sm overflow-hidden" id="section-modelle">
+<header class="px-space-lg py-space-md border-b border-border-light bg-surface-container-lowest flex items-center justify-between">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light text-[10px]">Abschnitt 3</span>
+<h2 class="font-prose-heading-1 text-prose-heading-1 text-primary">Modelle</h2>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-state-success/10 text-state-success border border-state-success/30">1 Standard aktiv</span>
+</div>
+</header>
+<div class="p-space-lg flex flex-col gap-space-lg">
+<!-- Primary Model Card: Claude 3.5 Sonnet -->
+<div class="rounded border-2 border-border-light bg-surface-container-lowest p-space-md flex flex-col gap-4">
+<!-- Header with Status Badges -->
+<div class="flex flex-wrap items-start justify-between gap-2">
+<div>
+<div class="flex items-center gap-2">
+<h3 class="font-headline-title text-headline-title text-primary font-semibold">Claude 3.5 Sonnet</h3>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-cover-sepia text-on-primary">Standard</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-bg-soft-light text-state-success border border-state-success/20 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+                        Im Katalog verifiziert
+                      </span>
+</div>
+<div class="flex items-center gap-3 mt-1 text-xs text-text-muted-light">
+<span>Provider: <strong class="text-on-surface">Anthropic</strong></span>
+<span>•</span>
+<span class="font-mono">ID: claude-3-5-sonnet-20241022</span>
+<span>•</span>
+<span class="text-state-success">Letzter Fehler: Keiner (Verbindung intakt)</span>
+</div>
+</div>
+<!-- Top Actions -->
+<div class="flex items-center gap-2">
+<button class="px-2.5 py-1 rounded border border-border-light bg-surface-container-lowest hover:bg-bg-soft-light text-xs font-label-default text-on-surface transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">sensors</span>
+<span>Verbindungstest</span>
+</button>
+<button class="px-2.5 py-1 rounded border border-border-light bg-surface-container-lowest hover:bg-bg-soft-light text-xs font-label-default text-text-muted-light hover:text-on-surface transition-colors">
+                      Bearbeiten
+                    </button>
+<span class="cursor-not-allowed" title="Standardmodell kann nicht gelöscht werden">
+<button class="px-2.5 py-1 rounded border border-border-light/40 bg-bg-soft-light text-xs font-label-default text-text-muted-light/40 cursor-not-allowed" disabled="">
+                        Löschen
+                      </button>
+</span>
+</div>
+</div>
+<!-- Latency Test Live Feedback -->
+<div class="flex items-center justify-between px-3 py-1.5 rounded bg-bg-soft-light text-xs border border-border-light">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-state-success animate-pulse"></span>
+<span class="font-medium text-state-success">Verbindungstest erfolgreich:</span>
+<span class="text-text-muted-light">Antwort erhalten in 412 ms Latenz (TLS 1.3, HTTP/2).</span>
+</div>
+<span class="font-meta-default text-[11px] text-text-muted-light">Vor 4 Minuten</span>
+</div>
+<!-- Parameters Grid -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+<div class="p-2.5 rounded bg-surface-container-low border border-border-light">
+<span class="text-text-muted-light text-[11px] block">Kontextfenster</span>
+<span class="font-headline-emph text-on-surface text-sm">200.000 Tokens</span>
+</div>
+<div class="p-2.5 rounded bg-surface-container-low border border-border-light">
+<span class="text-text-muted-light text-[11px] block">Max. Output Tokens</span>
+<span class="font-headline-emph text-on-surface text-sm">8.192 Tokens</span>
+</div>
+<div class="p-2.5 rounded bg-surface-container-low border border-border-light">
+<span class="text-text-muted-light text-[11px] block">Temperatur</span>
+<div class="flex items-center justify-between mt-0.5">
+<span class="font-headline-emph text-on-surface text-sm">0.7</span>
+<span class="text-[10px] text-text-muted-light">Prosa-Balance</span>
+</div>
+</div>
+<div class="p-2.5 rounded bg-surface-container-low border border-border-light">
+<span class="text-text-muted-light text-[11px] block">Timeout</span>
+<span class="font-headline-emph text-on-surface text-sm">60 Sekunden</span>
+</div>
+</div>
+<!-- Output Profil Wähler -->
+<div class="pt-1">
+<div class="flex items-center justify-between mb-2">
+<span class="font-headline-emph text-xs text-on-surface">Output-Profil für dieses Modell</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">Steuert Detaillierungsgrad bei Entwürfen</span>
+</div>
+<div class="grid grid-cols-4 gap-1 p-1 rounded bg-bg-soft-light border border-border-light text-center text-xs">
+<button class="py-1.5 rounded text-text-muted-light hover:text-on-surface font-label-default transition-colors">
+                      Schnell
+                    </button>
+<button class="py-1.5 rounded bg-surface-container-lowest text-primary font-headline-emph shadow-xs border border-border-light">
+                      Ausgewogen (Aktiv)
+                    </button>
+<button class="py-1.5 rounded text-text-muted-light hover:text-on-surface font-label-default transition-colors">
+                      Lang
+                    </button>
+<button class="py-1.5 rounded text-text-muted-light hover:text-on-surface font-label-default transition-colors">
+                      Benutzerdefiniert
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</article>
+<!-- SECTION 4: AUFGABEN -->
+<article class="rounded border border-border-light bg-bg-card-light shadow-sm overflow-hidden" id="section-aufgaben">
+<header class="px-space-lg py-space-md border-b border-border-light bg-surface-container-lowest flex items-center justify-between">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light text-[10px]">Abschnitt 4</span>
+<h2 class="font-prose-heading-1 text-prose-heading-1 text-primary">Aufgaben</h2>
+</div>
+<span class="text-meta-default font-meta-default text-text-muted-light">Die 4 kanonischen KI-Rollen</span>
+</header>
+<div class="p-space-lg flex flex-col gap-space-md">
+<p class="font-body-default text-xs text-text-muted-light leading-relaxed">
+                Lege fest, welches Modell welche Aufgabe übernimmt. Wenn ein Treiber ausfällt oder nicht eingerichtet ist, schützt die Standard-Kaskade vor Fehlern.
+              </p>
+<!-- Notice Box -->
+<div class="p-3 rounded border border-border-light bg-surface-container-low text-xs flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[18px] text-cover-sepia shrink-0">info</span>
+<span class="text-text-muted-light">
+                  Wenn kein Provider konfiguriert ist, schaltet die Effektiv-Anzeige automatisch auf: <strong class="text-on-surface font-mono">Fake — läuft ohne Konfiguration (Offline-Modus)</strong>.
+                </span>
+</div>
+<!-- Task 1: Text fortsetzen -->
+<div class="p-3.5 rounded border border-border-light bg-surface-container-lowest flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-cover-sepia text-[20px] mt-0.5">edit</span>
+<div>
+<h4 class="font-headline-emph text-label-default text-on-surface">Text fortsetzen</h4>
+<span class="font-mono text-[11px] text-text-muted-light">writing.continuation</span>
+</div>
+</div>
+<div class="flex flex-col sm:items-end gap-1">
+<select class="h-7 text-xs rounded border-border-light bg-bg-card-light text-on-surface focus:border-amber-focus focus:ring-1 focus:ring-amber-focus py-0 px-2 pr-6">
+<option selected="">Standard-Kaskade</option>
+<option>Claude 3.5 Sonnet</option>
+<option>Lokaler Fallback (Ollama)</option>
+</select>
+<span class="font-meta-default text-[11px] text-text-muted-light">
+                    Effektiv: <strong class="text-cover-sepia font-normal">Claude 3.5 Sonnet</strong> (über Standard-Kaskade)
+                  </span>
+</div>
+</div>
+<!-- Task 2: Chat -->
+<div class="p-3.5 rounded border border-border-light bg-surface-container-lowest flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-cover-sepia text-[20px] mt-0.5">forum</span>
+<div>
+<h4 class="font-headline-emph text-label-default text-on-surface">Chat &amp; Diskurs</h4>
+<span class="font-mono text-[11px] text-text-muted-light">chat.ask</span>
+</div>
+</div>
+<div class="flex flex-col sm:items-end gap-1">
+<select class="h-7 text-xs rounded border-border-light bg-bg-card-light text-on-surface focus:border-amber-focus focus:ring-1 focus:ring-amber-focus py-0 px-2 pr-6">
+<option>Standard-Kaskade</option>
+<option selected="">Claude 3.5 Sonnet</option>
+<option>Lokaler Fallback (Ollama)</option>
+</select>
+<span class="font-meta-default text-[11px] text-text-muted-light">
+                    Effektiv: <strong class="text-cover-sepia font-normal">Claude 3.5 Sonnet</strong>
+</span>
+</div>
+</div>
+<!-- Task 3: Entitäten extrahieren -->
+<div class="p-3.5 rounded border border-border-light bg-surface-container-lowest flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-cover-sepia text-[20px] mt-0.5">category</span>
+<div>
+<h4 class="font-headline-emph text-label-default text-on-surface">Entitäten extrahieren</h4>
+<span class="font-mono text-[11px] text-text-muted-light">knowledge.extract-entities</span>
+</div>
+</div>
+<div class="flex flex-col sm:items-end gap-1">
+<select class="h-7 text-xs rounded border-border-light bg-bg-card-light text-on-surface focus:border-amber-focus focus:ring-1 focus:ring-amber-focus py-0 px-2 pr-6">
+<option selected="">Standard-Kaskade</option>
+<option>Claude 3.5 Sonnet</option>
+</select>
+<span class="font-meta-default text-[11px] text-text-muted-light">
+                    Effektiv: <strong class="text-cover-sepia font-normal">Claude 3.5 Sonnet</strong>
+</span>
+</div>
+</div>
+<!-- Task 4: Konsistenz prüfen -->
+<div class="p-3.5 rounded border border-border-light bg-surface-container-lowest flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-cover-sepia text-[20px] mt-0.5">rule</span>
+<div>
+<h4 class="font-headline-emph text-label-default text-on-surface">Konsistenz prüfen</h4>
+<span class="font-mono text-[11px] text-text-muted-light">knowledge.check-consistency</span>
+</div>
+</div>
+<div class="flex flex-col sm:items-end gap-1">
+<select class="h-7 text-xs rounded border-border-light bg-bg-card-light text-on-surface focus:border-amber-focus focus:ring-1 focus:ring-amber-focus py-0 px-2 pr-6">
+<option selected="">Standard-Kaskade</option>
+<option>Claude 3.5 Sonnet</option>
+</select>
+<span class="font-meta-default text-[11px] text-text-muted-light">
+                    Effektiv: <strong class="text-cover-sepia font-normal">Claude 3.5 Sonnet</strong>
+</span>
+</div>
+</div>
+</div>
+</article>
+<!-- SECTION 5: PROJEKT -->
+<article class="rounded border border-border-light bg-bg-card-light shadow-sm overflow-hidden" id="section-projekt">
+<header class="px-space-lg py-space-md border-b border-border-light bg-surface-container-lowest flex flex-wrap items-center justify-between gap-3">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light text-[10px]">Abschnitt 5</span>
+<h2 class="font-prose-heading-1 text-prose-heading-1 text-primary">Projekt-Regeln</h2>
+</div>
+<!-- Roman Auswahl Dropdown -->
+<div class="flex items-center gap-2">
+<label class="text-xs font-headline-emph text-text-muted-light" for="roman-select">Aktiver Roman:</label>
+<select class="h-8 text-xs font-semibold rounded border-border-light bg-surface-container-lowest text-primary focus:border-amber-focus focus:ring-1 focus:ring-amber-focus py-0 px-3 pr-8" id="roman-select">
+<option selected="">Dead Signal (Aktiv)</option>
+<option>Winterhaus</option>
+<option>The Salt Road</option>
+</select>
+</div>
+</header>
+<div class="p-space-lg flex flex-col gap-space-lg">
+<!-- KI Rolle Selection -->
+<div>
+<div class="flex items-center justify-between mb-2">
+<label class="font-headline-emph text-headline-emph text-on-surface">KI-Rolle für Dead Signal</label>
+<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-bg-soft-light text-text-muted-light border border-border-light">beim Setup gebunden</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+<div class="p-3 rounded border border-border-light bg-surface-container-lowest hover:bg-bg-soft-light cursor-pointer transition-colors">
+<span class="font-headline-emph text-label-default text-on-surface block">Stiller Archivar</span>
+<span class="text-meta-default text-[11px] text-text-muted-light">Greift nie ungefragt ein, pflegt nur Entitäten.</span>
+</div>
+<div class="p-3 rounded border border-border-light bg-surface-container-lowest hover:bg-bg-soft-light cursor-pointer transition-colors">
+<span class="font-headline-emph text-label-default text-on-surface block">Atmosphärischer Co-Autor</span>
+<span class="text-meta-default text-[11px] text-text-muted-light">Generiert stilistisch dichte Fortsetzungen.</span>
+</div>
+<div class="p-3 rounded border-2 border-cover-sepia bg-surface-container-low cursor-pointer">
+<div class="flex items-center justify-between">
+<span class="font-headline-emph text-label-default text-primary">Sokratischer Lektor (Aktiv)</span>
+<span class="material-symbols-outlined text-cover-sepia text-[16px]">check_circle</span>
+</div>
+<span class="text-meta-default text-[11px] text-text-muted-light">Hinterfragt Brüche, Figurenlogik und Pacing.</span>
+</div>
+<div class="p-3 rounded border border-border-light bg-surface-container-lowest hover:bg-bg-soft-light cursor-pointer transition-colors">
+<span class="font-headline-emph text-label-default text-on-surface block">Experimenteller Sparringspartner</span>
+<span class="text-meta-default text-[11px] text-text-muted-light">Schlägt unerwartete Wendungen vor.</span>
+</div>
+</div>
+</div>
+<div class="h-px bg-border-light"></div>
+<!-- Kanon Strenge Slider -->
+<div>
+<div class="flex items-center justify-between mb-2">
+<div>
+<label class="font-headline-emph text-headline-emph text-on-surface">Kanon-Strenge</label>
+<p class="text-meta-default text-[11px] text-text-muted-light">Toleranz des Prüfers gegenüber logischen Widersprüchen zur Bibel.</p>
+</div>
+<span class="px-2 py-0.5 rounded text-xs font-headline-emph bg-surface-container text-cover-sepia border border-border-light">
+                    Stufe 4: Strikte Konsistenz
+                  </span>
+</div>
+<input class="w-full mt-2 accent-cover-sepia cursor-pointer" max="5" min="1" type="range" value="4"/>
+<div class="flex justify-between text-[11px] text-text-muted-light font-meta-default mt-2">
+<span>Stufe 1 (Traumlogik)</span>
+<span>Stufe 2</span>
+<span>Stufe 3 (Ausgewogen)</span>
+<span class="font-bold text-cover-sepia">Stufe 4 (Strikte Konsistenz)</span>
+<span>Stufe 5 (Unnachgiebig)</span>
+</div>
+</div>
+<div class="h-px bg-border-light"></div>
+<!-- Autoren Typologie & Wortziel -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+<!-- Typologie -->
+<div>
+<div class="flex items-center justify-between mb-2">
+<label class="font-headline-emph text-label-default text-on-surface">Autoren-Typologie</label>
+<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-bg-soft-light text-text-muted-light border border-border-light">beim Setup gebunden</span>
+</div>
+<div class="flex flex-col gap-1.5">
+<div class="p-2.5 rounded border-2 border-cover-sepia bg-surface-container-low flex items-center justify-between">
+<span class="font-headline-emph text-xs text-primary">Der Architekt (Plotter) (Aktiv)</span>
+<span class="material-symbols-outlined text-[16px] text-cover-sepia">done</span>
+</div>
+<div class="p-2.5 rounded border border-border-light bg-surface-container-lowest text-xs text-text-muted-light">
+                      Der Entdecker (Pantser)
+                    </div>
+<div class="p-2.5 rounded border border-border-light bg-surface-container-lowest text-xs text-text-muted-light">
+                      Der Hybrid (Plantser)
+                    </div>
+</div>
+</div>
+<!-- Wortziel -->
+<div>
+<label class="font-headline-emph text-label-default text-on-surface block mb-2" for="word-goal">
+                    Wortziel des Romans
+                  </label>
+<div class="relative">
+<input class="w-full h-9 rounded border border-border-light bg-surface-container-lowest px-3 font-body-default text-sm text-on-surface focus:outline-none focus:border-amber-focus focus:ring-2 focus:ring-amber-focus/20 transition-all" id="word-goal" type="text" value="65.000 Wörter"/>
+<span class="material-symbols-outlined text-text-muted-light text-[18px] absolute right-3 top-2">flag</span>
+</div>
+<p class="font-meta-default text-[11px] text-text-muted-light mt-2">
+                    Aktueller Fortschritt: <strong class="text-on-surface">32.418</strong> / 65.000 Wörter (49.8%). Keine künstliche Skalierung.
+                  </p>
+</div>
+</div>
+</div>
+</article>
+</div>
+</section>
+</main>
+</div>
+<script>
+    // Smooth scrolling between sections in settings workbench
+    document.querySelectorAll('#settings-nav-items a').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        const targetId = this.getAttribute('href');
+        if (targetId && targetId.startsWith('#')) {
+          e.preventDefault();
+          const targetElement = document.querySelector(targetId);
+          if (targetElement) {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Update active state visual in nav rail
+            document.querySelectorAll('#settings-nav-items a').forEach(el => {
+              el.className = "flex items-center justify-between px-space-sm py-2 rounded hover:bg-bg-soft-light text-text-muted-light hover:text-on-surface transition-colors";
+            });
+            this.className = "flex items-center justify-between px-space-sm py-2 rounded bg-surface-container-lowest border border-border-light text-primary font-headline-emph shadow-xs";
+          }
+        }
+      });
+    });
+  </script>
+</body></html>

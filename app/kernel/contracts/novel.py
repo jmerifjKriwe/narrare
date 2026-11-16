@@ -39,6 +39,20 @@ class Novel(UserOwned):
     # The export's trace: set by every successful export (WP6 D1) and by
     # nothing else — no ``onupdate`` — so an edit makes it honestly stale.
     last_exported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The shelf's tracking answers (W3), all nullable — a novel without an
+    # answer does not lie. ``status`` is the writing state the shelf's pill
+    # names (``draft``, ``revision``, ``final``); the vocabulary is checked
+    # at the writing service boundary, not by the column.
+    status: Mapped[str | None] = mapped_column(String(20))
+    # The series this volume belongs to. SET NULL: a series going away
+    # ungroups its books, it does not take them with it.
+    series_id: Mapped[UUID | None] = mapped_column(ForeignKey("series.id", ondelete="SET NULL"))
+    # The book's number within its series — meaningful only with a series
+    # link, which the writing service boundary enforces.
+    series_volume: Mapped[int | None] = mapped_column()
+    # When the book left the main grid; None is on the shelf. A timestamp,
+    # not a flag, so the archive view can say when.
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Chapter(UserOwned):

@@ -22,6 +22,58 @@
         "title": "AcceptRead",
         "type": "object"
       },
+      "ActivityPoint": {
+        "description": "One day of the activity window: the date and the atelier's net words.\n\nThe net is honest — a day that removed more text than it added carries\na negative count, and a day without a row carries zero.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "words": {
+            "title": "Words",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "words"
+        ],
+        "title": "ActivityPoint",
+        "type": "object"
+      },
+      "ActivityRead": {
+        "description": "The atelier's activity across all the user's novels (W3).\n\n``points`` cover the requested window oldest-first, zero-days\nincluded; ``streak_days`` counts consecutive days with a nonzero net\nending today — or yesterday, which keeps the streak alive until the\nday after tomorrow without writing; ``weekly_average`` is the mean\nnet words per day over ALL days of the window (zero-days in the\nbasis), one decimal; ``today_words`` is today's net across novels.",
+        "properties": {
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "streak_days": {
+            "title": "Streak Days",
+            "type": "integer"
+          },
+          "today_words": {
+            "title": "Today Words",
+            "type": "integer"
+          },
+          "weekly_average": {
+            "title": "Weekly Average",
+            "type": "number"
+          }
+        },
+        "required": [
+          "points",
+          "streak_days",
+          "weekly_average",
+          "today_words"
+        ],
+        "title": "ActivityRead",
+        "type": "object"
+      },
       "ArchiveInvalidRead": {
         "description": "The 422 detail when the archive itself is unreadable or malformed.",
         "properties": {
@@ -1282,6 +1334,19 @@
             ],
             "title": "Genre"
           },
+          "target_words": {
+            "anyOf": [
+              {
+                "maximum": 2147483647,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Words"
+          },
           "title": {
             "maxLength": 200,
             "minLength": 1,
@@ -1297,6 +1362,18 @@
       },
       "NovelRead": {
         "properties": {
+          "archived_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
           "author": {
             "anyOf": [
               {
@@ -1368,6 +1445,50 @@
             ],
             "title": "Last Exported At"
           },
+          "series_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Title"
+          },
+          "series_volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Volume"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "target_words": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Words"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -1398,8 +1519,20 @@
         "type": "object"
       },
       "NovelUpdate": {
-        "description": "The PATCH body: only the fields present are the change.\n\n``None`` is ambiguous by shape alone — an absent field and a cleared\nauthor both look like None — so the service reads\n``model_fields_set`` to tell a carried change from a missing one. The\nvalues are checked there, against the novel contract's trims and\nlimits: this schema carries the fields, the contract decides what a\nvalue may be. A carried ``null`` clears author, genre, blurb or\nlanguage; the title is never clearable.",
+        "description": "The PATCH body: only the fields present are the change.\n\n``None`` is ambiguous by shape alone — an absent field and a cleared\nauthor both look like None — so the service reads\n``model_fields_set`` to tell a carried change from a missing one. The\nvalues are checked there, against the novel contract's trims and\nlimits: this schema carries the fields, the contract decides what a\nvalue may be. A carried ``null`` clears author, genre, blurb or\nlanguage; the title is never clearable.\n\nThe shelf's fields (W3) ride the same rule: ``status`` answers to the\nvocabulary (draft|revision|final) at the service boundary,\n``series_id`` must name a series the user owns, ``series_volume`` is\na positive number that needs a series link, and ``archived_at`` is a\ntimestamp — carrying one archives the book, carrying ``null``\nunarchives it.",
         "properties": {
+          "archived_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
           "author": {
             "anyOf": [
               {
@@ -1443,6 +1576,40 @@
               }
             ],
             "title": "Language"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          },
+          "series_volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Volume"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
           },
           "title": {
             "anyOf": [
@@ -6311,6 +6478,52 @@
         ]
       }
     },
+    "/api/writing/activity": {
+      "get": {
+        "description": "The atelier's daily words across all owned novels: the window's\npoints (zero-days included), the streak of consecutive days with a\nnonzero net ending today or yesterday, the mean net words per day\nover the whole window, and today's net. ``days`` bounds the window\nto 1..365; the default is 30. The day boundary is the server's UTC\ndate.",
+        "operationId": "activity_api_writing_activity_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activity",
+        "tags": [
+          "writing"
+        ]
+      }
+    },
     "/api/writing/chapters/{chapter_id}": {
       "delete": {
         "description": "Delete an owned chapter; the survivors close the gap, renumbered\ncontiguously in the same transaction, and the novel's timestamp\nadvances. The chapter's pending suggestions go with it; the novel's\nfindings stay.\n\nRaise HTTP 404 for an absent or unowned chapter.",
@@ -6529,8 +6742,20 @@
     },
     "/api/writing/novels": {
       "get": {
-        "description": "Return the current user's novels.",
+        "description": "Return the current user's novels; archived books stay out of the\nmain grid unless ``include_archived`` asks for them.",
         "operationId": "list_novels_api_writing_novels_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -6545,6 +6770,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "List Novels",
@@ -6770,7 +7005,7 @@
         ]
       },
       "patch": {
-        "description": "Correct a novel by hand: only the fields the body carries change.\n\nReturn the novel with its derived counts; raise HTTP 404 for an absent\nor unowned novel, or HTTP 422 naming the field for a blank or over-long\ntitle, an over-long genre or author, or a language that is over-long\nor not a BCP-47-ish code.",
+        "description": "Correct a novel by hand: only the fields the body carries change.\n\nReturn the novel with its derived counts; raise HTTP 404 for an absent\nor unowned novel, or HTTP 422 naming the field for a blank or over-long\ntitle, an over-long genre or author, a language that is over-long\nor not a BCP-47-ish code, a status outside the vocabulary, a series\nlink that names no series of the user, or a volume without a series.",
         "operationId": "update_novel_api_writing_novels__novel_id__patch",
         "parameters": [
           {
@@ -7024,6 +7259,70 @@
           }
         },
         "summary": "Create Chapter",
+        "tags": [
+          "writing"
+        ]
+      }
+    },
+    "/api/writing/novels/{novel_id}/duplicate": {
+      "post": {
+        "description": "Duplicate an owned novel: a new book with the same metadata and a\nfull copy of its chapters, in one transaction.\n\nThe copy is named ``„<title> (Kopie)\"``, keeps the series link but no\nvolume, and starts on the shelf — unarchived, never exported. Respond\nwith HTTP 404 for an absent or unowned novel, or HTTP 409 if setup is\nrequired.",
+        "operationId": "duplicate_novel_api_writing_novels__novel_id__duplicate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NovelRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Setup required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duplicate Novel",
         "tags": [
           "writing"
         ]

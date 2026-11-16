@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The icon set's contract, pinned as records rather than single samples:
- * `icons` carries exactly the fifty-one names (the wave's whole vocabulary
+ * `icons` carries exactly the fifty-five names (the wave's whole vocabulary
  * — a name that drifts in or out breaks a P9 consumer), and every one of
  * them renders through `Icon` as the same hidden 16×16 svg — stroked in
  * the ink around it, filled with nothing, sized by `size` alone. The
@@ -14,18 +14,20 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Icon, icons, type IconName } from "./icons";
 
 /**
- * The fifty-one names, verbatim: the set is exactly this and no more.
+ * The fifty-five names, verbatim: the set is exactly this and no more.
  *
  * The first eighteen are the app's own vocabulary (the library, the
  * editor, the knowledge base, the chat, the settings, the shell's
- * rails and their marks). The twenty-three that follow are the drafted
+ * rails and their marks). The twenty-four that follow are the drafted
  * concepts the Literary Modernism screens introduce — deviation #1
  * (spec §6.9): the drafts speak in Material Symbols, the app keeps its
  * own hand-drawn faces, and a Material name pins only the *concept*.
- * The next eight are the welcome screen's concepts (welcome-atelier),
- * drawn in the same language when the welcome port brought the set back.
- * The last two are the provisioning step's concepts: the failure card's
- * warning and the retry's refresh (setup-states-reference panels 3–4).
+ * The next three are the quick menu's concepts (shelf-quick-menu): the
+ * copy, the archive box and its symmetric return. The next eight are the
+ * welcome screen's concepts (welcome-atelier), drawn in the same language
+ * when the welcome port brought the set back. The last two are the
+ * provisioning step's concepts: the failure card's warning and the retry's
+ * refresh (setup-states-reference panels 3–4).
  */
 const THE_SET = [
   "books",
@@ -63,6 +65,7 @@ const THE_SET = [
   "localFire",
   "menuBook",
   "moreHoriz",
+  "moreVert",
   "person",
   "radar",
   "schema",
@@ -70,6 +73,10 @@ const THE_SET = [
   "tune",
   "viewList",
   "waves",
+  // The quick menu's concepts.
+  "copy",
+  "archive",
+  "unarchive",
   // The welcome screen's concepts.
   "arrowRight",
   "uploadFile",
@@ -282,7 +289,7 @@ function geometryValues(svg: SVGSVGElement): number[] {
 afterEach(cleanup);
 
 describe("icons", () => {
-  it("carries exactly the fifty-one names of the set, verbatim", () => {
+  it("carries exactly the fifty-five names of the set, verbatim", () => {
     expect(Object.keys(icons).sort()).toEqual([...THE_SET].sort());
   });
 
@@ -317,10 +324,10 @@ describe("icons", () => {
     ).toEqual([]);
   });
 
-  it("keeps all fifty-one drawings distinct — cross dismisses, close folds a panel", () => {
+  it("keeps all fifty-five drawings distinct — cross dismisses, close folds a panel", () => {
     // cross and close must never converge on the same ✕: a dismissal drops
     // content, a close folds a panel away — and no two names may share a drawing.
-    expect(new Set(THE_SET.map((name) => JSON.stringify(icons[name]))).size).toBe(51);
+    expect(new Set(THE_SET.map((name) => JSON.stringify(icons[name]))).size).toBe(55);
     expect(icons.close).not.toEqual(icons.cross);
   });
 

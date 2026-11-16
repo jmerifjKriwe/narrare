@@ -1,17 +1,22 @@
 // @vitest-environment jsdom
 /**
- * The post-setup landing — the `/` gate's complete branch — driven through
- * the real router over the real root route (the ProvisioningStep pattern).
- * Only the API client is mocked at its module boundary; the mock keeps the
- * backend's contract: the settings row exists once setup has run (it holds
- * the chosen locale, and a switcher PATCH writes it), the status answers
- * complete, and the novels list carries the one book setup bound. The hero
- * must speak that row's facts — never session storage, never an invented
- * progress — and every door the further build-out has not reached yet stays
- * honestly disabled with the drafted note.
+ * The post-setup landing — rendered directly on a harness route under the
+ * real root route. The W3 handover moved the welcome to `/setup` and gave
+ * `/` to writing's shelf, so the landing no longer owns an app route; its
+ * component is exercised here on a test-only mount (no gate) until Task 6
+ * builds the shelf on its shoulders and re-decides its fate. The harness
+ * keeps the real shell around it — the settings observer, the title provider
+ * and the main landmark — so the switcher's row-refetch contract stays
+ * observable. Only the API client is mocked at its module boundary; the mock
+ * keeps the backend's contract: the settings row exists once setup has run
+ * (it holds the chosen locale, and a switcher PATCH writes it), the status
+ * answers complete, and the novels list carries the one book setup bound.
+ * The hero must speak that row's facts — never session storage, never an
+ * invented progress — and every door the further build-out has not reached
+ * yet stays honestly disabled with the drafted note.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
-import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
+import { createMemoryHistory, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -33,7 +38,16 @@ import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
-import { routes } from "./routes";
+import { LandingPage } from "./LandingPage";
+
+/** A test-only mount, not an app route: the landing lost its route with the
+ *  W3 handover, so the component is exercised directly under the real shell
+ *  (the settings gate, the title provider and the main landmark stay real). */
+const landingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/landing-test",
+  component: LandingPage,
+});
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
 const api = client as unknown as Record<
@@ -90,8 +104,8 @@ function scriptApi() {
 
 function renderLanding() {
   const router = createRouter({
-    routeTree: rootRoute.addChildren([...routes]),
-    history: createMemoryHistory({ initialEntries: ["/"] }),
+    routeTree: rootRoute.addChildren([landingRoute]),
+    history: createMemoryHistory({ initialEntries: ["/landing-test"] }),
   });
   render(
     <QueryClientProvider client={queryClient}>
@@ -166,6 +180,63 @@ describe("the landing — the hero speaks the novel row's facts", () => {
     // No genre: the meta line carries the chapter count alone, zero included.
     expect(screen.getByText(t("setup.basis.demoChapters", { count: 0 }))).toBeTruthy();
     expect(screen.getByText(new RegExp(de["setup.landing.wordStand"]))).toBeTruthy();
+  });
+
+  it("a blank novel with genres answers the meta line — genres and zero chapters", async () => {
+    // The blank path's facts the setup E2E used to read off the landing hero:
+    // the joined genre pills and the zero chapter count the blank canvas
+    // produces. Moved here when the handover made the landing unreachable.
+    novelsAnswer = async () => ({
+      data: [
+        {
+          ...NOVEL_ROW,
+          title: "Der Klang des Eises",
+          genre: "Mystery & Noir, Literarische Belletristik",
+          chapter_count: 0,
+        },
+      ],
+      response: ok(),
+    });
+    renderLanding();
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Der Klang des Eises" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        t("setup.landing.meta", { genre: "Mystery & Noir, Literarische Belletristik", count: 0 }),
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText(de["setup.landing.eyebrow"])).toBeTruthy();
+  });
+
+  it("the demo novel speaks its own identity and wears the active roster mark", async () => {
+    // The demo path's facts the setup E2E used to read off the landing hero:
+    // the archive's own title and genre, its chapter count, and the roster's
+    // active mark on the template the shelf holds. Moved here with the route.
+    novelsAnswer = async () => ({
+      data: [
+        {
+          ...NOVEL_ROW,
+          title: "Im Stillen Wald",
+          genre: "Literary",
+          chapter_count: 2,
+          author: "Narrare Demo",
+          language: "de",
+        },
+      ],
+      response: ok(),
+    });
+    renderLanding();
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Im Stillen Wald" }),
+    ).toBeTruthy();
+    expect(screen.getByText(t("setup.landing.meta", { genre: "Literary", count: 2 }))).toBeTruthy();
+    const activeMarks = screen.getAllByText(de["setup.landing.new.demoActive"]);
+    expect(activeMarks).toHaveLength(1);
+    const activeRow = activeMarks[0].closest("li") as HTMLElement;
+    expect(within(activeRow).getByText("Im Stillen Wald")).toBeTruthy();
   });
 
   it("names the tab and keeps the quote and the trust bar", async () => {

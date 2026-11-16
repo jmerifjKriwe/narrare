@@ -11,7 +11,8 @@
  * applies the locale directly for a deterministic first paint, so the pin
  * proves the faces speak the catalog — not that boot adoption alone delivers
  * the language. Every locale the app carries is walked, and the way home must
- * be the atelier gate (`/`), which answers with the welcome or the landing.
+ * be the shelf gate (`/`), which redirects to the welcome pre-setup and shows
+ * the shelf once the instance is set up.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
@@ -92,7 +93,7 @@ describe("the shell's fallbacks", () => {
       });
       expect(heading).toBeTruthy();
       // The body is the catalog's truthful interim copy (#850), and the way
-      // home is the atelier gate — not TanStack's English default.
+      // home is the shelf gate — not TanStack's English default.
       expect(screen.getByText(catalogs[candidate]["shell.notFoundBody"])).toBeTruthy();
       const back = screen.getByRole("link", { name: catalogs[candidate]["nav.back"] });
       expect(back.getAttribute("href")).toBe("/");

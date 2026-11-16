@@ -1,4 +1,5 @@
 import {
+  keepPreviousData,
   QueryClient,
   useMutation,
   useQuery,
@@ -10,6 +11,7 @@ import { useEffect, useState } from "react";
 import {
   client,
   type Accept,
+  type Activity,
   type Chapter,
   type Entity,
   type Finding,
@@ -66,15 +68,27 @@ export function useSettingsQuery(): UseQueryResult<{
 }
 
 /**
- * The library list, cached under the writing capability's `["novels"]` key.
+ * The library list, cached under the writing capability's `["novels"]`
+ * prefix with the archive question in the key: the shelf's „Archiv
+ * einbeziehen" toggle is a real refetch (`include_archived`), not a client
+ * hide — the default ask keeps its bare shape (false is the server's own
+ * default), the widened ask carries the parameter. The writes' prefix
+ * invalidation reaches both answers. While the toggle's ask is in flight
+ * the previous list stands (`keepPreviousData`) — widening or narrowing
+ * the population never flashes the skeleton over the shelf it changes.
  * An answer that is not ok throws, so the cache holds either the list or
  * the failure — never a half-current list.
  */
-export function useNovelsQuery(): UseQueryResult<Novel[]> {
+export function useNovelsQuery(includeArchived = false): UseQueryResult<Novel[]> {
   return useQuery({
-    queryKey: ["novels"],
+    queryKey: ["novels", { include_archived: includeArchived }],
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, response } = await client.GET("/api/writing/novels");
+      const { data, response } = includeArchived
+        ? await client.GET("/api/writing/novels", {
+            params: { query: { include_archived: true } },
+          })
+        : await client.GET("/api/writing/novels");
       if (!response.ok) throw new Error(`novels unavailable: ${response.status}`);
       return data ?? [];
     },
@@ -82,9 +96,33 @@ export function useNovelsQuery(): UseQueryResult<Novel[]> {
 }
 
 /**
+ * The atelier's activity aggregate (Task 4), cached under `["activity"]`
+ * with the window in the key — the novels list's own convention: the
+ * default ask keeps its bare shape (days=30 is the server's default), a
+ * narrower window carries the parameter. The shelf's banner and streak
+ * chip read one cache through this hook; the write family below
+ * invalidates the prefix, so a chapter write moves the banner without
+ * waiting out the staleTime. An answer that is not ok throws, so the
+ * cache holds either the window or the failure — never an invented zero.
+ */
+export function useActivityQuery(days = 30): UseQueryResult<Activity> {
+  return useQuery({
+    queryKey: ["activity", { days }],
+    queryFn: async () => {
+      const { data, response } =
+        days === 30
+          ? await client.GET("/api/writing/activity")
+          : await client.GET("/api/writing/activity", { params: { query: { days } } });
+      if (!response.ok || !data) throw new Error(`activity unavailable: ${response.status}`);
+      return data;
+    },
+  });
+}
+
+/**
  * Creating a novel: the first mutation under the spec 5.10 convention. The
- * write invalidates `["novels"]` instead of patching the cached list by
- * hand, so every view of the key refetches from the row that changed. The
+ * write invalidates the shelf family instead of patching the cached list by
+ * hand, so every view of the keys refetches from the row that changed. The
  * list updates when that refetch lands; the caller's own state (the form)
  * does not wait for it.
  */
@@ -96,7 +134,7 @@ export function useCreateNovel(): UseMutationResult<Novel, Error, NovelCreate> {
       return data;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["novels"] });
+      void invalidateNovelShelf();
     },
   });
 }
@@ -164,8 +202,9 @@ export type NovelChanges = Partial<
  * carries are the change, so the caller sends only what the user dirtied —
  * the client's mirror of the server's `model_fields_set` contract. The
  * row's `onupdate` advances `updated_at` (D8: the archive's metadata
- * changed), so the whole `["novels"]` prefix is invalidated — the shelf's
- * list and the row this dialog's own read uses refresh together. A refusal
+ * changed), so the shelf family is invalidated — the shelf's list, the
+ * row this dialog's own read uses and the activity aggregate refresh
+ * together. A refusal
  * carries status and detail: a 422 names the field, and the dialog shows
  * that name on the field it refused.
  */
@@ -189,17 +228,18 @@ export function useUpdateNovel(): UseMutationResult<
       return data;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["novels"] });
+      void invalidateNovelShelf();
     },
   });
 }
 
 /**
  * Deleting a novel: the row and everything novel-scoped cascade in the
- * database — chapters, entities, relations, suggestions, findings — and
- * the documents are the library's and stay. Success invalidates the
- * `["novels"]` prefix (the row and the list both held a book that no
- * longer exists); a failed delete asks for nothing.
+ * database — chapters, entities, relations, suggestions, findings, the
+ * activity rows — and the documents are the library's and stay. Success
+ * invalidates the shelf family (the row and the list both held a book
+ * that no longer exists, and its days left the aggregate with it); a
+ * failed delete asks for nothing.
  */
 export function useDeleteNovel(): UseMutationResult<void, Error, string> {
   return useMutation({
@@ -210,7 +250,104 @@ export function useDeleteNovel(): UseMutationResult<void, Error, string> {
       if (!response.ok) throw new Error(`novel delete refused: ${response.status}`);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["novels"] });
+      void invalidateNovelShelf();
+    },
+  });
+}
+
+/**
+ * Duplicating a novel (Task 3): a new book with the same metadata and a full
+ * copy of its chapters, named „<title> (Kopie)", starting on the shelf —
+ * unarchived, never exported. The 201 row comes back whole; success
+ * invalidates the shelf family so the copy joins the shelf's list and
+ * every figure is the server's own count, never a client guess. A refusal
+ * (404 absent, 409 setup required) throws with its status.
+ */
+export function useDuplicateNovel(): UseMutationResult<Novel, Error, string> {
+  return useMutation({
+    mutationFn: async (novelId: string) => {
+      const { data, response } = await client.POST("/api/writing/novels/{novel_id}/duplicate", {
+        params: { path: { novel_id: novelId } },
+      });
+      if (!response.ok || !data) throw new Error(`duplicate refused: ${response.status}`);
+      return data;
+    },
+    onSuccess: () => {
+      void invalidateNovelShelf();
+    },
+  });
+}
+
+/** The ZIP answer: the bytes for the browser's download seam, and the name
+ *  the Content-Disposition proposed — or a neutral fallback. */
+export type ZipDownload = { blob: Blob; filename: string };
+
+/** The name inside `attachment; filename="…"`, when the header carries one. */
+function filenameFromDisposition(header: string | null): string | null {
+  if (header === null) return null;
+  return /filename="([^"]+)"/.exec(header)?.[1] ?? null;
+}
+
+/**
+ * Exporting a novel as a ZIP download (the quick menu's Exportieren). The
+ * endpoint answers two bodies under one URL — a JSON receipt for a path
+ * export, ZIP bytes for a ZIP export — so the call reads the answer as a
+ * blob (`parseAs`), never as the JSON receipt it is not; the typed client
+ * stays the one door. The filename rides the Content-Disposition the server
+ * names after the title's slug. Success invalidates the shelf family: every
+ * export advances the row's `last_exported_at`, and the menu's meta line
+ * reads it through that refetch. A refusal throws with its status (the ZIP
+ * mode's failures are the absent book and the service's own refusals).
+ */
+export function useExportNovel(): UseMutationResult<ZipDownload, Error, string> {
+  return useMutation({
+    mutationFn: async (novelId: string) => {
+      const { data, response } = await client.POST("/api/writing/novels/{novel_id}/export", {
+        params: { path: { novel_id: novelId } },
+        body: { mode: "zip" },
+        parseAs: "blob",
+      });
+      if (!response.ok || !data) throw new Error(`export refused: ${response.status}`);
+      // `parseAs: "blob"` reads the ZIP bytes at runtime; openapi-fetch's
+      // init intersection widens the literal, so the inferred result still
+      // names the JSON receipt the ZIP answer is not — one cast at the
+      // boundary, the import upload's own precedent.
+      return {
+        blob: data as unknown as Blob,
+        filename: filenameFromDisposition(response.headers.get("content-disposition")) ?? "export.zip",
+      };
+    },
+    onSuccess: () => {
+      void invalidateNovelShelf();
+    },
+  });
+}
+
+/**
+ * Archiving or restoring a novel (Task 2's `archived_at` PATCH): carrying a
+ * timestamp archives the book, carrying `null` restores it — the symmetric
+ * reversibility the draft pins. The archive moment is the client's now; the
+ * row's `onupdate` advances `updated_at` (D8), so success invalidates the
+ * shelf family — the default list drops the archived book, the
+ * archive-included list keeps it with its pill, and the hero re-picks. A
+ * refusal throws with its status.
+ */
+export function useArchiveNovel(): UseMutationResult<
+  Novel,
+  Error,
+  { novelId: string; archived: boolean }
+> {
+  return useMutation({
+    mutationFn: async (input: { novelId: string; archived: boolean }) => {
+      const { data, response } = await client.PATCH("/api/writing/novels/{novel_id}", {
+        params: { path: { novel_id: input.novelId } },
+        body: { archived_at: input.archived ? new Date().toISOString() : null },
+      });
+      if (!response.ok || !data) throw new Error(`archive refused: ${response.status}`);
+      return data;
+    },
+    onSuccess: () => {
+      void invalidateNovelShelf();
     },
   });
 }
@@ -263,7 +400,7 @@ export function activeChapterFallback(chapters: Chapter[]): string | null {
  * Reordering the rail: the PUT chapter-order write. The body is the whole
  * rail — every chapter id in its new order — and the caller has already
  * written that arrangement into the cache optimistically; the mutation is
- * the ask behind it. Success invalidates the novels prefix only (Task 8's
+ * the ask behind it. Success invalidates the shelf family (Task 8's
  * shelf rule: an arrangement advanced the novel's `updated_at`, D8) and
  * never the chapters key — the optimistic order is what the 204
  * acknowledged, and a chapters refetch mid-unsaved-body is exactly the
@@ -301,7 +438,8 @@ export function useReorderChapters(
  * Deleting a chapter (spec §2): the surviving rows renumber `0..n-1` in
  * the delete's own transaction, and the novel's row advances (D8 — the
  * archive lost a chapter). Success alone invalidates, and the chapters key
- * with the `["novels"]` prefix beside it: the delete is the one write that
+ * with the shelf family beside it (the delete's negative words move the
+ * activity aggregate too): the delete is the one write that
  * changes both lists' shapes at once, and the page's richer story around
  * the ask — retiring the pending document, opening the neighbour — runs
  * on the mutation's promise, not on these invalidations. A failed delete
@@ -873,7 +1011,15 @@ function invalidateKnowledge(novelId: string): void {
  *  staleTime unless the canon-writing mutations invalidate the key
  *  themselves, which would leave the rule unobservable for half a
  *  minute. The `["novels"]` prefix also covers `["novels", id]`, so the
- *  workbench's own novel row refreshes with the shelf. */
+ *  workbench's own novel row refreshes with the shelf.
+ *
+ *  The atelier's activity aggregate rides the same family (Task 10): a
+ *  chapter write moves the day's words, and the banner must not wait out
+ *  the staleTime to show it — the workspace wave's save hook joins this
+ *  door. Every shelf write asks both keys; the writes that cannot move
+ *  words (archive, export, a knowledge edit) pay one small extra GET so
+ *  the family stays one seam instead of a rule scattered per mutation. */
 function invalidateNovelShelf(): void {
   void queryClient.invalidateQueries({ queryKey: ["novels"] });
+  void queryClient.invalidateQueries({ queryKey: ["activity"] });
 }

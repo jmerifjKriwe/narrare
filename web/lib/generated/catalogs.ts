@@ -4,10 +4,13 @@
 // file appears on the next `just generate`.
 import en_central from "../../../i18n/en.json";
 import en_setup from "../../../app/capabilities/setup/web/i18n/en.json";
+import en_writing from "../../../app/capabilities/writing/web/i18n/en.json";
 import de_central from "../../../i18n/de.json";
 import de_setup from "../../../app/capabilities/setup/web/i18n/de.json";
+import de_writing from "../../../app/capabilities/writing/web/i18n/de.json";
 import fr_central from "../../../i18n/fr.json";
 import fr_setup from "../../../app/capabilities/setup/web/i18n/fr.json";
+import fr_writing from "../../../app/capabilities/writing/web/i18n/fr.json";
 
 export const locales = ["en", "de", "fr"] as const;
 export type Locale = (typeof locales)[number];
@@ -15,14 +18,17 @@ export type Locale = (typeof locales)[number];
 const en_merged = {
   ...en_central,
   ...en_setup,
+  ...en_writing,
 };
 const de_merged = {
   ...de_central,
   ...de_setup,
+  ...de_writing,
 };
 const fr_merged = {
   ...fr_central,
   ...fr_setup,
+  ...fr_writing,
 };
 
 // Typed against the source catalog: a key missing in any locale is a build

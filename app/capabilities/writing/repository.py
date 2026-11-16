@@ -1,13 +1,15 @@
 """Novel, chapter and entity persistence. Each repository is scoped to one user."""
 
 from collections.abc import Sequence  # noqa: TC003
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID  # noqa: TC003
 
-from sqlalchemy import func, select, update
+from sqlalchemy import case, func, literal, select, update
+from sqlalchemy.dialects.postgresql import insert
 
-from app.kernel.contracts.models import Chapter, Entity, Novel
+from app.capabilities.writing.models import DailyWords
+from app.kernel.contracts.models import Chapter, Entity, Novel, Series
 from app.kernel.contracts.positions import next_chapter_position
 from app.kernel.db.base import ScopedRepository
 
@@ -32,6 +34,23 @@ _TRIM_PATTERN = f"^{_WS}+|{_WS}+$"
 _SPLIT_PATTERN = _WS + "+"
 
 
+def _word_count_expression(body: Any) -> Any:
+    """The one whitespace rule as a SQL expression over any body value:
+    tokens of the trimmed body, zero when the trim is empty. The shelf's
+    grouped sum and the activity's write-path diff count through this one
+    expression, so the two cannot drift."""
+    trimmed = func.regexp_replace(body, _TRIM_PATTERN, "", "g")
+    return case(
+        (
+            trimmed != "",
+            func.coalesce(
+                func.array_length(func.regexp_split_to_array(trimmed, _SPLIT_PATTERN), 1), 0
+            ),
+        ),
+        else_=0,
+    )
+
+
 class EntityRepository(ScopedRepository[Entity]):
     model = Entity
 
@@ -42,12 +61,59 @@ class EntityRepository(ScopedRepository[Entity]):
         return result.all()
 
 
+class SeriesRepository(ScopedRepository[Series]):
+    model = Series
+
+    async def get(self, series_id: UUID) -> Series | None:
+        return await self.session.scalar(self.query().where(Series.id == series_id))
+
+    async def create(self, title: str) -> Series:
+        """Flush a new series for this user, leaving the commit to the caller."""
+        series = Series(user_id=self.user_id, title=title)
+        self.session.add(series)
+        await self.session.flush()
+        return series
+
+
 class NovelRepository(ScopedRepository[Novel]):
     model = Novel
 
-    async def list(self) -> Sequence[Novel]:
-        result = await self.session.scalars(self.query().order_by(Novel.created_at.desc()))
+    async def list(self, *, include_archived: bool = False) -> Sequence[Novel]:
+        """The shelf's novels, newest first. Archived books stay out of
+        the main grid unless ``include_archived`` asks for them — the
+        archive view's one knob, default the shelf's own answer."""
+        statement = self.query().order_by(Novel.created_at.desc())
+        if not include_archived:
+            statement = statement.where(Novel.archived_at.is_(None))
+        result = await self.session.scalars(statement)
         return result.all()
+
+    async def series_titles(self, novels: Sequence[Novel]) -> dict[UUID, str]:
+        """The linked series' title per novel, one scoped query.
+
+        Only the ids the novels actually carry are asked for, and the
+        user predicate rides the series row too: a link can only name a
+        series the update path already proved owned, and the read keeps
+        that promise without trusting it. Novels without a link — or
+        whose series is gone — have no entry; the caller reports None.
+        """
+        series_ids = {novel.series_id for novel in novels if novel.series_id is not None}
+        if not series_ids:
+            return {}
+        rows = await self.session.execute(
+            select(Series.id, Series.title).where(
+                Series.user_id == self.user_id, Series.id.in_(series_ids)
+            )
+        )
+        # ``.all()`` before ``dict``: the Result itself carries keys(), so
+        # dict() would read it as a mapping and subscript it — the rows
+        # are the pairs, not the result.
+        titles = dict(rows.all())
+        return {
+            novel.id: titles[novel.series_id]
+            for novel in novels
+            if novel.series_id is not None and novel.series_id in titles
+        }
 
     async def counts(self, novel_id: UUID | None = None) -> dict[UUID, tuple[int, int]]:
         """Chapter and word counts per novel, one grouped query.
@@ -55,19 +121,12 @@ class NovelRepository(ScopedRepository[Novel]):
         With ``novel_id``, aggregate that novel's chapters only — the
         single-row ask needs none of the shelf's other bodies. The words
         are tokens separated by the one whitespace class (``_WS``),
-        summed where the body trimmed by that same class is non-empty —
-        the filter is what keeps an empty (or whitespace-only) chapter
-        worth zero, which a bare split would count as its one empty
-        token. Novels with no chapters have no row here; the caller
-        reports the zeros.
+        counted by the one expression the activity's diff uses too —
+        an empty (or whitespace-only) body is worth zero, which a bare
+        split would count as its one empty token. Novels with no
+        chapters have no row here; the caller reports the zeros.
         """
-        trimmed = func.regexp_replace(Chapter.body, _TRIM_PATTERN, "", "g")
-        words = func.coalesce(
-            func.sum(
-                func.array_length(func.regexp_split_to_array(trimmed, _SPLIT_PATTERN), 1)
-            ).filter(trimmed != ""),
-            0,
-        )
+        words = func.coalesce(func.sum(_word_count_expression(Chapter.body)), 0)
         statement = (
             select(Chapter.novel_id, func.count(Chapter.id), words)
             .where(Chapter.user_id == self.user_id)
@@ -80,6 +139,15 @@ class NovelRepository(ScopedRepository[Novel]):
 
     async def get(self, novel_id: UUID) -> Novel | None:
         return await self.session.scalar(self.query().where(Novel.id == novel_id))
+
+    async def oldest(self) -> Novel | None:
+        """The user's first book — the oldest ``created_at``, the one setup
+        created in the same transaction as the user. The atelier's answers
+        live on its row; the create path reads it once, without a lock: a
+        create has no concurrent writer of the source row's settings.
+        Archived books count — archiving is the shelf's organization, not
+        an erasure of the answers. None while the user owns no novel."""
+        return await self.session.scalar(self.query().order_by(Novel.created_at.asc()).limit(1))
 
     async def save(self, novel: Novel, changes: dict[str, Any]) -> Novel:
         """Apply a metadata edit and flush; the commit is the caller's.
@@ -100,8 +168,18 @@ class NovelRepository(ScopedRepository[Novel]):
         *,
         author: str | None = None,
         language: str | None = None,
+        target_words: int | None = None,
+        author_typology: str | None = None,
+        dramatic_form: str | None = None,
+        ai_role: str | None = None,
+        canon_strictness: int | None = None,
     ) -> Novel:
-        """Flush a new novel for this user, leaving the commit to the caller."""
+        """Flush a new novel for this user, leaving the commit to the caller.
+
+        The wizard's four settings ride as given — the service copies them
+        from the atelier's first book; absent, they stay NULL, the honest
+        no-answer.
+        """
         novel = Novel(
             user_id=self.user_id,
             title=title,
@@ -109,6 +187,40 @@ class NovelRepository(ScopedRepository[Novel]):
             blurb=blurb,
             author=author,
             language=language,
+            target_words=target_words,
+            author_typology=author_typology,
+            dramatic_form=dramatic_form,
+            ai_role=ai_role,
+            canon_strictness=canon_strictness,
+        )
+        self.session.add(novel)
+        await self.session.flush()
+        return novel
+
+    async def duplicate(self, source: Novel, title: str) -> Novel:
+        """Flush a copy of the novel for this user, leaving the commit to the caller.
+
+        The book's own facts ride along: genre, blurb, the export's front
+        matter, the wizard's settings, status and the series link. The
+        shelf's tracking starts fresh — no volume (the number belongs to
+        the original's place in the series), no archive stamp (the copy
+        is on the shelf) and no export trace (it has never been exported).
+        The timestamps are the copy's own, from the columns' defaults.
+        """
+        novel = Novel(
+            user_id=self.user_id,
+            title=title,
+            genre=source.genre,
+            blurb=source.blurb,
+            author=source.author,
+            language=source.language,
+            target_words=source.target_words,
+            author_typology=source.author_typology,
+            dramatic_form=source.dramatic_form,
+            ai_role=source.ai_role,
+            canon_strictness=source.canon_strictness,
+            status=source.status,
+            series_id=source.series_id,
         )
         self.session.add(novel)
         await self.session.flush()
@@ -155,6 +267,34 @@ class ChapterRepository(ScopedRepository[Chapter]):
     async def get(self, chapter_id: UUID) -> Chapter | None:
         return await self.session.scalar(self.query().where(Chapter.id == chapter_id))
 
+    async def count_words(self, *bodies: str) -> list[int]:
+        """Word counts of the given bodies in one SELECT — the shelf's own
+        rule, so the activity's diff and the shelf's totals agree. The
+        bodies ride as bind parameters and the database does the counting;
+        the order of the answers is the order of the bodies."""
+        if not bodies:
+            return []
+        row = (
+            await self.session.execute(
+                select(*(_word_count_expression(literal(body)) for body in bodies))
+            )
+        ).one()
+        return [int(words) for words in row]
+
+    async def committed_body(self, chapter_id: UUID) -> str | None:
+        """The chapter's body as committed, read fresh — the caller holds
+        the novel lock, so this is the body the activity's diff counts
+        from. A column SELECT bypasses the identity map by construction:
+        the row the session loaded before the lock may predate a
+        concurrent save (a double-fired autosave), and a diff counted
+        from that stale snapshot would land on the day's row twice. The
+        lock is the allocator's own — the second writer waits, then reads
+        the first writer's committed chapter (positions.py). None when
+        the row is gone; the caller's own write path answers for that."""
+        return await self.session.scalar(
+            select(Chapter.body).where(Chapter.id == chapter_id, Chapter.user_id == self.user_id)
+        )
+
     async def create(self, novel_id: UUID, title: str) -> Chapter:
         """Append a chapter at the next position and update its novel's timestamp.
 
@@ -174,6 +314,28 @@ class ChapterRepository(ScopedRepository[Chapter]):
         await self.touch_novel(novel_id)
         await self.session.flush()
         return chapter
+
+    async def copy_into(self, novel_id: UUID, chapters: Sequence[Chapter]) -> None:
+        """Flush copies of the chapters into a new novel, positions preserved.
+
+        The copies are new rows — titles, bodies and positions as read,
+        timestamps their own. No allocator and no lock: the target novel
+        is brand new, so no other writer can append to it before this
+        transaction commits, and the position invariant holds without
+        the lock every append to a live book takes. The caller commits
+        the copies together with the novel row.
+        """
+        for chapter in chapters:
+            self.session.add(
+                Chapter(
+                    user_id=self.user_id,
+                    novel_id=novel_id,
+                    title=chapter.title,
+                    body=chapter.body,
+                    position=chapter.position,
+                )
+            )
+        await self.session.flush()
 
     async def save(self, chapter: Chapter, changes: dict[str, Any]) -> Chapter:
         """Apply an edit and mark the novel written-in; one write, one bump."""
@@ -228,3 +390,42 @@ class ChapterRepository(ScopedRepository[Chapter]):
         )
         if novel is not None:
             novel.updated_at = datetime.now(UTC)
+
+
+class DailyWordsRepository(ScopedRepository[DailyWords]):
+    model = DailyWords
+
+    async def add_words(self, novel_id: UUID, day: date, delta: int) -> None:
+        """Accumulate one day's net words for a novel; the commit is the caller's.
+
+        One upsert against the (novel_id, date) primary key: the day's
+        first write inserts, every later one adds to the row in the
+        database — two writers on one day serialize at the constraint
+        instead of racing a read-modify-write. The delta may be negative
+        (text removed); the row keeps the honest net, no floor of zero.
+        A zero delta is the caller's skip: nothing was written.
+        """
+        statement = insert(DailyWords).values(
+            user_id=self.user_id, novel_id=novel_id, date=day, words=delta
+        )
+        await self.session.execute(
+            statement.on_conflict_do_update(
+                index_elements=["novel_id", "date"],
+                set_={"words": DailyWords.words + statement.excluded.words},
+            )
+        )
+
+    async def daily_totals(self, through: date) -> dict[date, int]:
+        """Net words per day across the user's novels, through ``through``.
+
+        One grouped query over the scoped rows — the user predicate rides
+        the activity row itself, no join through the novel. Days without
+        a row are the caller's zeros. The streak walks past the display
+        window, so the read is bounded by today, not by the window.
+        """
+        rows = await self.session.execute(
+            select(DailyWords.date, func.sum(DailyWords.words))
+            .where(self.owned(), DailyWords.date <= through)
+            .group_by(DailyWords.date)
+        )
+        return {day: int(words) for day, words in rows}

@@ -16,6 +16,9 @@ Each screen is a pair in `screens/<area>/`:
 - `<name>.webp` — the rendered draft, WebP quality 82, at its native export size.
   Opens offline and in the browser. The 2026-11-14 harmonized drafts supersede
   the 2026-11-13 first drafts; git history keeps the earlier versions.
+  The 2026-11-15 settings and prompt-override redesign supersedes the earlier
+  `settings-ai-rules` and `ai-prompts-overrides` drafts, which depicted fictional
+  models and an eight-module prompt cascade; git history keeps them.
   The 2026-11-14 `cover-system` sheet is a clarification of the cover object, not
   a screen template: Stitch offers it only as a downscaled export (412×1600 of a
   2560×9934 desktop canvas), so its preview is a thumbnail and the HTML is the
@@ -79,6 +82,8 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`landing-atelier-dark`](screens/library/landing-atelier-dark.webp) | Bücherregal: Dein Atelier (Midnight Ink Dark Mode) | 1600 px |
 |  | [`setup-states-reference`](screens/library/setup-states-reference.webp) | Zustands-Referenz: Projekt-Setup (Korrigiert) | 1280 px |
 |  | [`cover-system`](screens/library/cover-system.webp) | Prozedurales Buchcover-System (Spezifikation) | 1600 px |
+|  | [`new-book-dialog`](screens/library/new-book-dialog.webp) | Neues Buch anlegen — Der schnelle Weg (Dialog) | 1280 px |
+|  | [`shelf-quick-menu`](screens/library/shelf-quick-menu.webp) | Zustands-Referenz: Schnellmenü im Bücherregal | 2672 px |
 | Writing | [`workspace`](screens/writing/workspace.webp) | Schreib-Workspace | 3434 px |
 |  | [`workspace-ai-dock`](screens/writing/workspace-ai-dock.webp) | Schreib-Workspace & KI-Dock | 4410 px |
 |  | [`workspace-lore-dock`](screens/writing/workspace-lore-dock.webp) | Schreib-Workspace & Lore-Dock (Kausalitäts-Konflikt gelöst) | 4104 px |
@@ -114,8 +119,12 @@ Documents from the same project are under [`documents/`](documents/):
 | Import and capture | [`manuscript-lore-import`](screens/io/manuscript-lore-import.webp) | Manuskript- & Lore-Import Studio | 2048 px |
 |  | [`audio-dictation-voice-to-lore`](screens/io/audio-dictation-voice-to-lore.webp) | Audio- & Diktat-Studio (Voice-to-Lore) | 2988 px |
 | Shell and settings | [`command-palette`](screens/shell/command-palette.webp) | Befehlspalette & Universalsuche (⌘K) | 2048 px |
-|  | [`settings-ai-rules`](screens/shell/settings-ai-rules.webp) | Atelier-Einstellungen & KI-Regeln | 3734 px |
-|  | [`ai-prompts-overrides`](screens/shell/ai-prompts-overrides.webp) | KI-Prompts & Feature-Überschreibung | 3008 px |
+|  | [`settings-ai-rules`](screens/shell/settings-ai-rules.webp) | Atelier-Einstellungen (Neuentwurf 2026-11-15) | 2048 px |
+|  | [`ai-prompts-overrides`](screens/shell/ai-prompts-overrides.webp) | KI-Prompts anpassen (Neuentwurf 2026-11-15) | 2048 px |
+|  | [`settings-ai-rules-dark`](screens/shell/settings-ai-rules-dark.webp) | Atelier-Einstellungen — Midnight Ink (2026-11-15) | 2048 px |
+|  | [`ai-prompts-overrides-dark`](screens/shell/ai-prompts-overrides-dark.webp) | KI-Prompts anpassen — Midnight Ink (2026-11-15) | 2048 px |
+|  | [`settings-states-reference`](screens/shell/settings-states-reference.webp) | Zustands-Referenz: Atelier-Einstellungen (2026-11-15) | 6040 px |
+|  | [`ai-prompts-states-reference`](screens/shell/ai-prompts-states-reference.webp) | Zustands-Referenz: KI-Prompts anpassen (2026-11-15) | 5094 px |
 |  | [`help-center`](screens/shell/help-center.webp) | Hilfe-Zentrum & Kontext-Handbuch | 2144 px |
 | Mobile | [`pocket-quick-capture`](screens/mobile/pocket-quick-capture.webp) | Narrare Pocket — Unterwegs-Studio & Quick Capture | 3238 px |
 
@@ -153,3 +162,64 @@ its HTML and screenshot, and `download_file` returns their content. The same
 project is editable at <https://stitch.withgoogle.com>. Re-export into the folder
 that matches the screen's area, keep the file name stable, and update the table
 above when a screen is added or renamed.
+
+## Bulk download (context-sparing)
+
+The REST endpoint downloads to a file without routing the payload through an
+agent's context window. Use it for archive refreshes and bulk exports; use the
+MCP (`download_file`) only when the content is meant to be read.
+
+Auth: `X-Goog-Api-Key` (same key as the MCP; stored in
+`~/.config/opencode/opencode.json` under `mcp.servers.google-stitch`).
+
+    export STITCH_API_KEY="…"
+    export PROJECT="15314899202287259920"
+
+    # list screens → JSON with downloadUrl per screen
+    curl -sS -H "X-Goog-Api-Key: $STITCH_API_KEY" \
+      "https://stitch.googleapis.com/v1/projects/$PROJECT/screens" \
+      -o /tmp/screens.json
+
+    # HTML (dataString is an escaped string)
+    curl -sS -H "X-Goog-Api-Key: $STITCH_API_KEY" \
+      "https://stitch.googleapis.com/v1/projects/$PROJECT/files/<FILE>:download" \
+      | jq -r .dataString > docs/design/stitch/screens/<area>/<name>.html
+
+    # image (dataString is base64)
+    curl -sS -H "X-Goog-Api-Key: $STITCH_API_KEY" \
+      "https://stitch.googleapis.com/v1/projects/$PROJECT/files/<FILE>:download" \
+      | jq -r .dataString | base64 -d \
+      > docs/design/stitch/screens/<area>/<name>.webp
+
+`<FILE>` is the trailing segment of `htmlCode.name` / `screenshot.name`
+(e.g. `…/files/6cee41d0b0f94e1b9ceb322b6d993a52`). The endpoint returns
+`{dataString}` for HTML and `{dataString, imageMetadata}` for images.
+
+A batch helper is available as `scripts/stitch_download.py` (stdlib only).
+
+## MCP setup (interactive path)
+
+For interactive design work (generate/edit/variants) the MCP is the right tool;
+for bulk file downloads use the REST path above.
+
+Server: remote MCP at `https://stitch.googleapis.com/mcp`, auth header
+`X-Goog-Api-Key`. Configured user-wide in `~/.config/opencode/opencode.json`
+(`mcp.servers.google-stitch`); the MCP stays there (not mirrored into the repo's
+`opencode.json`). See `MCP-SETUP.md` for details. Project ID for narrare:
+`15314899202287259920`.
+
+### Correction rounds and downloads (measured 2026-11-15)
+
+- Screens generated through the API in a session are **API-visible**, so
+  `edit_screens` works on them for targeted corrections (it is only the
+  owner-exported, session-blind screens that need a fresh
+  `generate_screen_from_text`). An edit returns a new screen id; the corrected
+  one becomes authoritative.
+- The REST `files/<id>:download` returns `{dataString}`: raw HTML for an HTML
+  file, base64 for an image (`imageMetadata.mimeType` names the type). The MCP
+  `download_file` wraps HTML as `{html}` instead. A freshly generated
+  screenshot can return a null `dataString` for a short window — retry the
+  download until bytes arrive.
+- This box has no `cwebp`/ImageMagick; convert the PNG screenshot to the
+  archive's WebP q82 with Pillow (`Image.open(...).convert("RGB").save(dst,
+  "WEBP", quality=82)`).

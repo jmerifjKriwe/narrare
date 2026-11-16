@@ -1,7 +1,7 @@
 """Shared domain vocabulary. Two capabilities need these, so they live here.
 
 This module is a thin aggregator: the actual definitions live in
-``user.py``, ``novel.py`` and ``knowledge.py``. It is kept (and its import
+``user.py``, ``novel.py``, ``series.py`` and ``knowledge.py``. It is kept (and its import
 path) so existing callers and ``register_models()`` continue to work; new
 models should be added to the per-domain module, not here.
 """
@@ -16,6 +16,7 @@ from app.kernel.contracts.knowledge import (
     EntitySuggestion,
 )
 from app.kernel.contracts.novel import Chapter, Novel
+from app.kernel.contracts.series import Series
 from app.kernel.contracts.user import User
 
 __all__ = [
@@ -28,5 +29,6 @@ __all__ = [
     "EntityRelation",
     "EntitySuggestion",
     "Novel",
+    "Series",
     "User",
 ]

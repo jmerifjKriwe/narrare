@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-bg-canvas-light text-on-surface" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Zustands-Referenz: Schnellmenü im Bücherregal • Narrare Atelier Spec</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: EB Garamond & Plus Jakarta Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS with CDN Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config directly from Theme Configuration -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "rule-light": "#EEEBE5",
+            "state-warning": "#9A6100",
+            "on-primary-container": "#f8a884",
+            "error-container": "#ffdad6",
+            "secondary": "#74584e",
+            "tertiary-fixed": "#ffdcc3",
+            "secondary-container": "#fed8ca",
+            "tertiary-container": "#6e3f14",
+            "area-writing": "#914F2F",
+            "error": "#ba1a1a",
+            "on-primary-fixed": "#351000",
+            "primary-fixed": "#ffdbcc",
+            "secondary-fixed": "#ffdbce",
+            "surface-container-high": "#eee7df",
+            "area-planning": "#834D7E",
+            "inverse-on-surface": "#f7f0e7",
+            "text-muted-light": "#6E6B65",
+            "bg-canvas-dark": "#16140F",
+            "surface-container-lowest": "#ffffff",
+            "on-secondary-fixed-variant": "#5a4137",
+            "bg-soft-light": "#EFEBE2",
+            "inverse-surface": "#33302b",
+            "primary-fixed-dim": "#ffb695",
+            "surface-container-low": "#faf2ea",
+            "area-settings": "#5A5549",
+            "cover-sepia": "#743B1F",
+            "on-tertiary-container": "#eead78",
+            "on-tertiary-fixed": "#2f1500",
+            "bg-card-dark": "#211F1A",
+            "area-chat": "#3A637B",
+            "state-success": "#21763C",
+            "on-error": "#ffffff",
+            "on-secondary": "#ffffff",
+            "inverse-primary": "#ffb695",
+            "surface-variant": "#e9e1d9",
+            "bg-panel-light": "#FDFCF9",
+            "surface-tint": "#8c4e30",
+            "on-secondary-container": "#795c52",
+            "on-primary": "#ffffff",
+            "primary-container": "#743b1f",
+            "border-light": "#E0DEDA",
+            "on-background": "#1e1b16",
+            "primary": "#58250b",
+            "text-muted-dark": "#89867F",
+            "on-surface": "#1e1b16",
+            "secondary-fixed-dim": "#e3bfb2",
+            "bg-card-light": "#FFFFFF",
+            "state-danger": "#AC3031",
+            "area-knowledge": "#606127",
+            "tertiary-fixed-dim": "#fcb882",
+            "on-error-container": "#93000a",
+            "bg-panel-dark": "#1C1914",
+            "text-foreground-dark": "#DFDEDA",
+            "surface": "#fff8f2",
+            "surface-container": "#f4ede4",
+            "on-tertiary-fixed-variant": "#693c10",
+            "surface-bright": "#fff8f2",
+            "on-secondary-fixed": "#2a170f",
+            "amber-focus-dark": "#F2AD73",
+            "rule-dark": "#302D28",
+            "on-surface-variant": "#53433d",
+            "tertiary": "#522900",
+            "outline": "#86736c",
+            "bg-canvas-light": "#F6F3ED",
+            "background": "#fff8f2",
+            "cover-pale": "#EEEBE5",
+            "bg-soft-dark": "#2C2922",
+            "cover-ink": "#24211C",
+            "on-tertiary": "#ffffff",
+            "on-primary-fixed-variant": "#6f371c",
+            "surface-dim": "#e0d9d1",
+            "outline-variant": "#d8c2b9",
+            "amber-focus": "#8F4622",
+            "border-dark": "#35332D",
+            "surface-container-highest": "#e9e1d9"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "margin": "1.5rem",
+            "dock-width": "21rem",
+            "prose-max-width": "34rem",
+            "space-sm": "0.5rem",
+            "rail-collapsed": "3rem",
+            "space-md": "1rem",
+            "container-max": "75rem",
+            "gutter": "1rem",
+            "rail-expanded": "10.5rem",
+            "space-xs": "0.25rem",
+            "space-xl": "2rem",
+            "space-lg": "1.5rem"
+          },
+          "fontFamily": {
+            "label-default": ["Plus Jakarta Sans"],
+            "headline-title": ["Plus Jakarta Sans"],
+            "body-default": ["Plus Jakarta Sans"],
+            "headline-hero": ["Plus Jakarta Sans"],
+            "eyebrow-tracked": ["Plus Jakarta Sans"],
+            "prose-heading-2": ["EB Garamond"],
+            "meta-default": ["Plus Jakarta Sans"],
+            "prose-editorial": ["EB Garamond"],
+            "headline-emph": ["Plus Jakarta Sans"],
+            "prose-heading-1": ["EB Garamond"]
+          },
+          "fontSize": {
+            "label-default": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+            "headline-title": ["20px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "body-default": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+            "headline-hero": ["28px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "eyebrow-tracked": ["11px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600" }],
+            "prose-heading-2": ["21px", { "lineHeight": "28px", "fontWeight": "600" }],
+            "meta-default": ["12px", { "lineHeight": "17px", "fontWeight": "400" }],
+            "prose-editorial": ["18px", { "lineHeight": "31.5px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "headline-emph": ["15px", { "lineHeight": "22px", "fontWeight": "600" }],
+            "prose-heading-1": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .custom-shadow-popover {
+      box-shadow: 0 12px 28px -6px rgba(44, 24, 16, 0.08), 0 4px 10px -2px rgba(44, 24, 16, 0.04);
+    }
+    .cover-spine {
+      box-shadow: inset -2px 0 4px rgba(0,0,0,0.18);
+    }
+    @keyframes spin-slow {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .spin-icon {
+      animation: spin-slow 1s linear infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-bg-canvas-light text-on-surface antialiased flex flex-col justify-between selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- TOP APP BAR (Shared Components JSON Anchor) -->
+<header class="w-full h-14 px-6 flex items-center justify-between border-b border-border-light bg-bg-panel-light z-40 sticky top-0">
+<div class="flex items-center gap-6">
+<span class="font-prose-heading-1 text-prose-heading-1 tracking-tight text-primary font-semibold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl">auto_stories</span>
+        Narrare
+      </span>
+<span class="hidden md:inline-block h-4 w-px bg-border-light"></span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-primary font-semibold border-b-2 border-primary py-4 font-label-default text-label-default" href="#">Manuscripts</a>
+<a class="text-text-muted-light font-medium py-4 font-label-default text-label-default hover:text-amber-focus transition-colors duration-150" href="#">Lore Graph</a>
+<a class="text-text-muted-light font-medium py-4 font-label-default text-label-default hover:text-amber-focus transition-colors duration-150" href="#">Causality Engine</a>
+<a class="text-text-muted-light font-medium py-4 font-label-default text-label-default hover:text-amber-focus transition-colors duration-150" href="#">Ateliers</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-meta-default text-meta-default text-text-muted-light tracking-wide">DE | EN | FR</span>
+<div class="flex items-center gap-1 text-text-muted-light">
+<button class="p-1.5 rounded hover:bg-bg-soft-light transition-colors hover:text-primary" title="Psychology">
+<span class="material-symbols-outlined">psychology</span>
+</button>
+<button class="p-1.5 rounded hover:bg-bg-soft-light transition-colors hover:text-primary" title="Stories">
+<span class="material-symbols-outlined">auto_stories</span>
+</button>
+<button class="p-1.5 rounded hover:bg-bg-soft-light transition-colors hover:text-primary" title="Settings">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+<div class="w-7 h-7 rounded-full bg-cover-sepia/20 border border-primary/30 flex items-center justify-center text-primary font-label-default text-xs font-semibold" title="Archivist portrait avatar">
+        N
+      </div>
+</div>
+</header>
+<!-- HAUPTINHALT: SPEC BÜHNE -->
+<main class="w-full max-w-[1440px] mx-auto px-6 py-8 flex-1 flex flex-col gap-8">
+<!-- KOPFBEREICH DER REFERENZTAFEL (Style SCREEN_9 & SCREEN_42) -->
+<section class="bg-bg-panel-light border border-border-light rounded-xl p-6 lg:p-8 relative">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border-light/60 pb-6 mb-6">
+<div class="flex flex-col gap-2">
+<div class="inline-flex items-center gap-2">
+<span class="bg-secondary-container/60 text-on-secondary-container border border-outline-variant/40 px-2.5 py-0.5 rounded text-[10px] font-eyebrow-tracked uppercase tracking-wider font-semibold">
+              NARRARE ATELIER SPEC • V2.4 • BÜCHERREGAL-SCHNELLMENÜ
+            </span>
+<span class="text-state-success font-meta-default text-meta-default flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+              Spezifikation Verifiziert
+            </span>
+</div>
+<h1 class="font-prose-heading-1 text-3xl lg:text-4xl text-primary font-normal tracking-tight">
+            Zustands-Referenz: Schnellmenü im Bücherregal
+          </h1>
+<p class="font-prose-editorial text-prose-editorial text-text-muted-light italic max-w-4xl">
+            Spezifikation des kontextuellen Schnellmenüs für Regalkarten. Kontemplative Ruhe auch bei destruktiven Aktionen: Archivieren ist ein sanfter Übergang, kein Verlust.
+          </p>
+</div>
+<!-- Token Legende Box -->
+<div class="bg-bg-canvas-light border border-border-light rounded p-3 self-start lg:self-auto min-w-[280px]">
+<div class="font-eyebrow-tracked text-[10px] uppercase text-text-muted-light tracking-wider mb-2 font-semibold">Farb- und Token-Legende</div>
+<div class="grid grid-cols-2 gap-x-4 gap-y-1.5 font-meta-default text-[11px] text-on-surface">
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-sm bg-[#F6F3ED] border border-border-light"></span>
+<span class="text-text-muted-light">Fond:</span> <span class="font-mono">#F6F3ED</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-sm bg-[#743B1F]"></span>
+<span class="text-text-muted-light">Fokal:</span> <span class="font-mono">#743B1F</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-sm bg-[#5A5549]"></span>
+<span class="text-text-muted-light">Archiv:</span> <span class="font-mono">#5A5549</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-sm bg-[#AC3031]"></span>
+<span class="text-text-muted-light">Fehler:</span> <span class="font-mono">#AC3031</span>
+</div>
+<div class="flex items-center gap-1.5 col-span-2">
+<span class="w-2.5 h-2.5 rounded-sm bg-[#E0DEDA] border border-stone-300"></span>
+<span class="text-text-muted-light">Haarlinie:</span> <span class="font-mono">#E0DEDA / #E6DBCD</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Architektur-Prämissen Leiste -->
+<div class="flex flex-wrap items-center gap-y-2 gap-x-6 text-text-muted-light font-meta-default text-meta-default">
+<span class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined text-primary text-base">architecture</span>
+<strong>Architektur-Prinzipien:</strong>
+</span>
+<span class="flex items-center gap-1">
+<span class="w-1 h-1 rounded-full bg-primary"></span>
+          28px Trefferfläche am Kartenrand
+        </span>
+<span class="flex items-center gap-1">
+<span class="w-1 h-1 rounded-full bg-primary"></span>
+          Popover w-64 angedockt (kein Scroll-Sprung)
+        </span>
+<span class="flex items-center gap-1">
+<span class="w-1 h-1 rounded-full bg-primary"></span>
+          Symmetrische Reversibilität
+        </span>
+<span class="flex items-center gap-1">
+<span class="w-1 h-1 rounded-full bg-primary"></span>
+          Ehrliche Fehlerführung ohne Modal-Blockade
+        </span>
+</div>
+</section>
+<!-- 4 GROSSE PANELS NEBENEINANDER (Grid 4 Spalten auf Pergament-Bühne) -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+<!-- PANEL 1: Auslöser & Offenes Menü (aktives Buch) -->
+<div class="bg-bg-panel-light border border-border-light rounded-xl p-5 flex flex-col justify-between relative group hover:border-outline-variant/80 transition-all duration-200">
+<div>
+<!-- Panel Header -->
+<div class="flex items-center justify-between gap-2 mb-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">PANEL 1 • INTERAKTIONSAUSLÖSER</span>
+<span class="bg-surface-container text-primary font-meta-default text-[11px] px-2 py-0.5 rounded font-medium border border-border-light">Aktiver Draft</span>
+</div>
+<h2 class="font-headline-emph text-headline-emph text-on-surface mb-1">
+            Auslöser &amp; Offenes Menü (aktives Buch)
+          </h2>
+<p class="font-meta-default text-meta-default text-text-muted-light mb-6">
+            Ein dezenter 28px-Menüknopf am Kartenrand öffnet das Popover unmittelbar an der Buchkarte.
+          </p>
+<!-- Interaktions-Visualisierung -->
+<div class="relative bg-bg-canvas-light/60 p-4 rounded-lg border border-border-light/70 flex flex-col items-center">
+<!-- Die reale Narrare-Regalkarte -->
+<div class="w-full max-w-[220px] bg-bg-card-light rounded border border-border-light p-3 relative shadow-sm">
+<!-- Buchcover (144x200px equivalent ratio) -->
+<div class="w-full h-44 bg-cover-ink rounded relative flex flex-col justify-between p-3.5 text-surface-container-lowest overflow-hidden border border-black/20">
+<!-- Spine strip embossed -->
+<div class="absolute left-0 top-0 bottom-0 w-3 bg-black/25 cover-spine"></div>
+<div class="absolute inset-2 border border-stone-600/30 rounded-sm pointer-events-none"></div>
+<div class="pl-2">
+<span class="font-eyebrow-tracked text-[9px] uppercase tracking-widest text-stone-400">H. Calder</span>
+</div>
+<!-- Emblem Sci-Fi -->
+<div class="pl-2 flex items-center justify-center my-auto">
+<div class="w-8 h-8 rounded-full border border-stone-500/40 flex items-center justify-center text-stone-300">
+<span class="material-symbols-outlined text-sm">satellite_alt</span>
+</div>
+</div>
+<div class="pl-2">
+<h3 class="font-prose-heading-1 text-lg font-semibold leading-tight text-stone-100">Dead Signal</h3>
+<span class="font-meta-default text-[10px] text-stone-400">Hard Sci-Fi</span>
+</div>
+</div>
+<!-- Metazeile der Karte -->
+<div class="mt-3 pt-2 border-t border-border-light/80 flex flex-col gap-1.5">
+<div class="flex items-center justify-between font-meta-default text-meta-default">
+<span class="bg-surface-container-high text-on-surface px-1.5 py-0.5 rounded text-[11px] font-medium">Sci-Fi</span>
+<span class="text-text-muted-light">3 Kapitel</span>
+</div>
+<div class="flex items-center justify-between font-meta-default text-meta-default">
+<span class="text-text-muted-light tabular-nums font-medium">3.384 W.</span>
+<span class="text-state-warning bg-state-warning/10 px-1.5 py-0.2 rounded text-[11px] font-medium">Entwurf (5%)</span>
+</div>
+</div>
+<!-- Menü-Button oben rechts (28px aktivierter Zustand) -->
+<div class="absolute top-4 right-4 z-10">
+<button class="w-7 h-7 rounded bg-bg-card-light border border-primary text-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-base">more_vert</span>
+</button>
+</div>
+<!-- OFFENES SCHNELLMENÜ (Popover w-64) -->
+<div class="absolute top-12 right-2 w-60 bg-surface-container-lowest border border-[#E0DEDA] rounded-xl custom-shadow-popover z-30 p-1.5 flex flex-col">
+<div class="px-2.5 py-1 text-[10px] font-eyebrow-tracked uppercase tracking-wider text-text-muted-light border-b border-border-light/40 mb-1">
+                  Buch-Optionen
+                </div>
+<!-- Zeile 1: Duplizieren (Hover aktiv warm getönt) -->
+<button class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-left font-label-default text-label-default bg-bg-soft-light text-primary font-medium transition-colors">
+<span class="material-symbols-outlined text-primary text-sm">content_copy</span>
+<span>Duplizieren</span>
+</button>
+<!-- Zeile 2: Exportieren -->
+<button class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-left font-label-default text-label-default text-on-surface hover:bg-bg-soft-light/60 transition-colors">
+<span class="material-symbols-outlined text-text-muted-light text-sm">download</span>
+<span>Exportieren</span>
+</button>
+<!-- Zeile 3: Archivieren (Sanftes Sekundärgrau, nicht rot!) -->
+<button class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-left font-label-default text-label-default text-area-settings hover:bg-bg-soft-light/60 transition-colors">
+<span class="material-symbols-outlined text-area-settings text-sm">inventory_2</span>
+<span>Archivieren</span>
+</button>
+<!-- Haarlinie -->
+<div class="my-1 border-t border-border-light"></div>
+<!-- Unten ehrliche Metazeile -->
+<div class="px-2.5 py-1 font-meta-default text-[11px] text-text-muted-light flex items-center justify-between">
+<span>Letzter Export:</span>
+<span class="font-mono text-stone-400">—</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Annotation / Spec-Rigor Note -->
+<div class="mt-4 pt-3 border-t border-border-light text-[11px] font-meta-default text-text-muted-light flex items-start gap-1.5">
+<span class="material-symbols-outlined text-xs text-primary mt-0.5">info</span>
+<span>Popover dockt vertikal mit 4px Offset an. Keine blockierenden Vollbild-Backdrops.</span>
+</div>
+</div>
+<!-- PANEL 2: Archiviertes Buch & Wiederherstellung -->
+<div class="bg-bg-panel-light border border-border-light rounded-xl p-5 flex flex-col justify-between relative group hover:border-outline-variant/80 transition-all duration-200">
+<div>
+<!-- Panel Header -->
+<div class="flex items-center justify-between gap-2 mb-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">PANEL 2 • ARCHIVIERTER STATUS</span>
+<span class="bg-bg-soft-light text-area-settings font-meta-default text-[11px] px-2 py-0.5 rounded font-medium border border-border-light">Ruhendes Werk</span>
+</div>
+<h2 class="font-headline-emph text-headline-emph text-on-surface mb-1">
+            Archiviertes Buch &amp; Wiederherstellung
+          </h2>
+<p class="font-meta-default text-meta-default text-text-muted-light mb-6">
+            Gedämpfte Farbwerte und sanfte Tinte; das Menü bietet die symmetrische Umkehrung.
+          </p>
+<!-- Interaktions-Visualisierung -->
+<div class="relative bg-bg-canvas-light/60 p-4 rounded-lg border border-border-light/70 flex flex-col items-center">
+<!-- Die archivierte Narrare-Regalkarte -->
+<div class="w-full max-w-[220px] bg-bg-card-light/75 rounded border border-border-light p-3 relative shadow-sm opacity-90">
+<!-- Buchcover (Winterhaus / The Salt Road mit gedämpftem Schleier) -->
+<div class="w-full h-44 bg-cover-pale rounded relative flex flex-col justify-between p-3.5 text-area-settings overflow-hidden border border-border-light">
+<div class="absolute left-0 top-0 bottom-0 w-3 bg-stone-300/40 cover-spine"></div>
+<div class="absolute inset-2 border border-stone-400/20 rounded-sm pointer-events-none"></div>
+<div class="pl-2">
+<span class="font-eyebrow-tracked text-[9px] uppercase tracking-widest text-text-muted-light">Archivbestand</span>
+</div>
+<!-- Emblem -->
+<div class="pl-2 flex items-center justify-center my-auto">
+<div class="w-8 h-8 rounded-full border border-stone-400/30 flex items-center justify-center text-stone-500">
+<span class="material-symbols-outlined text-sm">cottage</span>
+</div>
+</div>
+<div class="pl-2">
+<h3 class="font-prose-heading-1 text-lg font-semibold leading-tight text-area-settings">Winterhaus</h3>
+<span class="font-meta-default text-[10px] text-text-muted-light">Romanfragment</span>
+</div>
+<!-- Gedämpfter Schleier Overlay -->
+<div class="absolute inset-0 bg-[#F6F3ED]/30 pointer-events-none"></div>
+</div>
+<!-- Metazeile der archivierten Karte -->
+<div class="mt-3 pt-2 border-t border-border-light/80 flex flex-col gap-1.5">
+<div class="flex items-center justify-between font-meta-default text-meta-default">
+<span class="bg-stone-200/70 text-area-settings px-1.5 py-0.5 rounded text-[11px] font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">archive</span>
+                    Archiviert
+                  </span>
+<span class="text-text-muted-light font-mono text-[11px]">24.150 W.</span>
+</div>
+<div class="flex items-center justify-between font-meta-default text-meta-default">
+<span class="text-text-muted-light italic">Im Archiv ruhend</span>
+<span class="text-stone-400 text-[11px]">Unverändert</span>
+</div>
+</div>
+<!-- Menü-Button oben rechts -->
+<div class="absolute top-4 right-4 z-10">
+<button class="w-7 h-7 rounded bg-bg-card-light border border-border-light text-text-muted-light flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-base">more_vert</span>
+</button>
+</div>
+<!-- OFFENES SCHNELLMENÜ FÜR ARCHIV-STATUS -->
+<div class="absolute top-12 right-2 w-60 bg-surface-container-lowest border border-[#E0DEDA] rounded-xl custom-shadow-popover z-30 p-1.5 flex flex-col">
+<div class="px-2.5 py-1 text-[10px] font-eyebrow-tracked uppercase tracking-wider text-text-muted-light border-b border-border-light/40 mb-1">
+                  Archivierte Optionen
+                </div>
+<!-- Zeile 1: Duplizieren -->
+<button class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-left font-label-default text-label-default text-on-surface hover:bg-bg-soft-light/60 transition-colors">
+<span class="material-symbols-outlined text-text-muted-light text-sm">content_copy</span>
+<span>Duplizieren</span>
+</button>
+<!-- Zeile 2: Exportieren -->
+<button class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-left font-label-default text-label-default text-on-surface hover:bg-bg-soft-light/60 transition-colors">
+<span class="material-symbols-outlined text-text-muted-light text-sm">download</span>
+<span>Exportieren</span>
+</button>
+<!-- Zeile 3: Wiederherstellen (Hoffnungssignal Primär-Tinte) -->
+<button class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-left font-label-default text-label-default text-primary bg-primary/5 hover:bg-primary/10 transition-colors font-medium">
+<span class="material-symbols-outlined text-primary text-sm">unarchive</span>
+<span>Wiederherstellen</span>
+</button>
+<!-- Trennlinie -->
+<div class="my-1 border-t border-border-light"></div>
+<!-- Metazeile mit Archivierungsdatum -->
+<div class="px-2.5 py-1 font-meta-default text-[11px] text-text-muted-light flex items-center justify-between">
+<span>Archiviert am:</span>
+<span class="font-medium text-on-surface">14. Feb. 2026</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Annotation / Spec-Rigor Note -->
+<div class="mt-4 pt-3 border-t border-border-light text-[11px] font-meta-default text-text-muted-light flex items-start gap-1.5">
+<span class="material-symbols-outlined text-xs text-primary mt-0.5">restore</span>
+<span>Wiederherstellung verschiebt das Werk ohne Bestätigungsklick sofort zurück ins aktive Regal.</span>
+</div>
+</div>
+<!-- PANEL 3: Archivieren bestätigen (Kein Modal) -->
+<div class="bg-bg-panel-light border border-border-light rounded-xl p-5 flex flex-col justify-between relative group hover:border-outline-variant/80 transition-all duration-200">
+<div>
+<!-- Panel Header -->
+<div class="flex items-center justify-between gap-2 mb-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">PANEL 3 • BESTÄTIGUNGSFLUSS</span>
+<span class="bg-secondary-container/50 text-secondary font-meta-default text-[11px] px-2 py-0.5 rounded font-medium border border-border-light">Kontemplativer Dialog</span>
+</div>
+<h2 class="font-headline-emph text-headline-emph text-on-surface mb-1">
+            Archivieren bestätigen (Kein Modal)
+          </h2>
+<p class="font-meta-default text-meta-default text-text-muted-light mb-6">
+            Kontextuelles Popover direkt am Menü verhindert Kontextbruch und verzichtet auf rote Schreckfarben.
+          </p>
+<!-- Interaktions-Visualisierung -->
+<div class="relative bg-bg-canvas-light/60 p-4 rounded-lg border border-border-light/70 flex flex-col items-center">
+<!-- Die Karte im Hintergrund -->
+<div class="w-full max-w-[220px] bg-bg-card-light rounded border border-border-light p-3 relative shadow-sm">
+<div class="w-full h-44 bg-cover-sepia rounded relative flex flex-col justify-between p-3.5 text-surface-container-lowest overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-3 bg-black/30 cover-spine"></div>
+<div class="pl-2">
+<span class="font-eyebrow-tracked text-[9px] uppercase tracking-widest text-primary-fixed-dim">H. Calder</span>
+</div>
+<div class="pl-2 my-auto flex justify-center">
+<span class="material-symbols-outlined text-2xl text-secondary-fixed">satellite_alt</span>
+</div>
+<div class="pl-2">
+<h3 class="font-prose-heading-1 text-lg font-semibold leading-tight text-white">Dead Signal</h3>
+<span class="font-meta-default text-[10px] text-primary-fixed-dim">Hard Sci-Fi</span>
+</div>
+</div>
+<!-- Metazeile -->
+<div class="mt-3 pt-2 border-t border-border-light/80 flex items-center justify-between font-meta-default text-[11px]">
+<span class="text-text-muted-light">3 Kapitel</span>
+<span class="font-mono text-text-muted-light">3.384 W.</span>
+</div>
+<!-- ANGEDOCKTES BESTÄTIGUNGS-POPOVER (w-72) -->
+<div class="absolute top-10 -right-2 sm:-right-4 w-64 sm:w-72 bg-surface-container-lowest border border-[#E0DEDA] rounded-xl custom-shadow-popover z-30 p-4 flex flex-col gap-3">
+<div class="flex items-start gap-2.5">
+<div class="w-7 h-7 rounded bg-bg-soft-light flex-shrink-0 flex items-center justify-center text-primary border border-border-light">
+<span class="material-symbols-outlined text-base">inventory_2</span>
+</div>
+<div>
+<h4 class="font-prose-heading-2 text-base text-on-surface font-semibold leading-tight">
+                      Ins Archiv stellen?
+                    </h4>
+<p class="font-body-default text-xs text-text-muted-light mt-1 leading-snug">
+                      «Dead Signal» verlässt das Regal und ruht im Archiv — jederzeit wiederherstellbar.
+                    </p>
+</div>
+</div>
+<!-- Zwei Aktionen nebeneinander -->
+<div class="flex items-center justify-end gap-2 pt-2 border-t border-border-light/60">
+<button class="px-2.5 py-1.5 rounded border border-border-light font-label-default text-xs text-text-muted-light hover:bg-bg-soft-light transition-colors">
+                    Abbrechen
+                  </button>
+<button class="px-3 py-1.5 rounded bg-bg-soft-light text-primary border border-primary/20 font-label-default text-xs font-semibold hover:bg-secondary-container transition-colors">
+                    Archivieren
+                  </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Annotation / Spec-Rigor Note -->
+<div class="mt-4 pt-3 border-t border-border-light text-[11px] font-meta-default text-text-muted-light flex items-start gap-1.5">
+<span class="material-symbols-outlined text-xs text-primary mt-0.5">verified_user</span>
+<span>Kein Alarm-Rot: Archivieren zerstört keine Daten. Sanfte Tinte wahrt die Konzentration.</span>
+</div>
+</div>
+<!-- PANEL 4: Beschäftigt & ehrliche Fehlerzeile -->
+<div class="bg-bg-panel-light border border-border-light rounded-xl p-5 flex flex-col justify-between relative group hover:border-outline-variant/80 transition-all duration-200">
+<div>
+<!-- Panel Header -->
+<div class="flex items-center justify-between gap-2 mb-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">PANEL 4 • RÜCKMELDUNG &amp; RESILIENZ</span>
+<span class="bg-error-container/60 text-error font-meta-default text-[11px] px-2 py-0.5 rounded font-medium border border-border-light">Fehlertoleranz</span>
+</div>
+<h2 class="font-headline-emph text-headline-emph text-on-surface mb-1">
+            Beschäftigt &amp; ehrliche Fehlerzeile
+          </h2>
+<p class="font-meta-default text-meta-default text-text-muted-light mb-6">
+            Transparente Ladeindikatoren und schonende Fehleranzeige ohne Alarmismus.
+          </p>
+<!-- Interaktions-Visualisierung mit 2 Teilbereichen -->
+<div class="flex flex-col gap-4">
+<!-- Teil (a): In Ausführung (Busy) -->
+<div class="bg-bg-canvas-light/60 p-3 rounded-lg border border-border-light/70">
+<div class="flex items-center justify-between text-[11px] font-eyebrow-tracked uppercase text-text-muted-light mb-2">
+<span>Zustand A: In Ausführung</span>
+<span class="text-primary font-mono font-medium">50% Opazität</span>
+</div>
+<!-- Mini Schnellmenü Busy Ausschnitt -->
+<div class="bg-surface-container-lowest border border-border-light rounded-lg p-1.5 shadow-sm">
+<div class="flex items-center justify-between px-2.5 py-1.5 rounded bg-bg-soft-light/70 text-text-muted-light opacity-60">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined spin-icon text-primary text-sm">progress_activity</span>
+<span class="font-label-default text-xs font-medium text-on-surface">Duplizieren …</span>
+</div>
+<span class="font-meta-default text-[10px] text-text-muted-light">Bitte warten</span>
+</div>
+<div class="flex items-center gap-2 px-2.5 py-1 text-stone-400 font-label-default text-xs opacity-40">
+<span class="material-symbols-outlined text-sm">download</span>
+<span>Exportieren</span>
+</div>
+</div>
+</div>
+<!-- Teil (b): Fehlerzeile unter geschlossenem Menü -->
+<div class="bg-bg-canvas-light/60 p-3 rounded-lg border border-border-light/70">
+<div class="flex items-center justify-between text-[11px] font-eyebrow-tracked uppercase text-text-muted-light mb-2">
+<span>Zustand B: Sanfte Fehlerzeile</span>
+<span class="text-state-danger font-mono font-medium">#AC3031</span>
+</div>
+<!-- Miniatur-Buchzeile mit Fehleranzeige -->
+<div class="bg-surface-container-lowest border border-border-light rounded-lg p-2.5 shadow-sm flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-5 h-7 bg-cover-ink rounded-sm"></div>
+<div>
+<div class="font-prose-heading-2 text-xs font-semibold leading-none">Dead Signal</div>
+<span class="text-[10px] text-text-muted-light">Menü geschlossen</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-stone-400 text-sm">more_vert</span>
+</div>
+<!-- Feine, ehrliche Inline-Fehlernachricht -->
+<div class="pt-2 border-t border-border-light/60 flex items-start gap-1.5 text-state-danger bg-error-container/20 p-2 rounded">
+<span class="material-symbols-outlined text-state-danger text-sm flex-shrink-0 mt-0.5">error_outline</span>
+<div class="flex-1">
+<p class="font-meta-default text-[11px] text-on-surface leading-tight">
+                      Das Duplikat konnte nicht angelegt werden — nichts verloren.
+                    </p>
+<button class="mt-1 font-label-default text-[11px] text-primary hover:text-amber-focus font-medium underline underline-offset-2 flex items-center gap-1">
+<span>Erneut versuchen</span>
+<span class="text-xs">↺</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Annotation / Spec-Rigor Note -->
+<div class="mt-4 pt-3 border-t border-border-light text-[11px] font-meta-default text-text-muted-light flex items-start gap-1.5">
+<span class="material-symbols-outlined text-xs text-state-danger mt-0.5">security</span>
+<span>Zero-Data-Loss Garantie: Fehlgeschlagene Atelier-Operationen hinterlassen niemals unvollständige Fragmente.</span>
+</div>
+</div>
+</div>
+<!-- ZUSÄTZLICH AM FUSSENDE: LEERES REGAL — ARCHIVEINSTIEG -->
+<section class="bg-bg-panel-light border border-border-light rounded-xl p-6 relative">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="font-eyebrow-tracked text-[10px] uppercase text-text-muted-light tracking-wider font-semibold">
+              GRENZFALL-SPEZIFIKATION
+            </span>
+<span class="bg-bg-soft-light text-area-settings font-meta-default text-[10px] px-1.5 py-0.2 rounded font-medium border border-border-light">
+              Empty Shelf State
+            </span>
+</div>
+<h3 class="font-prose-heading-2 text-xl text-primary font-normal">
+            Leeres Regal — Archiveinstieg &amp; Sanfter Übergang
+          </h3>
+<p class="font-meta-default text-meta-default text-text-muted-light max-w-2xl mt-0.5">
+            Gewährleistet den Zugang zu archivierten Manuskripten auch bei leerem aktiven Regal ohne leere Dashboard-Ödnis.
+          </p>
+</div>
+<!-- Der dezente ehrliche Text-Tür-Eintrag -->
+<div class="bg-bg-canvas-light border border-border-light rounded-lg px-4 py-3 flex items-center gap-6">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-bg-panel-light border border-border-light flex items-center justify-center text-area-settings">
+<span class="material-symbols-outlined text-lg">inventory_2</span>
+</div>
+<div>
+<div class="font-label-default text-label-default text-on-surface font-medium">Archiv-Gewölbe</div>
+<div class="font-meta-default text-meta-default text-text-muted-light">Keine ruhenden Entwürfe</div>
+</div>
+</div>
+<a class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-bg-panel-light border border-border-light font-label-default text-xs text-primary hover:border-primary/40 transition-colors" href="#">
+<span>Archiv durchsehen</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</div>
+</section>
+</main>
+<!-- FUSSZEILE DER SPEZIFIKATION (Literarischer Fußsteg wie SCREEN_9 / SCREEN_42) -->
+<footer class="w-full py-6 px-8 border-t border-border-light bg-bg-panel-light flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left mt-8">
+<div class="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-2 text-text-muted-light font-meta-default text-meta-default">
+<span class="text-on-surface font-semibold flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-sm">menu_book</span>
+        Literary Modernism Spec: Schnellmenü V2.4
+      </span>
+<span>•</span>
+<span>Pergament <code class="font-mono text-xs">#F6F3ED</code></span>
+<span>•</span>
+<span>Schrift: EB Garamond &amp; Plus Jakarta Sans</span>
+<span>•</span>
+<span>100% Autorensouveränität</span>
+<span>•</span>
+<span class="text-state-success flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">check_circle</span>
+        WCAG AA barrierefrei
+      </span>
+</div>
+<div class="text-text-muted-light font-meta-default text-meta-default">
+      © Narrare Atelier. Written sovereignty guaranteed. Local-first, zero-surveillance manuscript vault.
+    </div>
+</footer>
+</body></html>

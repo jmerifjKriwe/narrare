@@ -1,19 +1,16 @@
 import { createRoute, redirect } from "@tanstack/react-router";
 import { lazy } from "react";
 
+import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
-import { useSetupStatus } from "./useSetupStatus";
+import { setupStatusQueryOptions } from "./setupStatusQuery";
 
 // React.lazy keeps the pages out of the shell's bundle: each loads as its
 // own chunk, and the shell root's Suspense boundary covers the gap.
 const WelcomePage = lazy(async () => {
   const page = await import("./WelcomePage");
   return { default: page.WelcomePage };
-});
-const LandingPage = lazy(async () => {
-  const page = await import("./LandingPage");
-  return { default: page.LandingPage };
 });
 const BasisStep = lazy(async () => {
   const page = await import("./steps/BasisStep");
@@ -33,58 +30,65 @@ const ProvisioningStep = lazy(async () => {
 });
 
 /**
- * The `/` gate: the welcome while the instance is unset, the landing once
- * it is set up. The status query suspends while its answer is in flight —
- * the root's boundary holds the gap, nothing invented — and every fresh
- * load of `/` asks the status anew, so a browser refresh after setup lands
- * on the landing, never on a remembered welcome.
+ * The inverse gate's load-time check: an installed instance has no wizard.
+ * `/setup` and every step ask the status once per navigation and answer with
+ * a redirect to the shelf (`/`, the writing capability's gate) when setup is
+ * complete; pre-setup they fall through to the welcome or the step.
+ *
+ * The check lives in `beforeLoad`, not in a render gate, on purpose: the
+ * provisioning step flips the status itself when its POST lands, and it must
+ * stay mounted to show the bound checklist — a render gate would re-read the
+ * invalidated status and kick the user off the bound face mid-step. A loader
+ * runs on arrival, so a post-setup deep link redirects while the step that
+ * just bound stays. The shared options keep this ask on the same key the
+ * hook reads and the write invalidates; a fresh load asks anew (empty cache),
+ * so a refresh is honest. A failed ask throws to the root's error screen.
  */
-function HomeGate() {
-  const { complete } = useSetupStatus();
-  return complete ? <LandingPage /> : <WelcomePage />;
+async function redirectIfSetUp(): Promise<void> {
+  const complete = await queryClient.ensureQueryData(setupStatusQueryOptions);
+  if (complete) throw redirect({ to: "/" });
 }
 
-const homeRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/",
-  component: HomeGate,
-});
-
-// `/setup` is the wizard's door, not a step of its own: it answers with the
-// first step. The redirect keeps the current search — the wizard's answers
-// ride search params (refresh-safe), and the door must not drop them.
+// `/setup` is the welcome's home after the W3 handover (the writing capability
+// owns `/` now): pre-setup it renders the welcome, whose CTAs already lead to
+// `/setup/basis`; post-setup the inverse gate redirects to the shelf.
 const setupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup",
-  beforeLoad: () => {
-    throw redirect({ to: "/setup/basis", search: true });
-  },
+  beforeLoad: redirectIfSetUp,
+  component: WelcomePage,
 });
 
 // The four steps, addressable each on its own — a refresh mid-wizard lands
 // on the same step. All four are the ported drafts: basis, structure,
-// AI-rules and the provisioning step that posts the one setup write.
+// AI-rules and the provisioning step that posts the one setup write. Each
+// carries the inverse gate: a post-setup deep link redirects to the shelf
+// (the 409 story in the provisioning step covers re-runs that race the gate).
 const basisRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup/basis",
+  beforeLoad: redirectIfSetUp,
   component: BasisStep,
 });
 
 const structureRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup/structure",
+  beforeLoad: redirectIfSetUp,
   component: StructureStep,
 });
 
 const aiRulesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup/ai-rules",
+  beforeLoad: redirectIfSetUp,
   component: AiRulesStep,
 });
 
 const provisioningRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup/provisioning",
+  beforeLoad: redirectIfSetUp,
   component: ProvisioningStep,
 });
 
@@ -97,7 +101,6 @@ const provisioningRoute = createRoute({
 // (a `Route[]` annotation or satisfies) degrades createRoute's inference to
 // `any` paths, and with it the router's checked `to=` props.
 export const routes = [
-  homeRoute,
   setupRoute,
   basisRoute,
   structureRoute,

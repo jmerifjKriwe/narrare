@@ -1,549 +1,712 @@
 <!DOCTYPE html>
 
-<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<html class="h-full" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Narrare Atelier — KI-Prompts anpassen</title>
+<!-- Google Fonts: EB Garamond & Plus Jakarta Sans & JetBrains Mono for Code -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"state-success":"#21763C","background":"#fff8f2","area-knowledge":"#606127","on-secondary-fixed-variant":"#5a4137","area-writing":"#914F2F","surface-container-low":"#faf2ea","surface":"#fff8f2","text-muted-light":"#6E6B65","on-primary":"#ffffff","primary-fixed-dim":"#ffb695","primary-container":"#743b1f","rule-dark":"#302D28","on-tertiary-container":"#eead78","secondary":"#74584e","outline":"#86736c","state-warning":"#9A6100","on-primary-fixed":"#351000","area-chat":"#3A637B","amber-focus":"#8F4622","on-secondary":"#ffffff","cover-ink":"#24211C","cover-pale":"#EEEBE5","primary":"#58250b","bg-panel-dark":"#1C1914","on-primary-fixed-variant":"#6f371c","bg-card-dark":"#211F1A","area-settings":"#5A5549","inverse-surface":"#33302b","bg-panel-light":"#FDFCF9","on-tertiary-fixed":"#2f1500","text-muted-dark":"#89867F","on-error-container":"#93000a","on-tertiary":"#ffffff","area-planning":"#834D7E","on-secondary-fixed":"#2a170f","on-surface":"#1e1b16","on-secondary-container":"#795c52","amber-focus-dark":"#F2AD73","surface-tint":"#8c4e30","surface-bright":"#fff8f2","surface-container-highest":"#e9e1d9","bg-soft-dark":"#2C2922","secondary-fixed":"#ffdbce","text-foreground-dark":"#DFDEDA","bg-soft-light":"#EFEBE2","bg-canvas-light":"#F6F3ED","error":"#ba1a1a","surface-variant":"#e9e1d9","rule-light":"#EEEBE5","surface-dim":"#e0d9d1","surface-container-high":"#eee7df","surface-container-lowest":"#ffffff","secondary-container":"#fed8ca","cover-sepia":"#743B1F","inverse-on-surface":"#f7f0e7","border-dark":"#35332D","border-light":"#E0DEDA","on-background":"#1e1b16","on-surface-variant":"#53433d","on-tertiary-fixed-variant":"#693c10","primary-fixed":"#ffdbcc","error-container":"#ffdad6","state-danger":"#AC3031","outline-variant":"#d8c2b9","bg-card-light":"#FFFFFF","on-error":"#ffffff","surface-container":"#f4ede4","secondary-fixed-dim":"#e3bfb2","inverse-primary":"#ffb695","bg-canvas-dark":"#16140F","tertiary-container":"#6e3f14","tertiary":"#522900","on-primary-container":"#f8a884","tertiary-fixed-dim":"#fcb882","tertiary-fixed":"#ffdcc3"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"margin":"1.5rem","space-sm":"0.5rem","rail-collapsed":"3rem","space-xs":"0.25rem","dock-width":"21rem","container-max":"75rem","rail-expanded":"10.5rem","prose-max-width":"34rem","space-md":"1rem","gutter":"1rem","space-lg":"1.5rem","space-xl":"2rem"},fontFamily:{"meta-default":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-2":["EB Garamond"],"eyebrow-tracked":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"],"headline-hero":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"]},fontSize:{"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}],"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}]}}}}</script></head><body class="bg-surface font-body-default text-body-default text-on-surface antialiased selection:bg-secondary-container selection:text-primary"><aside class="fixed left-0 top-0 h-full w-rail-collapsed bg-surface-container-low z-50 flex flex-col justify-between items-center py-space-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col items-center gap-space-lg w-full"><a class="w-8 h-8 rounded-lg bg-cover-sepia text-surface flex items-center justify-center font-prose-heading-1 text-prose-heading-1 shadow-[0_1px_3px_0_rgba(44,24,16,0.15)] hover:bg-primary transition-colors" data-path="manuscript-shelf" href="#" title="Narrare Atelier"><span class="italic font-normal">N</span></a><nav class="flex flex-col items-center gap-space-xs w-full px-space-xs" data-active-classes="bg-primary-container text-on-primary rounded-lg"><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="manuscript-shelf" href="#" title="Manuscript Shelf"><span class="material-symbols-outlined text-[20px]">book_2</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="writing-workspace" href="#" title="Writing Workspace"><span class="material-symbols-outlined text-[20px]">edit_note</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="lore-entity-graph" href="#" title="Entity Lore Graph"><span class="material-symbols-outlined text-[20px]">hub</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="timeline-chronology" href="#" title="Timeline &amp; Structure"><span class="material-symbols-outlined text-[20px]">account_tree</span></a></nav></div><div class="flex flex-col items-center gap-space-xs w-full px-space-xs"><nav class="flex flex-col items-center gap-space-xs w-full" data-active-classes="bg-primary-container text-on-primary rounded-lg"><a class="w-9 h-9 flex items-center justify-center rounded-lg transition-all text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface" data-path="atelier-settings" href="#" title="Atelier-Einstellungen"><span class="material-symbols-outlined text-[20px]">settings</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg transition-all text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface" data-path="ki-prompts-feature-ueberschreibung" href="#" title="KI-Prompts &amp; Feature-Überschreibung"><span class="material-symbols-outlined text-[20px]">tune</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg transition-all text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface" data-path="hilfe-zentrum-kontext-handbuch" href="#" title="Hilfe-Zentrum &amp; Kontext-Handbuch"><span class="material-symbols-outlined text-[20px]">help_outline</span></a></nav></div></aside><div class="pl-rail-collapsed min-h-screen flex flex-col"><header class="fixed top-0 left-rail-collapsed right-0 h-14 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-sm font-meta-default text-meta-default"><span class="font-headline-emph text-headline-emph text-on-surface tracking-tight">Atelier</span><span class="material-symbols-outlined text-outline text-[14px]">chevron_right</span><span class="text-on-surface-variant">Dead Signal</span><span class="material-symbols-outlined text-outline text-[14px]">chevron_right</span><span class="text-on-surface font-label-default text-label-default">Kapitel III: Das Observatorium</span></div><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low text-on-surface-variant font-meta-default text-meta-default"><span class="material-symbols-outlined text-[15px] text-area-writing">ink_pen</span><span class="tabular-nums text-on-surface font-label-default text-label-default">42,850</span><span class="text-text-muted-light">Wörter</span></div><button class="flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-meta-default text-meta-default" title="Command Palette (⌘K)"><span class="material-symbols-outlined text-[15px]">search</span><span class="hidden sm:inline font-label-default text-label-default">Suche</span><kbd class="px-1.5 py-0.5 rounded bg-surface-container-highest font-meta-default text-[10px] text-on-surface-variant uppercase tracking-wider">⌘K</kbd></button><div class="flex items-center rounded bg-surface-container-low p-0.5 font-label-default text-label-default"><button class="px-2 py-0.5 rounded text-on-surface font-bold bg-surface shadow-[0_1px_2px_rgba(44,24,16,0.05)]">DE</button><button class="px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface transition-colors">EN</button></div><button class="w-7 h-7 flex items-center justify-center rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Toggle Mode"><span class="material-symbols-outlined text-[18px]">light_mode</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-14 bg-surface flex-1 w-full"><div class="flex flex-col w-full">
-<!-- Top Context Sub-Bar (Integrated into page canvas flow) -->
-<div class="w-full bg-surface-container-low px-space-lg py-3 flex flex-wrap items-center justify-between gap-y-3 shadow-sm">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration verbatim -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-error": "#ffffff",
+            "bg-soft-dark": "#2C2922",
+            "state-success": "#21763C",
+            "surface-container-low": "#faf2ea",
+            "primary": "#58250b",
+            "surface-container-high": "#eee7df",
+            "on-primary-container": "#f8a884",
+            "rule-dark": "#302D28",
+            "bg-canvas-dark": "#16140F",
+            "rule-light": "#EEEBE5",
+            "secondary-fixed": "#ffdbce",
+            "amber-focus-dark": "#F2AD73",
+            "bg-panel-light": "#FDFCF9",
+            "cover-sepia": "#743B1F",
+            "on-secondary": "#ffffff",
+            "on-tertiary-fixed": "#2f1500",
+            "bg-soft-light": "#EFEBE2",
+            "area-writing": "#914F2F",
+            "bg-card-light": "#FFFFFF",
+            "secondary": "#74584e",
+            "error": "#ba1a1a",
+            "bg-canvas-light": "#F6F3ED",
+            "primary-fixed": "#ffdbcc",
+            "text-foreground-dark": "#DFDEDA",
+            "border-light": "#E0DEDA",
+            "primary-fixed-dim": "#ffb695",
+            "on-surface-variant": "#53433d",
+            "secondary-container": "#fed8ca",
+            "surface-container-lowest": "#ffffff",
+            "error-container": "#ffdad6",
+            "on-primary": "#ffffff",
+            "inverse-surface": "#33302b",
+            "area-chat": "#3A637B",
+            "outline": "#86736c",
+            "background": "#fff8f2",
+            "on-primary-fixed": "#351000",
+            "outline-variant": "#d8c2b9",
+            "text-muted-dark": "#89867F",
+            "on-secondary-fixed-variant": "#5a4137",
+            "primary-container": "#743b1f",
+            "border-dark": "#35332D",
+            "on-primary-fixed-variant": "#6f371c",
+            "area-settings": "#5A5549",
+            "on-surface": "#1e1b16",
+            "on-tertiary-container": "#eead78",
+            "area-knowledge": "#606127",
+            "surface": "#fff8f2",
+            "tertiary": "#522900",
+            "area-planning": "#834D7E",
+            "on-secondary-fixed": "#2a170f",
+            "surface-container-highest": "#e9e1d9",
+            "surface-container": "#f4ede4",
+            "secondary-fixed-dim": "#e3bfb2",
+            "tertiary-fixed-dim": "#fcb882",
+            "on-error-container": "#93000a",
+            "inverse-primary": "#ffb695",
+            "cover-pale": "#EEEBE5",
+            "inverse-on-surface": "#f7f0e7",
+            "tertiary-container": "#6e3f14",
+            "bg-panel-dark": "#1C1914",
+            "state-danger": "#AC3031",
+            "tertiary-fixed": "#ffdcc3",
+            "on-background": "#1e1b16",
+            "surface-variant": "#e9e1d9",
+            "on-secondary-container": "#795c52",
+            "surface-tint": "#8c4e30",
+            "surface-bright": "#fff8f2",
+            "text-muted-light": "#6E6B65",
+            "bg-card-dark": "#211F1A",
+            "surface-dim": "#e0d9d1",
+            "on-tertiary": "#ffffff",
+            "cover-ink": "#24211C",
+            "on-tertiary-fixed-variant": "#693c10",
+            "amber-focus": "#8F4622",
+            "state-warning": "#9A6100"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "rail-expanded": "10.5rem",
+            "margin": "1.5rem",
+            "dock-width": "21rem",
+            "space-xs": "0.25rem",
+            "container-max": "75rem",
+            "rail-collapsed": "3rem",
+            "space-xl": "2rem",
+            "gutter": "1rem",
+            "space-lg": "1.5rem",
+            "space-md": "1rem",
+            "space-sm": "0.5rem",
+            "prose-max-width": "34rem"
+          },
+          "fontFamily": {
+            "prose-heading-1": ["EB Garamond", "serif"],
+            "headline-emph": ["Plus Jakarta Sans", "sans-serif"],
+            "prose-editorial": ["EB Garamond", "serif"],
+            "eyebrow-tracked": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-hero": ["Plus Jakarta Sans", "sans-serif"],
+            "prose-heading-2": ["EB Garamond", "serif"],
+            "headline-title": ["Plus Jakarta Sans", "sans-serif"],
+            "label-default": ["Plus Jakarta Sans", "sans-serif"],
+            "body-default": ["Plus Jakarta Sans", "sans-serif"],
+            "meta-default": ["Plus Jakarta Sans", "sans-serif"],
+            "mono": ["JetBrains Mono", "monospace"]
+          },
+          "fontSize": {
+            "prose-heading-1": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "headline-emph": ["15px", { "lineHeight": "22px", "fontWeight": "600" }],
+            "prose-editorial": ["18px", { "lineHeight": "31.5px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "eyebrow-tracked": ["11px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600" }],
+            "headline-hero": ["28px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "prose-heading-2": ["21px", { "lineHeight": "28px", "fontWeight": "600" }],
+            "headline-title": ["20px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "label-default": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+            "body-default": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+            "meta-default": ["12px", { "lineHeight": "17px", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+      font-size: 19px;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #e0d9d1;
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #86736c;
+    }
+  </style>
+</head>
+<body class="h-full bg-background text-on-surface antialiased font-body-default text-body-default flex flex-col overflow-hidden selection:bg-secondary-container selection:text-primary">
+<!-- TopNavBar (Shared Component JSON Blueprint) -->
+<header class="w-full h-14 px-6 flex items-center justify-between border-b border-border-light bg-bg-panel-light z-40 shrink-0 select-none"><div class="flex items-center gap-6">
 <div class="flex items-center gap-3">
-<span class="w-2.5 h-2.5 rounded-full bg-state-success shadow-[0_0_8px_rgba(33,118,60,0.5)]"></span>
 <div class="flex flex-col">
-<div class="flex items-center gap-2">
-<span class="font-eyebrow-tracked text-eyebrow-tracked text-secondary uppercase tracking-widest">Atelier-Konfiguration</span>
-<span class="text-outline text-xs">/</span>
-<span class="font-headline-emph text-headline-emph text-on-surface">KI-Prompts &amp; Feature-Überschreibung</span>
+<span class="font-prose-heading-1 text-prose-heading-1 tracking-tight text-primary font-semibold leading-tight">Narrare</span>
+<span class="font-eyebrow-tracked text-[9px] tracking-wider text-text-muted-light uppercase">ATELIER EDITION</span>
 </div>
-<div class="flex items-center gap-2 text-meta-default font-meta-default text-on-surface-variant">
-<span>Manuskript: <strong class="text-primary font-semibold">Dead Signal</strong> (Projekt-ID #DS-094)</span>
-<span class="text-outline text-[10px]">•</span>
-<span class="inline-flex items-center gap-1 text-state-success font-medium">
-<span class="material-symbols-outlined text-[14px]">verified</span>
-            Kaskade aktiv &amp; verifiziert (4 Overrides)
-          </span>
-</div>
+<span class="h-4 w-px bg-border-light"></span>
+<nav aria-label="Breadcrumb" class="flex items-center gap-1.5 font-label-default text-label-default">
+<span class="text-text-muted-light">Atelier</span>
+<span class="material-symbols-outlined text-outline-variant text-[14px]">chevron_right</span>
+<span class="text-text-muted-light">Einstellungen</span>
+<span class="material-symbols-outlined text-outline-variant text-[14px]">chevron_right</span>
+<span class="font-headline-emph text-headline-emph text-primary">KI-Prompts</span>
+</nav>
 </div>
 </div>
-<!-- Actions -->
-<div class="flex items-center gap-2.5">
-<button class="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-container-high text-on-surface font-label-default text-label-default transition-all shadow-sm flex items-center gap-1.5" id="reset-all-btn">
-<span class="material-symbols-outlined text-[16px] text-on-surface-variant">history</span>
-<span>Auf Werksstandard</span>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 text-meta-default font-meta-default">
+<span class="px-2 py-0.5 rounded bg-primary text-on-primary font-semibold text-[11px]">DE</span>
+<span class="text-border-light">|</span>
+<span class="px-1.5 py-0.5 text-text-muted-light hover:text-primary cursor-pointer text-[11px]">EN</span>
+<span class="text-border-light">|</span>
+<span class="px-1.5 py-0.5 text-text-muted-light hover:text-primary cursor-pointer text-[11px]">FR</span>
+</div>
+<span class="h-4 w-px bg-border-light"></span>
+<button class="p-1.5 rounded hover:bg-bg-soft-light text-text-muted-light hover:text-primary transition-colors duration-150" id="themeToggle" title="Erscheinungsbild wechseln">
+<span class="material-symbols-outlined">light_mode</span>
 </button>
-<button class="px-3.5 py-1.5 rounded-lg bg-primary-container hover:bg-primary text-on-primary font-label-default text-label-default transition-all shadow-sm flex items-center gap-2" id="compile-btn">
-<span class="material-symbols-outlined text-[16px]">bolt</span>
-<span class="tracking-tight">Änderungen kompilieren</span>
+<button class="p-1.5 rounded hover:bg-bg-soft-light text-text-muted-light hover:text-primary transition-colors duration-150" title="Benachrichtigungen">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<span class="h-4 w-px bg-border-light"></span>
+<div class="w-7 h-7 rounded border border-cover-sepia/30 overflow-hidden bg-secondary-container flex items-center justify-center cursor-pointer shadow-sm text-primary font-headline-emph text-[12px] font-bold" title="Narrare Atelier">
+N
+</div>
+</div></header>
+<!-- Workspace Container: SideRail + Content -->
+<div class="flex-1 flex overflow-hidden relative">
+<!-- Left Icon Rail (SideNavBar from Shared Components JSON) -->
+<!-- Hover expands from w-rail-collapsed to w-rail-expanded -->
+<aside class="fixed top-14 left-0 h-[calc(100vh-3.5rem)] w-rail-collapsed hover:w-rail-expanded z-30 transition-all duration-200 ease-in-out border-r border-border-light bg-bg-panel-light flex flex-col justify-between py-3 px-1.5 shadow-[1px_0_3px_rgba(44,24,16,0.03)] group overflow-hidden"><div class="flex flex-col gap-1 w-full">
+<a class="text-text-muted-light rounded flex items-center gap-3 px-2 py-2 hover:bg-bg-soft-light hover:text-on-surface transition-colors" href="#" title="Bibliothek">
+<span class="material-symbols-outlined shrink-0">menu_book</span>
+<span class="font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Bibliothek</span>
+</a>
+<a class="text-text-muted-light rounded flex items-center gap-3 px-2 py-2 hover:bg-bg-soft-light hover:text-on-surface transition-colors" href="#" title="Manuskript">
+<span class="material-symbols-outlined shrink-0">edit_note</span>
+<span class="font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Manuskript</span>
+</a>
+<a class="text-text-muted-light rounded flex items-center gap-3 px-2 py-2 hover:bg-bg-soft-light hover:text-on-surface transition-colors" href="#" title="Lore-Graph">
+<span class="material-symbols-outlined shrink-0">hub</span>
+<span class="font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Lore-Graph</span>
+</a>
+<a class="text-text-muted-light rounded flex items-center gap-3 px-2 py-2 hover:bg-bg-soft-light hover:text-on-surface transition-colors" href="#" title="Konsistenz">
+<span class="material-symbols-outlined shrink-0">verified_user</span>
+<span class="font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Konsistenz</span>
+</a>
+<a class="bg-secondary-container text-on-secondary-container font-semibold rounded flex items-center gap-3 px-2 py-2 transition-colors" href="#" title="Einstellungen">
+<span class="material-symbols-outlined shrink-0 text-primary">settings</span>
+<span class="font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-primary">Einstellungen</span>
+</a>
+</div>
+<div class="flex flex-col gap-1 w-full pt-2 border-t border-border-light">
+<a class="text-text-muted-light rounded flex items-center gap-3 px-2 py-2 hover:bg-bg-soft-light hover:text-on-surface transition-colors" href="#" title="Dokumentation">
+<span class="material-symbols-outlined shrink-0">menu_book</span>
+<span class="font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Dokumentation</span>
+</a>
+<a class="text-text-muted-light rounded flex items-center gap-3 px-2 py-2 hover:bg-bg-soft-light hover:text-on-surface transition-colors" href="#" title="Hilfe">
+<span class="material-symbols-outlined shrink-0">help_outline</span>
+<span class="font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Hilfe</span>
+</a>
+<a class="text-text-muted-light rounded flex items-center gap-3 px-2 py-2 hover:bg-bg-soft-light hover:text-error transition-colors" href="#" title="Abmelden">
+<span class="material-symbols-outlined shrink-0">logout</span>
+<span class="font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Abmelden</span>
+</a>
+</div></aside>
+<!-- Main Workspace (Offset by collapsed rail: ml-12) -->
+<main class="flex-1 ml-rail-collapsed flex flex-col h-full bg-background overflow-hidden">
+<!-- Sub-Header / Kontext-Filter-Leiste -->
+<div class="h-12 px-6 border-b border-border-light bg-surface-container-low flex items-center justify-between shrink-0"><div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase">Geltungsbereich</span>
+<div class="relative">
+<select class="h-7 pl-2.5 pr-8 bg-surface-container-lowest border border-border-light rounded font-label-default text-label-default text-on-surface focus:outline-none focus:border-amber-focus focus:ring-1 focus:ring-amber-focus cursor-pointer shadow-sm appearance-none">
+<option selected="">Dead Signal</option>
+<option>Echoes of the Thornwall</option>
+<option>Im Stillen Wald</option>
+<option>Global (Atelier-Standard)</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1.5 text-text-muted-light pointer-events-none text-[16px]">expand_more</span>
+</div>
+</div>
+<span class="text-border-light">|</span>
+<div class="flex items-center gap-1.5 text-text-muted-light font-meta-default text-meta-default">
+<span class="w-1.5 h-1.5 rounded-full bg-state-warning"></span>
+<span>1 roman-spezifischer Override aktiv</span>
+</div>
+</div>
+<div class="flex items-center gap-3 font-meta-default text-meta-default text-text-muted-light">
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest border border-border-light font-label-default text-[11px] text-cover-sepia font-medium">Lokaler Prompt-Speicher</span>
+</div></div>
+<!-- Atelier Zweispaltiges Layout -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Linke Liste: 4 Prompt-Schlüssel (Breite: 340px) -->
+<section class="w-80 border-r border-border-light bg-surface-container-low flex flex-col shrink-0 overflow-y-auto">
+<div class="p-4 border-b border-border-light bg-bg-panel-light/70 sticky top-0 backdrop-blur-sm z-10">
+<h2 class="font-headline-emph text-headline-emph text-primary">Prompt-Katalog</h2>
+<p class="font-meta-default text-meta-default text-text-muted-light mt-0.5">Wähle die System-Direktive für dieses Atelier</p>
+</div>
+<div class="p-3 flex flex-col gap-2">
+<!-- 1. Text fortsetzen (AKTIV) -->
+<div class="p-3.5 rounded border border-primary/40 bg-surface-container-lowest shadow-[0_1px_3px_0_rgba(44,24,16,0.06)] cursor-pointer ring-1 ring-primary/20 relative">
+<div class="flex items-start justify-between gap-2 mb-1.5">
+<div>
+<h3 class="font-headline-emph text-headline-emph text-primary flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[17px]">edit_note</span>
+                    Text fortsetzen
+                  </h3>
+<code class="font-mono text-[11px] text-text-muted-light">writing.continuation</code>
+</div>
+<span class="material-symbols-outlined text-primary text-[18px]">arrow_right_alt</span>
+</div>
+<p class="font-meta-default text-meta-default text-on-surface-variant mb-3 leading-snug">
+                Ghost-Writing &amp; dynamische Satzfortführung im Manuskript.
+              </p>
+<div class="flex flex-wrap items-center gap-1.5 pt-2 border-t border-border-light/70">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-eyebrow-tracked text-[10px]">Global: Standard</span>
+<span class="px-1.5 py-0.5 rounded bg-secondary-container text-primary font-eyebrow-tracked text-[10px] font-semibold border border-primary/20">Dead Signal: Eigener Override aktiv</span>
+</div>
+</div>
+<!-- 2. Chat (chat.ask) -->
+<div class="p-3.5 rounded border border-border-light bg-surface-container-lowest/60 hover:bg-surface-container-lowest hover:border-outline-variant transition-colors cursor-pointer">
+<div class="flex items-start justify-between gap-2 mb-1.5">
+<div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-area-chat text-[17px]">forum</span>
+                    Chat
+                  </h3>
+<code class="font-mono text-[11px] text-text-muted-light">chat.ask</code>
+</div>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light mb-3 leading-snug">
+                Dialogische Befragung der Lore und Manuskript-Zusammenhänge.
+              </p>
+<div class="flex items-center gap-1.5 pt-2 border-t border-border-light/60">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-text-muted-light font-eyebrow-tracked text-[10px] italic">Nur Global gültig (kein Roman-Scope)</span>
+</div>
+</div>
+<!-- 3. Entitäten extrahieren (knowledge.extract-entities) -->
+<div class="p-3.5 rounded border border-border-light bg-surface-container-lowest/60 hover:bg-surface-container-lowest hover:border-outline-variant transition-colors cursor-pointer">
+<div class="flex items-start justify-between gap-2 mb-1.5">
+<div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-area-knowledge text-[17px]">account_tree</span>
+                    Entitäten extrahieren
+                  </h3>
+<code class="font-mono text-[11px] text-text-muted-light">knowledge.extract-entities</code>
+</div>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light mb-3 leading-snug">
+                Erkennt Figuren, Orte, Artefakte und Relationen aus Textabschnitten.
+              </p>
+<div class="flex flex-wrap items-center gap-1.5 pt-2 border-t border-border-light/60">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-eyebrow-tracked text-[10px]">Global: Standard</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-text-muted-light font-eyebrow-tracked text-[10px]">Dead Signal: erbt Global</span>
+</div>
+</div>
+<!-- 4. Konsistenz prüfen (knowledge.check-consistency) -->
+<div class="p-3.5 rounded border border-border-light bg-surface-container-lowest/60 hover:bg-surface-container-lowest hover:border-outline-variant transition-colors cursor-pointer">
+<div class="flex items-start justify-between gap-2 mb-1.5">
+<div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-state-warning text-[17px]">verified_user</span>
+                    Konsistenz prüfen
+                  </h3>
+<code class="font-mono text-[11px] text-text-muted-light">knowledge.check-consistency</code>
+</div>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light mb-3 leading-snug">
+                Kausalitäts-Audit gegen verankerte Figurenbiografien und Chronologie.
+              </p>
+<div class="flex flex-wrap items-center gap-1.5 pt-2 border-t border-border-light/60">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-eyebrow-tracked text-[10px]">Global: Standard</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-text-muted-light font-eyebrow-tracked text-[10px]">Dead Signal: erbt Global</span>
+</div>
+</div>
+</div>
+<!-- Infokasten unten -->
+<div class="mt-auto p-4 m-3 rounded border border-border-light bg-bg-panel-light text-text-muted-light font-meta-default text-meta-default">
+<div class="flex items-center gap-1.5 text-on-surface font-headline-emph mb-1">
+<span class="material-symbols-outlined text-cover-sepia text-[16px]">menu_book</span>
+<span>Souveränitäts-Garantie</span>
+</div>
+            Deine Anpassungen werden ausschließlich lokal im `.narrare/prompts/` Ordner deines Manuskripts gesichert. Keine automatische Cloud-Synchronisation.
+          </div>
+</section>
+<!-- Hauptbereich: Editor & Werkzeuge für writing.continuation -->
+<section class="flex-1 flex flex-col overflow-hidden bg-bg-panel-light">
+<!-- Header des Editors: Titel, Scope-Chips & Erbe-Hinweis -->
+<div class="p-5 border-b border-border-light bg-surface-container-lowest shrink-0">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div>
+<div class="flex items-center gap-3">
+<h1 class="font-prose-heading-2 text-prose-heading-2 text-primary">Text fortsetzen</h1>
+<span class="font-mono text-meta-default text-text-muted-light px-2 py-0.5 rounded bg-surface-container-low border border-border-light">writing.continuation</span>
+</div>
+<p class="font-body-default text-body-default text-text-muted-light mt-1">
+                  Passe an, wie der Ghost-Writing-Assistent das Tempo, Vokabular und Wissen von <em class="text-on-surface">Dead Signal</em> aufgreift.
+                </p>
+</div>
+<!-- Geltungsbereich-Chips -->
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase mr-1">Scope:</span>
+<button class="px-2.5 py-1 rounded border border-border-light bg-surface-container-low text-text-muted-light font-label-default text-label-default hover:bg-surface-container transition-colors">
+                  Global
+                </button>
+<button class="px-2.5 py-1 rounded border border-primary bg-primary text-on-primary font-label-default text-label-default shadow-sm flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-on-primary-container"></span>
+                  Dieser Roman: Dead Signal
+                </button>
+</div>
+</div>
+<!-- Scope-Hinweiszeile -->
+<div class="mt-3 p-2.5 rounded bg-surface-container-low border border-border-light flex items-center justify-between">
+<div class="flex items-center gap-2 font-meta-default text-meta-default text-on-surface-variant">
+<span class="material-symbols-outlined text-cover-sepia text-[16px]">info</span>
+<span>Aktuell ist für <strong>Dead Signal</strong> ein spezifischer Roman-Override angelegt. (Standard-Text bleibt unverändert im Global-Scope).</span>
+</div>
+<button class="font-label-default text-meta-default text-cover-sepia hover:underline font-semibold flex items-center gap-1">
+<span>Aus effektivem Text neu anlegen</span>
 </button>
 </div>
 </div>
-<!-- Studio Main 3-Column Layout -->
-<div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-0 min-h-[calc(100vh-7rem)] bg-surface">
-<!-- ========================================== -->
-<!-- COLUMN 1: Feature-Prompt-Verzeichnis (3 cols) -->
-<!-- ========================================== -->
-<div class="lg:col-span-3 bg-surface-container-lowest p-space-md flex flex-col gap-4">
-<!-- Search & Scope Filter -->
-<div class="flex flex-col gap-2">
-<div class="relative flex items-center">
-<span class="material-symbols-outlined absolute left-2.5 text-outline text-[18px]">search</span>
-<input class="w-full pl-8 pr-3 py-1.5 rounded-lg bg-surface-container text-on-surface font-body-default text-body-default placeholder:text-text-muted-light focus:outline-none focus:ring-1 focus:ring-amber-focus transition-all" placeholder="Nach Feature filtern..." type="text"/>
-</div>
-<div class="flex items-center justify-between text-meta-default font-meta-default px-1 text-on-surface-variant">
-<span>Verzeichnis (8 Module)</span>
-<span class="text-primary font-medium">4 Modifiziert</span>
-</div>
-</div>
-<!-- Feature Tree Navigation -->
-<div class="flex flex-col gap-4 overflow-y-auto pr-1">
-<!-- Gruppe: Text- & Schreib-Features -->
-<div class="flex flex-col gap-1">
-<div class="flex items-center gap-1.5 px-2 py-1 text-on-surface-variant">
-<span class="material-symbols-outlined text-[15px] text-area-writing">ink_pen</span>
-<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Text &amp; Schreib-Features</span>
-</div>
-<!-- Feature Item 1: Active -->
-<div class="group flex flex-col p-2.5 rounded-xl bg-secondary-container/40 text-on-surface cursor-pointer shadow-sm">
-<div class="flex items-start justify-between gap-1">
-<span class="font-headline-emph text-headline-emph text-primary flex items-center gap-1.5">
-<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                Inline-Ghost-Text
-              </span>
-<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-primary-container text-on-primary">
-                Modifiziert
-              </span>
-</div>
-<p class="text-meta-default font-meta-default text-on-surface-variant mt-1 line-clamp-1">
-              Vervollständigung nach 1.5s Schreibpause
-            </p>
-<div class="flex items-center gap-2 mt-2 font-meta-default text-[11px] text-text-muted-light">
-<span class="inline-flex items-center gap-1 text-cover-sepia font-medium">
-<span class="material-symbols-outlined text-[13px]">folder</span>
-                Dead Signal
-              </span>
-<span>•</span>
-<span>4 Direktiven</span>
-</div>
-</div>
-<!-- Feature Item 2 -->
-<div class="group flex flex-col p-2.5 rounded-xl hover:bg-surface-container-low text-on-surface cursor-pointer transition-colors">
-<div class="flex items-start justify-between gap-1">
-<span class="font-label-default text-label-default text-on-surface group-hover:text-primary transition-colors">
-                Subtext-Analyse
-              </span>
-<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-container text-on-surface-variant">
-                Global
-              </span>
-</div>
-<p class="text-meta-default font-meta-default text-text-muted-light mt-0.5 line-clamp-1">
-              Verdeckte Motive &amp; emotionale Reibung
-            </p>
-</div>
-<!-- Feature Item 3 -->
-<div class="group flex flex-col p-2.5 rounded-xl hover:bg-surface-container-low text-on-surface cursor-pointer transition-colors">
-<div class="flex items-start justify-between gap-1">
-<span class="font-label-default text-label-default text-on-surface group-hover:text-primary transition-colors">
-                Absatz-Paraphrase (Re-Voice)
-              </span>
-<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-container text-on-surface-variant">
-                Global
-              </span>
-</div>
-<p class="text-meta-default font-meta-default text-text-muted-light mt-0.5 line-clamp-1">
-              Stilistische Verdichtung ohne Faktenverlust
-            </p>
-</div>
-</div>
-<!-- Gruppe: Kausalitäts- & Logik-Features -->
-<div class="flex flex-col gap-1">
-<div class="flex items-center gap-1.5 px-2 py-1 text-on-surface-variant">
-<span class="material-symbols-outlined text-[15px] text-area-knowledge">account_tree</span>
-<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Kausalität &amp; Logik</span>
-</div>
-<!-- Feature Item 4 -->
-<div class="group flex flex-col p-2.5 rounded-xl hover:bg-surface-container-low text-on-surface cursor-pointer transition-colors">
-<div class="flex items-start justify-between gap-1">
-<span class="font-label-default text-label-default text-on-surface group-hover:text-primary transition-colors">
-                Kausalitäts-Kollisionen
-              </span>
-<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-state-success/15 text-state-success">
-                Standard
-              </span>
-</div>
-<p class="text-meta-default font-meta-default text-text-muted-light mt-0.5 line-clamp-1">
-              Echtzeit-Abgleich mit dem Lore-Graphen
-            </p>
-</div>
-<!-- Feature Item 5 -->
-<div class="group flex flex-col p-2.5 rounded-xl hover:bg-surface-container-low text-on-surface cursor-pointer transition-colors">
-<div class="flex items-start justify-between gap-1">
-<span class="font-label-default text-label-default text-on-surface group-hover:text-primary transition-colors">
-                What-If Paradoxon-Synthese
-              </span>
-<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-secondary-container text-on-secondary-container">
-                Dead Signal
-              </span>
-</div>
-<p class="text-meta-default font-meta-default text-text-muted-light mt-0.5 line-clamp-1">
-              Hypothetische Verzweigungen berechnen
-            </p>
-</div>
-</div>
-<!-- Gruppe: Figuren & Dialoge -->
-<div class="flex flex-col gap-1">
-<div class="flex items-center gap-1.5 px-2 py-1 text-on-surface-variant">
-<span class="material-symbols-outlined text-[15px] text-area-planning">psychology</span>
-<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Figuren &amp; Dialoge</span>
-</div>
-<!-- Feature Item 6 -->
-<div class="group flex flex-col p-2.5 rounded-xl hover:bg-surface-container-low text-on-surface cursor-pointer transition-colors">
-<div class="flex items-start justify-between gap-1">
-<span class="font-label-default text-label-default text-on-surface group-hover:text-primary transition-colors">
-                Figuren-Simulator &amp; Idiolekt
-              </span>
-<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary-container text-on-primary">
-                Modifiziert
-              </span>
-</div>
-<p class="text-meta-default font-meta-default text-text-muted-light mt-0.5 line-clamp-1">
-              Sprechmuster von Chen, Vane &amp; O'Callaghan
-            </p>
-</div>
-<!-- Feature Item 7 -->
-<div class="group flex flex-col p-2.5 rounded-xl hover:bg-surface-container-low text-on-surface cursor-pointer transition-colors">
-<div class="flex items-start justify-between gap-1">
-<span class="font-label-default text-label-default text-on-surface group-hover:text-primary transition-colors">
-                Emotionaler Beat-Tracker
-              </span>
-<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-container text-on-surface-variant">
-                Global
-              </span>
-</div>
-<p class="text-meta-default font-meta-default text-text-muted-light mt-0.5 line-clamp-1">
-              Dramaturgische Spannungskurve im Dialog
-            </p>
-</div>
-</div>
-<!-- Gruppe: Lektorat -->
-<div class="flex flex-col gap-1">
-<div class="flex items-center gap-1.5 px-2 py-1 text-on-surface-variant">
-<span class="material-symbols-outlined text-[15px] text-area-chat">rate_review</span>
-<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Lektorat &amp; Vermarktung</span>
-</div>
-<div class="group flex flex-col p-2.5 rounded-xl hover:bg-surface-container-low text-on-surface cursor-pointer transition-colors">
-<div class="flex items-start justify-between gap-1">
-<span class="font-label-default text-label-default text-on-surface group-hover:text-primary transition-colors">
-                Beta-Reader Simulation (Hard-Sci-Fi)
-              </span>
-<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary-container text-on-primary">
-                Modifiziert
-              </span>
-</div>
-<p class="text-meta-default font-meta-default text-text-muted-light mt-0.5 line-clamp-1">
-              Prüfung physikalischer Plausibilität
-            </p>
-</div>
-</div>
-</div>
-</div>
-<!-- ========================================== -->
-<!-- COLUMN 2: Die 4-Schichten Prompt-Kaskade (5 cols) -->
-<!-- ========================================== -->
-<div class="lg:col-span-5 p-space-lg flex flex-col gap-5 overflow-y-auto bg-surface-container-low/30">
-<!-- Feature Title & Details -->
-<div class="flex flex-col gap-1.5">
+<!-- Variablen-Legende (Einfügen per Klick) -->
+<div class="px-5 py-2.5 border-b border-border-light bg-surface-container-lowest/60 flex items-center gap-2 overflow-x-auto shrink-0">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase shrink-0">Variablen (Klick = Einfügen):</span>
 <div class="flex items-center gap-2">
-<span class="px-2 py-0.5 rounded-full bg-cover-sepia text-surface text-[11px] font-semibold tracking-wider uppercase">
-            Feature-ID: #WRT-GHOST-01
-          </span>
-<span class="text-text-muted-light text-meta-default font-meta-default">Vererbungsmodus: Streng Kumulativ</span>
-</div>
-<h2 class="font-prose-heading-1 text-prose-heading-1 text-on-surface">
-          Inline-Ghost-Text &amp; Manuskript-Weiterführung
-        </h2>
-<p class="font-body-default text-body-default text-on-surface-variant">
-          Steuert, wie die KI Sätze und Gedankenfragmente vervollständigt, wenn der Schreibfluss im Editor für 1.5 Sekunden ruht.
-        </p>
-</div>
-<!-- Kaskaden-Stack Visual Container -->
-<div class="flex flex-col gap-3.5 relative">
-<div class="flex items-center justify-between text-meta-default font-meta-default">
-<span class="font-label-default text-label-default text-on-surface font-semibold flex items-center gap-1.5">
-<span class="material-symbols-outlined text-[16px] text-primary">layers</span>
-            Prompt-Kaskade (4 Schichten)
-          </span>
-<span class="text-text-muted-light">Ausführung von oben nach unten</span>
-</div>
-<!-- SCHICHT 1: System-Kern (Gesperrt) -->
-<div class="rounded-xl bg-surface-container-high p-4 flex flex-col gap-2 shadow-sm relative overflow-hidden">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-2">
-<span class="w-5 h-5 rounded-full bg-inverse-surface text-inverse-on-surface flex items-center justify-center text-[11px] font-bold">1</span>
-<span class="font-label-default text-label-default font-semibold text-on-surface">System-Kern &amp; Kausalitäts-Direktive</span>
-</div>
-<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-surface-container-highest text-on-surface-variant">
-<span class="material-symbols-outlined text-[13px] text-state-warning">lock</span>
-              Unantastbar
-            </span>
-</div>
-<div class="p-3 rounded-lg bg-surface font-mono text-[12px] leading-relaxed text-on-surface select-all shadow-inner">
-<span class="text-text-muted-light">// PRIMARY DIRECTIVE: CAUSALITY GUARANTEE</span><br/>
-            Widersprich unter keinen Umständen etablierten Entitäten im Lore-Graphen. Erfinde keine unregistrierten Stationen auf Enceladus. Wenn Widersprüche drohen: Breche die Generation ab und setze ein Warnflag.
-          </div>
-<div class="flex items-center justify-between text-[11px] text-text-muted-light font-meta-default">
-<span>Schutz vor Halluzinationen und Plot-Löchern</span>
-<span class="font-mono">148 Tokens</span>
+<button class="group flex items-center gap-1 px-2 py-0.5 rounded border border-border-light bg-surface-container-lowest hover:border-amber-focus hover:bg-surface-container-low transition-all" title="Kapitel 2: Nevada Echoes">
+<span class="font-mono text-[11px] text-cover-sepia group-hover:text-primary">{{chapter_title{{</span>
+<span class="text-text-muted-light font-meta-default text-[10px] hidden xl:inline">("Kapitel 2...")</span>
+</button>
+<button class="group flex items-center gap-1 px-2 py-0.5 rounded border border-border-light bg-surface-container-lowest hover:border-amber-focus hover:bg-surface-container-low transition-all" title="Letzte 1.200 Zeichen des Fließtexts vor dem Cursor">
+<span class="font-mono text-[11px] text-cover-sepia group-hover:text-primary">{{tail{{</span>
+<span class="text-text-muted-light font-meta-default text-[10px] hidden xl:inline">("Fließtext-Puffer")</span>
+</button>
+<button class="group flex items-center gap-1 px-2 py-0.5 rounded border border-border-light bg-surface-container-lowest hover:border-amber-focus hover:bg-surface-container-low transition-all" title="ARIA (Schiffs-KI), Dr. Maya Chen, Sub-Orbitaldock">
+<span class="font-mono text-[11px] text-cover-sepia group-hover:text-primary">{{entities_section{{</span>
+<span class="text-text-muted-light font-meta-default text-[10px] hidden xl:inline">("Lore-Figuren")</span>
+</button>
+<button class="group flex items-center gap-1 px-2 py-0.5 rounded border border-border-light bg-surface-container-lowest hover:border-amber-focus hover:bg-surface-container-low transition-all" title="Lakonisch, messerscharfer Technojargon, kühle Beobachterperspektive">
+<span class="font-mono text-[11px] text-cover-sepia group-hover:text-primary">{{tone_directive{{</span>
+<span class="text-text-muted-light font-meta-default text-[10px] hidden xl:inline">("Noir-Ton")</span>
+</button>
 </div>
 </div>
-<!-- Connector Arrow -->
-<div class="flex justify-center -my-2 relative z-10">
-<span class="material-symbols-outlined text-outline-variant text-[18px]">arrow_downward</span>
+<!-- Template-Editor & Split Diff Bereich -->
+<div class="flex-1 flex overflow-hidden relative">
+<!-- Linke Spalte (Diff / Standard-Text: optional sichtbar) -->
+<div class="w-1/2 border-r border-border-light bg-surface-container-low/50 flex flex-col hidden" id="diffViewPanel">
+<div class="h-8 px-4 border-b border-border-light bg-surface-container flex items-center justify-between text-meta-default text-text-muted-light">
+<span class="font-label-default text-label-default text-on-surface">Standard-Vorlage (Global)</span>
+<span class="font-mono text-[11px]">schreibgeschützt</span>
 </div>
-<!-- SCHICHT 2: Genre- & Tonalitäts-Matrix -->
-<div class="rounded-xl bg-surface-container p-4 flex flex-col gap-2 shadow-sm">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-2">
-<span class="w-5 h-5 rounded-full bg-secondary text-surface flex items-center justify-center text-[11px] font-bold">2</span>
-<span class="font-label-default text-label-default font-semibold text-on-surface">Genre- &amp; Tonalitäts-Matrix</span>
-</div>
-<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-surface-container-high text-on-surface-variant">
-              Geerbt aus Projekt-Stamm
-            </span>
-</div>
-<div class="p-3 rounded-lg bg-surface font-mono text-[12px] leading-relaxed text-on-surface shadow-inner">
-            STIL-DNA: Hard Science Fiction Noir. Kühle, lakonische Diktion. Präziser physikalischer Fachjargon (kryogene Thermodynamik, Sub-Vakuum-Akustik). Kein pathetisches Schwelgen. Satzrhythmus: Stakkato-Observationen.
-          </div>
-<div class="flex items-center justify-between text-[11px] text-text-muted-light font-meta-default">
-<span>Definiert über: Atelier / Dead Signal / Stilprofil</span>
-<span class="font-mono">212 Tokens</span>
-</div>
-</div>
-<!-- Connector Arrow -->
-<div class="flex justify-center -my-2 relative z-10">
-<span class="material-symbols-outlined text-outline-variant text-[18px]">arrow_downward</span>
-</div>
-<!-- SCHICHT 3: Standard-Feature-Prompt -->
-<div class="rounded-xl bg-surface-container p-4 flex flex-col gap-2 shadow-sm">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-2">
-<span class="w-5 h-5 rounded-full bg-outline text-surface flex items-center justify-center text-[11px] font-bold">3</span>
-<span class="font-label-default text-label-default font-semibold text-on-surface">Basis-Logik für Ghost-Text</span>
-</div>
-<div class="flex items-center gap-2">
-<span class="text-[11px] text-text-muted-light font-meta-default">Aktiv überschrieben durch Schicht 4</span>
-<span class="w-2 h-2 rounded-full bg-primary"></span>
-</div>
-</div>
-<div class="p-2.5 rounded-lg bg-surface/70 font-mono text-[11px] leading-relaxed text-text-muted-light line-through select-none">
-            Generiere die nächsten 15 bis 30 Wörter. Führe den begonnenen Satz des Autors natürlich fort. Beachte das aktuelle Substantiv und den letzten Dialogbeitrag.
-          </div>
-</div>
-<!-- Connector Arrow -->
-<div class="flex justify-center -my-2 relative z-10">
-<span class="material-symbols-outlined text-primary text-[20px]">arrow_downward</span>
-</div>
-<!-- SCHICHT 4: Aktive Autoren-Überschreibung -->
-<div class="rounded-xl bg-surface-container-lowest p-4 flex flex-col gap-3 shadow-md">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-2">
-<span class="w-5 h-5 rounded-full bg-primary text-on-primary flex items-center justify-center text-[11px] font-bold">4</span>
-<span class="font-headline-emph text-headline-emph text-primary">Autoren-Direktive (Individuelle Überschreibung)</span>
-</div>
-<div class="flex items-center gap-2">
-<label class="relative inline-flex items-center cursor-pointer">
-<input checked="" class="sr-only peer" type="checkbox"/>
-<div class="w-9 h-5 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-</label>
-</div>
-</div>
-<p class="text-meta-default font-meta-default text-on-surface-variant">
-            Diese Schicht besitzt die höchste Priorität vor der LLM-Synthese (eingebunden nach Schicht 2).
-          </p>
-<!-- Code Editor Area -->
-<div class="relative flex flex-col rounded-lg bg-surface-container-low shadow-inner p-3 gap-2">
-<div class="flex items-center justify-between text-[11px] font-mono text-text-muted-light pb-1">
-<span>custom_prompt_override.jinja2</span>
-<span>UTF-8 • Markdown / Var</span>
-</div>
-<textarea class="w-full bg-transparent font-mono text-[12.5px] leading-relaxed text-on-surface focus:outline-none resize-none font-medium selection:bg-secondary-container" id="prompt-editor" rows="6">[AUTOREN-DIREKTIVE: POV DR. MAYA CHEN]
-Fokussiere bei Ghost-Text-Vorschlägen strikt auf Mayas sensorische Wahrnehmung der arktischen Kälte und das metallische Vibrieren der Steuerkonsolen. Vermeide emotionale Adjektive; nutze kurze, analytische Hauptsätze.
+<div class="flex-1 p-4 font-mono text-[12px] leading-relaxed text-text-muted-light overflow-y-auto bg-surface-container-low">
+<pre class="whitespace-pre-wrap">Du bist ein literarischer Ghost-Writing-Assistent. 
+Führe das aktuelle Manuskript nahtlos fort.
 
-Binde unaufdringlich Details zu {{entity.facility_7.sublevel}} ein, wenn {{current_scene.pov}} == "Maya Chen".</textarea>
-<!-- Dynamic Tokens Pills Bar -->
-<div class="flex flex-col gap-1.5 pt-2">
-<span class="text-[11px] font-semibold text-text-muted-light uppercase tracking-wider font-eyebrow-tracked">Verfügbare Kontext-Variablen (Klicken zum Einfügen):</span>
-<div class="flex flex-wrap gap-1.5">
-<button class="token-btn px-2 py-0.5 rounded bg-surface hover:bg-surface-container-high text-primary font-mono text-[11px] transition-colors shadow-sm" type="button">
-                  {{current_scene.pov}}
-                </button>
-<button class="token-btn px-2 py-0.5 rounded bg-surface hover:bg-surface-container-high text-primary font-mono text-[11px] transition-colors shadow-sm" type="button">
-                  {{entity.active_character}}
-                </button>
-<button class="token-btn px-2 py-0.5 rounded bg-surface hover:bg-surface-container-high text-primary font-mono text-[11px] transition-colors shadow-sm" type="button">
-                  {{lore.active_location}}
-                </button>
-<button class="token-btn px-2 py-0.5 rounded bg-surface hover:bg-surface-container-high text-primary font-mono text-[11px] transition-colors shadow-sm" type="button">
-                  {{tension_level}}
-                </button>
-<button class="token-btn px-2 py-0.5 rounded bg-surface hover:bg-surface-container-high text-primary font-mono text-[11px] transition-colors shadow-sm" type="button">
-                  {{target_words}}
-                </button>
+Kapitel: {{chapter_title}}
+Aktueller Textkorpus:
+{{tail}}
+
+Halte dich an folgende Stil-Vorgaben:
+{{tone_directive}}</pre>
 </div>
 </div>
+<!-- Haupt-Editor (Override für Dead Signal) -->
+<div class="flex-1 flex flex-col bg-surface-container-lowest overflow-hidden">
+<div class="h-8 px-4 border-b border-border-light bg-surface-container-low/40 flex items-center justify-between shrink-0">
+<span class="font-label-default text-label-default text-primary font-semibold flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-cover-sepia"></span>
+                  Dead Signal Override Template (Jinja2)
+                </span>
+<div class="flex items-center gap-3 font-mono text-[11px] text-text-muted-light">
+<span>Zeilen: 18</span>
+<span>Zeichensatz: UTF-8</span>
 </div>
-<!-- Conflict Status Pill -->
-<div class="flex items-center gap-2 p-2.5 rounded-lg bg-state-success/10 text-state-success">
-<span class="material-symbols-outlined text-[18px]">task_alt</span>
-<span class="font-meta-default text-meta-default font-medium">
-              Keine Kollision mit Schicht 1 erkannt. Kanon-Direktive bleibt vollständig intakt.
-            </span>
+</div>
+<!-- Monospace Editor mit Zeilennummern -->
+<div class="flex-1 flex font-mono text-[13px] leading-6 overflow-y-auto bg-surface-container-lowest">
+<!-- Zeilennummern -->
+<div class="w-10 py-3 text-right pr-3 select-none text-outline border-r border-border-light/60 bg-surface-container-low/20 shrink-0 font-mono text-[12px]">
+                  1<br/>2<br/>3<br/>4<br/>5<br/>6<br/>7<br/>8<br/>9<br/>10<br/>11<br/>12<br/>13<br/>14<br/>15<br/>16<br/>17<br/>18
+                </div>
+<!-- Syntax Highlighted Code-Fläche -->
+<div class="flex-1 p-3 overflow-x-auto text-on-surface outline-none" contenteditable="true" spellcheck="false">
+<div class="text-text-muted-light italic">## System-Direktive: Hard Sci-Fi Noir Fortführung für Dead Signal</div>
+<div>Du bist das narrative Schreibatelier für den Roman <span class="text-cover-sepia font-semibold">«Dead Signal»</span>.</div>
+<div>Sprachstil: <span class="bg-secondary-container/50 px-1 py-0.5 rounded text-primary font-semibold">{{tone_directive{{</span></div>
+<div><br/></div>
+<div><span class="text-area-planning font-semibold">{% if</span> entities_section <span class="text-area-planning font-semibold">%}</span></div>
+<div class="pl-4">### Verifizierte Figuren &amp; Kausalitäten:</div>
+<div class="pl-4 bg-secondary-container/30 px-1 py-0.5 rounded text-primary font-semibold">{{entities_section{{</div>
+<div><span class="text-area-planning font-semibold">{% endif %}</span></div>
+<div><br/></div>
+<div>### Aktuelles Manuskript-Segment: <span class="text-cover-sepia font-semibold">{{chapter_title{{</span></div>
+<div>Fortzusetzender Text (letzte Passage vor dem Schreibcursor):</div>
+<div class="bg-secondary-container/40 p-1 rounded text-primary font-medium">{{tail{{</div>
+<div><br/></div>
+<div class="text-text-muted-light italic">## Schreibregel:</div>
+<div>Schreibe maximal 2 bis 3 Absätze. Führe Mayas inneren Monolog mit lakonischer Härte fort. Keine Zusammenfassung voranstellen. Direkt im Satzfluss anknüpfen.</div>
 </div>
 </div>
-</div>
-</div>
-<!-- ========================================== -->
-<!-- COLUMN 3: Live-Prompt-Simulator & Sandbox (4 cols) -->
-<!-- ========================================== -->
-<div class="lg:col-span-4 bg-surface-container-lowest p-space-md flex flex-col gap-4 overflow-y-auto">
-<!-- Top Inspector Header -->
-<div class="flex items-center justify-between pb-2">
+<!-- Validierungs- / Status-Container -->
+<div class="border-t border-border-light bg-surface-container-low px-4 py-2 flex flex-col md:flex-row md:items-center justify-between gap-2 shrink-0">
 <div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-primary text-[20px]">terminal</span>
-<h3 class="font-headline-emph text-headline-emph text-on-surface">Live-Kompilierung &amp; Sandbox</h3>
+<span class="material-symbols-outlined text-state-success text-[18px]">check_circle</span>
+<span class="font-label-default text-label-default text-state-success font-medium">Prüfung erfolgreich (Syntax valide, alle 4 Variablen deklariert)</span>
 </div>
-<span class="text-[11px] px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-mono">
-          Engine: Claude 3.5 Sonnet
-        </span>
-</div>
-<!-- Token / Cost Meter -->
-<div class="p-3 rounded-xl bg-surface-container flex flex-col gap-2">
-<div class="flex items-center justify-between text-meta-default font-meta-default">
-<span class="text-on-surface-variant font-medium">Kompilierte Prompt-Länge</span>
-<span class="font-mono font-semibold text-primary">842 Tokens</span>
-</div>
-<!-- Progress mini bar -->
-<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
-<div class="bg-primary h-full rounded-full" style="width: 42%;"></div>
-</div>
-<div class="flex items-center justify-between text-[11px] text-text-muted-light font-meta-default">
-<span>Kontext-Budget: 2.000 max.</span>
-<span class="font-mono">~0,0012 € pro Generierung</span>
-</div>
-</div>
-<!-- Live Assembled System Prompt (Collapsible View) -->
-<div class="flex flex-col gap-1.5">
-<div class="flex items-center justify-between">
-<span class="font-label-default text-label-default text-on-surface font-semibold">Tatsächlicher LLM-System-Payload:</span>
-<button class="text-meta-default text-primary hover:underline font-meta-default" id="toggle-payload">
-            Minimieren
-          </button>
-</div>
-<div class="p-3 rounded-lg bg-surface-container-low font-mono text-[11px] leading-relaxed text-on-surface-variant max-h-48 overflow-y-auto shadow-inner" id="payload-box">
-<div class="text-text-muted-light font-bold mb-1">// ASSEMBLED IN RUNTIME ORDER</div>
-<p class="mb-2"><strong class="text-on-surface">[CANON-LOCK]:</strong> Widersprich unter keinen Umständen etablierten Entitäten im Lore-Graphen...</p>
-<p class="mb-2"><strong class="text-on-surface">[STYLE]:</strong> Hard Science Fiction Noir. Kühle, lakonische Diktion. Präziser physikalischer Fachjargon...</p>
-<p class="mb-2"><strong class="text-primary">[OVERRIDE: POV CHEN]:</strong> Fokussiere strikt auf Mayas sensorische Wahrnehmung der arktischen Kälte und das metallische Vibrieren der Steuerkonsolen...</p>
-<p><strong class="text-on-surface">[ACTIVE-ENTITIES]:</strong> Station=Facility 7 (Sublevel -3: Kryo-Kern); Status=Luftdruckabfall.</p>
-</div>
-</div>
-<!-- Test Sandbox -->
-<div class="flex flex-col gap-3 p-3.5 rounded-xl bg-surface-container shadow-sm">
-<div class="flex items-center justify-between">
-<span class="font-headline-emph text-headline-emph text-on-surface flex items-center gap-1.5">
-<span class="material-symbols-outlined text-[17px] text-cover-sepia">play_circle</span>
-            Echtzeit-Testlauf
-          </span>
-<span class="text-[11px] text-text-muted-light font-meta-default">Kapitel III, Szene 2</span>
-</div>
-<!-- Input Snippet -->
-<div class="flex flex-col gap-1">
-<label class="text-meta-default font-meta-default text-on-surface-variant">Manuskript-Cursor (Letzter getippter Satz):</label>
-<div class="p-2.5 rounded-lg bg-surface font-prose-editorial text-[14px] italic text-on-surface shadow-inner leading-relaxed">
-            „Es stammte aus der versiegelten Tiefe unter dem Eis. Die dritte Druckanzeige fiel ab...“
-          </div>
-</div>
-<!-- Trigger Button -->
-<button class="w-full py-2 px-3 rounded-lg bg-cover-sepia hover:bg-primary text-surface font-label-default text-label-default transition-all shadow-sm flex items-center justify-center gap-2" id="simulate-run-btn">
-<span class="material-symbols-outlined text-[16px]">psychology</span>
-<span>Ghost-Text berechnen</span>
+<!-- Button für mögliche Ablehnungsgründe Modal/Accordion -->
+<button class="font-meta-default text-meta-default text-text-muted-light hover:text-primary flex items-center gap-1 underline decoration-dotted" id="toggleRejectionReasons">
+<span class="material-symbols-outlined text-[15px]">help_outline</span>
+<span>Mögliche Ablehnungsgründe einsehen</span>
 </button>
-<!-- Simulated Response Container -->
-<div class="flex flex-col gap-2 pt-1">
-<div class="flex items-center justify-between text-meta-default font-meta-default">
-<span class="font-medium text-on-surface">Ergebnis-Vorschau:</span>
-<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-state-success/15 text-state-success">
-<span class="material-symbols-outlined text-[12px]">check</span>
-              Tonalitäts-Match 98%
-            </span>
 </div>
-<div class="p-3 rounded-lg bg-surface font-prose-editorial text-prose-editorial text-on-surface leading-relaxed shadow-sm transition-all" id="simulated-result">
-<span class="text-text-muted-light">„...und ein dumpfes Vibrieren kroch durch den Stahl der Konsole. Das Kühlmittel in Sektor 7 gefror lautlos.“</span>
+<!-- Einklappbares Panel: Ablehnungsgründe -->
+<div class="border-t border-border-light bg-surface-container px-4 py-3 hidden" id="rejectionReasonsPanel">
+<div class="font-headline-emph text-headline-emph text-on-surface mb-2 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-state-warning text-[17px]">warning</span>
+<span>Validierungs-Kriterien &amp; Speicher-Ablehnungsgründe:</span>
 </div>
-<!-- Audit Metrics Row -->
-<div class="grid grid-cols-2 gap-2 text-[11px] font-meta-default text-text-muted-light pt-1">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-2 font-meta-default text-meta-default text-text-muted-light">
+<div class="flex items-start gap-1.5">
+<span class="text-error font-bold">•</span>
+<span><strong>Jinja-Syntaxfehler:</strong> Nicht geschlossene Tags wie <code>{% if %}</code> ohne <code>{% endif %}</code>.</span>
+</div>
+<div class="flex items-start gap-1.5">
+<span class="text-error font-bold">•</span>
+<span><strong>Unbekannte Variable:</strong> Verwendung von Bezeichnern außerhalb der deklarierten Legende.</span>
+</div>
+<div class="flex items-start gap-1.5">
+<span class="text-error font-bold">•</span>
+<span><strong>Include-Zyklus:</strong> Zirkuläre Referenzen über Makro-Aufrufe.</span>
+</div>
+<div class="flex items-start gap-1.5">
+<span class="text-error font-bold">•</span>
+<span><strong>Fehlender Pflicht-Marker:</strong> <code>{{tail}}</code> muss für die Fortsetzung zwingend vorhanden sein.</span>
+</div>
+</div>
+</div>
+<!-- Aktionen-Leiste -->
+<div class="p-3 border-t border-border-light bg-surface-container-lowest flex items-center justify-between shrink-0">
+<div class="flex items-center gap-2">
+<!-- Diff Toggle -->
+<button class="px-3 py-1.5 rounded border border-border-light bg-surface-container-lowest hover:bg-surface-container-low text-on-surface font-label-default text-label-default transition-colors flex items-center gap-1.5" id="toggleDiffBtn">
+<span class="material-symbols-outlined text-[16px]">difference</span>
+<span>Diff-Ansicht (Standard vs. Override)</span>
+</button>
+<!-- Zurücksetzen mit Bestätigungs-Badge -->
+<div class="relative group">
+<button class="px-3 py-1.5 rounded border border-border-light hover:border-error hover:text-error text-text-muted-light font-label-default text-label-default transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">restart_alt</span>
+<span>Zurücksetzen auf Global</span>
+</button>
+<!-- Tooltip Sicherung -->
+<div class="absolute bottom-full left-0 mb-1 hidden group-hover:block w-48 p-2 bg-inverse-surface text-inverse-on-surface text-[11px] rounded shadow-lg">
+                      Löscht den spezifischen Override für "Dead Signal" und kehrt zum geerbten Global-Standard zurück.
+                    </div>
+</div>
+</div>
+<!-- Primary Terracotta Speichern -->
+<button class="px-4 py-1.5 rounded bg-primary-container text-on-primary hover:bg-primary font-label-default text-label-default shadow-sm flex items-center gap-2 transition-all">
+<span class="material-symbols-outlined text-[16px]">save</span>
+<span>Speichern (mit Prüfung)</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Untere Werkzeug-Docks: 2 klar getrennte Werkzeuge -->
+<div class="h-64 border-t border-border-light bg-surface-container-low flex flex-col shrink-0">
+<!-- Werkzeug-Reiter Leiste -->
+<div class="h-9 px-4 border-b border-border-light bg-surface-container flex items-center justify-between shrink-0">
 <div class="flex items-center gap-1">
-<span class="material-symbols-outlined text-[14px] text-state-success">verified_user</span>
-<span>Facility 7 verifiziert</span>
+<button class="px-3 py-1.5 border-b-2 border-primary font-headline-emph text-headline-emph text-primary flex items-center gap-1.5" id="tabTool1">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Werkzeug 1: Vorschau (providerfrei)</span>
+</button>
+<button class="px-3 py-1.5 border-b-2 border-transparent font-headline-emph text-headline-emph text-text-muted-light hover:text-on-surface flex items-center gap-1.5" id="tabTool2">
+<span class="material-symbols-outlined text-[16px]">play_circle</span>
+<span>Werkzeug 2: Live-Test (mit Provider)</span>
+</button>
 </div>
-<div class="flex items-center gap-1">
-<span class="material-symbols-outlined text-[14px] text-state-success">check_circle</span>
-<span>Adjektiv-Dichte: Niedrig (12%)</span>
+<span class="font-meta-default text-meta-default text-text-muted-light italic">Werkzeuge für Prompt-Validierung</span>
 </div>
+<!-- Dock 1: Providerfreie Vorschau -->
+<div class="flex-1 p-4 flex flex-col overflow-y-auto" id="panelTool1">
+<!-- Diagnostik-Hinweis & Metriken -->
+<div class="flex items-center justify-between mb-3 pb-2 border-b border-border-light font-meta-default text-meta-default">
+<div class="flex items-center gap-2 text-text-muted-light">
+<span class="material-symbols-outlined text-state-success text-[16px]">security</span>
+<span><strong>Diagnostik:</strong> Providerfrei gerendert. Kein API-Aufruf, keine Datenübertragung.</span>
 </div>
-</div>
-</div>
-<!-- Quick Preset Selector for dead signal -->
-<div class="mt-auto p-3 rounded-xl bg-surface-container-high/50 flex flex-col gap-2">
-<span class="text-meta-default font-meta-default font-semibold text-on-surface">Schnell-Vorlagen für dieses Kapitel:</span>
-<div class="flex flex-col gap-1 text-meta-default font-meta-default">
-<a class="p-1.5 rounded hover:bg-surface text-on-surface-variant hover:text-primary transition-colors flex items-center justify-between" href="#">
-<span>Mayas Isolation (Tiefstation)</span>
-<span class="text-[10px] text-text-muted-light font-mono">Laden</span>
-</a>
-<a class="p-1.5 rounded hover:bg-surface text-on-surface-variant hover:text-primary transition-colors flex items-center justify-between" href="#">
-<span>Funkkontakt mit Orbit (Störsignal)</span>
-<span class="text-[10px] text-text-muted-light font-mono">Laden</span>
-</a>
-</div>
-</div>
+<div class="flex items-center gap-4 text-on-surface font-mono">
+<span>String-Länge: <strong>842 Zeichen</strong></span>
+<span>Geschätzte Prompt-Tokens: <strong>~214 Tokens</strong></span>
 </div>
 </div>
+<!-- Fertig aufgelöster Prompt mit Herkunftsnachweis -->
+<div class="bg-surface-container-lowest p-3.5 rounded border border-border-light font-mono text-[12px] leading-relaxed text-on-surface flex-1 overflow-y-auto space-y-2">
+<div class="text-text-muted-light">## System-Direktive: Hard Sci-Fi Noir Fortführung für Dead Signal</div>
+<div>Du bist das narrative Schreibatelier für den Roman «Dead Signal».</div>
+<div class="flex items-center gap-2">
+<span>Sprachstil: Lakonisch, messerscharfer Technojargon, kühle Beobachterperspektive</span>
+<span class="font-sans font-eyebrow-tracked text-[9px] px-1.5 py-0.2 rounded bg-surface-container-high text-cover-sepia">Herkunft: Roman-Metadaten</span>
 </div>
+<div class="pt-1">### Verifizierte Figuren &amp; Kausalitäten:</div>
+<div class="bg-surface-container-low p-2 rounded border border-border-light text-[11px]">
+<span class="text-cover-sepia font-semibold">[ARIA (Schiffs-KI)]</span> Integriert in Sub-Orbitaldock; misstraut der Signalmodulation.<br/>
+<span class="text-cover-sepia font-semibold">[Dr. Maya Chen]</span> Verweilt auf Deck 7; Herzfrequenz chronisch erhöht nach Dekompression.
+                  <span class="block mt-1 font-sans font-eyebrow-tracked text-[9px] text-cover-sepia">Herkunft: Lore-Graph (Dead Signal)</span>
+</div>
+<div class="pt-1">### Aktuelles Manuskript-Segment: Kapitel 2: Nevada Echoes</div>
+<div class="bg-surface-container-low p-2 rounded border border-border-light text-[11px]">
+                  Maya zog den Handschuh nach. Das Flackern des Oszilloskops war kein Reflex der atmosphärischen Entladung. Es hatte einen Takt. Sieben Schläge, dann das Vakuum...
+                  <span class="block mt-1 font-sans font-eyebrow-tracked text-[9px] text-cover-sepia">Herkunft: Manuskript-Puffer (Cursor-Position)</span>
+</div>
+</div>
+</div>
+<!-- Dock 2: Live-Test (Standardmäßig verborgen, umschaltbar) -->
+<div class="flex-1 p-4 flex flex-col overflow-y-auto hidden" id="panelTool2">
+<!-- Warn-Banner Token- & Datenschutz -->
+<div class="p-3 mb-3 rounded bg-surface-container-high border border-amber-focus/30 flex items-start gap-3">
+<span class="material-symbols-outlined text-state-warning text-[20px] shrink-0 mt-0.5">shield</span>
+<div class="flex-1 font-meta-default text-meta-default text-on-surface">
+<strong class="text-primary">Vor erstem Lauf:</strong> Testdaten werden an deinen konfigurierten Provider übermittelt. Das Ergebnis erscheint ausschließlich in dieser Test-Vorschau und wird niemals automatisch in dein Manuskript übernommen.
+                </div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1 rounded bg-primary text-on-primary font-label-default text-label-default hover:bg-primary-container flex items-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-[15px]">send</span>
+<span>Prompt testen</span>
+</button>
+<button class="px-2.5 py-1 rounded border border-border-light bg-surface-container-lowest text-text-muted-light font-label-default text-label-default hover:text-on-surface">
+                    Abbrechen
+                  </button>
+<button class="p-1 rounded border border-border-light bg-surface-container-lowest text-text-muted-light hover:text-on-surface" title="Wiederholen">
+<span class="material-symbols-outlined text-[15px]">refresh</span>
+</button>
+</div>
+</div>
+<!-- Streamendes Test-Ergebnisfenster -->
+<div class="flex-1 p-3.5 rounded border border-border-light bg-surface-container-lowest flex flex-col overflow-y-auto">
+<div class="flex items-center justify-between pb-2 mb-2 border-b border-border-light text-meta-default text-text-muted-light">
+<span class="font-label-default text-label-default text-on-surface font-semibold">Test-Antwort (Antik-Terminal Streaming)</span>
+<span class="flex items-center gap-1 font-mono text-[11px] text-state-success">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success animate-pulse"></span>
+                    Antwort erhalten (0.8s)
+                  </span>
+</div>
+<div class="font-prose-editorial text-prose-editorial text-on-surface leading-relaxed italic">
+                  „Aria, drossle die Kühlkreise auf drei Prozent“, flüsterte Maya in das Kragenmikrofon. Das Metall des Schottrahmens vibrierte unter ihren Fingerkuppen wie ein verhungerndes Insekt. Sie brauchte keine Bio-Telemetrie, um zu wissen, dass der Druckabfall im Nebensektor kein Zufall war. Wenn die Frequenz sich wiederholte, würde das Schott nachgeben – und mit ihm der gesamte Korridor.
+                </div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+<!-- Shared Component: Footer (JSON Blueprint) -->
+<footer class="w-full py-2.5 px-8 border-t border-border-light bg-bg-panel-light flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left z-40 shrink-0 select-none">
+<div class="flex items-center gap-2">
+<span class="font-prose-heading-2 text-[16px] text-primary font-semibold">Narrare</span>
+<span class="text-text-muted-light text-meta-default font-meta-default">
+        © Narrare Atelier. Written sovereignty guaranteed. Local-first, zero-surveillance manuscript vault.
+      </span>
+</div>
+<div class="flex items-center gap-6 font-label-default text-meta-default">
+<a class="text-text-muted-light hover:text-primary transition-colors duration-150" href="#">Sovereignty Manifest</a>
+<a class="text-text-muted-light hover:text-primary transition-colors duration-150" href="#">Causality Canon</a>
+<a class="text-text-muted-light hover:text-primary transition-colors duration-150" href="#">Typography Rigor</a>
+<a class="text-primary font-semibold hover:text-primary transition-colors duration-150" href="#">Export Lexicon</a>
+</div>
+</footer>
+<!-- Inline UI Interactions Script -->
 <script>
-  // Micro-interactions for studio customization
-  document.addEventListener('DOMContentLoaded', () => {
-    // 1. Variable Pill click to append to textarea
-    const textarea = document.getElementById('prompt-editor');
-    const tokenButtons = document.querySelectorAll('.token-btn');
+    // Tab Switcher between Tool 1 (Vorschau providerfrei) and Tool 2 (Live-Test)
+    const tabTool1 = document.getElementById('tabTool1');
+    const tabTool2 = document.getElementById('tabTool2');
+    const panelTool1 = document.getElementById('panelTool1');
+    const panelTool2 = document.getElementById('panelTool2');
 
-    tokenButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const textToInsert = btn.textContent.trim();
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const currentVal = textarea.value;
-
-        textarea.value = currentVal.substring(0, start) + textToInsert + currentVal.substring(end);
-        textarea.focus();
-        textarea.selectionStart = textarea.selectionEnd = start + textToInsert.length;
-      });
+    tabTool1.addEventListener('click', () => {
+      tabTool1.className = 'px-3 py-1.5 border-b-2 border-primary font-headline-emph text-headline-emph text-primary flex items-center gap-1.5';
+      tabTool2.className = 'px-3 py-1.5 border-b-2 border-transparent font-headline-emph text-headline-emph text-text-muted-light hover:text-on-surface flex items-center gap-1.5';
+      panelTool1.classList.remove('hidden');
+      panelTool2.classList.add('hidden');
     });
 
-    // 2. Simulated generation feedback
-    const runBtn = document.getElementById('simulate-run-btn');
-    const simResult = document.getElementById('simulated-result');
-    const responses = [
-      '„...und ein dumpfes Vibrieren kroch durch den Stahl der Konsole. Das Kühlmittel in Sektor 7 gefror lautlos.“',
-      '„...während die Thermofühler Mayas Atemwolken in feinen Eiskristallen an der Scheibe spiegelten.“',
-      '„...Sieben Grad unter dem Sollwert. Kein Laut aus dem Schacht, nur das metallische Klacken des Primärrelais.“'
-    ];
-    let responseIdx = 0;
+    tabTool2.addEventListener('click', () => {
+      tabTool2.className = 'px-3 py-1.5 border-b-2 border-primary font-headline-emph text-headline-emph text-primary flex items-center gap-1.5';
+      tabTool1.className = 'px-3 py-1.5 border-b-2 border-transparent font-headline-emph text-headline-emph text-text-muted-light hover:text-on-surface flex items-center gap-1.5';
+      panelTool2.classList.remove('hidden');
+      panelTool1.classList.add('hidden');
+    });
 
-    if (runBtn && simResult) {
-      runBtn.addEventListener('click', () => {
-        runBtn.disabled = true;
-        runBtn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">refresh</span><span>Synthetisiere...</span>';
-        simResult.style.opacity = '0.4';
+    // Toggle Diff-Ansicht
+    const toggleDiffBtn = document.getElementById('toggleDiffBtn');
+    const diffViewPanel = document.getElementById('diffViewPanel');
 
-        setTimeout(() => {
-          responseIdx = (responseIdx + 1) % responses.length;
-          simResult.innerHTML = `<span class="text-on-surface font-prose-editorial">${responses[responseIdx]}</span>`;
-          simResult.style.opacity = '1';
-          runBtn.disabled = false;
-          runBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">psychology</span><span>Ghost-Text berechnen</span>';
-        }, 400);
-      });
-    }
+    toggleDiffBtn.addEventListener('click', () => {
+      diffViewPanel.classList.toggle('hidden');
+      if (!diffViewPanel.classList.contains('hidden')) {
+        toggleDiffBtn.classList.add('bg-secondary-container', 'text-primary', 'border-primary/40');
+      } else {
+        toggleDiffBtn.classList.remove('bg-secondary-container', 'text-primary', 'border-primary/40');
+      }
+    });
 
-    // 3. Toggle Payload Drawer
-    const toggleBtn = document.getElementById('toggle-payload');
-    const payloadBox = document.getElementById('payload-box');
+    // Toggle Ablehnungsgründe
+    const toggleRejectionReasons = document.getElementById('toggleRejectionReasons');
+    const rejectionReasonsPanel = document.getElementById('rejectionReasonsPanel');
 
-    if (toggleBtn && payloadBox) {
-      toggleBtn.addEventListener('click', () => {
-        if (payloadBox.classList.contains('hidden')) {
-          payloadBox.classList.remove('hidden');
-          toggleBtn.textContent = 'Minimieren';
-        } else {
-          payloadBox.classList.add('hidden');
-          toggleBtn.textContent = 'Maximieren';
-        }
-      });
-    }
+    toggleRejectionReasons.addEventListener('click', () => {
+      rejectionReasonsPanel.classList.toggle('hidden');
+    });
 
-    // 4. Compile button feedback
-    const compileBtn = document.getElementById('compile-btn');
-    if (compileBtn) {
-      compileBtn.addEventListener('click', () => {
-        const originalText = compileBtn.innerHTML;
-        compileBtn.innerHTML = '<span class="material-symbols-outlined text-[16px] text-state-success">check_circle</span><span>Kompiliert & Verifiziert</span>';
-        compileBtn.classList.remove('bg-primary-container');
-        compileBtn.classList.add('bg-state-success');
-
-        setTimeout(() => {
-          compileBtn.innerHTML = originalText;
-          compileBtn.classList.remove('bg-state-success');
-          compileBtn.classList.add('bg-primary-container');
-        }, 1500);
-      });
-    }
-  });
-</script></main></div></body></html>
+    // Theme Toggle (Light/Dark Mode toggle)
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      const icon = themeToggle.querySelector('.material-symbols-outlined');
+      if (document.documentElement.classList.contains('dark')) {
+        icon.textContent = 'dark_mode';
+      } else {
+        icon.textContent = 'light_mode';
+      }
+    });
+  </script>
+</body></html>

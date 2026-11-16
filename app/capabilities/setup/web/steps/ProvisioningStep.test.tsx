@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 /**
  * The wizard's fourth step — the one real POST — driven through the real
- * router over the real root route (the AiRulesStep.test.tsx pattern). The
- * answers ride search params, so the POST body is asserted against the
+ * router over the real root route with the generated capability table (the
+ * 409 routes home to writing's `/` shelf, so the real composition is mounted).
+ * The answers ride search params, so the POST body is asserted against the
  * address a refresh would land on. Only the API client is mocked at its
  * module boundary; the mock keeps the backend's contract: 201 carries the
- * SetupResult facts, 409 means the instance is already complete (the landing,
+ * SetupResult facts, 409 means the instance is already complete (the shelf,
  * never a re-post), and the settings row exists once setup has run, so the
  * locale mirror's carry-over PATCH succeeds.
  */
@@ -27,13 +28,13 @@ vi.mock("@shell/lib/api/client", () => ({
 
 import { client } from "@shell/lib/api/client";
 import { catalogs } from "@shell/lib/generated/catalogs";
+import { capabilityRoutes } from "@shell/lib/generated/routes";
 import { t } from "@shell/lib/i18n";
 import { applyLocale, chosenLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
 import { storePreSetupLocale } from "../preSetupLocale";
-import { routes } from "../routes";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
 const api = client as unknown as Record<
@@ -59,7 +60,8 @@ const RESULT = {
   chapters: 3,
 };
 
-/** The novel row the landing reads after a 409 routes home. */
+/** The novel row the novels endpoint answers after a 409 routes home — the
+ *  shelf key the step invalidates; Task 6's shelf reads it. */
 const NOVEL_ROW = {
   id: RESULT.novel_id,
   title: RESULT.novel_title,
@@ -112,7 +114,7 @@ function scriptApi() {
 
 function renderProvisioning(entry: string, strict = false) {
   const router = createRouter({
-    routeTree: rootRoute.addChildren([...routes]),
+    routeTree: rootRoute.addChildren([...capabilityRoutes]),
     history: createMemoryHistory({ initialEntries: [entry] }),
   });
   const tree = (
@@ -208,7 +210,7 @@ describe("the provisioning step — the one POST", () => {
     expect(api.POST).not.toHaveBeenCalled();
   });
 
-  it("409 routes to the landing and never re-posts", async () => {
+  it("409 routes to the shelf and never re-posts", async () => {
     api.POST.mockImplementation(async () => {
       instanceComplete = true;
       return {
@@ -218,8 +220,13 @@ describe("the provisioning step — the one POST", () => {
     });
     const router = renderProvisioning(DEMO_ENTRY);
 
-    // The gate re-reads the invalidated status and answers with the landing.
-    await screen.findByRole("heading", { level: 1, name: "Dead Signal" });
+    // The gate re-reads the invalidated status and answers with the shelf —
+    // writing's `/` surface after the W3 handover, never a re-post. The
+    // catalog read rides waitFor so it re-evaluates once the mirror adoption
+    // has settled the language (the step flips it mid-flow).
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { level: 1, name: t("writing.shelf.title") })).toBeTruthy(),
+    );
     expect(router.state.location.pathname).toBe("/");
     expect(api.POST).toHaveBeenCalledTimes(1);
     const statusAsks = api.GET.mock.calls.filter(([path]) => path === "/api/setup/status");

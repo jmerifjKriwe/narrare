@@ -1014,6 +1014,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/writing/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Activity
+         * @description The atelier's daily words across all owned novels: the window's
+         *     points (zero-days included), the streak of consecutive days with a
+         *     nonzero net ending today or yesterday, the mean net words per day
+         *     over the whole window, and today's net. ``days`` bounds the window
+         *     to 1..365; the default is 30. The day boundary is the server's UTC
+         *     date.
+         */
+        get: operations["activity_api_writing_activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/writing/chapters/{chapter_id}": {
         parameters: {
             query?: never;
@@ -1076,7 +1101,8 @@ export interface paths {
         };
         /**
          * List Novels
-         * @description Return the current user's novels.
+         * @description Return the current user's novels; archived books stay out of the
+         *     main grid unless ``include_archived`` asks for them.
          */
         get: operations["list_novels_api_writing_novels_get"];
         put?: never;
@@ -1149,8 +1175,9 @@ export interface paths {
          *
          *     Return the novel with its derived counts; raise HTTP 404 for an absent
          *     or unowned novel, or HTTP 422 naming the field for a blank or over-long
-         *     title, an over-long genre or author, or a language that is over-long
-         *     or not a BCP-47-ish code.
+         *     title, an over-long genre or author, a language that is over-long
+         *     or not a BCP-47-ish code, a status outside the vocabulary, a series
+         *     link that names no series of the user, or a volume without a series.
          */
         patch: operations["update_novel_api_writing_novels__novel_id__patch"];
         trace?: never;
@@ -1206,6 +1233,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/writing/novels/{novel_id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Duplicate Novel
+         * @description Duplicate an owned novel: a new book with the same metadata and a
+         *     full copy of its chapters, in one transaction.
+         *
+         *     The copy is named ``„<title> (Kopie)"``, keeps the series link but no
+         *     volume, and starts on the shelf — unarchived, never exported. Respond
+         *     with HTTP 404 for an absent or unowned novel, or HTTP 409 if setup is
+         *     required.
+         */
+        post: operations["duplicate_novel_api_writing_novels__novel_id__duplicate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/writing/novels/{novel_id}/export": {
         parameters: {
             query?: never;
@@ -1246,6 +1299,43 @@ export interface components {
             entity: components["schemas"]["EntityRead"];
             /** Skipped Relations */
             skipped_relations: components["schemas"]["SkippedRelationRead"][];
+        };
+        /**
+         * ActivityPoint
+         * @description One day of the activity window: the date and the atelier's net words.
+         *
+         *     The net is honest — a day that removed more text than it added carries
+         *     a negative count, and a day without a row carries zero.
+         */
+        ActivityPoint: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Words */
+            words: number;
+        };
+        /**
+         * ActivityRead
+         * @description The atelier's activity across all the user's novels (W3).
+         *
+         *     ``points`` cover the requested window oldest-first, zero-days
+         *     included; ``streak_days`` counts consecutive days with a nonzero net
+         *     ending today — or yesterday, which keeps the streak alive until the
+         *     day after tomorrow without writing; ``weekly_average`` is the mean
+         *     net words per day over ALL days of the window (zero-days in the
+         *     basis), one decimal; ``today_words`` is today's net across novels.
+         */
+        ActivityRead: {
+            /** Points */
+            points: components["schemas"]["ActivityPoint"][];
+            /** Streak Days */
+            streak_days: number;
+            /** Today Words */
+            today_words: number;
+            /** Weekly Average */
+            weekly_average: number;
         };
         /**
          * ArchiveInvalidRead
@@ -1791,11 +1881,15 @@ export interface components {
             blurb?: string | null;
             /** Genre */
             genre?: string | null;
+            /** Target Words */
+            target_words?: number | null;
             /** Title */
             title: string;
         };
         /** NovelRead */
         NovelRead: {
+            /** Archived At */
+            archived_at?: string | null;
             /** Author */
             author: string | null;
             /** Blurb */
@@ -1821,6 +1915,14 @@ export interface components {
             language: string | null;
             /** Last Exported At */
             last_exported_at: string | null;
+            /** Series Title */
+            series_title?: string | null;
+            /** Series Volume */
+            series_volume?: number | null;
+            /** Status */
+            status?: string | null;
+            /** Target Words */
+            target_words?: number | null;
             /** Title */
             title: string;
             /**
@@ -1845,8 +1947,17 @@ export interface components {
          *     limits: this schema carries the fields, the contract decides what a
          *     value may be. A carried ``null`` clears author, genre, blurb or
          *     language; the title is never clearable.
+         *
+         *     The shelf's fields (W3) ride the same rule: ``status`` answers to the
+         *     vocabulary (draft|revision|final) at the service boundary,
+         *     ``series_id`` must name a series the user owns, ``series_volume`` is
+         *     a positive number that needs a series link, and ``archived_at`` is a
+         *     timestamp — carrying one archives the book, carrying ``null``
+         *     unarchives it.
          */
         NovelUpdate: {
+            /** Archived At */
+            archived_at?: string | null;
             /** Author */
             author?: string | null;
             /** Blurb */
@@ -1855,6 +1966,12 @@ export interface components {
             genre?: string | null;
             /** Language */
             language?: string | null;
+            /** Series Id */
+            series_id?: string | null;
+            /** Series Volume */
+            series_volume?: number | null;
+            /** Status */
+            status?: string | null;
             /** Title */
             title?: string | null;
         };
@@ -4698,6 +4815,37 @@ export interface operations {
             };
         };
     };
+    activity_api_writing_activity_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_chapter_api_writing_chapters__chapter_id__get: {
         parameters: {
             query?: never;
@@ -4863,7 +5011,9 @@ export interface operations {
     };
     list_novels_api_writing_novels_get: {
         parameters: {
-            query?: never;
+            query?: {
+                include_archived?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4877,6 +5027,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovelRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5216,6 +5375,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChapterRead"];
+                };
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Setup required */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duplicate_novel_api_writing_novels__novel_id__duplicate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovelRead"];
                 };
             };
             /** @description Novel not found */

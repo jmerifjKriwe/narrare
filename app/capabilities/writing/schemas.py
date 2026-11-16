@@ -1,6 +1,6 @@
 """Request and response shapes for the writing capability."""
 
-from datetime import datetime  # noqa: TC003  Pydantic resolves these at runtime
+from datetime import date, datetime  # noqa: TC003  Pydantic resolves these at runtime
 from typing import Literal
 from uuid import UUID  # noqa: TC003
 
@@ -28,6 +28,11 @@ class NovelCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     genre: str | None = Field(default=None, max_length=80)
     blurb: str | None = None
+    # The new-book dialog's word target (W3). The same bounds SetupRequest
+    # carries: the Integer column's own ceiling (2**31 - 1), so a larger
+    # goal is a 422 here, not an int32 overflow at the insert. Absent keeps
+    # the shelf's honest neutral — no guessed goal.
+    target_words: int | None = Field(default=None, ge=1, le=2_147_483_647)
 
 
 class NovelRead(BaseModel):
@@ -52,6 +57,20 @@ class NovelRead(BaseModel):
     # else, so a metadata edit leaves it honestly stale — None until the
     # first export reads it.
     last_exported_at: datetime | None
+    # The shelf's tracking answers (W3). ``status`` is the writing state
+    # (draft|revision|final), None until the book says where it stands;
+    # ``series_title`` is derived — the linked series' name, joined on
+    # read, None when the book stands alone; ``archived_at`` is when the
+    # book left the main grid, None while it is on the shelf.
+    status: str | None = None
+    series_title: str | None = None
+    series_volume: int | None = None
+    archived_at: datetime | None = None
+    # The word pair's second figure: the target the wizard bound (or a
+    # later dialog sets), read straight off the row. None until the book
+    # carries one — the shelf then shows the count alone with an empty
+    # track, never a guessed goal.
+    target_words: int | None = None
 
 
 class NovelUpdate(BaseModel):
@@ -64,6 +83,13 @@ class NovelUpdate(BaseModel):
     limits: this schema carries the fields, the contract decides what a
     value may be. A carried ``null`` clears author, genre, blurb or
     language; the title is never clearable.
+
+    The shelf's fields (W3) ride the same rule: ``status`` answers to the
+    vocabulary (draft|revision|final) at the service boundary,
+    ``series_id`` must name a series the user owns, ``series_volume`` is
+    a positive number that needs a series link, and ``archived_at`` is a
+    timestamp — carrying one archives the book, carrying ``null``
+    unarchives it.
     """
 
     title: str | None = None
@@ -71,6 +97,10 @@ class NovelUpdate(BaseModel):
     blurb: str | None = None
     author: str | None = None
     language: str | None = None
+    status: str | None = None
+    series_id: UUID | None = None
+    series_volume: int | None = None
+    archived_at: datetime | None = None
 
 
 class ChapterCreate(BaseModel):
@@ -110,6 +140,34 @@ class ChapterRead(BaseModel):
     body: str
     created_at: datetime
     updated_at: datetime
+
+
+class ActivityPoint(BaseModel):
+    """One day of the activity window: the date and the atelier's net words.
+
+    The net is honest — a day that removed more text than it added carries
+    a negative count, and a day without a row carries zero.
+    """
+
+    date: date
+    words: int
+
+
+class ActivityRead(BaseModel):
+    """The atelier's activity across all the user's novels (W3).
+
+    ``points`` cover the requested window oldest-first, zero-days
+    included; ``streak_days`` counts consecutive days with a nonzero net
+    ending today — or yesterday, which keeps the streak alive until the
+    day after tomorrow without writing; ``weekly_average`` is the mean
+    net words per day over ALL days of the window (zero-days in the
+    basis), one decimal; ``today_words`` is today's net across novels.
+    """
+
+    points: list[ActivityPoint]
+    streak_days: int
+    weekly_average: float
+    today_words: int
 
 
 class ExportRequest(BaseModel):

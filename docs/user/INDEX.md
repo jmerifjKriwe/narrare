@@ -10,16 +10,19 @@ documentation grows around this index, never inside it.
 
 | Capability | Path | Navigation | Needs |
 | --- | --- | --- | --- |
-| Welcome to the Atelier | / | — | — |
+| Welcome to the Atelier | /setup | — | — |
+| Novels | / | — | a text model |
 
 ## Deutsch
 
 | Funktion | Pfad | Navigation | Benötigt |
 | --- | --- | --- | --- |
-| Willkommen im Atelier | / | — | — |
+| Willkommen im Atelier | /setup | — | — |
+| Romane | / | — | ein Textmodell |
 
 ## Français
 
 | Fonction | Chemin | Navigation | Nécessite |
 | --- | --- | --- | --- |
-| Bienvenue dans l'Atelier | / | — | — |
+| Bienvenue dans l'Atelier | /setup | — | — |
+| Romans | / | — | un modèle de texte |

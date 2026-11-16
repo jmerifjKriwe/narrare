@@ -3,6 +3,7 @@
 import contextlib
 import zlib
 from collections.abc import Sequence  # noqa: TC003
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Literal
 from uuid import UUID  # noqa: TC003
@@ -11,10 +12,27 @@ from zipfile import BadZipFile
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-from app.capabilities.writing.metadata import normalized_novel_updates
+from app.capabilities.writing.metadata import (
+    InvalidNovelUpdateError,
+    duplicated_title,
+    normalized_novel_updates,
+)
 from app.capabilities.writing.prompts import render_continuation, scaffold_length
-from app.capabilities.writing.repository import ChapterRepository, EntityRepository, NovelRepository
-from app.capabilities.writing.schemas import ChapterUpdate, ExportDone, NovelRead, NovelUpdate
+from app.capabilities.writing.repository import (
+    ChapterRepository,
+    DailyWordsRepository,
+    EntityRepository,
+    NovelRepository,
+    SeriesRepository,
+)
+from app.capabilities.writing.schemas import (
+    ActivityPoint,
+    ActivityRead,
+    ChapterUpdate,
+    ExportDone,
+    NovelRead,
+    NovelUpdate,
+)
 from app.kernel.auth import SetupRequiredError
 from app.kernel.context import allocate
 from app.kernel.contracts.models import Chapter, Entity, Novel, User
@@ -91,6 +109,8 @@ class WritingService:
         self.novels = NovelRepository(session, user_id)
         self.chapters = ChapterRepository(session, user_id)
         self.entities = EntityRepository(session, user_id)
+        self.series = SeriesRepository(session, user_id)
+        self.daily_words = DailyWordsRepository(session, user_id)
 
     async def _require_user(self) -> None:
         """Writes belong to a user that setup created; without one there is
@@ -100,9 +120,22 @@ class WritingService:
             raise SetupRequiredError
 
     async def create_novel(
-        self, title: str, genre: str | None = None, blurb: str | None = None
+        self,
+        title: str,
+        genre: str | None = None,
+        blurb: str | None = None,
+        target_words: int | None = None,
     ) -> Novel:
-        """Commit a novel with optional genre and blurb; return the created row.
+        """Commit a novel with optional genre, blurb and word target; return
+        the created row.
+
+        The new-book dialog's inheritance note is the row's truth: the four
+        wizard settings — author typology, dramatic form, AI role and canon
+        strictness — are copied from the atelier's first book (the oldest
+        ``created_at``, the one setup created). One read, no lock: a create
+        has no concurrent writer of the source row's settings, and the copy
+        never writes the source. A column without an answer stays without
+        one; no source book at all leaves all four NULL.
 
         Raise SetupRequiredError if setup has not created the owning user.
         """
@@ -110,42 +143,72 @@ class WritingService:
         # Fold an empty/whitespace genre to None at the create boundary, the
         # way PATCH does, so "no genre" is one value everywhere.
         genre = (genre or "").strip() or None
-        novel = await self.novels.create(title, genre=genre, blurb=blurb)
+        atelier = await self.novels.oldest()
+        novel = await self.novels.create(
+            title,
+            genre=genre,
+            blurb=blurb,
+            target_words=target_words,
+            author_typology=atelier.author_typology if atelier is not None else None,
+            dramatic_form=atelier.dramatic_form if atelier is not None else None,
+            ai_role=atelier.ai_role if atelier is not None else None,
+            canon_strictness=atelier.canon_strictness if atelier is not None else None,
+        )
         await self.session.commit()
         return novel
 
-    async def list_novels(self) -> Sequence[NovelRead]:
-        """The shelf's rows, each carrying its derived counts.
+    async def list_novels(self, *, include_archived: bool = False) -> Sequence[NovelRead]:
+        """The shelf's rows, each carrying its derived counts and series.
 
         The counts arrive as one grouped query (never one per novel, the
-        bodies never in Python); the rows are the response shape because
-        only they can carry what the raw novel has no column for.
+        bodies never in Python) and the series titles as one scoped
+        lookup; the rows are the response shape because only they can
+        carry what the raw novel has no column for. Archived books stay
+        out unless ``include_archived`` asks for them.
         """
+        novels = await self.novels.list(include_archived=include_archived)
         counts = await self.novels.counts()
+        titles = await self.novels.series_titles(novels)
         return [
-            self._with_counts(novel, counts.get(novel.id, (0, 0)))
-            for novel in await self.novels.list()
+            self._with_counts(novel, counts.get(novel.id, (0, 0)), titles.get(novel.id))
+            for novel in novels
         ]
 
     async def get_novel(self, novel_id: UUID) -> NovelRead:
         novel = await self.novels.get(novel_id)
         if novel is None:
             raise NotFoundError
-        return self._with_counts(novel, (await self.novels.counts(novel_id)).get(novel_id, (0, 0)))
+        titles = await self.novels.series_titles([novel])
+        return self._with_counts(
+            novel,
+            (await self.novels.counts(novel_id)).get(novel_id, (0, 0)),
+            titles.get(novel.id),
+        )
 
-    def _with_counts(self, novel: Novel, counts: tuple[int, int]) -> NovelRead:
-        """One novel row as the response shape, its two counts filled in."""
+    def _with_counts(
+        self, novel: Novel, counts: tuple[int, int], series_title: str | None = None
+    ) -> NovelRead:
+        """One novel row as the response shape, its derived facts filled in."""
         chapter_count, word_count = counts
         return NovelRead.model_validate(novel).model_copy(
-            update={"chapter_count": chapter_count, "word_count": word_count}
+            update={
+                "chapter_count": chapter_count,
+                "word_count": word_count,
+                "series_title": series_title,
+            }
         )
 
     async def update_novel(self, novel_id: UUID, changes: NovelUpdate) -> NovelRead:
-        """Correct a novel's five metadata fields: only the fields the body carries.
+        """Correct a novel's metadata fields: only the fields the body carries.
 
         The values are checked by ``metadata.normalized_novel_updates``, so a
         hand-written call cannot skip the contract: it normalizes only the
-        carried fields and refuses an invalid one by name.
+        carried fields and refuses an invalid one by name. The series link
+        is checked here, where the database is: a carried ``series_id``
+        must name a series the user owns, a carried ``series_volume``
+        needs a series to belong to after the update, and leaving a
+        series takes the volume number with it — the number belongs to
+        the link, not the book.
         ``model_fields_set`` is what makes the update partial: a field the
         body does not carry is not a change, and a carried ``null`` is one —
         the cleared state. The write is one UPDATE through the repository's
@@ -153,7 +216,7 @@ class WritingService:
         so an edit makes the export trace honestly stale; an empty body
         carries no field and writes nothing.
 
-        Commit and return the novel, its derived counts filled the way the
+        Commit and return the novel, its derived facts filled the way the
         read paths fill them. Raise NotFoundError if it is absent or
         unowned, or InvalidNovelUpdateError for an invalid field, named.
         """
@@ -161,12 +224,25 @@ class WritingService:
         if novel is None:
             raise NotFoundError
         updates = normalized_novel_updates(changes)
+        if changes.series_id is not None and await self.series.get(changes.series_id) is None:
+            raise InvalidNovelUpdateError("series_id")
+        if changes.series_volume is not None:
+            linked = updates.get("series_id", novel.series_id)
+            if linked is None:
+                raise InvalidNovelUpdateError("series_volume")
+        if "series_id" in updates and updates["series_id"] is None:
+            updates["series_volume"] = None
         # An empty body carries no field and must not advance updated_at:
         # save nothing, commit nothing, so "last written" stays where it was.
         if updates:
             novel = await self.novels.save(novel, updates)
             await self.session.commit()
-        return self._with_counts(novel, (await self.novels.counts(novel_id)).get(novel_id, (0, 0)))
+        titles = await self.novels.series_titles([novel])
+        return self._with_counts(
+            novel,
+            (await self.novels.counts(novel_id)).get(novel_id, (0, 0)),
+            titles.get(novel.id),
+        )
 
     async def delete_novel(self, novel_id: UUID) -> None:
         """Delete a novel: the row goes, and everything it carried goes with it.
@@ -185,6 +261,78 @@ class WritingService:
             raise NotFoundError
         await self.session.commit()
 
+    async def duplicate_novel(self, novel_id: UUID) -> NovelRead:
+        """Copy a novel and all its chapters as one new book, in one transaction.
+
+        The copy carries the book's own facts — genre, blurb, the export's
+        front matter, the wizard's settings, status and the series link —
+        under the name ``„<title> (Kopie)"``. The shelf's tracking starts
+        fresh: no volume (the number belongs to the original's place in
+        the series), no archive stamp (the copy is on the shelf) and no
+        export trace (it has never been exported). The chapters ride with
+        titles, bodies and positions as read; the new novel has no other
+        writers yet, so the positions need no allocator's lock. Novel and
+        chapters commit together or not at all.
+
+        Return the copy with its derived facts, the read paths' shape.
+        Raise SetupRequiredError if setup has not created the owning user,
+        or NotFoundError for an absent or unowned novel.
+        """
+        await self._require_user()
+        novel = await self.novels.get(novel_id)
+        if novel is None:
+            raise NotFoundError
+        chapters = await self.chapters.list_for_novel(novel_id)
+        copy = await self.novels.duplicate(novel, duplicated_title(novel.title))
+        await self.chapters.copy_into(copy.id, chapters)
+        await self.session.commit()
+        titles = await self.novels.series_titles([copy])
+        return self._with_counts(
+            copy,
+            (await self.novels.counts(copy.id)).get(copy.id, (0, 0)),
+            titles.get(copy.id),
+        )
+
+    async def activity(self, days: int = 30) -> ActivityRead:
+        """The atelier's activity across all the user's novels.
+
+        ``points`` cover the requested window oldest-first, zero-days
+        included; ``streak_days`` counts consecutive days with a nonzero
+        net ending today — or yesterday, which keeps the streak alive
+        until the day after tomorrow without writing; ``weekly_average``
+        is the mean net words per day over ALL days of the window, one
+        decimal; ``today_words`` is today's net. The day boundary is the
+        server's UTC date, the clock every other timestamp here rides.
+        """
+        today = datetime.now(UTC).date()
+        totals = await self.daily_words.daily_totals(today)
+        start = today - timedelta(days=days - 1)
+        points = [
+            ActivityPoint(date=day, words=totals.get(day, 0))
+            for day in (start + timedelta(days=offset) for offset in range(days))
+        ]
+        # The streak anchors on today when today has a nonzero net, else on
+        # yesterday — a streak survives until the day after tomorrow without
+        # writing — and walks back through consecutive nonzero days. A day
+        # nets across novels first: +50 in one book and -50 in another is a
+        # zero day, not two active ones. The walk is not bounded by the
+        # window: a 40-day streak reads 40 on a 7-day window.
+        anchor = today if totals.get(today, 0) != 0 else today - timedelta(days=1)
+        streak = 0
+        day = anchor
+        while totals.get(day, 0) != 0:
+            streak += 1
+            day -= timedelta(days=1)
+        # The average's basis is every day of the window, zero-days included:
+        # the honest daily rate, rest days and all. The net is the numerator,
+        # so a window that removed more than it wrote averages negative.
+        return ActivityRead(
+            points=points,
+            streak_days=streak,
+            weekly_average=round(sum(point.words for point in points) / days, 1),
+            today_words=totals.get(today, 0),
+        )
+
     async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:
         await self._require_user()
         if await self.novels.get(novel_id) is None:
@@ -192,6 +340,8 @@ class WritingService:
         # The same rule as the update: spaces are not a name, and "" after
         # the trim is the honest unnamed.
         chapter = await self.chapters.create(novel_id, title.strip())
+        # A chapter is born empty: zero words, a zero diff — the activity
+        # has nothing to record until the first body lands (update_chapter).
         await self.session.commit()
         return chapter
 
@@ -285,13 +435,33 @@ class WritingService:
         order (book first, the delete's and the reorder's) is what keeps
         the pair from waiting on each other's row (Postgres 40P01).
 
+        A carried body also feeds the atelier's activity: the diff of the
+        one whitespace rule, the old body re-read under the novel lock,
+        accumulates on today's row in the same transaction.
+
         Return the chapter; raise NotFoundError if it is absent or another user's.
         """
         chapter = await self.get_chapter(chapter_id)
         await lock_novel(self.session, user_id=self.user_id, novel_id=chapter.novel_id)
+        # The OLD body is re-read under the lock: the get above may have
+        # loaded it before a concurrent save committed (a double-fired
+        # autosave), and a diff counted from that stale snapshot would
+        # land on the day's row twice. The second writer waits, then
+        # reads the first writer's committed chapter (positions.py).
+        old_body = await self.chapters.committed_body(chapter_id)
         if changes.title is not None:
             changes.title = changes.title.strip()
-        chapter = await self.chapters.save(chapter, changes.model_dump(exclude_none=True))
+        updates = changes.model_dump(exclude_none=True)
+        # The activity's diff: both sides count through the shelf's one
+        # whitespace rule. A title-only edit — or a body that counts the
+        # same — is a zero diff and writes no activity row.
+        delta = 0
+        if "body" in updates:
+            old_words, new_words = await self.chapters.count_words(old_body or "", updates["body"])
+            delta = new_words - old_words
+        chapter = await self.chapters.save(chapter, updates)
+        if delta:
+            await self.daily_words.add_words(chapter.novel_id, datetime.now(UTC).date(), delta)
         await self.session.commit()
         return chapter
 
@@ -308,12 +478,19 @@ class WritingService:
         survivor's ``updated_at`` to itself, and the novel's row is the
         one that advances: the archive lost a chapter (D8). The chapter's
         pending suggestions ride the foreign key's cascade; findings are
-        the novel's and stay. Raise NotFoundError for an absent or
-        unowned chapter.
+        the novel's and stay. The removed words count negative on today's
+        activity row, in the same transaction. Raise NotFoundError for an
+        absent or unowned chapter.
         """
         chapter = await self.get_chapter(chapter_id)
         novel_id = chapter.novel_id
         await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
+        # The removed body counts negative on today's activity row — the
+        # atelier's honest delta, re-read under the lock: the get above
+        # may predate a concurrent save, and the day must lose the words
+        # the book holds, not the ones this session remembers.
+        removed_body = await self.chapters.committed_body(chapter_id)
+        (removed_words,) = await self.chapters.count_words(removed_body or "")
         result = await self.session.execute(
             delete(Chapter).where(Chapter.id == chapter_id, Chapter.user_id == self.user_id)
         )
@@ -322,6 +499,8 @@ class WritingService:
         survivors = await self.chapters.list_for_novel(novel_id)
         await self.chapters.renumber(novel_id, [survivor.id for survivor in survivors])
         await self.chapters.touch_novel(novel_id)
+        if removed_words:
+            await self.daily_words.add_words(novel_id, datetime.now(UTC).date(), -removed_words)
         await self.session.commit()
 
     async def reorder_chapters(self, novel_id: UUID, chapter_ids: Sequence[UUID]) -> None:

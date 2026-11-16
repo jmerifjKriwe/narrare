@@ -210,6 +210,15 @@ export const icons = {
       <circle cx="12" cy="8" r="1.05" />
     </>
   ),
+  /** More, stacked: three dots in a column — the quick menu's trigger
+   *  (the draft's `more_vert`), distinct from the row's `moreHoriz`. */
+  moreVert: (
+    <>
+      <circle cx="8" cy="4" r="1.05" />
+      <circle cx="8" cy="8" r="1.05" />
+      <circle cx="8" cy="12" r="1.05" />
+    </>
+  ),
   /** A person: the head over the shoulders. */
   person: (
     <>
@@ -262,6 +271,36 @@ export const icons = {
       <path d="M2.6 4.6C3.8 3.4 5 5.8 6.2 4.6C7.4 3.4 8.6 5.8 9.8 4.6C11 3.4 12.2 5.8 13.4 4.6" />
       <path d="M2.6 8C3.8 6.8 5 9.2 6.2 8C7.4 6.8 8.6 9.2 9.8 8C11 6.8 12.2 9.2 13.4 8" />
       <path d="M2.6 11.4C3.8 10.2 5 12.6 6.2 11.4C7.4 10.2 8.6 12.6 9.8 11.4C11 10.2 12.2 12.6 13.4 11.4" />
+    </>
+  ),
+
+  // The quick menu's concepts (shelf-quick-menu). Same rule as above: a
+  // Material name pins the concept, the drawing is the app's own face.
+
+  /** The drafts' `content_copy`: a second sheet lifted off the first —
+   *  the duplicate that leaves the original whole. */
+  copy: (
+    <>
+      <path d="M2.75 5.5H10.5V13.25H2.75Z" />
+      <path d="M5.5 5.5V2.75H13.25V10.5H10.5" />
+    </>
+  ),
+  /** The drafts' `inventory_2`: a lidded box with a hand slot — the
+   *  archive that keeps the work, never a grave. */
+  archive: (
+    <>
+      <path d="M2.75 3.25H13.25V5.75H2.75Z" />
+      <path d="M3.75 5.75V12.75H12.25V5.75" />
+      <path d="M6.5 8.5H9.5" />
+    </>
+  ),
+  /** The drafts' `unarchive`: the same box, its arrow rising out — the
+   *  symmetric return to the shelf. */
+  unarchive: (
+    <>
+      <path d="M2.75 3.25H13.25V5.75H2.75Z" />
+      <path d="M3.75 5.75V12.75H12.25V5.75" />
+      <path d="M8 11.25V7.75M6.25 9.5L8 7.75L9.75 9.5" />
     </>
   ),
 

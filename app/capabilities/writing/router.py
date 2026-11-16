@@ -6,12 +6,13 @@ from logging import getLogger
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.writing.metadata import InvalidNovelUpdateError
 from app.capabilities.writing.schemas import (
+    ActivityRead,
     ChapterCreate,
     ChapterOrderUpdate,
     ChapterRead,
@@ -131,9 +132,10 @@ async def _continuation_events(
 
 
 @router.get("/novels", response_model=list[NovelRead])
-async def list_novels(service: ServiceDep) -> list[NovelRead]:
-    """Return the current user's novels."""
-    return list(await service.list_novels())
+async def list_novels(service: ServiceDep, include_archived: bool = False) -> list[NovelRead]:
+    """Return the current user's novels; archived books stay out of the
+    main grid unless ``include_archived`` asks for them."""
+    return list(await service.list_novels(include_archived=include_archived))
 
 
 @router.get(
@@ -159,7 +161,12 @@ async def get_novel(novel_id: UUID, service: ServiceDep) -> NovelRead:
 async def create_novel(payload: NovelCreate, service: ServiceDep) -> NovelRead:
     """Create and return a novel; respond with HTTP 409 if setup is required."""
     try:
-        novel = await service.create_novel(payload.title, genre=payload.genre, blurb=payload.blurb)
+        novel = await service.create_novel(
+            payload.title,
+            genre=payload.genre,
+            blurb=payload.blurb,
+            target_words=payload.target_words,
+        )
     except SetupRequiredError:
         raise HTTPException(status_code=409, detail="setup required") from None
     return NovelRead.model_validate(novel)
@@ -178,8 +185,9 @@ async def update_novel(novel_id: UUID, payload: NovelUpdate, service: ServiceDep
 
     Return the novel with its derived counts; raise HTTP 404 for an absent
     or unowned novel, or HTTP 422 naming the field for a blank or over-long
-    title, an over-long genre or author, or a language that is over-long
-    or not a BCP-47-ish code.
+    title, an over-long genre or author, a language that is over-long
+    or not a BCP-47-ish code, a status outside the vocabulary, a series
+    link that names no series of the user, or a volume without a series.
     """
     try:
         novel = await service.update_novel(novel_id, payload)
@@ -206,6 +214,46 @@ async def delete_novel(novel_id: UUID, service: ServiceDep) -> None:
         await service.delete_novel(novel_id)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="novel not found") from None
+
+
+@router.post(
+    "/novels/{novel_id}/duplicate",
+    response_model=NovelRead,
+    status_code=201,
+    responses={
+        404: {"model": WritingErrorRead, "description": "Novel not found"},
+        409: {"model": WritingErrorRead, "description": "Setup required"},
+    },
+)
+async def duplicate_novel(novel_id: UUID, service: ServiceDep) -> NovelRead:
+    """Duplicate an owned novel: a new book with the same metadata and a
+    full copy of its chapters, in one transaction.
+
+    The copy is named ``„<title> (Kopie)"``, keeps the series link but no
+    volume, and starts on the shelf — unarchived, never exported. Respond
+    with HTTP 404 for an absent or unowned novel, or HTTP 409 if setup is
+    required.
+    """
+    try:
+        return await service.duplicate_novel(novel_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
+
+
+@router.get("/activity", response_model=ActivityRead)
+async def activity(
+    service: ServiceDep, days: Annotated[int, Query(ge=1, le=365)] = 30
+) -> ActivityRead:
+    """The atelier's daily words across all owned novels: the window's
+    points (zero-days included), the streak of consecutive days with a
+    nonzero net ending today or yesterday, the mean net words per day
+    over the whole window, and today's net. ``days`` bounds the window
+    to 1..365; the default is 30. The day boundary is the server's UTC
+    date.
+    """
+    return await service.activity(days)
 
 
 @router.post(

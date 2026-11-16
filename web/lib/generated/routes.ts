@@ -14,7 +14,9 @@
 // import each other; this generated table is the one composition
 // point.
 import { routes as setup } from "../../../app/capabilities/setup/web/routes";
+import { routes as writing } from "../../../app/capabilities/writing/web/routes";
 
 export const capabilityRoutes = [
   ...setup,
+  ...writing,
 ] as const;
