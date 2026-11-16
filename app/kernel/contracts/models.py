@@ -15,7 +15,7 @@ from app.kernel.contracts.knowledge import (
     EntityRelation,
     EntitySuggestion,
 )
-from app.kernel.contracts.novel import Chapter, Novel
+from app.kernel.contracts.novel import Chapter, Novel, Scene
 from app.kernel.contracts.series import Series
 from app.kernel.contracts.user import User
 
@@ -29,6 +29,7 @@ __all__ = [
     "EntityRelation",
     "EntitySuggestion",
     "Novel",
+    "Scene",
     "Series",
     "User",
 ]

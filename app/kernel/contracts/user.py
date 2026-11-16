@@ -21,6 +21,13 @@ class User(Base):
     # NULL means "follow the system": the browser's `prefers-color-scheme`
     # decides. A stored value is the reader's own answer and wins over it.
     theme: Mapped[str | None] = mapped_column(String(8))
+    # The profile's author name (W4 D9/D22) — the user block's label, distinct
+    # from the per-book ``Novel.author`` running head. Nullable: a user who
+    # never answered falls back to the email label, not to a lie.
+    author_name: Mapped[str | None] = mapped_column(String(200))
+    # The atelier-level daily word goal (W4 D8) — user scope, not per book;
+    # the shelf banner reads it. Nullable: no goal set is an honest neutral.
+    daily_goal_words: Mapped[int | None] = mapped_column()
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
