@@ -12,7 +12,8 @@ and the database assertions are the honest check: the screen and the row
 must agree. Search answers titles, genre components and figures by equality;
 the facets compose OR within a group and AND across; duplicate copies the
 whole book; export lands a real ZIP and stamps the menu; archive leaves and
-returns through the drafted confirm; the new-book dialog creates the hero
+returns through the drafted confirm; the hero's own menu archives the hero
+and the next active book leads (#863); the new-book dialog creates the hero
 with a neutral word stand and the atelier's inherited answers — the setup
 book standing as their source — while the empty-shelf door creates with
 honest NULLs when no source remains; an API chapter write moves the banner
@@ -523,6 +524,54 @@ def test_archive_confirm_leaves_and_wiederherstellen_returns(page: Page, install
     expect(_metric(page, "Aktive Projekte")).to_contain_text("2 Romane")
 
 
+def test_the_hero_menu_archives_and_the_next_book_leads(page: Page, installed: Stack) -> None:
+    """Spec 6b (#863): the hero wears the grid's own quick menu — the same
+    28px trigger in its header row, the same three actions and meta line,
+    never Wiederherstellen (the hero shows no archived book). Archiving the
+    hero through the drafted confirm re-picks the next active book: the
+    honest Nachrücken, no empty hero gap, and the row carries the stamp."""
+    create_novel(GAERTNERIN, genre="Historischer Roman", target_words=50000)
+    _seed_klang_with_chapter(1200)  # the chapter write makes Klang the hero
+
+    _goto_shelf(page)
+    hero = _hero(page)
+    expect(page.get_by_role("heading", name=KLANG, exact=True)).to_be_visible()
+
+    # The hero's own trigger opens the same menu: three actions, the honest
+    # export dash, no restore variant.
+    hero.get_by_role("button", name=CARD_OPTIONS).click()
+    menu = page.get_by_role("dialog", name=MENU_TITLE)
+    expect(menu).to_be_visible()
+    for action in ("Duplizieren", "Exportieren", "Archivieren"):
+        expect(menu.get_by_role("button", name=action)).to_be_visible()
+    expect(menu.get_by_role("button", name="Wiederherstellen")).to_have_count(0)
+    expect(menu.get_by_text(LAST_EXPORT, exact=True)).to_be_visible()
+    expect(menu.get_by_text("—", exact=True)).to_be_visible()
+    assert_accessible(page)
+
+    # The drafted confirm names the hero; confirming archives it and the
+    # next active book leads — Gärtnerin becomes the hero, no grid remains.
+    menu.get_by_role("button", name="Archivieren").click()
+    confirm = page.get_by_role("dialog", name=CONFIRM_TITLE)
+    expect(confirm).to_be_visible()
+    expect(confirm).to_contain_text(
+        f"«{KLANG}» verlässt das Regal und ruht im Archiv — jederzeit wiederherstellbar."
+    )
+    confirm.get_by_role("button", name="Archivieren", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    expect(page.get_by_role("heading", name=GAERTNERIN, exact=True)).to_be_visible()
+    expect(_hero(page)).to_contain_text(GAERTNERIN)
+    expect(page.get_by_role("heading", name=KLANG, exact=True)).to_have_count(0)
+    expect(page.get_by_role("article")).to_have_count(0)
+    expect(_metric(page, "Aktive Projekte")).to_contain_text("1 Roman")
+    assert_accessible(page)
+
+    # The honest check: the archive stamp is on the row, set by the menu alone.
+    assert _rows("SELECT archived_at IS NOT NULL FROM novels WHERE title = :t", {"t": KLANG}) == [
+        (True,)
+    ]
+
+
 def test_the_new_book_dialog_creates_the_hero_end_to_end(
     page: Page, installed_with_atelier: Stack
 ) -> None:
@@ -776,4 +825,11 @@ def test_the_dark_shelf_face_clears_the_axe_floor(page: Page, installed: Stack) 
     # The quick menu's dark face — the popover over the dark card.
     menu = _open_card_menu(page, WINTERHAUS)
     expect(menu.get_by_text(LAST_EXPORT, exact=True)).to_be_visible()
+    assert_accessible(page)
+    page.locator("h1").click()  # an outside press closes the grid menu
+
+    # The hero menu's dark face (#863) — the same popover over the hero.
+    _hero(page).get_by_role("button", name=CARD_OPTIONS).click()
+    hero_menu = page.get_by_role("dialog", name=MENU_TITLE)
+    expect(hero_menu.get_by_text(LAST_EXPORT, exact=True)).to_be_visible()
     assert_accessible(page)

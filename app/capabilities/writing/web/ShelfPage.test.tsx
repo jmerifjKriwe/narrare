@@ -509,12 +509,18 @@ describe("the shelf — every door honest about what is not built yet", () => {
     expect(screen.getByRole("button", { name: de["writing.shelf.search.viewGrid"] }).hasAttribute("disabled")).toBe(true);
     expect(screen.getByRole("button", { name: de["writing.shelf.search.viewList"] }).hasAttribute("disabled")).toBe(true);
     // Task 8's quick menu: one live trigger per grid card, no coming-soon note.
-    const menus = screen.getAllByRole("button", { name: de["writing.shelf.card.options"] });
+    const menus = screen
+      .getAllByRole("article")
+      .map((card) => within(card).getByRole("button", { name: de["writing.shelf.card.options"] }));
     expect(menus).toHaveLength(3);
     for (const menu of menus) {
       expect(menu.hasAttribute("disabled")).toBe(false);
       expect(menu.getAttribute("aria-haspopup")).toBe("dialog");
     }
+    // #863: the hero wears the same live menu in its header row.
+    const heroMenu = within(heroSection()).getByRole("button", { name: de["writing.shelf.card.options"] });
+    expect(heroMenu.hasAttribute("disabled")).toBe(false);
+    expect(heroMenu.getAttribute("aria-haspopup")).toBe("dialog");
     // Task 10 made the banner live: the hero's own goal pair and the
     // aggregate's weekly average; the statistics door stays disabled —
     // no statistics surface exists to open yet.
@@ -1700,6 +1706,323 @@ describe("the shelf — the quick menu's review fixes", () => {
     // The menu stays open and focus lands back on the live export row.
     await waitFor(() => expect(document.activeElement).toBe(exportRow));
     expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+});
+
+/** The hero's quick menu (#863) — the grid's same surface, anchored in the
+ *  hero's header row (the `shelf-hero-menu` draft). The hero never shows an
+ *  archived book (pickHero), so the menu always offers the three forward
+ *  actions; archiving the hero re-picks the next active book through the
+ *  same `["novels"]` refetch — no special case, no empty hero gap. */
+const heroTrigger = () =>
+  within(heroSection()).getByRole("button", { name: de["writing.shelf.card.options"] });
+function openHeroMenu(): HTMLElement {
+  fireEvent.click(heroTrigger());
+  return screen.getByRole("dialog");
+}
+
+describe("the shelf — the hero book acts through the same quick menu", () => {
+  it("the hero's trigger opens the same labelled menu — three actions, no restore", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const trigger = heroTrigger();
+    expect(trigger.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    const dialog = openHeroMenu();
+    expect(dialog.getAttribute("aria-label")).toBe(de["writing.shelf.menu.title"]);
+    expect(trigger.getAttribute("aria-controls")).toBe(dialog.id);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    for (const name of [
+      de["writing.shelf.menu.duplicate"],
+      de["writing.shelf.menu.export"],
+      de["writing.shelf.menu.archive"],
+    ]) {
+      expect(within(dialog).getByRole("button", { name })).toBeTruthy();
+    }
+    // The hero is never archived — the restore variant has no place here.
+    expect(within(dialog).queryByRole("button", { name: de["writing.shelf.menu.restore"] })).toBeNull();
+    // The honest meta line: Dead Signal was never exported.
+    expect(within(dialog).getByText(de["writing.shelf.menu.lastExport"])).toBeTruthy();
+    expect(within(dialog).getByText("—")).toBeTruthy();
+    // Opening moves focus to the first action — the popover discipline.
+    expect(document.activeElement).toBe(
+      within(dialog).getByRole("button", { name: de["writing.shelf.menu.duplicate"] }),
+    );
+  });
+
+  it("the hero trigger wears the draft's two faces", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    expect(heroTrigger().className).toContain("border-border");
+    expect(heroTrigger().className).not.toContain("border-primary");
+    openHeroMenu();
+    expect(heroTrigger().className).toContain("border-primary");
+  });
+
+  it("Escape closes the hero menu and returns focus to its trigger", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    openHeroMenu();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(heroTrigger());
+    expect(heroTrigger().getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("an outside press closes the hero menu without stealing focus", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    openHeroMenu();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).not.toBe(heroTrigger());
+  });
+
+  it("duplicate from the hero runs busy, then the copy joins the grid", async () => {
+    let resolveDup!: (answer: { data: unknown; response: Response }) => void;
+    duplicateAnswer = () =>
+      new Promise<{ data: unknown; response: Response }>((resolve) => {
+        resolveDup = resolve;
+      });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    novelsAnswer = async () => ({ data: [...SHELF_ROWS, COPY], response: ok() });
+
+    const dialog = openHeroMenu();
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.duplicate"] }));
+    expect(within(dialog).getByText(de["writing.shelf.menu.wait"])).toBeTruthy();
+    expect(dialog.querySelector(".animate-spin")).not.toBeNull();
+    expect(
+      within(dialog).getByRole("button", { name: de["writing.shelf.menu.export"] }).hasAttribute("disabled"),
+    ).toBe(true);
+
+    await waitFor(() => expect(api.POST).toHaveBeenCalled());
+    resolveDup({ data: COPY, response: ok() });
+    expect(await screen.findByRole("heading", { level: 3, name: "Winterhaus (Kopie)" })).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(api.POST).toHaveBeenCalledWith("/api/writing/novels/{novel_id}/duplicate", {
+      params: { path: { novel_id: HERO.id } },
+    });
+  });
+
+  it("export from the hero downloads the ZIP and keeps the menu open on the fresh date", async () => {
+    const blob = new Blob(["zip-bytes"], { type: "application/zip" });
+    exportAnswer = async () => ({
+      data: blob,
+      response: new Response(null, {
+        status: 200,
+        headers: { "Content-Disposition": 'attachment; filename="dead-signal.zip"' },
+      }),
+    });
+    let downloadedName = "";
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      downloadedName = this.download;
+    });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    novelsAnswer = async () => ({
+      data: [{ ...HERO, last_exported_at: "2026-11-15T12:00:00Z" }, SECOND, THIRD, FOURTH],
+      response: ok(),
+    });
+
+    const dialog = openHeroMenu();
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.export"] }));
+    await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalledWith(blob));
+    expect(downloadedName).toBe("dead-signal.zip");
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    await waitFor(() =>
+      expect(within(screen.getByRole("dialog")).getByText(formatDate("2026-11-15T12:00:00Z", DATE_OPTS))).toBeTruthy(),
+    );
+    expect(api.POST).toHaveBeenCalledWith("/api/writing/novels/{novel_id}/export", {
+      params: { path: { novel_id: HERO.id } },
+      body: { mode: "zip" },
+      parseAs: "blob",
+    });
+  });
+
+  it("Archivieren opens the drafted confirm with the hero's own name; Abbrechen returns", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openHeroMenu();
+    const archiveRow = within(dialog).getByRole("button", { name: de["writing.shelf.menu.archive"] });
+    expect(archiveRow.className).not.toContain("text-danger");
+    fireEvent.click(archiveRow);
+
+    const confirm = screen.getByRole("dialog");
+    expect(within(confirm).getByText(de["writing.shelf.menu.confirm.title"])).toBeTruthy();
+    expect(
+      within(confirm).getByText(t("writing.shelf.menu.confirm.body", { title: "Dead Signal" })),
+    ).toBeTruthy();
+    const action = within(confirm).getByRole("button", { name: de["writing.shelf.menu.archive"] });
+    expect(action.className).not.toContain("text-danger");
+    expect(document.activeElement).toBe(action);
+
+    fireEvent.click(within(confirm).getByRole("button", { name: de["writing.shelf.menu.confirm.cancel"] }));
+    expect(screen.getByRole("dialog").getAttribute("aria-label")).toBe(de["writing.shelf.menu.title"]);
+    expect(api.PATCH).not.toHaveBeenCalledWith("/api/writing/novels/{novel_id}", expect.anything());
+  });
+
+  it("confirming archives the hero — the next active book leads, no empty gap", async () => {
+    archiveAnswer = async (_id, body) => ({
+      data: { ...HERO, archived_at: body.archived_at },
+      response: ok(),
+    });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    novelsAnswer = async () => ({ data: [SECOND, THIRD, FOURTH], response: ok() });
+
+    const dialog = openHeroMenu();
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.archive"] }));
+    const confirm = screen.getByRole("dialog");
+    fireEvent.click(within(confirm).getByRole("button", { name: de["writing.shelf.menu.archive"] }));
+    expect(confirm.querySelector(".animate-spin")).not.toBeNull();
+
+    // The honest re-pick: Winterhaus leads as the hero, Dead Signal stands
+    // nowhere, the grid holds the rest — no special case, the same refetch.
+    expect(await screen.findByRole("heading", { level: 2, name: "Winterhaus" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Dead Signal" })).toBeNull();
+    const titles = screen
+      .getAllByRole("article")
+      .map((card) => within(card).getByRole("heading", { level: 3 }).textContent);
+    expect(titles).toEqual(["The Salt Road", "Der Nebel von Arkona"]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText(t("writing.shelf.metrics.books", { count: 3 }))).toBeTruthy();
+    expect(api.PATCH).toHaveBeenCalledWith("/api/writing/novels/{novel_id}", {
+      params: { path: { novel_id: HERO.id } },
+      body: { archived_at: expect.any(String) },
+    });
+  });
+
+  it("archiving the shelf's last active book answers the honest empty state", async () => {
+    archiveAnswer = async (_id, body) => ({
+      data: { ...HERO, archived_at: body.archived_at },
+      response: ok(),
+    });
+    novelsAnswer = async () => ({ data: [HERO], response: ok() });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    novelsAnswer = async () => ({ data: [], response: ok() });
+
+    const dialog = openHeroMenu();
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.archive"] }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: de["writing.shelf.menu.archive"] }),
+    );
+
+    expect(await screen.findByRole("heading", { level: 2, name: "Dein erstes Buch wartet." })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Dead Signal" })).toBeNull();
+    expect(screen.queryAllByRole("article")).toHaveLength(0);
+  });
+
+  it("a refused archive leaves the hero's error line; the retry re-runs and the next book leads", async () => {
+    let attempts = 0;
+    archiveAnswer = async (_id, body) => {
+      attempts += 1;
+      if (attempts === 1) return { data: undefined, response: new Response(null, { status: 500 }) };
+      novelsAnswer = async () => ({ data: [SECOND, THIRD, FOURTH], response: ok() });
+      return { data: { ...HERO, archived_at: body.archived_at }, response: ok() };
+    };
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openHeroMenu();
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.archive"] }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: de["writing.shelf.menu.archive"] }),
+    );
+
+    const alert = await within(heroSection()).findByRole("alert");
+    expect(alert.textContent).toContain(de["writing.shelf.menu.error.archive"]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(within(alert).getByRole("button", { name: de["writing.shelf.error.retry"] }));
+    expect(await screen.findByRole("heading", { level: 2, name: "Winterhaus" })).toBeTruthy();
+    expect(attempts).toBe(2);
+  });
+
+  it("a refused duplicate leaves the hero's error line; opening the menu dismisses it for good", async () => {
+    duplicateAnswer = async () => ({ data: undefined, response: new Response(null, { status: 500 }) });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openHeroMenu();
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.duplicate"] }));
+    await within(heroSection()).findByRole("alert");
+
+    fireEvent.click(heroTrigger());
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(within(heroSection()).queryByRole("alert")).toBeNull();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(within(heroSection()).queryByRole("alert")).toBeNull();
+  });
+
+  it("Escape is staged on the hero — the confirm first, then the menu", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openHeroMenu();
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.archive"] }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    const menu = screen.getByRole("dialog");
+    expect(menu.getAttribute("aria-label")).toBe(de["writing.shelf.menu.title"]);
+    expect(document.activeElement).toBe(
+      within(menu).getByRole("button", { name: de["writing.shelf.menu.archive"] }),
+    );
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(heroTrigger());
+  });
+
+  it("the trigger holds the hero menu open while an action is busy", async () => {
+    let resolveExport!: (answer: { data: unknown; response: Response }) => void;
+    exportAnswer = () =>
+      new Promise<{ data: unknown; response: Response }>((resolve) => {
+        resolveExport = resolve;
+      });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openHeroMenu();
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.export"] }));
+    await waitFor(() => expect(api.POST).toHaveBeenCalled());
+    expect(screen.getByRole("dialog")).toBeTruthy();
+
+    fireEvent.click(heroTrigger());
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(heroTrigger().getAttribute("aria-expanded")).toBe("true");
+
+    resolveExport({
+      data: new Blob(["zip"], { type: "application/zip" }),
+      response: new Response(null, { status: 200, headers: { "Content-Disposition": 'attachment; filename="d.zip"' } }),
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeTruthy());
+  });
+
+  it("the hero popover's container chain never clips it — the section carries no overflow clip", async () => {
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    const dialog = openHeroMenu();
+    // The draft lets the popover overhang the hero's edge freely; walk the
+    // ancestor chain: no element between the popover and the page may clip.
+    const clippers: string[] = [];
+    let node: HTMLElement | null = dialog;
+    while (node && node !== document.body) {
+      if (/overflow-(hidden|clip|x-hidden|y-hidden|x-clip|y-clip)/.test(node.className)) {
+        clippers.push(`${node.tagName}.${node.className}`);
+      }
+      node = node.parentElement;
+    }
+    expect(clippers).toEqual([]);
+    expect(heroSection().className).not.toMatch(/overflow-(hidden|clip)/);
   });
 });
 
