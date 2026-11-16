@@ -181,6 +181,31 @@ async def _prose(novel_id: UUID) -> dict[UUID, str]:
     return {chapter_id: "\n\n".join(parts) for chapter_id, parts in bodies.items()}
 
 
+async def _revise_ankunft(novel_id: UUID, body: str, updated: datetime | None) -> ImportReport:
+    """Revise 'Ankunft' (the export's first chapter) through the engine's own
+    import path: export the stock, rewrite the file's prose and date, re-import.
+    The dated-archive construction the stale-revision pins share."""
+    _, files = await _export(novel_id)
+    archive = parse_archive(ArchiveTree(files))
+    revised = archive.chapters[0]  # parsed reading order: "Ankunft" is first
+    assert revised.title == "Ankunft"
+    revised.body = body
+    revised.updated = updated
+    return await _import(ArchiveTree(serialize_archive(archive)), novel_id)
+
+
+async def _stamp_ankunft(novel_id: UUID, moment: datetime) -> None:
+    """Set 'Ankunft's shell timestamp to a known instant — the stock's old
+    stamp the revision bumps away from."""
+    async with Session() as session:
+        chapter = await session.scalar(
+            select(Chapter).where(Chapter.novel_id == novel_id, Chapter.title == "Ankunft")
+        )
+        assert chapter is not None
+        chapter.updated_at = moment
+        await session.commit()
+
+
 async def _entities(novel_id: UUID) -> list[Entity]:
     _, entities, _ = await _rows(novel_id)
     return entities
@@ -379,6 +404,60 @@ async def test_newer_file_revision_applies(a_user: None) -> None:
     revised_scenes = [s for s in await _scenes(novel_id) if s.chapter_id == fresh[0].id]
     assert len(revised_scenes) == 1
     assert revised_scenes[0].body == "Umgeschrieben.\n"
+
+
+async def test_a_revision_bumps_the_chapter_timestamp_and_ages_older_files(
+    a_user: None,
+) -> None:
+    """The revision's explicit ``chapter.updated_at`` bump is load-bearing: the
+    export's ``updated`` frontmatter and the stale-revision guard read it. After
+    a revision through the import path, a file dated NEWER than the original
+    stock but OLDER than the revision is stale. Without the bump the shell would
+    still carry the stock's old stamp and accept that file — this pin refuses it.
+    """
+    novel_id = await _seed_novel()
+    await _stamp_ankunft(novel_id, STALE_BASE)
+
+    report = await _revise_ankunft(novel_id, "Erste Überarbeitung.\n", STALE_BASE)
+    assert report.chapters_revised == 1
+
+    # The bump happened: the shell's stamp advanced past the stock's old instant.
+    fresh = await _chapters(novel_id)
+    ankunft = next(c for c in fresh if c.title == "Ankunft")
+    assert ankunft.updated_at > STALE_BASE
+
+    # A file dated BETWEEN the stock's old stamp and the revision's bump: newer
+    # than STALE_BASE, older than the revision. The guard must refuse it as stale
+    # and the revision's prose must stand. (Deleted bump → the shell still reads
+    # STALE_BASE, this file is newer, and the merge would wrongly apply it.)
+    older = await _revise_ankunft(novel_id, "Ältere Fassung.\n", STALE_BASE + timedelta(days=1))
+    assert older.chapters_revised == 0 and older.chapters_new == 0
+    assert len(older.conflicts) == 1
+    assert older.conflicts[0].code == "stale_revision"
+    prose = await _prose(novel_id)
+    assert prose[ankunft.id] == "Erste Überarbeitung.\n"
+
+
+async def test_a_file_current_with_the_revision_still_applies(a_user: None) -> None:
+    """The bump's positive twin: a file dated AT the revision's own stamp (equal
+    counts as not older) still revises — the guard refuses only OLDER files, so
+    the bump ages stale files out without freezing the chapter against current
+    ones."""
+    novel_id = await _seed_novel()
+    await _stamp_ankunft(novel_id, STALE_BASE)
+
+    report = await _revise_ankunft(novel_id, "Erste Überarbeitung.\n", STALE_BASE)
+    assert report.chapters_revised == 1
+    fresh = await _chapters(novel_id)
+    ankunft = next(c for c in fresh if c.title == "Ankunft")
+    revision_stamp = ankunft.updated_at
+
+    # A file dated at the revision's stamp: not older → accepted, prose moves on.
+    current = await _revise_ankunft(novel_id, "Zweite Überarbeitung.\n", revision_stamp)
+    assert current.chapters_revised == 1
+    assert current.conflicts == []
+    prose = await _prose(novel_id)
+    assert prose[ankunft.id] == "Zweite Überarbeitung.\n"
 
 
 async def test_bare_chapter_file_imports(a_user: None) -> None:
