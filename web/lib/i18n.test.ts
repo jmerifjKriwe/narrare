@@ -100,11 +100,14 @@ describe("ICU message format", () => {
     // the split (#847). The chapters plural is the live carrier of that
     // shape: the count must survive formatting exactly once — a dropped #
     // loses the number, a doubled one splits the surface at the wrong
-    // occurrence — in every locale, singular and plural.
+    // occurrence — in every locale, singular and plural. The genre-plus-
+    // plural carrier rode setup.landing.meta until the owner deleted the
+    // unrouted landing (#862); setup.welcome.demoMeta carries the same
+    // shape on the live welcome roster.
     const carriers: { key: MessageKey; params: Record<string, string | number>; count: number }[] = [
       { key: "setup.basis.demoChapters", params: { count: 1 }, count: 1 },
       { key: "setup.basis.demoChapters", params: { count: 3 }, count: 3 },
-      { key: "setup.landing.meta", params: { genre: "Science Fiction", count: 3 }, count: 3 },
+      { key: "setup.welcome.demoMeta", params: { genre: "Science Fiction", count: 3 }, count: 3 },
     ];
     for (const candidate of locales) {
       for (const { key, params, count } of carriers) {

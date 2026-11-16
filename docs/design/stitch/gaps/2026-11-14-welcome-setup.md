@@ -3,9 +3,10 @@
 > **Status:** living document, opened with the welcome/setup rebuild wave W2
 > (2026-11-14). Keep it current: when a row's trigger lands, update the row in
 > the same commit that replaces the interim. This is the single English list
-> of every element on the welcome screen, the four wizard steps and the
-> landing that ships as a placeholder, a deliberate omission or a draft drift
-> because the backend, the surface or the corrected draft does not exist yet.
+> of every element on the welcome screen and the four wizard steps that ships
+> as a placeholder, a deliberate omission or a draft drift because the
+> backend, the surface or the corrected draft does not exist yet. The landing
+> was deleted by owner decision (#862); its rows stay below as history.
 >
 > **Authority:** the archived drafts under `screens/library/` —
 > `welcome-atelier`, `setup-step1-basis-vorlage`, `setup-step2-dramaturgie-struktur`,
@@ -18,13 +19,16 @@
 >
 > **W3 update (2026-11-15):** the shelf rebuild wave took `/` from the
 > landing (commit `b84a90f4`): post-setup the shelf is the home surface, and
-> the welcome moved to `/setup`. `LandingPage` is kept **unrouted** —
+> the welcome moved to `/setup`. `LandingPage` was kept **unrouted** —
 > component, tests and its 29 catalog keys intact, absent from the
-> production bundle — so rows 15–26 describe the kept component, not a
-> shipped screen; their triggers stand unchanged (the workspace, knowledge
-> and import waves still owe the doors). The landing's fate — fold into the
-> shelf, revive, or delete with its keys — is the owner's call, hung under
-> the W3 index when it opens. The live shelf's own ledger is
+> production bundle — until the owner decided its fate (#862): **DELETE**.
+> The landing is now deleted — component, tests and all 29 `setup.landing.*`
+> keys — in the commit that closes #862 (`chore(setup): the unrouted landing
+> is deleted with its keys`). Rows 15–26 are resolved by that deletion: they
+> describe the deleted component and stay here as history, not a shipped
+> screen. The doors their triggers name are owed on the live surfaces — the
+> workspace, knowledge and import waves still owe them, and the shelf
+> ledger carries the standing rows. The live shelf's own ledger is
 > [`2026-11-15-shelf.md`](2026-11-15-shelf.md); it carries the standing
 > import-door row and the updated „Neues beginnen" reading (row 18 there).
 
@@ -78,24 +82,25 @@ wave's index is #855; a row that earns an issue hangs under it).
 | 12 | Step-4 lore CTA | „Zuerst den Entitäten- & Lore-Graphen erkunden" | disabled + coming-soon note | the knowledge wave (entity & lore graph UI) | knowledge wave |
 | 13 | Step-4 workspace CTA | „Direkt in den Schreib-Workspace eintreten (Kapitel 1)" | disabled + coming-soon note | the workspace wave (writing surface) | workspace wave |
 | 14 | Step-4 stopped checklist (states panel 4) | half-checked rows on failure | omitted — the POST is atomic, nothing is half-bound; false check marks would lie. The failure card keeps the panel's title, body, cause line, retry and back | none — reason row | — |
-| 15 | Landing hero book object | hand-drawn book, 256×352 (step 4 draws 176×256) | the shared BookCover at size `hero` (192×264), the system's own identity | the cover-system wave decides the hero sizes (owner decision) | cover-system wave |
-| 16 | Landing word stand & progress track | decorative `w-12` sliver + „Wortstand wird beim ersten Schreiben gezählt • 3 Kapitel vordefiniert" | empty track (no sliver — nothing to measure) + the honest stand alone; the chapter count already rides the meta line | the workspace wave: the first writing produces a real word stand | workspace wave |
-| 17 | Landing „Weiterschreiben — Kapitel 1" door | enabled-looking primary CTA | disabled + coming-soon note | the workspace wave | workspace wave |
-| 18 | Landing „Entitäten- & Lore-Graph öffnen" door | enabled-looking secondary CTA | disabled + coming-soon note | the knowledge wave | knowledge wave |
-| 19 | Landing storyboard door | „3-Akt-Storyboard einsehen" | disabled + coming-soon note, neutral label „Storyboard einsehen" — the „3-Akt-" prefix would claim a dramatic form the row does not necessarily carry | the workspace wave (storyboard surface) | workspace wave |
-| 20 | Landing workroom card „Zen-Fokus & Atmosphäre" | room card with hover affordance | static coming-soon card, „demnächst" badge, no hover — a hover lift would imply a clickability it lacks | the workspace wave (zen focus room) | workspace wave |
-| 21 | Landing workroom card „Chronologie & Timeline" | room card with hover affordance | static coming-soon card, „demnächst" badge, no hover | the workspace wave (timeline surface) | workspace wave |
-| 22 | Landing workroom card „Manuskript importieren" | room card with hover affordance | static coming-soon card, „demnächst" badge, no hover | the import wave | import wave |
-| 23 | Landing „Neues beginnen" doors („Projekt-Assistenten starten", „Vorlagen-Katalog durchblättern") | enabled-looking CTAs | disabled + coming-soon note in the kept, unrouted landing. W3 refuted the row's original premise — a single-user instance now holds many novels: the shelf's dialog creates them (`33ec3ca7`), the grid shows them (`2051b84c`), the menu duplicates them (`5814b5cd`). The real „Neues beginnen" door is the shelf's „+ Neues Buch anlegen"; the two drafted CTAs still name surfaces that do not exist (a per-book assistant, a template catalog). The reading stands in the W3 ledger, row 18 | product decision: the per-book assistant / template-catalog surfaces (multi-novel support is no longer the blocker) | product decision (multi-novel wave) |
-| 24 | Landing hero blockquote | the demo seed's prose („Die Sensorenbatterie der Station Erebus schwieg seit drei Tagen …") | omitted — the archive's text, not the reader's; a blank-bound novel has none. The footer keeps the Atelier Notizen quote the welcome already speaks | none — reason row | — |
-| 25 | Landing demo-roster meta | invented genre blurbs per demo | the manifest's facts (genre • chapters); the roster is non-interactive and the active mark follows the title match | none — reason row; archive facts only | — |
-| 26 | Landing eyebrow & assurance „soeben" | „AKTIVES WERK • SOEBEN BEREITGESTELLT" / „Soeben im Setup bereitgestellt …" | „Aktives Werk" / „Im Setup bereitgestellt …" — the shelf welcomes every return, not only the first | none — deliberate wording decision | — |
+| 15 | Landing hero book object | hand-drawn book, 256×352 (step 4 draws 176×256) | deleted with the landing (#862); was the shared BookCover at size `hero` (192×264), the system's own identity | the cover-system wave decides the hero sizes (owner decision) | cover-system wave |
+| 16 | Landing word stand & progress track | decorative `w-12` sliver + „Wortstand wird beim ersten Schreiben gezählt • 3 Kapitel vordefiniert" | deleted with the landing (#862); was the empty track (no sliver — nothing to measure) + the honest stand alone; the chapter count already rode the meta line | the workspace wave: the first writing produces a real word stand | workspace wave |
+| 17 | Landing „Weiterschreiben — Kapitel 1" door | enabled-looking primary CTA | deleted with the landing (#862); was disabled + coming-soon note. The shelf's hero carries the live reading (its row 3) | the workspace wave | workspace wave |
+| 18 | Landing „Entitäten- & Lore-Graph öffnen" door | enabled-looking secondary CTA | deleted with the landing (#862); was disabled + coming-soon note. The shelf's hero carries the live reading (its row 4) | the knowledge wave | knowledge wave |
+| 19 | Landing storyboard door | „3-Akt-Storyboard einsehen" | deleted with the landing (#862); was disabled + coming-soon note, neutral label „Storyboard einsehen" — the „3-Akt-" prefix would claim a dramatic form the row does not necessarily carry | the workspace wave (storyboard surface) | workspace wave |
+| 20 | Landing workroom card „Zen-Fokus & Atmosphäre" | room card with hover affordance | deleted with the landing (#862); was a static coming-soon card, „demnächst" badge, no hover — a hover lift would imply a clickability it lacks | the workspace wave (zen focus room) | workspace wave |
+| 21 | Landing workroom card „Chronologie & Timeline" | room card with hover affordance | deleted with the landing (#862); was a static coming-soon card, „demnächst" badge, no hover | the workspace wave (timeline surface) | workspace wave |
+| 22 | Landing workroom card „Manuskript importieren" | room card with hover affordance | deleted with the landing (#862); was a static coming-soon card, „demnächst" badge, no hover. The import door's live readings stand on the welcome card (row 1) and the shelf (its row 2) | the import wave | import wave |
+| 23 | Landing „Neues beginnen" doors („Projekt-Assistenten starten", „Vorlagen-Katalog durchblättern") | enabled-looking CTAs | deleted with the landing (#862); was disabled + coming-soon note in the kept, unrouted landing. W3 refuted the row's original premise — a single-user instance now holds many novels: the shelf's dialog creates them (`33ec3ca7`), the grid shows them (`2051b84c`), the menu duplicates them (`5814b5cd`). The real „Neues beginnen" door is the shelf's „+ Neues Buch anlegen"; the two drafted CTAs still name surfaces that do not exist (a per-book assistant, a template catalog). The reading stands in the W3 ledger, row 18 | product decision: the per-book assistant / template-catalog surfaces (multi-novel support is no longer the blocker) | product decision (multi-novel wave) |
+| 24 | Landing hero blockquote | the demo seed's prose („Die Sensorenbatterie der Station Erebus schwieg seit drei Tagen …") | deleted with the landing (#862); the reading stands: omitted — the archive's text, not the reader's; a blank-bound novel has none. The footer kept the Atelier Notizen quote the welcome already speaks | none — reason row | — |
+| 25 | Landing demo-roster meta | invented genre blurbs per demo | deleted with the landing (#862); the reading stands: the manifest's facts (genre • chapters), never invented blurbs; the roster was non-interactive and the active mark followed the title match | none — reason row; archive facts only | — |
+| 26 | Landing eyebrow & assurance „soeben" | „AKTIVES WERK • SOEBEN BEREITGESTELLT" / „Soeben im Setup bereitgestellt …" | deleted with the landing (#862); the wording decision stands: „Aktives Werk" / „Im Setup bereitgestellt …" — the shelf welcomes every return, not only the first | none — deliberate wording decision | — |
 
 ### Reading the rows
 
-- **Rows 1–3, 12–13, 17–23** are the feature gaps: every disabled control on
-  the three screens, each with the drafted note and the wave that owes the
-  action. The help button (row 3) is one control in the shared
+- **Rows 1–3, 12–13, 17–23** are the feature gaps: every disabled control the
+  wave drew on the three screens, each with the drafted note and the wave
+  that owes the action (the landing's controls are history, rows 15–26
+  below). The help button (row 3) is one control in the shared
   `WizardHeader`, not four.
 - **Rows 4, 6, 9** are draft gaps the port corrected honestly; the drafts
   still carry the drift, so the trigger is a Stitch round, not a code change.
@@ -109,6 +114,10 @@ wave's index is #855; a row that earns an issue hangs under it).
 - **Rows 16, 26** are the landing's honesty wording: the empty track and the
   dropped „soeben" are decisions, and row 16 names the wave that makes the
   stand real.
+- **Rows 15–26** are the landing's rows, resolved by its deletion (#862):
+  they stay as history, marked row by row. The doors they name are owed on
+  the live surfaces — the shelf ledger carries the standing readings (its
+  rows 2–4 and 18).
 
 ## What is *not* a placeholder
 
@@ -120,21 +129,22 @@ These ship real and are listed so nobody mistakes them for gaps:
 - **The pre-setup locale mirror and its seam** — the structural 409 (the
   settings row does not exist before setup) was the welcome port's primary
   finding; the wizard's one POST now carries the mirrored choice onto the
-  fresh row, a refusal keeps the mirror, and the landing adopts a kept
-  mirror read-only until the next switcher touch. Resolved in this wave,
-  pinned by tests — not a gap.
+  fresh row and a refusal keeps the mirror. Resolved in this wave, pinned by
+  tests — not a gap. (The landing's read-only adoption of a kept mirror went
+  with its deletion, #862.)
 - **The bound checklist (step 4)** — rendered exactly from the
   `SetupResult`'s facts (genre, form label, chapter count, role label);
   „Bereit (100 %)" is the draft's own completion label, not a measured
   metric, and the binding face shows no percentage at all.
-- **The landing roster's active mark** — a real title match against the
-  shelf's row, never a hardcoded slug.
-- **The language switchers** — all four faces are real: the welcome's and
-  the wizard header's pre-setup mirror contract, the landing's and the
-  shelf's post-setup row contract (the shelf's copy joined in `2051b84c`).
-  Four capability-local copies of one contract are an extraction gap, not a
-  placeholder — the W3 ledger carries the row (row 12 there; trigger: the
-  shell rebuild re-owns the top bar, or a fifth face appears).
+- **The landing roster's active mark** — deleted with the landing (#862);
+  it was a real title match against the shelf's row, never a hardcoded slug.
+- **The language switchers** — three faces are real: the welcome's and the
+  wizard header's pre-setup mirror contract and the shelf's post-setup row
+  contract (the shelf's copy joined in `2051b84c`; the landing's face went
+  with its deletion, #862). Three capability-local copies of one contract
+  are an extraction gap, not a placeholder — the W3 ledger carries the row
+  (row 12 there; trigger: the shell rebuild re-owns the top bar, or a fourth
+  face appears).
 
 ## How a row becomes real
 
