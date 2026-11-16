@@ -15,6 +15,16 @@
 > [rebuild spec](../../../superpowers/specs/2026-11-13-frontend-rebuild-design.md)
 > §4 (owner decisions, 2026-11-13). The table's format follows the shelf
 > fidelity wave's gap doc (`shelf-gaps.md`, branch `feat/shelf-fidelity`).
+>
+> **W3 update (2026-11-15):** the shelf rebuild wave took `/` from the
+> landing (commit `b84a90f4`): post-setup the shelf is the home surface, and
+> the welcome moved to `/setup`. `LandingPage` is kept **unrouted** —
+> component, tests and its 29 catalog keys intact, absent from the
+> production bundle — so rows 15–26 describe the kept component, not a
+> shipped screen; their triggers stand unchanged (the workspace, knowledge
+> and import waves still owe the doors). The live shelf's own ledger is
+> [`2026-11-15-shelf.md`](2026-11-15-shelf.md); it carries the standing
+> import-door row and the updated „Neues beginnen" reading (row 18 there).
 
 ## Why placeholders exist
 
@@ -74,7 +84,7 @@ wave's index is #855; a row that earns an issue hangs under it).
 | 20 | Landing workroom card „Zen-Fokus & Atmosphäre" | room card with hover affordance | static coming-soon card, „demnächst" badge, no hover — a hover lift would imply a clickability it lacks | the workspace wave (zen focus room) | workspace wave |
 | 21 | Landing workroom card „Chronologie & Timeline" | room card with hover affordance | static coming-soon card, „demnächst" badge, no hover | the workspace wave (timeline surface) | workspace wave |
 | 22 | Landing workroom card „Manuskript importieren" | room card with hover affordance | static coming-soon card, „demnächst" badge, no hover | the import wave | import wave |
-| 23 | Landing „Neues beginnen" doors („Projekt-Assistenten starten", „Vorlagen-Katalog durchblättern") | enabled-looking CTAs | disabled + coming-soon note — a single-user instance holds one novel; a second desk would write nowhere | multi-novel support | multi-novel wave |
+| 23 | Landing „Neues beginnen" doors („Projekt-Assistenten starten", „Vorlagen-Katalog durchblättern") | enabled-looking CTAs | disabled + coming-soon note in the kept, unrouted landing. W3 refuted the row's original premise — a single-user instance now holds many novels: the shelf's dialog creates them (`33ec3ca7`), the grid shows them (`2051b84c`), the menu duplicates them (`5814b5cd`). The real „Neues beginnen" door is the shelf's „+ Neues Buch anlegen"; the two drafted CTAs still name surfaces that do not exist (a per-book assistant, a template catalog). The reading stands in the W3 ledger, row 18 | product decision: the per-book assistant / template-catalog surfaces (multi-novel support is no longer the blocker) | product decision (multi-novel wave) |
 | 24 | Landing hero blockquote | the demo seed's prose („Die Sensorenbatterie der Station Erebus schwieg seit drei Tagen …") | omitted — the archive's text, not the reader's; a blank-bound novel has none. The footer keeps the Atelier Notizen quote the welcome already speaks | none — reason row | — |
 | 25 | Landing demo-roster meta | invented genre blurbs per demo | the manifest's facts (genre • chapters); the roster is non-interactive and the active mark follows the title match | none — reason row; archive facts only | — |
 | 26 | Landing eyebrow & assurance „soeben" | „AKTIVES WERK • SOEBEN BEREITGESTELLT" / „Soeben im Setup bereitgestellt …" | „Aktives Werk" / „Im Setup bereitgestellt …" — the shelf welcomes every return, not only the first | none — deliberate wording decision | — |
@@ -117,9 +127,12 @@ These ship real and are listed so nobody mistakes them for gaps:
   metric, and the binding face shows no percentage at all.
 - **The landing roster's active mark** — a real title match against the
   shelf's row, never a hardcoded slug.
-- **The language switchers** — all three faces are real: the welcome's and
-  the wizard header's pre-setup mirror contract, the landing's post-setup
-  row contract.
+- **The language switchers** — all four faces are real: the welcome's and
+  the wizard header's pre-setup mirror contract, the landing's and the
+  shelf's post-setup row contract (the shelf's copy joined in `2051b84c`).
+  Four capability-local copies of one contract are an extraction gap, not a
+  placeholder — the W3 ledger carries the row (row 12 there; trigger: the
+  shell rebuild re-owns the top bar, or a fifth face appears).
 
 ## How a row becomes real
 
