@@ -1034,7 +1034,10 @@ export interface paths {
          *     nonzero net ending today or yesterday, the mean net words per day
          *     over the whole window, and today's net. ``days`` bounds the window
          *     to 1..365; the default is 30. The day boundary is the server's UTC
-         *     date.
+         *     date. The user's daily goal rides along (W4 row 25):
+         *     ``daily_goal_words`` (null when unset), ``goal_met`` and
+         *     ``goal_remaining`` — the day's progress against it, never a book
+         *     target.
          */
         get: operations["activity_api_writing_activity_get"];
         put?: never;
@@ -1431,8 +1434,21 @@ export interface components {
          *     day after tomorrow without writing; ``weekly_average`` is the mean
          *     net words per day over ALL days of the window (zero-days in the
          *     basis), one decimal; ``today_words`` is today's net across novels.
+         *
+         *     The daily goal (W4 row 25) is the user's own ``daily_goal_words`` —
+         *     atelier scope, never a book target; ``None`` is the honest unset.
+         *     ``goal_met`` is true exactly when a goal is stored and today's net
+         *     reaches it; ``goal_remaining`` is what the day still owes,
+         *     ``max(0, goal - today_words)`` — a negative day owes the goal plus
+         *     the removal — and 0 when no goal is stored or the day is done.
          */
         ActivityRead: {
+            /** Daily Goal Words */
+            daily_goal_words: number | null;
+            /** Goal Met */
+            goal_met: boolean;
+            /** Goal Remaining */
+            goal_remaining: number;
             /** Points */
             points: components["schemas"]["ActivityPoint"][];
             /** Streak Days */

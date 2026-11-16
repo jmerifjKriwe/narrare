@@ -259,7 +259,10 @@ async def activity(
     nonzero net ending today or yesterday, the mean net words per day
     over the whole window, and today's net. ``days`` bounds the window
     to 1..365; the default is 30. The day boundary is the server's UTC
-    date.
+    date. The user's daily goal rides along (W4 row 25):
+    ``daily_goal_words`` (null when unset), ``goal_met`` and
+    ``goal_remaining`` — the day's progress against it, never a book
+    target.
     """
     return await service.activity(days)
 

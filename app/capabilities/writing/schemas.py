@@ -261,12 +261,22 @@ class ActivityRead(BaseModel):
     day after tomorrow without writing; ``weekly_average`` is the mean
     net words per day over ALL days of the window (zero-days in the
     basis), one decimal; ``today_words`` is today's net across novels.
+
+    The daily goal (W4 row 25) is the user's own ``daily_goal_words`` —
+    atelier scope, never a book target; ``None`` is the honest unset.
+    ``goal_met`` is true exactly when a goal is stored and today's net
+    reaches it; ``goal_remaining`` is what the day still owes,
+    ``max(0, goal - today_words)`` — a negative day owes the goal plus
+    the removal — and 0 when no goal is stored or the day is done.
     """
 
     points: list[ActivityPoint]
     streak_days: int
     weekly_average: float
     today_words: int
+    daily_goal_words: int | None
+    goal_met: bool
+    goal_remaining: int
 
 
 class ExportRequest(BaseModel):

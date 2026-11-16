@@ -146,6 +146,20 @@ def set_theme(theme: str) -> None:
     response.raise_for_status()
 
 
+def set_daily_goal(words: int | None) -> None:
+    """The atelier's daily goal — the settings PATCH the banner's aggregate
+    reads (W4 row 25). The stored locale rides along untouched: absent and
+    null are different answers, so the read's own value is carried back."""
+    with _client() as client:
+        current = client.get("/api/settings")
+        current.raise_for_status()
+        response = client.patch(
+            "/api/settings",
+            json={"locale": current.json()["locale"], "daily_goal_words": words},
+        )
+    response.raise_for_status()
+
+
 def word_body(count: int) -> str:
     """A body of exactly ``count`` words under the shelf's one whitespace
     rule: plain ASCII tokens, single spaces, no leading or trailing gap."""

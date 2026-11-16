@@ -316,6 +316,13 @@ class WritingService:
         is the mean net words per day over ALL days of the window, one
         decimal; ``today_words`` is today's net. The day boundary is the
         server's UTC date, the clock every other timestamp here rides.
+
+        The daily goal (W4 row 25) is the user's stored answer — the
+        settings PATCH owns the write; an absent user row or a null
+        column is the honest unset, never a book target standing in.
+        The progress is derived here the way the streak and the average
+        are: met when today's net reaches the goal, remaining what the
+        day still owes (a negative day owes the removal too).
         """
         today = datetime.now(UTC).date()
         totals = await self.daily_words.daily_totals(today)
@@ -339,11 +346,17 @@ class WritingService:
         # The average's basis is every day of the window, zero-days included:
         # the honest daily rate, rest days and all. The net is the numerator,
         # so a window that removed more than it wrote averages negative.
+        today_words = totals.get(today, 0)
+        user = await self.session.get(User, self.user_id)
+        goal = user.daily_goal_words if user is not None else None
         return ActivityRead(
             points=points,
             streak_days=streak,
             weekly_average=round(sum(point.words for point in points) / days, 1),
-            today_words=totals.get(today, 0),
+            today_words=today_words,
+            daily_goal_words=goal,
+            goal_met=goal is not None and today_words >= goal,
+            goal_remaining=max(0, goal - today_words) if goal is not None else 0,
         )
 
     async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:

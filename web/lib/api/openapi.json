@@ -43,8 +43,27 @@
         "type": "object"
       },
       "ActivityRead": {
-        "description": "The atelier's activity across all the user's novels (W3).\n\n``points`` cover the requested window oldest-first, zero-days\nincluded; ``streak_days`` counts consecutive days with a nonzero net\nending today — or yesterday, which keeps the streak alive until the\nday after tomorrow without writing; ``weekly_average`` is the mean\nnet words per day over ALL days of the window (zero-days in the\nbasis), one decimal; ``today_words`` is today's net across novels.",
+        "description": "The atelier's activity across all the user's novels (W3).\n\n``points`` cover the requested window oldest-first, zero-days\nincluded; ``streak_days`` counts consecutive days with a nonzero net\nending today — or yesterday, which keeps the streak alive until the\nday after tomorrow without writing; ``weekly_average`` is the mean\nnet words per day over ALL days of the window (zero-days in the\nbasis), one decimal; ``today_words`` is today's net across novels.\n\nThe daily goal (W4 row 25) is the user's own ``daily_goal_words`` —\natelier scope, never a book target; ``None`` is the honest unset.\n``goal_met`` is true exactly when a goal is stored and today's net\nreaches it; ``goal_remaining`` is what the day still owes,\n``max(0, goal - today_words)`` — a negative day owes the goal plus\nthe removal — and 0 when no goal is stored or the day is done.",
         "properties": {
+          "daily_goal_words": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Goal Words"
+          },
+          "goal_met": {
+            "title": "Goal Met",
+            "type": "boolean"
+          },
+          "goal_remaining": {
+            "title": "Goal Remaining",
+            "type": "integer"
+          },
           "points": {
             "items": {
               "$ref": "#/components/schemas/ActivityPoint"
@@ -69,7 +88,10 @@
           "points",
           "streak_days",
           "weekly_average",
-          "today_words"
+          "today_words",
+          "daily_goal_words",
+          "goal_met",
+          "goal_remaining"
         ],
         "title": "ActivityRead",
         "type": "object"
@@ -6835,7 +6857,7 @@
     },
     "/api/writing/activity": {
       "get": {
-        "description": "The atelier's daily words across all owned novels: the window's\npoints (zero-days included), the streak of consecutive days with a\nnonzero net ending today or yesterday, the mean net words per day\nover the whole window, and today's net. ``days`` bounds the window\nto 1..365; the default is 30. The day boundary is the server's UTC\ndate.",
+        "description": "The atelier's daily words across all owned novels: the window's\npoints (zero-days included), the streak of consecutive days with a\nnonzero net ending today or yesterday, the mean net words per day\nover the whole window, and today's net. ``days`` bounds the window\nto 1..365; the default is 30. The day boundary is the server's UTC\ndate. The user's daily goal rides along (W4 row 25):\n``daily_goal_words`` (null when unset), ``goal_met`` and\n``goal_remaining`` — the day's progress against it, never a book\ntarget.",
         "operationId": "activity_api_writing_activity_get",
         "parameters": [
           {

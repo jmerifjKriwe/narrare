@@ -2,14 +2,15 @@
  * The activity banner's pure model (activity.ts): the sparkline's geometry
  * derives deterministically from the aggregate's points — thirty of them,
  * zero-days flat on the midline, negative days honest on the scale — and
- * the two readings the copy selects from (the empty window, the day's
- * voice) answer the payload, never a guess. No React, no i18n, no requests.
+ * the readings the copy selects from (the empty window, the day's voice,
+ * the daily goal's voice) answer the payload, never a guess. No React, no
+ * i18n, no requests.
  */
 import { describe, expect, it } from "vitest";
 
 import type { Activity, ActivityPoint } from "@shell/lib/api/client";
 
-import { activityIsEmpty, sparkline, todayState } from "./activity";
+import { activityIsEmpty, goalState, sparkline, todayState } from "./activity";
 
 /** Points in the API's own shape — oldest first, one per day of the window. */
 function points(words: readonly number[]): ActivityPoint[] {
@@ -26,6 +27,9 @@ function aggregate(overrides: Partial<Activity> = {}): Activity {
     streak_days: 2,
     weekly_average: 17.7,
     today_words: 412,
+    daily_goal_words: 750,
+    goal_met: false,
+    goal_remaining: 338,
     ...overrides,
   };
 }
@@ -135,5 +139,20 @@ describe("todayState — the day's voice, selected from the net alone", () => {
   });
   it("a negative net is a day that removed more than it added", () => {
     expect(todayState(-5)).toBe("removed");
+  });
+});
+
+describe("goalState — the daily goal's voice, selected from the aggregate", () => {
+  it("no goal stored is the unset neutral — whatever the progress fields say", () => {
+    expect(goalState(aggregate({ daily_goal_words: null, goal_met: false, goal_remaining: 0 }))).toBe("unset");
+    // Presence decides: an unset goal owes nothing, even beside a stale
+    // remainder — the neutral wins over any progress field.
+    expect(goalState(aggregate({ daily_goal_words: null, goal_remaining: 338 }))).toBe("unset");
+  });
+  it("a stored goal the day has not reached is open", () => {
+    expect(goalState(aggregate({ daily_goal_words: 750, goal_met: false, goal_remaining: 338 }))).toBe("open");
+  });
+  it("a stored goal the day reached is met — the aggregate's own mark", () => {
+    expect(goalState(aggregate({ daily_goal_words: 400, goal_met: true, goal_remaining: 0 }))).toBe("met");
   });
 });

@@ -435,8 +435,8 @@ export function ShelfPage() {
         )}
 
         {/* The activity banner — Task 10's surface, live on the aggregate;
-            the goal line reads the hero book's own target. */}
-        <ShelfBanner hero={hero} noteId={bannerNoteId} />
+            the goal line reads the atelier's daily goal (W4 row 25). */}
+        <ShelfBanner noteId={bannerNoteId} />
       </div>
 
       {/* The new-book dialog — mounted only while open, so its answers are

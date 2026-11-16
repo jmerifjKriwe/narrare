@@ -149,12 +149,15 @@ const ACTIVITY_POINTS = ACTIVITY_WORDS.map((words, at) => ({
   date: `2026-10-${String(at + 1).padStart(2, "0")}`,
   words,
 }));
-function activityRow(overrides: Partial<{ points: { date: string; words: number }[]; streak_days: number; weekly_average: number; today_words: number }> = {}) {
+function activityRow(overrides: Partial<{ points: { date: string; words: number }[]; streak_days: number; weekly_average: number; today_words: number; daily_goal_words: number | null; goal_met: boolean; goal_remaining: number }> = {}) {
   return {
     points: ACTIVITY_POINTS,
     streak_days: 3,
     weekly_average: 840,
     today_words: 412,
+    daily_goal_words: null,
+    goal_met: false,
+    goal_remaining: 0,
     ...overrides,
   };
 }
@@ -524,10 +527,11 @@ describe("the shelf — every door honest about what is not built yet", () => {
     // The page-wide total guards the sum: three grid cards plus the hero —
     // a stray options trigger anywhere on the page breaks this count.
     expect(screen.getAllByRole("button", { name: de["writing.shelf.card.options"] })).toHaveLength(4);
-    // Task 10 made the banner live: the hero's own goal pair and the
+    // Task 10 made the banner live; W4 Task 9 gave it the atelier's daily
+    // goal (row 25) — unset here, the honest neutral heading stands. The
     // aggregate's weekly average; the statistics door stays disabled —
     // no statistics surface exists to open yet.
-    expect(screen.getByText(t("writing.shelf.banner.goal", { title: HERO.title }))).toBeTruthy();
+    expect(screen.getByText(de["writing.shelf.banner.noGoal"])).toBeTruthy();
     expect(screen.getByText(de["writing.shelf.banner.weekly"])).toBeTruthy();
     expect(screen.getByText("840,0 W/Tag")).toBeTruthy();
     expect(screen.getByRole("button", { name: de["writing.shelf.banner.stats"] }).hasAttribute("disabled")).toBe(true);
@@ -743,7 +747,7 @@ describe("the shelf — loading, error and empty answer per the drafts", () => {
     expect(screen.queryAllByRole("article")).toHaveLength(0);
     expect(screen.queryByRole("heading", { level: 2, name: "Dead Signal" })).toBeNull();
     // The empty panel's doors stay honest; the banner names no goal beside
-    // them — no active hero to carry one (the aggregate still speaks).
+    // them — none is stored (the aggregate still speaks).
     expect(screen.getAllByRole("button", { name: de["writing.shelf.newBook"] }).length).toBe(2);
     expect(screen.getByText(de["writing.shelf.banner.noGoal"])).toBeTruthy();
   });

@@ -17,8 +17,10 @@ and the next active book leads (#863); the new-book dialog creates the hero
 with a neutral word stand and the atelier's inherited answers — the setup
 book standing as their source — while the empty-shelf door creates with
 honest NULLs when no source remains; an API chapter write moves the banner
-through the shelf's own invalidation seam — without a reload; the pre-setup
-gate hands `/` to the welcome and the inverse gate hands `/setup` back; and
+through the shelf's own invalidation seam — without a reload; the banner's
+goal line reads the atelier's daily goal (W4 row 25): the unset neutral,
+the open remainder and the reached done-copy, never the hero book's pin;
+the pre-setup gate hands `/` to the welcome and the inverse gate hands `/setup` back; and
 the dark face clears the same axe WCAG A/AA floor the setup suite rides
 (``assert_accessible``).
 """
@@ -38,6 +40,7 @@ from app.capabilities.writing.e2e.conftest import (
     get_activity,
     get_novel,
     patch_novel,
+    set_daily_goal,
     set_theme,
     word_body,
     write_scene,
@@ -160,6 +163,9 @@ def test_the_shelf_renders_the_rows_own_facts(page: Page, installed: Stack) -> N
     create_novel(GAERTNERIN, genre="Historischer Roman", target_words=50000)
     create_novel(WINTERHAUS)
     _seed_klang_with_chapter(1200)
+    # The atelier's daily goal (W4 row 25) — the banner reads the user's
+    # answer, not the hero book's target: 2.000 stored, 1.200 written.
+    set_daily_goal(2000)
 
     _goto_shelf(page)
     expect(page).to_have_title(f"{SHELF_TITLE} — Narrare")
@@ -192,14 +198,17 @@ def test_the_shelf_renders_the_rows_own_facts(page: Page, installed: Stack) -> N
     expect(gaertnerin.get_by_text("0 Kapitel", exact=True)).to_be_visible()
     expect(gaertnerin.get_by_text("0 %", exact=True)).to_be_visible()
 
-    # The metrics strip and the banner read the same rows.
+    # The metrics strip and the banner read the same rows. The banner's
+    # goal line is the daily goal — the hero-book pin ended (row 25); the
+    # hero panel above keeps the book's own pair.
     expect(_metric(page, "Aktive Projekte")).to_contain_text("3 Romane")
     expect(_metric(page, "Gesamtwörter")).to_contain_text("1.200")
     expect(_metric(page, "Schreibstreak")).to_contain_text("1 Tag")
     banner = _banner(page)
-    expect(banner).to_contain_text(f"Ziel für ‚{KLANG}‘: 1.200 / 80.000 Wörter")
+    expect(banner).to_contain_text("Heutiges Schreibziel: 2.000 Wörter")
     expect(banner).to_contain_text("Du hast heute bereits 1.200 Wörter verfasst.")
-    expect(banner).to_contain_text("Noch 78.800 Wörter bis zum Ziel.")
+    expect(banner).to_contain_text("Noch 800 Wörter bis zum Tagesziel.")
+    expect(banner).not_to_contain_text("Ziel für")
     expect(banner.get_by_text("40,0 W/Tag", exact=True)).to_be_visible()
     assert_accessible(page)
 
@@ -211,6 +220,7 @@ def test_the_shelf_renders_the_rows_own_facts(page: Page, installed: Stack) -> N
     ]
     assert _rows("SELECT title FROM chapters") == [("Der erste Schnee",)]
     assert _rows("SELECT SUM(words) FROM daily_words") == [(1200,)]
+    assert _rows("SELECT daily_goal_words FROM users") == [(2000,)]
 
 
 def test_search_answers_titles_genres_and_figures(page: Page, installed: Stack) -> None:
@@ -653,7 +663,9 @@ def test_the_new_book_dialog_creates_the_hero_end_to_end(
     expect(hero.get_by_text("Kapitel", exact=True)).to_be_visible()
     expect(hero.get_by_text("/ 30.000 Wörter", exact=True)).to_be_visible()
     expect(hero.get_by_text("0 %", exact=True)).to_be_visible()
-    expect(_banner(page)).to_contain_text("Ziel für ‚Die Prüferin‘: 0 / 30.000 Wörter")
+    # The banner's goal is the atelier's — none is stored on this fresh
+    # instance, so the honest unset stands (row 25), not the new book's pin.
+    expect(_banner(page)).to_contain_text("Noch kein Schreibziel")
     expect(_metric(page, "Aktive Projekte")).to_contain_text("2 Romane")
     expect(_metric(page, "Gesamtwörter")).to_contain_text("0")
     expect(_metric(page, "Schreibstreak")).to_contain_text("0 Tage")
@@ -747,11 +759,14 @@ def test_an_api_chapter_write_moves_the_banner_through_the_seam(
     the average move WITHOUT a reload, and the aggregate is the rows' own."""
     create_novel(WINTERHAUS, target_words=40000)
     novel = create_novel(KLANG, target_words=60000)  # created last → the hero
+    # The daily goal rides the same aggregate (row 25): 600 stored, the
+    # day empty — the remainder moves with the day's words, not the book.
+    set_daily_goal(600)
 
     _goto_shelf(page)
     banner = _banner(page)
     expect(banner).to_contain_text(BANNER_NEUTRAL)
-    expect(banner).to_contain_text(f"Ziel für ‚{KLANG}‘: 0 / 60.000 Wörter")
+    expect(banner).to_contain_text("Heutiges Schreibziel: 600 Wörter")
     expect(_metric(page, "Schreibstreak")).to_contain_text("0 Tage")
     expect(banner.get_by_text("0,0 W/Tag", exact=True)).to_be_visible()
 
@@ -770,10 +785,10 @@ def test_an_api_chapter_write_moves_the_banner_through_the_seam(
     expect(page.get_by_role("article")).to_have_count(0)
 
     # The banner moved without a reload: the day's words, the streak, the
-    # average and the hero's goal pair — all the aggregate's own.
+    # average and the daily goal's remainder — all the aggregate's own.
     expect(banner).to_contain_text("Du hast heute bereits 150 Wörter verfasst.")
-    expect(banner).to_contain_text("Noch 59.850 Wörter bis zum Ziel.")
-    expect(banner).to_contain_text(f"Ziel für ‚{KLANG}‘: 150 / 60.000 Wörter")
+    expect(banner).to_contain_text("Noch 450 Wörter bis zum Tagesziel.")
+    expect(banner).to_contain_text("Heutiges Schreibziel: 600 Wörter")
     expect(_metric(page, "Schreibstreak")).to_contain_text("1 Tag")
     expect(banner.get_by_text("5,0 W/Tag", exact=True)).to_be_visible()
     assert_accessible(page)
@@ -784,7 +799,66 @@ def test_an_api_chapter_write_moves_the_banner_through_the_seam(
     assert aggregate["streak_days"] == 1
     assert aggregate["weekly_average"] == 5.0
     assert aggregate["points"][-1]["words"] == 150
+    assert aggregate["daily_goal_words"] == 600
+    assert aggregate["goal_met"] is False
+    assert aggregate["goal_remaining"] == 450
     assert _rows("SELECT SUM(words) FROM daily_words") == [(150,)]
+
+
+def test_the_banners_daily_goal_speaks_unset_open_and_met(page: Page, installed: Stack) -> None:
+    """Spec 8b (W4 row 25): the banner's goal line is the atelier's daily
+    goal — the settings PATCH stores it, the aggregate carries the day's
+    progress, and the three faces speak honestly: no goal stored is the
+    neutral, an open goal owes the remainder, a reached day speaks the
+    done-state copy. The hero book's target never stands in for it."""
+    novel = create_novel(KLANG, target_words=80000)
+    chapter = create_chapter(str(novel["id"]), "Der erste Schnee")
+    write_scene(str(chapter["id"]), word_body(1200))
+
+    _goto_shelf(page)
+    banner = _banner(page)
+    # Unset: the honest neutral — the book's 80.000-word target is the
+    # book's truth (the hero panel carries it), never the banner's goal.
+    expect(banner).to_contain_text("Noch kein Schreibziel")
+    expect(banner).to_contain_text("Du hast heute bereits 1.200 Wörter verfasst.")
+    expect(banner).not_to_contain_text("Ziel für")
+    expect(banner).not_to_contain_text("Tagesziel")
+    aggregate = get_activity()
+    assert aggregate["daily_goal_words"] is None
+    assert aggregate["goal_met"] is False
+    assert aggregate["goal_remaining"] == 0
+
+    # Open: 2.000 stored, 1.200 written — 800 remain. The goal change is
+    # the settings' own write; a reload asks the aggregate again.
+    set_daily_goal(2000)
+    page.reload()
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
+    banner = _banner(page)
+    expect(banner).to_contain_text("Heutiges Schreibziel: 2.000 Wörter")
+    expect(banner).to_contain_text("Noch 800 Wörter bis zum Tagesziel.")
+    aggregate = get_activity()
+    assert aggregate["daily_goal_words"] == 2000
+    assert aggregate["goal_met"] is False
+    assert aggregate["goal_remaining"] == 800
+
+    # Met: the goal lowered to what the day already holds — the done-state
+    # copy stands, no remainder beside it.
+    set_daily_goal(1000)
+    page.reload()
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
+    banner = _banner(page)
+    expect(banner).to_contain_text("Heutiges Schreibziel: 1.000 Wörter")
+    expect(banner).to_contain_text("Tagesziel erreicht.")
+    expect(banner).not_to_contain_text("bis zum Tagesziel")
+    aggregate = get_activity()
+    assert aggregate["daily_goal_words"] == 1000
+    assert aggregate["goal_met"] is True
+    assert aggregate["goal_remaining"] == 0
+    assert_accessible(page)
+
+    # The honest check: the goal is the user's row, the words the ledger's.
+    assert _rows("SELECT daily_goal_words FROM users") == [(1000,)]
+    assert _rows("SELECT SUM(words) FROM daily_words") == [(1200,)]
 
 
 def test_pre_setup_root_hands_off_to_the_welcome(page: Page, uninstalled: Stack) -> None:
@@ -825,7 +899,8 @@ def test_the_dark_shelf_face_clears_the_axe_floor(page: Page, installed: Stack) 
     assert page.evaluate("getComputedStyle(document.body).backgroundColor") == "rgb(22, 20, 15)"
     expect(page.get_by_role("heading", name=KLANG, exact=True)).to_be_visible()
     expect(_card(page, WINTERHAUS)).to_be_visible()
-    expect(_banner(page)).to_contain_text(f"Ziel für ‚{KLANG}‘")
+    # No goal stored on this instance — the banner's honest unset (row 25).
+    expect(_banner(page)).to_contain_text("Noch kein Schreibziel")
     assert_accessible(page)
 
     # The quick menu's dark face — the popover over the dark card.

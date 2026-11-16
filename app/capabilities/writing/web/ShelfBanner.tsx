@@ -1,26 +1,30 @@
 /**
  * The activity banner — the `shelf` draft's cadence panel, live on the
- * real aggregate (Task 4's `GET /api/writing/activity`, Task 10's port).
- * The geometry stands where the draft draws it: the insights tile, the
- * goal line and today's words on the left, the weekly average, the
- * sparkline and the statistics door on the right.
+ * real aggregate (Task 4's `GET /api/writing/activity`, Task 10's port;
+ * W4 Task 9 reads the daily goal, gap row 25). The geometry stands where
+ * the draft draws it: the insights tile, the goal line and today's words
+ * on the left, the weekly average, the sparkline and the statistics door
+ * on the right.
  *
  * Honest readings of the draft (the gap doc records them):
- * - The draft's „Heutiges Schreibziel: 750 Wörter" is a daily goal no row
- *   carries. The goal the banner tracks is the ACTIVE BOOK's — the hero
- *   novel's own `word_count / target_words` (the plan's pin), named by the
- *   book's title; a missing target keeps the shelf's dash, never an
- *   invented number. The draft's remainder sentence rides the book goal.
+ * - The draft's „Heutiges Schreibziel: 750 Wörter" is the USER's daily
+ *   goal — `daily_goal_words`, atelier scope, carried by the aggregate
+ *   with the day's progress (row 25's field, Task 8's settings PATCH
+ *   stores it). Unset keeps the honest neutral („Noch kein Schreibziel");
+ *   the remainder reads the aggregate's own `goal_remaining`, a reached
+ *   day speaks the done-state copy. The W3 hero-book pin („Ziel für
+ *   ‚…': … / … Wörter") ended here — the banner names no book.
  * - Today's words are the atelier's net across all novels (the aggregate
  *   is atelier-level), so the body names no single book; zero and negative
- *   days speak their own honest voice, unfloored.
+ *   days speak their own honest voice, unfloored — a negative day owes
+ *   the goal plus the removal, the aggregate's own math.
  * - The sparkline is the draft's 120×32 line over the window's thirty
  *   points, zero-days dense; the marked point is TODAY (the draft's dot
  *   sat on its mock curve's peak). The label names the window, the net
  *   and the UTC day boundary — the server's clock, documented on the API.
  * - An all-zero window with no streak is the no-retroactivity neutral
- *   („Der erste Schreibtag beginnt mit dem ersten Kapitel"); the book's
- *   goal still stands, it is the book's truth, not the window's.
+ *   („Der erste Schreibtag beginnt mit dem ersten Kapitel"); the daily
+ *   goal still stands, it is the user's truth, not the window's.
  * - The statistics door stays disabled with the drafted note: no
  *   statistics surface exists to open yet.
  *
@@ -32,14 +36,13 @@
 
 import { useRef, useState } from "react";
 
-import type { Activity, ActivityPoint, Novel } from "@shell/lib/api/client";
+import type { Activity, ActivityPoint } from "@shell/lib/api/client";
 import { formatNumber } from "@shell/lib/format";
 import { useTranslation } from "@shell/lib/i18n";
 import { useActivityQuery } from "@shell/lib/query";
 import { Icon } from "@shell/ui/icons";
 
-import { activityIsEmpty, sparkline, todayState } from "./activity";
-import { progress } from "./shelf";
+import { activityIsEmpty, goalState, sparkline, todayState } from "./activity";
 import { Bone } from "./ShelfStates";
 
 /** The shell's focus ring on the one control the error state offers. */
@@ -74,16 +77,15 @@ function Sparkline({ points }: { points: readonly ActivityPoint[] }) {
   );
 }
 
-/** The live left block: the hero's goal line and the day's own words. */
-function BannerLive({ data, hero }: { data: Activity; hero: Novel | null }) {
+/** The live left block: the atelier's daily goal and the day's own words. */
+function BannerLive({ data }: { data: Activity }) {
   const t = useTranslation();
   const empty = activityIsEmpty(data);
-  // The goal is the hero book's own pair — the progress rule's presence
-  // check (a zero or negative target is no target), never the atelier sum.
-  const hasGoal = hero !== null && progress(hero.word_count, hero.target_words) !== null;
-  const remaining = hasGoal
-    ? Math.max(0, (hero?.target_words ?? 0) - (hero?.word_count ?? 0))
-    : 0;
+  // The goal is the user's stored answer — the aggregate carries it with
+  // the day's progress; presence decides the voice, never the progress
+  // alone (a null goal owes nothing, whatever the fields beside it say).
+  const goal = data.daily_goal_words;
+  const state = goalState(data);
   const todayLine = t("writing.shelf.banner.today", {
     state: todayState(data.today_words),
     count: data.today_words,
@@ -91,20 +93,18 @@ function BannerLive({ data, hero }: { data: Activity; hero: Novel | null }) {
   const body = empty
     ? t("writing.shelf.banner.body")
     : todayLine +
-      (hasGoal && remaining > 0
-        ? ` ${t("writing.shelf.banner.remaining", { count: remaining })}`
+      (state === "open"
+        ? ` ${t("writing.shelf.banner.dailyRemaining", { count: data.goal_remaining })}`
         : "") +
-      (hero !== null && !hasGoal ? ` ${t("writing.shelf.noTarget")}` : "");
+      (state === "met" ? ` ${t("writing.shelf.banner.dailyMet")}` : "");
   return (
     <div>
       <h3 className="text-emph text-foreground">
-        {hero !== null ? (
+        {goal !== null ? (
           <>
-            <span>{t("writing.shelf.banner.goal", { title: hero.title })}</span>
+            <span>{t("writing.shelf.banner.dailyGoal")}</span>
             <span className="tabular-nums">
-              {hasGoal
-                ? `: ${t("writing.shelf.words.pair", { count: hero.word_count, target: hero.target_words ?? 0 })}`
-                : ": —"}
+              {`: ${t("writing.shelf.words.count", { count: goal })}`}
             </span>
           </>
         ) : (
@@ -154,7 +154,7 @@ function BannerError({
   );
 }
 
-export function ShelfBanner({ hero, noteId }: { hero: Novel | null; noteId: string }) {
+export function ShelfBanner({ noteId }: { noteId: string }) {
   const t = useTranslation();
   // The banner reads the aggregate on mount; the shelf's write family
   // invalidates the key, so a chapter write moves it without a remount.
@@ -192,7 +192,7 @@ export function ShelfBanner({ hero, noteId }: { hero: Novel | null; noteId: stri
                 <Bone className="h-4 w-80 max-w-full" />
               </div>
             ) : (
-              <BannerLive data={activity.data} hero={hero} />
+              <BannerLive data={activity.data} />
             )}
           </div>
         )}

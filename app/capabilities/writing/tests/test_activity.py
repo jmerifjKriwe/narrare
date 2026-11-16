@@ -11,6 +11,12 @@ The disclosed decisions these tests pin: a day is active when its net is
 nonzero (writing and revising both count); the streak ends today, or
 yesterday when today has not been written in yet; the average is the mean
 net words per day over ALL days of the window, zero-days included.
+
+The aggregate also carries the atelier's daily goal (W4 row 25): the
+user's own ``daily_goal_words`` (Task 8's settings PATCH stores it), the
+day's progress against it — ``goal_met`` and ``goal_remaining``, derived
+here the way the streak and the average are — and the honest unset: no
+goal stored is ``None``, never a book target standing in.
 """
 
 from datetime import UTC, date, datetime, timedelta
@@ -27,6 +33,7 @@ from app.capabilities.writing.repository import DailyWordsRepository, NovelRepos
 from app.capabilities.writing.schemas import SceneCreate, SceneUpdate
 from app.capabilities.writing.service import WritingService
 from app.kernel.auth import LOCAL_USER_ID
+from app.kernel.contracts.models import User
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 
@@ -110,6 +117,10 @@ async def test_a_fresh_atelier_reports_an_honest_zero_window() -> None:
         assert body["streak_days"] == 0
         assert body["weekly_average"] == 0.0
         assert body["today_words"] == 0
+        # No goal stored is the honest unset — nothing met, nothing owed.
+        assert body["daily_goal_words"] is None
+        assert body["goal_met"] is False
+        assert body["goal_remaining"] == 0
 
 
 async def test_create_update_delete_nets_zero_same_day() -> None:
@@ -442,3 +453,120 @@ async def test_a_delete_counts_the_words_the_book_actually_holds() -> None:
     async with _client() as client:
         body = await _activity(client)
         assert body["today_words"] == 0
+
+
+# --- The daily goal: the atelier's answer rides the aggregate (W4 row 25) ---
+
+
+async def _set_daily_goal(client: AsyncClient, words: int | None) -> None:
+    """The settings PATCH that stores the goal — the real surface Task 8
+    landed; the locale rides null as the settings tests' own pattern."""
+    response = await client.patch("/api/settings", json={"locale": None, "daily_goal_words": words})
+    assert response.status_code == 200
+
+
+async def test_the_goal_fields_read_the_users_own_answer() -> None:
+    """The draft's own figures: a 750-word goal, 412 written today — 338
+    remain. The goal is the stored answer, the progress the day's net."""
+    async with _client() as client:
+        novel_id = await _create_novel(client, "Der Nebel")
+        await _seed_words(novel_id, _today(), 412)
+        await _set_daily_goal(client, 750)
+        body = await _activity(client)
+        assert body["daily_goal_words"] == 750
+        assert body["goal_met"] is False
+        assert body["goal_remaining"] == 338
+
+
+@pytest.mark.parametrize("written", [400, 412, 900])
+async def test_the_goal_is_met_when_today_reaches_it(written: int) -> None:
+    async with _client() as client:
+        novel_id = await _create_novel(client, "Der Nebel")
+        await _seed_words(novel_id, _today(), written)
+        await _set_daily_goal(client, 400)
+        body = await _activity(client)
+        assert body["daily_goal_words"] == 400
+        assert body["goal_met"] is True
+        assert body["goal_remaining"] == 0
+
+
+async def test_a_negative_day_owes_the_goal_plus_the_removal() -> None:
+    """The net is honest: a day that removed 120 words owes the 750-word
+    goal plus the 120 it lost — 870, never floored at the goal alone."""
+    async with _client() as client:
+        novel_id = await _create_novel(client, "Der Nebel")
+        await _seed_words(novel_id, _today(), -120)
+        await _set_daily_goal(client, 750)
+        body = await _activity(client)
+        assert body["today_words"] == -120
+        assert body["goal_met"] is False
+        assert body["goal_remaining"] == 870
+
+
+async def test_a_quiet_day_owes_the_whole_goal() -> None:
+    async with _client() as client:
+        await _set_daily_goal(client, 750)
+        body = await _activity(client)
+        assert body["today_words"] == 0
+        assert body["goal_met"] is False
+        assert body["goal_remaining"] == 750
+
+
+async def test_the_goal_is_the_users_not_the_books() -> None:
+    """A book target is the book's truth — it never stands in for the
+    atelier's daily goal. No goal stored stays None beside an 80.000-word
+    novel target."""
+    async with _client() as client:
+        response = await client.post(
+            "/api/writing/novels", json={"title": "Der Nebel", "target_words": 80000}
+        )
+        assert response.status_code == 201
+        body = await _activity(client)
+        assert body["daily_goal_words"] is None
+        assert body["goal_met"] is False
+        assert body["goal_remaining"] == 0
+
+
+async def test_clearing_the_goal_returns_the_neutral() -> None:
+    async with _client() as client:
+        novel_id = await _create_novel(client, "Der Nebel")
+        await _seed_words(novel_id, _today(), 412)
+        await _set_daily_goal(client, 750)
+        assert (await _activity(client))["daily_goal_words"] == 750
+        await _set_daily_goal(client, None)
+        body = await _activity(client)
+        assert body["daily_goal_words"] is None
+        assert body["goal_met"] is False
+        assert body["goal_remaining"] == 0
+
+
+async def test_the_goal_fields_ride_every_window() -> None:
+    """The goal measures TODAY, not the window: a narrower ask carries the
+    same goal and the same remainder."""
+    async with _client() as client:
+        novel_id = await _create_novel(client, "Der Nebel")
+        await _seed_words(novel_id, _today(), 412)
+        await _set_daily_goal(client, 750)
+        for days in (1, 7, 365):
+            body = await _activity(client, days=days)
+            assert body["daily_goal_words"] == 750
+            assert body["goal_met"] is False
+            assert body["goal_remaining"] == 338
+
+
+async def test_the_aggregate_never_reads_another_users_goal() -> None:
+    await seed_user(OTHER_USER)
+    async with Session() as session:
+        await session.execute(
+            update(User).where(User.id == OTHER_USER).values(daily_goal_words=999)
+        )
+        await session.commit()
+    async with _client() as client:
+        # Unset locally: the foreign goal never leaks into the neutral.
+        body = await _activity(client)
+        assert body["daily_goal_words"] is None
+        # Set locally: the answer is the local row's, not the foreign one.
+        await _set_daily_goal(client, 300)
+        body = await _activity(client)
+        assert body["daily_goal_words"] == 300
+        assert body["goal_remaining"] == 300
