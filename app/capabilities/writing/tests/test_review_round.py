@@ -56,7 +56,10 @@ async def test_the_continuation_stream_is_not_cached() -> None:
         chapter = await client.post(
             f"/api/writing/novels/{novel.json()['id']}/chapters", json={"title": "Kapitel"}
         )
-        response = await client.post(f"/api/writing/chapters/{chapter.json()['id']}/continue")
+        scene = await client.post(
+            f"/api/writing/chapters/{chapter.json()['id']}/scenes", json={"body": "Prosa."}
+        )
+        response = await client.post(f"/api/writing/scenes/{scene.json()['id']}/continue")
         assert response.status_code == 200
         assert response.headers["cache-control"] == "no-cache"
 
@@ -71,7 +74,10 @@ async def test_a_failing_provider_ends_the_stream_with_an_error_event(
         chapter = await client.post(
             f"/api/writing/novels/{novel.json()['id']}/chapters", json={"title": "Kapitel"}
         )
-        response = await client.post(f"/api/writing/chapters/{chapter.json()['id']}/continue")
+        scene = await client.post(
+            f"/api/writing/chapters/{chapter.json()['id']}/scenes", json={"body": "Prosa."}
+        )
+        response = await client.post(f"/api/writing/scenes/{scene.json()['id']}/continue")
         assert response.status_code == 200
         assert "event: error" in response.text
         assert "event: done" not in response.text

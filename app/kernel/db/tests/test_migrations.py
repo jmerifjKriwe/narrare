@@ -429,6 +429,52 @@ async def _seed_prose(database_url: str) -> tuple[Any, Any, str, str]:
     return novel_id, chapter_id, title, body
 
 
+async def _seed_prose_on_scenes(database_url: str) -> tuple[Any, Any, str, str]:
+    """The prose seed for a models-built schema: a user, a novel, its chapter
+    shell and the scene that carries the prose (W4 §5).
+
+    ``_seed_prose`` writes ``chapters.body`` for the 0.2.0 snapshot the bootstrap
+    gates replay; a models-built database has no such column — the prose lives
+    on the scene — so this seed lands it there. Returns the same
+    ``(novel_id, chapter_id, title, body)`` shape the byte-identity assertions name.
+    """
+    novel_id, chapter_id, scene_id = uuid4(), uuid4(), uuid4()
+    title, body = "Die Prüfung", "Wort für Wort"
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(
+                text("INSERT INTO users (id, created_at) VALUES (:id, now())"),
+                {"id": LOCAL_USER_ID},
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                    "VALUES (:id, :user_id, :title, now(), now())"
+                ),
+                {"id": novel_id, "user_id": LOCAL_USER_ID, "title": title},
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO chapters (id, user_id, novel_id, title, position, "
+                    "created_at, updated_at) "
+                    "VALUES (:id, :user_id, :novel_id, :title, 0, now(), now())"
+                ),
+                {"id": chapter_id, "user_id": LOCAL_USER_ID, "novel_id": novel_id, "title": title},
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO scenes (id, user_id, chapter_id, position, title, body, "
+                    "created_at, updated_at) "
+                    "VALUES (:id, :user_id, :chapter_id, 1, '', :body, now(), now())"
+                ),
+                {"id": scene_id, "user_id": LOCAL_USER_ID, "chapter_id": chapter_id, "body": body},
+            )
+    finally:
+        await engine.dispose()
+    return novel_id, chapter_id, title, body
+
+
 async def test_release_snapshot_upgrades_without_losing_prose(url: str) -> None:
     """This release's 0.2.0 snapshot bootstraps with its prose intact (D3.3).
 
@@ -460,15 +506,19 @@ async def test_release_snapshot_upgrades_without_losing_prose(url: str) -> None:
     engine = create_async_engine(url)
     try:
         async with engine.connect() as connection:
-            chapter_body: str | None = await connection.scalar(
-                text("SELECT body FROM chapters WHERE id = :id"), {"id": chapter_id}
+            # The prose survives the upgrade on the chapter's wrapped scene:
+            # the scene step (666563abba5d) carried chapters.body into one scene
+            # and the body drop (58fcdeca1503) retired the shell's column, so the
+            # far side reads the prose from the scene, byte-identical (W4 §5).
+            scene_body: str | None = await connection.scalar(
+                text("SELECT body FROM scenes WHERE chapter_id = :id"), {"id": chapter_id}
             )
             novel_title: str | None = await connection.scalar(
                 text("SELECT title FROM novels WHERE id = :id"), {"id": novel_id}
             )
     finally:
         await engine.dispose()
-    assert chapter_body is not None and chapter_body.encode("utf-8") == body.encode("utf-8")
+    assert scene_body is not None and scene_body.encode("utf-8") == body.encode("utf-8")
     assert novel_title == title
     assert await _models_diff(url) == []  # the stamped schema is still the models'
     assert await _version_row(url) == head_revision()
@@ -1109,8 +1159,11 @@ async def test_unversioned_database_is_stamped_at_the_baseline_revision(
             probe_values: int | None = await connection.scalar(
                 text("SELECT count(*) FROM chapters WHERE probe IS NOT NULL")
             )
-            chapter_body: str | None = await connection.scalar(
-                text("SELECT body FROM chapters WHERE id = :id"), {"id": chapter_id}
+            # The replay carries the prose onto the wrapped scene and retires
+            # chapters.body (the scene step + the body drop, W4 §5): the far
+            # side reads it from the scene, byte-identical.
+            scene_body: str | None = await connection.scalar(
+                text("SELECT body FROM scenes WHERE chapter_id = :id"), {"id": chapter_id}
             )
             novel_title: str | None = await connection.scalar(
                 text("SELECT title FROM novels WHERE id = :id"), {"id": novel_id}
@@ -1118,7 +1171,7 @@ async def test_unversioned_database_is_stamped_at_the_baseline_revision(
     finally:
         await engine.dispose()
     assert probe_values == 0  # the column exists, every value null — the add ran
-    assert chapter_body is not None and chapter_body.encode("utf-8") == body.encode("utf-8")
+    assert scene_body is not None and scene_body.encode("utf-8") == body.encode("utf-8")
     assert novel_title == title
     # The restorable copy (D5): pending revisions and tables — the dump ran.
     assert outcome.backup is not None
@@ -1493,7 +1546,7 @@ async def test_dump_and_restore_round_trip(url: str, tmp_path: Path) -> None:
     )
 
     await reset_schema(url)
-    novel_id, _chapter_id, title, _body = await _seed_prose(url)
+    novel_id, _chapter_id, title, _body = await _seed_prose_on_scenes(url)
 
     dump = await dump_database(url, tmp_path)
     assert dump.read_bytes()[:5] == b"PGDMP"

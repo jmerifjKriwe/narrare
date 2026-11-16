@@ -341,8 +341,8 @@ async def test_delete_chapter_answers_404_for_a_foreign_chapter() -> None:
         await session.execute(
             text(
                 "INSERT INTO chapters "
-                "(id, user_id, novel_id, title, position, body, created_at, updated_at) "
-                "VALUES (:id, :user_id, :novel_id, :title, 0, '', now(), now())"
+                "(id, user_id, novel_id, title, position, created_at, updated_at) "
+                "VALUES (:id, :user_id, :novel_id, :title, 0, now(), now())"
             ),
             {"id": chapter_id, "user_id": OTHER_USER, "novel_id": novel_id, "title": "Fremd"},
         )
@@ -470,8 +470,8 @@ async def test_reorder_refuses_a_foreign_id() -> None:
         await session.execute(
             text(
                 "INSERT INTO chapters "
-                "(id, user_id, novel_id, title, position, body, created_at, updated_at) "
-                "VALUES (:id, :user_id, :novel_id, :title, 0, '', now(), now())"
+                "(id, user_id, novel_id, title, position, created_at, updated_at) "
+                "VALUES (:id, :user_id, :novel_id, :title, 0, now(), now())"
             ),
             {
                 "id": foreign_chapter,

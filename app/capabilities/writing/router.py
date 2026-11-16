@@ -45,7 +45,7 @@ from app.capabilities.writing.service import (
 )
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.context import DEFAULT_MAX_OUTPUT_TOKENS, BudgetImpossibleError
-from app.kernel.contracts.models import Chapter
+from app.kernel.contracts.models import Chapter, Scene
 from app.kernel.db.session import get_session
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta, Message
@@ -631,7 +631,7 @@ async def delete_scene(scene_id: UUID, service: ServiceDep) -> None:
 
 
 @router.post(
-    "/chapters/{chapter_id}/continue",
+    "/scenes/{scene_id}/continue",
     response_class=FinalizingStreamingResponse,
     status_code=200,
     responses={
@@ -646,13 +646,19 @@ async def delete_scene(scene_id: UUID, service: ServiceDep) -> None:
                 }
             }
         },
-        404: {"model": WritingErrorRead, "description": "Chapter not found"},
+        404: {"model": WritingErrorRead, "description": "Scene not found"},
     },
 )
-async def continue_chapter(
-    chapter_id: UUID, service: ServiceDep, user_id: UserDep
+async def continue_scene(
+    scene_id: UUID, service: ServiceDep, user_id: UserDep
 ) -> FinalizingStreamingResponse:
-    """Stream a continuation for an owned chapter; return HTTP 404 when it is not found."""
+    """Stream a continuation for an owned scene; return HTTP 404 when it is not found.
+
+    The unit is the scene (W4 §5): the context is the active scene's tail plus
+    the book's earlier scenes nearest first. The SSE contract is the chapter
+    endpoint's own, unchanged — the same frames, headers and coded refusals;
+    only the unit and the context assembly moved onto scenes.
+    """
     # Resolution reads the user's profiles on the request's own session, so it
     # must run before the connection goes back. A profile whose key its tier
     # can no longer produce ends the stream with the coded error frame a dead
@@ -671,13 +677,13 @@ async def continue_chapter(
     # is mapped the same way, refused by name and never truncated.
     try:
         prompt = await service.continuation_prompt(
-            chapter_id,
+            scene_id,
             context_window=resolved.context_window,
             max_output_tokens=resolved.max_output_tokens,
             model=resolved.model,
         )
     except NotFoundError:
-        raise HTTPException(status_code=404, detail="chapter not found") from None
+        raise HTTPException(status_code=404, detail="scene not found") from None
     except BudgetImpossibleError:
         logger.exception("continuation budget refused")
         return FinalizingStreamingResponse(
@@ -692,9 +698,12 @@ async def continue_chapter(
         )
     # The audit names the novel, so read its id before the response starts,
     # while the request's session is still open — one scalar, scoped to the
-    # owner continuation_prompt already proved (plan §3.4).
+    # owner continuation_prompt already proved (plan §3.4). The scene reaches
+    # its novel through the chapter it hangs off.
     novel_id = await service.session.scalar(
-        select(Chapter.novel_id).where(Chapter.id == chapter_id, Chapter.user_id == user_id)
+        select(Chapter.novel_id)
+        .join(Scene, Scene.chapter_id == Chapter.id)
+        .where(Scene.id == scene_id, Scene.user_id == user_id)
     )
     # The pooled connection goes back before the provider stream holds the
     # response open: nothing reads the database during the stream.

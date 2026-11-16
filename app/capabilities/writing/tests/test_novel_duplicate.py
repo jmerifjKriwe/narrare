@@ -243,11 +243,7 @@ async def test_a_foreign_novel_is_404_and_writes_nothing() -> None:
         foreign = Novel(user_id=OTHER_USER, title="Fremd")
         session.add(foreign)
         await session.flush()
-        session.add(
-            Chapter(
-                user_id=OTHER_USER, novel_id=foreign.id, title="Kapitel", position=0, body="Text"
-            )
-        )
+        session.add(Chapter(user_id=OTHER_USER, novel_id=foreign.id, title="Kapitel", position=0))
         await session.commit()
         foreign_id = foreign.id
 

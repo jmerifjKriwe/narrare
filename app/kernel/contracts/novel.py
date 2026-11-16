@@ -70,7 +70,6 @@ class Chapter(UserOwned):
     novel_id: Mapped[UUID] = mapped_column(ForeignKey("novels.id", ondelete="CASCADE"))
     title: Mapped[str] = mapped_column(String(200))
     position: Mapped[int]
-    body: Mapped[str] = mapped_column(Text, default="")
     # The chapter's own word goal (W4 D8) — distinct from the book's
     # ``Novel.target_words``. Nullable: a chapter without a goal does not lie.
     target_words: Mapped[int | None] = mapped_column()

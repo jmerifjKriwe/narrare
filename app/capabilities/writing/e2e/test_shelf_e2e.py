@@ -349,10 +349,10 @@ def test_filter_facets_compose_within_and_across_groups(page: Page, installed: S
 
 
 def test_duplicate_grows_the_shelf_with_an_equal_copy(page: Page, installed: Stack) -> None:
-    """Spec 4: Duplizieren copies the whole book — chapters, titles, bodies,
-    positions — under „<Titel> (Kopie)"; the copy is the newest row and leads
-    as the hero, the displaced hero joins the grid, and the copy starts fresh:
-    unarchived, never exported, no volume."""
+    """Spec 4: Duplizieren copies the whole book — chapters, titles, positions
+    and the scenes' prose — under „<Titel> (Kopie)"; the copy is the newest row
+    and leads as the hero, the displaced hero joins the grid, and the copy
+    starts fresh: unarchived, never exported, no volume."""
     novel = create_novel(KLANG, genre=KLANG_GENRE, blurb=KLANG_BLURB, target_words=80000)
     patch_novel(str(novel["id"]), status="draft")
     first = create_chapter(str(novel["id"]), "Das Flüstern im Wald")
@@ -389,10 +389,16 @@ def test_duplicate_grows_the_shelf_with_an_equal_copy(page: Page, installed: Sta
     # fresh shelf tracking beside the carried facts.
     original_id = _rows("SELECT id FROM novels WHERE title = :t", {"t": KLANG})[0][0]
     copy_id = _rows("SELECT id FROM novels WHERE title = :t", {"t": COPY_TITLE})[0][0]
-    chapters_sql = (
-        "SELECT title, body, position FROM chapters WHERE novel_id = :n ORDER BY position"
-    )
+    chapters_sql = "SELECT title, position FROM chapters WHERE novel_id = :n ORDER BY position"
     assert _rows(chapters_sql, {"n": copy_id}) == _rows(chapters_sql, {"n": original_id})
+    # The prose rides the scenes (W4 §5): the copy carries each chapter's scenes
+    # verbatim — title, body and position — in the same book reading order.
+    scenes_sql = (
+        "SELECT s.title, s.body, s.position FROM scenes s"
+        " JOIN chapters c ON c.id = s.chapter_id"
+        " WHERE c.novel_id = :n ORDER BY c.position, s.position"
+    )
+    assert _rows(scenes_sql, {"n": copy_id}) == _rows(scenes_sql, {"n": original_id})
     assert _rows(
         "SELECT genre, blurb, target_words, status, archived_at, last_exported_at, series_volume"
         " FROM novels WHERE title = :t",

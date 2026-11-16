@@ -113,6 +113,16 @@ def write_scene(chapter_id: str, body: str) -> dict[str, Any]:
     return scene
 
 
+def continue_scene(scene_id: str) -> httpx.Response:
+    """Stream a scene continuation through the real stack — the SSE door (W4 §5).
+
+    The fake provider answers deterministically, so the response carries the
+    whole frame sequence (data deltas, then done or error). The response is
+    returned read: status, headers and text survive the client's close."""
+    with _client() as client:
+        return client.post(f"/api/writing/scenes/{scene_id}/continue")
+
+
 def get_novel(novel_id: str) -> dict[str, Any]:
     with _client() as client:
         response = client.get(f"/api/writing/novels/{novel_id}")

@@ -384,6 +384,21 @@ class SceneRepository(ScopedRepository[Scene]):
         )
         return result.all()
 
+    async def list_for_novel(self, novel_id: UUID) -> Sequence[Scene]:
+        """Every scene of a novel's chapters, scoped, in book reading order —
+        chapter position, then scene position. One query: the join orders by
+        the chapter's position, so the continuation groups the scenes by
+        chapter without a read per chapter. The user predicate rides both the
+        scene (the scoped query) and the chapter it hangs off, so a foreign
+        chapter's scenes never enter the book's context."""
+        result = await self.session.scalars(
+            self.query()
+            .join(Chapter, and_(Scene.chapter_id == Chapter.id, Chapter.user_id == self.user_id))
+            .where(Chapter.novel_id == novel_id)
+            .order_by(Chapter.position, Scene.position)
+        )
+        return result.all()
+
     async def get(self, scene_id: UUID) -> Scene | None:
         return await self.session.scalar(self.query().where(Scene.id == scene_id))
 

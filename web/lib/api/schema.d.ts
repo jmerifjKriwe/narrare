@@ -1074,26 +1074,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/writing/chapters/{chapter_id}/continue": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Continue Chapter
-         * @description Stream a continuation for an owned chapter; return HTTP 404 when it is not found.
-         */
-        post: operations["continue_chapter_api_writing_chapters__chapter_id__continue_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/writing/chapters/{chapter_id}/scene-order": {
         parameters: {
             query?: never;
@@ -1376,6 +1356,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/writing/scenes/{scene_id}/continue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Continue Scene
+         * @description Stream a continuation for an owned scene; return HTTP 404 when it is not found.
+         *
+         *     The unit is the scene (W4 §5): the context is the active scene's tail plus
+         *     the book's earlier scenes nearest first. The SSE contract is the chapter
+         *     endpoint's own, unchanged — the same frames, headers and coded refusals;
+         *     only the unit and the context assembly moved onto scenes.
+         */
+        post: operations["continue_scene_api_writing_scenes__scene_id__continue_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1498,8 +1503,6 @@ export interface components {
         };
         /** ChapterRead */
         ChapterRead: {
-            /** Body */
-            body: string;
             /**
              * Created At
              * Format: date-time
@@ -5175,47 +5178,6 @@ export interface operations {
             };
         };
     };
-    continue_chapter_api_writing_chapters__chapter_id__continue_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                chapter_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @description Server-sent events: data frames of the continuation, then one terminal event: done or error. */
-                    "text/event-stream": string;
-                };
-            };
-            /** @description Chapter not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WritingErrorRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     reorder_scenes_api_writing_chapters__chapter_id__scene_order_put: {
         parameters: {
             query?: never;
@@ -5968,6 +5930,47 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Scene not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    continue_scene_api_writing_scenes__scene_id__continue_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scene_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /** @description Server-sent events: data frames of the continuation, then one terminal event: done or error. */
+                    "text/event-stream": string;
+                };
             };
             /** @description Scene not found */
             404: {

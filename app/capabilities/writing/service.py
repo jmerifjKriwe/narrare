@@ -17,7 +17,7 @@ from app.capabilities.writing.metadata import (
     duplicated_title,
     normalized_novel_updates,
 )
-from app.capabilities.writing.prompts import render_continuation, scaffold_length
+from app.capabilities.writing.prompts import PredecessorScene, render_continuation, scaffold_length
 from app.capabilities.writing.repository import (
     ChapterRepository,
     DailyWordsRepository,
@@ -393,27 +393,37 @@ class WritingService:
 
     async def continuation_prompt(
         self,
-        chapter_id: UUID,
+        scene_id: UUID,
         *,
         context_window: int | None = None,
         max_output_tokens: int | None = None,
         model: str | None = None,
     ) -> str:
-        """The prompt for a continuation, or NotFoundError if the chapter is not ours.
+        """The prompt for a scene continuation, or NotFoundError if the scene is not ours.
 
         `allocate` runs before any gathering, so an impossible pair refuses
         before the database is touched. The three facts default to unset —
         the allocator's own not-yet-resolved fallbacks (D7); the router passes
         the resolved profile's values. The render walks the override chain at
-        the chapter's novel scope and can refuse by name (`PromptRenderError`)
+        the scene's novel scope and can refuse by name (`PromptRenderError`)
         when an override's glue grows past the immediate slice. Read-only: the
         streamed answer comes back to the editor, whose autosave writes it.
         The request that streams has no side effect of its own (D14).
+
+        The unit is the scene (W4 §5). The tail is the active scene's own prose;
+        the predecessors are the book's earlier scenes in reading order walked
+        backwards — the active chapter's earlier scenes (reverse position), then
+        earlier chapters' scenes (chapter reverse, scenes reverse within each),
+        nearest first, chapter titles as separators. The budgeting machinery is
+        the chapter predecessors' own, refined onto scenes: each scene's tail is
+        hard-cut to the slice's remaining room and a scene that does not fit
+        stops the packing.
         """
         budgets = allocate(
             context_window=context_window, max_output_tokens=max_output_tokens, model=model
         )
-        chapter = await self.get_chapter(chapter_id)
+        scene = await self.get_scene(scene_id)
+        chapter = await self.get_chapter(scene.chapter_id)
         novel = await self.novels.get(chapter.novel_id)
         # Only the characters that survive into the rendered tail can name an
         # entity: the fixed scaffolding (header, Text-so-far, instruction) is
@@ -422,7 +432,7 @@ class WritingService:
         scan_window = budgets.immediate_text - scaffold_length(
             novel.title if novel else "", chapter.title
         )
-        tail = chapter.body[-scan_window:] if scan_window > 0 else ""
+        tail = scene.body[-scan_window:] if scan_window > 0 else ""
         folded = tail.casefold()
         ranked: list[tuple[int, Entity]] = []
         for entity in await self.entities.list_for_novel(chapter.novel_id):
@@ -437,10 +447,7 @@ class WritingService:
             if positions:
                 ranked.append((min(positions), entity))
         ranked.sort(key=lambda pair: (pair[0], pair[1].name))
-        chapters = await self.chapters.list_for_novel(chapter.novel_id)
-        predecessors = [
-            earlier for earlier in reversed(chapters) if earlier.position < chapter.position
-        ]
+        predecessors = await self._continuation_predecessors(scene, chapter)
         return await render_continuation(
             self.session,
             self.user_id,
@@ -448,12 +455,49 @@ class WritingService:
             budgets=budgets,
             novel_title=novel.title if novel else "",
             chapter_title=chapter.title,
-            body=chapter.body,
+            body=scene.body,
             entities=[entity for _, entity in ranked],
             predecessors=predecessors,
             genre=novel.genre if novel else None,
             blurb=novel.blurb if novel else None,
+            active_chapter_id=chapter.id,
         )
+
+    async def _continuation_predecessors(
+        self, scene: Scene, chapter: Chapter
+    ) -> list[PredecessorScene]:
+        """The book's earlier scenes, nearest first — the continuation's context.
+
+        One scoped read of the novel's scenes in book reading order (chapter
+        position, then scene position) and one of its chapters: the active
+        chapter's earlier scenes reverse, then earlier chapters reverse with
+        each chapter's scenes reverse. The active scene itself is excluded
+        (only positions before it), and so is everything after it in reading
+        order — a continuation builds on what precedes the cursor, not on what
+        follows. Each entry carries its chapter's id and title so the packer
+        can separate chapters without repeating the active chapter's header.
+        """
+        chapters = await self.chapters.list_for_novel(chapter.novel_id)
+        by_chapter: dict[UUID, list[Scene]] = {}
+        for earlier_scene in await self.scenes.list_for_novel(chapter.novel_id):
+            by_chapter.setdefault(earlier_scene.chapter_id, []).append(earlier_scene)
+        predecessors: list[PredecessorScene] = []
+        # The active chapter's earlier scenes: nearest first, no separator (they
+        # share the header's chapter). by_chapter holds them in position order.
+        for earlier_scene in reversed(by_chapter.get(chapter.id, [])):
+            if earlier_scene.position < scene.position:
+                predecessors.append(PredecessorScene(chapter.id, chapter.title, earlier_scene.body))
+        # Earlier chapters, nearest chapter first; each chapter's scenes nearest
+        # first beneath its title separator.
+        for earlier_chapter in reversed(chapters):
+            if earlier_chapter.position < chapter.position:
+                for earlier_scene in reversed(by_chapter.get(earlier_chapter.id, [])):
+                    predecessors.append(
+                        PredecessorScene(
+                            earlier_chapter.id, earlier_chapter.title, earlier_scene.body
+                        )
+                    )
+        return predecessors
 
     async def update_chapter(self, chapter_id: UUID, changes: ChapterUpdate) -> ChapterRead:
         """Commit a chapter's title edit and update the parent novel's timestamp.

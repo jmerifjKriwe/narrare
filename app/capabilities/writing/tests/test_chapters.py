@@ -50,8 +50,9 @@ async def test_the_chapters_prose_lives_on_its_scenes() -> None:
             await client.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": "Ankunft"})
         ).json()
 
-        # The chapter is a grouping shell (W4 §5): its own body stays empty,
-        # the prose lands on a scene, and the chapter read derives its figures.
+        # The chapter is a grouping shell (W4 §5): it carries no prose of its
+        # own, the prose lands on a scene, and the chapter read derives its
+        # figures from the scenes.
         scene = await client.post(
             f"/api/writing/chapters/{chapter['id']}/scenes",
             json={"body": "Der Nebel kam von See."},
@@ -59,7 +60,7 @@ async def test_the_chapters_prose_lives_on_its_scenes() -> None:
         assert scene.status_code == 201
 
         reloaded = await client.get(f"/api/writing/chapters/{chapter['id']}")
-        assert reloaded.json()["body"] == ""
+        assert "body" not in reloaded.json()  # the shell has no prose column
         assert reloaded.json()["word_count"] == 5
         assert reloaded.json()["scene_count"] == 1
 
@@ -201,8 +202,8 @@ async def test_another_users_chapter_cannot_be_saved() -> None:
         await session.execute(
             text(
                 "INSERT INTO chapters "
-                "(id, user_id, novel_id, title, position, body, created_at, updated_at) "
-                "VALUES (:id, :user_id, :novel_id, :title, 0, '', now(), now())"
+                "(id, user_id, novel_id, title, position, created_at, updated_at) "
+                "VALUES (:id, :user_id, :novel_id, :title, 0, now(), now())"
             ),
             {
                 "id": chapter_id,

@@ -149,7 +149,6 @@ class ChapterRead(BaseModel):
     novel_id: UUID
     title: str
     position: int
-    body: str
     created_at: datetime
     updated_at: datetime
     # Derived from the chapter's scenes (W4 §5), not stored: how many

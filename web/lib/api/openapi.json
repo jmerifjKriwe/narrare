@@ -245,10 +245,6 @@
       },
       "ChapterRead": {
         "properties": {
-          "body": {
-            "title": "Body",
-            "type": "string"
-          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -293,7 +289,6 @@
           "novel_id",
           "title",
           "position",
-          "body",
           "created_at",
           "updated_at"
         ],
@@ -6908,61 +6903,6 @@
         ]
       }
     },
-    "/api/writing/chapters/{chapter_id}/continue": {
-      "post": {
-        "description": "Stream a continuation for an owned chapter; return HTTP 404 when it is not found.",
-        "operationId": "continue_chapter_api_writing_chapters__chapter_id__continue_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "chapter_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Chapter Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "text/event-stream": {
-                "description": "Server-sent events: data frames of the continuation, then one terminal event: done or error.",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WritingErrorRead"
-                }
-              }
-            },
-            "description": "Chapter not found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Continue Chapter",
-        "tags": [
-          "writing"
-        ]
-      }
-    },
     "/api/writing/chapters/{chapter_id}/scene-order": {
       "put": {
         "description": "Rewrite an owned chapter's scene order as one whole.\n\nThe body carries every scene of the chapter in its new order. Respond\nwith HTTP 204, HTTP 404 for an absent or unowned chapter, or HTTP 409\nwhen the body is not the chapter's current whole — a scene added or\ndeleted in a second tab, or an id repeated — with ``detail.scene_ids``\nholding the stored ids in their position order: the arrangement the\nclient reverts to.",
@@ -7981,6 +7921,61 @@
           }
         },
         "summary": "Update Scene",
+        "tags": [
+          "writing"
+        ]
+      }
+    },
+    "/api/writing/scenes/{scene_id}/continue": {
+      "post": {
+        "description": "Stream a continuation for an owned scene; return HTTP 404 when it is not found.\n\nThe unit is the scene (W4 §5): the context is the active scene's tail plus\nthe book's earlier scenes nearest first. The SSE contract is the chapter\nendpoint's own, unchanged — the same frames, headers and coded refusals;\nonly the unit and the context assembly moved onto scenes.",
+        "operationId": "continue_scene_api_writing_scenes__scene_id__continue_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scene_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scene Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "description": "Server-sent events: data frames of the continuation, then one terminal event: done or error.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Scene not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Continue Scene",
         "tags": [
           "writing"
         ]

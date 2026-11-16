@@ -77,8 +77,8 @@ async def _seed_foreign_chapter() -> tuple[UUID, UUID]:
         await session.execute(
             text(
                 "INSERT INTO chapters "
-                "(id, user_id, novel_id, title, position, body, created_at, updated_at) "
-                "VALUES (:id, :user_id, :novel_id, :title, 0, '', now(), now())"
+                "(id, user_id, novel_id, title, position, created_at, updated_at) "
+                "VALUES (:id, :user_id, :novel_id, :title, 0, now(), now())"
             ),
             {"id": chapter_id, "user_id": OTHER_USER, "novel_id": novel_id, "title": "Fremd"},
         )
@@ -650,22 +650,22 @@ async def test_novel_word_count_sums_the_scenes_across_chapters() -> None:
 
 
 async def test_a_chapter_with_no_scenes_contributes_no_words() -> None:
-    """The interim chapters.body is no longer the source: a chapter whose
-    prose lives only in the old column reads zero until scenes carry it."""
+    """The chapter is a grouping shell (W4 §5): its words are its scenes' own,
+    so a chapter with no scenes reads zero — an empty chapter is a real state
+    (D16), and the prose column the shell once carried is gone."""
     async with _client() as client:
         novel_id = await _create_novel(client)
         chapter_id = await _create_chapter(client, novel_id)
-    async with Session() as session:
-        await session.execute(
-            text("UPDATE chapters SET body = 'alte Prosa hier' WHERE id = :id"),
-            {"id": UUID(chapter_id)},
-        )
-        await session.commit()
-    async with _client() as client:
         fetched = await client.get(f"/api/writing/novels/{novel_id}")
         chapter = await client.get(f"/api/writing/chapters/{chapter_id}")
-    assert fetched.json()["word_count"] == 0
-    assert chapter.json()["word_count"] == 0
+        assert fetched.json()["word_count"] == 0
+        assert chapter.json()["word_count"] == 0
+        assert chapter.json()["scene_count"] == 0
+        # The words arrive only when a scene carries prose.
+        await _create_scene(client, chapter_id, body="alte Prosa hier")
+        recounted = await client.get(f"/api/writing/chapters/{chapter_id}")
+    assert recounted.json()["word_count"] == 3
+    assert recounted.json()["scene_count"] == 1
 
 
 # --- Activity: the ledger follows the prose onto scenes -------------------
