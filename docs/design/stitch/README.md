@@ -101,7 +101,7 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`zen-focus`](screens/writing/zen-focus.webp) | Zen-Fokus & Atmosphärischer Schreibmodus (überholt durch `zen-focus-2`) | 2648 px |
 |  | [`workspace-scene-centric`](screens/writing/workspace-scene-centric.webp) | Schreib-Workspace — szenenzentriert, maßgeblich W4 | 2048 px |
 |  | [`workspace-scene-centric-dark`](screens/writing/workspace-scene-centric-dark.webp) | Schreib-Workspace — szenenzentriert (Midnight Ink, maßgeblich W4) | 2048 px |
-|  | [`workspace-states`](screens/writing/workspace-states.webp) | Zustands-Referenz Schreib-Workspace | 3230 px |
+|  | [`workspace-states`](screens/writing/workspace-states.webp) | Zustands-Referenz Schreib-Workspace (Korrektur 2026-11-16: 10 Kacheln inkl. „Fortsetzung fehlgeschlagen") | 4076 px |
 |  | [`workspace-book-settings`](screens/writing/workspace-book-settings.webp) | Buch-Einstellungen, Modal | 2048 px |
 |  | [`zen-focus-2`](screens/writing/zen-focus-2.webp) | Zen-Fokus V2, ohne Sepia | 2048 px |
 |  | [`zen-focus-2-dark`](screens/writing/zen-focus-2-dark.webp) | Zen-Fokus V2 (Midnight Ink, ohne Sepia) | 2540 px |
@@ -140,8 +140,8 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`settings-states-reference`](screens/shell/settings-states-reference.webp) | Zustands-Referenz: Atelier-Einstellungen (2026-11-15) | 6040 px |
 |  | [`ai-prompts-states-reference`](screens/shell/ai-prompts-states-reference.webp) | Zustands-Referenz: KI-Prompts anpassen (2026-11-15) | 5094 px |
 |  | [`help-center`](screens/shell/help-center.webp) | Hilfe-Zentrum & Kontext-Handbuch | 2144 px |
-|  | [`chrome-rail-topbar`](screens/shell/chrome-rail-topbar.webp) | App-weite Chrome: Rail + Topbar, inkl. Sprach-Varianten A/B — entschieden: A | 4718 px |
-|  | [`chrome-rail-topbar-dark`](screens/shell/chrome-rail-topbar-dark.webp) | App-weite Chrome: Rail + Topbar (Midnight Ink) | 4396 px |
+|  | [`chrome-rail-topbar`](screens/shell/chrome-rail-topbar.webp) | App-weite Chrome: Rail + Topbar, inkl. Sprach-Varianten A/B — entschieden: A (Korrektur 2026-11-16: ehrliche Autosave-Sublabels) | 4794 px |
+|  | [`chrome-rail-topbar-dark`](screens/shell/chrome-rail-topbar-dark.webp) | App-weite Chrome: Rail + Topbar (Midnight Ink; Korrektur 2026-11-16: ehrliche Autosave-Sublabels) | 4590 px |
 | Mobile | [`pocket-quick-capture`](screens/mobile/pocket-quick-capture.webp) | Narrare Pocket — Unterwegs-Studio & Quick Capture | 3238 px |
 
 Reference screenshots uploaded into the same Stitch project are the files already
