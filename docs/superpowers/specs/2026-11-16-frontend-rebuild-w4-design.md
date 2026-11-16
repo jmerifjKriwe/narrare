@@ -472,7 +472,7 @@ large, chrome moves to PR3 — the 5-PR shape is the owner's, deviations ask.
 - Continuation context: book-level reading order, nearest first (scene tail →
   chapter's earlier scenes → earlier chapters' scenes), budget-sliced — the
   chapter-predecessors logic refined, not a new product claim.
-- Language chip: passive display (see §7.3); no switcher in W4.
+- Language chip: the real switcher, contract extracted in W4 (D17).
 - Chrome components live shell-owned in `web/` from the start (the rail names
   every capability's areas — it is app chrome, not writing's; the shell wave
   grows it, no capability-local copy to extract later).
