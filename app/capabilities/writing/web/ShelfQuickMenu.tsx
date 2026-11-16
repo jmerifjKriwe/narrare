@@ -1,9 +1,17 @@
 /**
- * The per-card quick menu — the `shelf-quick-menu` draft's four panels on
+ * The per-book quick menu — the `shelf-quick-menu` draft's four panels on
  * the shell's tokens, the filter popover's dialog discipline (Task 7).
+ * One surface, two anchors: the grid card mounts it at the card's top-right
+ * (the default wrapper), the hero mounts the very same menu in its header
+ * row (`shelf-hero-menu`, #863) — only the wrapper's placement differs, so
+ * the trigger, the popover, the confirm, the busy/error discipline and the
+ * viewport clamp are shared, never duplicated. The hero never shows an
+ * archived book (pickHero), so its menu always offers the three forward
+ * actions; archiving the hero re-picks the next active book through the
+ * same `["novels"]` refetch — no special case here.
  *
- * The „···" trigger (the draft's `more_vert`, a 28px target at the card's
- * top-right) opens a w-64 popover docked 4px under it: the „Buch-Optionen"
+ * The „···" trigger (the draft's `more_vert`, a 28px target) opens a w-64
+ * popover docked 4px under it: the „Buch-Optionen"
  * eyebrow, Duplizieren / Exportieren / Archivieren, a hairline, and the
  * honest meta line — „Letzter Export:" with the row's `last_exported_at`
  * localized, or the dash when none. An archived book swaps the header to
@@ -128,7 +136,17 @@ const MenuRow = forwardRef<
   );
 });
 
-export function ShelfQuickMenu({ novel }: { novel: Novel }) {
+export function ShelfQuickMenu({
+  novel,
+  className = "absolute right-2 top-2 z-50",
+}: {
+  novel: Novel;
+  /** The wrapper's anchor — the grid card's top-right by default; the hero
+   *  passes `relative` to mount the same surface in its header row. The
+   *  popover docks under the trigger and the clamp measures this wrapper,
+   *  so every placement shares the one viewport discipline. */
+  className?: string;
+}) {
   const t = useTranslation();
   const [view, setView] = useState<View>("closed");
   const [busy, setBusy] = useState<Action | null>(null);
@@ -304,7 +322,7 @@ export function ShelfQuickMenu({ novel }: { novel: Novel }) {
   const surfaceStyle = menuLeft !== null ? { left: menuLeft, right: "auto" as const } : undefined;
 
   return (
-    <div ref={wrapperRef} className="absolute right-2 top-2 z-50">
+    <div ref={wrapperRef} className={className}>
       {/* The 28px trigger — the draft's two faces: neutral closed, the
           primary border and ink while the menu stands. */}
       <button

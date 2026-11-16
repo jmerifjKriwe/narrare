@@ -100,11 +100,18 @@ describe("ICU message format", () => {
     // the split (#847). The chapters plural is the live carrier of that
     // shape: the count must survive formatting exactly once — a dropped #
     // loses the number, a doubled one splits the surface at the wrong
-    // occurrence — in every locale, singular and plural.
+    // occurrence — in every locale, singular and plural. The genre-plus-
+    // plural carrier rode setup.landing.meta until the owner deleted the
+    // unrouted landing (#862); setup.welcome.demoMeta carries the same
+    // shape on the live welcome roster. demoMeta is probed with two
+    // different counts: a catalog that hard-codes the number instead of
+    // formatting {count} passes the count it baked in, but renders zero
+    // occurrences of the other one (the #864 review finding).
     const carriers: { key: MessageKey; params: Record<string, string | number>; count: number }[] = [
       { key: "setup.basis.demoChapters", params: { count: 1 }, count: 1 },
       { key: "setup.basis.demoChapters", params: { count: 3 }, count: 3 },
-      { key: "setup.landing.meta", params: { genre: "Science Fiction", count: 3 }, count: 3 },
+      { key: "setup.welcome.demoMeta", params: { genre: "Science Fiction", count: 3 }, count: 3 },
+      { key: "setup.welcome.demoMeta", params: { genre: "Science Fiction", count: 7 }, count: 7 },
     ];
     for (const candidate of locales) {
       for (const { key, params, count } of carriers) {
@@ -115,6 +122,17 @@ describe("ICU message format", () => {
         expect(occurrences, `${candidate}/${key} count=${count}`).toBe(1);
         expect(formatted, `${candidate}/${key}`).not.toMatch(/[{}#]/);
       }
+      // Belt-and-suspenders: two counts must render two different strings —
+      // a frozen copy that happens to carry both digits once each would
+      // slip past the occurrence pins above.
+      const meta = (count: number) =>
+        String(
+          new IntlMessageFormat(catalogs[candidate]["setup.welcome.demoMeta"], candidate).format({
+            genre: "Science Fiction",
+            count,
+          }),
+        );
+      expect(meta(3), `${candidate}/setup.welcome.demoMeta`).not.toBe(meta(7));
     }
   });
 

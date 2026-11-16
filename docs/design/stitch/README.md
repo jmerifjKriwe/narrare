@@ -84,6 +84,7 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`cover-system`](screens/library/cover-system.webp) | Prozedurales Buchcover-System (Spezifikation) | 1600 px |
 |  | [`new-book-dialog`](screens/library/new-book-dialog.webp) | Neues Buch anlegen — Der schnelle Weg (Dialog) | 1280 px |
 |  | [`shelf-quick-menu`](screens/library/shelf-quick-menu.webp) | Zustands-Referenz: Schnellmenü im Bücherregal | 2672 px |
+|  | [`shelf-hero-menu`](screens/library/shelf-hero-menu.webp) | Zustands-Referenz: Schnellmenü der Hero-Karte | 3128 px |
 | Writing | [`workspace`](screens/writing/workspace.webp) | Schreib-Workspace | 3434 px |
 |  | [`workspace-ai-dock`](screens/writing/workspace-ai-dock.webp) | Schreib-Workspace & KI-Dock | 4410 px |
 |  | [`workspace-lore-dock`](screens/writing/workspace-lore-dock.webp) | Schreib-Workspace & Lore-Dock (Kausalitäts-Konflikt gelöst) | 4104 px |

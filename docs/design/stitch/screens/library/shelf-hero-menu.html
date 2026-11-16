@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="de" class="h-full bg-[#F6F3ED]">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zustands-Referenz: Schnellmenü der Hero-Karte — Narrare</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            surface: {
+              DEFAULT: '#F6F3ED',
+              card: '#FFFFFF',
+              muted: '#FAF8F5',
+              subtle: '#EFECE6',
+              highlight: '#F3EFE8'
+            },
+            fokal: {
+              DEFAULT: '#743B1F',
+              hover: '#5D2E17',
+              surface: '#F6ECE5',
+              border: '#E3C8B8'
+            },
+            terrakotta: '#743B1F',
+            archiv: '#5A5549',
+            border: {
+              DEFAULT: '#E6E1D8',
+              hairline: '#EAE6DF',
+              dark: '#D8D1C5'
+            },
+            ink: {
+              primary: '#1D1A16',
+              secondary: '#5A5549',
+              muted: '#8C8578',
+              faint: '#B6AF9F'
+            },
+            status: {
+              success: '#2E6930',
+              alert: '#AC3031',
+              alertBg: '#FDF3F3',
+              alertBorder: '#F5C6C6'
+            }
+          },
+          fontFamily: {
+            serif: ['"EB Garamond"', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          boxShadow: {
+            'popover': '0 8px 24px -4px rgba(29, 26, 22, 0.08), 0 2px 6px -1px rgba(29, 26, 22, 0.04)',
+            'card-subtle': '0 1px 3px rgba(29, 26, 22, 0.03)',
+            'book': '0 8px 20px -3px rgba(29, 26, 22, 0.18), 0 2px 5px rgba(29, 26, 22, 0.08)'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+    }
+    .hero-book-spine {
+      background: linear-gradient(90deg, rgba(0,0,0,0.22) 0%, rgba(255,255,255,0.06) 6%, rgba(0,0,0,0) 18%);
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin-custom {
+      animation: spin 1s linear infinite;
+    }
+  </style>
+</head>
+<body class="bg-[#F6F3ED] text-ink-primary font-sans antialiased min-h-screen flex flex-col selection:bg-fokal-surface selection:text-fokal">
+
+  <!-- Top App Chrome / Header bar -->
+  <header class="w-full bg-[#F6F3ED] border-b border-border/80 px-8 py-3.5 flex items-center justify-between sticky top-0 z-50 backdrop-blur-sm bg-[#F6F3ED]/95">
+    <div class="flex items-center gap-6">
+      <div class="flex items-center gap-3">
+        <span class="font-serif italic font-semibold text-2xl tracking-tight text-ink-primary">Narrare</span>
+        <span class="text-xs px-2 py-0.5 rounded font-mono font-medium bg-[#EFECE6] text-ink-secondary border border-border">ATELIER SPEC</span>
+      </div>
+      <div class="h-4 w-px bg-border"></div>
+      <nav class="flex items-center gap-5 text-sm text-ink-secondary">
+        <span class="hover:text-ink-primary transition-colors cursor-pointer">Bücherregal</span>
+        <span class="hover:text-ink-primary transition-colors cursor-pointer">Manuskript</span>
+        <span class="hover:text-ink-primary transition-colors cursor-pointer">Lore-Graph</span>
+        <span class="text-fokal font-semibold flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-fokal"></span>
+          Zustands-Referenzen
+        </span>
+      </nav>
+    </div>
+
+    <div class="flex items-center gap-5 text-xs text-ink-secondary">
+      <div class="flex items-center gap-1.5 text-status-success font-medium">
+        <span class="w-2 h-2 rounded-full bg-status-success"></span>
+        Spezifikation V2.4 verifiziert
+      </div>
+      <div class="h-3.5 w-px bg-border"></div>
+      <span class="font-mono text-ink-muted">1280px Desktop Canvas</span>
+      <div class="h-3.5 w-px bg-border"></div>
+      <div class="flex items-center gap-1 font-mono text-ink-muted">
+        <span class="text-ink-primary font-semibold">DE</span>
+        <span class="text-border">|</span>
+        <span>EN</span>
+        <span class="text-border">|</span>
+        <span>FR</span>
+      </div>
+      <div class="w-7 h-7 rounded-full bg-[#E8E2D6] text-ink-secondary flex items-center justify-center font-serif text-sm font-semibold border border-border">
+        NA
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Documentation & Spec Canvas Container -->
+  <main class="flex-1 max-w-[1240px] w-full mx-auto px-6 py-8 flex flex-col gap-8">
+
+    <!-- Header Banner / Spec Meta Card -->
+    <section class="bg-surface-card border border-border rounded-2xl p-6 shadow-card-subtle flex flex-col gap-4">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
+        <div>
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="text-[11px] font-mono tracking-wider uppercase text-fokal bg-fokal-surface px-2 py-0.5 rounded font-medium border border-fokal-border/40">
+              Narrare Atelier Spec • V2.4 • Hero-Karten-Interaktion
+            </span>
+            <span class="text-xs text-ink-muted font-mono">• 3 Hauptzustände</span>
+          </div>
+          <h1 class="font-serif text-3xl font-medium tracking-tight text-ink-primary">
+            Zustands-Referenz: Schnellmenü der Hero-Karte
+          </h1>
+          <p class="text-sm font-serif italic text-ink-secondary mt-1 max-w-3xl leading-relaxed">
+            Spezifikation des kontextuellen Aktions-Menüs für das prominente Hero-Buch im Bücherregal. Übertragung des kanonischen 28px-Menüknopfs und der 256px Popover-Architektur auf die 192×264px Querformat-Bühne.
+          </p>
+        </div>
+
+        <!-- Token Legend Box -->
+        <div class="bg-surface-muted border border-border rounded-xl p-3.5 min-w-[280px] text-xs flex flex-col gap-2">
+          <div class="font-mono text-[10px] tracking-wider uppercase font-semibold text-ink-secondary flex items-center justify-between">
+            <span>Farb- &amp; Token-Legende</span>
+            <span class="text-ink-muted">Literary Modernism</span>
+          </div>
+          <div class="grid grid-cols-2 gap-y-1.5 gap-x-3 text-[11px]">
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-sm border border-border bg-[#F6F3ED]"></span>
+              <span class="text-ink-secondary">Fond: <code class="font-mono text-[10px]">#F6F3ED</code></span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-sm border border-[#5D2E17] bg-[#743B1F]"></span>
+              <span class="text-ink-secondary">Fokal: <code class="font-mono text-[10px]">#743B1F</code></span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-sm border border-[#433F35] bg-[#5A5549]"></span>
+              <span class="text-ink-secondary">Archiv: <code class="font-mono text-[10px]">#5A5549</code></span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-sm border border-[#7D2223] bg-[#AC3031]"></span>
+              <span class="text-ink-secondary">Fehler: <code class="font-mono text-[10px]">#AC3031</code></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Architectural Principles Bar -->
+      <div class="flex flex-wrap items-center justify-between gap-4 text-xs text-ink-secondary pt-1">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[17px] text-fokal">architecture</span>
+          <span class="font-semibold text-ink-primary">Hero-Architektur-Prinzipien:</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-6 text-[12px]">
+          <span class="flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-fokal"></span>
+            <strong>28px Trefferfläche:</strong> More-Vert-Knopf verankert oben rechts in der Hero-Kopfzeile
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-fokal"></span>
+            <strong>w-64 Popover (256px):</strong> Dockt mit 4px Offset an, überhängt die Kante frei
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-fokal"></span>
+            <strong>Ehrliches Nachrücken:</strong> Bei Archivierung rückt das nächste aktive Manuskript nach
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-status-success"></span>
+            <strong>Souveränitäts-Garantie:</strong> Kein Datenverlust im Timeout
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 States Grid (Desktop Row of Panels) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- ======================================================== -->
+      <!-- PANEL 1: AUSLÖSER & OFFENES MENÜ -->
+      <!-- ======================================================== -->
+      <div class="flex flex-col bg-surface-card border border-border rounded-2xl overflow-hidden shadow-card-subtle">
+        <!-- Panel Head -->
+        <div class="p-4 border-b border-border bg-surface-muted flex items-start justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-[10px] tracking-wider uppercase font-semibold text-ink-muted">Panel 1 • Interaktion</span>
+              <span class="bg-status-success/10 text-status-success text-[10px] font-mono font-medium px-1.5 py-0.2 rounded">Aktiv</span>
+            </div>
+            <h2 class="font-serif text-lg font-medium text-ink-primary mt-0.5">Auslöser &amp; Offenes Menü</h2>
+            <p class="text-xs text-ink-secondary mt-0.5 leading-snug">
+              28px-Knopf in der Kopfzeile. Popover <code class="font-mono text-[10px]">w-64</code> verankert am Auslöser mit drei Aktionen.
+            </p>
+          </div>
+        </div>
+
+        <!-- Panel Body: Interactive Visualization -->
+        <div class="p-5 flex-1 flex flex-col justify-between bg-[#FAF8F5]/60 relative">
+
+          <!-- Miniaturisierte / maßstabsgerechte Hero-Karte -->
+          <div class="bg-white border border-border rounded-xl p-4 shadow-sm relative">
+            
+            <!-- Hero Top Row: Meta Badge & Status + Active Menu Trigger -->
+            <div class="flex items-center justify-between pb-3 border-b border-border-hairline mb-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-status-success"></span>
+                <span class="text-[11px] font-mono uppercase tracking-wider text-ink-secondary font-medium">Aktives Werk • Vor 6 Sek. synchronisiert</span>
+              </div>
+
+              <!-- Menü-Knopf (OFFEN-Zustand: border-primary, text-primary, bg-fokal-surface/40) -->
+              <div class="relative">
+                <button aria-label="Menü für Dead Signal öffnen" class="w-7 h-7 rounded-md border border-fokal text-fokal bg-fokal-surface/60 flex items-center justify-center transition-colors shadow-xs">
+                  <span class="material-symbols-outlined text-[18px]">more_vert</span>
+                </button>
+
+                <!-- POPOVER (w-64 = 256px, rounded-xl, shadow-popover, border border-border) -->
+                <div class="absolute right-0 top-8 w-64 bg-white border border-border rounded-xl shadow-popover z-30 p-1.5 text-xs animate-in fade-in duration-100">
+                  <div class="px-2.5 py-1.5 text-[10px] font-mono tracking-wider uppercase text-ink-muted border-b border-border-hairline mb-1">
+                    Hero-Aktionen
+                  </div>
+
+                  <!-- Option 1: Duplizieren -->
+                  <button class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-ink-primary hover:bg-[#F6ECE5] hover:text-fokal transition-colors text-left font-medium">
+                    <span class="material-symbols-outlined text-[17px] text-ink-secondary">content_copy</span>
+                    <span>Duplizieren</span>
+                  </button>
+
+                  <!-- Option 2: Exportieren -->
+                  <button class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-ink-primary hover:bg-[#F6ECE5] hover:text-fokal transition-colors text-left font-medium">
+                    <span class="material-symbols-outlined text-[17px] text-ink-secondary">download</span>
+                    <span>Exportieren</span>
+                  </button>
+
+                  <!-- Option 3: Archivieren (gedeckt, nicht rot) -->
+                  <button class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-archiv hover:bg-[#EFECE6] hover:text-ink-primary transition-colors text-left font-medium">
+                    <span class="material-symbols-outlined text-[17px] text-archiv">inventory_2</span>
+                    <span>Archivieren</span>
+                  </button>
+
+                  <!-- Footer Meta-Zeile: Letzter Export -->
+                  <div class="mt-1 pt-1.5 px-2.5 pb-1 border-t border-border-hairline flex items-center justify-between text-[10px] text-ink-muted font-mono">
+                    <span>Letzter Export:</span>
+                    <span class="text-ink-secondary">—</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hero Main Row: Book Cover (Left) + Details & Button (Right) -->
+            <div class="flex items-start gap-4">
+              <!-- Book Cover 80x110 scaled down for panel representation (Ratio 192x264) -->
+              <div class="w-[84px] h-[116px] shrink-0 bg-[#1D1A16] rounded-r-md rounded-l-xs shadow-book relative overflow-hidden flex flex-col justify-between p-2 text-white border-l-2 border-white/20">
+                <div class="hero-book-spine absolute inset-0 pointer-events-none"></div>
+                <div>
+                  <div class="text-[7px] font-mono tracking-widest uppercase text-white/50">ROMAN • SCI-FI</div>
+                  <div class="font-serif italic text-xs leading-tight mt-0.5 text-white/95">Dead Signal</div>
+                  <div class="text-[7px] text-white/60 font-sans mt-0.5">H. Calder</div>
+                </div>
+                <div class="w-4 h-4 rounded-full border border-white/30 flex items-center justify-center self-center my-auto">
+                  <div class="w-1.5 h-1.5 rounded-full bg-white/40"></div>
+                </div>
+                <div class="text-[6px] font-mono text-white/40 flex justify-between">
+                  <span>OPUS IV</span>
+                  <span>2026</span>
+                </div>
+              </div>
+
+              <!-- Hero Info & Primary CTA -->
+              <div class="flex-1 flex flex-col justify-between min-h-[116px]">
+                <div>
+                  <h3 class="font-serif text-lg font-semibold text-ink-primary leading-tight">Dead Signal</h3>
+                  <p class="text-[11px] text-ink-secondary">Band I • Tiefsee-Archäologie &amp; Kosmische Leere</p>
+                  
+                  <div class="mt-2 flex items-center gap-3 text-[11px] text-ink-secondary font-mono">
+                    <span class="flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[14px] text-fokal">edit_note</span>
+                      3.384 W.
+                    </span>
+                    <span>•</span>
+                    <span class="flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[14px]">menu_book</span>
+                      3 Kap.
+                    </span>
+                  </div>
+                </div>
+
+                <div class="mt-3 flex items-center gap-2">
+                  <button class="bg-fokal text-white text-xs px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 shadow-xs">
+                    <span>Weiterschreiben</span>
+                    <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                  </button>
+                  <button class="border border-border text-ink-secondary text-xs px-2.5 py-1.5 rounded-lg font-medium hover:bg-surface-subtle">
+                    Gliederung
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Annotation Note below -->
+          <div class="mt-6 pt-3 border-t border-border-hairline text-[11px] text-ink-secondary flex items-start gap-2">
+            <span class="material-symbols-outlined text-[15px] text-fokal shrink-0 mt-0.5">info</span>
+            <span>
+              <strong>Kanten-Verhalten:</strong> Der Menü-Container überhängt die schmale rechte Kante um 12px, bleibt aber dank relativer Verankerung innerhalb des Screen-Viewports.
+            </span>
+          </div>
+
+        </div>
+
+        <!-- Panel Footer -->
+        <div class="px-4 py-2.5 bg-surface-card border-t border-border flex items-center justify-between text-[11px] text-ink-muted font-mono">
+          <span>Trefferfläche: 28×28px</span>
+          <span>Offset: Y+4px | Z-Index: 30</span>
+        </div>
+      </div>
+
+
+      <!-- ======================================================== -->
+      <!-- PANEL 2: ARCHIVIEREN BESTÄTIGEN -->
+      <!-- ======================================================== -->
+      <div class="flex flex-col bg-surface-card border border-border rounded-2xl overflow-hidden shadow-card-subtle">
+        <!-- Panel Head -->
+        <div class="p-4 border-b border-border bg-surface-muted flex items-start justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-[10px] tracking-wider uppercase font-semibold text-ink-muted">Panel 2 • Bestätigungsfluss</span>
+              <span class="bg-[#FAF2EA] text-fokal text-[10px] font-mono font-medium px-1.5 py-0.2 rounded">Kontemplativer Dialog</span>
+            </div>
+            <h2 class="font-serif text-lg font-medium text-ink-primary mt-0.5">Archivieren bestätigen</h2>
+            <p class="text-xs text-ink-secondary mt-0.5 leading-snug">
+              Direktes Popover ohne störendes Vollbild-Modal. Erläutert das ehrliche Nachrücken des nächsten Buchs.
+            </p>
+          </div>
+        </div>
+
+        <!-- Panel Body: Interactive Visualization -->
+        <div class="p-5 flex-1 flex flex-col justify-between bg-[#FAF8F5]/60 relative">
+
+          <!-- Miniaturisierte Hero-Karte mit geöffnetem Bestätigungs-Popover -->
+          <div class="bg-white border border-border rounded-xl p-4 shadow-sm relative">
+            
+            <!-- Hero Top Row -->
+            <div class="flex items-center justify-between pb-3 border-b border-border-hairline mb-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-status-success"></span>
+                <span class="text-[11px] font-mono uppercase tracking-wider text-ink-secondary font-medium">Aktives Werk • Vor 6 Sek. synchronisiert</span>
+              </div>
+
+              <!-- Menü-Knopf aktiv -->
+              <div class="relative">
+                <button aria-label="Aktionsmenü" class="w-7 h-7 rounded-md border border-fokal text-fokal bg-fokal-surface/60 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-[18px]">more_vert</span>
+                </button>
+
+                <!-- BESTÄTIGUNGS-POPOVER (Kontextuell am Menü angedockt) -->
+                <div class="absolute right-0 top-8 w-72 bg-white border border-border rounded-xl shadow-popover z-30 p-3.5 text-xs animate-in fade-in duration-100">
+                  <div class="flex items-start gap-2.5">
+                    <div class="w-7 h-7 rounded-lg bg-surface-subtle text-archiv flex items-center justify-center shrink-0">
+                      <span class="material-symbols-outlined text-[18px]">inventory_2</span>
+                    </div>
+                    <div>
+                      <h4 class="font-serif font-medium text-ink-primary text-sm">Ins Archiv stellen?</h4>
+                      <p class="text-[11px] text-ink-secondary mt-1 leading-relaxed">
+                        «Dead Signal» verlässt das Regal und ruht im Archiv — jederzeit wiederherstellbar.
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Erläuterung des Nachrückens -->
+                  <div class="mt-2.5 p-2 rounded-lg bg-[#FAF8F5] border border-border-hairline text-[10px] text-ink-secondary flex items-start gap-1.5">
+                    <span class="material-symbols-outlined text-[13px] text-fokal shrink-0 mt-0.5">autorenew</span>
+                    <span>
+                      <strong>Nachrücken:</strong> Das nächste aktive Buch («Winterhaus») rückt sofort an die Hero-Stelle vor.
+                    </span>
+                  </div>
+
+                  <!-- Aktionen: Ghost Abbrechen + Sekundär Archivieren (gedeckt, kein roter Schreckalarm) -->
+                  <div class="mt-3.5 pt-2.5 border-t border-border-hairline flex items-center justify-end gap-2">
+                    <button class="px-2.5 py-1.5 rounded-lg text-ink-secondary hover:text-ink-primary hover:bg-surface-subtle text-xs font-medium transition-colors">
+                      Abbrechen
+                    </button>
+                    <button class="px-3 py-1.5 rounded-lg bg-archiv text-white hover:bg-[#474338] text-xs font-medium transition-colors shadow-xs">
+                      Archivieren
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hero Main Row mit gedimmter / kontemplativer Ruhe -->
+            <div class="flex items-start gap-4 opacity-75">
+              <div class="w-[84px] h-[116px] shrink-0 bg-[#1D1A16] rounded-r-md rounded-l-xs shadow-book flex flex-col justify-between p-2 text-white border-l-2 border-white/20">
+                <div class="text-[7px] font-mono tracking-widest uppercase text-white/50">ROMAN • SCI-FI</div>
+                <div class="font-serif italic text-xs leading-tight mt-0.5 text-white/95">Dead Signal</div>
+                <div class="text-[7px] text-white/60 font-sans mt-0.5">H. Calder</div>
+                <div class="w-4 h-4 rounded-full border border-white/30 flex items-center justify-center self-center my-auto">
+                  <div class="w-1.5 h-1.5 rounded-full bg-white/40"></div>
+                </div>
+                <div class="text-[6px] font-mono text-white/40 flex justify-between">
+                  <span>OPUS IV</span>
+                  <span>2026</span>
+                </div>
+              </div>
+
+              <div class="flex-1 flex flex-col justify-between min-h-[116px]">
+                <div>
+                  <h3 class="font-serif text-lg font-semibold text-ink-primary leading-tight">Dead Signal</h3>
+                  <p class="text-[11px] text-ink-secondary">Band I • Tiefsee-Archäologie &amp; Kosmische Leere</p>
+                  <div class="mt-2 text-[11px] text-ink-secondary font-mono">
+                    3.384 W. • 3 Kap.
+                  </div>
+                </div>
+
+                <div class="mt-3 flex items-center gap-2">
+                  <span class="text-xs text-ink-muted italic font-serif">Aktion wird bestätigt …</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Annotation Note below -->
+          <div class="mt-6 pt-3 border-t border-border-hairline text-[11px] text-ink-secondary flex items-start gap-2">
+            <span class="material-symbols-outlined text-[15px] text-archiv shrink-0 mt-0.5">verified_user</span>
+            <span>
+              <strong>Kein Alarmismus:</strong> Archivieren zerstört keine Daten. Sanfte Tinte (<code class="font-mono text-[10px]">#5A5549</code>) wahrt die Konzentration und vermeidet Panikrot.
+            </span>
+          </div>
+
+        </div>
+
+        <!-- Panel Footer -->
+        <div class="px-4 py-2.5 bg-surface-card border-t border-border flex items-center justify-between text-[11px] text-ink-muted font-mono">
+          <span>Kein Full-Backdrop</span>
+          <span>Symmetrische Reversibilität</span>
+        </div>
+      </div>
+
+
+      <!-- ======================================================== -->
+      <!-- PANEL 3: BESCHÄFTIGT & FEHLER -->
+      <!-- ======================================================== -->
+      <div class="flex flex-col bg-surface-card border border-border rounded-2xl overflow-hidden shadow-card-subtle">
+        <!-- Panel Head -->
+        <div class="p-4 border-b border-border bg-surface-muted flex items-start justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-[10px] tracking-wider uppercase font-semibold text-ink-muted">Panel 3 • Resilienz</span>
+              <span class="bg-status-alertBg text-status-alert text-[10px] font-mono font-medium px-1.5 py-0.2 rounded border border-status-alertBorder">Fehlertoleranz</span>
+            </div>
+            <h2 class="font-serif text-lg font-medium text-ink-primary mt-0.5">Beschäftigt &amp; Fehler</h2>
+            <p class="text-xs text-ink-secondary mt-0.5 leading-snug">
+              Transparenter Ladezustand (Spinner) und ehrliche Fehlerzeile bei Speicherkonflikten.
+            </p>
+          </div>
+        </div>
+
+        <!-- Panel Body: Interactive Visualization with two sub-states -->
+        <div class="p-5 flex-1 flex flex-col justify-between bg-[#FAF8F5]/60 gap-4">
+
+          <!-- Zustand A: Duplizieren läuft (Spinner statt Icon) -->
+          <div class="bg-white border border-border rounded-xl p-3 shadow-xs">
+            <div class="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-ink-muted mb-2 border-b border-border-hairline pb-1">
+              <span>Zustand A: In Ausführung</span>
+              <span class="text-fokal">50% Opazität / Handshake</span>
+            </div>
+
+            <div class="w-full bg-surface-muted rounded-lg border border-border p-2">
+              <!-- Zeile 1: Duplizieren läuft -->
+              <div class="flex items-center justify-between px-2 py-1.5 bg-fokal-surface/40 rounded text-fokal text-xs font-medium">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[16px] animate-spin-custom text-fokal">progress_activity</span>
+                  <span>Duplizieren …</span>
+                </div>
+                <span class="text-[10px] font-mono text-fokal/80">Bitte warten</span>
+              </div>
+
+              <!-- Zeile 2: Gedimmt -->
+              <div class="flex items-center gap-2 px-2 py-1.5 text-ink-muted opacity-40 text-xs">
+                <span class="material-symbols-outlined text-[16px]">download</span>
+                <span>Exportieren</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Zustand B: Sanfte Fehlerzeile nach Timeout -->
+          <div class="bg-white border border-border rounded-xl p-3 shadow-xs">
+            <div class="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-ink-muted mb-2 border-b border-border-hairline pb-1">
+              <span>Zustand B: Sanfte Fehlerzeile</span>
+              <span class="text-status-alert font-mono">#AC3031</span>
+            </div>
+
+            <!-- Miniatur-Header der Hero-Karte nach Fehler -->
+            <div class="flex items-center justify-between py-1 mb-2">
+              <span class="font-serif font-medium text-xs text-ink-primary">Dead Signal</span>
+              <!-- Knopf im Normal-Zustand geschlossen -->
+              <button aria-label="Menü geschlossen" class="w-6 h-6 rounded border border-border text-ink-secondary flex items-center justify-center">
+                <span class="material-symbols-outlined text-[15px]">more_vert</span>
+              </button>
+            </div>
+
+            <!-- Sanfte, ehrliche Fehlerzeile unter dem geschlossenen Menü -->
+            <div class="p-2.5 rounded-lg bg-status-alertBg border border-status-alertBorder text-xs text-ink-primary flex items-start gap-2">
+              <span class="material-symbols-outlined text-[16px] text-status-alert shrink-0 mt-0.5">error_outline</span>
+              <div class="flex-1">
+                <p class="text-[11px] text-ink-primary font-medium leading-tight">
+                  Das Duplikat konnte nicht angelegt werden — nichts verloren.
+                </p>
+                <div class="mt-1.5 flex items-center justify-between">
+                  <span class="text-[10px] font-mono text-ink-secondary">Timeout: Lokaler Speicher</span>
+                  <button class="text-[11px] font-medium text-fokal hover:text-fokal-hover underline flex items-center gap-1">
+                    <span>Erneut versuchen</span>
+                    <span class="material-symbols-outlined text-[12px]">refresh</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Annotation Note below -->
+          <div class="pt-2 border-t border-border-hairline text-[11px] text-ink-secondary flex items-start gap-2">
+            <span class="material-symbols-outlined text-[15px] text-status-alert shrink-0 mt-0.5">security</span>
+            <span>
+              <strong>Zero-Data-Loss Garantie:</strong> Bei Rejection oder Speicherkollision wird das Manuskript nicht fragmentiert. Der Benutzer erhält sofortigen Retry-Zugriff.
+            </span>
+          </div>
+
+        </div>
+
+        <!-- Panel Footer -->
+        <div class="px-4 py-2.5 bg-surface-card border-t border-border flex items-center justify-between text-[11px] text-ink-muted font-mono">
+          <span>Gedecktes Rot #AC3031</span>
+          <span>Resiliente Fehlerzeile</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Vergleichende Spezifikations-Tabelle: Hero-Menü vs. Raster-Menü -->
+    <section class="bg-surface-card border border-border rounded-2xl p-6 shadow-card-subtle flex flex-col gap-4">
+      <div class="flex items-center justify-between border-b border-border/60 pb-3">
+        <div>
+          <h3 class="font-serif text-xl font-medium text-ink-primary">
+            Architekturvergleich: Hero-Schnellmenü vs. Rasterkarten-Schnellmenü
+          </h3>
+          <p class="text-xs text-ink-secondary mt-0.5">
+            Detaillierte Gegenüberstellung zur Sicherstellung konsistenter Interaktionsmuster und Token-Einhaltung.
+          </p>
+        </div>
+        <span class="text-xs font-mono text-fokal bg-fokal-surface px-2.5 py-1 rounded border border-fokal-border/40">
+          Kanon V2.4 Synchron
+        </span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b border-border bg-surface-muted text-ink-secondary font-mono text-[11px]">
+              <th class="py-2.5 px-3">Eigenschaft</th>
+              <th class="py-2.5 px-3">Große Hero-Karte (Diese Spezifikation)</th>
+              <th class="py-2.5 px-3">Standard-Rasterkarte (Bücherregal)</th>
+              <th class="py-2.5 px-3">Souveränitäts-Regel</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-hairline text-ink-secondary font-sans">
+            <tr>
+              <td class="py-2.5 px-3 font-medium text-ink-primary">Auslöser-Position</td>
+              <td class="py-2.5 px-3">Oben rechts in der Hero-Kopfzeile (neben Statusbadge)</td>
+              <td class="py-2.5 px-3">Oben rechts direkt am Buchdeckelrand</td>
+              <td class="py-2.5 px-3 font-mono text-[10px]">Identische 28px Trefferfläche</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 px-3 font-medium text-ink-primary">Popover-Dimension</td>
+              <td class="py-2.5 px-3"><code class="font-mono text-fokal">w-64 (256px)</code>, verankert am Knopf</td>
+              <td class="py-2.5 px-3"><code class="font-mono text-fokal">w-64 (256px)</code>, verankert am Knopf</td>
+              <td class="py-2.5 px-3 font-mono text-[10px]">Freies Überhängen ohne Scroll-Sprung</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 px-3 font-medium text-ink-primary">Menüeinträge</td>
+              <td class="py-2.5 px-3">3 Zeilen: Duplizieren, Exportieren, Archivieren</td>
+              <td class="py-2.5 px-3">3 Zeilen aktiv / 2 Zeilen archiviert (+ Wiederherstellen)</td>
+              <td class="py-2.5 px-3 font-mono text-[10px]">Hero zeigt niemals archivierte Bücher</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 px-3 font-medium text-ink-primary">Archivierungs-Konsequenz</td>
+              <td class="py-2.5 px-3">Das nächste aktive Buch rückt automatisch als Hero nach</td>
+              <td class="py-2.5 px-3">Karte verlässt das aktive Grid ins Archiv-Gewölbe</td>
+              <td class="py-2.5 px-3 font-mono text-[10px]">Keine leere Hero-Lücke (Deterministisch)</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 px-3 font-medium text-ink-primary">Fehlerbehandlung</td>
+              <td class="py-2.5 px-3">Inline-Fehlerzeile unter geschlossenem Knopf (<code class="font-mono text-status-alert">#AC3031</code>)</td>
+              <td class="py-2.5 px-3">Inline-Fehlerzeile unter geschlossenem Knopf (<code class="font-mono text-status-alert">#AC3031</code>)</td>
+              <td class="py-2.5 px-3 font-mono text-[10px]">Nichts verloren, deterministischer Retry</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Bottom Actions & Spec Confirmation -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 pb-6 border-t border-border/80 text-xs text-ink-secondary">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-status-success"></span>
+        <span>Narrare Atelier Spec • Alle 3 Hero-Zustände barrierefrei und WCAG AA konform spezifiziert</span>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button class="px-4 py-2 rounded-lg border border-border bg-white text-ink-primary font-medium hover:bg-surface-subtle transition-colors">
+          Zurück zur Bücherregal-Übersicht
+        </button>
+        <button class="px-4 py-2 rounded-lg bg-fokal text-white font-medium hover:bg-fokal-hover transition-colors shadow-xs flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[16px]">print</span>
+          <span>Spezifikation druckfertig (PDF)</span>
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Editorial Footer -->
+  <footer class="w-full py-4 border-t border-border/70 bg-[#F6F3ED] text-[11px] text-ink-muted">
+    <div class="max-w-[1240px] mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div class="flex items-center gap-4">
+        <span>© Narrare Atelier • Literary Modernism Spec V2.4</span>
+        <span>•</span>
+        <span>Schrift: EB Garamond &amp; Plus Jakarta Sans</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span>100% Autorensouveränität</span>
+        <span>•</span>
+        <span>Zero-Surveillance Architecture</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
+
