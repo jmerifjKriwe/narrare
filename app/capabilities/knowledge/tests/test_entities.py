@@ -36,10 +36,10 @@ async def _pending_suggestion(client: AsyncClient) -> dict[str, object]:
     chapter = await client.post(
         f"/api/writing/novels/{novel_id}/chapters", json={"title": "Ankunft"}
     )
-    await client.put(f"/api/writing/chapters/{chapter.json()['id']}", json={"body": CHAPTER_BODY})
-    await client.post(
-        f"/api/knowledge/extraction/{novel_id}", json={"chapter_id": chapter.json()["id"]}
-    )
+    chapter_id = chapter.json()["id"]
+    # The prose lives on a scene now (W4 §5): the chapter is the shell.
+    await client.post(f"/api/writing/chapters/{chapter_id}/scenes", json={"body": CHAPTER_BODY})
+    await client.post(f"/api/knowledge/extraction/{novel_id}", json={"chapter_id": chapter_id})
 
     from app.capabilities.knowledge.jobs import handlers
     from app.kernel.jobs.worker import Worker

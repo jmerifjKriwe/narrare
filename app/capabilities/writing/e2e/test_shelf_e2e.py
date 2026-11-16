@@ -40,7 +40,7 @@ from app.capabilities.writing.e2e.conftest import (
     patch_novel,
     set_theme,
     word_body,
-    write_chapter,
+    write_scene,
 )
 from app.kernel.testing.a11y import assert_accessible
 from app.kernel.testing.db_rows import rows as _shared_rows
@@ -149,7 +149,7 @@ def _seed_klang_with_chapter(words: int) -> dict[str, object]:
     """The rich book: genre, blurb, target and one written chapter."""
     novel = create_novel(KLANG, genre=KLANG_GENRE, blurb=KLANG_BLURB, target_words=80000)
     chapter = create_chapter(str(novel["id"]), "Der erste Schnee")
-    write_chapter(str(chapter["id"]), word_body(words))
+    write_scene(str(chapter["id"]), word_body(words))
     return novel
 
 
@@ -356,9 +356,9 @@ def test_duplicate_grows_the_shelf_with_an_equal_copy(page: Page, installed: Sta
     novel = create_novel(KLANG, genre=KLANG_GENRE, blurb=KLANG_BLURB, target_words=80000)
     patch_novel(str(novel["id"]), status="draft")
     first = create_chapter(str(novel["id"]), "Das Flüstern im Wald")
-    write_chapter(str(first["id"]), word_body(300))
+    write_scene(str(first["id"]), word_body(300))
     second = create_chapter(str(novel["id"]), "Die Grenze zwischen Welten")
-    write_chapter(str(second["id"]), word_body(200))
+    write_scene(str(second["id"]), word_body(200))
     create_novel(WINTERHAUS)  # created last → the hero; Klang stands in the grid
 
     _goto_shelf(page)
@@ -751,7 +751,7 @@ def test_an_api_chapter_write_moves_the_banner_through_the_seam(
 
     # The API write: 150 words land on today's ledger row.
     chapter = create_chapter(str(novel["id"]), "Der erste Schnee")
-    write_chapter(str(chapter["id"]), word_body(150))
+    write_scene(str(chapter["id"]), word_body(150))
 
     # The cache holds — no invalidation has fired, the banner still speaks the
     # old answer (the 30 s staleTime, honestly stale until the family asks).

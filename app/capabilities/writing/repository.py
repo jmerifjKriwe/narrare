@@ -296,9 +296,11 @@ class ChapterRepository(ScopedRepository[Chapter]):
     async def copy_into(self, novel_id: UUID, chapters: Sequence[Chapter]) -> Sequence[Chapter]:
         """Flush copies of the chapters into a new novel, positions preserved.
 
-        The copies are new rows — titles, bodies and positions as read,
-        timestamps their own. No allocator and no lock: the target novel
-        is brand new, so no other writer can append to it before this
+        The copies are new rows — titles and positions as read, timestamps
+        their own. The prose is not copied here: it lives on the scenes now
+        (W4 §5), and the caller hangs each original's scenes off its own copy
+        (``SceneRepository.copy_into``). No allocator and no lock: the target
+        novel is brand new, so no other writer can append to it before this
         transaction commits, and the position invariant holds without
         the lock every append to a live book takes. The caller commits
         the copies together with the novel row. The copies come back in
@@ -310,7 +312,6 @@ class ChapterRepository(ScopedRepository[Chapter]):
                 user_id=self.user_id,
                 novel_id=novel_id,
                 title=chapter.title,
-                body=chapter.body,
                 position=chapter.position,
             )
             for chapter in chapters

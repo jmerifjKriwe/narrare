@@ -14,9 +14,9 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
-from app.kernel.contracts.models import Chapter, Entity, EntityRelation, Novel
+from app.kernel.contracts.models import Chapter, Entity, EntityRelation, Novel, Scene
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.interchange import (
@@ -85,24 +85,19 @@ async def _seed_novel() -> UUID:
                 note="aus Briefen",
             )
         )
-        session.add_all(
-            [
-                Chapter(
-                    user_id=OWNER,
-                    novel_id=novel.id,
-                    title="Ankunft",
-                    position=0,
-                    body="Der Regen hörte auf.\n",
-                ),
-                Chapter(
-                    user_id=OWNER,
-                    novel_id=novel.id,
-                    title="Der Pfad",
-                    position=1,
-                    body="Zweiter Teil.\n",
-                ),
-            ]
+        # The prose lives on scenes now (W4 §5): each chapter is a shell with
+        # ONE scene at position 1 carrying its body — the migration's wrap.
+        chapter_seeds = (
+            ("Ankunft", 0, "Der Regen hörte auf.\n"),
+            ("Der Pfad", 1, "Zweiter Teil.\n"),
         )
+        for title, position, body in chapter_seeds:
+            chapter = Chapter(user_id=OWNER, novel_id=novel.id, title=title, position=position)
+            session.add(chapter)
+            await session.flush()
+            session.add(
+                Scene(user_id=OWNER, chapter_id=chapter.id, position=1, title="", body=body)
+            )
         await session.commit()
         return novel.id
 
@@ -159,6 +154,33 @@ async def _chapters(novel_id: UUID) -> list[Chapter]:
     return chapters
 
 
+async def _scenes(novel_id: UUID) -> list[Scene]:
+    """The novel's scenes, grouped by chapter in position order — the prose
+    source the engine reads and writes now (W4 §5)."""
+    chapters = await _chapters(novel_id)
+    async with Session() as session:
+        scenes = (
+            await session.scalars(
+                select(Scene)
+                .where(
+                    Scene.chapter_id.in_([chapter.id for chapter in chapters]),
+                    Scene.user_id == OWNER,
+                )
+                .order_by(Scene.chapter_id, Scene.position)
+            )
+        ).all()
+    return list(scenes)
+
+
+async def _prose(novel_id: UUID) -> dict[UUID, str]:
+    """Each chapter's prose as its scenes joined — the engine's convention,
+    mirrored here so the assertions read the source the swap moved to."""
+    bodies: dict[UUID, list[str]] = {}
+    for scene in await _scenes(novel_id):
+        bodies.setdefault(scene.chapter_id, []).append(scene.body)
+    return {chapter_id: "\n\n".join(parts) for chapter_id, parts in bodies.items()}
+
+
 async def _entities(novel_id: UUID) -> list[Entity]:
     _, entities, _ = await _rows(novel_id)
     return entities
@@ -191,8 +213,18 @@ async def test_export_then_import_as_new_is_identical(a_user: None) -> None:
     old_chapters, old_entities, old_edges = await _rows(novel_id)
     new_chapters, new_entities, new_edges = await _rows(report.novel_id)
     assert [c.title for c in new_chapters] == [c.title for c in old_chapters]
-    assert [c.body for c in new_chapters] == [c.body for c in old_chapters]
+    # The prose rides the scenes now: equal chapter prose, each landed chapter
+    # reconstructed as ONE scene at position 1 (the archive's wrap).
+    old_prose = await _prose(novel_id)
+    new_prose = await _prose(report.novel_id)
+    assert [new_prose.get(c.id, "") for c in new_chapters] == [
+        old_prose.get(c.id, "") for c in old_chapters
+    ]
     assert [c.position for c in new_chapters] == [0, 1]
+    new_scenes = await _scenes(report.novel_id)
+    assert len(new_scenes) == len(new_chapters)
+    assert {s.position for s in new_scenes} == {1}
+    assert {s.id for s in new_scenes}.isdisjoint({s.id for s in await _scenes(novel_id)})
     assert {c.id for c in new_chapters}.isdisjoint({c.id for c in old_chapters})
 
     old_by_name = {e.name: e for e in old_entities}
@@ -312,7 +344,8 @@ async def test_stale_revision_is_refused(a_user: None) -> None:
     assert "stale" in conflict.reason
 
     fresh = await _chapters(novel_id)
-    assert fresh[0].body == "Der Regen hörte auf.\n"  # byte-unchanged
+    prose = await _prose(novel_id)
+    assert prose[fresh[0].id] == "Der Regen hörte auf.\n"  # byte-unchanged
     assert fresh[0].title == "Ankunft"
 
 
@@ -339,8 +372,13 @@ async def test_newer_file_revision_applies(a_user: None) -> None:
     assert report.chapters_revised == 1 and report.chapters_new == 0
     assert report.conflicts == []
     fresh = await _chapters(novel_id)
-    assert fresh[0].body == "Umgeschrieben.\n"
+    prose = await _prose(novel_id)
+    assert prose[fresh[0].id] == "Umgeschrieben.\n"
     assert fresh[0].title == "Ankunft"
+    # A revision reconstructs the chapter as ONE scene carrying the file's prose.
+    revised_scenes = [s for s in await _scenes(novel_id) if s.chapter_id == fresh[0].id]
+    assert len(revised_scenes) == 1
+    assert revised_scenes[0].body == "Umgeschrieben.\n"
 
 
 async def test_bare_chapter_file_imports(a_user: None) -> None:
@@ -358,7 +396,80 @@ async def test_bare_chapter_file_imports(a_user: None) -> None:
     fresh = await _chapters(novel_id)
     assert [c.position for c in fresh] == [0, 1, 2, 3]  # appended after the last stock position
     assert [c.title for c in fresh[2:]] == ["ein nachtstück", "epilog"]  # filename order, stems
-    assert fresh[2].body == "Zwei Uhr nachts.\n"
+    prose = await _prose(novel_id)
+    assert prose[fresh[2].id] == "Zwei Uhr nachts.\n"
+    # Each hand-dropped chapter landed as one scene carrying its file's prose.
+    assert prose[fresh[3].id] == "Und war gut.\n"
+    landed_scenes = [
+        s for s in await _scenes(novel_id) if s.chapter_id in {fresh[2].id, fresh[3].id}
+    ]
+    assert len(landed_scenes) == 2
+    assert {s.position for s in landed_scenes} == {1}
+
+
+async def test_export_joins_a_chapters_scenes_in_position_order(a_user: None) -> None:
+    """The archive stays chapter-shaped: a chapter's scenes join into one prose
+    body in position order, the blank-line seam — scene boundaries are
+    workspace structure, not a manuscript export fact (W4 §5)."""
+    novel_id = await _seed_novel()
+    async with Session() as session:
+        chapter = await session.scalar(
+            select(Chapter).where(Chapter.novel_id == novel_id, Chapter.title == "Ankunft")
+        )
+        assert chapter is not None
+        # Two scenes, inserted out of position order: the join walks position.
+        await session.execute(delete(Scene).where(Scene.chapter_id == chapter.id))
+        session.add_all(
+            [
+                Scene(
+                    user_id=OWNER, chapter_id=chapter.id, position=2, title="", body="Zweite Szene."
+                ),
+                Scene(
+                    user_id=OWNER, chapter_id=chapter.id, position=1, title="", body="Erste Szene."
+                ),
+            ]
+        )
+        await session.commit()
+
+    _, files = await _export(novel_id)
+    archive = parse_archive(ArchiveTree(files))
+    ankunft = next(c for c in archive.chapters if c.title == "Ankunft")
+    assert ankunft.body == "Erste Szene.\n\nZweite Szene."
+
+
+async def test_a_revision_collapses_a_chapters_scenes_to_one(a_user: None) -> None:
+    """A landed chapter is chapter + ONE scene: revising a multi-scene chapter
+    replaces its scenes with the single scene the archive reconstructs."""
+    novel_id = await _seed_novel()
+    async with Session() as session:
+        chapter = await session.scalar(
+            select(Chapter).where(Chapter.novel_id == novel_id, Chapter.title == "Ankunft")
+        )
+        assert chapter is not None
+        chapter.updated_at = STALE_BASE
+        await session.execute(delete(Scene).where(Scene.chapter_id == chapter.id))
+        session.add_all(
+            [
+                Scene(user_id=OWNER, chapter_id=chapter.id, position=1, title="", body="Eins."),
+                Scene(user_id=OWNER, chapter_id=chapter.id, position=2, title="", body="Zwei."),
+            ]
+        )
+        await session.commit()
+
+    _, files = await _export(novel_id)
+    archive = parse_archive(ArchiveTree(files))
+    revised = next(c for c in archive.chapters if c.title == "Ankunft")
+    revised.body = "Neu geschrieben.\n"
+    revised.updated = STALE_BASE  # equal counts: not older than the row
+    report = await _import(ArchiveTree(serialize_archive(archive)), novel_id)
+
+    assert report.chapters_revised == 1
+    fresh = await _chapters(novel_id)
+    ankunft = next(c for c in fresh if c.title == "Ankunft")
+    scenes = [s for s in await _scenes(novel_id) if s.chapter_id == ankunft.id]
+    assert len(scenes) == 1
+    assert scenes[0].position == 1
+    assert scenes[0].body == "Neu geschrieben.\n"
 
 
 async def test_entity_rename_is_applied_and_reported(a_user: None) -> None:

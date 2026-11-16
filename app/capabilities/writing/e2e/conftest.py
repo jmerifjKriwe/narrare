@@ -102,13 +102,15 @@ def create_chapter(novel_id: str, title: str = "") -> dict[str, Any]:
     return chapter
 
 
-def write_chapter(chapter_id: str, body: str) -> dict[str, Any]:
-    """The body write that feeds the activity ledger — the seam's trigger."""
+def write_scene(chapter_id: str, body: str) -> dict[str, Any]:
+    """The prose write that feeds the activity ledger — the seam's trigger.
+    Prose lives on a scene now (W4 §5): the chapter is the shell, so the write
+    lands a scene under it, and the scene create feeds today's ledger."""
     with _client() as client:
-        response = client.put(f"/api/writing/chapters/{chapter_id}", json={"body": body})
+        response = client.post(f"/api/writing/chapters/{chapter_id}/scenes", json={"body": body})
     response.raise_for_status()
-    chapter: dict[str, Any] = response.json()
-    return chapter
+    scene: dict[str, Any] = response.json()
+    return scene
 
 
 def get_novel(novel_id: str) -> dict[str, Any]:

@@ -50,12 +50,15 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID  # noqa: TC003  runtime: Task 4 serializes ImportReport via get_type_hints
 
+from sqlalchemy import delete
+
 from app.kernel.contracts.models import (
     ENTITY_TYPES,
     Chapter,
     Entity,
     EntityRelation,
     Novel,
+    Scene,
 )
 from app.kernel.contracts.positions import next_chapter_position
 from app.kernel.db.base import ScopedRepository
@@ -228,13 +231,68 @@ class _Chapters(ScopedRepository[Chapter]):
         )
         return result.all()
 
-    async def create(self, novel_id: UUID, title: str, position: int, body: str) -> Chapter:
-        chapter = Chapter(
-            user_id=self.user_id, novel_id=novel_id, title=title, position=position, body=body
-        )
+    async def create(self, novel_id: UUID, title: str, position: int) -> Chapter:
+        chapter = Chapter(user_id=self.user_id, novel_id=novel_id, title=title, position=position)
         self.session.add(chapter)
         await self.session.flush()
         return chapter
+
+
+class _Scenes(ScopedRepository[Scene]):
+    """The prose under the chapters (W4 §5): the archive is chapter-shaped,
+    so the engine reads a chapter's prose as its scenes joined and writes a
+    landed chapter's prose back as ONE scene — the migration's wrap, the
+    import's reconstruction. Scene boundaries are workspace structure, not a
+    manuscript fact, so they never ride the archive."""
+
+    model = Scene
+
+    async def list_for_chapters(self, chapter_ids: Sequence[UUID]) -> Sequence[Scene]:
+        """Every scene of the given chapters, scoped, grouped by chapter in
+        position order — the reading order the prose join walks."""
+        if not chapter_ids:
+            return []
+        result = await self.session.scalars(
+            self.query()
+            .where(Scene.chapter_id.in_(chapter_ids))
+            .order_by(Scene.chapter_id, Scene.position)
+        )
+        return result.all()
+
+    async def create(self, chapter_id: UUID, body: str) -> Scene:
+        """Flush the chapter's one scene at position 1 — the wrap's shape:
+        empty title (the localized placeholder's state), no setting or
+        story_time. A landed chapter is brand new or freshly revised, so the
+        position needs no allocator's lock."""
+        scene = Scene(user_id=self.user_id, chapter_id=chapter_id, position=1, title="", body=body)
+        self.session.add(scene)
+        await self.session.flush()
+        return scene
+
+    async def replace_for_chapter(self, chapter_id: UUID, body: str) -> None:
+        """A revision's prose write: the chapter's scenes go and ONE scene
+        carrying the file's body takes their place — the archive reconstructs
+        one scene per landed chapter. The delete and the insert ride the
+        caller's transaction; the deferrable position constraint checks the
+        finished set at commit."""
+        await self.session.execute(
+            delete(Scene).where(Scene.chapter_id == chapter_id, Scene.user_id == self.user_id)
+        )
+        await self.create(chapter_id, body)
+
+
+def _prose_by_chapter(scenes: Sequence[Scene]) -> dict[UUID, str]:
+    """Each chapter's prose as its scenes carry it: the bodies joined in
+    position order with a blank line, the manuscript's paragraph seam. The
+    scenes arrive grouped by chapter in position order (``_Scenes``), so the
+    join walks reading order. A single-scene chapter reads back verbatim (the
+    migration's wrap); a chapter without scenes has no entry and the caller's
+    ``.get(..., "")`` answers the empty prose. The knowledge jobs share this
+    convention — one prose source, one seam."""
+    bodies: dict[UUID, list[str]] = {}
+    for scene in scenes:
+        bodies.setdefault(scene.chapter_id, []).append(scene.body)
+    return {chapter_id: "\n\n".join(parts) for chapter_id, parts in bodies.items()}
 
 
 class _Edges(ScopedRepository[EntityRelation]):
@@ -369,6 +427,11 @@ async def export_novel(
     if novel is None:
         raise NovelNotFoundError(f"novel {novel_id} does not exist for this user")
     chapters = await _Chapters(session, user_id).list_for_novel(novel_id)
+    # The prose lives on the scenes now (W4 §5): the archive stays chapter-shaped,
+    # so each chapter file carries its scenes' prose joined in position order —
+    # scene boundaries are workspace structure, not a manuscript export fact.
+    scenes = await _Scenes(session, user_id).list_for_chapters([chapter.id for chapter in chapters])
+    prose = _prose_by_chapter(scenes)
     entities = await _Entities(session, user_id).list_for_novel(novel_id)
     by_id = {entity.id: entity for entity in entities}
     edges = await _Edges(session, user_id).list_for_novel([entity.id for entity in entities])
@@ -382,7 +445,7 @@ async def export_novel(
             ChapterFile(
                 title=chapter.title,
                 position=chapter.position,
-                body=chapter.body,
+                body=prose.get(chapter.id, ""),
                 id=chapter.id,
                 updated=chapter.updated_at,
             )
@@ -487,7 +550,7 @@ async def import_archive(
 async def _merge_chapters(
     session: AsyncSession, user_id: UUID, novel: Novel, archive: NovelArchive, report: ImportReport
 ) -> None:
-    """Rule 4: revision applies title and body; new chapters append.
+    """Rule 4: revision applies title and prose; new chapters append.
 
     Chapters match by frontmatter `id` alone — a hand-written file without
     one is new. The stock's position is the truth: revisions never move it,
@@ -495,8 +558,15 @@ async def _merge_chapters(
     file whose frontmatter position disagrees with `metadata.json`'s index
     position still imports (the frontmatter wins for placement) and the
     disagreement is a reported conflict; on matched chapters it is ignored.
+
+    The prose is the chapter's scenes (W4 §5): a landed chapter — new or
+    revised — is written as the chapter shell plus ONE scene carrying the
+    file's body, the archive's reconstruction of the migration's wrap. The
+    already-current check compares the file's prose against the stock's
+    scenes joined; a revision replaces the chapter's scenes with that one.
     """
     chapters = _Chapters(session, user_id)
+    scenes = _Scenes(session, user_id)
     # The one allocator, and with it the novel-row lock: an import landing
     # beside a creation — or beside another import — must not take the same
     # number, and the lock is what makes the read see the other writer's
@@ -504,6 +574,11 @@ async def _merge_chapters(
     position = await next_chapter_position(session, user_id=user_id, novel_id=novel.id)
     stock = await chapters.list_for_novel(novel.id)
     by_id = {chapter.id: chapter for chapter in stock}
+    # The stock's prose is its scenes joined (W4 §5): the already-current
+    # check compares the file's chapter prose against that, never a chapter
+    # column. A landed chapter — new or revised — is written as chapter + one
+    # scene, the archive's reconstruction of the migration's wrap.
+    prose = _prose_by_chapter(await scenes.list_for_chapters([chapter.id for chapter in stock]))
     for file_chapter in archive.chapters:
         row = by_id.get(file_chapter.id) if file_chapter.id is not None else None
         if row is None:
@@ -524,17 +599,26 @@ async def _merge_chapters(
                         },
                     )
                 )
-            await chapters.create(novel.id, file_chapter.title, position, file_chapter.body)
+            created = await chapters.create(novel.id, file_chapter.title, position)
+            await scenes.create(created.id, file_chapter.body)
             position += 1
             report.chapters_new += 1
             continue
-        if row.title == file_chapter.title and row.body == file_chapter.body:
+        if row.title == file_chapter.title and prose.get(row.id, "") == file_chapter.body:
             report.chapters_already_current += 1
             continue
         file_updated = _aware(file_chapter.updated)
         if file_updated is None or file_updated >= row.updated_at:
             row.title = file_chapter.title
-            row.body = file_chapter.body
+            # The prose write rides the scenes now; the chapter shell's own
+            # timestamp still advances on a revision the way the body write's
+            # onupdate did — the export's `updated` frontmatter reads it, and
+            # the revision guard compares against it.
+            row.updated_at = datetime.now(UTC)
+            await scenes.replace_for_chapter(row.id, file_chapter.body)
+            # Keep the snapshot current the way the old in-place body write did:
+            # a later file matching this same id compares against the revision.
+            prose[row.id] = file_chapter.body
             report.chapters_revised += 1
         else:
             report.conflicts.append(

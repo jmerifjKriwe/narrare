@@ -66,7 +66,8 @@ async def _chapter(client: AsyncClient, title: str = "Der Nebel") -> tuple[str, 
         f"/api/writing/novels/{novel.json()['id']}/chapters", json={"title": "Ankunft"}
     )
     chapter_id = chapter.json()["id"]
-    await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": CHAPTER_BODY})
+    # The prose lives on a scene now (W4 §5): the chapter is the shell.
+    await client.post(f"/api/writing/chapters/{chapter_id}/scenes", json={"body": CHAPTER_BODY})
     return novel.json()["id"], chapter_id
 
 
@@ -156,8 +157,10 @@ class _RecordingProvider:
 
 
 async def _write_body(client: AsyncClient, chapter_id: str, body: str) -> None:
-    """Replace a chapter's body the way the editor does, before enqueueing."""
-    response = await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": body})
+    """Replace a chapter's prose the way the editor does, before enqueueing —
+    a scene write now (W4 §5): the chapter's one scene carries the body."""
+    scenes = (await client.get(f"/api/writing/chapters/{chapter_id}/scenes")).json()
+    response = await client.put(f"/api/writing/scenes/{scenes[0]['id']}", json={"body": body})
     assert response.status_code == 200
 
 
