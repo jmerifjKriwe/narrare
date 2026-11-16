@@ -154,13 +154,21 @@ def _plant_contradiction(api: httpx.Client, chapter: dict[str, object]) -> None:
 
     The demo names Research Facility 7 in two chapters; one of them becomes 9.
     A name carrying two numbers is what the consistency contract reports.
+    The prose lives on scenes now (W4 §5) — the chapter is the grouping shell,
+    so the edit finds the scene carrying the mention (the list is in position
+    order) and renumbers it there, the same one-mention edit a writer makes.
     """
-    original = str(chapter["body"])
-    body = original.replace("Research Facility 7", "Research Facility 9", 1)
-    if body == original:
-        raise SystemExit("the demo no longer names Research Facility 7")
-    updated = api.put(f"/api/writing/chapters/{chapter['id']}", json={"body": body})
-    updated.raise_for_status()
+    listed = api.get(f"/api/writing/chapters/{chapter['id']}/scenes")
+    listed.raise_for_status()
+    for scene in listed.json():
+        original = str(scene["body"])
+        if "Research Facility 7" not in original:
+            continue
+        body = original.replace("Research Facility 7", "Research Facility 9", 1)
+        updated = api.put(f"/api/writing/scenes/{scene['id']}", json={"body": body})
+        updated.raise_for_status()
+        return
+    raise SystemExit("the demo no longer names Research Facility 7")
 
 
 def _run_check(api: httpx.Client, novel_id: str) -> None:
@@ -242,8 +250,10 @@ def _seed_graph(api: httpx.Client) -> tuple[str, str, str]:
     chapter = api.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": "Ankunft"})
     chapter.raise_for_status()
     chapter_id = str(chapter.json()["id"])
-    saved = api.put(
-        f"/api/writing/chapters/{chapter_id}",
+    # The prose rides a scene under the chapter (W4 §5): the extraction reads
+    # the chapter's scene-derived prose, the same path a writer's save feeds.
+    saved = api.post(
+        f"/api/writing/chapters/{chapter_id}/scenes",
         json={"body": "Mira betrat das alte Haus am See. Draußen schwieg der Leuchtturm."},
     )
     saved.raise_for_status()
@@ -314,7 +324,7 @@ def _seed_storyboard(api: httpx.Client) -> str:
     """A novel with chapters wearing three different sync badges, through the API.
 
     The scenes enter the world the way a writer would place them — through
-    the real save — and the prose rides the real chapter update, so the
+    the real save — and the prose rides the real scene create, so the
     word count reads above zero. Returns the novel's id, the storyboard
     canvas's ``?novel=`` parameter. Mirrors the storyboard E2E's seed.
     """
@@ -336,10 +346,10 @@ def _seed_storyboard(api: httpx.Client) -> str:
             json={"scenes": scenes},
         )
         saved.raise_for_status()
-    updated = api.put(
-        f"/api/writing/chapters/{heimkehr}", json={"body": "Erste Worte im Manuskript."}
+    saved = api.post(
+        f"/api/writing/chapters/{heimkehr}/scenes", json={"body": "Erste Worte im Manuskript."}
     )
-    updated.raise_for_status()
+    saved.raise_for_status()
     return novel_id
 
 
