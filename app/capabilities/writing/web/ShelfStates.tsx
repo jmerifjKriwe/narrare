@@ -20,8 +20,9 @@ const SERIF = "[font-family:var(--font-serif)]";
 const FOCUS =
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
 
-/** One quiet placeholder block — the soft token, the shell's pulse. */
-function Bone({ className }: { className: string }) {
+/** One quiet placeholder block — the soft token, the shell's pulse.
+ *  Exported for the activity banner's own skeleton (Task 10): one family. */
+export function Bone({ className }: { className: string }) {
   return <div aria-hidden="true" className={`animate-pulse rounded bg-soft ${className}`} />;
 }
 

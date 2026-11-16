@@ -138,6 +138,31 @@ const ARCHIVED = novelRow({
   updated_at: "2026-11-12T08:00:00Z",
 });
 
+/** The activity aggregate as the API answers it (Task 4): thirty dense
+ *  days, the last three written, today 412 — the banner's and the streak
+ *  chip's real read. A test may script a failure or another day. */
+const ACTIVITY_WORDS = [
+  0, 0, 120, 0, 340, 0, 0, 180, 0, 0, 0, 260, 0, 0, 90, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 180, 260, 412,
+];
+const ACTIVITY_POINTS = ACTIVITY_WORDS.map((words, at) => ({
+  date: `2026-10-${String(at + 1).padStart(2, "0")}`,
+  words,
+}));
+function activityRow(overrides: Partial<{ points: { date: string; words: number }[]; streak_days: number; weekly_average: number; today_words: number }> = {}) {
+  return {
+    points: ACTIVITY_POINTS,
+    streak_days: 3,
+    weekly_average: 840,
+    today_words: 412,
+    ...overrides,
+  };
+}
+let activityAnswer: () => Promise<{ data?: unknown; response: Response }> = async () => ({
+  data: activityRow(),
+  response: ok(),
+});
+
 /** The settings row's locale, as the backend holds it. */
 let rowLocale: string | null = "de";
 /** What the novels endpoint answers; a test may script a failure or a gap. */
@@ -186,6 +211,7 @@ function scriptApi() {
     if (path === "/api/writing/novels") {
       return init?.params?.query?.include_archived ? archivedAnswer() : novelsAnswer();
     }
+    if (path === "/api/writing/activity") return activityAnswer();
     throw new Error(`unexpected request: ${path}`);
   });
   api.POST.mockImplementation(async (path: string, init?: { params?: { path?: { novel_id?: string } }; body?: { title?: string; genre?: string; target_words?: number } }) => {
@@ -229,6 +255,7 @@ const cardOf = (title: string) =>
 
 beforeEach(() => {
   rowLocale = "de";
+  activityAnswer = async () => ({ data: activityRow(), response: ok() });
   novelsAnswer = async () => ({ data: SHELF_ROWS, response: ok() });
   archivedAnswer = async () => ({ data: [...SHELF_ROWS, ARCHIVED], response: ok() });
   duplicateAnswer = async () => {
@@ -297,9 +324,10 @@ describe("the shelf — the hero and the grid speak the rows' own facts", () => 
     // 48.342 + 0 + 24.150 + 11.200 — the sum of the rows, grouped de-DE.
     expect(screen.getByText("83.692")).toBeTruthy();
     expect(screen.getByText(de["writing.shelf.metrics.wordsLabel"])).toBeTruthy();
-    // The streak is the activity aggregate's — Task 10 wires it; today the
-    // chip stands neutral, never an invented day count.
+    // The streak is the activity aggregate's own (Task 10) — three written
+    // days in a row, pluralized, never an invented day count.
     expect(screen.getByText(de["writing.shelf.metrics.streakLabel"])).toBeTruthy();
+    expect(screen.getByText(t("writing.shelf.metrics.streak", { count: 3 }))).toBeTruthy();
   });
 
   it("the word pair is the row's count and target, in tabular figures", async () => {
@@ -487,9 +515,12 @@ describe("the shelf — every door honest about what is not built yet", () => {
       expect(menu.hasAttribute("disabled")).toBe(false);
       expect(menu.getAttribute("aria-haspopup")).toBe("dialog");
     }
-    // Task 10's banner: neutral values, the statistics door disabled.
-    expect(screen.getByText(de["writing.shelf.banner.title"])).toBeTruthy();
+    // Task 10 made the banner live: the hero's own goal pair and the
+    // aggregate's weekly average; the statistics door stays disabled —
+    // no statistics surface exists to open yet.
+    expect(screen.getByText(t("writing.shelf.banner.goal", { title: HERO.title }))).toBeTruthy();
     expect(screen.getByText(de["writing.shelf.banner.weekly"])).toBeTruthy();
+    expect(screen.getByText("840,0 W/Tag")).toBeTruthy();
     expect(screen.getByRole("button", { name: de["writing.shelf.banner.stats"] }).hasAttribute("disabled")).toBe(true);
   });
 
@@ -545,6 +576,13 @@ describe("the shelf — loading, error and empty answer per the drafts", () => {
       new Promise<{ data: unknown; response: Response }>((resolve) => {
         resolveNovels = resolve;
       });
+    // The aggregate's ask holds too, so the streak chip's placeholder is
+    // pinned deterministically — Task 10 made it wait like its siblings.
+    let resolveActivity!: (answer: { data: unknown; response: Response }) => void;
+    activityAnswer = () =>
+      new Promise<{ data: unknown; response: Response }>((resolve) => {
+        resolveActivity = resolve;
+      });
     renderShelf();
 
     await waitFor(() => expect(api.GET).toHaveBeenCalledWith("/api/writing/novels"));
@@ -566,8 +604,9 @@ describe("the shelf — loading, error and empty answer per the drafts", () => {
     const strip = screen
       .getByText(de["writing.shelf.metrics.booksLabel"])
       .closest(".flex-wrap") as HTMLElement;
-    // Books and words wait as placeholders; the streak stands neutral already.
-    expect(strip.querySelectorAll(".animate-pulse")).toHaveLength(2);
+    // Books, words and the streak all wait as placeholders while their
+    // asks are outstanding — three pulses, one strip.
+    expect(strip.querySelectorAll(".animate-pulse")).toHaveLength(3);
     // No chip-height slab anywhere in the skeleton — the strip above is the only one.
     expect(status.querySelectorAll(".h-14")).toHaveLength(0);
 
@@ -577,6 +616,9 @@ describe("the shelf — loading, error and empty answer per the drafts", () => {
     // shelf now is the search's polite result announcer (Task 7).
     expect(screen.queryByText(de["writing.shelf.loading"])).toBeNull();
     expect(screen.getByRole("status").textContent).toBe(t("writing.shelf.search.results", { count: 3 }));
+
+    resolveActivity({ data: activityRow(), response: ok() });
+    expect(await screen.findByText(t("writing.shelf.metrics.streak", { count: 3 }))).toBeTruthy();
   });
 
   it("an unreachable list names the failure and offers a working retry", async () => {
@@ -691,9 +733,10 @@ describe("the shelf — loading, error and empty answer per the drafts", () => {
     expect(screen.getByText("0")).toBeTruthy();
     expect(screen.queryAllByRole("article")).toHaveLength(0);
     expect(screen.queryByRole("heading", { level: 2, name: "Dead Signal" })).toBeNull();
-    // The empty panel's doors stay honest, the banner neutral beside them.
+    // The empty panel's doors stay honest; the banner names no goal beside
+    // them — no active hero to carry one (the aggregate still speaks).
     expect(screen.getAllByRole("button", { name: de["writing.shelf.newBook"] }).length).toBe(2);
-    expect(screen.getByText(de["writing.shelf.banner.title"])).toBeTruthy();
+    expect(screen.getByText(de["writing.shelf.banner.noGoal"])).toBeTruthy();
   });
 });
 
@@ -2019,5 +2062,61 @@ describe("the shelf — the dialog creates for real and closes honestly", () => 
     expect(await screen.findByRole("heading", { level: 2, name: CREATED.title })).toBeTruthy();
     expect(screen.queryByText("Dein erstes Buch wartet.")).toBeNull();
     expect(document.activeElement).toBe(topNewBook());
+  });
+});
+
+describe("the shelf — the streak chip and the banner ride the real aggregate", () => {
+  it("a zero streak is an honest 0 — never hidden, never a dash", async () => {
+    activityAnswer = async () => ({ data: activityRow({ streak_days: 0 }), response: ok() });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    expect(screen.getByText(t("writing.shelf.metrics.streak", { count: 0 }))).toBeTruthy();
+  });
+
+  it("an unreachable aggregate leaves the chip neutral — the shelf still stands", async () => {
+    activityAnswer = async () => ({ data: undefined, response: new Response(null, { status: 503 }) });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    const chipValue = screen
+      .getByText(de["writing.shelf.metrics.streakLabel"])
+      .parentElement?.firstElementChild;
+    expect(chipValue?.textContent).toBe("—");
+    // The banner's own retry family stands beside the live shelf.
+    expect(screen.getByRole("alert").textContent).toContain(de["writing.shelf.banner.error.title"]);
+    expect(screen.getByRole("button", { name: de["writing.shelf.error.retry"] })).toBeTruthy();
+  });
+
+  it("a shelf write refetches the aggregate — the banner moves with the day's words", async () => {
+    // The invalidation family's live pin: the archive write goes through
+    // invalidateNovelShelf, which asks the activity key again — the same
+    // door a chapter write moves the banner through (Task 4's write path).
+    let calls = 0;
+    activityAnswer = async () => {
+      calls += 1;
+      const today = calls === 1 ? 412 : 900;
+      return {
+        data: activityRow({
+          today_words: today,
+          points: [...ACTIVITY_POINTS.slice(0, 29), { date: ACTIVITY_POINTS[29].date, words: today }],
+        }),
+        response: ok(),
+      };
+    };
+    archiveAnswer = async (_id, body) => ({
+      data: { ...SECOND, archived_at: body.archived_at },
+      response: ok(),
+    });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+    expect(screen.getByText(/Du hast heute bereits 412 Wörter verfasst\./)).toBeTruthy();
+    novelsAnswer = async () => ({ data: [HERO, THIRD, FOURTH], response: ok() });
+
+    const dialog = openMenu("Winterhaus");
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.shelf.menu.archive"] }));
+    const confirm = screen.getByRole("dialog");
+    fireEvent.click(within(confirm).getByRole("button", { name: de["writing.shelf.menu.archive"] }));
+
+    await waitFor(() => expect(calls).toBe(2));
+    expect(await screen.findByText(/Du hast heute bereits 900 Wörter verfasst\./)).toBeTruthy();
   });
 });

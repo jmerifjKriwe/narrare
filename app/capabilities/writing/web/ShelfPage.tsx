@@ -5,7 +5,7 @@ import { catalogs } from "@shell/lib/generated/catalogs";
 import { useTranslation } from "@shell/lib/i18n";
 import { activeLocale, applyLocale, chosenLocale, type Locale } from "@shell/lib/locale";
 import { usePageTitle } from "@shell/lib/pageTitle";
-import { queryClient, useNovelsQuery } from "@shell/lib/query";
+import { queryClient, useActivityQuery, useNovelsQuery } from "@shell/lib/query";
 import { formatWordCount } from "@shell/lib/words";
 import { Icon, type IconName } from "@shell/ui/icons";
 
@@ -38,9 +38,13 @@ import { ShelfError, ShelfLoading } from "./ShelfStates";
  * language. The pre-setup mirror stays setup's own seam; the shelf is only
  * ever reached once the row exists.
  *
+ * The activity banner and the streak chip are real (Task 10): the atelier's
+ * aggregate feeds the goal line (the hero book's own target), today's words,
+ * the weekly average, the thirty-day sparkline and the streak; the write
+ * family invalidates the activity key, so a chapter write moves the banner.
  * Doors the further build-out has not reached stay honestly disabled with
- * the drafted note, each comment naming its owning task: the activity
- * banner and the streak chip (Task 10), import (the import wave). The
+ * the drafted note, each comment naming its owning task: the banner's
+ * statistics door (no statistics surface yet), import (the import wave). The
  * new-book door is real (Task 9): both copies open the drafted modal over
  * the scrimmed shelf, three fields and a live cover, one POST and the
  * shelf's own refetch. The search and filter chrome is real (Task 7):
@@ -115,6 +119,9 @@ export function ShelfPage() {
   const [includeArchived, setIncludeArchived] = useState(false);
 
   const novels = useNovelsQuery(includeArchived);
+  // The atelier's activity aggregate — the streak chip's read; the banner
+  // subscribes to the same key, so one ask serves both surfaces.
+  const activity = useActivityQuery();
   const heroNoteId = useId();
   const doorsNoteId = useId();
   const bannerNoteId = useId();
@@ -192,7 +199,9 @@ export function ShelfPage() {
   const showError = (novels.isError || retrying) && !novels.isSuccess;
 
   // The shelf's own seam: the novels query the capability's write paths
-  // invalidate (["novels"]). Archived books stay out by the API's default;
+  // invalidate (the ["novels"] prefix, with the activity aggregate beside
+  // it — one family, so a chapter write moves the banner too). Archived
+  // books stay out by the API's default;
   // the archive toggle asks for them and the model guards the boundary
   // anyway. While the ask is in flight the skeleton stands (the toggle's
   // own refetch keeps the previous list — no skeleton flash); a failure is
@@ -242,6 +251,13 @@ export function ShelfPage() {
       ? t("writing.shelf.metrics.books", { count: active.length })
       : "—";
   const wordsValue = novels.isPending ? pendingValue : novels.isSuccess ? formatWordCount(totalWords) : "—";
+  // The streak is the aggregate's own day count — an honest 0 when none,
+  // a placeholder while the ask runs, the family's dash on a failure.
+  const streakValue = activity.isPending
+    ? pendingValue
+    : activity.isSuccess
+      ? t("writing.shelf.metrics.streak", { count: activity.data.streak_days })
+      : "—";
 
   return (
     // The draft's body: full-bleed parchment, the header sticky above it.
@@ -330,12 +346,12 @@ export function ShelfPage() {
               value={wordsValue}
               label={t("writing.shelf.metrics.wordsLabel")}
             />
-            {/* Task 10 wires the streak from the activity aggregate; until
-                then the chip stands neutral, never an invented day count. */}
+            {/* The streak chip — Task 10 wired it to the activity
+                aggregate; the flame is the draft's own mark. */}
             <MetricChip
               icon="localFire"
               iconClass="bg-surface-container-high text-warning"
-              value="—"
+              value={streakValue}
               label={t("writing.shelf.metrics.streakLabel")}
             />
             {/* The primary actions — the new-book door opens Task 9's
@@ -418,8 +434,9 @@ export function ShelfPage() {
           </>
         )}
 
-        {/* The activity banner — Task 10's surface, neutral until then. */}
-        <ShelfBanner noteId={bannerNoteId} />
+        {/* The activity banner — Task 10's surface, live on the aggregate;
+            the goal line reads the hero book's own target. */}
+        <ShelfBanner hero={hero} noteId={bannerNoteId} />
       </div>
 
       {/* The new-book dialog — mounted only while open, so its answers are

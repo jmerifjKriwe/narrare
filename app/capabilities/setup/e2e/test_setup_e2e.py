@@ -158,8 +158,10 @@ def test_the_blank_path_binds_every_answer_into_the_novel_row(page: Page, stack:
     page.get_by_role("link", name=BACK_TO_SHELF).click()
     expect(page).to_have_url(BASE + "/")
     expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
-    expect(page.get_by_role("heading", name="Der Klang des Eises")).to_be_visible()
-    expect(page.get_by_text("/ 80.000 Wörter")).to_be_visible()
+    # Exact reads: the activity banner's goal line names the book too
+    # (Task 10) — the hero's own heading and word pair are the exact faces.
+    expect(page.get_by_role("heading", name="Der Klang des Eises", exact=True)).to_be_visible()
+    expect(page.get_by_text("/ 80.000 Wörter", exact=True)).to_be_visible()
     assert_accessible(page)
 
     # The honest check: the row carries every answer — the joined genres, the
@@ -242,7 +244,7 @@ def test_the_demo_path_keeps_the_archives_identity_and_binds_the_settings(
     page.get_by_role("link", name=BACK_TO_SHELF).click()
     expect(page).to_have_url(BASE + "/")
     expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
-    expect(page.get_by_role("heading", name=DEMO_TITLE)).to_be_visible()
+    expect(page.get_by_role("heading", name=DEMO_TITLE, exact=True)).to_be_visible()
     assert_accessible(page)
 
     # The honest check: the archive's identity wins, the settings bind onto it,
@@ -357,7 +359,7 @@ def test_the_wizard_state_survives_deep_links_and_a_returning_visit_shows_the_sh
     # takes the root, and its hero speaks the bound novel on every load.
     page.goto(BASE + "/")
     expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
-    expect(page.get_by_role("heading", name="Die Rückkehrerin")).to_be_visible()
+    expect(page.get_by_role("heading", name="Die Rückkehrerin", exact=True)).to_be_visible()
     page.reload()
     expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
 

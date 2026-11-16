@@ -7,6 +7,8 @@ export const client = createClient<paths>({ baseUrl: "" });
 
 export type Novel = components["schemas"]["NovelRead"];
 export type NovelCreate = components["schemas"]["NovelCreate"];
+export type Activity = components["schemas"]["ActivityRead"];
+export type ActivityPoint = components["schemas"]["ActivityPoint"];
 export type SetupResult = components["schemas"]["SetupResult"];
 export type Chapter = components["schemas"]["ChapterRead"];
 export type KnowledgeDocument = components["schemas"]["DocumentRead"];

@@ -26,6 +26,8 @@ import { client } from "./api/client";
 import {
   queryClient,
   sameNovelPlaceholder,
+  useActivityQuery,
+  useArchiveNovel,
   useChaptersQuery,
   useNovelQuery,
   useNovelsQuery,
@@ -198,6 +200,85 @@ describe("useChaptersQuery", () => {
     await waitFor(() => expect(hook.result.current.isError).toBe(true));
     expect(hook.result.current.data).toBeUndefined();
     expect(hook.result.current.error?.message).toContain("404");
+  });
+});
+
+describe("useActivityQuery — the atelier's aggregate, the banner's read", () => {
+  const ACTIVITY = {
+    points: [
+      { date: "2026-11-15", words: 0 },
+      { date: "2026-11-16", words: 412 },
+    ],
+    streak_days: 1,
+    weekly_average: 13.7,
+    today_words: 412,
+  };
+
+  it("the default ask keeps its bare shape and caches under the days key", async () => {
+    api.GET.mockResolvedValue({ data: ACTIVITY, response: ok() });
+    const hook = renderHook(() => useActivityQuery(), { wrapper });
+
+    await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
+    expect(hook.result.current.data).toEqual(ACTIVITY);
+    // days=30 is the server's own default — the ask sends no parameter,
+    // the novels list's bare-shape convention.
+    expect(api.GET).toHaveBeenCalledWith("/api/writing/activity");
+    expect(queryClient.getQueryState(["activity", { days: 30 }])?.status).toBe("success");
+  });
+
+  it("a narrower window asks its parameter and caches under its own key", async () => {
+    api.GET.mockResolvedValue({ data: ACTIVITY, response: ok() });
+    const hook = renderHook(() => useActivityQuery(7), { wrapper });
+
+    await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
+    expect(api.GET).toHaveBeenCalledWith("/api/writing/activity", {
+      params: { query: { days: 7 } },
+    });
+    expect(queryClient.getQueryState(["activity", { days: 7 }])?.status).toBe("success");
+  });
+
+  it("keeps a refusal as an error with its status — never an empty window", async () => {
+    api.GET.mockResolvedValue({ data: undefined, response: new Response(null, { status: 503 }) });
+    const hook = renderHook(() => useActivityQuery(), { wrapper });
+
+    await waitFor(() => expect(hook.result.current.isError).toBe(true));
+    expect(hook.result.current.data).toBeUndefined();
+    expect(hook.result.current.error?.message).toContain("503");
+  });
+});
+
+describe("the shelf's invalidation family — the list and the aggregate move together", () => {
+  it("a novel write invalidates the activity key beside the novels prefix", async () => {
+    // Both reads stand cached, then unmount — an invalidated query holds
+    // its state instead of refetching it away, the prefix-reach pin's shape.
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/writing/activity") {
+        return {
+          data: { points: [], streak_days: 0, weekly_average: 0, today_words: 0 },
+          response: ok(),
+        };
+      }
+      return { data: [], response: ok() };
+    });
+    const activity = renderHook(() => useActivityQuery(), { wrapper });
+    const novels = renderHook(() => useNovelsQuery(), { wrapper });
+    await waitFor(() => expect(activity.result.current.isSuccess).toBe(true));
+    await waitFor(() => expect(novels.result.current.isSuccess).toBe(true));
+    activity.unmount();
+    novels.unmount();
+
+    // A shelf write through the family's door: the archive PATCH succeeds.
+    api.PATCH.mockResolvedValue({
+      data: { ...NOVEL, archived_at: "2026-11-16T08:00:00Z" },
+      response: ok(),
+    });
+    const archive = renderHook(() => useArchiveNovel(), { wrapper });
+    await archive.result.current.mutateAsync({ novelId: NOVEL_ID, archived: true });
+
+    // The banner's aggregate is asked again — a chapter write moves it the
+    // same way, through the same door (the workspace wave's save hook).
+    expect(queryClient.getQueryState(["activity", { days: 30 }])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(["novels", { include_archived: false }])?.isInvalidated).toBe(true);
   });
 });
 
