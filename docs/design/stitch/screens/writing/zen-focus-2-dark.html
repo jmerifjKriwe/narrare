@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Narrare · Zen-Fokus Modus</title>
+<!-- Google Fonts: EB Garamond & Plus Jakarta Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-secondary-fixed-variant": "#5a4300",
+            "on-secondary": "#3f2e00",
+            "on-tertiary": "#4e2515",
+            "primary-fixed-dim": "#cfc6b0",
+            "primary": "#fffaf9",
+            "on-secondary-container": "#fff3df",
+            "surface": "#16130e",
+            "on-primary-fixed-variant": "#4c4636",
+            "surface-tint": "#cfc6b0",
+            "inverse-primary": "#655e4d",
+            "tertiary-fixed-dim": "#fab7a0",
+            "surface-container-low": "#1e1b16",
+            "surface-variant": "#38342e",
+            "on-background": "#e9e1d9",
+            "tertiary-fixed": "#ffdbcf",
+            "primary-fixed": "#ece2cc",
+            "on-tertiary-container": "#895542",
+            "on-tertiary-fixed-variant": "#693b29",
+            "primary-container": "#e8dec8",
+            "surface-container-lowest": "#100e09",
+            "tertiary-container": "#ffd6c8",
+            "on-surface-variant": "#ccc6ba",
+            "surface-bright": "#3c3933",
+            "tertiary": "#fffaf9",
+            "error": "#ffb4ab",
+            "error-container": "#93000a",
+            "background": "#16130e",
+            "on-secondary-fixed": "#251a00",
+            "on-primary-fixed": "#201b0e",
+            "on-error": "#690005",
+            "secondary-fixed-dim": "#ecc15a",
+            "on-tertiary-fixed": "#341104",
+            "inverse-on-surface": "#34302a",
+            "surface-container": "#221f1a",
+            "on-primary": "#353021",
+            "inverse-surface": "#e9e1d9",
+            "surface-container-high": "#2d2924",
+            "on-error-container": "#ffdad6",
+            "outline-variant": "#4a463e",
+            "secondary-fixed": "#ffdf99",
+            "surface-container-highest": "#38342e",
+            "outline": "#959086",
+            "on-primary-container": "#686250",
+            "on-surface": "#e9e1d9",
+            "secondary": "#ecc15a",
+            "surface-dim": "#16130e",
+            "secondary-container": "#8c6b01"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "gutter": "1.5rem",
+            "space-lg": "1.5rem",
+            "space-sm": "0.5rem",
+            "margin": "3rem",
+            "space-xs": "0.25rem",
+            "gutter-mobile": "1rem",
+            "space-md": "1rem",
+            "margin-mobile": "1.25rem",
+            "space-xl": "2.5rem",
+            "margin-tablet": "2rem"
+          },
+          "fontFamily": {
+            "ui-label-sm": ["Plus Jakarta Sans"],
+            "ui-label-md": ["Plus Jakarta Sans"],
+            "headline-md": ["EB Garamond"],
+            "ui-label-lg": ["Plus Jakarta Sans"],
+            "display-lg-mobile": ["EB Garamond"],
+            "headline-lg": ["EB Garamond"],
+            "body-lg": ["EB Garamond"],
+            "headline-sm": ["EB Garamond"],
+            "body-md": ["EB Garamond"],
+            "display-lg": ["EB Garamond"]
+          },
+          "fontSize": {
+            "ui-label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600" }],
+            "ui-label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "headline-md": ["26px", { "lineHeight": "34px", "fontWeight": "500" }],
+            "ui-label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+            "display-lg-mobile": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+            "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "body-lg": ["20px", { "lineHeight": "32px", "fontWeight": "400" }],
+            "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+            "body-md": ["17px", { "lineHeight": "28px", "fontWeight": "400" }],
+            "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-block;
+      text-transform: none;
+      letter-spacing: normal;
+      word-wrap: normal;
+      white-space: nowrap;
+      direction: ltr;
+      -webkit-font-smoothing: antialiased;
+      vertical-align: middle;
+    }
+    
+    @keyframes cursor-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .animate-caret {
+      animation: cursor-pulse 1.1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    ::selection {
+      background-color: #38342e;
+      color: #fffaf9;
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface antialiased selection:bg-surface-variant selection:text-primary min-h-screen overflow-x-hidden relative flex flex-col justify-between selection:bg-surface-container-highest">
+<!-- 1. STATUSLEISTE OBEN (Halbtransparent, Backdrop Blur, ohne Seitenzahlen/Sync) -->
+<header class="fixed top-0 left-0 right-0 z-40 bg-surface/80 backdrop-blur-md px-6 py-3 transition-opacity duration-300">
+<div class="max-w-7xl mx-auto flex items-center justify-between">
+<!-- Links: Exit-Chip -->
+<a class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container/60 hover:bg-surface-container border border-outline-variant/40 text-on-surface-variant hover:text-on-surface transition-all duration-150 active:scale-98 group" href="#workspace">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant group-hover:text-primary transition-colors">arrow_back</span>
+<span class="font-ui-label-md text-ui-label-md text-on-surface-variant group-hover:text-primary">Zurück zum Workspace</span>
+<kbd class="font-ui-label-sm text-ui-label-sm px-1.5 py-0.5 rounded bg-surface-container-highest/80 text-outline border border-outline-variant/30">Esc</kbd>
+</a>
+<!-- Rechts: Zähler & Pomodoro -->
+<div class="flex items-center gap-5">
+<div class="flex items-center gap-2">
+<span class="font-ui-label-md text-ui-label-md text-on-surface-variant tracking-normal">Heute: <span class="text-secondary font-medium">+642 W</span> · 1.840 ges.</span>
+</div>
+<div class="h-3.5 w-px bg-outline-variant/40"></div>
+<!-- Pomodoro Timer -->
+<div class="flex items-center gap-2.5">
+<span class="font-ui-label-lg text-ui-label-lg font-semibold tracking-wider text-on-surface font-mono" id="pomodoro-display">18:42</span>
+<button aria-label="Pomodoro Timer anhalten oder fortsetzen" class="w-7 h-7 rounded-full bg-surface-container hover:bg-surface-container-high border border-outline-variant/60 flex items-center justify-center text-on-surface-variant hover:text-secondary transition-all active:scale-95" id="timer-toggle-btn">
+<span class="material-symbols-outlined text-[15px]" id="timer-icon">pause</span>
+</button>
+</div>
+</div>
+</div>
+</header>
+<!-- 2. FLANKIERENDE DEKO-SPINES (Vertikal gedreht, diskret) -->
+<aside aria-hidden="true" class="fixed left-6 top-1/2 -translate-y-1/2 hidden xl:flex flex-col items-center pointer-events-none select-none z-10 opacity-25">
+<div class="w-px h-16 bg-gradient-to-b from-transparent via-outline-variant to-transparent mb-4"></div>
+<span class="font-ui-label-sm text-ui-label-sm tracking-[0.35em] text-outline uppercase [writing-mode:vertical-lr] rotate-180">
+      NARRARE · ZEN
+    </span>
+<div class="w-px h-16 bg-gradient-to-b from-transparent via-outline-variant to-transparent mt-4"></div>
+</aside>
+<aside aria-hidden="true" class="fixed right-6 top-1/2 -translate-y-1/2 hidden xl:flex flex-col items-center pointer-events-none select-none z-10 opacity-25">
+<div class="w-px h-16 bg-gradient-to-b from-transparent via-outline-variant to-transparent mb-4"></div>
+<span class="font-ui-label-sm text-ui-label-sm tracking-[0.35em] text-outline uppercase [writing-mode:vertical-lr]">
+      NARRARE · ZEN
+    </span>
+<div class="w-px h-16 bg-gradient-to-b from-transparent via-outline-variant to-transparent mt-4"></div>
+</aside>
+<!-- 3. ZENTRIERTER PROSA-FLUSS (Max ca. 580-600px / 36rem) -->
+<main class="w-full flex-1 flex flex-col items-center justify-start pt-28 pb-36 px-5 sm:px-6">
+<article class="w-full max-w-[36.5rem] flex flex-col">
+<!-- Titelblock & Meta -->
+<header class="text-center pt-6 pb-8">
+<p class="font-ui-label-sm text-ui-label-sm uppercase tracking-[0.25em] text-secondary font-semibold mb-3">
+          ROMAN · DEAD SIGNAL
+        </p>
+<h1 class="font-headline-lg text-headline-lg text-primary italic font-normal tracking-tight mb-3">
+          Kapitel 2 — Nevada Echoes
+        </h1>
+<p class="font-body-md text-body-md text-on-surface-variant/75 italic">
+          Sub-Basement Nevada Test Site · 27. Oktober 2094, 03:14 UTC
+        </p>
+<!-- Zarter typografischer Trenner -->
+<div class="flex items-center justify-center gap-3 mt-6 text-outline-variant/60 select-none">
+<span class="w-8 h-px bg-outline-variant/40"></span>
+<span class="font-ui-label-sm text-ui-label-sm tracking-[0.2em] text-outline/70">— fokus —</span>
+<span class="w-8 h-px bg-outline-variant/40"></span>
+</div>
+</header>
+<!-- Absatz 1 (Gedimmt im Hintergrund, ca. 30% Opacity) -->
+<section class="space-y-6 pt-2">
+<p class="font-body-lg text-body-lg text-on-surface opacity-30 leading-relaxed text-justify transition-opacity duration-300 hover:opacity-50 select-text">
+          Der Schacht roch nach Jahrzehnten gestundeter Kälte und verdampftem Travertin. Als Aris die Hand von der Verriegelungsplatte zog, blieb kein Abdruck zurück; das Messing hatte die Raumtemperatur von minus vier Grad längst in seinen Kern gesogen. Hinter ihm summte der Kryo-Kondensator des siebten Untergeschosses in einer fast unhörbaren Frequenz, die ihm seit drei Stunden gegen die Schläfen klopfte wie ein stumpfer Holznagel.
+        </p>
+<!-- Absatz 2 (Gedimmt im Hintergrund, ca. 30% Opacity) -->
+<p class="font-body-lg text-body-lg text-on-surface opacity-30 leading-relaxed text-justify transition-opacity duration-300 hover:opacity-50 select-text">
+          Er tastete nach der Schaltung des Diktiergeräts im Kragenaufschlag. Kein Knacken. Nur das trockene Mahlen der Quarzspule im Gehäuse. Wenn das Archiv oben Recht behalten sollte, lag das Protokoll der Operation Dry Well hinter der dritten Bleitür vergraben — nicht digitalisiert, nicht im Lorentz-Gitter vermerkt, sondern auf perforierten Magnetbändern aus Zelluloseazetat, die bei jeder falschen Berührung zu Essigstaub zerfielen.
+        </p>
+<!-- AKTIVER ABSATZ (Hervorgehobene Fokus-Karte #1e1b16 mit Terracotta-Kerbe) -->
+<div class="relative mt-8 rounded-lg bg-surface-container-low border border-outline-variant/40 p-6 pl-7 shadow-2xl shadow-surface-container-lowest/80 border-l-2 border-l-tertiary-container">
+<div class="font-body-lg text-body-lg text-primary leading-relaxed text-left">
+            Die Konsole reagierte nicht auf den Transponderchip, sondern auf die Druckkurve seiner Fingerkuppen auf den kalten Bakelit-Tasten. Aris zählte vier Schläge Pause zwischen den Relais.<span class="inline-block w-[2px] h-[1.25em] bg-secondary align-middle ml-1 -mt-0.5 animate-caret"></span>
+</div>
+<!-- Ghost-Text-Vorschlag mit Tab-Pille -->
+<div class="mt-4 pt-3.5 border-t border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<p class="font-body-md text-body-md text-on-surface-variant/65 italic flex items-baseline gap-2">
+<span class="text-secondary/80 not-italic font-ui-label-md">↳</span>
+<span>Erst als die dritte Warnlampe bernsteinfarben erlosch, gab die hydraulische Schleuse den Korridor zur Kammer frei.</span>
+</p>
+<button class="self-end sm:self-auto shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/60 text-primary transition-all active:scale-95 group">
+<kbd class="font-ui-label-sm text-ui-label-sm font-mono text-secondary group-hover:text-primary">Tab</kbd>
+<span class="font-ui-label-sm text-ui-label-sm text-on-surface-variant group-hover:text-on-surface">Übernehmen</span>
+</button>
+</div>
+</div>
+<!-- Abschlussschmuck -->
+<div class="text-center pt-8 pb-4 text-secondary/60 tracking-[0.4em] text-lg select-none">
+          § § §
+        </div>
+</section>
+</article>
+</main>
+<!-- 4. SCHWEBENDE STEUER-PILL (Floating Bar mit starkem Backdrop Blur) -->
+<nav aria-label="Zen-Fokus Werkzeugleiste" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-surface-container-lowest/85 backdrop-blur-xl border border-outline-variant/50 rounded-full px-3 py-1.5 shadow-2xl shadow-black/80 flex items-center gap-2">
+<!-- Fokus-Modi Segmentierung -->
+<div class="flex items-center p-0.5 gap-1">
+<button class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-highest text-primary font-ui-label-sm text-ui-label-sm font-semibold transition-all shadow-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span>Absatz-Fokus</span>
+</button>
+<button class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 font-ui-label-sm text-ui-label-sm transition-colors">
+<span>Satz-Fokus</span>
+</button>
+<button class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 font-ui-label-sm text-ui-label-sm transition-colors">
+<span>Normal</span>
+</button>
+</div>
+<!-- Feiner vertikaler Trenner -->
+<div class="h-4 w-px bg-outline-variant/50 mx-0.5"></div>
+<!-- Soundscape (DEAKTIVIERT mit Schloss & Tooltip) -->
+<div class="relative group flex items-center">
+<button aria-label="Klanglandschaften deaktiviert" class="flex items-center gap-1 px-2.5 py-1 rounded-full text-outline/50 cursor-not-allowed select-none transition-colors" disabled="">
+<span class="material-symbols-outlined text-[17px]">volume_off</span>
+<span class="material-symbols-outlined text-[13px] -ml-0.5">lock</span>
+</button>
+<!-- Schwebender Tooltip -->
+<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover:flex flex-col items-center pointer-events-none transition-all duration-150 whitespace-nowrap">
+<div class="px-2.5 py-1.5 rounded bg-surface-container-highest border border-outline-variant text-on-surface font-ui-label-sm text-ui-label-sm shadow-xl">
+          Klanglandschaften kommen in einer späteren Welle
+        </div>
+<div class="w-2 h-2 bg-surface-container-highest rotate-45 border-r border-b border-outline-variant -mt-1"></div>
+</div>
+</div>
+<!-- Feiner vertikaler Trenner -->
+<div class="h-4 w-px bg-outline-variant/50 mx-0.5"></div>
+<!-- Vollbild Button -->
+<button aria-label="Vollbild umschalten" class="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors active:scale-95" id="fullscreen-btn" title="Vollbild umschalten">
+<span class="material-symbols-outlined text-[18px]" id="fs-icon">fullscreen</span>
+</button>
+</nav>
+<!-- Inline Micro-Interactions: Pomodoro Toggle & Fullscreen Toggle -->
+<script>
+    // Pomodoro Timer Toggle Interaction
+    const timerBtn = document.getElementById('timer-toggle-btn');
+    const timerIcon = document.getElementById('timer-icon');
+    let isRunning = true;
+
+    timerBtn.addEventListener('click', () => {
+      isRunning = !isRunning;
+      timerIcon.textContent = isRunning ? 'pause' : 'play_arrow';
+      timerBtn.classList.toggle('text-secondary', !isRunning);
+    });
+
+    // Fullscreen Toggle Interaction
+    const fsBtn = document.getElementById('fullscreen-btn');
+    const fsIcon = document.getElementById('fs-icon');
+
+    fsBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        fsIcon.textContent = 'fullscreen_exit';
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          fsIcon.textContent = 'fullscreen';
+        }
+      }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      fsIcon.textContent = document.fullscreenElement ? 'fullscreen_exit' : 'fullscreen';
+    });
+
+    // Esc Taste Hinweis-Interaktion
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !document.fullscreenElement) {
+        const exitChip = document.querySelector('a[href="#workspace"]');
+        if (exitChip) {
+          exitChip.classList.add('ring-1', 'ring-secondary');
+          setTimeout(() => exitChip.classList.remove('ring-1', 'ring-secondary'), 500);
+        }
+      }
+    });
+  </script>
+</body></html>

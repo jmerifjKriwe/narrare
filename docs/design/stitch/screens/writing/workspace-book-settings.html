@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Buch-Einstellungen — Narrare</title>
+<!-- Google Fonts: Plus Jakarta Sans & EB Garamond -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "bg-soft-light": "#EFEBE2",
+            "area-chat": "#3A637B",
+            "cover-pale": "#EEEBE5",
+            "surface-dim": "#e0d9d1",
+            "outline": "#86736c",
+            "state-success": "#21763C",
+            "text-muted-dark": "#89867F",
+            "tertiary-fixed": "#ffdcc3",
+            "on-tertiary-container": "#eead78",
+            "secondary-container": "#fed8ca",
+            "surface-variant": "#e9e1d9",
+            "text-muted-light": "#6E6B65",
+            "surface-container-lowest": "#ffffff",
+            "rule-dark": "#302D28",
+            "on-primary-fixed": "#351000",
+            "bg-card-light": "#FFFFFF",
+            "secondary": "#74584e",
+            "background": "#fff8f2",
+            "on-error-container": "#93000a",
+            "area-writing": "#914F2F",
+            "area-planning": "#834D7E",
+            "surface-container-high": "#eee7df",
+            "cover-ink": "#24211C",
+            "on-error": "#ffffff",
+            "bg-soft-dark": "#2C2922",
+            "bg-panel-dark": "#1C1914",
+            "on-primary-container": "#f8a884",
+            "bg-panel-light": "#FDFCF9",
+            "on-tertiary-fixed": "#2f1500",
+            "on-primary-fixed-variant": "#6f371c",
+            "surface": "#fff8f2",
+            "area-settings": "#5A5549",
+            "area-knowledge": "#606127",
+            "outline-variant": "#d8c2b9",
+            "surface-container": "#f4ede4",
+            "inverse-surface": "#33302b",
+            "bg-card-dark": "#211F1A",
+            "primary-fixed": "#ffdbcc",
+            "on-primary": "#ffffff",
+            "secondary-fixed": "#ffdbce",
+            "state-danger": "#AC3031",
+            "error": "#ba1a1a",
+            "on-secondary-container": "#795c52",
+            "amber-focus": "#8F4622",
+            "border-dark": "#35332D",
+            "on-tertiary-fixed-variant": "#693c10",
+            "on-background": "#1e1b16",
+            "error-container": "#ffdad6",
+            "surface-container-highest": "#e9e1d9",
+            "text-foreground-dark": "#DFDEDA",
+            "surface-container-low": "#faf2ea",
+            "bg-canvas-dark": "#16140F",
+            "primary": "#58250b",
+            "on-secondary-fixed-variant": "#5a4137",
+            "state-warning": "#9A6100",
+            "surface-tint": "#8c4e30",
+            "inverse-on-surface": "#f7f0e7",
+            "primary-fixed-dim": "#ffb695",
+            "surface-bright": "#fff8f2",
+            "on-surface": "#1e1b16",
+            "cover-sepia": "#743B1F",
+            "on-tertiary": "#ffffff",
+            "tertiary-container": "#6e3f14",
+            "tertiary": "#522900",
+            "tertiary-fixed-dim": "#fcb882",
+            "on-surface-variant": "#53433d",
+            "inverse-primary": "#ffb695",
+            "on-secondary-fixed": "#2a170f",
+            "on-secondary": "#ffffff",
+            "primary-container": "#743b1f",
+            "border-light": "#E0DEDA",
+            "amber-focus-dark": "#F2AD73",
+            "bg-canvas-light": "#F6F3ED",
+            "secondary-fixed-dim": "#e3bfb2",
+            "rule-light": "#EEEBE5"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "container-max": "75rem",
+            "prose-max-width": "34rem",
+            "rail-expanded": "10.5rem",
+            "space-xs": "0.25rem",
+            "space-xl": "2rem",
+            "rail-collapsed": "3rem",
+            "space-md": "1rem",
+            "space-sm": "0.5rem",
+            "gutter": "1rem",
+            "space-lg": "1.5rem",
+            "dock-width": "21rem",
+            "margin": "1.5rem"
+          },
+          "fontFamily": {
+            "headline-title": ["Plus Jakarta Sans"],
+            "body-default": ["Plus Jakarta Sans"],
+            "headline-hero": ["Plus Jakarta Sans"],
+            "prose-editorial": ["EB Garamond"],
+            "eyebrow-tracked": ["Plus Jakarta Sans"],
+            "prose-heading-1": ["EB Garamond"],
+            "prose-heading-2": ["EB Garamond"],
+            "label-default": ["Plus Jakarta Sans"],
+            "meta-default": ["Plus Jakarta Sans"],
+            "headline-emph": ["Plus Jakarta Sans"]
+          },
+          "fontSize": {
+            "headline-title": ["20px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "body-default": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+            "headline-hero": ["28px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "prose-editorial": ["18px", { "lineHeight": "31.5px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "eyebrow-tracked": ["11px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600" }],
+            "prose-heading-1": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "prose-heading-2": ["21px", { "lineHeight": "28px", "fontWeight": "600" }],
+            "label-default": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+            "meta-default": ["12px", { "lineHeight": "17px", "fontWeight": "400" }],
+            "headline-emph": ["15px", { "lineHeight": "22px", "fontWeight": "600" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #743B1F;
+      border: 2px solid #FAF2EA;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+  </style>
+</head>
+<body class="h-full bg-bg-canvas-light text-on-surface antialiased overflow-hidden selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- ======================================================================= -->
+<!-- HINTERGRUND: ABGEDUNKELTER SCHREIB-WORKSPACE „DEAD SIGNAL“               -->
+<!-- ======================================================================= -->
+<div aria-hidden="true" class="fixed inset-0 flex flex-col pointer-events-none select-none filter blur-[1px] opacity-70">
+<!-- Top-Breadcrumbs & Status -->
+<header class="h-14 px-6 flex items-center justify-between border-b border-border-light bg-bg-panel-light">
+<div class="flex items-center gap-3">
+<span class="font-prose-heading-1 text-prose-heading-1 tracking-tight text-primary font-semibold">Narrare</span>
+<span class="text-border-light">/</span>
+<span class="font-prose-editorial italic text-primary">Dead Signal</span>
+<span class="text-border-light">/</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Kapitel 1 • Szene 2: Das Signal im Permafrost</span>
+</div>
+<div class="flex items-center gap-4 text-text-muted-light font-meta-default text-meta-default">
+<span>2.140 Wörter</span>
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-bg-soft-light text-state-success font-meta-default text-meta-default">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+          Kausalität synchron
+        </span>
+</div>
+</header>
+<!-- Workspace Body mit linker Icon-Rail und Textspiegel -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Icon Rail links -->
+<aside class="w-rail-collapsed border-r border-border-light bg-bg-panel-light flex flex-col items-center py-4 gap-5">
+<div class="w-8 h-8 rounded bg-primary-container text-on-primary flex items-center justify-center font-prose-heading-2 text-prose-heading-2">N</div>
+<div class="w-8 h-px bg-border-light my-1"></div>
+<span class="material-symbols-outlined text-text-muted-light" data-icon="menu_book">menu_book</span>
+<span class="material-symbols-outlined text-primary" data-icon="edit_note">edit_note</span>
+<span class="material-symbols-outlined text-text-muted-light" data-icon="hub">hub</span>
+<span class="material-symbols-outlined text-text-muted-light" data-icon="search_insights">search_insights</span>
+<span class="material-symbols-outlined text-text-muted-light" data-icon="tune">tune</span>
+</aside>
+<!-- Center Textspiegel (Prose Canvas) -->
+<main class="flex-1 bg-bg-canvas-light flex justify-center py-12 px-8 overflow-hidden">
+<article class="w-full max-w-[34rem] space-y-6">
+<div class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase tracking-wider">Kapitel 1 • Permafrost</div>
+<h1 class="font-prose-heading-1 text-prose-heading-1 text-primary">Das Signal im Permafrost</h1>
+<p class="font-prose-editorial text-prose-editorial text-on-surface">
+            Die Sensorenbatterie der Station Erebus schwieg seit drei Tagen. Als Calder die Dichtungen des Bohrlochs 4B überprüfte, lief das akustische Spektrogramm nicht wie gewohnt auf null aus. Zwischen den rhythmischen Stößen des arktischen Windes zeichnete das Seismometer eine Frequenz auf, die keinem tektonischen Muster glich.
+          </p>
+<p class="font-prose-editorial text-prose-editorial text-on-surface">
+            Es war eine Wiederholung von 72 Hertz. Genau jene Tonhöhe, die 1983 im Nordmeer registriert worden war und deren Tonband bis heute im Archivkeller des Polar-Instituts unter Verschluss lag...
+          </p>
+</article>
+</main>
+<!-- Rechter Inspector Preview -->
+<aside class="w-80 border-l border-border-light bg-bg-panel-light p-5 space-y-4">
+<div class="font-label-default text-label-default text-text-muted-light uppercase tracking-wider">Konsistenz-Inspektor</div>
+<div class="p-3 rounded border border-border-light bg-bg-card-light space-y-1">
+<div class="font-headline-emph text-headline-emph text-primary">Audiofrequenz bestätigt</div>
+<div class="font-meta-default text-meta-default text-text-muted-light">Übereinstimmung mit Akte Erebus-III</div>
+</div>
+</aside>
+</div>
+</div>
+<!-- ======================================================================= -->
+<!-- SCRIM / MODAL-BACKDROP                                                  -->
+<!-- ======================================================================= -->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-stone-900/60 backdrop-blur-sm overflow-y-auto">
+<!-- ===================================================================== -->
+<!-- MODAL CONTAINER: „Buch-Einstellungen“                                 -->
+<!-- ===================================================================== -->
+<div aria-labelledby="modal-title" aria-modal="true" class="relative w-full max-w-5xl my-auto bg-surface-container-low rounded-xl border border-border-light shadow-2xl flex flex-col overflow-hidden max-h-[942px] animate-in fade-in zoom-in-95 duration-200" role="dialog">
+<!-- MODAL HEADER -->
+<header class="px-7 py-4 border-b border-border-light bg-bg-panel-light flex items-center justify-between shrink-0">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-bg-soft-light text-primary flex items-center justify-center border border-border-light">
+<span class="material-symbols-outlined text-primary" data-icon="tune">tune</span>
+</div>
+<div>
+<div class="flex items-center gap-2.5">
+<h2 class="font-headline-title text-headline-title text-on-surface" id="modal-title">Buch-Einstellungen</h2>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-bg-soft-light border border-border-light text-primary font-prose-editorial italic text-[15px]">
+<span class="w-1.5 h-1.5 rounded-full bg-cover-sepia"></span>
+                Dead Signal
+              </span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light mt-0.5">Konfiguriere Manuskriptparameter, Kausalitätsregeln und globale Autoreinstellungen</p>
+</div>
+</div>
+<!-- Schließen-Aktion -->
+<button aria-label="Dialog schließen" class="group flex items-center gap-2 px-3 py-1.5 rounded border border-border-light bg-bg-card-light hover:bg-bg-soft-light transition-colors text-text-muted-light hover:text-on-surface cursor-pointer" type="button">
+<span class="font-label-default text-label-default">Fertig</span>
+<span class="font-label-default text-label-default group-hover:rotate-90 transition-transform duration-150">✕</span>
+</button>
+</header>
+<!-- MODAL BODY (Zweispaltig mit flüssiger Segmentierung) -->
+<div class="flex-1 overflow-y-auto p-7 divide-y divide-border-light bg-surface-container-low space-y-7">
+<!-- ================================================================= -->
+<!-- SEKTION 1: „BUCH“ (Basis-Metadaten)                              -->
+<!-- ================================================================= -->
+<section class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="menu_book">menu_book</span>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">1. Buch &amp; Metadaten</h3>
+</div>
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase tracking-wider">Kern-Identität</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+<!-- Romantitel -->
+<div class="md:col-span-7 space-y-1.5">
+<label class="font-label-default text-label-default text-on-surface block" for="book-title">Romantitel</label>
+<div class="relative">
+<input class="w-full h-9 px-3 bg-bg-card-light border border-border-light rounded font-prose-heading-2 text-prose-heading-2 text-primary focus:outline-none focus:border-amber-focus focus:ring-1 focus:ring-amber-focus transition-all" id="book-title" type="text" value="Dead Signal"/>
+</div>
+</div>
+<!-- Autor -->
+<div class="md:col-span-5 space-y-1.5">
+<label class="font-label-default text-label-default text-on-surface block" for="book-author">Autor</label>
+<input class="w-full h-9 px-3 bg-bg-card-light border border-border-light rounded font-body-default text-body-default text-on-surface focus:outline-none focus:border-amber-focus focus:ring-1 focus:ring-amber-focus transition-all" id="book-author" type="text" value="H. Calder"/>
+<p class="font-meta-default text-meta-default text-text-muted-light flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]" data-icon="info">info</span>
+                erscheint im Running Head des Manuskripts
+              </p>
+</div>
+<!-- Genre-Pills -->
+<div class="md:col-span-8 space-y-2">
+<label class="font-label-default text-label-default text-on-surface block">Genre-Zuordnung</label>
+<div class="flex flex-wrap items-center gap-2">
+<!-- Hard Sci-Fi (gewählt) -->
+<button class="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-cover-sepia text-on-primary font-label-default text-label-default border border-cover-sepia shadow-sm" type="button">
+<span class="material-symbols-outlined text-[14px]" data-icon="check">check</span>
+                  Hard Sci-Fi
+                </button>
+<!-- Mystery (gewählt) -->
+<button class="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-cover-sepia text-on-primary font-label-default text-label-default border border-cover-sepia shadow-sm" type="button">
+<span class="material-symbols-outlined text-[14px]" data-icon="check">check</span>
+                  Mystery
+                </button>
+<!-- Thriller (abgewählt) -->
+<button class="px-3 py-1 rounded bg-bg-card-light text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light font-label-default text-label-default border border-border-light transition-colors" type="button">
+                  + Thriller
+                </button>
+<!-- Literarisch (abgewählt) -->
+<button class="px-3 py-1 rounded bg-bg-card-light text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light font-label-default text-label-default border border-border-light transition-colors" type="button">
+                  + Literarisch
+                </button>
+<!-- Historisch (abgewählt) -->
+<button class="px-3 py-1 rounded bg-bg-card-light text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light font-label-default text-label-default border border-border-light transition-colors" type="button">
+                  + Historisch
+                </button>
+</div>
+</div>
+<!-- Sprache Segmentierter Schalter -->
+<div class="md:col-span-4 space-y-2">
+<label class="font-label-default text-label-default text-on-surface block">Manuskript-Sprache</label>
+<div class="inline-flex p-0.5 bg-bg-soft-light border border-border-light rounded w-full justify-between">
+<button class="flex-1 py-1 rounded bg-bg-card-light text-primary font-label-default text-label-default font-semibold shadow-xs border border-border-light" type="button">DE</button>
+<button class="flex-1 py-1 rounded text-text-muted-light hover:text-on-surface font-label-default text-label-default transition-colors" type="button">EN</button>
+<button class="flex-1 py-1 rounded text-text-muted-light hover:text-on-surface font-label-default text-label-default transition-colors" type="button">FR</button>
+</div>
+</div>
+<!-- Klappentext -->
+<div class="md:col-span-12 space-y-1.5">
+<div class="flex items-center justify-between">
+<label class="font-label-default text-label-default text-on-surface" for="book-blurb">Klappentext &amp; Synopsis</label>
+<span class="font-meta-default text-meta-default text-text-muted-light">Wird für Kontext-Injektionen genutzt</span>
+</div>
+<textarea class="w-full p-3 bg-bg-card-light border border-border-light rounded font-body-default text-body-default text-on-surface focus:outline-none focus:border-amber-focus focus:ring-1 focus:ring-amber-focus resize-y transition-all leading-relaxed" id="book-blurb" rows="3">Die Sensorenbatterie der Station Erebus schwieg seit drei Tagen. Als das Tauchteam die äußere Luftschleuse des Tiefseerückens erreichte, fanden sie keine gebrochenen Dichtungen, sondern 72 identische Audioimpulse...</textarea>
+</div>
+</div>
+</section>
+<!-- ================================================================= -->
+<!-- SEKTION 2: „STATUS & ZIEL“                                        -->
+<!-- ================================================================= -->
+<section class="pt-6 space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="flag">flag</span>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">2. Status &amp; Zielumfang</h3>
+</div>
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase tracking-wider">Fortschritts-Metrik</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+<!-- Status Segmente -->
+<div class="md:col-span-5 space-y-2">
+<label class="font-label-default text-label-default text-on-surface block">Aktueller Manuskript-Status</label>
+<div class="grid grid-cols-3 p-0.5 bg-bg-soft-light border border-border-light rounded text-center">
+<!-- Entwurf (aktiv) -->
+<button class="py-1.5 rounded bg-cover-sepia text-on-primary font-label-default text-label-default shadow-xs flex items-center justify-center gap-1" type="button">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-focus-dark"></span>
+                  Entwurf
+                </button>
+<!-- Überarbeitung -->
+<button class="py-1.5 rounded text-text-muted-light hover:text-on-surface font-label-default text-label-default transition-colors" type="button">
+                  Überarbeitung
+                </button>
+<!-- Final -->
+<button class="py-1.5 rounded text-text-muted-light hover:text-on-surface font-label-default text-label-default transition-colors" type="button">
+                  Final
+                </button>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light">
+                Kapitel-Ziele werden pro Kapitel im Workspace gesetzt.
+              </p>
+</div>
+<!-- Zielumfang numerisch -->
+<div class="md:col-span-7 space-y-2">
+<div class="flex items-center justify-between">
+<label class="font-label-default text-label-default text-on-surface" for="target-words">Zielumfang (Wörter gesamt)</label>
+<span class="font-meta-default text-meta-default text-text-muted-light">beliebig wählbar</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative w-44">
+<input class="w-full h-9 px-3 bg-bg-card-light border border-border-light rounded font-body-default text-body-default text-on-surface font-medium focus:outline-none focus:border-amber-focus focus:ring-1 focus:ring-amber-focus" id="target-words" type="text" value="65.000"/>
+<span class="absolute right-3 top-2 font-meta-default text-meta-default text-text-muted-light pointer-events-none">Wörter</span>
+</div>
+<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded border border-border-light bg-bg-card-light">
+<span class="material-symbols-outlined text-primary text-[15px]" data-icon="auto_stories">auto_stories</span>
+<span class="font-meta-default text-meta-default text-on-surface font-medium">Standard-Roman (60k–80k W.)</span>
+</div>
+</div>
+<div class="w-full bg-bg-soft-light h-1.5 rounded-full overflow-hidden mt-2">
+<div class="bg-cover-sepia h-full w-[24%]" title="Aktuell 15.620 Wörter geschrieben (24%)"></div>
+</div>
+<div class="flex justify-between font-meta-default text-meta-default text-text-muted-light">
+<span>15.620 Wörter geschrieben</span>
+<span>24% erreicht</span>
+</div>
+</div>
+</div>
+</section>
+<!-- ================================================================= -->
+<!-- SEKTION 3: „KI-PARTNER“ (Radio-Karten & Kausalitätsregler)         -->
+<!-- ================================================================= -->
+<section class="pt-6 space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="psychology">psychology</span>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">3. KI-Partner &amp; Kausalitäts-Engine</h3>
+</div>
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase tracking-wider">Dramaturgische Begleitung</span>
+</div>
+<!-- Autoren-Typologie (3 Karten) -->
+<div class="space-y-2">
+<label class="font-label-default text-label-default text-on-surface block">Autoren-Typologie</label>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+<!-- Plotter -->
+<div class="p-3 rounded border border-border-light bg-bg-card-light hover:bg-bg-soft-light/60 transition-colors cursor-pointer space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-label-default text-label-default font-semibold text-on-surface">Plotter</span>
+<span class="w-4 h-4 rounded-full border border-border-light"></span>
+</div>
+<div class="font-meta-default text-meta-default text-text-muted-light">Der Architekt. Fokus auf Sequenzen, Kausalität und stringente Szenenbeziehungen.</div>
+</div>
+<!-- Pantser -->
+<div class="p-3 rounded border border-border-light bg-bg-card-light hover:bg-bg-soft-light/60 transition-colors cursor-pointer space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-label-default text-label-default font-semibold text-on-surface">Pantser</span>
+<span class="w-4 h-4 rounded-full border border-border-light"></span>
+</div>
+<div class="font-meta-default text-meta-default text-text-muted-light">Der Entdecker. Spontane Improvisation ohne vorab fixierte Plot-Zwangsjacken.</div>
+</div>
+<!-- Plantser (AKTIV) -->
+<div class="p-3 rounded border-2 border-cover-sepia bg-surface-container shadow-xs cursor-pointer space-y-1 relative">
+<div class="flex items-center justify-between">
+<span class="font-label-default text-label-default font-semibold text-primary">Plantser</span>
+<span class="w-4 h-4 rounded-full bg-cover-sepia text-on-primary flex items-center justify-center text-[11px]">
+<span class="material-symbols-outlined text-[12px]" data-icon="check">check</span>
+</span>
+</div>
+<div class="font-meta-default text-meta-default text-on-surface-variant font-medium">Der Hybrid. Feste Ankerpunkte im Lore-Graph, flexible Zwischenwege beim Schreiben.</div>
+</div>
+</div>
+</div>
+<!-- KI-Rolle (4 Karten) -->
+<div class="space-y-2 pt-1">
+<label class="font-label-default text-label-default text-on-surface block">Ausrichtung des KI-Assistenten</label>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+<!-- Rolle 1 -->
+<div class="p-2.5 rounded border border-border-light bg-bg-card-light hover:bg-bg-soft-light/60 transition-colors cursor-pointer">
+<div class="font-label-default text-label-default font-semibold text-on-surface mb-0.5">Stiller Archivar</div>
+<div class="font-meta-default text-meta-default text-text-muted-light">Faktencheck &amp; Konsistenz</div>
+</div>
+<!-- Rolle 2 (AKTIV) -->
+<div class="p-2.5 rounded border-2 border-cover-sepia bg-surface-container cursor-pointer shadow-xs">
+<div class="flex items-center justify-between mb-0.5">
+<span class="font-label-default text-label-default font-semibold text-primary">Atmosphärischer Co-Autor</span>
+<span class="material-symbols-outlined text-primary text-[14px]" data-icon="check">check</span>
+</div>
+<div class="font-meta-default text-meta-default text-on-surface-variant font-medium">Stilistischer Fluss &amp; Tonus</div>
+</div>
+<!-- Rolle 3 -->
+<div class="p-2.5 rounded border border-border-light bg-bg-card-light hover:bg-bg-soft-light/60 transition-colors cursor-pointer">
+<div class="font-label-default text-label-default font-semibold text-on-surface mb-0.5">Sokratischer Lektor</div>
+<div class="font-meta-default text-meta-default text-text-muted-light">Hinterfragt Figuren-Motive</div>
+</div>
+<!-- Rolle 4 -->
+<div class="p-2.5 rounded border border-border-light bg-bg-card-light hover:bg-bg-soft-light/60 transition-colors cursor-pointer"><div class="font-label-default text-label-default font-semibold text-on-surface mb-0.5">Sparring-Partner</div><div class="font-meta-default text-meta-default text-text-muted-light">fragt nach, widerspricht, schärft Ideen</div></div>
+</div>
+</div>
+<!-- Kanon-Strenge Slider Stufe 1 bis 5 -->
+<div class="p-4 rounded border border-border-light bg-bg-card-light space-y-3">
+<div class="flex items-center justify-between">
+<div>
+<label class="font-label-default text-label-default font-semibold text-on-surface block" for="canon-strictness">Kanon-Strenge &amp; Kausalitätsüberwachung</label>
+<p class="font-meta-default text-meta-default text-text-muted-light">Wie strikt soll der Lore-Graph Widersprüche bei Zeitleisten und Figurenmerkmalen ahnden?</p>
+</div>
+<span class="inline-flex items-center px-2.5 py-0.5 rounded bg-bg-soft-light text-primary font-meta-default text-meta-default font-semibold border border-border-light">
+                Stufe 3 von 5 • Ausbalanciert
+              </span>
+</div>
+<div class="space-y-1.5 pt-1">
+<input class="w-full accent-primary bg-bg-soft-light h-2 rounded cursor-pointer border border-border-light" id="canon-strictness" max="5" min="1" step="1" type="range" value="3"/>
+<div class="flex justify-between font-meta-default text-meta-default text-text-muted-light px-0.5">
+<span>Stufe 1 (Frei — experimentelle Abweichungen erlaubt)</span>
+<span>Stufe 3 (Moderater Kanon)</span>
+<span>Stufe 5 (Streng — Null-Toleranz bei Widersprüchen)</span>
+</div>
+</div>
+</div>
+</section>
+<!-- ================================================================= -->
+<!-- SEKTION 4: „REIHE“ (Serien-Kontext)                               -->
+<!-- ================================================================= -->
+<section class="pt-6 space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="collections_bookmark">collections_bookmark</span>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">4. Reihe &amp; Serien-Kontext</h3>
+</div>
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase tracking-wider">Zyklus</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+<!-- Dropdown Reihe -->
+<div class="md:col-span-6 space-y-1.5">
+<label class="font-label-default text-label-default text-on-surface block" for="series-select">Zugehörige Buchreihe</label>
+<div class="relative">
+<select class="w-full h-9 pl-3 pr-8 bg-bg-card-light border border-border-light rounded font-body-default text-body-default text-on-surface appearance-none focus:outline-none focus:border-amber-focus focus:ring-1 focus:ring-amber-focus" id="series-select">
+<option selected="">Tiefsee-Chroniken</option>
+<option>Erebus-Expeditionen</option>
+<option>— Keine Reihe (Eigenständiger Roman) —</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-2.5 text-text-muted-light pointer-events-none text-[16px]" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+<!-- Band-Nummer -->
+<div class="md:col-span-2 space-y-1.5">
+<label class="font-label-default text-label-default text-on-surface block" for="series-volume">Band</label>
+<input class="w-full h-9 px-3 text-center bg-bg-card-light border border-border-light rounded font-body-default text-body-default text-on-surface focus:outline-none focus:border-amber-focus focus:ring-1 focus:ring-amber-focus" id="series-volume" type="text" value="I"/>
+</div>
+<!-- Inline Button / Feld: Neue Reihe -->
+<div class="md:col-span-4 flex items-center gap-2">
+<button class="w-full h-9 px-3 rounded border border-dashed border-border-light bg-bg-card-light hover:bg-bg-soft-light transition-colors text-text-muted-light hover:text-on-surface font-label-default text-label-default flex items-center justify-center gap-1.5 cursor-pointer" type="button">
+<span class="material-symbols-outlined text-[15px]" data-icon="add">add</span>
+                Neue Reihe anlegen
+              </button>
+</div>
+<div class="md:col-span-12">
+<p class="font-meta-default text-meta-default text-text-muted-light">
+                Hinweis: Ohne Reihe: eigenständiger Roman. Bücher derselben Reihe teilen gemeinsame Lore-Archive und Entitäten.
+              </p>
+</div>
+</div>
+</section>
+<!-- ================================================================= -->
+<!-- SEKTION 5: „ATELIER“ (Benutzer-Ebene, globale Wirkung)            -->
+<!-- ================================================================= -->
+<section class="pt-6 space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-primary" data-icon="person">person</span>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">5. Atelier &amp; Globale Autorenebene</h3>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-meta-default text-meta-default font-semibold">
+                gilt für alle Bücher
+              </span>
+</div>
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase tracking-wider">Benutzer-Profil</span>
+</div>
+<div class="p-4 rounded border border-border-light bg-surface-container-high/40 space-y-4">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Autorenname (Atelier) -->
+<div class="space-y-1.5">
+<label class="font-label-default text-label-default text-on-surface block" for="atelier-author-name">Standard-Autorenname</label>
+<input class="w-full h-9 px-3 bg-bg-card-light border border-border-light rounded font-body-default text-body-default text-on-surface focus:outline-none focus:border-amber-focus focus:ring-1 focus:ring-amber-focus" id="atelier-author-name" type="text" value="H. Calder"/>
+<p class="font-meta-default text-meta-default text-text-muted-light">Wird automatisch in neue Manuskripte eingesetzt.</p>
+</div>
+<!-- Tagesziel -->
+<div class="space-y-1.5">
+<label class="font-label-default text-label-default text-on-surface block" for="atelier-daily-goal">Persönliches Tagesziel</label>
+<div class="relative">
+<input class="w-full h-9 px-3 bg-bg-card-light border border-border-light rounded font-body-default text-body-default text-on-surface focus:outline-none focus:border-amber-focus focus:ring-1 focus:ring-amber-focus" id="atelier-daily-goal" type="text" value="500 Wörter"/>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light">erscheint im Workspace und im Bücherregal.</p>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- MODAL FOOTER -->
+<footer class="px-7 py-4 border-t border-border-light bg-bg-panel-light flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+<!-- Reflektierter Hinweis -->
+<div class="flex items-center gap-2 text-text-muted-light">
+<span class="material-symbols-outlined text-[16px] text-cover-sepia" data-icon="auto_awesome">auto_awesome</span>
+<span class="font-meta-default text-meta-default">
+            Neue Bücher erben diese Antworten — änderbar, sobald der Workspace da ist: jetzt.
+          </span>
+</div>
+<!-- Buttons -->
+<div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+<button class="px-4 py-1.5 rounded border border-border-light bg-bg-card-light hover:bg-bg-soft-light font-label-default text-label-default text-on-surface transition-colors cursor-pointer" type="button">
+            Abbrechen
+          </button>
+<button class="px-5 py-1.5 rounded bg-cover-sepia hover:bg-primary-container text-on-primary font-label-default text-label-default font-medium shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-amber-focus focus:ring-offset-1 cursor-pointer flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[15px]" data-icon="save">save</span>
+            Speichern
+          </button>
+</div>
+</footer>
+</div>
+</div>
+</body></html>

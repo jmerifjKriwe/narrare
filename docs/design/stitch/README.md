@@ -19,6 +19,13 @@ Each screen is a pair in `screens/<area>/`:
   The 2026-11-15 settings and prompt-override redesign supersedes the earlier
   `settings-ai-rules` and `ai-prompts-overrides` drafts, which depicted fictional
   models and an eight-module prompt cascade; git history keeps them.
+  The 2026-11-16 W4 round supersedes the chapter-centric base `workspace` draft
+  with `workspace-scene-centric` (the scene-centric authority, with states and
+  book settings), `zen-focus` with `zen-focus-2` (sepia cut, decision D18), and
+  the chrome parts of `integrated-suite` with `chrome-rail-topbar` (the suite
+  stays reference for the dock). Light drafts win; the dark faces ride the
+  shell's token ladder. The round's checkpoint decisions and the wave's gap
+  ledger: [`gaps/2026-11-16-w4.md`](gaps/2026-11-16-w4.md).
   The 2026-11-14 `cover-system` sheet is a clarification of the cover object, not
   a screen template: Stitch offers it only as a downscaled export (412×1600 of a
   2560×9934 desktop canvas), so its preview is a thumbnail and the HTML is the
@@ -69,7 +76,7 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`shelf-empty`](screens/library/shelf-empty.webp) | Bücherregal — Leerstand (G-4) | 2048 px |
 |  | [`shelf-states`](screens/library/shelf-states.webp) | Bücherregal — Zustände: laden, Fehler, viele Bücher, langer Titel (G-4) | 2048 px |
 |  | [`welcome-onboarding`](screens/library/welcome-onboarding.webp) | Willkommen & Autoren-Onboarding | 2570 px |
-|  | [`integrated-suite`](screens/library/integrated-suite.webp) | Narrare — Integrierte Gesamtsuite (Regal, Workspace & KI-Dock) | 3664 px |
+|  | [`integrated-suite`](screens/library/integrated-suite.webp) | Narrare — Integrierte Gesamtsuite (Regal, Workspace & KI-Dock) — Chrome-Teile überholt durch `chrome-rail-topbar`; bleibt Referenz für das Dock | 3664 px |
 |  | [`welcome-atelier`](screens/library/welcome-atelier.webp) | Willkommen im Atelier (Überarbeitet) | 1600 px |
 |  | [`setup-step1-basis-vorlage`](screens/library/setup-step1-basis-vorlage.webp) | Projekt-Setup: Start oder Demo-Vorlage wählen | 1600 px |
 |  | [`setup-step2-dramaturgie-struktur`](screens/library/setup-step2-dramaturgie-struktur.webp) | Projekt-Setup: Dramaturgie & Struktur (5 Paradigmen) | 1600 px |
@@ -85,13 +92,19 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`new-book-dialog`](screens/library/new-book-dialog.webp) | Neues Buch anlegen — Der schnelle Weg (Dialog) | 1280 px |
 |  | [`shelf-quick-menu`](screens/library/shelf-quick-menu.webp) | Zustands-Referenz: Schnellmenü im Bücherregal | 2672 px |
 |  | [`shelf-hero-menu`](screens/library/shelf-hero-menu.webp) | Zustands-Referenz: Schnellmenü der Hero-Karte | 3128 px |
-| Writing | [`workspace`](screens/writing/workspace.webp) | Schreib-Workspace | 3434 px |
+| Writing | [`workspace`](screens/writing/workspace.webp) | Schreib-Workspace (kapitelzentrierte Basis — überholt durch `workspace-scene-centric`) | 3434 px |
 |  | [`workspace-ai-dock`](screens/writing/workspace-ai-dock.webp) | Schreib-Workspace & KI-Dock | 4410 px |
 |  | [`workspace-lore-dock`](screens/writing/workspace-lore-dock.webp) | Schreib-Workspace & Lore-Dock (Kausalitäts-Konflikt gelöst) | 4104 px |
 |  | [`workspace-continued-manuscript`](screens/writing/workspace-continued-manuscript.webp) | Schreib-Workspace — Manuskript fortgeführt | 5154 px |
 |  | [`workspace-aria-dialogue`](screens/writing/workspace-aria-dialogue.webp) | Schreib-Workspace — ARIAs Dialogreaktion eingefügt | 5814 px |
 |  | [`workspace-chapter-2-nevada-echoes`](screens/writing/workspace-chapter-2-nevada-echoes.webp) | Schreib-Workspace (Kapitel 2, Szene 2: Nevada Echoes) | 3600 px |
-|  | [`zen-focus`](screens/writing/zen-focus.webp) | Zen-Fokus & Atmosphärischer Schreibmodus | 2648 px |
+|  | [`zen-focus`](screens/writing/zen-focus.webp) | Zen-Fokus & Atmosphärischer Schreibmodus (überholt durch `zen-focus-2`) | 2648 px |
+|  | [`workspace-scene-centric`](screens/writing/workspace-scene-centric.webp) | Schreib-Workspace — szenenzentriert, maßgeblich W4 | 2048 px |
+|  | [`workspace-scene-centric-dark`](screens/writing/workspace-scene-centric-dark.webp) | Schreib-Workspace — szenenzentriert (Midnight Ink, maßgeblich W4) | 2048 px |
+|  | [`workspace-states`](screens/writing/workspace-states.webp) | Zustands-Referenz Schreib-Workspace | 3230 px |
+|  | [`workspace-book-settings`](screens/writing/workspace-book-settings.webp) | Buch-Einstellungen, Modal | 2048 px |
+|  | [`zen-focus-2`](screens/writing/zen-focus-2.webp) | Zen-Fokus V2, ohne Sepia | 2048 px |
+|  | [`zen-focus-2-dark`](screens/writing/zen-focus-2-dark.webp) | Zen-Fokus V2 (Midnight Ink, ohne Sepia) | 2540 px |
 | Editing and revision | [`editorial-comments`](screens/editing/editorial-comments.webp) | Lektorats- & Kommentar-Workspace | 3878 px |
 |  | [`revision-history`](screens/editing/revision-history.webp) | Revisions- & Diff-Historie (Time-Machine) | 4038 px |
 | Knowledge and lore | [`knowledge-ai-dock`](screens/knowledge/knowledge-ai-dock.webp) | Knowledge- & KI-Dock | 3172 px |
@@ -127,6 +140,8 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`settings-states-reference`](screens/shell/settings-states-reference.webp) | Zustands-Referenz: Atelier-Einstellungen (2026-11-15) | 6040 px |
 |  | [`ai-prompts-states-reference`](screens/shell/ai-prompts-states-reference.webp) | Zustands-Referenz: KI-Prompts anpassen (2026-11-15) | 5094 px |
 |  | [`help-center`](screens/shell/help-center.webp) | Hilfe-Zentrum & Kontext-Handbuch | 2144 px |
+|  | [`chrome-rail-topbar`](screens/shell/chrome-rail-topbar.webp) | App-weite Chrome: Rail + Topbar, inkl. Sprach-Varianten A/B — entschieden: A | 4718 px |
+|  | [`chrome-rail-topbar-dark`](screens/shell/chrome-rail-topbar-dark.webp) | App-weite Chrome: Rail + Topbar (Midnight Ink) | 4396 px |
 | Mobile | [`pocket-quick-capture`](screens/mobile/pocket-quick-capture.webp) | Narrare Pocket — Unterwegs-Studio & Quick Capture | 3238 px |
 
 Reference screenshots uploaded into the same Stitch project are the files already

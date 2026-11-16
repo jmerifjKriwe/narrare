@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-background" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Narrare · Zen-Fokus — Dead Signal</title>
+<!-- Google Fonts: EB Garamond & Plus Jakarta Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "secondary": "#74584e",
+            "error": "#ba1a1a",
+            "outline": "#86736c",
+            "area-writing": "#914F2F",
+            "rule-dark": "#302D28",
+            "surface-container-lowest": "#ffffff",
+            "text-foreground-dark": "#DFDEDA",
+            "bg-canvas-dark": "#16140F",
+            "inverse-primary": "#ffb695",
+            "area-chat": "#3A637B",
+            "secondary-container": "#fed8ca",
+            "border-dark": "#35332D",
+            "bg-canvas-light": "#F6F3ED",
+            "amber-focus": "#8F4622",
+            "inverse-on-surface": "#f7f0e7",
+            "text-muted-light": "#6E6B65",
+            "primary-container": "#743b1f",
+            "on-tertiary-container": "#eead78",
+            "secondary-fixed": "#ffdbce",
+            "on-primary-fixed": "#351000",
+            "surface-bright": "#fff8f2",
+            "background": "#fff8f2",
+            "state-warning": "#9A6100",
+            "error-container": "#ffdad6",
+            "tertiary-container": "#6e3f14",
+            "primary-fixed": "#ffdbcc",
+            "on-primary-fixed-variant": "#6f371c",
+            "tertiary": "#522900",
+            "cover-pale": "#EEEBE5",
+            "on-surface-variant": "#53433d",
+            "tertiary-fixed-dim": "#fcb882",
+            "surface": "#fff8f2",
+            "cover-ink": "#24211C",
+            "on-secondary-fixed": "#2a170f",
+            "bg-soft-dark": "#2C2922",
+            "on-tertiary": "#ffffff",
+            "surface-container-high": "#eee7df",
+            "cover-sepia": "#743B1F",
+            "on-background": "#1e1b16",
+            "primary-fixed-dim": "#ffb695",
+            "tertiary-fixed": "#ffdcc3",
+            "area-settings": "#5A5549",
+            "rule-light": "#EEEBE5",
+            "amber-focus-dark": "#F2AD73",
+            "surface-tint": "#8c4e30",
+            "on-secondary-container": "#795c52",
+            "bg-card-dark": "#211F1A",
+            "surface-dim": "#e0d9d1",
+            "primary": "#58250b",
+            "outline-variant": "#d8c2b9",
+            "state-danger": "#AC3031",
+            "bg-panel-dark": "#1C1914",
+            "on-error-container": "#93000a",
+            "inverse-surface": "#33302b",
+            "on-surface": "#1e1b16",
+            "on-error": "#ffffff",
+            "surface-container": "#f4ede4",
+            "text-muted-dark": "#89867F",
+            "on-primary-container": "#f8a884",
+            "bg-card-light": "#FFFFFF",
+            "border-light": "#E0DEDA",
+            "secondary-fixed-dim": "#e3bfb2",
+            "on-secondary": "#ffffff",
+            "on-tertiary-fixed": "#2f1500",
+            "area-planning": "#834D7E",
+            "surface-variant": "#e9e1d9",
+            "bg-soft-light": "#EFEBE2",
+            "bg-panel-light": "#FDFCF9",
+            "on-primary": "#ffffff",
+            "area-knowledge": "#606127",
+            "state-success": "#21763C",
+            "on-secondary-fixed-variant": "#5a4137",
+            "on-tertiary-fixed-variant": "#693c10",
+            "surface-container-highest": "#e9e1d9",
+            "surface-container-low": "#faf2ea"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "margin": "1.5rem",
+            "space-xl": "2rem",
+            "rail-collapsed": "3rem",
+            "prose-max-width": "34rem",
+            "gutter": "1rem",
+            "space-xs": "0.25rem",
+            "dock-width": "21rem",
+            "container-max": "75rem",
+            "rail-expanded": "10.5rem",
+            "space-lg": "1.5rem",
+            "space-sm": "0.5rem",
+            "space-md": "1rem"
+          },
+          "fontFamily": {
+            "headline-title": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-emph": ["Plus Jakarta Sans", "sans-serif"],
+            "label-default": ["Plus Jakarta Sans", "sans-serif"],
+            "body-default": ["Plus Jakarta Sans", "sans-serif"],
+            "prose-editorial": ["EB Garamond", "serif"],
+            "prose-heading-1": ["EB Garamond", "serif"],
+            "meta-default": ["Plus Jakarta Sans", "sans-serif"],
+            "eyebrow-tracked": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-hero": ["Plus Jakarta Sans", "sans-serif"],
+            "prose-heading-2": ["EB Garamond", "serif"]
+          },
+          "fontSize": {
+            "headline-title": ["20px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "headline-emph": ["15px", { "lineHeight": "22px", "fontWeight": "600" }],
+            "label-default": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+            "body-default": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+            "prose-editorial": ["18px", { "lineHeight": "31.5px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "prose-heading-1": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "meta-default": ["12px", { "lineHeight": "17px", "fontWeight": "400" }],
+            "eyebrow-tracked": ["11px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600" }],
+            "headline-hero": ["28px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "prose-heading-2": ["21px", { "lineHeight": "28px", "fontWeight": "600" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    @keyframes cursor-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .caret-blink {
+      animation: cursor-blink 1.06s infinite step-end;
+    }
+    .spine-text-left {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+    .spine-text-right {
+      writing-mode: vertical-rl;
+    }
+  </style>
+</head>
+<body class="h-full bg-background text-on-surface antialiased font-body-default selection:bg-secondary-container selection:text-primary relative overflow-x-hidden">
+<!-- =========================================================================
+       DEKORATIVE VERTIKALE AUSSENSPINES (Ausschließlich "NARRARE · ZEN")
+       ========================================================================= -->
+<aside aria-hidden="true" class="fixed top-0 left-0 bottom-0 w-8 pointer-events-none flex items-center justify-center z-10 select-none">
+<div class="spine-text-left text-text-muted-light/40 font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-[0.24em] whitespace-nowrap">
+      NARRARE · ZEN
+    </div>
+</aside>
+<aside aria-hidden="true" class="fixed top-0 right-0 bottom-0 w-8 pointer-events-none flex items-center justify-center z-10 select-none">
+<div class="spine-text-right text-text-muted-light/40 font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-[0.24em] whitespace-nowrap">
+      NARRARE · ZEN
+    </div>
+</aside>
+<!-- =========================================================================
+       ZARTE, SCHWEBENDE STATUSLEISTE OBEN
+       ========================================================================= -->
+<header class="fixed top-0 left-0 right-0 z-30 px-6 py-4 flex items-center justify-between pointer-events-none">
+<!-- Links: Exit Chip -->
+<div class="pointer-events-auto">
+<button class="group flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-card-light/80 hover:bg-bg-card-light text-text-muted-light hover:text-on-surface border border-border-light/70 shadow-[0_1px_3px_0_rgba(44,24,16,0.03)] backdrop-blur-md transition-all duration-150 active:scale-95 focus:outline-none focus:ring-1 focus:ring-amber-focus" type="button">
+<span class="material-symbols-outlined text-[16px] transition-transform group-hover:-translate-x-0.5">arrow_back</span>
+<span class="font-label-default text-label-default">Zurück zum Workspace</span>
+<kbd class="ml-1 text-[10px] font-mono tracking-tight text-text-muted-light/70 bg-bg-soft-light/80 border border-border-light px-1.5 py-0.5 rounded">Esc</kbd>
+</button>
+</div>
+<!-- Rechts: Wort-Zähler & Pomodoro -->
+<div class="pointer-events-auto flex items-center gap-3">
+<!-- Wort-Zähler -->
+<div class="px-3 py-1.5 rounded-lg bg-bg-card-light/70 border border-border-light/60 backdrop-blur-md text-text-muted-light flex items-center gap-1.5 shadow-[0_1px_3px_0_rgba(44,24,16,0.02)]">
+<span class="font-meta-default text-meta-default tabular-nums">Heute: <span class="text-primary font-medium">+642 W</span> · 1.840 ges.</span>
+</div>
+<!-- Pomodoro-Timer -->
+<div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-bg-card-light/70 border border-border-light/60 backdrop-blur-md shadow-[0_1px_3px_0_rgba(44,24,16,0.02)]">
+<button aria-label="Timer pausieren" class="w-5 h-5 rounded-full bg-secondary-container/60 hover:bg-secondary-container flex items-center justify-center text-primary transition-colors focus:outline-none" type="button">
+<span class="material-symbols-outlined text-[13px]" style="font-variation-settings: 'FILL' 1;">pause</span>
+</button>
+<span class="font-meta-default text-meta-default tabular-nums text-on-surface font-medium tracking-tight">18:42</span>
+</div>
+</div>
+</header>
+<!-- =========================================================================
+       ZENTRIERTER SZENEN-KORPUS (LITERARY MODERNISM EDITORIAL SANCTUARY)
+       ========================================================================= -->
+<main class="min-h-full flex flex-col justify-center items-center px-6 pt-24 pb-36">
+<article class="w-full max-w-[36rem] mx-auto">
+<!-- Manuskript-Kopf -->
+<header class="text-center mb-10 select-none">
+<div class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light/80 tracking-[0.16em] mb-2">
+          ROMAN · DEAD SIGNAL
+        </div>
+<h1 class="font-prose-heading-1 text-[32px] leading-[38px] text-primary tracking-tight font-medium">
+          Kapitel 2 — Nevada Echoes
+        </h1>
+<p class="mt-2 font-prose-editorial text-base italic text-text-muted-light">
+          Sub-Basement Nevada Test Site · 27. Oktober 2094, 03:14 UTC
+        </p>
+<!-- Zarter Fokus-Trenner -->
+<div class="mt-6 flex items-center justify-center gap-3 text-text-muted-light/40">
+<span class="h-px w-10 bg-border-light"></span>
+<span class="font-eyebrow-tracked text-[10px] uppercase tracking-[0.2em]">fokus</span>
+<span class="h-px w-10 bg-border-light"></span>
+</div>
+</header>
+<!-- Prosa-Fluss: Gedimmte frühere Absätze -->
+<div class="space-y-6 opacity-30 select-text transition-opacity duration-300 hover:opacity-50">
+<p class="font-prose-editorial text-prose-editorial text-on-surface text-justify text-indent-[1.5em] leading-[32px]">
+          Der Schacht reichte siebenhundert Meter in den basaltischen Grund der Yucca-Hochebene hinab, tief genug, um das tektonische Zittern der kontinentalen Nahtstelle wie ein dumpfes Pochen im Trommelfell zu spüren. Die Kälte hier unten besaß eine chemische Reinheit; sie roch nach flüssigem Stickstoff und dem synthetischen Dichtungsfett der Kryo-Kondensatoren, die seit vierzig Jahren in getakteten Atemzügen arbeiteten. Nichts lebte in dieser Tiefe, nicht einmal die Flechten, die sonst jeden feuchten Winkel der verlassenen Regierungsanlagen überwucherten.
+        </p>
+<p class="font-prose-editorial text-prose-editorial text-on-surface text-justify text-indent-[1.5em] leading-[32px]">
+          Aris strich mit dem Daumen über das Gehäuse des tragbaren Diktiergeräts. Die Quarzspule im Inneren drehte sich mit einem trockenen, rhythmischen Mahlen, das im leeren Korridor widerhallte wie die Schritte eines ungeduldigen Besuchers. Laut Einsatzprotokoll der Operation Dry Well hätte dieser Sektor seit dem Frühjahr 2058 versiegelt und mit Blei verfüllt sein müssen. Doch das Siegel am Hauptschott war vor wenigen Stunden von innen erhitzt worden – sauber aufgeschmolzen entlang der molekularen Schweißnaht.
+        </p>
+</div>
+<!-- =====================================================================
+           AKTIVER ABSATZ: HERVORGEHOBENE KARTE MIT LESEZEICHEN-KERBE
+           ===================================================================== -->
+<section class="mt-8 relative bg-bg-card-light rounded-lg border border-border-light/90 shadow-[0_2px_8px_0_rgba(44,24,16,0.04)] pl-7 pr-6 py-6 transition-all duration-200">
+<!-- Lesezeichen-Kerbe / Fokale Akzentleiste in Terracotta #743b1f -->
+<div aria-hidden="true" class="absolute left-0 top-3 bottom-3 w-[3px] bg-primary-container rounded-r"></div>
+<!-- Fokus-Absatz Prosa -->
+<p class="font-prose-editorial text-prose-editorial text-on-surface leading-[33px]">
+          Die Konsole reagierte nicht auf den Transponderchip, sondern auf die Druckkurve seiner Fingerkuppen auf den kalten Bakelit-Tasten. Aris zählte vier Schläge Pause zwischen den Relais.<span aria-hidden="true" class="inline-block w-[2px] h-[19px] ml-0.5 bg-primary align-middle caret-blink"></span>
+</p>
+<!-- Ghost-Text Vorschlag der KI -->
+<div class="mt-4 pt-3.5 border-t border-border-light/40 flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 text-area-writing/85">
+<p class="font-prose-editorial text-base italic leading-[26px]">
+            ↳ Erst als die dritte Warnlampe bernsteinfarben erlosch, gab die hydraulische Schleuse den Korridor zur Kammer frei.
+          </p>
+<button class="self-start sm:self-auto shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-bg-soft-light hover:bg-secondary-container/50 text-primary border border-border-light font-label-default text-xs tracking-tight transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-amber-focus" type="button">
+<span class="font-mono text-[10px] font-semibold bg-bg-card-light border border-border-light/80 px-1 py-0.5 rounded leading-none">Tab</span>
+<span>Übernehmen</span>
+</button>
+</div>
+</section>
+<!-- Abschlussschmuck -->
+<div aria-hidden="true" class="mt-14 text-center select-none">
+<span class="font-prose-editorial text-lg tracking-[0.6em] text-text-muted-light/45 font-medium pl-2">§ § §</span>
+</div>
+</article>
+</main>
+<!-- =========================================================================
+       UNTEN SCHWEBENDE STEUER-PILL
+       Backdrop-Blur, zarte Randlinie, Fokus-Segment-Control, Muted Soundscape
+       (STRIKT: KEIN Sepia-Button, keine Paletten-Tools)
+       ========================================================================= -->
+<footer class="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 select-none">
+<div class="flex items-center gap-2 p-1.5 rounded-full bg-bg-card-light/90 border border-border-light/80 shadow-[0_6px_20px_rgba(44,24,16,0.06)] backdrop-blur-md">
+<!-- Fokus-Modi Segment-Control -->
+<div class="flex items-center gap-1 bg-bg-soft-light/80 p-0.5 rounded-full">
+<button class="px-3 py-1 rounded-full bg-bg-card-light text-primary font-label-default text-xs font-semibold shadow-[0_1px_2px_rgba(44,24,16,0.05)] border border-border-light/50 transition-all duration-150 focus:outline-none" type="button">
+          Absatz-Fokus
+        </button>
+<button class="px-3 py-1 rounded-full text-text-muted-light hover:text-on-surface font-label-default text-xs font-medium transition-colors duration-150 focus:outline-none" type="button">
+          Satz-Fokus
+        </button>
+<button class="px-3 py-1 rounded-full text-text-muted-light hover:text-on-surface font-label-default text-xs font-medium transition-colors duration-150 focus:outline-none" type="button">
+          Normal
+        </button>
+</div>
+<!-- Vertikaler Trenner -->
+<div aria-hidden="true" class="h-4 w-px bg-border-light mx-0.5"></div>
+<!-- Deaktivierte Soundscape-Steuerung mit Tooltip -->
+<div class="relative group">
+<button aria-label="Klanglandschaften deaktiviert" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted-light/60 hover:text-text-muted-light cursor-not-allowed transition-colors focus:outline-none" disabled="" type="button">
+<span class="material-symbols-outlined text-[17px] relative">mobile_question</span>
+</button>
+<!-- Tooltip-Badge -->
+<div class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs px-2.5 py-1 rounded bg-inverse-surface text-inverse-on-surface font-meta-default text-[11px] opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-md">
+          Klanglandschaften kommen in einer späteren Welle
+          <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-inverse-surface"></div>
+</div>
+</div>
+<!-- Vollbild-Icon-Button -->
+<button aria-label="Vollbild umschalten" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-amber-focus" id="fullscreen-toggle" type="button">
+<span class="material-symbols-outlined text-[18px]">fullscreen</span>
+</button>
+</div>
+</footer>
+<!-- =========================================================================
+       SUBTILE TASTENKOMBINATIONEN & INTERAKTIONEN (Vanilla JS)
+       ========================================================================= -->
+<script>
+    // Vollbild-Umschaltung
+    const fullscreenBtn = document.getElementById('fullscreen-toggle');
+    if (fullscreenBtn) {
+      fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+          }
+        }
+      });
+    }
+
+    // Esc zum Verlassen
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        window.history.length > 1 ? window.history.back() : null;
+      }
+    });
+  </script>
+</body></html>
