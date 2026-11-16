@@ -22,7 +22,9 @@
 > component, tests and its 29 catalog keys intact, absent from the
 > production bundle — so rows 15–26 describe the kept component, not a
 > shipped screen; their triggers stand unchanged (the workspace, knowledge
-> and import waves still owe the doors). The live shelf's own ledger is
+> and import waves still owe the doors). The landing's fate — fold into the
+> shelf, revive, or delete with its keys — is the owner's call, hung under
+> the W3 index when it opens. The live shelf's own ledger is
 > [`2026-11-15-shelf.md`](2026-11-15-shelf.md); it carries the standing
 > import-door row and the updated „Neues beginnen" reading (row 18 there).
 
