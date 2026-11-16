@@ -521,6 +521,9 @@ describe("the shelf — every door honest about what is not built yet", () => {
     const heroMenu = within(heroSection()).getByRole("button", { name: de["writing.shelf.card.options"] });
     expect(heroMenu.hasAttribute("disabled")).toBe(false);
     expect(heroMenu.getAttribute("aria-haspopup")).toBe("dialog");
+    // The page-wide total guards the sum: three grid cards plus the hero —
+    // a stray options trigger anywhere on the page breaks this count.
+    expect(screen.getAllByRole("button", { name: de["writing.shelf.card.options"] })).toHaveLength(4);
     // Task 10 made the banner live: the hero's own goal pair and the
     // aggregate's weekly average; the statistics door stays disabled —
     // no statistics surface exists to open yet.
