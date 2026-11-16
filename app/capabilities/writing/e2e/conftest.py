@@ -7,8 +7,10 @@ another's rows) and completes setup through the real API — the blank path
 with known answers, one POST, never a wizard walkthrough. The setup's own
 novel is deleted again straight after: the user row is what makes the
 instance installed, and every test seeds exactly the population it asserts
-on through the writing API. ``uninstalled`` is the same stack's second face:
-emptied and NOT set up — the pre-setup gate's precondition.
+on through the writing API. ``installed_with_atelier`` is the same install
+with the setup novel kept standing — the atelier's answers need their source
+row for the dialog's inheritance face. ``uninstalled`` is the same stack's
+second face: emptied and NOT set up — the pre-setup gate's precondition.
 
 ``DATABASE`` is defined here once; the tests import it and the API helpers
 from this module. The helpers drive the same HTTP surface the browser uses —
@@ -155,6 +157,17 @@ def installed(stack: Stack) -> Stack:
     reset(DATABASE)
     result = complete_setup()
     delete_novel(str(result["novel_id"]))
+    return stack
+
+
+@pytest.fixture
+def installed_with_atelier(stack: Stack) -> Stack:
+    """The installed instance with its first book still standing: setup's
+    own novel is NOT deleted, so the atelier's answers have a source row —
+    the inheritance face of the new-book dialog (spec 7). The population is
+    exactly the setup book; the test seeds nothing else."""
+    reset(DATABASE)
+    complete_setup()
     return stack
 
 

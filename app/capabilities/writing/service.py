@@ -129,13 +129,31 @@ class WritingService:
         """Commit a novel with optional genre, blurb and word target; return
         the created row.
 
+        The new-book dialog's inheritance note is the row's truth: the four
+        wizard settings — author typology, dramatic form, AI role and canon
+        strictness — are copied from the atelier's first book (the oldest
+        ``created_at``, the one setup created). One read, no lock: a create
+        has no concurrent writer of the source row's settings, and the copy
+        never writes the source. A column without an answer stays without
+        one; no source book at all leaves all four NULL.
+
         Raise SetupRequiredError if setup has not created the owning user.
         """
         await self._require_user()
         # Fold an empty/whitespace genre to None at the create boundary, the
         # way PATCH does, so "no genre" is one value everywhere.
         genre = (genre or "").strip() or None
-        novel = await self.novels.create(title, genre=genre, blurb=blurb, target_words=target_words)
+        atelier = await self.novels.oldest()
+        novel = await self.novels.create(
+            title,
+            genre=genre,
+            blurb=blurb,
+            target_words=target_words,
+            author_typology=atelier.author_typology if atelier is not None else None,
+            dramatic_form=atelier.dramatic_form if atelier is not None else None,
+            ai_role=atelier.ai_role if atelier is not None else None,
+            canon_strictness=atelier.canon_strictness if atelier is not None else None,
+        )
         await self.session.commit()
         return novel
 

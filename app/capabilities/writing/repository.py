@@ -140,6 +140,15 @@ class NovelRepository(ScopedRepository[Novel]):
     async def get(self, novel_id: UUID) -> Novel | None:
         return await self.session.scalar(self.query().where(Novel.id == novel_id))
 
+    async def oldest(self) -> Novel | None:
+        """The user's first book — the oldest ``created_at``, the one setup
+        created in the same transaction as the user. The atelier's answers
+        live on its row; the create path reads it once, without a lock: a
+        create has no concurrent writer of the source row's settings.
+        Archived books count — archiving is the shelf's organization, not
+        an erasure of the answers. None while the user owns no novel."""
+        return await self.session.scalar(self.query().order_by(Novel.created_at.asc()).limit(1))
+
     async def save(self, novel: Novel, changes: dict[str, Any]) -> Novel:
         """Apply a metadata edit and flush; the commit is the caller's.
 
@@ -160,8 +169,17 @@ class NovelRepository(ScopedRepository[Novel]):
         author: str | None = None,
         language: str | None = None,
         target_words: int | None = None,
+        author_typology: str | None = None,
+        dramatic_form: str | None = None,
+        ai_role: str | None = None,
+        canon_strictness: int | None = None,
     ) -> Novel:
-        """Flush a new novel for this user, leaving the commit to the caller."""
+        """Flush a new novel for this user, leaving the commit to the caller.
+
+        The wizard's four settings ride as given — the service copies them
+        from the atelier's first book; absent, they stay NULL, the honest
+        no-answer.
+        """
         novel = Novel(
             user_id=self.user_id,
             title=title,
@@ -170,6 +188,10 @@ class NovelRepository(ScopedRepository[Novel]):
             author=author,
             language=language,
             target_words=target_words,
+            author_typology=author_typology,
+            dramatic_form=dramatic_form,
+            ai_role=ai_role,
+            canon_strictness=canon_strictness,
         )
         self.session.add(novel)
         await self.session.flush()

@@ -13,10 +13,12 @@ must agree. Search answers titles, genre components and figures by equality;
 the facets compose OR within a group and AND across; duplicate copies the
 whole book; export lands a real ZIP and stamps the menu; archive leaves and
 returns through the drafted confirm; the new-book dialog creates the hero
-with a neutral word stand; an API chapter write moves the banner through the
-shelf's own invalidation seam — without a reload; the pre-setup gate hands
-`/` to the welcome and the inverse gate hands `/setup` back; and the dark
-face clears the same axe WCAG A/AA floor the setup suite rides
+with a neutral word stand and the atelier's inherited answers — the setup
+book standing as their source — while the empty-shelf door creates with
+honest NULLs when no source remains; an API chapter write moves the banner
+through the shelf's own invalidation seam — without a reload; the pre-setup
+gate hands `/` to the welcome and the inverse gate hands `/setup` back; and
+the dark face clears the same axe WCAG A/AA floor the setup suite rides
 (``assert_accessible``).
 """
 
@@ -29,6 +31,7 @@ from playwright.sync_api import Page, expect
 
 from app.capabilities.writing.e2e.conftest import (
     DATABASE,
+    SETUP_ANSWERS,
     create_chapter,
     create_novel,
     get_activity,
@@ -520,20 +523,25 @@ def test_archive_confirm_leaves_and_wiederherstellen_returns(page: Page, install
     expect(_metric(page, "Aktive Projekte")).to_contain_text("2 Romane")
 
 
-def test_the_new_book_dialog_creates_the_hero_end_to_end(page: Page, installed: Stack) -> None:
-    """Spec 7: the empty shelf's door opens the drafted modal — title required
-    with the wizard's message, live cover, genre pills, the slider's bands —
-    and Anlegen posts once: the new book leads as the hero with a neutral word
-    stand, the dialog's answers never write wizard settings, and a reopen
-    finds the answers forgotten."""
+def test_the_new_book_dialog_creates_the_hero_end_to_end(
+    page: Page, installed_with_atelier: Stack
+) -> None:
+    """Spec 7: the atelier book stands on the shelf — the top bar's door opens
+    the drafted modal (title required with the wizard's message, live cover,
+    genre pills, the slider's bands) — and Anlegen posts once: the new book
+    leads as the hero with a neutral word stand, its row carries the atelier's
+    four answers (the inheritance note's truth) while the source row stands
+    untouched, and a reopen finds the dialog's own answers forgotten."""
     _goto_shelf(page)
-    expect(page.get_by_role("heading", name=EMPTY_TITLE)).to_be_visible()
-    expect(_metric(page, "Aktive Projekte")).to_contain_text("0 Romane")
-    expect(_metric(page, "Schreibstreak")).to_contain_text("0 Tage")
+    # The setup book is the shelf's whole population: the hero, no grid.
+    expect(
+        page.get_by_role("heading", name=SETUP_ANSWERS["novel_title"], exact=True)
+    ).to_be_visible()
+    expect(page.get_by_role("article")).to_have_count(0)
+    expect(_metric(page, "Aktive Projekte")).to_contain_text("1 Roman")
 
-    # The empty panel's own door opens the modal over the scrimmed shelf.
-    empty_panel = page.locator("section").filter(has=page.get_by_text(EMPTY_TITLE, exact=True))
-    empty_panel.get_by_role("button", name=NEW_BOOK).click()
+    # The top bar's door opens the modal over the scrimmed shelf.
+    page.get_by_role("button", name=NEW_BOOK).click()
     dialog = page.get_by_role("dialog", name=DIALOG_TITLE)
     expect(dialog).to_be_visible()
     expect(dialog).to_have_attribute("aria-modal", "true")
@@ -577,11 +585,13 @@ def test_the_new_book_dialog_creates_the_hero_end_to_end(page: Page, installed: 
     expect(dialog.get_by_text("Entspricht ca. 111 Normseiten im Buchdruckformat.")).to_be_visible()
 
     # One POST: the dialog closes, the shelf's own refetch carries the book —
-    # the newest row leads as the hero, the word stand honestly neutral.
+    # the newest row leads as the hero, the atelier book joins the grid, the
+    # word stand honestly neutral.
     dialog.get_by_role("button", name=CREATE, exact=True).click()
     expect(dialog).to_have_count(0)
     expect(page.get_by_role("heading", name="Die Prüferin", exact=True)).to_be_visible()
-    expect(page.get_by_role("article")).to_have_count(0)
+    expect(page.get_by_role("article")).to_have_count(1)
+    expect(_card(page, SETUP_ANSWERS["novel_title"])).to_be_visible()
     hero = _hero(page)
     # Word stand and chapter count both honestly zero — two zero spans.
     expect(hero.get_by_text("0", exact=True)).to_have_count(2)
@@ -589,20 +599,38 @@ def test_the_new_book_dialog_creates_the_hero_end_to_end(page: Page, installed: 
     expect(hero.get_by_text("/ 30.000 Wörter", exact=True)).to_be_visible()
     expect(hero.get_by_text("0 %", exact=True)).to_be_visible()
     expect(_banner(page)).to_contain_text("Ziel für ‚Die Prüferin‘: 0 / 30.000 Wörter")
-    expect(_metric(page, "Aktive Projekte")).to_contain_text("1 Roman")
+    expect(_metric(page, "Aktive Projekte")).to_contain_text("2 Romane")
     expect(_metric(page, "Gesamtwörter")).to_contain_text("0")
     expect(_metric(page, "Schreibstreak")).to_contain_text("0 Tage")
-    # The create retired the empty panel's door: focus lands on the top bar's.
+    # Focus returns to the opener — the top bar's door, which survives.
     expect(page.get_by_role("button", name=NEW_BOOK)).to_be_focused()
     assert_accessible(page)
 
-    # The honest check: the three answers on the row, and no wizard setting —
-    # the inheritance note's truth, the atelier keeps its own.
+    # The honest check: the new row carries its three answers AND the
+    # atelier's four — the inheritance note's truth, flowed through the real
+    # setup — while the source row stands exactly as setup left it.
     assert _rows(
         "SELECT title, genre, target_words, author_typology, dramatic_form, ai_role,"
-        " canon_strictness FROM novels"
+        " canon_strictness FROM novels ORDER BY created_at"
     ) == [
-        ("Die Prüferin", "Mystery & Noir, Literarische Belletristik", 30000, None, None, None, None)
+        (
+            SETUP_ANSWERS["novel_title"],
+            SETUP_ANSWERS["genre"],
+            SETUP_ANSWERS["target_words"],
+            SETUP_ANSWERS["author_typology"],
+            SETUP_ANSWERS["dramatic_form"],
+            SETUP_ANSWERS["ai_role"],
+            SETUP_ANSWERS["canon_strictness"],
+        ),
+        (
+            "Die Prüferin",
+            "Mystery & Noir, Literarische Belletristik",
+            30000,
+            SETUP_ANSWERS["author_typology"],
+            SETUP_ANSWERS["dramatic_form"],
+            SETUP_ANSWERS["ai_role"],
+            SETUP_ANSWERS["canon_strictness"],
+        ),
     ]
     assert _rows("SELECT id FROM chapters") == []
 
@@ -613,6 +641,46 @@ def test_the_new_book_dialog_creates_the_hero_end_to_end(page: Page, installed: 
     expect(reopened.get_by_label(TITLE_LABEL)).to_have_attribute("aria-invalid", "true")
     reopened.get_by_role("button", name="Abbrechen").click()
     expect(reopened).to_have_count(0)
+
+
+def test_the_empty_shelf_door_creates_with_no_source_to_inherit(
+    page: Page, installed: Stack
+) -> None:
+    """Spec 7b: the empty shelf's own door — the setup book is gone, so no
+    source row remains: the dialog creates the hero with the three answers
+    and honest NULLs in the atelier's four columns (no answer propagates,
+    nothing is guessed), the panel retires with the create, and focus lands
+    on the surviving top-bar door."""
+    _goto_shelf(page)
+    expect(page.get_by_role("heading", name=EMPTY_TITLE)).to_be_visible()
+    expect(_metric(page, "Aktive Projekte")).to_contain_text("0 Romane")
+    expect(_metric(page, "Schreibstreak")).to_contain_text("0 Tage")
+
+    # The empty panel's own door opens the modal over the scrimmed shelf.
+    empty_panel = page.locator("section").filter(has=page.get_by_text(EMPTY_TITLE, exact=True))
+    empty_panel.get_by_role("button", name=NEW_BOOK).click()
+    dialog = page.get_by_role("dialog", name=DIALOG_TITLE)
+    expect(dialog).to_be_visible()
+    expect(dialog).to_have_attribute("aria-modal", "true")
+    expect(dialog.get_by_text(INHERITANCE_NOTE)).to_be_visible()
+
+    dialog.get_by_label(TITLE_LABEL).fill("Die Prüferin")
+    dialog.get_by_role("button", name=CREATE, exact=True).click()
+    expect(dialog).to_have_count(0)
+    expect(page.get_by_role("heading", name="Die Prüferin", exact=True)).to_be_visible()
+    expect(page.get_by_role("article")).to_have_count(0)
+    expect(_metric(page, "Aktive Projekte")).to_contain_text("1 Roman")
+    # The create retired the empty panel's door: focus lands on the top bar's.
+    expect(page.get_by_role("button", name=NEW_BOOK)).to_be_focused()
+    assert_accessible(page)
+
+    # The honest check: the three answers on the row, and no wizard setting —
+    # the source book was deleted, so there is nothing to inherit.
+    assert _rows(
+        "SELECT title, genre, target_words, author_typology, dramatic_form, ai_role,"
+        " canon_strictness FROM novels"
+    ) == [("Die Prüferin", None, 65000, None, None, None, None)]
+    assert _rows("SELECT id FROM chapters") == []
 
 
 def test_an_api_chapter_write_moves_the_banner_through_the_seam(
