@@ -1,9 +1,11 @@
 """The atelier's activity: daily net words, the streak and the window.
 
-Every figure traces to a ``daily_words`` row the chapter write path fed:
-the diff of the shelf's one whitespace rule, the OLD body read before the
-update lands, same-day upserts accumulating, deletes counting negative.
-The aggregate spans the user's novels and never another user's rows.
+Every figure traces to a ``daily_words`` row the scene write path fed (W4
+§5 — the prose lives on scenes now): the diff of the shelf's one whitespace
+rule, the OLD body read before the update lands, same-day upserts
+accumulating, deletes counting negative (a chapter delete the sum of its
+scenes' words). The aggregate spans the user's novels and never another
+user's rows.
 
 The disclosed decisions these tests pin: a day is active when its net is
 nonzero (writing and revising both count); the streak ends today, or
@@ -22,7 +24,7 @@ from sqlalchemy import func, select, update
 from app.api.main import app
 from app.capabilities.writing.models import DailyWords
 from app.capabilities.writing.repository import DailyWordsRepository, NovelRepository
-from app.capabilities.writing.schemas import ChapterUpdate
+from app.capabilities.writing.schemas import SceneCreate, SceneUpdate
 from app.capabilities.writing.service import WritingService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
@@ -48,14 +50,22 @@ async def _create_novel(client: AsyncClient, title: str) -> str:
 
 
 async def _add_chapter(client: AsyncClient, novel_id: str, body: str) -> str:
+    """A chapter holding one scene with the given prose — the writing unit
+    the activity ledger follows now (W4 §5). Returns the chapter id."""
     created = await client.post(
         f"/api/writing/novels/{novel_id}/chapters", json={"title": "Kapitel"}
     )
     assert created.status_code == 201
     chapter_id = created.json()["id"]
-    saved = await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": body})
-    assert saved.status_code == 200
+    saved = await client.post(f"/api/writing/chapters/{chapter_id}/scenes", json={"body": body})
+    assert saved.status_code == 201
     return chapter_id
+
+
+async def _scene_id(client: AsyncClient, chapter_id: str) -> str:
+    """The chapter's single scene — the door the body writes go through."""
+    scenes = (await client.get(f"/api/writing/chapters/{chapter_id}/scenes")).json()
+    return scenes[0]["id"]
 
 
 async def _activity(client: AsyncClient, days: int | None = None) -> dict[str, Any]:
@@ -110,25 +120,27 @@ async def test_create_update_delete_nets_zero_same_day() -> None:
         )
         assert created.status_code == 201
         chapter_id = created.json()["id"]
-        # A chapter is born empty: the create itself writes no words.
+        # A chapter is born an empty shell: the create itself writes no words.
         assert (await _activity(client))["today_words"] == 0
 
-        saved = await client.put(
-            f"/api/writing/chapters/{chapter_id}", json={"body": "eins zwei drei"}
+        scene = await client.post(
+            f"/api/writing/chapters/{chapter_id}/scenes", json={"body": "eins zwei drei"}
         )
-        assert saved.status_code == 200
+        assert scene.status_code == 201
+        scene_id = scene.json()["id"]
         body = await _activity(client)
         assert body["today_words"] == 3
         assert body["streak_days"] == 1
 
         # The diff, not the new total: five words after three is +2, not +5.
         await client.put(
-            f"/api/writing/chapters/{chapter_id}", json={"body": "eins zwei drei vier fünf"}
+            f"/api/writing/scenes/{scene_id}", json={"body": "eins zwei drei vier fünf"}
         )
         assert (await _activity(client))["today_words"] == 5
-        await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": "eins"})
+        await client.put(f"/api/writing/scenes/{scene_id}", json={"body": "eins"})
         assert (await _activity(client))["today_words"] == 1
 
+        # The chapter delete takes its scene; the day loses the words it held.
         deleted = await client.delete(f"/api/writing/chapters/{chapter_id}")
         assert deleted.status_code == 204
         body = await _activity(client)
@@ -141,15 +153,16 @@ async def test_the_same_text_added_then_removed_same_day_nets_zero() -> None:
     async with _client() as client:
         novel_id = await _create_novel(client, "Der Nebel")
         chapter_id = await _add_chapter(client, novel_id, "alpha beta gamma")
+        scene_id = await _scene_id(client, chapter_id)
         assert (await _activity(client))["today_words"] == 3
 
-        await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": ""})
+        await client.put(f"/api/writing/scenes/{scene_id}", json={"body": ""})
         body = await _activity(client)
         assert body["today_words"] == 0
         assert body["streak_days"] == 0
 
         # The day's row accumulated back to zero, and accumulates on again.
-        await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": "alpha beta gamma"})
+        await client.put(f"/api/writing/scenes/{scene_id}", json={"body": "alpha beta gamma"})
         assert (await _activity(client))["today_words"] == 3
 
 
@@ -175,9 +188,10 @@ async def test_a_title_only_edit_records_no_activity() -> None:
     async with _client() as client:
         novel_id = await _create_novel(client, "Der Nebel")
         chapter_id = await _add_chapter(client, novel_id, "")
+        scene_id = await _scene_id(client, chapter_id)
         await client.put(f"/api/writing/chapters/{chapter_id}", json={"title": "Neuer Name"})
         # A carried body that counts the same is no write either.
-        await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": ""})
+        await client.put(f"/api/writing/scenes/{scene_id}", json={"body": ""})
 
         body = await _activity(client)
         assert body["today_words"] == 0
@@ -353,11 +367,12 @@ async def test_a_new_day_starts_a_fresh_row() -> None:
     async with _client() as client:
         novel_id = await _create_novel(client, "Der Nebel")
         chapter_id = await _add_chapter(client, novel_id, "eins zwei drei")
+        scene_id = await _scene_id(client, chapter_id)
         await _move_rows_to(novel_id, _today() - timedelta(days=1))
 
         # Two more words today: the diff lands on today's own row.
         await client.put(
-            f"/api/writing/chapters/{chapter_id}", json={"body": "eins zwei drei vier fünf"}
+            f"/api/writing/scenes/{scene_id}", json={"body": "eins zwei drei vier fünf"}
         )
         body = await _activity(client)
         assert body["points"][-2]["words"] == 3
@@ -367,33 +382,33 @@ async def test_a_new_day_starts_a_fresh_row() -> None:
 
 async def test_a_double_fired_save_counts_the_diff_once() -> None:
     """The race the novel lock closes, at service level: two saves of the
-    same body, the second holding its pre-lock read while the first
+    same scene body, the second holding its pre-lock read while the first
     commits. The day's row must gain the words ONCE — the diff counts
     from the body re-read under the lock, not the stale snapshot.
 
     The pre-read is held in a local on purpose: the session's identity
     map is weak-valued, so a discarded read would be collected and the
     save's own get would reload fresh — the race would hide. Production
-    holds the read the same way, in update_chapter's own local."""
+    holds the read the same way, in update_scene's own local."""
     async with Session() as first, Session() as second:
         writer = WritingService(first, LOCAL_USER_ID)
         novel = await writer.create_novel("Der Nebel")
         chapter = await writer.create_chapter(novel.id, "Kapitel")
-        await writer.update_chapter(chapter.id, ChapterUpdate(body="eins zwei drei"))
+        scene = await writer.create_scene(chapter.id, SceneCreate(body="eins zwei drei"))
 
-        # The second-fired save reads the chapter BEFORE the first-fired
+        # The second-fired save reads the scene BEFORE the first-fired
         # save lands: its session's identity map holds the three-word body.
         reader = WritingService(second, LOCAL_USER_ID)
-        stale_read = await reader.get_chapter(chapter.id)
+        stale_read = await reader.get_scene(scene.id)
         assert stale_read.body == "eins zwei drei"
 
         # The first-fired save wins the lock and commits five words.
-        await writer.update_chapter(chapter.id, ChapterUpdate(body="eins zwei drei vier fünf"))
+        await writer.update_scene(scene.id, SceneUpdate(body="eins zwei drei vier fünf"))
 
         # The second-fired save lands the same body: its pre-lock read is
         # stale, but under the lock the committed body is already five
         # words — the diff is zero, the day keeps five, not seven.
-        await reader.update_chapter(chapter.id, ChapterUpdate(body="eins zwei drei vier fünf"))
+        await reader.update_scene(scene.id, SceneUpdate(body="eins zwei drei vier fünf"))
 
     async with _client() as client:
         body = await _activity(client)
@@ -402,26 +417,26 @@ async def test_a_double_fired_save_counts_the_diff_once() -> None:
 
 async def test_a_delete_counts_the_words_the_book_actually_holds() -> None:
     """The delete's pre-lock read can be stale the same way: a concurrent
-    save grew the chapter after the read. The day's row must lose the
-    words the book holds at the delete, not the ones the session
+    save grew the chapter's scene after the read. The day's row must lose
+    the words the book holds at the delete, not the ones the session
     remembers. The pre-read is held for the identity map's weak values,
     as in the double-fired save's pin."""
     async with Session() as first, Session() as second:
         writer = WritingService(first, LOCAL_USER_ID)
         novel = await writer.create_novel("Der Nebel")
         chapter = await writer.create_chapter(novel.id, "Kapitel")
-        await writer.update_chapter(chapter.id, ChapterUpdate(body="eins zwei drei"))
+        scene = await writer.create_scene(chapter.id, SceneCreate(body="eins zwei drei"))
 
         # The delete's pre-lock read: three words in this session's map.
         reader = WritingService(second, LOCAL_USER_ID)
-        stale_read = await reader.get_chapter(chapter.id)
+        stale_read = await reader.get_scene(scene.id)
         assert stale_read.body == "eins zwei drei"
 
-        # A concurrent save grows the book to five words and commits.
-        await writer.update_chapter(chapter.id, ChapterUpdate(body="eins zwei drei vier fünf"))
+        # A concurrent save grows the scene to five words and commits.
+        await writer.update_scene(scene.id, SceneUpdate(body="eins zwei drei vier fünf"))
 
-        # The delete lands: five words go, the day nets zero — not the two
-        # a stale three-word subtraction would leave behind.
+        # The chapter delete lands: its scene's five words go, the day nets
+        # zero — not the two a stale three-word subtraction would leave.
         await reader.delete_chapter(chapter.id)
 
     async with _client() as client:

@@ -26,6 +26,11 @@ from app.capabilities.writing.schemas import (
     NovelRead,
     NovelUpdate,
     OrderMismatchRead,
+    SceneCreate,
+    SceneOrderMismatchRead,
+    SceneOrderUpdate,
+    SceneRead,
+    SceneUpdate,
     WritingErrorRead,
 )
 from app.capabilities.writing.service import (
@@ -386,7 +391,7 @@ async def list_chapters(novel_id: UUID, service: ServiceDep) -> list[ChapterRead
         chapters = await service.list_chapters(novel_id)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="novel not found") from None
-    return [ChapterRead.model_validate(chapter) for chapter in chapters]
+    return list(chapters)
 
 
 @router.post(
@@ -456,12 +461,13 @@ async def reorder_chapters(
     responses={404: {"model": WritingErrorRead, "description": "Chapter not found"}},
 )
 async def get_chapter(chapter_id: UUID, service: ServiceDep) -> ChapterRead:
-    """Return an owned chapter; respond with HTTP 404 when it is not found."""
+    """Return an owned chapter with its scene-derived counts; respond with
+    HTTP 404 when it is not found."""
     try:
-        chapter = await service.get_chapter(chapter_id)
+        chapter = await service.read_chapter(chapter_id)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="chapter not found") from None
-    return ChapterRead.model_validate(chapter)
+    return chapter
 
 
 @router.put(
@@ -472,12 +478,13 @@ async def get_chapter(chapter_id: UUID, service: ServiceDep) -> ChapterRead:
 async def update_chapter(
     chapter_id: UUID, payload: ChapterUpdate, service: ServiceDep
 ) -> ChapterRead:
-    """Update an owned chapter; respond with HTTP 404 when it is not found."""
+    """Update an owned chapter's title (its prose lives on scenes now);
+    respond with HTTP 404 when it is not found."""
     try:
         chapter = await service.update_chapter(chapter_id, payload)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="chapter not found") from None
-    return ChapterRead.model_validate(chapter)
+    return chapter
 
 
 @router.delete(
@@ -497,6 +504,130 @@ async def delete_chapter(chapter_id: UUID, service: ServiceDep) -> None:
         await service.delete_chapter(chapter_id)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="chapter not found") from None
+
+
+@router.get(
+    "/chapters/{chapter_id}/scenes",
+    response_model=list[SceneRead],
+    responses={404: {"model": WritingErrorRead, "description": "Chapter not found"}},
+)
+async def list_scenes(chapter_id: UUID, service: ServiceDep) -> list[SceneRead]:
+    """List an owned chapter's scenes in position order, each with its derived
+    word count; respond with HTTP 404 when the chapter is not found."""
+    try:
+        scenes = await service.list_scenes(chapter_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="chapter not found") from None
+    return list(scenes)
+
+
+@router.post(
+    "/chapters/{chapter_id}/scenes",
+    response_model=SceneRead,
+    status_code=201,
+    responses={
+        404: {"model": WritingErrorRead, "description": "Chapter not found"},
+        409: {"model": WritingErrorRead, "description": "Setup required"},
+    },
+)
+async def create_scene(chapter_id: UUID, payload: SceneCreate, service: ServiceDep) -> SceneRead:
+    """Create a scene under an owned chapter; return HTTP 404 for a missing
+    chapter or HTTP 409 if setup is required."""
+    try:
+        scene = await service.create_scene(chapter_id, payload)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="chapter not found") from None
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
+    return scene
+
+
+@router.put(
+    "/chapters/{chapter_id}/scene-order",
+    status_code=204,
+    responses={
+        404: {"model": WritingErrorRead, "description": "Chapter not found"},
+        409: {
+            "model": SceneOrderMismatchRead,
+            "description": "The body is not the chapter's current whole of scene ids",
+        },
+    },
+)
+async def reorder_scenes(chapter_id: UUID, payload: SceneOrderUpdate, service: ServiceDep) -> None:
+    """Rewrite an owned chapter's scene order as one whole.
+
+    The body carries every scene of the chapter in its new order. Respond
+    with HTTP 204, HTTP 404 for an absent or unowned chapter, or HTTP 409
+    when the body is not the chapter's current whole — a scene added or
+    deleted in a second tab, or an id repeated — with ``detail.scene_ids``
+    holding the stored ids in their position order: the arrangement the
+    client reverts to.
+    """
+    try:
+        await service.reorder_scenes(chapter_id, payload.ids)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="chapter not found") from None
+    except OrderMismatchError as error:
+        # A dict, not a sentence: the client reverts to the order these ids
+        # name, and `code` is the stable key it localizes.
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "order_mismatch",
+                "scene_ids": [str(scene_id) for scene_id in error.current],
+            },
+        ) from None
+
+
+@router.get(
+    "/scenes/{scene_id}",
+    response_model=SceneRead,
+    responses={404: {"model": WritingErrorRead, "description": "Scene not found"}},
+)
+async def get_scene(scene_id: UUID, service: ServiceDep) -> SceneRead:
+    """Return an owned scene with its derived word count; respond with HTTP
+    404 when it is not found."""
+    try:
+        scene = await service.read_scene(scene_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="scene not found") from None
+    return scene
+
+
+@router.put(
+    "/scenes/{scene_id}",
+    response_model=SceneRead,
+    responses={404: {"model": WritingErrorRead, "description": "Scene not found"}},
+)
+async def update_scene(scene_id: UUID, payload: SceneUpdate, service: ServiceDep) -> SceneRead:
+    """Update an owned scene: only the fields the body carries change.
+
+    Respond with HTTP 404 when it is not found, or HTTP 422 for an over-long
+    title or label.
+    """
+    try:
+        scene = await service.update_scene(scene_id, payload)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="scene not found") from None
+    return scene
+
+
+@router.delete(
+    "/scenes/{scene_id}",
+    status_code=204,
+    responses={404: {"model": WritingErrorRead, "description": "Scene not found"}},
+)
+async def delete_scene(scene_id: UUID, service: ServiceDep) -> None:
+    """Delete an owned scene; the survivors close the gap, renumbered
+    contiguously in the same transaction, and the novel's timestamp
+    advances. Always allowed — an empty chapter is a real state (D16).
+
+    Raise HTTP 404 for an absent or unowned scene.
+    """
+    try:
+        await service.delete_scene(scene_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="scene not found") from None
 
 
 @router.post(

@@ -23,19 +23,24 @@ from app.capabilities.writing.repository import (
     DailyWordsRepository,
     EntityRepository,
     NovelRepository,
+    SceneRepository,
     SeriesRepository,
 )
 from app.capabilities.writing.schemas import (
     ActivityPoint,
     ActivityRead,
+    ChapterRead,
     ChapterUpdate,
     ExportDone,
     NovelRead,
     NovelUpdate,
+    SceneCreate,
+    SceneRead,
+    SceneUpdate,
 )
 from app.kernel.auth import SetupRequiredError
 from app.kernel.context import allocate
-from app.kernel.contracts.models import Chapter, Entity, Novel, User
+from app.kernel.contracts.models import Chapter, Entity, Novel, Scene, User
 from app.kernel.contracts.positions import lock_novel
 from app.kernel.interchange import (
     ArchiveError,
@@ -61,8 +66,9 @@ class TargetNotEmptyError(Exception):
 
 
 class OrderMismatchError(Exception):
-    """The body is not the book's current whole of chapter ids; `current` is,
-    in position order — the arrangement the client reverts to."""
+    """The body is not the parent's current whole of ids — a novel's chapters
+    or a chapter's scenes; `current` is, in position order — the arrangement
+    the client reverts to."""
 
     def __init__(self, current: list[UUID]) -> None:
         super().__init__("order mismatch")
@@ -108,6 +114,7 @@ class WritingService:
         self.user_id = user_id
         self.novels = NovelRepository(session, user_id)
         self.chapters = ChapterRepository(session, user_id)
+        self.scenes = SceneRepository(session, user_id)
         self.entities = EntityRepository(session, user_id)
         self.series = SeriesRepository(session, user_id)
         self.daily_words = DailyWordsRepository(session, user_id)
@@ -270,9 +277,10 @@ class WritingService:
         fresh: no volume (the number belongs to the original's place in
         the series), no archive stamp (the copy is on the shelf) and no
         export trace (it has never been exported). The chapters ride with
-        titles, bodies and positions as read; the new novel has no other
-        writers yet, so the positions need no allocator's lock. Novel and
-        chapters commit together or not at all.
+        titles and positions as read, and each chapter's scenes with their
+        prose, overline and in-story label; the new novel has no other
+        writers yet, so the positions need no allocator's lock. Novel,
+        chapters and scenes commit together or not at all.
 
         Return the copy with its derived facts, the read paths' shape.
         Raise SetupRequiredError if setup has not created the owning user,
@@ -284,7 +292,12 @@ class WritingService:
             raise NotFoundError
         chapters = await self.chapters.list_for_novel(novel_id)
         copy = await self.novels.duplicate(novel, duplicated_title(novel.title))
-        await self.chapters.copy_into(copy.id, chapters)
+        copied_chapters = await self.chapters.copy_into(copy.id, chapters)
+        # The prose rides the scenes now: each original chapter's scenes
+        # copy into its own copy, positions and labels preserved.
+        for original, copied in zip(chapters, copied_chapters, strict=True):
+            scenes = await self.scenes.list_for_chapter(original.id)
+            await self.scenes.copy_into(copied.id, scenes)
         await self.session.commit()
         titles = await self.novels.series_titles([copy])
         return self._with_counts(
@@ -340,21 +353,43 @@ class WritingService:
         # The same rule as the update: spaces are not a name, and "" after
         # the trim is the honest unnamed.
         chapter = await self.chapters.create(novel_id, title.strip())
-        # A chapter is born empty: zero words, a zero diff — the activity
-        # has nothing to record until the first body lands (update_chapter).
+        # A chapter is born an empty shell: no scenes yet, zero words — the
+        # activity has nothing to record until the first scene lands. The
+        # router reads it as ChapterRead, whose derived defaults (0, 0) are
+        # the fresh chapter's honest figures.
         await self.session.commit()
         return chapter
 
-    async def list_chapters(self, novel_id: UUID) -> Sequence[Chapter]:
+    async def list_chapters(self, novel_id: UUID) -> Sequence[ChapterRead]:
         if await self.novels.get(novel_id) is None:
             raise NotFoundError
-        return await self.chapters.list_for_novel(novel_id)
+        chapters = await self.chapters.list_for_novel(novel_id)
+        counts = await self.scenes.counts([chapter.id for chapter in chapters])
+        return [
+            self._chapter_with_counts(chapter, counts.get(chapter.id, (0, 0)))
+            for chapter in chapters
+        ]
 
     async def get_chapter(self, chapter_id: UUID) -> Chapter:
+        """The chapter row, scoped — the internal getter the write paths and
+        the continuation build on. The router's read door is ``read_chapter``,
+        which carries the scene-derived figures the raw row has no column for."""
         chapter = await self.chapters.get(chapter_id)
         if chapter is None:
             raise NotFoundError
         return chapter
+
+    async def read_chapter(self, chapter_id: UUID) -> ChapterRead:
+        chapter = await self.get_chapter(chapter_id)
+        counts = await self.scenes.counts([chapter.id])
+        return self._chapter_with_counts(chapter, counts.get(chapter.id, (0, 0)))
+
+    def _chapter_with_counts(self, chapter: Chapter, counts: tuple[int, int]) -> ChapterRead:
+        """One chapter row as the response shape, its scene-derived facts filled."""
+        scene_count, word_count = counts
+        return ChapterRead.model_validate(chapter).model_copy(
+            update={"scene_count": scene_count, "word_count": word_count}
+        )
 
     async def continuation_prompt(
         self,
@@ -420,14 +455,18 @@ class WritingService:
             blurb=novel.blurb if novel else None,
         )
 
-    async def update_chapter(self, chapter_id: UUID, changes: ChapterUpdate) -> Chapter:
-        """Commit non-null edits and update the parent novel's timestamp.
+    async def update_chapter(self, chapter_id: UUID, changes: ChapterUpdate) -> ChapterRead:
+        """Commit a chapter's title edit and update the parent novel's timestamp.
 
-        A carried title is trimmed here, in the service, so a hand-written
-        call cannot skip it: spaces are not a name, and ``""`` after the
-        trim is the chapter returned to unnamed — stored as it is, with the
-        list's placeholder a rendering of it. Over-long stays the schema's
-        422; nothing else is refused.
+        A chapter is a grouping shell now (W4 D1/D2): its prose lives on its
+        scenes, so this door carries the title alone — the body write moved
+        to the scene. A carried title is trimmed here, in the service, so a
+        hand-written call cannot skip it: spaces are not a name, and ``""``
+        after the trim is the chapter returned to unnamed — stored as it is,
+        with the list's placeholder a rendering of it. Over-long stays the
+        schema's 422; nothing else is refused. A title edit writes no
+        activity — the atelier's ledger follows the prose, which the scene
+        writes feed.
 
         The book's row is locked before the chapter's: the save's flush
         takes the chapter row, and a delete or reorder holding the book's
@@ -435,35 +474,18 @@ class WritingService:
         order (book first, the delete's and the reorder's) is what keeps
         the pair from waiting on each other's row (Postgres 40P01).
 
-        A carried body also feeds the atelier's activity: the diff of the
-        one whitespace rule, the old body re-read under the novel lock,
-        accumulates on today's row in the same transaction.
-
-        Return the chapter; raise NotFoundError if it is absent or another user's.
+        Return the chapter with its scene-derived figures; raise
+        NotFoundError if it is absent or another user's.
         """
         chapter = await self.get_chapter(chapter_id)
         await lock_novel(self.session, user_id=self.user_id, novel_id=chapter.novel_id)
-        # The OLD body is re-read under the lock: the get above may have
-        # loaded it before a concurrent save committed (a double-fired
-        # autosave), and a diff counted from that stale snapshot would
-        # land on the day's row twice. The second writer waits, then
-        # reads the first writer's committed chapter (positions.py).
-        old_body = await self.chapters.committed_body(chapter_id)
         if changes.title is not None:
             changes.title = changes.title.strip()
         updates = changes.model_dump(exclude_none=True)
-        # The activity's diff: both sides count through the shelf's one
-        # whitespace rule. A title-only edit — or a body that counts the
-        # same — is a zero diff and writes no activity row.
-        delta = 0
-        if "body" in updates:
-            old_words, new_words = await self.chapters.count_words(old_body or "", updates["body"])
-            delta = new_words - old_words
         chapter = await self.chapters.save(chapter, updates)
-        if delta:
-            await self.daily_words.add_words(chapter.novel_id, datetime.now(UTC).date(), delta)
         await self.session.commit()
-        return chapter
+        counts = await self.scenes.counts([chapter.id])
+        return self._chapter_with_counts(chapter, counts.get(chapter.id, (0, 0)))
 
     async def delete_chapter(self, chapter_id: UUID) -> None:
         """Delete one chapter and close the gap it leaves in the numbering.
@@ -477,20 +499,20 @@ class WritingService:
         position, never a "last written" — ``renumber`` pins each
         survivor's ``updated_at`` to itself, and the novel's row is the
         one that advances: the archive lost a chapter (D8). The chapter's
-        pending suggestions ride the foreign key's cascade; findings are
-        the novel's and stay. The removed words count negative on today's
-        activity row, in the same transaction. Raise NotFoundError for an
-        absent or unowned chapter.
+        scenes and pending suggestions ride the foreign key's cascade;
+        findings are the novel's and stay. The removed scenes' words count
+        negative on today's activity row, in the same transaction. Raise
+        NotFoundError for an absent or unowned chapter.
         """
         chapter = await self.get_chapter(chapter_id)
         novel_id = chapter.novel_id
         await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
-        # The removed body counts negative on today's activity row — the
-        # atelier's honest delta, re-read under the lock: the get above
-        # may predate a concurrent save, and the day must lose the words
-        # the book holds, not the ones this session remembers.
-        removed_body = await self.chapters.committed_body(chapter_id)
-        (removed_words,) = await self.chapters.count_words(removed_body or "")
+        # The chapter's prose lives on its scenes now, and the cascade takes
+        # them with the row — so the day loses the words the scenes hold,
+        # re-read fresh under the lock: the get above may predate a
+        # concurrent scene save, and the day must lose the words the book
+        # holds, not the ones this session remembers.
+        removed_words = await self.scenes.committed_chapter_words(chapter_id)
         result = await self.session.execute(
             delete(Chapter).where(Chapter.id == chapter_id, Chapter.user_id == self.user_id)
         )
@@ -533,6 +555,184 @@ class WritingService:
             raise OrderMismatchError(current)
         await self.chapters.renumber(novel_id, chapter_ids)
         await self.chapters.touch_novel(novel_id)
+        await self.session.commit()
+
+    # --- Scenes: the prose unit under a chapter (W4 §5, D1/D2) ------------
+
+    async def create_scene(self, chapter_id: UUID, payload: SceneCreate) -> SceneRead:
+        """Commit a scene under an owned chapter; return it with its word count.
+
+        The title is trimmed and the labels folded — spaces are not a name,
+        and a blank overline or in-story label is the honest unset (None).
+        The scene appends at the chapter's next position under the book's
+        row lock. A scene born with prose feeds the atelier's activity
+        immediately (the chapter, born an empty shell, did not): the words
+        it carries are today's diff, counted by the shelf's one rule. Raise
+        SetupRequiredError if setup has not created the owning user, or
+        NotFoundError for an absent or unowned chapter.
+        """
+        await self._require_user()
+        chapter = await self.get_chapter(chapter_id)
+        scene = await self.scenes.create(
+            chapter.id,
+            chapter.novel_id,
+            payload.title.strip(),
+            payload.body,
+            (payload.setting or "").strip() or None,
+            (payload.story_time or "").strip() or None,
+        )
+        (words,) = await self.scenes.count_words(scene.body)
+        if words:
+            await self.daily_words.add_words(chapter.novel_id, datetime.now(UTC).date(), words)
+        await self.session.commit()
+        return self._scene_with_words(scene, words)
+
+    async def list_scenes(self, chapter_id: UUID) -> Sequence[SceneRead]:
+        chapter = await self.get_chapter(chapter_id)
+        scenes = await self.scenes.list_for_chapter(chapter.id)
+        words = await self.scenes.count_words(*(scene.body for scene in scenes))
+        return [
+            self._scene_with_words(scene, count) for scene, count in zip(scenes, words, strict=True)
+        ]
+
+    async def get_scene(self, scene_id: UUID) -> Scene:
+        """The scene row, scoped — the internal getter the write paths build
+        on. The router's read door is ``read_scene``, which carries the
+        derived word count the raw row has no column for."""
+        scene = await self.scenes.get(scene_id)
+        if scene is None:
+            raise NotFoundError
+        return scene
+
+    async def read_scene(self, scene_id: UUID) -> SceneRead:
+        scene = await self.get_scene(scene_id)
+        (words,) = await self.scenes.count_words(scene.body)
+        return self._scene_with_words(scene, words)
+
+    def _scene_with_words(self, scene: Scene, word_count: int) -> SceneRead:
+        """One scene row as the response shape, its derived word count filled."""
+        return SceneRead.model_validate(scene).model_copy(update={"word_count": word_count})
+
+    @staticmethod
+    def _scene_updates(changes: SceneUpdate) -> dict[str, str | None]:
+        """The carried fields as a change set: title and body keep the
+        chapter's rule (None unchanged, "" the honest empty after the trim);
+        the labels are present-and-nullable (a carried null clears them)."""
+        updates: dict[str, str | None] = {}
+        carried = changes.model_fields_set
+        if "title" in carried and changes.title is not None:
+            updates["title"] = changes.title.strip()
+        if "body" in carried and changes.body is not None:
+            updates["body"] = changes.body
+        if "setting" in carried:
+            updates["setting"] = (changes.setting or "").strip() or None
+        if "story_time" in carried:
+            updates["story_time"] = (changes.story_time or "").strip() or None
+        return updates
+
+    async def update_scene(self, scene_id: UUID, changes: SceneUpdate) -> SceneRead:
+        """Commit the carried scene edits and update the parent novel's timestamp.
+
+        Present-only: title and body keep the chapter's rule (None unchanged,
+        ``""`` the honest empty after the trim); the two labels are
+        present-and-nullable (a carried null clears them back to unset). The
+        book's row is locked before the scene's — the one order that keeps a
+        save and a delete from deadlocking over one book (Postgres 40P01).
+
+        A carried body feeds the atelier's activity: the diff of the one
+        whitespace rule, the old body re-read under the novel lock,
+        accumulates on today's row in the same transaction. A title- or
+        label-only edit is a zero diff and writes no activity row.
+
+        Return the scene with its word count; raise NotFoundError if it is
+        absent or another user's.
+        """
+        scene = await self.get_scene(scene_id)
+        chapter = await self.get_chapter(scene.chapter_id)
+        novel_id = chapter.novel_id
+        await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
+        # The OLD body is re-read under the lock: the get above may have
+        # loaded it before a concurrent save committed (a double-fired
+        # autosave), and a diff counted from that stale snapshot would
+        # land on the day's row twice. The second writer waits, then reads
+        # the first writer's committed scene (positions.py).
+        old_body = await self.scenes.committed_body(scene_id)
+        updates = self._scene_updates(changes)
+        # The activity's diff: both sides count through the shelf's one
+        # whitespace rule. A title- or label-only edit — or a body that
+        # counts the same — is a zero diff and writes no activity row.
+        new_body = updates.get("body")
+        delta = 0
+        if new_body is not None:
+            old_words, new_words = await self.scenes.count_words(old_body or "", new_body)
+            delta = new_words - old_words
+        scene = await self.scenes.save(scene, updates, novel_id)
+        if delta:
+            await self.daily_words.add_words(novel_id, datetime.now(UTC).date(), delta)
+        await self.session.commit()
+        (words,) = await self.scenes.count_words(scene.body)
+        return self._scene_with_words(scene, words)
+
+    async def delete_scene(self, scene_id: UUID) -> None:
+        """Delete one scene and close the gap it leaves in the numbering.
+
+        Always allowed (D16): an empty chapter is a real state, so the last
+        scene may go and the chapter reads honestly at zero. The delete, the
+        survivors' renumber and the novel's timestamp bump are one
+        transaction under the book's row lock, the one every append takes.
+        The renumber moves a position, never a "last written" — ``renumber``
+        pins each survivor's ``updated_at`` to itself, and the novel's row
+        advances (D8). The removed words count negative on today's activity
+        row, re-read under the lock so a concurrent save cannot stale the
+        subtraction. Raise NotFoundError for an absent or unowned scene.
+        """
+        scene = await self.get_scene(scene_id)
+        chapter = await self.get_chapter(scene.chapter_id)
+        chapter_id, novel_id = chapter.id, chapter.novel_id
+        await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
+        removed_body = await self.scenes.committed_body(scene_id)
+        (removed_words,) = await self.scenes.count_words(removed_body or "")
+        result = await self.session.execute(
+            delete(Scene).where(Scene.id == scene_id, Scene.user_id == self.user_id)
+        )
+        if getattr(result, "rowcount", 0) == 0:
+            raise NotFoundError
+        survivors = await self.scenes.list_for_chapter(chapter_id)
+        await self.scenes.renumber(chapter_id, [survivor.id for survivor in survivors])
+        await self.scenes.touch_novel(novel_id)
+        if removed_words:
+            await self.daily_words.add_words(novel_id, datetime.now(UTC).date(), -removed_words)
+        await self.session.commit()
+
+    async def reorder_scenes(self, chapter_id: UUID, ids: Sequence[UUID]) -> None:
+        """Rewrite the chapter's scene order as the one whole the body carries.
+
+        The chapter-order contract one level down: the body must be exactly
+        the chapter's current ids — the same set, the same length. Both the
+        comparison and the rewrite sit under the book's row lock, the one
+        every append takes: a scene added or deleted beside the reorder
+        either commits before the read (and the body, now short or long, is
+        refused) or waits and takes its number after the rewrite. A body
+        that repeats an id is refused the same way. On a mismatch nothing is
+        written and ``OrderMismatchError`` carries the stored ids in their
+        position order, what the client reverts to. The rewrite is
+        ``renumber`` (each row's ``updated_at`` pinned to itself: an
+        arrangement is not a write, D8); the novel's row advances. Commit
+        once. Raise NotFoundError for an absent or unowned chapter.
+        """
+        chapter = await self.get_chapter(chapter_id)
+        novel_id = chapter.novel_id
+        await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
+        if await self.chapters.get(chapter_id) is None:
+            raise NotFoundError
+        current = [scene.id for scene in await self.scenes.list_for_chapter(chapter_id)]
+        # Set and length, one comparison each: the set catches an id the
+        # chapter does not hold (a deleted scene, a foreign one), the length
+        # a body that repeats an id. Nothing is written before both agree.
+        if set(ids) != set(current) or len(ids) != len(current):
+            raise OrderMismatchError(current)
+        await self.scenes.renumber(chapter_id, ids)
+        await self.scenes.touch_novel(novel_id)
         await self.session.commit()
 
     async def export_novel(

@@ -36,11 +36,12 @@ async def _add_chapter(client: AsyncClient, novel_id: str, body: str) -> None:
         f"/api/writing/novels/{novel_id}/chapters", json={"title": "Kapitel"}
     )
     assert created.status_code == 201
-    saved = await client.put(
-        f"/api/writing/chapters/{created.json()['id']}",
+    # The prose lives on a scene now (W4 §5): the chapter is the shell.
+    saved = await client.post(
+        f"/api/writing/chapters/{created.json()['id']}/scenes",
         json={"body": body},
     )
-    assert saved.status_code == 200
+    assert saved.status_code == 201
 
 
 async def _novel_row(client: AsyncClient, novel_id: str) -> dict[str, object]:

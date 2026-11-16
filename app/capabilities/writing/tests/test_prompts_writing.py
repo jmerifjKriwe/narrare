@@ -305,6 +305,8 @@ async def test_a_refused_override_ends_the_stream_with_the_one_error_frame() -> 
     is touched: the stream ends the way a lost key ends it, and the log names
     the refusal the way the budget branch names its own.
     """
+    from uuid import UUID
+
     from httpx import ASGITransport, AsyncClient
     from sqlalchemy import text as sql_text
 
@@ -326,7 +328,15 @@ async def test_a_refused_override_ends_the_stream_with_the_one_error_frame() -> 
             f"/api/writing/novels/{novel.json()['id']}/chapters", json={"title": "Ankunft"}
         )
         chapter_id = chapter.json()["id"]
-        await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": "B" * 200})
+        # Continuation still reads the interim chapters.body column (the
+        # scene-based endpoint rides Task 7); seed the tail directly so the
+        # if-branch renders — the API no longer writes the column.
+        async with Session() as session:
+            await session.execute(
+                sql_text("UPDATE chapters SET body = :body WHERE id = :id"),
+                {"body": "B" * 200, "id": UUID(chapter_id)},
+            )
+            await session.commit()
         response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
 
     assert response.status_code == 200

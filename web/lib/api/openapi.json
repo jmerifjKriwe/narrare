@@ -268,6 +268,11 @@
             "title": "Position",
             "type": "integer"
           },
+          "scene_count": {
+            "default": 0,
+            "title": "Scene Count",
+            "type": "integer"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -276,6 +281,11 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "word_count": {
+            "default": 0,
+            "title": "Word Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -292,17 +302,6 @@
       },
       "ChapterUpdate": {
         "properties": {
-          "body": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Body"
-          },
           "title": {
             "anyOf": [
               {
@@ -2489,7 +2488,7 @@
           },
           "scenes": {
             "items": {
-              "$ref": "#/components/schemas/SceneRead"
+              "$ref": "#/components/schemas/app__capabilities__planning__schemas__SceneRead"
             },
             "title": "Scenes",
             "type": "array"
@@ -2522,74 +2521,152 @@
         "title": "SceneAggregateUpdate",
         "type": "object"
       },
-      "SceneRead": {
+      "SceneCreate": {
         "properties": {
-          "beats": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Beats",
-            "type": "array"
-          },
-          "chapter_id": {
-            "format": "uuid",
-            "title": "Chapter Id",
+          "body": {
+            "default": "",
+            "title": "Body",
             "type": "string"
           },
-          "conflict": {
-            "title": "Conflict",
-            "type": "string"
+          "setting": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setting"
           },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "position": {
-            "title": "Position",
-            "type": "integer"
-          },
-          "purpose": {
-            "title": "Purpose",
-            "type": "string"
-          },
-          "resolution": {
-            "title": "Resolution",
-            "type": "string"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
+          "story_time": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Story Time"
           },
           "title": {
+            "default": "",
+            "maxLength": 200,
             "title": "Title",
-            "type": "string"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
             "type": "string"
           }
         },
+        "title": "SceneCreate",
+        "type": "object"
+      },
+      "SceneOrderMismatchDetail": {
+        "properties": {
+          "code": {
+            "default": "order_mismatch",
+            "title": "Code",
+            "type": "string"
+          },
+          "scene_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Scene Ids",
+            "type": "array"
+          }
+        },
         "required": [
-          "id",
-          "chapter_id",
-          "position",
-          "title",
-          "purpose",
-          "conflict",
-          "resolution",
-          "beats",
-          "status",
-          "created_at",
-          "updated_at"
+          "scene_ids"
         ],
-        "title": "SceneRead",
+        "title": "SceneOrderMismatchDetail",
+        "type": "object"
+      },
+      "SceneOrderMismatchRead": {
+        "description": "The 409 body for a scene-order mismatch: the stored ids in position order.",
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/SceneOrderMismatchDetail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "SceneOrderMismatchRead",
+        "type": "object"
+      },
+      "SceneOrderUpdate": {
+        "description": "The PUT scene-order body: the whole chapter, in its new order.\n\nEvery scene of the chapter and nothing else — an arrangement is a\npermutation of the ids the chapter holds this moment, so the service\ncompares the body against the stored set as one whole and refuses a\nstale one (a second tab's add, delete or repeat) with the current\norder, rather than reshape what the writer no longer sees.",
+        "properties": {
+          "ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "SceneOrderUpdate",
+        "type": "object"
+      },
+      "SceneUpdate": {
+        "description": "The PUT scene body: only the fields present are the change.\n\nTitle and body keep the chapter's rule — ``None`` is unchanged, ``\"\"``\nafter the service's trim is the honest empty (the title's placeholder a\nrendering, the body emptied). The two labels are present-and-nullable\nlike the novel's metadata: an absent field is no change, a carried\n``null`` clears the label back to the honest unset. The service reads\n``model_fields_set`` to tell a carried change from a missing one; the\nlengths are the schema's one refusal.",
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "setting": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setting"
+          },
+          "story_time": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Story Time"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "SceneUpdate",
         "type": "object"
       },
       "SceneUpsert": {
@@ -3569,6 +3646,152 @@
           "detail"
         ],
         "title": "WritingErrorRead",
+        "type": "object"
+      },
+      "app__capabilities__planning__schemas__SceneRead": {
+        "properties": {
+          "beats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Beats",
+            "type": "array"
+          },
+          "chapter_id": {
+            "format": "uuid",
+            "title": "Chapter Id",
+            "type": "string"
+          },
+          "conflict": {
+            "title": "Conflict",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "resolution": {
+            "title": "Resolution",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "chapter_id",
+          "position",
+          "title",
+          "purpose",
+          "conflict",
+          "resolution",
+          "beats",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SceneRead",
+        "type": "object"
+      },
+      "app__capabilities__writing__schemas__SceneRead": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "chapter_id": {
+            "format": "uuid",
+            "title": "Chapter Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "setting": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setting"
+          },
+          "story_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Story Time"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "word_count": {
+            "default": 0,
+            "title": "Word Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "chapter_id",
+          "position",
+          "title",
+          "body",
+          "setting",
+          "story_time",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SceneRead",
         "type": "object"
       }
     }
@@ -6571,7 +6794,7 @@
         ]
       },
       "get": {
-        "description": "Return an owned chapter; respond with HTTP 404 when it is not found.",
+        "description": "Return an owned chapter with its scene-derived counts; respond with\nHTTP 404 when it is not found.",
         "operationId": "get_chapter_api_writing_chapters__chapter_id__get",
         "parameters": [
           {
@@ -6623,7 +6846,7 @@
         ]
       },
       "put": {
-        "description": "Update an owned chapter; respond with HTTP 404 when it is not found.",
+        "description": "Update an owned chapter's title (its prose lives on scenes now);\nrespond with HTTP 404 when it is not found.",
         "operationId": "update_chapter_api_writing_chapters__chapter_id__put",
         "parameters": [
           {
@@ -6735,6 +6958,203 @@
           }
         },
         "summary": "Continue Chapter",
+        "tags": [
+          "writing"
+        ]
+      }
+    },
+    "/api/writing/chapters/{chapter_id}/scene-order": {
+      "put": {
+        "description": "Rewrite an owned chapter's scene order as one whole.\n\nThe body carries every scene of the chapter in its new order. Respond\nwith HTTP 204, HTTP 404 for an absent or unowned chapter, or HTTP 409\nwhen the body is not the chapter's current whole — a scene added or\ndeleted in a second tab, or an id repeated — with ``detail.scene_ids``\nholding the stored ids in their position order: the arrangement the\nclient reverts to.",
+        "operationId": "reorder_scenes_api_writing_chapters__chapter_id__scene_order_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SceneOrderUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Chapter not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneOrderMismatchRead"
+                }
+              }
+            },
+            "description": "The body is not the chapter's current whole of scene ids"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reorder Scenes",
+        "tags": [
+          "writing"
+        ]
+      }
+    },
+    "/api/writing/chapters/{chapter_id}/scenes": {
+      "get": {
+        "description": "List an owned chapter's scenes in position order, each with its derived\nword count; respond with HTTP 404 when the chapter is not found.",
+        "operationId": "list_scenes_api_writing_chapters__chapter_id__scenes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/app__capabilities__writing__schemas__SceneRead"
+                  },
+                  "title": "Response List Scenes Api Writing Chapters  Chapter Id  Scenes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Chapter not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Scenes",
+        "tags": [
+          "writing"
+        ]
+      },
+      "post": {
+        "description": "Create a scene under an owned chapter; return HTTP 404 for a missing\nchapter or HTTP 409 if setup is required.",
+        "operationId": "create_scene_api_writing_chapters__chapter_id__scenes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SceneCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__capabilities__writing__schemas__SceneRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Chapter not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Setup required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Scene",
         "tags": [
           "writing"
         ]
@@ -7400,6 +7820,167 @@
           }
         },
         "summary": "Export Novel",
+        "tags": [
+          "writing"
+        ]
+      }
+    },
+    "/api/writing/scenes/{scene_id}": {
+      "delete": {
+        "description": "Delete an owned scene; the survivors close the gap, renumbered\ncontiguously in the same transaction, and the novel's timestamp\nadvances. Always allowed — an empty chapter is a real state (D16).\n\nRaise HTTP 404 for an absent or unowned scene.",
+        "operationId": "delete_scene_api_writing_scenes__scene_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scene_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scene Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Scene not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Scene",
+        "tags": [
+          "writing"
+        ]
+      },
+      "get": {
+        "description": "Return an owned scene with its derived word count; respond with HTTP\n404 when it is not found.",
+        "operationId": "get_scene_api_writing_scenes__scene_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scene_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scene Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__capabilities__writing__schemas__SceneRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Scene not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Scene",
+        "tags": [
+          "writing"
+        ]
+      },
+      "put": {
+        "description": "Update an owned scene: only the fields the body carries change.\n\nRespond with HTTP 404 when it is not found, or HTTP 422 for an over-long\ntitle or label.",
+        "operationId": "update_scene_api_writing_scenes__scene_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scene_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scene Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SceneUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__capabilities__writing__schemas__SceneRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Scene not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Scene",
         "tags": [
           "writing"
         ]
