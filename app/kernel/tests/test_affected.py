@@ -280,20 +280,20 @@ def test_a_capability_dir_without_e2e_is_not_a_suite():
     assert resolve(["app/capabilities/notes/x.py"]).capabilities is None
 
 
-def test_the_real_checkout_discovers_the_first_rebuilt_suite(
+def test_the_real_checkout_discovers_the_rebuilt_suites(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """The one test where the checkout's own directories are the subject: a
     fixture cannot see the discovery rule itself break.
 
     W0 demolished the capability UIs and their suites with them; the
-    rebuild brings them back screen by screen, and setup's suite is the
-    first one home (W2). The expectation names the rebuilt set as it
-    stands — exactly setup today — and grows with each wave's suite; the
-    bare set-equality failure will say what drifted.
+    rebuild brings them back screen by screen — setup's suite was the
+    first one home (W2), writing's shelf suite joined it (W3). The
+    expectation names the rebuilt set as it stands and grows with each
+    wave's suite; the bare set-equality failure will say what drifted.
     """
     monkeypatch.chdir(REPO_ROOT)
-    assert known_capabilities() == {"setup"}
+    assert known_capabilities() == {"setup", "writing"}
 
 
 def test_a_shared_surface_change_in_the_interim_owes_nothing(
