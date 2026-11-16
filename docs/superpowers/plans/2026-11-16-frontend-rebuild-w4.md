@@ -64,14 +64,14 @@
 **Interfaces (produces):** `SceneCreate(title="", body="", setting=None, story_time=None)`, `SceneUpdate` (present-only semantics like `ChapterUpdate`), `SceneOrderUpdate(ids: list[UUID])` → PUT `/api/writing/chapters/{id}/scene-order` (whole set, 409 mismatch), `SceneRead(id, chapter_id, position, title, body, setting, story_time, word_count, updated_at)`; scenes under `/api/writing/chapters/{chapter_id}/scenes` + `/scenes/{scene_id}` (POST/PUT/DELETE); `ChapterRead` gains `word_count`, `scene_count`; `NovelRead.word_count` now Σ scenes (repository expression swap). Scene delete always allowed (D16 — empty chapters are real).
 - [ ] Tests: CRUD + scoping (404 foreign), order contract (409 names stored ids), derived counts, empty chapter reads honestly, localization placeholder for empty title. Commit `feat(writing)` with `User-visible:` (scenes as the writing unit).
 
-### Task 6: Backend adaptation — activity, duplicate, export, import, setup, **all readers, and the body drop**
+### Task 6: Backend adaptation — reader swap, export/import/setup, and the body drop
 
-**Files:** `app/capabilities/writing/service.py`, interchange engine (`import_archive` path), `app/capabilities/setup/service.py`, the knowledge/planning readers of `Chapter.body`, a second Alembic revision + tests.
-- [ ] `DailyWords` hooks move to scene create/update/delete (old-body diff before update; deletes negative; same-day upserts); chapter delete accounts its scenes' words (Σ-scene negative).
-- [ ] Duplicate copies chapters + scenes (positions, titles, bodies, setting/story_time) in one transaction; archive stays uncopied.
-- [ ] Export assembles scene prose per chapter in order (archive format stays chapter-shaped); `import_archive` wraps every landed chapter body into one scene (demos ride this).
-- [ ] **The body drop (moved from Task 4 by coordinator ruling 2026-11-16):** in ONE commit — swap every remaining `Chapter.body` reader (writing, knowledge, planning, interchange) to scene-derived prose, remove the model attribute, land a second revision dropping `chapters.body`; migration-gate green because model and history move together.
-- [ ] Tests: create→update→delete nets, duplicate equality, export/import round-trip chapter-shaped, the reader-swap suites (knowledge/planning) green; both E2E suites' seeding adapts (chapter-body PUTs become scene writes). Commit hidden type where behavior-invisible, else `feat(writing)`.
+**Files:** the knowledge/planning readers of `Chapter.body`, interchange engine + format, `app/capabilities/setup/service.py`, `app/capabilities/writing/{service,repository}.py` (what remains), a second Alembic revision + tests.
+**Re-scope (2026-11-16, Task 5 pull-forward):** DailyWords scene hooks, chapter-delete Σ-scene accounting and duplicate's scene copy LANDED in Task 5's commit 31ee4eb4 — they are done, not yours.
+- [ ] Reader swap: every remaining `Chapter.body` reader moves to scene-derived prose — knowledge `jobs.py` (5 sites), planning `repository.py` (1 site); continuation's `prompts.py` site is Task 7's, leave it.
+- [ ] Export assembles scene prose per chapter in order (archive format stays chapter-shaped); `import_archive` writes every landed chapter as chapter + one scene (demos and setup ride this).
+- [ ] **The body drop (from Task 4's ruling):** in ONE commit — reader swap + model attribute removal + second revision dropping `chapters.body`; migration-gate green because model and history move together.
+- [ ] Seeding adapts: knowledge/planning unit tests and both E2E suites stop seeding via chapter-body PUTs (scene writes instead); the 20 interim-red tests (19 knowledge, 1 planning) go green; `just check`, writing/settings suites, migration-gate, web unit all green. Commit hidden type where behavior-invisible, else `feat(writing)`.
 
 ### Task 7: Scene continuation endpoint (no prompt yet)
 
