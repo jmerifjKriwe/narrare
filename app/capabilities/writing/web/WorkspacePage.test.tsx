@@ -337,7 +337,9 @@ describe("the populated workspace", () => {
     await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
     fireEvent.click(screen.getByRole("button", { name: /Szene 1 · Sub-Basement/ }));
     expect(await screen.findByRole("heading", { level: 1, name: "Sub-Basement" })).toBeTruthy();
-    expect(screen.getByText("Unter der Station lag der Schacht.")).toBeTruthy();
+    // The editor body is TipTap's async render — it lands a tick after the
+    // heading (the scene title is cache-immediate). Wait for it, don't race it.
+    expect(await screen.findByText("Unter der Station lag der Schacht.")).toBeTruthy();
     expect(
       screen.getByRole("button", { name: /Szene 1 · Sub-Basement/ }).getAttribute("aria-current"),
     ).toBe("true");
@@ -491,9 +493,10 @@ describe("the leave guard (Kachel 10) — flush first, ask only on a failed writ
    *  the unsaved pill stands the instant a keystroke lands. */
   async function typeIntoScene(text: string) {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
-    await screen.findByRole("textbox");
-    await waitFor(() => expect(screen.getByRole("textbox").textContent).not.toBe(""));
-    screen.getByRole("textbox").focus();
+    const prose = de["writing.workspace.editor.proseLabel"];
+    await screen.findByRole("textbox", { name: prose });
+    await waitFor(() => expect(screen.getByRole("textbox", { name: prose }).textContent).not.toBe(""));
+    screen.getByRole("textbox", { name: prose }).focus();
     await user.keyboard(text);
     expect(await screen.findByText(de["writing.workspace.ribbon.unsaved"])).toBeTruthy();
   }
@@ -689,7 +692,7 @@ describe("the delete flows — always allowed, the cascade honest", () => {
     // A pending body on the active scene — the delete must discard it,
     // never flush it into a row that no longer exists.
     const user = userEvent.setup({ pointerEventsCheck: 0 });
-    screen.getByRole("textbox").focus();
+    screen.getByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] }).focus();
     await user.keyboard(" Ungesichert.");
     expect(await screen.findByText(de["writing.workspace.ribbon.unsaved"])).toBeTruthy();
 
@@ -948,5 +951,194 @@ describe("the reorder contract — optimistic, the 409 honest, the retry real", 
       within(notice).getByRole("button", { name: de["writing.workspace.crud.noticeClose"] }),
     );
     expect(screen.queryByTestId("explorer-notice")).toBeNull();
+  });
+});
+
+describe("the continuation wiring (Task 16) — the page's own doors", () => {
+  /** The SSE door stubbed at the global boundary — the frames are the
+   *  kernel's own bytes, the typed client stays mocked for the reads. */
+  function stubStream(chunks: readonly string[]) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn(async () =>
+      new Response(stream, { status: 200, headers: { "Content-Type": "text/event-stream" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  const PROSE = de["writing.workspace.editor.proseLabel"];
+  const PILL = /Vorschlag übernehmen/;
+
+  /** Type into the live prose — the real TipTap path, the unsaved pill the
+   *  proof the draft stands (the leave guard's own helper discipline). The
+   *  ask under test flushes (clearing the debounce), so no timer wait is
+   *  owed. */
+  async function typeIntoScene(text: string) {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await screen.findByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(screen.getByRole("textbox", { name: PROSE }).textContent).not.toBe(""));
+    screen.getByRole("textbox", { name: PROSE }).focus();
+    await user.keyboard(text);
+    expect(await screen.findByText(de["writing.workspace.ribbon.unsaved"])).toBeTruthy();
+  }
+
+  async function openWithPendingGhost() {
+    stubStream(['data: {"delta": "Der Nebel hob sich."}\n\n', "event: done\ndata: {}\n\n"]);
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
+    expect(await screen.findByRole("button", { name: PILL })).toBeTruthy();
+  }
+
+  it("typing dismisses the pending ghost — the writer's words win", async () => {
+    await openWithPendingGhost();
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    screen.getByRole("textbox", { name: PROSE }).focus();
+    await user.keyboard("X");
+    await waitFor(() => expect(screen.queryByRole("button", { name: PILL })).toBeNull());
+    expect(screen.queryByTestId("ghost-preview")).toBeNull();
+    // The typed word stands in the prose — the dismissal dropped the
+    // proposal, never the writer's own edit.
+    expect(screen.getByRole("textbox", { name: PROSE }).textContent).toContain("X");
+  });
+
+  it("Esc dismisses the pending ghost — the ghost owns it first", async () => {
+    await openWithPendingGhost();
+    fireEvent.keyDown(screen.getByRole("textbox", { name: PROSE }), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("button", { name: PILL })).toBeNull());
+    expect(screen.queryByTestId("ghost-preview")).toBeNull();
+  });
+
+  it("a quick pill's label rides the prompt body — the round-trip", async () => {
+    const fetchMock = stubStream([
+      'data: {"delta": "Der Nebel hob sich."}\n\n',
+      "event: done\ndata: {}\n\n",
+    ]);
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.click(
+      screen.getByRole("button", { name: de["writing.workspace.promptBar.pillTension"] }),
+    );
+    expect(await screen.findByRole("button", { name: PILL })).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/writing/scenes/${S12.id}/continue`,
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ prompt: "Spannungsspitze einbauen" }),
+      }),
+    );
+  });
+
+  it("a running stream is not an unsaved edit — a route leave passes without the guard", async () => {
+    // The streaming phase itself, held open deterministically: one delta,
+    // then the wire keeps running (no done). The E2E's fake crosses localhost
+    // too fast to hold mid-flight (#899's boundary) — the resting face rides
+    // the real-stack legs; here the running face asks the guard's question.
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {"delta": "Der Nebel hob sich."}\n\n'));
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(stream, { status: 200, headers: { "Content-Type": "text/event-stream" } }),
+      ),
+    );
+    const router = await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
+    // The streaming face stands — the ARIA chip over the growing preview,
+    // not the pending pill (the wire never reaches done).
+    expect(await screen.findByTestId("ghost-preview")).toBeTruthy();
+    expect(screen.getByText(de["writing.workspace.ghost.writing"])).toBeTruthy();
+    expect(screen.queryByRole("button", { name: PILL })).toBeNull();
+
+    // The leave: no draft, so the flush gate passes clean — no guard, no write.
+    await router.navigate({ to: "/" });
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(api.PUT).not.toHaveBeenCalled();
+  }, 10000);
+
+  it("a pending body flushes before the ask — the PUT lands before /continue", async () => {
+    // The order oracle: the save seam and the SSE door both record, and the
+    // save must come first — the ghost continues the SAVED body, never the
+    // stale row (the leave guard's flush-first rule, the ask's own door).
+    const order: string[] = [];
+    putSceneAnswer = async (sceneId, body) => {
+      order.push("put");
+      return { data: { ...S12, id: sceneId, ...(body as Partial<Scene>) }, response: ok() };
+    };
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {"delta": "Der Nebel hob sich."}\n\n'));
+        controller.enqueue(encoder.encode("event: done\ndata: {}\n\n"));
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn(async () => {
+      order.push("continue");
+      return new Response(stream, { status: 200, headers: { "Content-Type": "text/event-stream" } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await typeIntoScene(" Neue Worte.");
+
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
+    expect(await screen.findByRole("button", { name: PILL })).toBeTruthy();
+    expect(order).toEqual(["put", "continue"]);
+    expect(api.PUT).toHaveBeenCalledTimes(1);
+    expect(api.PUT.mock.calls[0][1].body.body).toContain("Neue Worte.");
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/writing/scenes/${S12.id}/continue`,
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("a failed flush keeps the ask home — the autosave's failure face stands", async () => {
+    const fetchMock = stubStream([
+      'data: {"delta": "Der Nebel hob sich."}\n\n',
+      "event: done\ndata: {}\n\n",
+    ]);
+    putSceneAnswer = async () => ({ data: undefined, response: new Response(null, { status: 500 }) });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await typeIntoScene(" Ungesichert.");
+
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
+    // The flush tried and failed — the writer saves first: the save's own
+    // failure face answers, and no continue request ever leaves.
+    expect(await screen.findByText(de["writing.workspace.foot.failed"])).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("ghost-preview")).toBeNull();
+    expect(screen.queryByTestId("ghost-error")).toBeNull();
+    expect(screen.queryByRole("button", { name: PILL })).toBeNull();
+  });
+
+  it("a clean body asks as today — no save is owed before the wire", async () => {
+    const fetchMock = stubStream([
+      'data: {"delta": "Der Nebel hob sich."}\n\n',
+      "event: done\ndata: {}\n\n",
+    ]);
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
+    expect(await screen.findByRole("button", { name: PILL })).toBeTruthy();
+    // Today's behavior, byte for byte: the bare ask, no PUT owed.
+    expect(api.PUT).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/writing/scenes/${S12.id}/continue`,
+      expect.objectContaining({ method: "POST" }),
+    );
   });
 });

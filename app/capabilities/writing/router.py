@@ -26,6 +26,7 @@ from app.capabilities.writing.schemas import (
     NovelRead,
     NovelUpdate,
     OrderMismatchRead,
+    SceneContinue,
     SceneCreate,
     SceneOrderMismatchRead,
     SceneOrderUpdate,
@@ -656,7 +657,10 @@ async def delete_scene(scene_id: UUID, service: ServiceDep) -> None:
     },
 )
 async def continue_scene(
-    scene_id: UUID, service: ServiceDep, user_id: UserDep
+    scene_id: UUID,
+    service: ServiceDep,
+    user_id: UserDep,
+    payload: SceneContinue | None = None,
 ) -> FinalizingStreamingResponse:
     """Stream a continuation for an owned scene; return HTTP 404 when it is not found.
 
@@ -664,6 +668,12 @@ async def continue_scene(
     the book's earlier scenes nearest first. The SSE contract is the chapter
     endpoint's own, unchanged — the same frames, headers and coded refusals;
     only the unit and the context assembly moved onto scenes.
+
+    The optional body carries the writer's instruction (W4 D5): an absent
+    body or a carried ``null`` is today's continuation; a prompt outside the
+    chat question's 1-2000 bound is the schema's 422 before any stream, and a
+    prompt the window cannot hold is the coded budget frame below — never a
+    partial answer.
     """
     # Resolution reads the user's profiles on the request's own session, so it
     # must run before the connection goes back. A profile whose key its tier
@@ -687,6 +697,7 @@ async def continue_scene(
             context_window=resolved.context_window,
             max_output_tokens=resolved.max_output_tokens,
             model=resolved.model,
+            prompt=payload.prompt if payload is not None else None,
         )
     except NotFoundError:
         raise HTTPException(status_code=404, detail="scene not found") from None

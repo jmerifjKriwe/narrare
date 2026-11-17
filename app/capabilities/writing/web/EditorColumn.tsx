@@ -30,8 +30,10 @@
  *   (INTERIM #875), Export for the production wave (INTERIM #876).
  * - The foot's autosave line carries no timestamp: the draft's „vor 1 Min."
  *   is a mock relative claim; the honest line names the state, not a clock.
- * - Ghost text and the prompt bar are PR 4's (Tasks 16/17) — the prose
- *   ends where the scene's own words end.
+ * - The ghost text and the prompt bar are LIVE (Task 16): the continuation
+ *   streams into the tail preview (the page's hook owns the ask, the editor
+ *   the Tab insertion), the floating bar carries the real prompt parameter
+ *   (D5) with the neutral Stil trigger (INTERIM #878).
  *
  * The empty faces answer per `workspace-states` (Kacheln 3/4): the
  * unwritten work and the first-scene invitation. Kachel 4's create door
@@ -48,8 +50,9 @@ import { countWords } from "@shell/lib/words";
 import { Icon } from "@shell/ui/icons";
 import { useState } from "react";
 
+import { PromptBar } from "./PromptBar";
 import { SceneEditor } from "./SceneEditor";
-import type { SceneEntry } from "./workspace";
+import type { Continuation, SceneEntry } from "./workspace";
 import { sceneCodeNumbers, sceneTitle } from "./workspace";
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
@@ -206,12 +209,14 @@ function ScenePaper({
   status,
   onRetry,
   onBodyChange,
+  continuation,
 }: {
   novel: Novel;
   entry: SceneEntry;
   status: SaveStatus;
   onRetry: () => void;
   onBodyChange: (body: string) => void;
+  continuation: Continuation;
 }) {
   const t = useTranslation();
   const locale = activeLocale();
@@ -267,6 +272,7 @@ function ScenePaper({
           <SceneEditor
             body={entry.scene.body}
             label={t("writing.workspace.editor.proseLabel")}
+            continuation={continuation}
             onChange={(body) => {
               setWords(countWords(body));
               onBodyChange(body);
@@ -303,6 +309,7 @@ export function EditorColumn({
   onRetry,
   onBodyChange,
   onCreateScene,
+  continuation,
 }: {
   novel: Novel;
   /** The active scene — null on the empty faces. */
@@ -318,18 +325,26 @@ export function EditorColumn({
   /** Kachel 4's first-scene door — the page creates under the empty
    *  chapter and selects the new scene (D16's canonical flow). */
   onCreateScene: () => void;
+  /** The continuation's state (the page's hook) — the ghost layer and the
+   *  prompt bar ride it; the empty faces carry neither. */
+  continuation: Continuation;
 }) {
   const t = useTranslation();
   return (
     <section
       aria-label={t("writing.workspace.editor.label")}
-      className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-surface-container-low"
+      className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-surface-container-low"
     >
       {entry !== null && <Ribbon novel={novel} entry={entry} status={status} />}
       {/* The scrolling stage — tabIndex gives the scroll region keyboard
           access (axe scrollable-region-focusable); the prose itself is a
-          focusable textbox now, the shell main's own pattern. */}
-      <div tabIndex={0} className="flex flex-1 justify-center overflow-y-auto px-6 pb-16 pt-7">
+          focusable textbox now, the shell main's own pattern. The bottom
+          padding clears the floating prompt bar when a scene stands, so
+          the card foot stays reachable behind it. */}
+      <div
+        tabIndex={0}
+        className={`flex flex-1 justify-center overflow-y-auto px-6 pt-7 ${entry !== null ? "pb-36" : "pb-16"}`}
+      >
         {entry !== null ? (
           <ScenePaper
             key={entry.scene.id}
@@ -338,6 +353,7 @@ export function EditorColumn({
             status={status}
             onRetry={onRetry}
             onBodyChange={onBodyChange}
+            continuation={continuation}
           />
         ) : emptyChapter ? (
           /* Kachel 4 — the empty chapter: the scene explained, the
@@ -378,6 +394,10 @@ export function EditorColumn({
           </div>
         )}
       </div>
+      {/* The floating prompt bar (Task 16) — the draft's pill over the
+          stage's foot, real prompts on the continue endpoint (D5). Only
+          the scene face carries it: no scene, nothing to continue. */}
+      {entry !== null && <PromptBar continuation={continuation} />}
     </section>
   );
 }

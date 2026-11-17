@@ -212,6 +212,20 @@ class SceneUpdate(BaseModel):
     story_time: str | None = Field(default=None, max_length=200)
 
 
+class SceneContinue(BaseModel):
+    """The continue body (W4 D5): the writer's optional instruction.
+
+    An absent body, an empty object and a carried ``null`` are one behavior —
+    today's continuation, no instruction. The bound is the chat question's own
+    (``ChatRequest.question``: 1-2000 characters of the raw string, no trim):
+    the schema's one refusal, a 422 naming the field before any stream starts.
+    What the window cannot hold beside the scaffold is the builder's refusal,
+    the coded budget frame — never a truncated instruction.
+    """
+
+    prompt: str | None = Field(default=None, min_length=1, max_length=2000)
+
+
 class SceneOrderUpdate(BaseModel):
     """The PUT scene-order body: the whole chapter, in its new order.
 

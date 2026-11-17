@@ -1124,6 +1124,46 @@ async def test_a_tiny_window_omits_the_three_small_sections() -> None:
             )
 
 
+async def test_the_entity_scan_window_shrinks_by_the_instruction() -> None:
+    """The scan ranks only characters that survive into the rendered tail: a
+    name the instruction's room pushes out of the tail is never scanned, so
+    no entity budget is spent on prose the builder never renders. The same
+    window without the prompt still names the entity."""
+    async with Session() as session:
+        service = WritingService(session, LOCAL_USER_ID)
+        novel = await service.create_novel("Der Nebel")
+        chapter = await service.create_chapter(novel.id, "Ankunft")
+        # allocate(1143, 1000): room 500, immediate 300 — the bare tail room
+        # is 112, the whole body; the 12-character prompt's block (36) cuts it
+        # to 76, and the name at the body's front falls away.
+        scene = await service.create_scene(chapter.id, _scene_payload("Mira " + "Z" * 107))
+        session.add(
+            Entity(
+                user_id=LOCAL_USER_ID,
+                novel_id=novel.id,
+                name="Mira",
+                type="character",
+                content="Die Wanderin.",
+                aliases=[],
+            )
+        )
+        await session.commit()
+
+        bare = await service.continuation_prompt(
+            scene.id, context_window=1143, max_output_tokens=1000, model="fake"
+        )
+        instructed = await service.continuation_prompt(
+            scene.id,
+            context_window=1143,
+            max_output_tokens=1000,
+            model="fake",
+            prompt="X" * 12,
+        )
+    assert "### Mira (character)" in bare
+    assert "Mira" not in instructed  # pushed out of the tail: never scanned
+    assert "Writer's instruction:" in instructed
+
+
 async def test_the_entity_repository_lists_only_its_novels_entities() -> None:
     """The scan's source is scoped: another novel's entities never enter the list."""
     async with Session() as session:
@@ -1136,3 +1176,266 @@ async def test_the_entity_repository_lists_only_its_novels_entities() -> None:
 
         mine = await EntityRepository(session, LOCAL_USER_ID).list_for_novel(novel.id)
         assert [entity.name for entity in mine] == ["Mira"]
+
+
+# --- The optional prompt parameter (W4 D5) ---------------------------------
+#
+# The body is the chat question's precedent: 1-2000 characters, the schema's
+# one refusal a 422 before any stream starts. A prompt the window cannot hold
+# is the coded budget frame the builder already owns — never a partial answer.
+
+# Today's prompt for the scene _create_scene lands: novel "Der Nebel", chapter
+# "Ankunft", no genre/blurb, no entities, no predecessors — the bare scaffold
+# around the whole short tail, hand-derived (frame 188 + tail 22).
+_TODAYS_PROMPT = (
+    "Novel: Der Nebel\n"
+    "Chapter: Ankunft\n"
+    "\n"
+    "Text so far:\n"
+    "Der Nebel kam von See.\n"
+    "\n"
+    "Continue the chapter in the same voice. Keep the language of the existing "
+    "text. Return only the new text, without a heading or commentary."
+)
+
+
+async def test_the_prompt_flows_into_the_provider_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The carried instruction reaches the wire: today's prompt plus the
+    instruction block, byte for byte, and the stream closes with done."""
+    probe = _RequestProbe()
+
+    async def _probe_resolved(
+        session: AsyncSession, user_id: UUID, task_key: str
+    ) -> ResolvedProvider:
+        return _resolved(probe)
+
+    monkeypatch.setattr(writing_router, "resolve_provider", _probe_resolved)
+    async with _client() as client:
+        scene_id = await _create_scene(client, body="Der Nebel kam von See.")
+        response = await client.post(
+            f"/api/writing/scenes/{scene_id}/continue", json={"prompt": "Lass Mira zögern."}
+        )
+
+    assert response.status_code == 200
+    assert "event: done" in response.text
+    assert probe.request is not None
+    assert probe.request.messages[0].content == (
+        _TODAYS_PROMPT + "\n\nWriter's instruction:\nLass Mira zögern."
+    )
+
+
+async def test_the_prompt_is_not_trimmed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The chat question's precedent is the raw string: no trim at the schema
+    or the render — a padded instruction reaches the wire as written."""
+    probe = _RequestProbe()
+
+    async def _probe_resolved(
+        session: AsyncSession, user_id: UUID, task_key: str
+    ) -> ResolvedProvider:
+        return _resolved(probe)
+
+    monkeypatch.setattr(writing_router, "resolve_provider", _probe_resolved)
+    async with _client() as client:
+        scene_id = await _create_scene(client, body="Der Nebel kam von See.")
+        response = await client.post(
+            f"/api/writing/scenes/{scene_id}/continue", json={"prompt": "  Mira zögert.  "}
+        )
+
+    assert response.status_code == 200
+    assert probe.request is not None
+    assert probe.request.messages[0].content.endswith("\n\nWriter's instruction:\n  Mira zögert.  ")
+
+
+@pytest.mark.parametrize("body", [None, {}, {"prompt": None}])
+async def test_absent_null_and_empty_bodies_are_todays_prompt(
+    monkeypatch: pytest.MonkeyPatch, body: dict[str, object] | None
+) -> None:
+    """No body, an empty object and a carried null are one behavior: the
+    prompt that reaches the provider is today's, byte for byte — no heading,
+    no separator, nothing of the instruction."""
+    probe = _RequestProbe()
+
+    async def _probe_resolved(
+        session: AsyncSession, user_id: UUID, task_key: str
+    ) -> ResolvedProvider:
+        return _resolved(probe)
+
+    monkeypatch.setattr(writing_router, "resolve_provider", _probe_resolved)
+    async with _client() as client:
+        scene_id = await _create_scene(client, body="Der Nebel kam von See.")
+        if body is None:
+            response = await client.post(f"/api/writing/scenes/{scene_id}/continue")
+        else:
+            response = await client.post(f"/api/writing/scenes/{scene_id}/continue", json=body)
+
+    assert response.status_code == 200
+    assert "event: done" in response.text
+    assert probe.request is not None
+    assert probe.request.messages[0].content == _TODAYS_PROMPT
+
+
+@pytest.mark.parametrize("prompt", ["", "X" * 2001])
+async def test_an_empty_or_overlong_prompt_is_a_422_before_any_stream(prompt: str) -> None:
+    """The chat question's bound, mirrored: the schema refuses the field with
+    the 422 field shape — a JSON answer naming the field, never a stream, and
+    no audit row claims a call that never ran."""
+    async with _client() as client:
+        scene_id = await _create_scene(client)
+        response = await client.post(
+            f"/api/writing/scenes/{scene_id}/continue", json={"prompt": prompt}
+        )
+
+    assert response.status_code == 422
+    assert response.headers["content-type"].startswith("application/json")
+    detail = response.json()["detail"]
+    assert detail[0]["loc"] == ["body", "prompt"]
+    assert "data:" not in response.text  # no partial answer streamed
+    async with Session() as session:
+        assert await session.scalar(text("SELECT count(*) FROM llm_calls")) == 0
+
+
+@pytest.mark.parametrize("length", [1, 2000])
+async def test_prompts_at_the_bounds_stream(length: int) -> None:
+    """Exactly at the bound is accepted — the chat precedent's 1 and 2000."""
+    async with _client() as client:
+        scene_id = await _create_scene(client)
+        response = await client.post(
+            f"/api/writing/scenes/{scene_id}/continue", json={"prompt": "X" * length}
+        )
+
+    assert response.status_code == 200
+    assert "".join(_deltas(response.text)) == "".join(FakeProvider.CHUNKS)
+    assert "event: done" in response.text
+
+
+@pytest.mark.parametrize(("count", "status"), [(2000, 200), (2001, 422)])
+async def test_the_bound_counts_code_points_not_utf16_units(count: int, status: int) -> None:
+    """The schema's len() counts Python code points: an astral character is
+    one there, two in JS .length — the client mirror (promptWithinBound)
+    counts the same way. 2000 emoji are 4000 UTF-16 units and still within
+    the bound; 2001 refuse before any stream."""
+    async with _client() as client:
+        scene_id = await _create_scene(client)
+        response = await client.post(
+            f"/api/writing/scenes/{scene_id}/continue", json={"prompt": "🌊" * count}
+        )
+
+    assert response.status_code == status
+    if status == 200:
+        assert "event: done" in response.text
+
+
+async def test_a_prompt_the_window_cannot_hold_is_the_budget_frame(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The instruction is charged to the immediate slice: a window that holds
+    the bare continuation refuses the one carrying a prompt it cannot fit —
+    the coded budget frame, no provider call, no audit row. The same window
+    without the prompt streams: the refusal is the instruction's charge."""
+    resolved = ResolvedProvider(
+        provider=FakeProvider(),
+        profile_id=None,
+        kind="fake",
+        model="fake",
+        # allocate(1000, 900): room 350, immediate 211 — the scaffold (188)
+        # fits with 23 to spare; the 100-character prompt's block (124) does not.
+        context_window=1000,
+        max_output_tokens=900,
+        temperature=None,
+        request_timeout=None,
+        base_url=None,
+        api_key=None,
+    )
+
+    async def _small_window(
+        session: AsyncSession, user_id: UUID, task_key: str
+    ) -> ResolvedProvider:
+        return resolved
+
+    monkeypatch.setattr(writing_router, "resolve_provider", _small_window)
+    async with _client() as client:
+        scene_id = await _create_scene(client, body="Der Nebel kam von See.")
+        bare = await client.post(f"/api/writing/scenes/{scene_id}/continue")
+        refused = await client.post(
+            f"/api/writing/scenes/{scene_id}/continue", json={"prompt": "X" * 100}
+        )
+
+    assert bare.status_code == 200
+    assert "event: done" in bare.text
+    assert refused.status_code == 200
+    assert refused.text == 'event: error\ndata: {"code": "prompt-refused", "reason": "budget"}\n\n'
+    async with Session() as session:
+        # The bare call audited; the refused one never ran.
+        rows = (await session.execute(text("SELECT status FROM llm_calls"))).all()
+    assert [row.status for row in rows] == ["ok"]
+
+
+async def test_the_stream_and_audit_are_unchanged_with_a_prompt() -> None:
+    """A carried prompt changes the prompt alone: the same data frames add up
+    to the fake's prose, done closes, and the audit row is the same kind."""
+    async with _client() as client:
+        scene_id = await _create_scene(client)
+        response = await client.post(
+            f"/api/writing/scenes/{scene_id}/continue", json={"prompt": "Mehr Nebel."}
+        )
+        assert response.status_code == 200
+
+    assert "".join(_deltas(response.text)) == "".join(FakeProvider.CHUNKS)
+    assert "event: done" in response.text
+    assert "event: error" not in response.text
+    async with Session() as session:
+        novel_id = await session.scalar(
+            text(
+                "SELECT c.novel_id FROM scenes s JOIN chapters c ON c.id = s.chapter_id"
+                " WHERE s.id = :id"
+            ),
+            {"id": UUID(scene_id)},
+        )
+        row = (
+            await session.execute(
+                text("SELECT task_key, novel_id, status, response_text, cost_usd FROM llm_calls")
+            )
+        ).one()
+    assert row.task_key == "writing.continuation"
+    assert str(row.novel_id) == str(novel_id)
+    assert row.status == "ok"
+    assert row.response_text == "".join(FakeProvider.CHUNKS)
+    assert row.cost_usd == 0.0
+
+
+async def test_a_dying_provider_with_a_prompt_keeps_the_coded_frame(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The mid-stream failure path is the prompt's downstream: what arrived
+    arrived, and the coded error frame closes byte for byte as without one."""
+
+    async def _dying(session: AsyncSession, user_id: UUID, task_key: str) -> ResolvedProvider:
+        return _resolved(_DyingProvider(RuntimeError("the provider died")))
+
+    monkeypatch.setattr(writing_router, "resolve_provider", _dying)
+    async with _client() as client:
+        scene_id = await _create_scene(client)
+        response = await client.post(
+            f"/api/writing/scenes/{scene_id}/continue", json={"prompt": "Mehr Nebel."}
+        )
+
+    assert response.status_code == 200
+    assert _deltas(response.text) == ["Halb"]
+    assert response.text.count("event: error") == 1
+    assert response.text.endswith(
+        'event: error\ndata: {"code": "unknown", "detail": "the provider died"}\n\n'
+    )
+    assert "event: done" not in response.text
+
+
+async def test_a_foreign_scene_with_a_prompt_is_still_a_404() -> None:
+    """The ownership door does not move for the parameter: another user's
+    scene is the honest 404, prompt or no prompt, and no call runs."""
+    scene_id = await _seed_foreign_scene()
+    async with _client() as client:
+        response = await client.post(
+            f"/api/writing/scenes/{scene_id}/continue", json={"prompt": "Weiter."}
+        )
+    assert response.status_code == 404
+    async with Session() as session:
+        assert await session.scalar(text("SELECT count(*) FROM llm_calls")) == 0

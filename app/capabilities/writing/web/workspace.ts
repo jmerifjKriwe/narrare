@@ -1,10 +1,13 @@
 /**
- * The workspace's read/write seam (W4 Tasks 11/13): the queries the three
+ * The workspace's read/write seam (W4 Tasks 11/13/16): the queries the three
  * columns share, the pure helpers that turn their answers into the tree,
  * the active-scene marker and the tension card's real labels — and the
  * structure writes the tree's CRUD doors ask through (create, rename,
  * metadata, delete, reorder), each invalidating the read family its server
- * write moves, so the tree's counts go live without a reload.
+ * write moves, so the tree's counts go live without a reload. Task 16 adds
+ * the continuation stream: the ghost text's lifecycle on the scene continue
+ * endpoint's SSE door (the ask, the phase machine, the dismissal — the
+ * editor owns the Tab insertion and the autosave handoff).
  *
  * One rule owns the active scene: the last-edited one, by the server's
  * `updated_at` — the same rule the shelf hero's door resumes (gap row 3).
@@ -18,6 +21,7 @@
  * does not carry keeps the neutral, never a raw key on the page.
  */
 import { useMutation, useQueries, useQuery, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   client,
@@ -25,9 +29,14 @@ import {
   type Scene,
   type Storyboard,
 } from "@shell/lib/api/client";
+import { readSse } from "@shell/lib/api/sse";
 import { catalogs } from "@shell/lib/generated/catalogs";
 import type { MessageKey } from "@shell/lib/i18n";
 import { queryClient } from "@shell/lib/query";
+
+// Type-only: the autosave's flush vocabulary, erased at runtime (the
+// autosave imports this seam's invalidation door — no runtime cycle).
+import type { FlushOutcome } from "./useAutosave";
 
 /** A scene's or chapter's title as the page speaks it: the trimmed title,
  *  or the localized placeholder — the database stores no locale (the
@@ -494,4 +503,264 @@ export function useReorderScenes(
     },
     onSuccess: () => invalidateArrangement(),
   });
+}
+
+// --- The continuation stream (W4 Task 16) ---------------------------------
+//
+// The ghost text's lifecycle rides the scene continue endpoint's SSE door
+// (design G4/D5): deltas accumulate into the preview, `done` rests it
+// pending at the scene tail, the coded `error` frame (or a refusal before
+// the stream, or a dead connection) raises the error face. The stream is
+// consumed through the shell's SSE reader — fetch, not the typed client,
+// which buffers the whole answer; a continuation must arrive piece by piece.
+//
+// Acceptance is NOT here: the editor inserts the pending text at the tail
+// and hands the joined body to the autosave chain (the one write path), so
+// the save invalidates the ["scenes", chapterId] family exactly as a typed
+// edit does. This seam owns the ask, the stream and the dismissal.
+//
+// The ask is SAVE-FIRST (the leave guard's flush-first rule): the server
+// continues the SAVED body, so every start and retry settles the active
+// scene's autosave before the wire — the page hands its flush over as the
+// seam. A failed flush sends nothing: the autosave's own failure face
+// stands, the writer saves first.
+
+/** The ghost's four faces: nothing stands, the wire is running, the proposal
+ *  rests at the tail (Tab accepts), or the continuation failed (the states
+ *  sheet's KACHEL 8). */
+export type ContinuationPhase = "idle" | "streaming" | "pending" | "error";
+
+export interface Continuation {
+  phase: ContinuationPhase;
+  /** The accumulated proposal — the ghost preview's text. */
+  text: string;
+  /** The failure's machine code (the coded frame's own, or the client's
+   *  name for a refusal before the stream) — null while no error stands. */
+  errorCode: string | null;
+  /** Ask for a continuation; a carried prompt rides the optional body
+   *  (D5), an absent one is today's bare continuation. Replaces any
+   *  standing ghost — one proposal at a time. With the page's save seam
+   *  handed over, the ask flushes the autosave FIRST: a failed flush sends
+   *  nothing (the writer saves first). */
+  start: (prompt?: string) => void;
+  /** Drop the ghost and abort any running stream — Esc, typing, Stoppen,
+   *  Verwerfen. A chosen stop is no failure: no error face follows it. */
+  dismiss: () => void;
+  /** Re-run the very last ask — the error face's „Erneut versuchen". */
+  retry: () => void;
+}
+
+/** The prompt bound's client mirror — the schema's own (SceneContinue, the
+ *  chat question's precedent): 1–2000 characters of the RAW string, no
+ *  trim. The count is CODE POINTS, the server's len(): JS .length counts
+ *  UTF-16 units, and an astral character (an emoji) is two of those — the
+ *  unit count would refuse what the server accepts. The bar refuses an
+ *  over-long instruction before the wire; the empty input is no prompt at
+ *  all (the bare continuation), not a refusal. */
+export const PROMPT_MAX_LENGTH = 2000;
+
+export function promptWithinBound(prompt: string): boolean {
+  const codePoints = [...prompt].length;
+  return codePoints >= 1 && codePoints <= PROMPT_MAX_LENGTH;
+}
+
+/** The code a terminal error frame carries — the payload's own `code`, or
+ *  the contract's fallback when a malformed frame names none. */
+function errorCodeOf(data: string): string {
+  try {
+    const payload = JSON.parse(data) as { code?: unknown };
+    return typeof payload.code === "string" ? payload.code : "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+/** The delta a data frame carries, or null when it carries none. */
+function deltaOf(data: string): string | null {
+  try {
+    const payload = JSON.parse(data) as { delta?: unknown };
+    return typeof payload.delta === "string" ? payload.delta : null;
+  } catch {
+    return null;
+  }
+}
+
+/** What one running stream tells its hook — every answer checked against
+ *  the stream's own abort signal first: a retired stream never speaks. */
+interface ContinuationSink {
+  delta: (text: string) => void;
+  done: () => void;
+  error: (code: string) => void;
+}
+
+/** Consume one continuation ask to its terminal frame. The refusal before
+ *  the stream (the schema's 422, the 404) is a JSON answer, not SSE — named
+ *  by its status; a stream that closes without done/error is the silent
+ *  close the router's own docblock forbids, named `interrupted`. */
+async function consumeContinuation(
+  sceneId: string,
+  prompt: string | undefined,
+  signal: AbortSignal,
+  sink: ContinuationSink,
+): Promise<void> {
+  let response: Response;
+  try {
+    // Fixed same-origin base + the encoded server-issued id, concatenated
+    // (never interpolated) — one path segment, no SSRF-shaped template.
+    // SSRF false positive: the base is a constant relative path and the id a
+    // server-issued UUID — no user-controlled URL (PR #901's Codacy round).
+    response = await fetch("/api/writing/scenes/" + encodeURIComponent(sceneId) + "/continue", { // nosemgrep: Semgrep_rules_lgpl_javascript_ssrf_rule-node-ssrf
+      method: "POST",
+      signal,
+      // The bare continuation carries no body at all — the endpoint's own
+      // shape since before D5; a prompt rides the JSON body.
+      ...(prompt !== undefined
+        ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) }
+        : {}),
+    });
+  } catch {
+    if (!signal.aborted) sink.error("network");
+    return;
+  }
+  if (signal.aborted) return;
+  if (!response.ok || response.body === null) {
+    // The refusal is a JSON answer, not a stream — release the connection.
+    void response.body?.cancel();
+    sink.error(`http-${response.status}`);
+    return;
+  }
+  try {
+    for await (const frame of readSse(response.body)) {
+      if (signal.aborted) return;
+      if (frame.event === "done") {
+        sink.done();
+        return;
+      }
+      if (frame.event === "error") {
+        sink.error(errorCodeOf(frame.data));
+        return;
+      }
+      const delta = deltaOf(frame.data);
+      if (delta !== null) sink.delta(delta);
+    }
+    if (!signal.aborted) sink.error("interrupted");
+  } catch {
+    if (!signal.aborted) sink.error("network");
+  }
+}
+
+/**
+ * The continuation hook — one ghost for the active scene. The page owns it
+ * (its lifetime matches the page, beside the autosave); the editor renders
+ * the ghost and owns the Tab insertion, the bar owns the ask. A scene
+ * switch retires the ghost: it belongs to the tail it was asked for. An
+ * unmount aborts the stream — the server's audit records the interruption.
+ *
+ * The optional `flush` is the page's autosave seam (the leave guard's
+ * flush-first rule, the ask's own door): the server continues the SAVED
+ * body, so every start and retry settles the draft before the wire. A
+ * failed flush keeps the ask home — the autosave's failure face already
+ * stands. Without the seam the ask rides straight to the wire (today's
+ * behavior, the hook's own tests).
+ */
+export function useContinuation(
+  sceneId: string | null,
+  flush?: () => Promise<FlushOutcome>,
+): Continuation {
+  const [phase, setPhase] = useState<ContinuationPhase>("idle");
+  const [text, setText] = useState("");
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const abort = useRef<AbortController | null>(null);
+  const lastPrompt = useRef<string | undefined>(undefined);
+  // The accumulated text beside the state — the done answer reads it
+  // without waiting for a render (an empty answer is no continuation).
+  const accumulated = useRef("");
+  const scene = useRef(sceneId);
+  scene.current = sceneId;
+
+  const dismiss = useCallback(() => {
+    abort.current?.abort();
+    abort.current = null;
+    accumulated.current = "";
+    setPhase("idle");
+    setText("");
+    setErrorCode(null);
+  }, []);
+
+  const start = useCallback(
+    (prompt?: string) => {
+      const target = scene.current;
+      if (target === null) return;
+      abort.current?.abort();
+      const controller = new AbortController();
+      abort.current = controller;
+      lastPrompt.current = prompt;
+
+      const begin = () => {
+        accumulated.current = "";
+        setPhase("streaming");
+        setText("");
+        setErrorCode(null);
+        void consumeContinuation(target, prompt, controller.signal, {
+          delta: (piece) => {
+            if (controller.signal.aborted) return;
+            accumulated.current += piece;
+            setText(accumulated.current);
+          },
+          done: () => {
+            if (controller.signal.aborted) return;
+            if (accumulated.current === "") {
+              // Nothing arrived: a blank pill would be a false affordance.
+              setPhase("error");
+              setErrorCode("empty");
+            } else {
+              setPhase("pending");
+            }
+          },
+          error: (code) => {
+            if (controller.signal.aborted) return;
+            setPhase("error");
+            setErrorCode(code);
+          },
+        });
+      };
+
+      // No save seam: today's ask, straight to the wire (the hook's own
+      // tests; the page always hands its autosave's flush over).
+      if (flush === undefined) {
+        begin();
+        return;
+      }
+      // Save first (the leave guard's flush-first rule): the server
+      // continues the SAVED body — unsaved words must land before the ask.
+      // A failed flush sends nothing; the autosave's failure face stands.
+      // A dismissal, a replacement or a scene switch during the flush
+      // retires the ask — the controller's abort is the stream's own guard.
+      void flush().then((outcome) => {
+        if (controller.signal.aborted || outcome === "failed") return;
+        if (scene.current !== target) return;
+        begin();
+      });
+    },
+    [flush],
+  );
+
+  const retry = useCallback(() => start(lastPrompt.current), [start]);
+
+  // A scene switch (and the first mount) rests the ghost at idle — the
+  // ghost belongs to the tail it was asked for.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sceneId is the deliberate re-run key, not a value the body reads — a scene switch must retire the ghost (the WorkspacePage novelId reset's own pattern).
+  useEffect(() => {
+    dismiss();
+  }, [sceneId]);
+
+  // The page goes away: the stream goes with it.
+  useEffect(
+    () => () => {
+      abort.current?.abort();
+    },
+    [],
+  );
+
+  return { phase, text, errorCode, start, dismiss, retry };
 }

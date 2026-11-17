@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The icon set: fifty-nine line glyphs on one 16×16 grid, drawn for the
+ * The icon set: sixty-one line glyphs on one 16×16 grid, drawn for the
  * stroke they run on — `currentColor` at 1.5, round caps and joins, no
  * fills — so a glyph wears the ink of whatever it sits beside and carries
  * no color of its own. The whole presentation contract lives on the
@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
  */
 
 /**
- * The fifty-nine drawings. Each stays inside the 2.35–13.65 envelope —
+ * The sixty-one drawings. Each stays inside the 2.35–13.65 envelope —
  * knowledge's stack sets both extremes; on the x axis the ink never leaves
  * 2.5–13.5 — so the 1.5 stroke, reaching half its width past the ink, never
  * clips the viewBox. Each is a single-stroke metaphor: detail that
@@ -428,6 +428,23 @@ export const icons = {
       <path d="M6.5 4.5V3.25H9.5V4.5" />
       <path d="M4.5 4.5L5.25 13H10.75L11.5 4.5" />
       <path d="M6.75 7V10.5M9.25 7V10.5" />
+    </>
+  ),
+
+  // The continuation's concepts (workspace-scene-centric + workspace-states
+  // KACHEL 7, W4 Task 16). Same rule as above: a Material name pins the
+  // concept, the drawing is the app's own face.
+
+  /** The drafts' `spark`: the four-pointed star — the prompt bar's primary
+   *  action, the AI's own mark (the light face wins over the dark's ⌘K,
+   *  which belongs to the disabled palette chip). */
+  spark: <path d="M8 2.75L9.4 6.6L13.25 8L9.4 9.4L8 13.25L6.6 9.4L2.75 8L6.6 6.6Z" />,
+  /** The drafts' `stop_circle`: a ring around a full square — the stream's
+   *  abort, distinct from `cross`, which dismisses a face. */
+  stopCircle: (
+    <>
+      <circle cx="8" cy="8" r="5.5" />
+      <path d="M6.25 6.25H9.75V9.75H6.25Z" />
     </>
   ),
 } satisfies Record<string, ReactNode>;
