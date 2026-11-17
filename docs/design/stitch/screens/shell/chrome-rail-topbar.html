@@ -1,15 +1,16 @@
 <!DOCTYPE html>
+
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>App-weite Chrome-Referenz — Narrare Atelier Spec</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>App-weite Chrome-Referenz — Narrare Atelier Spec</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
     tailwind.config = {
       theme: {
         extend: {
@@ -40,7 +41,7 @@
       }
     }
   </script>
-  <style>
+<style>
     .material-symbols-outlined {
       font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
       vertical-align: middle;
@@ -78,679 +79,592 @@
   </style>
 </head>
 <body class="p-6 md:p-10 spec-grid min-h-screen">
-
-  <div class="max-w-[1360px] mx-auto space-y-10">
-
-    <!-- HEADER & SPEC OVERVIEW -->
-    <header class="bg-card border border-bordercol rounded-xl p-8 shadow-sm">
-      <div class="flex flex-wrap items-center justify-between gap-4 border-b border-bordercol/60 pb-6">
-        <div>
-          <div class="flex items-center gap-2.5 text-xs font-semibold text-terracotta tracking-wider uppercase">
-            <span class="inline-block w-2 h-2 rounded-full bg-terracotta"></span>
-            Narrare Atelier Spezifikation &bull; V2.5 Kanon
+<div class="max-w-[1360px] mx-auto space-y-10">
+<!-- HEADER & SPEC OVERVIEW -->
+<header class="bg-card border border-bordercol rounded-xl p-8 shadow-sm">
+<div class="flex flex-wrap items-center justify-between gap-4 border-b border-bordercol/60 pb-6">
+<div>
+<div class="flex items-center gap-2.5 text-xs font-semibold text-terracotta tracking-wider uppercase">
+<span class="inline-block w-2 h-2 rounded-full bg-terracotta"></span>
+            Narrare Atelier Spezifikation • V2.5 Kanon
           </div>
-          <h1 class="text-3xl font-bold font-sans text-ink mt-2 tracking-tight">
+<h1 class="text-3xl font-bold font-sans text-ink mt-2 tracking-tight">
             App-weite Chrome-Referenz &amp; Globale Navigation
           </h1>
-          <p class="text-muted text-sm mt-1 max-w-3xl">
-            Verbindliche Definition der permanenten Anwendungsrahmen für Desktop: Links die mikrodynamische <strong class="text-ink font-semibold">Icon-Rail (64px &rarr; 168px)</strong>, oben die semantische <strong class="text-ink font-semibold">Topbar (56px)</strong>. Null erfundene Kontingente, ehrliche lokale Speicherung und strenge typografische Trennung (EB Garamond exklusiv für Buchtitel).
+<p class="text-muted text-sm mt-1 max-w-3xl">
+            Verbindliche Definition der permanenten Anwendungsrahmen für Desktop: Links die mikrodynamische <strong class="text-ink font-semibold">Icon-Rail (64px → 168px)</strong>, oben die semantische <strong class="text-ink font-semibold">Topbar (56px)</strong>. Null erfundene Kontingente, ehrliche lokale Speicherung und strenge typografische Trennung (EB Garamond exklusiv für Buchtitel).
           </p>
-        </div>
-        <div class="flex flex-col items-end gap-2 text-right">
-          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-fond border border-bordercol text-xs font-mono text-ink">
-            <span>Rail: 64/168px</span>
-            <span class="text-borderdark">|</span>
-            <span>Topbar: 56px</span>
-            <span class="text-borderdark">|</span>
-            <span class="text-success font-semibold">Local-First</span>
-          </div>
-          <span class="text-xs text-muted">Literary Modernism &bull; Du-Form</span>
-        </div>
-      </div>
-
-      <!-- DIE ZWEI FESTEN BASISELEMENTE (A & B) IM KONTEXT -->
-      <div class="mt-6 pt-2">
-        <h2 class="text-xs uppercase tracking-wider font-semibold text-muted mb-4">
+</div>
+<div class="flex flex-col items-end gap-2 text-right">
+<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-fond border border-bordercol text-xs font-mono text-ink">
+<span>Rail: 64/168px</span>
+<span class="text-borderdark">|</span>
+<span>Topbar: 56px</span>
+<span class="text-borderdark">|</span>
+<span class="text-success font-semibold">Local-First</span>
+</div>
+<span class="text-xs text-muted">Literary Modernism • Du-Form</span>
+</div>
+</div>
+<!-- DIE ZWEI FESTEN BASISELEMENTE (A & B) IM KONTEXT -->
+<div class="mt-6 pt-2">
+<h2 class="text-xs uppercase tracking-wider font-semibold text-muted mb-4">
           Die zwei Fundamente der Benutzeroberfläche (A: Icon-Rail &amp; B: Topbar)
         </h2>
-        
-        <!-- Live Preview Stage with Rail + Topbar + Content Placeholder -->
-        <div class="border border-bordercol rounded-lg bg-pergament overflow-hidden shadow-sm flex flex-col">
-          <!-- TOPBAR INTEGRATION -->
-          <div class="h-14 bg-card border-b border-bordercol px-4 flex items-center justify-between z-20">
-            <!-- Breadcrumbs -->
-            <div class="flex items-center gap-2 text-xs font-medium pl-16">
-              <span class="text-muted hover:text-ink cursor-pointer">Manuscripts</span>
-              <span class="text-borderdark">/</span>
-              <span class="font-book-title text-base font-semibold text-ink tracking-tight">Dead Signal</span>
-              <span class="ml-2 px-1.5 py-0.5 rounded text-[10px] font-mono bg-fond text-muted border border-bordercol">Band I</span>
-            </div>
-
-            <!-- Topbar Rechts: Suche (deaktiviert), Wortzahl ehrlich, Sprache passiv -->
-            <div class="flex items-center gap-3">
-              <!-- Suchen-Chip mit Tooltip & ⌘K deaktiviert -->
-              <div class="relative group cursor-not-allowed">
-                <div class="flex items-center gap-2 px-2.5 py-1 rounded bg-fond border border-bordercol/80 text-muted opacity-75">
-                  <span class="material-symbols-outlined text-[17px]">search</span>
-                  <span class="text-xs">Suchen</span>
-                  <kbd class="text-[10px] font-mono bg-white px-1.5 py-0.5 rounded border border-bordercol text-muted/80">⌘K</kbd>
-                </div>
-                <!-- Tooltip -->
-                <div class="absolute right-0 top-full mt-1.5 hidden group-hover:block z-50 whitespace-nowrap bg-ink text-white text-[11px] px-2.5 py-1 rounded shadow-lg">
+<!-- Live Preview Stage with Rail + Topbar + Content Placeholder -->
+<div class="border border-bordercol rounded-lg bg-pergament overflow-hidden shadow-sm flex flex-col">
+<!-- TOPBAR INTEGRATION -->
+<div class="h-14 bg-card border-b border-bordercol px-4 flex items-center justify-between z-20">
+<!-- Breadcrumbs -->
+<div class="flex items-center gap-2 text-xs font-medium pl-16">
+<span class="text-muted hover:text-ink cursor-pointer">Manuscripts</span>
+<span class="text-borderdark">/</span>
+<span class="font-book-title text-base font-semibold text-ink tracking-tight">Dead Signal</span>
+<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] font-mono bg-fond text-muted border border-bordercol">Band I</span>
+</div>
+<!-- Topbar Rechts: Suche (deaktiviert), Wortzahl ehrlich, Sprache passiv -->
+<div class="flex items-center gap-3">
+<!-- Suchen-Chip mit Tooltip & ⌘K deaktiviert -->
+<div class="relative group cursor-not-allowed">
+<div class="flex items-center gap-2 px-2.5 py-1 rounded bg-fond border border-bordercol/80 text-muted opacity-75">
+<span class="material-symbols-outlined text-[17px]">search</span>
+<span class="text-xs">Suchen</span>
+<kbd class="text-[10px] font-mono bg-white px-1.5 py-0.5 rounded border border-bordercol text-muted/80">⌘K</kbd>
+</div>
+<!-- Tooltip -->
+<div class="absolute right-0 top-full mt-1.5 hidden group-hover:block z-50 whitespace-nowrap bg-ink text-white text-[11px] px-2.5 py-1 rounded shadow-lg">
                   Befehlspalette kommt später
                   <div class="absolute -top-1 right-5 w-2 h-2 bg-ink rotate-45"></div>
-                </div>
-              </div>
-
-              <!-- Wortzahl-Chip (Ehrlich: 3.384 Wörter) -->
-              <div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-fond border border-bordercol text-xs text-ink font-medium">
-                <span class="material-symbols-outlined text-[16px] text-terracotta">edit</span>
-                <span>3.384 Wörter</span>
-              </div>
-
-              <!-- Sprach-Chip (Passiv, kein Dropdown-Pfeil) -->
-              <div class="px-2 py-1 rounded bg-fond/60 border border-bordercol/60 text-xs font-mono text-muted tracking-wide cursor-default select-none" title="Anzeigesprache des Ateliers: Deutsch">
+</div>
+</div>
+<!-- Wortzahl-Chip (Ehrlich: 3.384 Wörter) -->
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-fond border border-bordercol text-xs text-ink font-medium">
+<span class="material-symbols-outlined text-[16px] text-terracotta">edit</span>
+<span>3.384 Wörter</span>
+</div>
+<!-- Sprach-Chip (Passiv, kein Dropdown-Pfeil) -->
+<div class="px-2 py-1 rounded bg-fond/60 border border-bordercol/60 text-xs font-mono text-muted tracking-wide cursor-default select-none" title="Anzeigesprache des Ateliers: Deutsch">
                 DE
               </div>
-            </div>
-          </div>
-
-          <!-- BODY MIT RAIL (COLLAPSED 64px) & INHALTS-FLÄCHE -->
-          <div class="relative flex min-h-[340px]">
-            
-            <!-- (A) ICON-RAIL links: 64px kollabiert -->
-            <aside class="w-16 bg-card border-r border-bordercol flex flex-col justify-between py-3 px-2 z-10 select-none">
-              <div class="space-y-4 flex flex-col items-center">
-                <!-- Monogramm Chip N -->
-                <div class="w-10 h-10 rounded-lg bg-terracotta text-white flex items-center justify-center font-bold text-base shadow-sm font-book-title cursor-pointer" title="Narrare / Studio Atelier">
+</div>
+</div>
+<!-- BODY MIT RAIL (COLLAPSED 64px) & INHALTS-FLÄCHE -->
+<div class="relative flex min-h-[340px]">
+<!-- (A) ICON-RAIL links: 64px kollabiert -->
+<aside class="w-16 bg-card border-r border-bordercol flex flex-col justify-between py-3 px-2 z-10 select-none">
+<div class="space-y-4 flex flex-col items-center">
+<!-- Monogramm Chip N -->
+<div class="w-10 h-10 rounded-lg bg-terracotta text-white flex items-center justify-center font-bold text-base shadow-sm font-book-title cursor-pointer" title="Narrare / Studio Atelier">
                   N
                 </div>
-
-                <!-- Buch-Wechsler Chip (Kompakt) -->
-                <div class="w-10 h-12 rounded bg-fond border border-bordercol flex flex-col items-center justify-between p-1 hover:border-terracotta cursor-pointer group transition-colors" title="Aktives Buch: Dead Signal (Klicken zum Wechseln)">
-                  <div class="w-7 h-6 rounded-sm cover-dead-signal flex items-center justify-center text-[7px] text-blue-200 font-serif font-bold">
+<!-- Buch-Wechsler Chip (Kompakt) -->
+<div class="w-10 h-12 rounded bg-fond border border-bordercol flex flex-col items-center justify-between p-1 hover:border-terracotta cursor-pointer group transition-colors" title="Aktives Buch: Dead Signal (Klicken zum Wechseln)">
+<div class="w-7 h-6 rounded-sm cover-dead-signal flex items-center justify-center text-[7px] text-blue-200 font-serif font-bold">
                     DS
                   </div>
-                  <span class="material-symbols-outlined text-[14px] text-muted group-hover:text-terracotta">unfold_more</span>
-                </div>
-
-                <div class="w-8 h-[1px] bg-bordercol my-1"></div>
-
-                <!-- Navigations-Liste: 5 Kernpunkte -->
-                <nav class="space-y-1.5 w-full flex flex-col items-center">
-                  <!-- Bücherregal -->
-                  <button class="w-11 h-11 rounded-lg flex items-center justify-center text-muted hover:text-ink hover:bg-fond transition-colors" title="Bücherregal">
-                    <span class="material-symbols-outlined text-[22px]">collections_bookmark</span>
-                  </button>
-
-                  <!-- Editor (AKTIV, Terracotta) -->
-                  <button class="w-11 h-11 rounded-lg flex items-center justify-center bg-terralight text-terracotta font-semibold border border-terracotta/20 shadow-xs" title="Editor (Aktiv)">
-                    <span class="material-symbols-outlined text-[22px] fill-1">edit_note</span>
-                  </button>
-
-                  <!-- Wissen -->
-                  <button class="w-11 h-11 rounded-lg flex items-center justify-center text-muted hover:text-ink hover:bg-fond transition-colors" title="Wissen (Lore-Graph)">
-                    <span class="material-symbols-outlined text-[22px]">hub</span>
-                  </button>
-
-                  <!-- Planung -->
-                  <button class="w-11 h-11 rounded-lg flex items-center justify-center text-muted hover:text-ink hover:bg-fond transition-colors" title="Planung (Storyboard &amp; Timeline)">
-                    <span class="material-symbols-outlined text-[22px]">schema</span>
-                  </button>
-
-                  <!-- Einstellungen -->
-                  <button class="w-11 h-11 rounded-lg flex items-center justify-center text-muted hover:text-ink hover:bg-fond transition-colors" title="Einstellungen">
-                    <span class="material-symbols-outlined text-[22px]">settings</span>
-                  </button>
-                </nav>
-              </div>
-
-              <!-- Rail Fuß: Status, Theme, User -->
-              <div class="space-y-3 flex flex-col items-center pt-3 border-t border-bordercol/80">
-                <!-- Status Punkt: Gespeichert -->
-                <div class="w-2.5 h-2.5 rounded-full bg-success ring-4 ring-successbg cursor-pointer" title="Lokal gesichert: Alle Entwürfe synchron"></div>
-
-                <!-- Theme-Umschalter -->
-                <button class="w-9 h-9 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-fond transition-colors" title="Dunkelmodus umschalten">
-                  <span class="material-symbols-outlined text-[19px]">dark_mode</span>
-                </button>
-
-                <!-- User-Block Chip (Initialen HC) -->
-                <div class="w-9 h-9 rounded-full bg-fond border border-bordercol flex items-center justify-center text-xs font-semibold text-ink hover:border-terracotta cursor-pointer transition-colors" title="H. Calder (Lokal)">
+<span class="material-symbols-outlined text-[14px] text-muted group-hover:text-terracotta">unfold_more</span>
+</div>
+<div class="w-8 h-[1px] bg-bordercol my-1"></div>
+<!-- Navigations-Liste: 5 Kernpunkte -->
+<nav class="space-y-1.5 w-full flex flex-col items-center">
+<!-- Bücherregal -->
+<button class="w-11 h-11 rounded-lg flex items-center justify-center text-muted hover:text-ink hover:bg-fond transition-colors" title="Bücherregal">
+<span class="material-symbols-outlined text-[22px]">collections_bookmark</span>
+</button>
+<!-- Editor (AKTIV, Terracotta) -->
+<button class="w-11 h-11 rounded-lg flex items-center justify-center bg-terralight text-terracotta font-semibold border border-terracotta/20 shadow-xs" title="Editor (Aktiv)">
+<span class="material-symbols-outlined text-[22px] fill-1">edit_note</span>
+</button>
+<!-- Wissen -->
+<button class="w-11 h-11 rounded-lg flex items-center justify-center text-muted hover:text-ink hover:bg-fond transition-colors" title="Wissen (Lore-Graph)">
+<span class="material-symbols-outlined text-[22px]">hub</span>
+</button>
+<!-- Planung -->
+<button class="w-11 h-11 rounded-lg flex items-center justify-center text-muted hover:text-ink hover:bg-fond transition-colors" title="Planung (Storyboard &amp; Timeline)">
+<span class="material-symbols-outlined text-[22px]">schema</span>
+</button>
+<!-- Einstellungen -->
+<button class="w-11 h-11 rounded-lg flex items-center justify-center text-muted hover:text-ink hover:bg-fond transition-colors" title="Einstellungen">
+<span class="material-symbols-outlined text-[22px]">settings</span>
+</button>
+</nav>
+</div>
+<!-- Rail Fuß: Status, Theme, User -->
+<div class="space-y-3 flex flex-col items-center pt-3 border-t border-bordercol/80">
+<!-- Status Punkt: Gespeichert -->
+<div class="w-2.5 h-2.5 rounded-full bg-success ring-4 ring-successbg cursor-pointer" title="Lokal gesichert: Alle Entwürfe synchron"></div>
+<!-- Theme-Umschalter -->
+<button class="w-9 h-9 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-fond transition-colors" title="Dunkelmodus umschalten">
+<span class="material-symbols-outlined text-[19px]">dark_mode</span>
+</button>
+<!-- User-Block Chip (Initialen HC) -->
+<div class="w-9 h-9 rounded-full bg-fond border border-bordercol flex items-center justify-center text-xs font-semibold text-ink hover:border-terracotta cursor-pointer transition-colors" title="H. Calder (Lokal)">
                   HC
                 </div>
-              </div>
-            </aside>
-
-            <!-- Workspace Content Canvas Mockup -->
-            <div class="flex-1 p-8 bg-pergament flex flex-col justify-between">
-              <div class="max-w-xl mx-auto w-full pt-4 space-y-4">
-                <div class="inline-flex items-center gap-2 text-xs text-muted uppercase tracking-wider font-mono">
-                  <span>Kapitel 1 &bull; Szene 2</span>
-                  <span class="text-borderdark">&bull;</span>
-                  <span>Permafrost Station 7</span>
-                </div>
-                <h3 class="text-2xl font-book-title text-ink italic">
+</div>
+</aside>
+<!-- Workspace Content Canvas Mockup -->
+<div class="flex-1 p-8 bg-pergament flex flex-col justify-between">
+<div class="max-w-xl mx-auto w-full pt-4 space-y-4">
+<div class="inline-flex items-center gap-2 text-xs text-muted uppercase tracking-wider font-mono">
+<span>Kapitel 1 • Szene 2</span>
+<span class="text-borderdark">•</span>
+<span>Permafrost Station 7</span>
+</div>
+<h3 class="text-2xl font-book-title text-ink italic">
                   Das Signal im Permafrost
                 </h3>
-                <p class="text-sm text-ink/80 leading-relaxed font-sans">
-                  Die Konsolen flackerten synchron im Rhythmus der subglazialen Messsonde. Maya Chen wischte eine feine Schicht Graphitstaub von der Skala des Spektrographen. Es gab kein Rauschen der Relaisflotte, keine Funkreflexion aus der Erdumlaufbahn &ndash; nur ein modulierter Puls aus der Tiefe.
+<p class="text-sm text-ink/80 leading-relaxed font-sans">
+                  Die Konsolen flackerten synchron im Rhythmus der subglazialen Messsonde. Maya Chen wischte eine feine Schicht Graphitstaub von der Skala des Spektrographen. Es gab kein Rauschen der Relaisflotte, keine Funkreflexion aus der Erdumlaufbahn – nur ein modulierter Puls aus der Tiefe.
                 </p>
-                <div class="pt-2 flex items-center gap-3">
-                  <span class="inline-flex items-center gap-1.5 text-xs text-muted font-mono bg-white px-2 py-1 rounded border border-bordercol">
-                    <span class="w-1.5 h-1.5 rounded-full bg-success"></span>
-                    Autorenhoheit gewahrt &bull; 100% lokal
+<div class="pt-2 flex items-center gap-3">
+<span class="inline-flex items-center gap-1.5 text-xs text-muted font-mono bg-white px-2 py-1 rounded border border-bordercol">
+<span class="w-1.5 h-1.5 rounded-full bg-success"></span>
+                    Autorenhoheit gewahrt • 100% lokal
                   </span>
-                </div>
-              </div>
-
-              <!-- Fußzeile in Arbeitsfläche -->
-              <div class="text-[11px] text-muted flex items-center justify-between border-t border-bordercol/60 pt-3 mt-8">
-                <span>Narrare Atelier Workspace Spec</span>
-                <span>Tastenkürzel: <kbd class="px-1 py-0.5 rounded bg-white border border-bordercol font-mono text-[10px]">F9</kbd> Fokusmodus</span>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-    </header>
-
-    <!-- ZUSTANDS-KACHELN GRID (GENAU DIE 8 GEFORDERTEN ABRISSE) -->
-    <div>
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h2 class="text-xl font-bold text-ink tracking-tight">
+</div>
+</div>
+<!-- Fußzeile in Arbeitsfläche -->
+<div class="text-[11px] text-muted flex items-center justify-between border-t border-bordercol/60 pt-3 mt-8">
+<span>Narrare Atelier Workspace Spec</span>
+<span>Tastenkürzel: <kbd class="px-1 py-0.5 rounded bg-white border border-bordercol font-mono text-[10px]">F9</kbd> Fokusmodus</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</header>
+<!-- ZUSTANDS-KACHELN GRID (GENAU DIE 8 GEFORDERTEN ABRISSE) -->
+<div>
+<div class="flex items-center justify-between mb-4">
+<div>
+<h2 class="text-xl font-bold text-ink tracking-tight">
             Zustands-Referenzkacheln
           </h2>
-          <p class="text-xs text-muted mt-0.5">
+<p class="text-xs text-muted mt-0.5">
             Detaillierte Spezifikation aller acht Interaktions-, Ausklapp- und Reduktionszustände.
           </p>
-        </div>
-        <span class="text-xs font-mono text-terracotta bg-terralight px-2.5 py-1 rounded border border-terracotta/20">
+</div>
+<span class="text-xs font-mono text-terracotta bg-terralight px-2.5 py-1 rounded border border-terracotta/20">
           8 Zustände vollständig verifiziert
         </span>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-
-        <!-- KACHEL 1: RAIL EXPANDIERT (168px) -->
-        <div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
-          <div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
-            <div>
-              <span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 01</span>
-              <h3 class="text-sm font-bold text-ink">Rail expandiert</h3>
-            </div>
-            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-bordercol text-muted">168px Hover</span>
-          </div>
-
-          <div class="p-4 bg-pergament flex justify-center items-start min-h-[380px]">
-            <!-- Expandierte Rail Komponente -->
-            <div class="w-[168px] bg-white border border-bordercol rounded-lg shadow-md p-3 flex flex-col justify-between h-[360px]">
-              
-              <div class="space-y-3">
-                <!-- Header mit Monogramm + Text -->
-                <div class="flex items-center gap-2.5 pb-2 border-b border-bordercol/60">
-                  <div class="w-8 h-8 rounded-md bg-terracotta text-white flex items-center justify-center font-bold text-sm font-book-title shrink-0">
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- KACHEL 1: RAIL EXPANDIERT (168px) -->
+<div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
+<div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
+<div>
+<span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 01</span>
+<h3 class="text-sm font-bold text-ink">Rail expandiert</h3>
+</div>
+<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-bordercol text-muted">168px Hover</span>
+</div>
+<div class="p-4 bg-pergament flex justify-center items-start min-h-[380px]">
+<!-- Expandierte Rail Komponente -->
+<div class="w-[168px] bg-white border border-bordercol rounded-lg shadow-md p-3 flex flex-col justify-between h-[360px]">
+<div class="space-y-3">
+<!-- Header mit Monogramm + Text -->
+<div class="flex items-center gap-2.5 pb-2 border-b border-bordercol/60">
+<div class="w-8 h-8 rounded-md bg-terracotta text-white flex items-center justify-center font-bold text-sm font-book-title shrink-0">
                     N
                   </div>
-                  <div class="overflow-hidden leading-tight">
-                    <div class="text-xs font-bold text-ink truncate">Narrare</div>
-                    <div class="text-[10px] text-muted truncate">Studio Atelier</div>
-                  </div>
-                </div>
-
-                <!-- Buch-Wechsler Chip (Expandiert) -->
-                <div class="p-1.5 rounded-md bg-fond border border-bordercol flex items-center justify-between gap-1.5 hover:border-terracotta cursor-pointer transition-colors">
-                  <div class="flex items-center gap-2 overflow-hidden">
-                    <div class="w-5 h-6 rounded-xs cover-dead-signal shrink-0 flex items-center justify-center text-[7px] text-blue-100 font-serif font-bold">
+<div class="overflow-hidden leading-tight">
+<div class="text-xs font-bold text-ink truncate">Narrare</div>
+<div class="text-[10px] text-muted truncate">Studio Atelier</div>
+</div>
+</div>
+<!-- Buch-Wechsler Chip (Expandiert) -->
+<div class="p-1.5 rounded-md bg-fond border border-bordercol flex items-center justify-between gap-1.5 hover:border-terracotta cursor-pointer transition-colors">
+<div class="flex items-center gap-2 overflow-hidden">
+<div class="w-5 h-6 rounded-xs cover-dead-signal shrink-0 flex items-center justify-center text-[7px] text-blue-100 font-serif font-bold">
                       DS
                     </div>
-                    <div class="truncate">
-                      <div class="font-book-title text-xs font-semibold text-ink truncate">Dead Signal</div>
-                    </div>
-                  </div>
-                  <span class="material-symbols-outlined text-[15px] text-muted shrink-0">unfold_more</span>
-                </div>
-
-                <!-- Navigationsliste mit sichtbaren Labels -->
-                <nav class="space-y-1 pt-1">
-                  <div class="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs text-muted hover:text-ink hover:bg-fond cursor-pointer transition-colors">
-                    <span class="material-symbols-outlined text-[18px]">collections_bookmark</span>
-                    <span class="font-medium">Bücherregal</span>
-                  </div>
-
-                  <!-- Editor AKTIV (Terracotta) -->
-                  <div class="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs bg-terralight text-terracotta font-semibold border border-terracotta/20 cursor-pointer">
-                    <span class="material-symbols-outlined text-[18px] fill-1">edit_note</span>
-                    <span>Editor</span>
-                  </div>
-
-                  <div class="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs text-muted hover:text-ink hover:bg-fond cursor-pointer transition-colors">
-                    <span class="material-symbols-outlined text-[18px]">hub</span>
-                    <span class="font-medium">Wissen</span>
-                  </div>
-
-                  <div class="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs text-muted hover:text-ink hover:bg-fond cursor-pointer transition-colors">
-                    <span class="material-symbols-outlined text-[18px]">schema</span>
-                    <span class="font-medium">Planung</span>
-                  </div>
-
-                  <div class="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs text-muted hover:text-ink hover:bg-fond cursor-pointer transition-colors">
-                    <span class="material-symbols-outlined text-[18px]">settings</span>
-                    <span class="font-medium">Einstellungen</span>
-                  </div>
-                </nav>
-              </div>
-
-              <!-- Fußbereich expandiert -->
-              <div class="pt-2 border-t border-bordercol/60 space-y-2">
-                <!-- Status Zeile -->
-                <div class="flex items-center gap-2 px-1 text-[11px] text-success font-medium">
-                  <span class="w-2 h-2 rounded-full bg-success"></span>
-                  <span>Gespeichert</span>
-                </div>
-
-                <!-- User-Block mit Name (keine Tier-Unterzeile!) -->
-                <div class="flex items-center gap-2 p-1.5 rounded bg-fond/60 border border-bordercol/40">
-                  <div class="w-6 h-6 rounded-full bg-white border border-bordercol flex items-center justify-center text-[10px] font-bold text-ink shrink-0">
+<div class="truncate">
+<div class="font-book-title text-xs font-semibold text-ink truncate">Dead Signal</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-[15px] text-muted shrink-0">unfold_more</span>
+</div>
+<!-- Navigationsliste mit sichtbaren Labels -->
+<nav class="space-y-1 pt-1">
+<div class="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs text-muted hover:text-ink hover:bg-fond cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px]">collections_bookmark</span>
+<span class="font-medium">Bücherregal</span>
+</div>
+<!-- Editor AKTIV (Terracotta) -->
+<div class="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs bg-terralight text-terracotta font-semibold border border-terracotta/20 cursor-pointer">
+<span class="material-symbols-outlined text-[18px] fill-1">edit_note</span>
+<span>Editor</span>
+</div>
+<div class="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs text-muted hover:text-ink hover:bg-fond cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px]">hub</span>
+<span class="font-medium">Wissen</span>
+</div>
+<div class="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs text-muted hover:text-ink hover:bg-fond cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px]">schema</span>
+<span class="font-medium">Planung</span>
+</div>
+<div class="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs text-muted hover:text-ink hover:bg-fond cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+<span class="font-medium">Einstellungen</span>
+</div>
+</nav>
+</div>
+<!-- Fußbereich expandiert -->
+<div class="pt-2 border-t border-bordercol/60 space-y-2">
+<!-- Status Zeile -->
+<div class="flex items-center gap-2 px-1 text-[11px] text-success font-medium">
+<span class="w-2 h-2 rounded-full bg-success"></span>
+<span>Gespeichert</span>
+</div>
+<!-- User-Block mit Name (keine Tier-Unterzeile!) -->
+<div class="flex items-center gap-2 p-1.5 rounded bg-fond/60 border border-bordercol/40">
+<div class="w-6 h-6 rounded-full bg-white border border-bordercol flex items-center justify-center text-[10px] font-bold text-ink shrink-0">
                     HC
                   </div>
-                  <div class="text-xs font-medium text-ink truncate">H. Calder</div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          <div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted">
+<div class="text-xs font-medium text-ink truncate">H. Calder</div>
+</div>
+</div>
+</div>
+</div>
+<div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted">
             Breite gleitet bei Mouse-Enter sanft von 64px auf 168px auf. Labels werden zentriert eingeblendet.
           </div>
-        </div>
-
-        <!-- KACHEL 2: BUCH-WECHSLER OFFEN -->
-        <div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
-          <div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
-            <div>
-              <span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 02</span>
-              <h3 class="text-sm font-bold text-ink">Buch-Wechsler offen</h3>
-            </div>
-            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-bordercol text-muted">Overlay</span>
-          </div>
-
-          <div class="p-4 bg-pergament flex justify-center items-start min-h-[380px]">
-            <!-- Popover Menu -->
-            <div class="w-[240px] bg-white border border-bordercol rounded-lg shadow-xl p-2.5 space-y-1.5">
-              <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
-                <span>Atelier-Werke</span>
-                <span class="font-mono text-ink">3 Romane</span>
-              </div>
-
-              <!-- Buch 1: Dead Signal (Aktiv) -->
-              <div class="p-2 rounded-md bg-terralight/60 border border-terracotta/30 flex items-center gap-2.5 cursor-pointer">
-                <div class="w-6 h-8 rounded cover-dead-signal shrink-0 flex items-center justify-center text-[8px] text-white font-serif font-bold shadow-xs">
+</div>
+<!-- KACHEL 2: BUCH-WECHSLER OFFEN -->
+<div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
+<div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
+<div>
+<span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 02</span>
+<h3 class="text-sm font-bold text-ink">Buch-Wechsler offen</h3>
+</div>
+<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-bordercol text-muted">Overlay</span>
+</div>
+<div class="p-4 bg-pergament flex justify-center items-start min-h-[380px]">
+<!-- Popover Menu -->
+<div class="w-[240px] bg-white border border-bordercol rounded-lg shadow-xl p-2.5 space-y-1.5">
+<div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
+<span>Atelier-Werke</span>
+<span class="font-mono text-ink">3 Romane</span>
+</div>
+<!-- Buch 1: Dead Signal (Aktiv) -->
+<div class="p-2 rounded-md bg-terralight/60 border border-terracotta/30 flex items-center gap-2.5 cursor-pointer">
+<div class="w-6 h-8 rounded cover-dead-signal shrink-0 flex items-center justify-center text-[8px] text-white font-serif font-bold shadow-xs">
                   DS
                 </div>
-                <div class="flex-1 min-w-0">
-                  <div class="font-book-title text-xs font-bold text-ink truncate flex items-center justify-between">
-                    <span>Dead Signal</span>
-                    <span class="w-1.5 h-1.5 rounded-full bg-terracotta"></span>
-                  </div>
-                  <div class="text-[10px] text-muted truncate">Hard Sci-Fi &bull; 5% (Entwurf)</div>
-                </div>
-              </div>
-
-              <!-- Buch 2: Echoes of the Thornwall -->
-              <div class="p-2 rounded-md hover:bg-fond flex items-center gap-2.5 cursor-pointer transition-colors">
-                <div class="w-6 h-8 rounded cover-echoes shrink-0 flex items-center justify-center text-[8px] text-white font-serif font-bold shadow-xs">
+<div class="flex-1 min-w-0">
+<div class="font-book-title text-xs font-bold text-ink truncate flex items-center justify-between">
+<span>Dead Signal</span>
+<span class="w-1.5 h-1.5 rounded-full bg-terracotta"></span>
+</div>
+<div class="text-[10px] text-muted truncate">Hard Sci-Fi • 5% (Entwurf)</div>
+</div>
+</div>
+<!-- Buch 2: Echoes of the Thornwall -->
+<div class="p-2 rounded-md hover:bg-fond flex items-center gap-2.5 cursor-pointer transition-colors">
+<div class="w-6 h-8 rounded cover-echoes shrink-0 flex items-center justify-center text-[8px] text-white font-serif font-bold shadow-xs">
                   ET
                 </div>
-                <div class="flex-1 min-w-0">
-                  <div class="font-book-title text-xs font-semibold text-ink truncate">Echoes of Thornwall</div>
-                  <div class="text-[10px] text-muted truncate">Fantasy &bull; 4 Kap. verfasst</div>
-                </div>
-              </div>
-
-              <!-- Buch 3: Im Stillen Wald -->
-              <div class="p-2 rounded-md hover:bg-fond flex items-center gap-2.5 cursor-pointer transition-colors">
-                <div class="w-6 h-8 rounded cover-forest shrink-0 flex items-center justify-center text-[8px] text-white font-serif font-bold shadow-xs">
+<div class="flex-1 min-w-0">
+<div class="font-book-title text-xs font-semibold text-ink truncate">Echoes of Thornwall</div>
+<div class="text-[10px] text-muted truncate">Fantasy • 4 Kap. verfasst</div>
+</div>
+</div>
+<!-- Buch 3: Im Stillen Wald -->
+<div class="p-2 rounded-md hover:bg-fond flex items-center gap-2.5 cursor-pointer transition-colors">
+<div class="w-6 h-8 rounded cover-forest shrink-0 flex items-center justify-center text-[8px] text-white font-serif font-bold shadow-xs">
                   IW
                 </div>
-                <div class="flex-1 min-w-0">
-                  <div class="font-book-title text-xs font-semibold text-ink truncate">Im Stillen Wald</div>
-                  <div class="text-[10px] text-muted truncate">Literarischer Noir &bull; 2 Kap.</div>
-                </div>
-              </div>
-
-              <!-- Trenner -->
-              <div class="h-[1px] bg-bordercol my-1"></div>
-
-              <!-- Aktion: Neues Buch anlegen -->
-              <button class="w-full py-1.5 px-2 rounded-md text-xs font-semibold text-terracotta hover:bg-terralight flex items-center gap-2 transition-colors">
-                <span class="material-symbols-outlined text-[16px]">add_circle</span>
-                <span>+ Neues Buch anlegen</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted">
+<div class="flex-1 min-w-0">
+<div class="font-book-title text-xs font-semibold text-ink truncate">Im Stillen Wald</div>
+<div class="text-[10px] text-muted truncate">Literarischer Noir • 2 Kap.</div>
+</div>
+</div>
+<!-- Trenner -->
+<div class="h-[1px] bg-bordercol my-1"></div>
+<!-- Aktion: Neues Buch anlegen -->
+<button class="w-full py-1.5 px-2 rounded-md text-xs font-semibold text-terracotta hover:bg-terralight flex items-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+<span>+ Neues Buch anlegen</span>
+</button>
+</div>
+</div>
+<div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted">
             Öffnet sich mit 4px Offset direkt am Buch-Chip. Schneller Manuskript-Wechsel ohne Verlust des Arbeitskontexts.
           </div>
-        </div>
-
-        <!-- KACHEL 3: SYNC-ZUSTÄNDE (LOKAL) -->
-        <div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
-          <div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
-            <div>
-              <span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 03</span>
-              <h3 class="text-sm font-bold text-ink">Sync-Zustände</h3>
-            </div>
-            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-bordercol text-success">Lokal-First</span>
-          </div>
-
-          <div class="p-4 bg-pergament flex flex-col justify-center gap-4 min-h-[380px]">
-            <!-- Zustand Grün: Gespeichert -->
-            <div class="p-3 rounded-lg bg-white border border-bordercol shadow-2xs space-y-1">
-              <div class="text-[10px] font-mono font-bold text-muted uppercase">Zustand A &bull; Ruhe</div>
-              <div class="flex items-center gap-2 text-xs font-semibold text-success">
-                <span class="w-2.5 h-2.5 rounded-full bg-success ring-4 ring-successbg"></span>
-                <span>Gespeichert</span>
-              </div>
-              <div class="text-[10px] text-muted">Lokaler Puffer synchronisiert (IndexedDB)</div>
-            </div>
-
-            <!-- Zustand Amber: Sicherung läuft... -->
-            <div class="p-3 rounded-lg bg-white border border-bordercol shadow-2xs space-y-1">
-              <div class="text-[10px] font-mono font-bold text-muted uppercase">Zustand B &bull; In Arbeit</div>
-              <div class="flex items-center gap-2 text-xs font-semibold text-warning">
-                <span class="w-2.5 h-2.5 rounded-full bg-warning animate-pulse ring-4 ring-warningbg"></span>
-                <span>Sicherung läuft …</span>
-              </div>
-              <div class="text-[10px] text-muted">Kausalitäts-Graph sichert aktuellen Satz</div>
-            </div>
-
-            <!-- Zustand Rot: Sicherung fehlgeschlagen -->
-            <div class="p-3 rounded-lg bg-white border border-danger/30 shadow-2xs space-y-1.5">
-              <div class="text-[10px] font-mono font-bold text-danger uppercase">Zustand C &bull; Fehler</div>
-              <div class="flex items-center gap-2 text-xs font-semibold text-danger">
-                <span class="w-2.5 h-2.5 rounded-full bg-danger ring-4 ring-dangerbg"></span>
-                <span>Sicherung fehlgeschlagen</span>
-              </div>
-              <div class="flex items-center justify-between pt-1 border-t border-danger/10">
-                <span class="text-[10px] text-danger/80">Lokaler Speicher voll/gesperrt</span>
-                <button class="text-[10px] font-bold text-danger underline hover:text-danger/90">Erneut versuchen</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted">
-            <strong class="text-ink font-semibold">Kein Cloud-Sync:</strong> Die App arbeitet ausschließlich lokal auf dem Rechner des Autors.
-          </div>
-        </div>
-
-        <!-- KACHEL 4: USER-MENÜ OFFEN -->
-        <div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
-          <div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
-            <div>
-              <span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 04</span>
-              <h3 class="text-sm font-bold text-ink">User-Menü offen</h3>
-            </div>
-            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-bordercol text-muted">Profil-Popover</span>
-          </div>
-
-          <div class="p-4 bg-pergament flex justify-center items-start min-h-[380px]">
-            <!-- Profil Popover -->
-            <div class="w-[230px] bg-white border border-bordercol rounded-lg shadow-xl p-2.5 space-y-2">
-              <!-- Profil Kopf -->
-              <div class="p-2 rounded-md bg-fond border border-bordercol/60 flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-full bg-terracotta text-white flex items-center justify-center font-bold text-xs shrink-0">
+</div>
+<!-- KACHEL 3: SYNC-ZUSTÄNDE (LOKAL) -->
+<div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
+<div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
+<div>
+<span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 03</span>
+<h3 class="text-sm font-bold text-ink">Sync-Zustände</h3>
+</div>
+<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-bordercol text-success">Lokal-First</span>
+</div>
+<div class="p-4 bg-pergament flex flex-col justify-center gap-4 min-h-[380px]"><!-- Zustand Grün: Gespeichert -->
+<div class="p-3 rounded-lg bg-white border border-bordercol shadow-2xs space-y-1">
+<div class="text-[10px] font-mono font-bold text-muted uppercase">Zustand A • Ruhe</div>
+<div class="flex items-center gap-2 text-xs font-semibold text-success">
+<span class="w-2.5 h-2.5 rounded-full bg-success ring-4 ring-successbg"></span>
+<span>Gespeichert</span>
+</div>
+<div class="text-[10px] text-muted leading-relaxed">Deine letzten Wörter sind automatisch in deiner Bibliothek gesichert.</div>
+</div>
+<!-- Zustand Amber: Sicherung läuft... -->
+<div class="p-3 rounded-lg bg-white border border-bordercol shadow-2xs space-y-1">
+<div class="text-[10px] font-mono font-bold text-muted uppercase">Zustand B • In Arbeit</div>
+<div class="flex items-center gap-2 text-xs font-semibold text-warning">
+<span class="w-2.5 h-2.5 rounded-full bg-warning animate-pulse ring-4 ring-warningbg"></span>
+<span>Sicherung läuft …</span>
+</div>
+<div class="text-[10px] text-muted leading-relaxed">Die laufende Änderung wird gerade gesichert — kurz warten.</div>
+</div>
+<!-- Zustand Rot: Sicherung fehlgeschlagen -->
+<div class="p-3 rounded-lg bg-white border border-danger/30 shadow-2xs space-y-1.5">
+<div class="text-[10px] font-mono font-bold text-danger uppercase">Zustand C • Fehler</div>
+<div class="flex items-center gap-2 text-xs font-semibold text-danger">
+<span class="w-2.5 h-2.5 rounded-full bg-danger ring-4 ring-dangerbg"></span>
+<span>Sicherung fehlgeschlagen</span>
+</div>
+<div class="text-[10px] text-danger/80 leading-relaxed">Deine Änderungen bleiben im Editor, bis die Sicherung gelingt.</div>
+<div class="pt-1 border-t border-danger/10 flex items-center justify-between">
+<span class="text-[10px] text-muted">Manuskript geschützt</span>
+<button class="text-[10px] font-bold text-danger underline hover:text-danger/90 cursor-pointer">Erneut versuchen starten</button>
+</div>
+</div></div>
+<div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted"><strong class="text-ink font-semibold">Ehrliche Sicherung:</strong> Deine Worte gehören dir. Sicherung erfolgt still und direkt bei dir vor Ort — ohne Latenz oder fremde Server.</div>
+</div>
+<!-- KACHEL 4: USER-MENÜ OFFEN -->
+<div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
+<div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
+<div>
+<span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 04</span>
+<h3 class="text-sm font-bold text-ink">User-Menü offen</h3>
+</div>
+<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-bordercol text-muted">Profil-Popover</span>
+</div>
+<div class="p-4 bg-pergament flex justify-center items-start min-h-[380px]">
+<!-- Profil Popover -->
+<div class="w-[230px] bg-white border border-bordercol rounded-lg shadow-xl p-2.5 space-y-2">
+<!-- Profil Kopf -->
+<div class="p-2 rounded-md bg-fond border border-bordercol/60 flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-full bg-terracotta text-white flex items-center justify-center font-bold text-xs shrink-0">
                   HC
                 </div>
-                <div class="min-w-0">
-                  <div class="text-xs font-bold text-ink truncate">H. Calder</div>
-                  <div class="text-[10px] text-muted font-mono truncate">h.calder@station7.de</div>
-                </div>
-              </div>
-
-              <!-- Menüeinträge -->
-              <div class="space-y-0.5 text-xs text-ink">
-                <button class="w-full px-2 py-1.5 rounded hover:bg-fond flex items-center gap-2 text-left transition-colors">
-                  <span class="material-symbols-outlined text-[16px] text-muted">edit</span>
-                  <span>Autorenname bearbeiten</span>
-                </button>
-                <button class="w-full px-2 py-1.5 rounded hover:bg-fond flex items-center gap-2 text-left transition-colors">
-                  <span class="material-symbols-outlined text-[16px] text-muted">track_changes</span>
-                  <span>Tagesziel festlegen</span>
-                </button>
-                <button class="w-full px-2 py-1.5 rounded hover:bg-fond flex items-center gap-2 text-left transition-colors">
-                  <span class="material-symbols-outlined text-[16px] text-muted">tune</span>
-                  <span>Einstellungen</span>
-                </button>
-              </div>
-
-              <div class="h-[1px] bg-bordercol my-1"></div>
-
-              <!-- Abmelden dezent -->
-              <button class="w-full px-2 py-1.5 rounded hover:bg-dangerbg text-muted hover:text-danger flex items-center gap-2 text-left transition-colors text-xs">
-                <span class="material-symbols-outlined text-[16px]">logout</span>
-                <span>Atelier verlassen (Abmelden)</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted">
+<div class="min-w-0">
+<div class="text-xs font-bold text-ink truncate">H. Calder</div>
+<div class="text-[10px] text-muted font-mono truncate">h.calder@station7.de</div>
+</div>
+</div>
+<!-- Menüeinträge -->
+<div class="space-y-0.5 text-xs text-ink">
+<button class="w-full px-2 py-1.5 rounded hover:bg-fond flex items-center gap-2 text-left transition-colors">
+<span class="material-symbols-outlined text-[16px] text-muted">edit</span>
+<span>Autorenname bearbeiten</span>
+</button>
+<button class="w-full px-2 py-1.5 rounded hover:bg-fond flex items-center gap-2 text-left transition-colors">
+<span class="material-symbols-outlined text-[16px] text-muted">track_changes</span>
+<span>Tagesziel festlegen</span>
+</button>
+<button class="w-full px-2 py-1.5 rounded hover:bg-fond flex items-center gap-2 text-left transition-colors">
+<span class="material-symbols-outlined text-[16px] text-muted">tune</span>
+<span>Einstellungen</span>
+</button>
+</div>
+<div class="h-[1px] bg-bordercol my-1"></div>
+<!-- Abmelden dezent -->
+<button class="w-full px-2 py-1.5 rounded hover:bg-dangerbg text-muted hover:text-danger flex items-center gap-2 text-left transition-colors text-xs">
+<span class="material-symbols-outlined text-[16px]">logout</span>
+<span>Atelier verlassen (Abmelden)</span>
+</button>
+</div>
+</div>
+<div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted">
             Keine künstlichen Abo- oder Tier-Zusätze (kein „Pro“ / „Free“). Ehrliche Autorenidentität.
           </div>
-        </div>
-
-        <!-- KACHEL 5: SPRACH-STEUERUNG VARIANTE A -->
-        <div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
-          <div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
-            <div>
-              <span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 05</span>
-              <h3 class="text-sm font-bold text-ink">Sprache: Variante A</h3>
-            </div>
-            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-terralight text-terracotta border border-terracotta/20">Direktumschalter</span>
-          </div>
-
-          <div class="p-4 bg-pergament flex flex-col items-center justify-start min-h-[380px] space-y-3">
-            <div class="text-[11px] text-muted text-center max-w-[200px]">
+</div>
+<!-- KACHEL 5: SPRACH-STEUERUNG VARIANTE A -->
+<div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
+<div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
+<div>
+<span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 05</span>
+<h3 class="text-sm font-bold text-ink">Sprache: Variante A</h3>
+</div>
+<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-terralight text-terracotta border border-terracotta/20">Direktumschalter</span>
+</div>
+<div class="p-4 bg-pergament flex flex-col items-center justify-start min-h-[380px] space-y-3">
+<div class="text-[11px] text-muted text-center max-w-[200px]">
               Topbar-Chip als interaktiver Umschalter mit offenem Menü:
             </div>
-
-            <!-- Offenes Sprachmenü angedockt an Topbar-Chip -->
-            <div class="relative w-[190px]">
-              <!-- Der aktive Chip in der Topbar -->
-              <div class="flex items-center justify-between px-2.5 py-1 rounded bg-white border-2 border-terracotta text-xs font-mono text-terracotta shadow-xs cursor-pointer">
-                <span class="font-bold">DE (Deutsch)</span>
-                <span class="material-symbols-outlined text-[16px]">expand_less</span>
-              </div>
-
-              <!-- Dropdown Menu -->
-              <div class="mt-1 w-full bg-white border border-bordercol rounded-lg shadow-lg p-1.5 space-y-1">
-                <div class="flex items-center justify-between px-2 py-1.5 rounded bg-terralight text-terracotta text-xs font-semibold cursor-pointer">
-                  <span>Deutsch</span>
-                  <span class="material-symbols-outlined text-[15px]">check</span>
-                </div>
-                <div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-fond text-ink text-xs cursor-pointer transition-colors">
-                  <span>English</span>
-                  <span class="text-[10px] font-mono text-muted">EN</span>
-                </div>
-                <div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-fond text-ink text-xs cursor-pointer transition-colors">
-                  <span>Français</span>
-                  <span class="text-[10px] font-mono text-muted">FR</span>
-                </div>
-              </div>
-            </div>
+<!-- Offenes Sprachmenü angedockt an Topbar-Chip -->
+<div class="relative w-[190px]">
+<!-- Der aktive Chip in der Topbar -->
+<div class="flex items-center justify-between px-2.5 py-1 rounded bg-white border-2 border-terracotta text-xs font-mono text-terracotta shadow-xs cursor-pointer">
+<span class="font-bold">DE (Deutsch)</span>
+<span class="material-symbols-outlined text-[16px]">expand_less</span>
+</div>
+<!-- Dropdown Menu -->
+<div class="mt-1 w-full bg-white border border-bordercol rounded-lg shadow-lg p-1.5 space-y-1">
+<div class="flex items-center justify-between px-2 py-1.5 rounded bg-terralight text-terracotta text-xs font-semibold cursor-pointer">
+<span>Deutsch</span>
+<span class="material-symbols-outlined text-[15px]">check</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-fond text-ink text-xs cursor-pointer transition-colors">
+<span>English</span>
+<span class="text-[10px] font-mono text-muted">EN</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-fond text-ink text-xs cursor-pointer transition-colors">
+<span>Français</span>
+<span class="text-[10px] font-mono text-muted">FR</span>
+</div>
+</div>
+</div>
+</div>
+<div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted">
+<strong class="text-ink font-semibold">Variante A:</strong> Ein-Klick-Sprachwechsel direkt in der Topbar für mehrsprachige Autoren.
           </div>
-
-          <div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted">
-            <strong class="text-ink font-semibold">Variante A:</strong> Ein-Klick-Sprachwechsel direkt in der Topbar für mehrsprachige Autoren.
-          </div>
-        </div>
-
-        <!-- KACHEL 6: SPRACH-STEUERUNG VARIANTE B -->
-        <div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
-          <div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
-            <div>
-              <span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 06</span>
-              <h3 class="text-sm font-bold text-ink">Sprache: Variante B</h3>
+</div>
+<!-- KACHEL 6: SPRACH-STEUERUNG VARIANTE B -->
+<div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
+<div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
+<div>
+<span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 06</span>
+<h3 class="text-sm font-bold text-ink">Sprache: Variante B</h3>
+</div>
+<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-bordercol text-muted">Im Benutzermenü</span>
+</div>
+<div class="p-4 bg-pergament flex flex-col items-center justify-start min-h-[380px] space-y-3">
+<div class="text-[11px] text-muted text-center max-w-[200px]">
+              Topbar zeigt nur passiven Indikator • Umschaltung im User-Profil:
             </div>
-            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-bordercol text-muted">Im Benutzermenü</span>
-          </div>
-
-          <div class="p-4 bg-pergament flex flex-col items-center justify-start min-h-[380px] space-y-3">
-            <div class="text-[11px] text-muted text-center max-w-[200px]">
-              Topbar zeigt nur passiven Indikator &bull; Umschaltung im User-Profil:
-            </div>
-
-            <!-- Passiver Chip in Topbar -->
-            <div class="px-2 py-0.5 rounded bg-fond/80 border border-bordercol text-[11px] font-mono text-muted cursor-default select-none">
+<!-- Passiver Chip in Topbar -->
+<div class="px-2 py-0.5 rounded bg-fond/80 border border-bordercol text-[11px] font-mono text-muted cursor-default select-none">
               DE
             </div>
-
-            <!-- Pfeil nach unten symbolisiert Zuordnung -->
-            <span class="material-symbols-outlined text-[16px] text-borderdark">arrow_downward</span>
-
-            <!-- Ausschnitt User-Menü -->
-            <div class="w-[200px] bg-white border border-bordercol rounded-lg shadow-md p-2 space-y-1">
-              <div class="px-1 text-[10px] font-mono text-muted">Im Profil verankert:</div>
-              <div class="flex items-center justify-between px-2 py-1.5 rounded bg-fond/50 hover:bg-fond text-xs text-ink cursor-pointer border border-bordercol/40">
-                <div class="flex items-center gap-1.5">
-                  <span class="material-symbols-outlined text-[16px] text-muted">language</span>
-                  <span>Sprache: <strong>Deutsch</strong></span>
-                </div>
-                <span class="material-symbols-outlined text-[16px] text-muted">chevron_right</span>
+<!-- Pfeil nach unten symbolisiert Zuordnung -->
+<span class="material-symbols-outlined text-[16px] text-borderdark">arrow_downward</span>
+<!-- Ausschnitt User-Menü -->
+<div class="w-[200px] bg-white border border-bordercol rounded-lg shadow-md p-2 space-y-1">
+<div class="px-1 text-[10px] font-mono text-muted">Im Profil verankert:</div>
+<div class="flex items-center justify-between px-2 py-1.5 rounded bg-fond/50 hover:bg-fond text-xs text-ink cursor-pointer border border-bordercol/40">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-muted">language</span>
+<span>Sprache: <strong>Deutsch</strong></span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-muted">chevron_right</span>
+</div>
+</div>
+</div>
+<div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted">
+<strong class="text-ink font-semibold">Variante B:</strong> Maximale Topbar-Ruhe; verhindert versehentliches Umschalten beim Schreiben.
+          </div>
+</div>
+<!-- KACHEL 7: BÜCHERREGAL HINTER DER CHROME -->
+<div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
+<div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
+<div>
+<span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 07</span>
+<h3 class="text-sm font-bold text-ink">Bücherregal hinter Chrome</h3>
+</div>
+<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-bordercol text-muted">App-weit</span>
+</div>
+<div class="p-3 bg-pergament flex justify-center items-center min-h-[380px]">
+<!-- Miniaturisiertes Regal mit Chrome Rahmen -->
+<div class="w-full bg-card border border-bordercol rounded-lg overflow-hidden shadow-sm flex flex-col text-[9px]">
+<!-- Mini Topbar -->
+<div class="h-6 bg-white border-b border-bordercol px-2 flex items-center justify-between">
+<span class="font-bold text-ink">Atelier › Das Bücherregal</span>
+<span class="font-mono text-muted">38.734 W. Gesamt</span>
+</div>
+<!-- Mini Body mit Mini-Rail & Regal-Grid -->
+<div class="flex min-h-[160px]">
+<div class="w-6 bg-fond/80 border-r border-bordercol flex flex-col items-center py-1 gap-1">
+<div class="w-3.5 h-3.5 rounded bg-terracotta text-[7px] text-white flex items-center justify-center font-bold">N</div>
+<div class="w-3.5 h-3.5 rounded bg-terralight text-terracotta flex items-center justify-center font-bold">B</div>
+</div>
+<!-- Mini Regal-Karten -->
+<div class="flex-1 p-2 bg-pergament space-y-1.5">
+<div class="font-bold text-[10px] text-ink">Deine Manuskripte</div>
+<div class="grid grid-cols-3 gap-1.5">
+<div class="p-1 rounded bg-white border border-bordercol flex flex-col items-center">
+<div class="w-full h-8 rounded-xs cover-dead-signal mb-1"></div>
+<span class="font-bold font-serif truncate w-full text-center">Dead Signal</span>
+</div>
+<div class="p-1 rounded bg-white border border-bordercol flex flex-col items-center">
+<div class="w-full h-8 rounded-xs cover-echoes mb-1"></div>
+<span class="font-serif truncate w-full text-center">Echoes</span>
+</div>
+<div class="p-1 rounded bg-white border border-bordercol flex flex-col items-center">
+<div class="w-full h-8 rounded-xs cover-forest mb-1"></div>
+<span class="font-serif truncate w-full text-center">Wald</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted"><strong class="text-ink font-semibold">Chrome gilt app-weit — auch für das Regal:</strong> Identischer visueller Rahmen mit Icon-Rail und Topbar. Nahtloser Übergang zwischen Schreiben und Verwalten.</div>
+</div>
+<!-- KACHEL 8: FOKUS-ZUSTAND (ZEN-FOKUS F9) -->
+<div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
+<div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
+<div>
+<span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 08</span>
+<h3 class="text-sm font-bold text-ink">Fokus-Zustand</h3>
+</div>
+<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ink text-white">Zen-Modus</span>
+</div>
+<div class="p-4 bg-pergament flex flex-col justify-between min-h-[380px]">
+<!-- Reduzierter Editor ohne Rail -->
+<div class="text-center pt-8 space-y-3">
+<div class="text-[10px] font-mono uppercase tracking-widest text-muted">
+                Keine Leisten • Keine Menüs
               </div>
-            </div>
-          </div>
-
-          <div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted">
-            <strong class="text-ink font-semibold">Variante B:</strong> Maximale Topbar-Ruhe; verhindert versehentliches Umschalten beim Schreiben.
-          </div>
-        </div>
-
-        <!-- KACHEL 7: BÜCHERREGAL HINTER DER CHROME -->
-        <div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
-          <div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
-            <div>
-              <span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 07</span>
-              <h3 class="text-sm font-bold text-ink">Bücherregal hinter Chrome</h3>
-            </div>
-            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-bordercol text-muted">App-weit</span>
-          </div>
-
-          <div class="p-3 bg-pergament flex justify-center items-center min-h-[380px]">
-            <!-- Miniaturisiertes Regal mit Chrome Rahmen -->
-            <div class="w-full bg-card border border-bordercol rounded-lg overflow-hidden shadow-sm flex flex-col text-[9px]">
-              <!-- Mini Topbar -->
-              <div class="h-6 bg-white border-b border-bordercol px-2 flex items-center justify-between">
-                <span class="font-bold text-ink">Atelier &rsaquo; Das Bücherregal</span>
-                <span class="font-mono text-muted">38.734 W. Gesamt</span>
-              </div>
-
-              <!-- Mini Body mit Mini-Rail & Regal-Grid -->
-              <div class="flex min-h-[160px]">
-                <div class="w-6 bg-fond/80 border-r border-bordercol flex flex-col items-center py-1 gap-1">
-                  <div class="w-3.5 h-3.5 rounded bg-terracotta text-[7px] text-white flex items-center justify-center font-bold">N</div>
-                  <div class="w-3.5 h-3.5 rounded bg-terralight text-terracotta flex items-center justify-center font-bold">B</div>
-                </div>
-
-                <!-- Mini Regal-Karten -->
-                <div class="flex-1 p-2 bg-pergament space-y-1.5">
-                  <div class="font-bold text-[10px] text-ink">Deine Manuskripte</div>
-                  <div class="grid grid-cols-3 gap-1.5">
-                    <div class="p-1 rounded bg-white border border-bordercol flex flex-col items-center">
-                      <div class="w-full h-8 rounded-xs cover-dead-signal mb-1"></div>
-                      <span class="font-bold font-serif truncate w-full text-center">Dead Signal</span>
-                    </div>
-                    <div class="p-1 rounded bg-white border border-bordercol flex flex-col items-center">
-                      <div class="w-full h-8 rounded-xs cover-echoes mb-1"></div>
-                      <span class="font-serif truncate w-full text-center">Echoes</span>
-                    </div>
-                    <div class="p-1 rounded bg-white border border-bordercol flex flex-col items-center">
-                      <div class="w-full h-8 rounded-xs cover-forest mb-1"></div>
-                      <span class="font-serif truncate w-full text-center">Wald</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted">
-            <strong class="text-ink font-semibold">Chrome gilt app-weit:</strong> Auch das Bücherregal nutzt denselben Rahmen. Keine Brüche im Layout.
-          </div>
-        </div>
-
-        <!-- KACHEL 8: FOKUS-ZUSTAND (ZEN-FOKUS F9) -->
-        <div class="bg-card border border-bordercol rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
-          <div class="p-4 border-b border-bordercol/60 bg-fond/50 flex items-center justify-between">
-            <div>
-              <span class="text-[10px] font-mono font-bold text-terracotta uppercase">Zustand 08</span>
-              <h3 class="text-sm font-bold text-ink">Fokus-Zustand</h3>
-            </div>
-            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ink text-white">Zen-Modus</span>
-          </div>
-
-          <div class="p-4 bg-pergament flex flex-col justify-between min-h-[380px]">
-            <!-- Reduzierter Editor ohne Rail -->
-            <div class="text-center pt-8 space-y-3">
-              <div class="text-[10px] font-mono uppercase tracking-widest text-muted">
-                Keine Leisten &bull; Keine Menüs
-              </div>
-              <h4 class="font-book-title text-xl text-ink italic">
-                &raquo;Das Signal im Permafrost&laquo;
+<h4 class="font-book-title text-xl text-ink italic">
+                »Das Signal im Permafrost«
               </h4>
-              <p class="text-xs text-ink/70 max-w-[210px] mx-auto leading-relaxed">
+<p class="text-xs text-ink/70 max-w-[210px] mx-auto leading-relaxed">
                 Maya blickte auf die Anzeige. Die Wellenlinie zitterte im Takt einer Dämpfungswelle, die nach allen physikalischen Gesetzen gar nicht existieren durfte...
               </p>
-            </div>
-
-            <!-- Dezenter Hinweis unten -->
-            <div class="pt-4 border-t border-bordercol/40 text-center">
-              <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/90 border border-bordercol text-[11px] font-mono text-muted shadow-2xs">
-                <kbd class="px-1 py-0.5 rounded bg-fond border border-borderdark font-bold text-ink text-[10px]">F9</kbd>
-                <span>&mdash; Zen-Fokus (Esc zum Verlassen)</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted">
+</div>
+<!-- Dezenter Hinweis unten -->
+<div class="pt-4 border-t border-bordercol/40 text-center">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/90 border border-bordercol text-[11px] font-mono text-muted shadow-2xs">
+<kbd class="px-1 py-0.5 rounded bg-fond border border-borderdark font-bold text-ink text-[10px]">F9</kbd>
+<span>— Zen-Fokus (Esc zum Verlassen)</span>
+</div>
+</div>
+</div>
+<div class="p-3 bg-white border-t border-bordercol/60 text-[11px] text-muted">
             Vollständiges Ausblenden von Rail und Topbar. Reines Schreibblatt für maximale Versenkung.
           </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- SPEZIFIKATIONS-REGELN & KANONISCHE LEITLINIEN -->
-    <footer class="bg-card border border-bordercol rounded-xl p-6 text-xs text-muted space-y-3">
-      <div class="flex flex-wrap items-center justify-between gap-4 font-semibold text-ink border-b border-bordercol/60 pb-3">
-        <span class="flex items-center gap-2">
-          <span class="material-symbols-outlined text-[18px] text-terracotta">verified</span>
+</div>
+</div>
+</div>
+<!-- SPEZIFIKATIONS-REGELN & KANONISCHE LEITLINIEN -->
+<footer class="bg-card border border-bordercol rounded-xl p-6 text-xs text-muted space-y-3">
+<div class="flex flex-wrap items-center justify-between gap-4 font-semibold text-ink border-b border-bordercol/60 pb-3">
+<span class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-terracotta">verified</span>
           Kanonische Härtung der Chrome-Architektur
         </span>
-        <span class="font-mono text-terracotta">Zero-Cloud Telemetrie &bull; 100% Autorensouveränität</span>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-1">
-        <div>
-          <strong class="text-ink block mb-1">Typografische Disziplin:</strong>
+<span class="font-mono text-terracotta">Zero-Cloud Telemetrie • 100% Autorensouveränität</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-1">
+<div>
+<strong class="text-ink block mb-1">Typografische Disziplin:</strong>
           Die Schriftart <span class="font-book-title text-sm font-semibold text-ink">EB Garamond</span> wird strikt und ausschließlich für Buchtitel und Manuskript-Passagen verwendet. Alle Oberflächenelemente, Labels, Buttons und Zähler nutzen <span class="font-sans font-semibold text-ink">Plus Jakarta Sans</span>.
         </div>
-        <div>
-          <strong class="text-ink block mb-1">Ehrliche Metriken:</strong>
+<div>
+<strong class="text-ink block mb-1">Ehrliche Metriken:</strong>
           Keine erfundenen Cloud-Kontingente, Latenz-Diagramme oder künstliche Pro-Stufen. Der Wortzähler zeigt die echten 3.384 Wörter des aktiven Romanprojekts.
         </div>
-        <div>
-          <strong class="text-ink block mb-1">Lokale Kausalität:</strong>
-          Die Sync-Anzeige spiegelt nur die lokale Sicherung im Browser/Cache wider. Statusmeldungen garantieren, dass kein geschriebener Satz verloren geht.
-        </div>
-      </div>
-    </footer>
-
-  </div>
-
+<div><strong class="text-ink block mb-1">Verlässliche Autorensicherung:</strong>
+Die Sicherungs-Anzeige spiegelt den tatsächlichen Schutz deiner Arbeit wider. Klare, ruhige Statusmeldungen garantieren, dass kein geschriebener Gedanke verloren geht.</div>
+</div>
+</footer>
+</div>
 </body>
 </html>
 
