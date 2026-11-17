@@ -1308,6 +1308,23 @@ async def test_prompts_at_the_bounds_stream(length: int) -> None:
     assert "event: done" in response.text
 
 
+@pytest.mark.parametrize(("count", "status"), [(2000, 200), (2001, 422)])
+async def test_the_bound_counts_code_points_not_utf16_units(count: int, status: int) -> None:
+    """The schema's len() counts Python code points: an astral character is
+    one there, two in JS .length — the client mirror (promptWithinBound)
+    counts the same way. 2000 emoji are 4000 UTF-16 units and still within
+    the bound; 2001 refuse before any stream."""
+    async with _client() as client:
+        scene_id = await _create_scene(client)
+        response = await client.post(
+            f"/api/writing/scenes/{scene_id}/continue", json={"prompt": "🌊" * count}
+        )
+
+    assert response.status_code == status
+    if status == 200:
+        assert "event: done" in response.text
+
+
 async def test_a_prompt_the_window_cannot_hold_is_the_budget_frame(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

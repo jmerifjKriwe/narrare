@@ -42,7 +42,9 @@
  * empty until the draft lands — the preview itself wears no role.
  * Acceptance inserts the proposal as new paragraph(s) at the tail and emits
  * the joined body through onChange: the autosave chain owns the write (and
- * its invalidation family), exactly as a typed edit does.
+ * its invalidation family), exactly as a typed edit does. The pending
+ * preview draws the SAME structure the insertion carries — the shared
+ * proseBlocks split (bodyToHtml's own), paragraphs and hard breaks alike.
  *
  * The draft's area-writing/70 ink fails the axe AA floor on both themes
  * (~3.2:1 light, ~3.9:1 dark on the paper); the ink rides full strength
@@ -52,7 +54,7 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@shell/lib/i18n";
 import { Icon } from "@shell/ui/icons";
@@ -102,18 +104,29 @@ function escapeHtml(text: string): string {
 }
 
 /**
- * The plain body as the HTML the editor initializes from: blank lines
- * separate paragraphs (the read-only port's own split), single newlines
- * become hard breaks, the markup characters prose may carry are escaped.
- * An empty or whitespace-only body is one empty paragraph — the paper stays
- * honest, never an invented sentence. Trimming each block mirrors the
- * read-only rendering, so the first non-empty paragraph wears the drop cap.
+ * The plain body's paragraph blocks — the ONE split the editor's
+ * initialization HTML, the acceptance insertion and the ghost's preview
+ * all draw from: blank lines separate paragraphs (the read-only port's own
+ * rule), each block trimmed, empty blocks dropped. One home, so the
+ * preview can never drift from the structure Tab inserts.
  */
-export function bodyToHtml(body: string): string {
-  const blocks = body
+export function proseBlocks(body: string): string[] {
+  return body
     .split(/\n[ \t]*\n/)
     .map((block) => block.trim())
     .filter((block) => block !== "");
+}
+
+/**
+ * The plain body as the HTML the editor initializes from (and the
+ * acceptance inserts): the shared blocks, single newlines as hard breaks,
+ * the markup characters prose may carry escaped. An empty or
+ * whitespace-only body is one empty paragraph — the paper stays honest,
+ * never an invented sentence. Trimming each block mirrors the read-only
+ * rendering, so the first non-empty paragraph wears the drop cap.
+ */
+export function bodyToHtml(body: string): string {
+  const blocks = proseBlocks(body);
   if (blocks.length === 0) return "<p></p>";
   return blocks
     // escapeHtml below escapes every block; concatenation (not an HTML template literal) keeps the "Avoid HTML in Template Strings" rule quiet.
@@ -148,29 +161,47 @@ function GhostStreaming({ text }: { text: string }) {
 }
 
 /** The light draft's pending face — the italic preview at the tail with
- *  the [Tab] keycap pill inline after it. The pill is a real button (the
- *  dark face draws it as one): pointer users accept by click, the keyboard
- *  by Tab from the prose or Enter on the pill itself. The preview is NOT a
- *  live region — a span mounted populated never speaks; the arrival is
- *  announced by the editor's hidden region at the transition instead. */
+ *  the [Tab] keycap pill inline after the LAST paragraph. The preview draws
+ *  the very structure acceptance inserts: the acceptance path's own blocks
+ *  (proseBlocks — bodyToHtml's split), paragraphs and hard breaks alike,
+ *  the blank-line gap the live prose wears between paragraphs (p + p). The
+ *  draft's single-block geometry stays: one preview block, the pill inline
+ *  at its tail. The pill is a real button (the dark face draws it as one):
+ *  pointer users accept by click, the keyboard by Tab from the prose or
+ *  Enter on the pill itself. The preview is NOT a live region — a span
+ *  mounted populated never speaks; the arrival is announced by the
+ *  editor's hidden region at the transition instead. */
 function GhostPending({ text, onAccept }: { text: string; onAccept: () => void }) {
   const t = useTranslation();
+  const blocks = proseBlocks(text);
+  const paragraphs = blocks.length === 0 ? [""] : blocks;
   return (
     <div data-testid="ghost-preview" className="mt-6">
-      <p className={`${GHOST_PROSE} text-justify`}>
-        <span className="rounded bg-area-writing/5 px-1 py-0.5">
-          {text}
-        </span>
-        <button
-          type="button"
-          onClick={onAccept}
-          aria-keyshortcuts="Tab"
-          className={`ml-2 inline-flex items-center gap-1.5 rounded-full bg-primary px-2 py-0.5 align-middle font-sans text-[11px] font-medium not-italic text-primary-foreground shadow-sm transition-all hover:opacity-95 ${FOCUS}`}
-        >
-          <kbd className="rounded border border-primary-foreground/40 px-1 font-mono text-[10px]">Tab</kbd>
-          <span>{t("writing.workspace.ghost.accept")}</span>
-        </button>
-      </p>
+      <div className={`${GHOST_PROSE} text-justify [&_p+p]:mt-6`}>
+        {paragraphs.map((block, at) => (
+          <p key={at}>
+            <span className="rounded bg-area-writing/5 px-1 py-0.5">
+              {block.split("\n").map((line, index) => (
+                <Fragment key={index}>
+                  {index > 0 && <br />}
+                  {line}
+                </Fragment>
+              ))}
+            </span>
+            {at === paragraphs.length - 1 && (
+              <button
+                type="button"
+                onClick={onAccept}
+                aria-keyshortcuts="Tab"
+                className={`ml-2 inline-flex items-center gap-1.5 rounded-full bg-primary px-2 py-0.5 align-middle font-sans text-[11px] font-medium not-italic text-primary-foreground shadow-sm transition-all hover:opacity-95 ${FOCUS}`}
+              >
+                <kbd className="rounded border border-primary-foreground/40 px-1 font-mono text-[10px]">Tab</kbd>
+                <span>{t("writing.workspace.ghost.accept")}</span>
+              </button>
+            )}
+          </p>
+        ))}
+      </div>
     </div>
   );
 }

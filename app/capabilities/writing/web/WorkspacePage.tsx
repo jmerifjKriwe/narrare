@@ -21,7 +21,9 @@
  * `useContinuation`); Tab accepts into the autosave chain — the one write
  * path — Esc dismisses before the leave guard's own Esc, and typing
  * dismisses. A scene switch retires the ghost: it belongs to the tail it
- * was asked for.
+ * was asked for. Every ask FLUSHES the autosave first (the leave guard's
+ * flush-first rule): the server continues the saved body, and a failed
+ * save keeps the ask home — the writer saves first.
  *
  * The tree's CRUD is LIVE (Task 13): the page owns the writes the explorer
  * asks for — create (chapter zero scenes, D16's empty-chapter face the
@@ -185,8 +187,11 @@ export function WorkspacePage() {
   // The continuation lives beside the autosave (Task 16): one ghost for the
   // active scene, retired on a switch. The ghost is never an unsaved edit —
   // it stands outside the document until Tab accepts, and the acceptance
-  // rides the autosave chain like any typed edit (the one write path).
-  const continuation = useContinuation(activeEntry?.scene.id ?? null);
+  // rides the autosave chain like any typed edit (the one write path). The
+  // ask is save-first: the hook flushes the autosave before every start and
+  // retry (the leave guard's own rule) — the server continues the SAVED
+  // body, and a failed save keeps the ask home.
+  const continuation = useContinuation(activeEntry?.scene.id ?? null, autosave.flush);
   // The blocker reads the live autosave through a ref, so its callbacks stay
   // stable (a fresh closure per render would re-register the history block).
   const autosaveRef = useRef(autosave);

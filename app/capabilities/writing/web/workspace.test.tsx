@@ -25,6 +25,7 @@ import { client, type Chapter, type Scene, type Storyboard } from "@shell/lib/ap
 import { catalogs } from "@shell/lib/generated/catalogs";
 import { queryClient } from "@shell/lib/query";
 
+import type { FlushOutcome } from "./useAutosave";
 import {
   invalidateSceneReads,
   invalidateStructureReads,
@@ -632,6 +633,18 @@ describe("promptWithinBound — the client's mirror of the schema's bound", () =
     expect(promptWithinBound("")).toBe(false);
     expect(promptWithinBound("X".repeat(2001))).toBe(false);
   });
+
+  it("counts code points, not UTF-16 units — the server's len() is the authority", () => {
+    // An astral character (🌊, U+1F30A) is ONE Python code point and TWO
+    // UTF-16 units: 2000 of them are 4000 .length units the old mirror
+    // refused while the server accepts (test_continuation's astral pin).
+    expect(promptWithinBound("🌊".repeat(2000))).toBe(true);
+    expect(promptWithinBound("🌊".repeat(2001))).toBe(false);
+    // The mixed boundary: 1999 BMP characters + one astral = 2000 code
+    // points (2001 UTF-16 units) — within; one more BMP character refuses.
+    expect(promptWithinBound("X".repeat(1999) + "🌊")).toBe(true);
+    expect(promptWithinBound("X".repeat(2000) + "🌊")).toBe(false);
+  });
 });
 
 describe("useContinuation — the ghost's lifecycle", () => {
@@ -827,6 +840,17 @@ describe("useContinuation — the ghost's lifecycle", () => {
     expect(result.current.phase).toBe("idle");
   });
 
+  it("the scene id rides encoded — one path segment, whatever the id carries", async () => {
+    const wire = controlledStream();
+    fetchMock.mockResolvedValue(sseResponse(wire.stream));
+    const { result } = mount("a/b?c#d");
+    act(() => result.current.start());
+    expect(fetchMock).toHaveBeenCalledWith("/api/writing/scenes/a%2Fb%3Fc%23d/continue", {
+      method: "POST",
+      signal: expect.any(AbortSignal),
+    });
+  });
+
   it("unmount aborts the stream — the audit records the interruption server-side", async () => {
     const wire = controlledStream();
     fetchMock.mockResolvedValue(sseResponse(wire.stream));
@@ -837,5 +861,144 @@ describe("useContinuation — the ghost's lifecycle", () => {
     expect(signal.aborted).toBe(false);
     unmount();
     expect(signal.aborted).toBe(true);
+  });
+});
+
+// --- The save seam: flush first, the writer saves before the ask ----------
+//
+// The server continues the SAVED body — the page hands its autosave's flush
+// over, and every start and retry settles the draft before the wire (the
+// leave guard's flush-first rule, the ask's own door). A failed flush sends
+// nothing; the autosave's failure face stands instead.
+
+describe("useContinuation's save seam — flush before the wire", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /** A flush the test settles by hand — the draft's timing is the test's. */
+  function heldFlush() {
+    let settle!: (outcome: FlushOutcome) => void;
+    const flush = vi.fn(
+      () =>
+        new Promise<FlushOutcome>((resolve) => {
+          settle = resolve;
+        }),
+    );
+    return { flush, settle: (outcome: FlushOutcome) => settle(outcome) };
+  }
+
+  it("a pending body's flush lands BEFORE the continue request", async () => {
+    const order: string[] = [];
+    const flush = vi.fn(async () => {
+      order.push("flush");
+      return "saved" as const;
+    });
+    const wire = controlledStream();
+    fetchMock.mockImplementation(async () => {
+      order.push("continue");
+      return sseResponse(wire.stream);
+    });
+    const { result } = renderHook(() => useContinuation("s1", flush));
+    act(() => result.current.start("Spannungsspitze einbauen"));
+    // The ask waits for the save — nothing on the wire yet.
+    expect(fetchMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(result.current.phase).toBe("streaming"));
+    expect(order).toEqual(["flush", "continue"]);
+    expect(fetchMock).toHaveBeenCalledWith("/api/writing/scenes/s1/continue", {
+      method: "POST",
+      signal: expect.any(AbortSignal),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: "Spannungsspitze einbauen" }),
+    });
+  });
+
+  it("a failed flush sends nothing — the autosave's failure face answers instead", async () => {
+    const flush = vi.fn(async () => "failed" as const);
+    const { result } = renderHook(() => useContinuation("s1", flush));
+    act(() => result.current.start());
+    await waitFor(() => expect(flush).toHaveBeenCalled());
+    // Give the retired ask every chance to (wrongly) fire.
+    await act(async () => {});
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.phase).toBe("idle");
+    expect(result.current.errorCode).toBeNull();
+  });
+
+  it("retry flushes too — the very ask, save-first again", async () => {
+    const order: string[] = [];
+    const flush = vi.fn(async () => {
+      order.push("flush");
+      return "clean" as const;
+    });
+    const first = controlledStream();
+    const second = controlledStream();
+    fetchMock
+      .mockImplementationOnce(async () => {
+        order.push("continue");
+        return sseResponse(first.stream);
+      })
+      .mockImplementationOnce(async () => {
+        order.push("continue");
+        return sseResponse(second.stream);
+      });
+    const { result } = renderHook(() => useContinuation("s1", flush));
+    act(() => result.current.start("Dialog vertiefen"));
+    await waitFor(() => expect(result.current.phase).toBe("streaming"));
+    await act(async () => first.push('event: error\ndata: {"code": "unknown"}\n\n'));
+    await waitFor(() => expect(result.current.phase).toBe("error"));
+
+    act(() => result.current.retry());
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(order).toEqual(["flush", "continue", "flush", "continue"]);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/writing/scenes/s1/continue",
+      expect.objectContaining({ body: JSON.stringify({ prompt: "Dialog vertiefen" }) }),
+    );
+  });
+
+  it("a clean flush keeps today's ask — the bare continuation, byte for byte", async () => {
+    const flush = vi.fn(async () => "clean" as const);
+    const wire = controlledStream();
+    fetchMock.mockResolvedValue(sseResponse(wire.stream));
+    const { result } = renderHook(() => useContinuation("s1", flush));
+    act(() => result.current.start());
+    await waitFor(() => expect(result.current.phase).toBe("streaming"));
+    expect(fetchMock).toHaveBeenCalledWith("/api/writing/scenes/s1/continue", {
+      method: "POST",
+      signal: expect.any(AbortSignal),
+    });
+    await act(async () => wire.push(DELTA_A + DONE));
+    await waitFor(() => expect(result.current.phase).toBe("pending"));
+    expect(result.current.text).toBe("Der Nebel hob sich ");
+  });
+
+  it("a dismissal during the flush retires the ask — typing wins", async () => {
+    const { flush, settle } = heldFlush();
+    const { result } = renderHook(() => useContinuation("s1", flush));
+    act(() => result.current.start());
+    act(() => result.current.dismiss());
+    await act(async () => settle("saved"));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.phase).toBe("idle");
+  });
+
+  it("a scene switch during the flush retires the ask — the ghost belongs to its tail", async () => {
+    const { flush, settle } = heldFlush();
+    const { result, rerender } = renderHook(({ id }: { id: string }) => useContinuation(id, flush), {
+      initialProps: { id: "s1" },
+    });
+    act(() => result.current.start());
+    rerender({ id: "s2" });
+    await act(async () => settle("saved"));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.phase).toBe("idle");
   });
 });

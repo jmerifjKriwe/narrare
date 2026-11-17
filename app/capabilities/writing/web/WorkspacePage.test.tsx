@@ -975,6 +975,19 @@ describe("the continuation wiring (Task 16) — the page's own doors", () => {
   const PROSE = de["writing.workspace.editor.proseLabel"];
   const PILL = /Vorschlag übernehmen/;
 
+  /** Type into the live prose — the real TipTap path, the unsaved pill the
+   *  proof the draft stands (the leave guard's own helper discipline). The
+   *  ask under test flushes (clearing the debounce), so no timer wait is
+   *  owed. */
+  async function typeIntoScene(text: string) {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await screen.findByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(screen.getByRole("textbox", { name: PROSE }).textContent).not.toBe(""));
+    screen.getByRole("textbox", { name: PROSE }).focus();
+    await user.keyboard(text);
+    expect(await screen.findByText(de["writing.workspace.ribbon.unsaved"])).toBeTruthy();
+  }
+
   async function openWithPendingGhost() {
     stubStream(['data: {"delta": "Der Nebel hob sich."}\n\n', "event: done\ndata: {}\n\n"]);
     await renderWorkspace();
@@ -1054,4 +1067,78 @@ describe("the continuation wiring (Task 16) — the page's own doors", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(api.PUT).not.toHaveBeenCalled();
   }, 10000);
+
+  it("a pending body flushes before the ask — the PUT lands before /continue", async () => {
+    // The order oracle: the save seam and the SSE door both record, and the
+    // save must come first — the ghost continues the SAVED body, never the
+    // stale row (the leave guard's flush-first rule, the ask's own door).
+    const order: string[] = [];
+    putSceneAnswer = async (sceneId, body) => {
+      order.push("put");
+      return { data: { ...S12, id: sceneId, ...(body as Partial<Scene>) }, response: ok() };
+    };
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {"delta": "Der Nebel hob sich."}\n\n'));
+        controller.enqueue(encoder.encode("event: done\ndata: {}\n\n"));
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn(async () => {
+      order.push("continue");
+      return new Response(stream, { status: 200, headers: { "Content-Type": "text/event-stream" } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await typeIntoScene(" Neue Worte.");
+
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
+    expect(await screen.findByRole("button", { name: PILL })).toBeTruthy();
+    expect(order).toEqual(["put", "continue"]);
+    expect(api.PUT).toHaveBeenCalledTimes(1);
+    expect(api.PUT.mock.calls[0][1].body.body).toContain("Neue Worte.");
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/writing/scenes/${S12.id}/continue`,
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("a failed flush keeps the ask home — the autosave's failure face stands", async () => {
+    const fetchMock = stubStream([
+      'data: {"delta": "Der Nebel hob sich."}\n\n',
+      "event: done\ndata: {}\n\n",
+    ]);
+    putSceneAnswer = async () => ({ data: undefined, response: new Response(null, { status: 500 }) });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await typeIntoScene(" Ungesichert.");
+
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
+    // The flush tried and failed — the writer saves first: the save's own
+    // failure face answers, and no continue request ever leaves.
+    expect(await screen.findByText(de["writing.workspace.foot.failed"])).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("ghost-preview")).toBeNull();
+    expect(screen.queryByTestId("ghost-error")).toBeNull();
+    expect(screen.queryByRole("button", { name: PILL })).toBeNull();
+  });
+
+  it("a clean body asks as today — no save is owed before the wire", async () => {
+    const fetchMock = stubStream([
+      'data: {"delta": "Der Nebel hob sich."}\n\n',
+      "event: done\ndata: {}\n\n",
+    ]);
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
+    expect(await screen.findByRole("button", { name: PILL })).toBeTruthy();
+    // Today's behavior, byte for byte: the bare ask, no PUT owed.
+    expect(api.PUT).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/writing/scenes/${S12.id}/continue`,
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
 });

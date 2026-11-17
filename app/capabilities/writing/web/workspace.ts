@@ -34,6 +34,10 @@ import { catalogs } from "@shell/lib/generated/catalogs";
 import type { MessageKey } from "@shell/lib/i18n";
 import { queryClient } from "@shell/lib/query";
 
+// Type-only: the autosave's flush vocabulary, erased at runtime (the
+// autosave imports this seam's invalidation door — no runtime cycle).
+import type { FlushOutcome } from "./useAutosave";
+
 /** A scene's or chapter's title as the page speaks it: the trimmed title,
  *  or the localized placeholder — the database stores no locale (the
  *  backend's own rule for the empty default). */
@@ -514,6 +518,12 @@ export function useReorderScenes(
 // and hands the joined body to the autosave chain (the one write path), so
 // the save invalidates the ["scenes", chapterId] family exactly as a typed
 // edit does. This seam owns the ask, the stream and the dismissal.
+//
+// The ask is SAVE-FIRST (the leave guard's flush-first rule): the server
+// continues the SAVED body, so every start and retry settles the active
+// scene's autosave before the wire — the page hands its flush over as the
+// seam. A failed flush sends nothing: the autosave's own failure face
+// stands, the writer saves first.
 
 /** The ghost's four faces: nothing stands, the wire is running, the proposal
  *  rests at the tail (Tab accepts), or the continuation failed (the states
@@ -529,7 +539,9 @@ export interface Continuation {
   errorCode: string | null;
   /** Ask for a continuation; a carried prompt rides the optional body
    *  (D5), an absent one is today's bare continuation. Replaces any
-   *  standing ghost — one proposal at a time. */
+   *  standing ghost — one proposal at a time. With the page's save seam
+   *  handed over, the ask flushes the autosave FIRST: a failed flush sends
+   *  nothing (the writer saves first). */
   start: (prompt?: string) => void;
   /** Drop the ghost and abort any running stream — Esc, typing, Stoppen,
    *  Verwerfen. A chosen stop is no failure: no error face follows it. */
@@ -540,12 +552,16 @@ export interface Continuation {
 
 /** The prompt bound's client mirror — the schema's own (SceneContinue, the
  *  chat question's precedent): 1–2000 characters of the RAW string, no
- *  trim. The bar refuses an over-long instruction before the wire; the
- *  empty input is no prompt at all (the bare continuation), not a refusal. */
+ *  trim. The count is CODE POINTS, the server's len(): JS .length counts
+ *  UTF-16 units, and an astral character (an emoji) is two of those — the
+ *  unit count would refuse what the server accepts. The bar refuses an
+ *  over-long instruction before the wire; the empty input is no prompt at
+ *  all (the bare continuation), not a refusal. */
 export const PROMPT_MAX_LENGTH = 2000;
 
 export function promptWithinBound(prompt: string): boolean {
-  return prompt.length >= 1 && prompt.length <= PROMPT_MAX_LENGTH;
+  const codePoints = [...prompt].length;
+  return codePoints >= 1 && codePoints <= PROMPT_MAX_LENGTH;
 }
 
 /** The code a terminal error frame carries — the payload's own `code`, or
@@ -589,7 +605,9 @@ async function consumeContinuation(
 ): Promise<void> {
   let response: Response;
   try {
-    response = await fetch(`/api/writing/scenes/${sceneId}/continue`, {
+    // Fixed same-origin base + the encoded server-issued id, concatenated
+    // (never interpolated) — one path segment, no SSRF-shaped template.
+    response = await fetch("/api/writing/scenes/" + encodeURIComponent(sceneId) + "/continue", {
       method: "POST",
       signal,
       // The bare continuation carries no body at all — the endpoint's own
@@ -635,8 +653,18 @@ async function consumeContinuation(
  * the ghost and owns the Tab insertion, the bar owns the ask. A scene
  * switch retires the ghost: it belongs to the tail it was asked for. An
  * unmount aborts the stream — the server's audit records the interruption.
+ *
+ * The optional `flush` is the page's autosave seam (the leave guard's
+ * flush-first rule, the ask's own door): the server continues the SAVED
+ * body, so every start and retry settles the draft before the wire. A
+ * failed flush keeps the ask home — the autosave's failure face already
+ * stands. Without the seam the ask rides straight to the wire (today's
+ * behavior, the hook's own tests).
  */
-export function useContinuation(sceneId: string | null): Continuation {
+export function useContinuation(
+  sceneId: string | null,
+  flush?: () => Promise<FlushOutcome>,
+): Continuation {
   const [phase, setPhase] = useState<ContinuationPhase>("idle");
   const [text, setText] = useState("");
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -657,40 +685,63 @@ export function useContinuation(sceneId: string | null): Continuation {
     setErrorCode(null);
   }, []);
 
-  const start = useCallback((prompt?: string) => {
-    const target = scene.current;
-    if (target === null) return;
-    abort.current?.abort();
-    const controller = new AbortController();
-    abort.current = controller;
-    lastPrompt.current = prompt;
-    accumulated.current = "";
-    setPhase("streaming");
-    setText("");
-    setErrorCode(null);
-    void consumeContinuation(target, prompt, controller.signal, {
-      delta: (piece) => {
-        if (controller.signal.aborted) return;
-        accumulated.current += piece;
-        setText(accumulated.current);
-      },
-      done: () => {
-        if (controller.signal.aborted) return;
-        if (accumulated.current === "") {
-          // Nothing arrived: a blank pill would be a false affordance.
-          setPhase("error");
-          setErrorCode("empty");
-        } else {
-          setPhase("pending");
-        }
-      },
-      error: (code) => {
-        if (controller.signal.aborted) return;
-        setPhase("error");
-        setErrorCode(code);
-      },
-    });
-  }, []);
+  const start = useCallback(
+    (prompt?: string) => {
+      const target = scene.current;
+      if (target === null) return;
+      abort.current?.abort();
+      const controller = new AbortController();
+      abort.current = controller;
+      lastPrompt.current = prompt;
+
+      const begin = () => {
+        accumulated.current = "";
+        setPhase("streaming");
+        setText("");
+        setErrorCode(null);
+        void consumeContinuation(target, prompt, controller.signal, {
+          delta: (piece) => {
+            if (controller.signal.aborted) return;
+            accumulated.current += piece;
+            setText(accumulated.current);
+          },
+          done: () => {
+            if (controller.signal.aborted) return;
+            if (accumulated.current === "") {
+              // Nothing arrived: a blank pill would be a false affordance.
+              setPhase("error");
+              setErrorCode("empty");
+            } else {
+              setPhase("pending");
+            }
+          },
+          error: (code) => {
+            if (controller.signal.aborted) return;
+            setPhase("error");
+            setErrorCode(code);
+          },
+        });
+      };
+
+      // No save seam: today's ask, straight to the wire (the hook's own
+      // tests; the page always hands its autosave's flush over).
+      if (flush === undefined) {
+        begin();
+        return;
+      }
+      // Save first (the leave guard's flush-first rule): the server
+      // continues the SAVED body — unsaved words must land before the ask.
+      // A failed flush sends nothing; the autosave's failure face stands.
+      // A dismissal, a replacement or a scene switch during the flush
+      // retires the ask — the controller's abort is the stream's own guard.
+      void flush().then((outcome) => {
+        if (controller.signal.aborted || outcome === "failed") return;
+        if (scene.current !== target) return;
+        begin();
+      });
+    },
+    [flush],
+  );
 
   const retry = useCallback(() => start(lastPrompt.current), [start]);
 

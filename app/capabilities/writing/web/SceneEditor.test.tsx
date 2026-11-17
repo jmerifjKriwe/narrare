@@ -333,6 +333,50 @@ describe("the ghost's pending face — the light draft's preview + keycap pill",
     fireEvent.keyDown(box, { key: "Tab" });
     expect(onChange).toHaveBeenLastCalledWith(`${BODY}\n\nErster Vorschlag.\n\nZweiter Vorschlag.`);
   });
+
+  it("a multi-paragraph proposal previews with the SAME breaks it inserts on Tab", async () => {
+    const onChange = vi.fn();
+    const proposal = "Erster Vorschlag.\n\nZweiter Vorschlag.\nMit harter Zeile.";
+    render(<GhostHarness text={proposal} onChange={onChange} />);
+    const box = await screen.findByRole("textbox");
+    // The preview draws the acceptance path's own structure (proseBlocks —
+    // bodyToHtml's split): two paragraphs, the second with the hard break.
+    const preview = screen.getByTestId("ghost-preview").querySelectorAll("p");
+    expect(preview).toHaveLength(2);
+    expect(preview[0].textContent).toBe("Erster Vorschlag.");
+    expect(preview[1].querySelectorAll("br")).toHaveLength(1);
+    expect(preview[1].textContent).toContain("Zweiter Vorschlag.");
+    expect(preview[1].textContent).toContain("Mit harter Zeile.");
+    // The pill rides inline after the LAST paragraph — the one-block geometry.
+    const pill = screen.getByRole("button", { name: /Vorschlag übernehmen/ });
+    expect(preview[1].contains(pill)).toBe(true);
+
+    box.focus();
+    fireEvent.keyDown(box, { key: "Tab" });
+    expect(onChange).toHaveBeenLastCalledWith(
+      `${BODY}\n\nErster Vorschlag.\n\nZweiter Vorschlag.\nMit harter Zeile.`,
+    );
+    // The inserted document carries the very breaks the preview drew: the
+    // body's own paragraph plus the proposal's two, the hard break intact.
+    const inserted = screen.getByRole("textbox").querySelectorAll("p");
+    expect(inserted).toHaveLength(3);
+    expect(inserted[1].textContent).toBe("Erster Vorschlag.");
+    expect(inserted[2].querySelectorAll("br")).toHaveLength(1);
+    expect(inserted[2].textContent).toBe("Zweiter Vorschlag.Mit harter Zeile.");
+  });
+
+  it("the preview trims and drops blank blocks exactly as the insertion does", async () => {
+    const onChange = vi.fn();
+    render(<GhostHarness text={"  Erster.\n\n \n\nZweiter.  "} onChange={onChange} />);
+    const box = await screen.findByRole("textbox");
+    // The whitespace-only block is no paragraph — the shared split's rule.
+    const preview = screen.getByTestId("ghost-preview").querySelectorAll("p");
+    expect(preview).toHaveLength(2);
+    expect(preview[0].textContent).toBe("Erster.");
+    box.focus();
+    fireEvent.keyDown(box, { key: "Tab" });
+    expect(onChange).toHaveBeenLastCalledWith(`${BODY}\n\nErster.\n\nZweiter.`);
+  });
 });
 
 describe("the pending arrival — the hidden region speaks at the transition", () => {
