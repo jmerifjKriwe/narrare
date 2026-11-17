@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The icon set: fifty-seven line glyphs on one 16×16 grid, drawn for the
+ * The icon set: fifty-nine line glyphs on one 16×16 grid, drawn for the
  * stroke they run on — `currentColor` at 1.5, round caps and joins, no
  * fills — so a glyph wears the ink of whatever it sits beside and carries
  * no color of its own. The whole presentation contract lives on the
@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
  */
 
 /**
- * The fifty-seven drawings. Each stays inside the 2.35–13.65 envelope —
+ * The fifty-nine drawings. Each stays inside the 2.35–13.65 envelope —
  * knowledge's stack sets both extremes; on the x axis the ink never leaves
  * 2.5–13.5 — so the 1.5 stroke, reaching half its width past the ink, never
  * clips the viewBox. Each is a single-stroke metaphor: detail that
@@ -403,6 +403,33 @@ export const icons = {
   /** The drafts' `unfold_more`: the two chevrons facing apart — the book
    *  switcher's mark, a choice that opens both ways. */
   unfoldMore: <path d="M4.5 6.5L8 3.5L11.5 6.5M4.5 9.5L8 12.5L11.5 9.5" />,
+
+  // The workspace tree's concepts (workspace-scene-centric, W4 Task 13).
+  // Same rule as above: a Material name pins the concept, the drawing is
+  // the app's own face.
+
+  /** The drafts' `drag_indicator`: six dots in two columns — the grip that
+   *  moves a row, the tree's reorder at both levels. */
+  dragIndicator: (
+    <>
+      <circle cx="6" cy="4" r="0.9" />
+      <circle cx="10" cy="4" r="0.9" />
+      <circle cx="6" cy="8" r="0.9" />
+      <circle cx="10" cy="8" r="0.9" />
+      <circle cx="6" cy="12" r="0.9" />
+      <circle cx="10" cy="12" r="0.9" />
+    </>
+  ),
+  /** The drafts' `delete`: a lidded bin with two ribs — the row's end,
+   *  distinct from `archive`, which keeps the work. */
+  trash: (
+    <>
+      <path d="M3.5 4.5H12.5" />
+      <path d="M6.5 4.5V3.25H9.5V4.5" />
+      <path d="M4.5 4.5L5.25 13H10.75L11.5 4.5" />
+      <path d="M6.75 7V10.5M9.25 7V10.5" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 /** A name in the icon set — the wave's whole glyph vocabulary. */

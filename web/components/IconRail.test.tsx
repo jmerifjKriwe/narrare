@@ -18,7 +18,7 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -36,6 +36,7 @@ import { catalogs } from "@shell/lib/generated/catalogs";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { setSaveStatus } from "@shell/lib/saveStatus";
 import { applyTheme } from "@shell/lib/theme";
 import { IconRail } from "./IconRail";
 
@@ -188,6 +189,7 @@ afterEach(() => {
   applyLocale(null);
   applyTheme(null);
   localStorage.clear();
+  setSaveStatus("idle");
 });
 
 describe("the rail — brand and book switcher", () => {
@@ -351,8 +353,21 @@ describe("the rail — nav", () => {
 });
 
 describe("the rail — foot: sync, theme, user", () => {
-  it("the interim sync state reads Gespeichert — no invented states", async () => {
+  it("the sync dot rests at Gespeichert — the idle/saved green face", async () => {
     renderRail();
+    expect(await screen.findByText(de["shell.rail.saved"])).toBeTruthy();
+  });
+
+  it("the sync dot speaks the live owner's three faces — one state with the topbar", async () => {
+    renderRail();
+    expect(await screen.findByText(de["shell.rail.saved"])).toBeTruthy();
+    act(() => setSaveStatus("saving"));
+    expect(await screen.findByText(de["shell.rail.saving"])).toBeTruthy();
+    expect(screen.getByTitle(de["shell.rail.saving.note"])).toBeTruthy();
+    act(() => setSaveStatus("failed"));
+    expect(await screen.findByText(de["shell.rail.failed"])).toBeTruthy();
+    expect(screen.getByTitle(de["shell.rail.failed.note"])).toBeTruthy();
+    act(() => setSaveStatus("saved"));
     expect(await screen.findByText(de["shell.rail.saved"])).toBeTruthy();
   });
 

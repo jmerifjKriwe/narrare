@@ -26,13 +26,25 @@ import { catalogs } from "@shell/lib/generated/catalogs";
 import { queryClient } from "@shell/lib/query";
 
 import {
+  invalidateSceneReads,
+  invalidateStructureReads,
   lastEditedEntry,
+  movedIds,
   orderedSceneEntries,
+  rowsInOrder,
   sceneCodeNumbers,
   stageTitleKey,
   tensionCodes,
   useChapterScenes,
+  useCreateChapter,
+  useCreateScene,
+  useDeleteChapter,
+  useDeleteScene,
+  useReorderChapters,
+  useReorderScenes,
   useStoryboardQuery,
+  useUpdateChapter,
+  useUpdateScene,
 } from "./workspace";
 
 const api = client as unknown as Record<
@@ -282,5 +294,293 @@ describe("the scene reads", () => {
     api.GET.mockImplementation(async () => ({ data: undefined, response: new Response(null, { status: 500 }) }));
     const { result } = renderHook(() => useStoryboardQuery("n1"), { wrapper });
     await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+// --- Task 13: the write seam — the tree's CRUD doors and reorder ----------
+
+describe("movedIds — the whole order one drag asks for", () => {
+  const ids = ["a", "b", "c", "d"];
+
+  it("moves a row before its target (dragging up)", () => {
+    expect(movedIds(ids, "c", "a", true)).toEqual(["c", "a", "b", "d"]);
+  });
+
+  it("moves a row after its target (dragging down)", () => {
+    expect(movedIds(ids, "a", "c", false)).toEqual(["b", "c", "a", "d"]);
+  });
+
+  it("a row dropped on itself keeps the order — no write owed", () => {
+    expect(movedIds(ids, "b", "b", true)).toEqual(ids);
+    expect(movedIds(ids, "b", "b", false)).toEqual(ids);
+  });
+
+  it("an id the order does not hold keeps the order — nothing invented", () => {
+    expect(movedIds(ids, "x", "a", true)).toEqual(ids);
+    expect(movedIds(ids, "a", "x", false)).toEqual(ids);
+  });
+
+  it("the keyboard's one-step move is the same helper — up before, down after", () => {
+    // ArrowUp on c: before its predecessor b. ArrowDown on b: after c.
+    expect(movedIds(ids, "c", "b", true)).toEqual(["a", "c", "b", "d"]);
+    expect(movedIds(ids, "b", "c", false)).toEqual(["a", "c", "b", "d"]);
+  });
+});
+
+describe("rowsInOrder — the cache write an arrangement asks for", () => {
+  it("renumbers chapters from zero in the ids' order, keeping every other field", () => {
+    const rows = rowsInOrder([CH1, CH2], ["c2", "c1"], 0);
+    expect(rows?.map((row) => row.id)).toEqual(["c2", "c1"]);
+    expect(rows?.map((row) => row.position)).toEqual([0, 1]);
+    expect(rows?.[0].title).toBe("Nevada Echoes");
+    expect(rows?.[0].word_count).toBe(CH2.word_count);
+  });
+
+  it("renumbers scenes from one — the position IS the ordinal", () => {
+    const rows = rowsInOrder([S11, S12], ["s12", "s11"], 1);
+    expect(rows?.map((row) => row.position)).toEqual([1, 2]);
+    expect(rows?.[0].id).toBe("s12");
+  });
+
+  it("an id the cache lacks answers null — the caller refetches, never invents", () => {
+    expect(rowsInOrder([CH1], ["c1", "c2"], 0)).toBeNull();
+    expect(rowsInOrder([S11, S12], ["s11"], 1)).toBeNull();
+  });
+});
+
+describe("the invalidation seams", () => {
+  it("a structure write asks the chapters, the novels family and the activity", () => {
+    const spy = vi.spyOn(queryClient, "invalidateQueries");
+    invalidateStructureReads("n1");
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["chapters", "n1"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["novels"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["activity"] });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ["scenes", "c1"] });
+    spy.mockRestore();
+  });
+
+  it("a scene write asks the scene's list beside the structure family (Task 12's seam, unchanged)", () => {
+    const spy = vi.spyOn(queryClient, "invalidateQueries");
+    invalidateSceneReads("c1", "n1");
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["scenes", "c1"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["chapters", "n1"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["novels"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["activity"] });
+    spy.mockRestore();
+  });
+});
+
+describe("the CRUD mutations", () => {
+  function wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  }
+
+  let invalidated: (readonly unknown[])[];
+  let removed: (readonly unknown[])[];
+
+  beforeEach(() => {
+    invalidated = [];
+    removed = [];
+    vi.spyOn(queryClient, "invalidateQueries").mockImplementation((filters?: { queryKey?: readonly unknown[] }) => {
+      invalidated.push(filters?.queryKey ?? []);
+      return Promise.resolve();
+    });
+    vi.spyOn(queryClient, "removeQueries").mockImplementation((filters?: { queryKey?: readonly unknown[] }) => {
+      removed.push(filters?.queryKey ?? []);
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function refusal(status: number, body?: unknown): { data: undefined; error: unknown; response: Response } {
+    return {
+      data: undefined,
+      error: body,
+      response: new Response(null, { status }),
+    };
+  }
+
+  it("createChapter posts the honest empty title and asks the structure family", async () => {
+    api.POST.mockResolvedValue({ data: { ...CH1, id: "c3", title: "" }, response: ok() });
+    const { result } = renderHook(() => useCreateChapter("n1"), { wrapper });
+    const created = await result.current.mutateAsync();
+    expect(created.id).toBe("c3");
+    expect(api.POST).toHaveBeenCalledWith("/api/writing/novels/{novel_id}/chapters", {
+      params: { path: { novel_id: "n1" } },
+      body: { title: "" },
+    });
+    expect(invalidated).toContainEqual(["chapters", "n1"]);
+    expect(invalidated).toContainEqual(["novels"]);
+    expect(invalidated).toContainEqual(["activity"]);
+  });
+
+  it("createScene posts the empty scene under its chapter and asks the scene family", async () => {
+    api.POST.mockResolvedValue({ data: { ...S11, id: "s3" }, response: ok() });
+    const { result } = renderHook(() => useCreateScene("n1"), { wrapper });
+    await result.current.mutateAsync({ chapterId: "c1" });
+    expect(api.POST).toHaveBeenCalledWith("/api/writing/chapters/{chapter_id}/scenes", {
+      params: { path: { chapter_id: "c1" } },
+      body: { title: "", body: "" },
+    });
+    expect(invalidated).toContainEqual(["scenes", "c1"]);
+    expect(invalidated).toContainEqual(["chapters", "n1"]);
+    expect(invalidated).toContainEqual(["novels"]);
+    expect(invalidated).toContainEqual(["activity"]);
+  });
+
+  it("updateChapter carries the title alone and asks the structure family", async () => {
+    api.PUT.mockResolvedValue({ data: { ...CH1, title: "Neu" }, response: ok() });
+    const { result } = renderHook(() => useUpdateChapter("n1"), { wrapper });
+    await result.current.mutateAsync({ chapterId: "c1", title: "Neu" });
+    expect(api.PUT).toHaveBeenCalledWith("/api/writing/chapters/{chapter_id}", {
+      params: { path: { chapter_id: "c1" } },
+      body: { title: "Neu" },
+    });
+    expect(invalidated).toContainEqual(["chapters", "n1"]);
+    expect(invalidated).toContainEqual(["novels"]);
+  });
+
+  it("updateScene carries only the changed fields — a carried null clears a label", async () => {
+    api.PUT.mockResolvedValue({ data: { ...S11, setting: null }, response: ok() });
+    const { result } = renderHook(() => useUpdateScene("n1"), { wrapper });
+    await result.current.mutateAsync({
+      sceneId: "s11",
+      chapterId: "c1",
+      changes: { title: "Neu", setting: null, story_time: "Dritte Stunde" },
+    });
+    expect(api.PUT).toHaveBeenCalledWith("/api/writing/scenes/{scene_id}", {
+      params: { path: { scene_id: "s11" } },
+      body: { title: "Neu", setting: null, story_time: "Dritte Stunde" },
+    });
+    expect(invalidated).toContainEqual(["scenes", "c1"]);
+    expect(invalidated).toContainEqual(["chapters", "n1"]);
+  });
+
+  it("deleteChapter removes the row, asks the structure family and retires the dead scene list", async () => {
+    api.DELETE.mockResolvedValue({ data: undefined, response: new Response(null, { status: 204 }) });
+    const { result } = renderHook(() => useDeleteChapter("n1"), { wrapper });
+    await result.current.mutateAsync("c1");
+    expect(api.DELETE).toHaveBeenCalledWith("/api/writing/chapters/{chapter_id}", {
+      params: { path: { chapter_id: "c1" } },
+    });
+    expect(invalidated).toContainEqual(["chapters", "n1"]);
+    expect(invalidated).toContainEqual(["novels"]);
+    expect(invalidated).toContainEqual(["activity"]);
+    expect(removed).toContainEqual(["scenes", "c1"]);
+  });
+
+  it("deleteScene is always allowed — the last scene leaves the chapter empty (D16)", async () => {
+    api.DELETE.mockResolvedValue({ data: undefined, response: new Response(null, { status: 204 }) });
+    const { result } = renderHook(() => useDeleteScene("n1"), { wrapper });
+    await result.current.mutateAsync({ sceneId: "s11", chapterId: "c1" });
+    expect(api.DELETE).toHaveBeenCalledWith("/api/writing/scenes/{scene_id}", {
+      params: { path: { scene_id: "s11" } },
+    });
+    expect(invalidated).toContainEqual(["scenes", "c1"]);
+    expect(invalidated).toContainEqual(["chapters", "n1"]);
+    expect(invalidated).toContainEqual(["activity"]);
+  });
+
+  it("a refused create throws with its status and asks for nothing", async () => {
+    api.POST.mockResolvedValue(refusal(503));
+    const { result } = renderHook(() => useCreateChapter("n1"), { wrapper });
+    await expect(result.current.mutateAsync()).rejects.toMatchObject({ status: 503 });
+    expect(invalidated).toEqual([]);
+  });
+
+  it("a refused delete asks for nothing — the rows it would change did not change", async () => {
+    api.DELETE.mockResolvedValue(refusal(404));
+    const { result } = renderHook(() => useDeleteScene("n1"), { wrapper });
+    await expect(result.current.mutateAsync({ sceneId: "s11", chapterId: "c1" })).rejects.toMatchObject({
+      status: 404,
+    });
+    expect(invalidated).toEqual([]);
+    expect(removed).toEqual([]);
+  });
+});
+
+describe("the reorder mutations — the whole set or a 409 naming the stored ids", () => {
+  function wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  }
+
+  let invalidated: (readonly unknown[])[];
+
+  beforeEach(() => {
+    invalidated = [];
+    vi.spyOn(queryClient, "invalidateQueries").mockImplementation((filters?: { queryKey?: readonly unknown[] }) => {
+      invalidated.push(filters?.queryKey ?? []);
+      return Promise.resolve();
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("chapter order PUTs the whole rail; success asks the novel's timestamp, never the ordered list", async () => {
+    api.PUT.mockResolvedValue({ data: undefined, response: new Response(null, { status: 204 }) });
+    const { result } = renderHook(() => useReorderChapters("n1"), { wrapper });
+    await result.current.mutateAsync(["c2", "c1"]);
+    expect(api.PUT).toHaveBeenCalledWith("/api/writing/novels/{novel_id}/chapter-order", {
+      params: { path: { novel_id: "n1" } },
+      body: { chapter_ids: ["c2", "c1"] },
+    });
+    expect(invalidated).toContainEqual(["novels"]);
+    expect(invalidated).toContainEqual(["activity"]);
+    // The optimistic order is what the 204 acknowledged — a chapters refetch
+    // mid-unsaved-body is the state the save-side rule guards against.
+    expect(invalidated).not.toContainEqual(["chapters", "n1"]);
+  });
+
+  it("scene order PUTs the whole chapter under its own door", async () => {
+    api.PUT.mockResolvedValue({ data: undefined, response: new Response(null, { status: 204 }) });
+    const { result } = renderHook(() => useReorderScenes("n1"), { wrapper });
+    await result.current.mutateAsync({ chapterId: "c1", ids: ["s12", "s11"] });
+    expect(api.PUT).toHaveBeenCalledWith("/api/writing/chapters/{chapter_id}/scene-order", {
+      params: { path: { chapter_id: "c1" } },
+      body: { ids: ["s12", "s11"] },
+    });
+    expect(invalidated).toContainEqual(["novels"]);
+    expect(invalidated).not.toContainEqual(["scenes", "c1"]);
+  });
+
+  it("a 409 carries the stored ids — the arrangement the client reverts to", async () => {
+    api.PUT.mockResolvedValue({
+      data: undefined,
+      error: { detail: { code: "order_mismatch", chapter_ids: ["c1", "c2", "c3"] } },
+      response: new Response(null, { status: 409 }),
+    });
+    const { result } = renderHook(() => useReorderChapters("n1"), { wrapper });
+    await expect(result.current.mutateAsync(["c2", "c1"])).rejects.toMatchObject({
+      status: 409,
+      storedIds: ["c1", "c2", "c3"],
+    });
+    expect(invalidated).toEqual([]);
+  });
+
+  it("a scene 409 carries scene_ids the same way", async () => {
+    api.PUT.mockResolvedValue({
+      data: undefined,
+      error: { detail: { code: "order_mismatch", scene_ids: ["s11", "s12", "s13"] } },
+      response: new Response(null, { status: 409 }),
+    });
+    const { result } = renderHook(() => useReorderScenes("n1"), { wrapper });
+    await expect(result.current.mutateAsync({ chapterId: "c1", ids: ["s12", "s11"] })).rejects.toMatchObject({
+      status: 409,
+      storedIds: ["s11", "s12", "s13"],
+    });
+  });
+
+  it("another refusal keeps its status and no stored ids — nothing to revert to", async () => {
+    api.PUT.mockResolvedValue({ data: undefined, error: undefined, response: new Response(null, { status: 503 }) });
+    const { result } = renderHook(() => useReorderChapters("n1"), { wrapper });
+    await expect(result.current.mutateAsync(["c2", "c1"])).rejects.toMatchObject({
+      status: 503,
+      storedIds: null,
+    });
+    expect(invalidated).toEqual([]);
   });
 });

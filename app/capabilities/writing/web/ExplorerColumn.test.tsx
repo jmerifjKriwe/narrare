@@ -1,15 +1,23 @@
 // @vitest-environment jsdom
 /**
- * The explorer column (W4 Task 11, read-only): the scene-centric draft's
- * 280px left column — the identity card (real cover chip, title, genre),
- * the REAL daily ring (the activity aggregate's goal fields, the shelf
+ * The explorer column (W4 Tasks 11/13): the scene-centric draft's 280px
+ * left column — the identity card (real cover chip, title, genre), the
+ * REAL daily ring (the activity aggregate's goal fields, the shelf
  * banner's own source), the tension card (real stage label from the
  * storyboard, placeholder curve #879, real scene codes), the scene tree
  * (position order, tabular word counts, the last-edited active marker,
- * neutral status dots #873, disabled create doors until Task 13) and the
- * shelf mini-card. The empty-book invitation answers per Kachel 3.
+ * neutral status dots #873) and the shelf mini-card. The empty-book
+ * invitation answers per Kachel 3.
+ *
+ * Task 13 went live: the create doors (chapter, scene, the invitation),
+ * the row menus (the shelf quick menu's discipline — edit/rename, delete),
+ * the draft's drag grips at BOTH levels (scene rows as drawn; the chapter
+ * header carries the same grip one level up) with the keyboard's one-step
+ * move on the focused grip, and the honest notice under the tree (create
+ * refusal, reorder refusal, the 409 conflict). The tree itself still
+ * writes nothing — every action asks the page through a callback.
  */
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, createEvent, fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
@@ -35,6 +43,12 @@ import { ExplorerColumn } from "./ExplorerColumn";
 import { orderedSceneEntries } from "./workspace";
 
 const de = catalogs.de;
+
+/** The props' callbacks are vi.fn()s — the harness types them as the
+ *  component's function props; the mock surface reads through the cast. */
+function mock(fn: unknown): ReturnType<typeof vi.fn> {
+  return fn as ReturnType<typeof vi.fn>;
+}
 
 function novelRow(overrides: Partial<Novel> = {}): Novel {
   return {
@@ -192,6 +206,19 @@ function explorerProps(overrides: Partial<ExplorerProps> = {}): ExplorerProps {
     onToggleChapter: vi.fn(),
     onSelectChapter: vi.fn(),
     onSelectScene: vi.fn(),
+    onCreateChapter: vi.fn(),
+    onCreateScene: vi.fn(),
+    onEditChapter: vi.fn(),
+    onEditScene: vi.fn(),
+    onDeleteChapter: vi.fn(),
+    onDeleteScene: vi.fn(),
+    onReorderChapters: vi.fn(),
+    onReorderScenes: vi.fn(),
+    reorderBusy: false,
+    createBusy: false,
+    notice: null,
+    onNoticeRetry: vi.fn(),
+    onNoticeDismiss: vi.fn(),
     activity: queryOf(activityRow()),
     storyboard: queryOf(STORYBOARD),
     ...overrides,
@@ -453,25 +480,202 @@ describe("the scene tree", () => {
     ).toBe("true");
   });
 
-  it("the create doors stay disabled until Task 13 wires the CRUD", async () => {
-    await renderExplorer();
+  it("the create doors are live — the chapter door asks the page, the scene door names the active chapter", async () => {
+    const props = await renderExplorer();
+    const chapterDoor = screen.getByRole("button", { name: de["writing.workspace.tree.newChapter"] });
+    expect(chapterDoor.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(chapterDoor);
+    expect(props.onCreateChapter).toHaveBeenCalledTimes(1);
+    const sceneDoor = screen.getByRole("button", { name: de["writing.workspace.tree.newScene"] });
+    expect(sceneDoor.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(sceneDoor);
+    // The active chapter is c1 (the active scene's own).
+    expect(props.onCreateScene).toHaveBeenCalledWith("c1");
+  });
+
+  it("a busy create holds both doors — no double chapter from a double click", async () => {
+    await renderExplorer({ createBusy: true });
     for (const name of [de["writing.workspace.tree.newChapter"], de["writing.workspace.tree.newScene"]]) {
-      const button = screen.getByRole("button", { name });
-      expect(button.hasAttribute("disabled")).toBe(true);
-      expect(button.getAttribute("title")).toBe(de["writing.workspace.crudNote"]);
+      expect(screen.getByRole("button", { name }).hasAttribute("disabled")).toBe(true);
     }
   });
 });
 
+describe("the row menus — the shelf quick menu's discipline on the tree", () => {
+  it("every chapter and scene carries its options trigger", async () => {
+    await renderExplorer();
+    expect(screen.getAllByRole("button", { name: de["writing.workspace.tree.chapterOptions"] })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: de["writing.workspace.tree.sceneOptions"] })).toHaveLength(3);
+  });
+
+  it("the chapter menu hands the row to the page's rename and delete dialogs", async () => {
+    const props = await renderExplorer();
+    fireEvent.click(screen.getAllByRole("button", { name: de["writing.workspace.tree.chapterOptions"] })[1]);
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.rename"] }));
+    expect(props.onEditChapter).toHaveBeenCalledTimes(1);
+    expect(mock(props.onEditChapter).mock.calls[0][0]).toMatchObject({ id: "c2" });
+    expect(typeof mock(props.onEditChapter).mock.calls[0][1]).toBe("string");
+    fireEvent.click(screen.getAllByRole("button", { name: de["writing.workspace.tree.chapterOptions"] })[1]);
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.delete"] }));
+    expect(props.onDeleteChapter).toHaveBeenCalledTimes(1);
+    expect(mock(props.onDeleteChapter).mock.calls[0][0]).toMatchObject({ id: "c2" });
+  });
+
+  it("the scene menu hands the entry to the page's edit and delete dialogs", async () => {
+    const props = await renderExplorer();
+    fireEvent.click(screen.getAllByRole("button", { name: de["writing.workspace.tree.sceneOptions"] })[0]);
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.editScene"] }));
+    expect(props.onEditScene).toHaveBeenCalledTimes(1);
+    expect(mock(props.onEditScene).mock.calls[0][0]).toMatchObject({ scene: { id: "s11" }, chapter: { id: "c1" } });
+    fireEvent.click(screen.getAllByRole("button", { name: de["writing.workspace.tree.sceneOptions"] })[0]);
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.delete"] }));
+    expect(props.onDeleteScene).toHaveBeenCalledTimes(1);
+    expect(mock(props.onDeleteScene).mock.calls[0][0]).toMatchObject({ scene: { id: "s11" } });
+  });
+});
+
+describe("the reorder grips — the draft's handles, real at both levels", () => {
+  function dataTransfer() {
+    return { setData: vi.fn(), getData: vi.fn(), effectAllowed: "", dropEffect: "" };
+  }
+
+  // jsdom has no DragEvent constructor — the fallback Event drops clientY,
+  // so the midpoint's coordinate is defined on the event explicitly.
+  function dragOverAt(target: HTMLElement, clientY: number) {
+    const event = createEvent.dragOver(target, { dataTransfer: dataTransfer() });
+    Object.defineProperty(event, "clientY", { value: clientY });
+    fireEvent(target, event);
+  }
+
+  it("scene rows carry the draft's grip, chapter headers the same one level up", async () => {
+    await renderExplorer();
+    const sceneGrip = screen.getByRole("button", { name: "Szene 1 in Kapitel 1 verschieben" });
+    expect(sceneGrip.getAttribute("draggable")).toBe("true");
+    expect(sceneGrip.getAttribute("title")).toBe(de["writing.workspace.tree.moveHint"]);
+    expect(screen.getByRole("button", { name: "Szene 2 in Kapitel 1 verschieben" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Kapitel 1 verschieben" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Kapitel 2 verschieben" })).toBeTruthy();
+  });
+
+  it("a scene drag asks the whole chapter order — the permutation, nothing less", async () => {
+    const props = await renderExplorer();
+    const grip = screen.getByRole("button", { name: "Szene 1 in Kapitel 1 verschieben" });
+    const target = screen.getByTestId("tree-scene-s12");
+    fireEvent.dragStart(grip, { dataTransfer: dataTransfer() });
+    dragOverAt(target, 1);
+    fireEvent.drop(target, { dataTransfer: dataTransfer() });
+    expect(props.onReorderScenes).toHaveBeenCalledWith("c1", ["s12", "s11"]);
+    expect(props.onReorderChapters).not.toHaveBeenCalled();
+  });
+
+  it("a drop above the target's midpoint inserts before it", async () => {
+    // Three scenes: drag the third onto the first's top half — it leads.
+    const scenes = [S11, S12, { ...S11, id: "s13", position: 3, title: "Dritte" }];
+    const props = await renderExplorer({
+      sceneResults: [queryOf(scenes), queryOf([S21])],
+      entries: orderedSceneEntries(CHAPTERS, new Map([["c1", scenes], ["c2", [S21]]])),
+    });
+    const grip = screen.getByRole("button", { name: "Szene 3 in Kapitel 1 verschieben" });
+    const target = screen.getByTestId("tree-scene-s11");
+    fireEvent.dragStart(grip, { dataTransfer: dataTransfer() });
+    dragOverAt(target, -1);
+    fireEvent.drop(target, { dataTransfer: dataTransfer() });
+    expect(props.onReorderScenes).toHaveBeenCalledWith("c1", ["s13", "s11", "s12"]);
+  });
+
+  it("a chapter drag asks the whole rail order", async () => {
+    const props = await renderExplorer();
+    const grip = screen.getByRole("button", { name: "Kapitel 1 verschieben" });
+    const target = screen.getByTestId("tree-chapter-c2");
+    fireEvent.dragStart(grip, { dataTransfer: dataTransfer() });
+    dragOverAt(target, 1);
+    fireEvent.drop(target, { dataTransfer: dataTransfer() });
+    expect(props.onReorderChapters).toHaveBeenCalledWith(["c2", "c1"]);
+  });
+
+  it("a scene never crosses its chapter — the move is within-chapter (spec §12)", async () => {
+    const props = await renderExplorer();
+    const grip = screen.getByRole("button", { name: "Szene 1 in Kapitel 1 verschieben" });
+    const foreign = screen.getByTestId("tree-scene-s21");
+    fireEvent.dragStart(grip, { dataTransfer: dataTransfer() });
+    dragOverAt(foreign, 1);
+    fireEvent.drop(foreign, { dataTransfer: dataTransfer() });
+    expect(props.onReorderScenes).not.toHaveBeenCalled();
+  });
+
+  it("a drop on the dragged row itself asks nothing", async () => {
+    const props = await renderExplorer();
+    const grip = screen.getByRole("button", { name: "Szene 1 in Kapitel 1 verschieben" });
+    const self = screen.getByTestId("tree-scene-s11");
+    fireEvent.dragStart(grip, { dataTransfer: dataTransfer() });
+    dragOverAt(self, 1);
+    fireEvent.drop(self, { dataTransfer: dataTransfer() });
+    expect(props.onReorderScenes).not.toHaveBeenCalled();
+  });
+
+  it("the focused grip moves one step with the arrow keys — the keyboard's own drag", async () => {
+    const props = await renderExplorer();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Szene 1 in Kapitel 1 verschieben" }), { key: "ArrowDown" });
+    expect(props.onReorderScenes).toHaveBeenCalledWith("c1", ["s12", "s11"]);
+    fireEvent.keyDown(screen.getByRole("button", { name: "Kapitel 2 verschieben" }), { key: "ArrowUp" });
+    expect(props.onReorderChapters).toHaveBeenCalledWith(["c2", "c1"]);
+  });
+
+  it("the ends hold — no step beyond the first or last row", async () => {
+    const props = await renderExplorer();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Szene 1 in Kapitel 1 verschieben" }), { key: "ArrowUp" });
+    fireEvent.keyDown(screen.getByRole("button", { name: "Kapitel 1 verschieben" }), { key: "ArrowUp" });
+    expect(props.onReorderScenes).not.toHaveBeenCalled();
+    expect(props.onReorderChapters).not.toHaveBeenCalled();
+  });
+
+  it("a busy reorder holds the grips — one arrangement on the wire at a time", async () => {
+    const props = await renderExplorer({ reorderBusy: true });
+    fireEvent.keyDown(screen.getByRole("button", { name: "Szene 1 in Kapitel 1 verschieben" }), { key: "ArrowDown" });
+    expect(props.onReorderScenes).not.toHaveBeenCalled();
+    const grip = screen.getByRole("button", { name: "Szene 1 in Kapitel 1 verschieben" });
+    const target = screen.getByTestId("tree-scene-s12");
+    fireEvent.dragStart(grip, { dataTransfer: dataTransfer() });
+    dragOverAt(target, 1);
+    fireEvent.drop(target, { dataTransfer: dataTransfer() });
+    expect(props.onReorderScenes).not.toHaveBeenCalled();
+  });
+});
+
+describe("the notice under the tree — the honest refusal, the retry", () => {
+  it("a create refusal names the loss-free error and retries the very create", async () => {
+    const props = await renderExplorer({ notice: { kind: "createChapterFailed" } });
+    const notice = screen.getByTestId("explorer-notice");
+    expect(notice.getAttribute("role")).toBe("alert");
+    expect(within(notice).getByText(de["writing.workspace.crud.createChapterError"])).toBeTruthy();
+    fireEvent.click(within(notice).getByRole("button", { name: de["writing.shelf.error.retry"] }));
+    expect(props.onNoticeRetry).toHaveBeenCalledTimes(1);
+    fireEvent.click(within(notice).getByRole("button", { name: de["writing.workspace.crud.noticeClose"] }));
+    expect(props.onNoticeDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it("the reorder conflict speaks the current truth, the refusal the loss-free line", async () => {
+    await renderExplorer({ notice: { kind: "reorderConflict" } });
+    expect(screen.getByText(de["writing.workspace.crud.reorderConflict"])).toBeTruthy();
+    cleanup();
+    await renderExplorer({
+      notice: { kind: "reorderFailed", level: "scenes", chapterId: "c1", ids: ["s12", "s11"] },
+    });
+    expect(screen.getByText(de["writing.workspace.crud.reorderError"])).toBeTruthy();
+  });
+});
+
 describe("the empty book (Kachel 3)", () => {
-  it("the invitation replaces the tree — the create door disabled until Task 13", async () => {
-    await renderExplorer({ chapters: [], sceneResults: [], entries: [], activeSceneId: null, activeChapterId: null });
+  it("the invitation replaces the tree — its create door live, the first chapter's door", async () => {
+    const props = await renderExplorer({ chapters: [], sceneResults: [], entries: [], activeSceneId: null, activeChapterId: null });
     const invitation = screen.getByTestId("explorer-empty-book");
     expect(within(invitation).getByText(de["writing.workspace.emptyBook.eyebrow"])).toBeTruthy();
     expect(within(invitation).getByText(de["writing.workspace.emptyBook.title"])).toBeTruthy();
     expect(within(invitation).getByText(de["writing.workspace.emptyBook.body"])).toBeTruthy();
     const button = within(invitation).getByRole("button", { name: de["writing.workspace.emptyBook.action"] });
-    expect(button.hasAttribute("disabled")).toBe(true);
+    expect(button.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(button);
+    expect(props.onCreateChapter).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("explorer-tree")).toBeNull();
   });
 });
