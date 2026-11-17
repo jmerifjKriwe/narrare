@@ -36,6 +36,10 @@
  * keyboard contract is the ghost's own: Tab accepts from the prose, Esc
  * dismisses in the CAPTURE phase — before the leave guard's bubble-phase
  * Esc, so a standing ghost is dropped first and the guard keeps its ask.
+ * The proposal's arrival is spoken once, AT the streaming→pending
+ * transition, through a visually-hidden live region: a live region
+ * announces changes, never its initial content, so the region stands
+ * empty until the draft lands — the preview itself wears no role.
  * Acceptance inserts the proposal as new paragraph(s) at the tail and emits
  * the joined body through onChange: the autosave chain owns the write (and
  * its invalidation family), exactly as a typed edit does.
@@ -48,7 +52,7 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@shell/lib/i18n";
 import { Icon } from "@shell/ui/icons";
@@ -146,13 +150,15 @@ function GhostStreaming({ text }: { text: string }) {
 /** The light draft's pending face — the italic preview at the tail with
  *  the [Tab] keycap pill inline after it. The pill is a real button (the
  *  dark face draws it as one): pointer users accept by click, the keyboard
- *  by Tab from the prose or Enter on the pill itself. */
+ *  by Tab from the prose or Enter on the pill itself. The preview is NOT a
+ *  live region — a span mounted populated never speaks; the arrival is
+ *  announced by the editor's hidden region at the transition instead. */
 function GhostPending({ text, onAccept }: { text: string; onAccept: () => void }) {
   const t = useTranslation();
   return (
     <div data-testid="ghost-preview" className="mt-6">
       <p className={`${GHOST_PROSE} text-justify`}>
-        <span role="status" className="rounded bg-area-writing/5 px-1 py-0.5">
+        <span className="rounded bg-area-writing/5 px-1 py-0.5">
           {text}
         </span>
         <button
@@ -241,6 +247,7 @@ export function SceneEditor({
   ready.current = onReady;
   const ghost = useRef(continuation ?? null);
   ghost.current = continuation ?? null;
+  const phase = continuation?.phase ?? "idle";
 
   const editor = useEditor({
     extensions: PROSE_EXTENSIONS,
@@ -329,7 +336,24 @@ export function SceneEditor({
     }
   }, [continuation?.phase, editor]);
 
-  const phase = continuation?.phase ?? "idle";
+  // The arrival announcement: the hidden live region stands empty from
+  // mount, and its text flips AT the streaming→pending transition — a
+  // live region speaks changes, never initial content, so a region mounted
+  // populated (the preview span's old role) would stay silent. Leaving
+  // pending clears the words: the next proposal's identical text is a
+  // change again, not a silence. No other phase transition speaks.
+  const t = useTranslation();
+  const [arrival, setArrival] = useState("");
+  const prevPhase = useRef(phase);
+  useEffect(() => {
+    if (prevPhase.current === "streaming" && phase === "pending") {
+      setArrival(t("writing.workspace.ghost.ready"));
+    } else if (phase !== "pending") {
+      setArrival("");
+    }
+    prevPhase.current = phase;
+  }, [phase, t]);
+
   return (
     <>
       <EditorContent
@@ -341,6 +365,14 @@ export function SceneEditor({
         // inside, gone when it leaves (the MarkdownEditor's F18 pattern).
         className={`workspace-prose-live ${SERIF} rounded text-[1.18rem] leading-[1.85] text-foreground/95 focus-within:ring-2 focus-within:ring-focus md:text-[1.22rem]`}
       />
+      {/* The arrival's voice — visually hidden, mounted empty, filled only
+          at the streaming→pending transition (the effect above). It stands
+          whenever the ghost layer does, so the words are always a CHANGE. */}
+      {continuation != null && (
+        <p role="status" data-testid="ghost-announcement" className="sr-only">
+          {arrival}
+        </p>
+      )}
       {/* The ghost stands at the tail, outside the document — the scene's
           own words are the textbox's alone until Tab accepts. */}
       {phase === "streaming" && <GhostStreaming text={continuation?.text ?? ""} />}

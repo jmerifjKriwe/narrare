@@ -245,6 +245,7 @@
   "writing.workspace.ghost.errorBody": "La connexion à l'assistant d'écriture a été interrompue. Ton texte existant reste entièrement intact.",
   "writing.workspace.ghost.errorChip": "Partenaire IA injoignable",
   "writing.workspace.ghost.errorTitle": "ARIA n'a pas pu poursuivre l'écriture.",
+  "writing.workspace.ghost.ready": "Suggestion prête — accepte avec Tab",
   "writing.workspace.ghost.retry": "Réessayer",
   "writing.workspace.ghost.writing": "ARIA écrit …",
   "writing.workspace.guard.body": "Tes derniers mots ne sont pas encore enregistrés.",

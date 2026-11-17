@@ -13,11 +13,13 @@
  * the [Tab] keycap pill, KACHEL 8's corrected error face), the keyboard
  * contract (Tab accepts from the prose, Esc dismisses BEFORE the leave
  * guard's own Esc) and the autosave handoff (the insertion rides onChange,
- * the one write path).
+ * the one write path). The proposal's arrival is announced once, AT the
+ * streaming→pending transition, through the editor's hidden live region —
+ * a region mounted populated never speaks, so the preview wears no role.
  */
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { client } from "@shell/lib/api/client";
@@ -186,7 +188,9 @@ const GHOST_TEXT = "Der Nebel hob sich vom See und legte sich über die Straße.
 const BODY = "Der Nebel kam von See.";
 
 /** The continuation as a stateful stand-in: dismiss rests the ghost at idle
- *  exactly as the hook does, so the keyboard legs see the real precedence. */
+ *  exactly as the hook does, so the keyboard legs see the real precedence.
+ *  onPhase hands the test the setter — the arrival legs drive the real
+ *  streaming→pending transition, not a mounted-pending shortcut. */
 function GhostHarness({
   body = BODY,
   initialPhase = "pending" as ContinuationPhase,
@@ -194,6 +198,7 @@ function GhostHarness({
   onChange = () => {},
   onDismiss,
   onRetry,
+  onPhase,
   guard = false,
   onStay = () => {},
 }: {
@@ -203,10 +208,14 @@ function GhostHarness({
   onChange?: (body: string) => void;
   onDismiss?: () => void;
   onRetry?: () => void;
+  onPhase?: (setPhase: (phase: ContinuationPhase) => void) => void;
   guard?: boolean;
   onStay?: () => void;
 }) {
   const [phase, setPhase] = useState<ContinuationPhase>(initialPhase);
+  useEffect(() => {
+    onPhase?.(setPhase);
+  }, [onPhase]);
   const continuation: Continuation = {
     phase,
     text,
@@ -233,8 +242,12 @@ describe("the ghost's streaming face — KACHEL 7", () => {
   it("the ARIA chip pulses over the accumulating preview, outside the document", async () => {
     render(<GhostHarness initialPhase="streaming" text="Der Nebel hob sich " />);
     await screen.findByRole("textbox");
-    expect(screen.getByRole("status").textContent).toContain(de["writing.workspace.ghost.writing"]);
     const ghost = screen.getByTestId("ghost-preview");
+    // The chip is the preview's own status — the arrival region stands
+    // empty beside it (two status roles while the stream runs).
+    expect(ghost.querySelector('[role="status"]')?.textContent).toContain(
+      de["writing.workspace.ghost.writing"],
+    );
     expect(ghost.textContent).toContain("Der Nebel hob sich ");
     // The preview is italic and wears the writing area's ink (the /70 draft
     // tone fails the AA floor on both themes — the ink rides full strength,
@@ -322,6 +335,65 @@ describe("the ghost's pending face — the light draft's preview + keycap pill",
   });
 });
 
+describe("the pending arrival — the hidden region speaks at the transition", () => {
+  it("streaming → pending fills the hidden status; the preview itself wears no role", async () => {
+    let land: (() => void) | undefined;
+    render(
+      <GhostHarness initialPhase="streaming" onPhase={(set) => { land = () => set("pending"); }} />,
+    );
+    await screen.findByRole("textbox");
+    const live = screen.getByTestId("ghost-announcement");
+    expect(live.getAttribute("role")).toBe("status");
+    expect(live.className).toContain("sr-only");
+    // Mounted empty: a live region announces changes, not initial content.
+    expect(live.textContent).toBe("");
+    act(() => {
+      land?.();
+    });
+    expect(screen.getByTestId("ghost-preview")).not.toBeNull();
+    expect(live.textContent).toBe(de["writing.workspace.ghost.ready"]);
+    // The visible proposal is no live region — the hidden one speaks.
+    expect(screen.getByTestId("ghost-preview").querySelector('[role="status"]')).toBeNull();
+  });
+
+  it("a pending face mounted without a stream stays silent — no transition, no words", async () => {
+    render(<GhostHarness />);
+    await screen.findByRole("textbox");
+    expect(screen.getByTestId("ghost-announcement").textContent).toBe("");
+  });
+
+  it("the streaming and error faces leave the region empty — only the arrival speaks", async () => {
+    const { unmount } = render(<GhostHarness initialPhase="streaming" />);
+    await screen.findByRole("textbox");
+    expect(screen.getByTestId("ghost-announcement").textContent).toBe("");
+    unmount();
+    render(<GhostHarness initialPhase="error" />);
+    await screen.findByRole("textbox");
+    expect(screen.getByTestId("ghost-announcement").textContent).toBe("");
+  });
+
+  it("leaving pending clears the region — the next arrival speaks again", async () => {
+    let setPhase: ((phase: ContinuationPhase) => void) | undefined;
+    render(<GhostHarness initialPhase="streaming" onPhase={(set) => { setPhase = set; }} />);
+    const box = await screen.findByRole("textbox");
+    act(() => {
+      setPhase?.("pending");
+    });
+    const live = screen.getByTestId("ghost-announcement");
+    expect(live.textContent).toBe(de["writing.workspace.ghost.ready"]);
+    fireEvent.keyDown(box, { key: "Escape" });
+    expect(live.textContent).toBe("");
+    // The identical words, a second time: a change again, not a silence.
+    act(() => {
+      setPhase?.("streaming");
+    });
+    act(() => {
+      setPhase?.("pending");
+    });
+    expect(live.textContent).toBe(de["writing.workspace.ghost.ready"]);
+  });
+});
+
 describe("Esc — the ghost owns it first", () => {
   it("dismisses the pending ghost", async () => {
     const onDismiss = vi.fn();
@@ -339,6 +411,15 @@ describe("Esc — the ghost owns it first", () => {
     fireEvent.keyDown(box, { key: "Escape" });
     expect(onDismiss).toHaveBeenCalled();
     expect(screen.queryByTestId("ghost-preview")).toBeNull();
+    expect(screen.queryByTestId("ghost-error")).toBeNull();
+  });
+
+  it("dismisses the error face too — Esc clears it", async () => {
+    const onDismiss = vi.fn();
+    render(<GhostHarness initialPhase="error" onDismiss={onDismiss} />);
+    const box = await screen.findByRole("textbox");
+    fireEvent.keyDown(box, { key: "Escape" });
+    expect(onDismiss).toHaveBeenCalled();
     expect(screen.queryByTestId("ghost-error")).toBeNull();
   });
 

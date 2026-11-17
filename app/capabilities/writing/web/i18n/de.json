@@ -245,6 +245,7 @@
   "writing.workspace.ghost.errorBody": "Die Verbindung zur Schreib-Assistenz wurde unterbrochen. Der bisherige Text bleibt vollständig erhalten.",
   "writing.workspace.ghost.errorChip": "KI-Partner nicht erreichbar",
   "writing.workspace.ghost.errorTitle": "ARIA konnte nicht weiterschreiben.",
+  "writing.workspace.ghost.ready": "Vorschlag bereit — Tab übernimmt",
   "writing.workspace.ghost.retry": "Erneut versuchen",
   "writing.workspace.ghost.writing": "ARIA schreibt …",
   "writing.workspace.guard.body": "Deine letzten Wörter sind noch nicht gesichert.",

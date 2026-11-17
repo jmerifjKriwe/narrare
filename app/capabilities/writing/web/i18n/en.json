@@ -245,6 +245,7 @@
   "writing.workspace.ghost.errorBody": "The connection to the writing assistant was interrupted. Your existing text remains fully intact.",
   "writing.workspace.ghost.errorChip": "AI partner unreachable",
   "writing.workspace.ghost.errorTitle": "ARIA could not continue writing.",
+  "writing.workspace.ghost.ready": "Suggestion ready — Tab accepts",
   "writing.workspace.ghost.retry": "Try again",
   "writing.workspace.ghost.writing": "ARIA is writing …",
   "writing.workspace.guard.body": "Your last words are not saved yet.",
