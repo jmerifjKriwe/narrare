@@ -337,7 +337,9 @@ describe("the populated workspace", () => {
     await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
     fireEvent.click(screen.getByRole("button", { name: /Szene 1 · Sub-Basement/ }));
     expect(await screen.findByRole("heading", { level: 1, name: "Sub-Basement" })).toBeTruthy();
-    expect(screen.getByText("Unter der Station lag der Schacht.")).toBeTruthy();
+    // The editor body is TipTap's async render — it lands a tick after the
+    // heading (the scene title is cache-immediate). Wait for it, don't race it.
+    expect(await screen.findByText("Unter der Station lag der Schacht.")).toBeTruthy();
     expect(
       screen.getByRole("button", { name: /Szene 1 · Sub-Basement/ }).getAttribute("aria-current"),
     ).toBe("true");
@@ -1019,4 +1021,37 @@ describe("the continuation wiring (Task 16) — the page's own doors", () => {
       }),
     );
   });
+
+  it("a running stream is not an unsaved edit — a route leave passes without the guard", async () => {
+    // The streaming phase itself, held open deterministically: one delta,
+    // then the wire keeps running (no done). The E2E's fake crosses localhost
+    // too fast to hold mid-flight (#899's boundary) — the resting face rides
+    // the real-stack legs; here the running face asks the guard's question.
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {"delta": "Der Nebel hob sich."}\n\n'));
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(stream, { status: 200, headers: { "Content-Type": "text/event-stream" } }),
+      ),
+    );
+    const router = await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
+    // The streaming face stands — the ARIA chip over the growing preview,
+    // not the pending pill (the wire never reaches done).
+    expect(await screen.findByTestId("ghost-preview")).toBeTruthy();
+    expect(screen.getByText(de["writing.workspace.ghost.writing"])).toBeTruthy();
+    expect(screen.queryByRole("button", { name: PILL })).toBeNull();
+
+    // The leave: no draft, so the flush gate passes clean — no guard, no write.
+    await router.navigate({ to: "/" });
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(api.PUT).not.toHaveBeenCalled();
+  }, 10000);
 });

@@ -14,7 +14,10 @@ autosave chain (the PUT carries the joined body, the reload reads it back),
 Esc and typing dismiss, the pills and the input round-trip their prompts, the
 over-long instruction is refused client-side before the wire, and KACHEL 8's
 corrected error face names a dead connection with the retry that lands after
-recovery. Every face clears the axe WCAG A/AA floor, light and dark.
+recovery. The leave guard's stream cell (W4 Task 17) is pinned honestly: a
+proposal is not an unsaved edit — the guard reads the autosave alone, so a
+reload, a route leave and a scene switch with a standing ghost ask nothing
+and owe no write. Every face clears the axe WCAG A/AA floor, light and dark.
 """
 
 import json
@@ -23,7 +26,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Dialog, Page, Request, expect
 
 from app.capabilities.writing.e2e.conftest import (
     DATABASE,
@@ -169,6 +172,20 @@ def _continue(page: Page) -> None:
     expect(page.get_by_role("button", name=PILL)).to_be_visible(timeout=10_000)
 
 
+def _watch_scene_puts(page: Page) -> list[str]:
+    """The scene PUT urls the page sends — the „no write is owed" oracle.
+    The continue ask is a POST and the order PUTs name chapters, so a PUT
+    under the scenes door is the body save alone."""
+    writes: list[str] = []
+
+    def record(request: Request) -> None:
+        if request.method == "PUT" and "/api/writing/scenes/" in request.url:
+            writes.append(request.url)
+
+    page.on("request", record)
+    return writes
+
+
 def test_continue_streams_into_the_ghost_and_tab_inserts_and_saves(
     page: Page, installed: Stack
 ) -> None:
@@ -233,6 +250,100 @@ def test_typing_dismisses_the_ghost(page: Page, installed: Stack) -> None:
     expect(page.get_by_role("button", name=PILL)).to_have_count(0)
     expect(page.get_by_role("textbox", name=PROSE)).to_contain_text("Eigene Worte.")
     expect(page.get_by_role("textbox", name=PROSE)).not_to_contain_text(GHOST)
+
+
+def test_a_leave_with_a_standing_ghost_asks_nothing(page: Page, installed: Stack) -> None:
+    """The ghost is not an unsaved edit: the guard reads the autosave alone,
+    and a proposal never feeds it. A reload with the standing ghost meets no
+    unload prompt, a route leave lands on the shelf without the
+    Abschiedsschutz, and no write is owed — the row keeps the scene's own
+    words. The running stream asks the same question (the guard never reads
+    the continuation); its mid-flight face is #899's boundary, so the resting
+    face pins the semantics on the real stack here."""
+    novel_id, scene_id = _seed_scene()
+    _open(page, novel_id)
+
+    writes = _watch_scene_puts(page)
+    seen: list[str] = []
+
+    def accept(dialog: Dialog) -> None:
+        seen.append(dialog.type)
+        dialog.accept()
+
+    page.on("dialog", accept)
+
+    _continue(page)
+    # The proposal stands OUTSIDE the document — the scene's own words are
+    # the textbox's alone, so there is nothing for a guard to protect.
+    expect(page.get_by_role("textbox", name=PROSE)).to_have_text(SEED_BODY)
+
+    # The unload face of the same question: a reload asks nothing, and the
+    # proposal retires with the page that asked it.
+    page.reload()
+    expect(page.get_by_role("textbox", name=PROSE)).to_be_visible()
+    expect(page.get_by_role("button", name=PILL)).to_have_count(0)
+    expect(page.get_by_role("textbox", name=PROSE)).to_have_text(SEED_BODY)
+    assert seen == []
+
+    # The route leave: the shelf lands, no Abschiedsschutz stands between.
+    _continue(page)
+    page.locator("header").get_by_role("link", name="Manuscripts").click()
+    expect(page).to_have_url(BASE + "/")
+    expect(page.get_by_role("heading", name="Das Bücherregal")).to_be_visible()
+    expect(page.get_by_role("alertdialog")).to_have_count(0)
+    assert seen == []
+    assert writes == []
+    assert rows(DATABASE, "SELECT body FROM scenes WHERE id = :id", {"id": scene_id}) == [
+        (SEED_BODY,)
+    ]
+
+    # Back in the book, the scene's own words stand — no ghost survived.
+    _open(page, novel_id)
+    expect(page.get_by_role("textbox", name=PROSE)).to_have_text(SEED_BODY)
+    expect(page.get_by_role("button", name=PILL)).to_have_count(0)
+    assert writes == []
+
+
+def test_a_scene_switch_retires_the_ghost_without_asking(page: Page, installed: Stack) -> None:
+    """A scene switch is a leave too: with no draft the flush gate passes
+    clean, no Abschiedsschutz stands, and the ghost retires with the tail it
+    was asked for — the target scene's own words stand, and neither row was
+    written."""
+    novel = create_novel("Das Ghost-Buch")
+    chapter = create_chapter(str(novel["id"]), "Ankunft")
+    first = write_scene(str(chapter["id"]), "Worte der ersten Szene.", title="Die erste")
+    second = write_scene(str(chapter["id"]), SEED_BODY, title="Die zweite")
+    _open(page, str(novel["id"]))
+    # The last-created scene leads — „Die zweite".
+    expect(page.get_by_role("heading", name="Die zweite", exact=True)).to_be_visible()
+
+    writes = _watch_scene_puts(page)
+
+    _continue(page)
+    expect(page.get_by_role("textbox", name=PROSE)).to_have_text(SEED_BODY)
+
+    page.get_by_role("button", name=re.compile("Szene 1 · Die erste")).click()
+    expect(page.get_by_role("heading", name="Die erste", exact=True)).to_be_visible()
+    expect(page.get_by_role("alertdialog")).to_have_count(0)
+    expect(page.get_by_role("button", name=PILL)).to_have_count(0)
+    expect(page.get_by_role("textbox", name=PROSE)).to_have_text("Worte der ersten Szene.")
+    assert_accessible(page)
+
+    # Back to the asked tail: its own words, no ghost — the retirement was
+    # the switch's, not a dismissal the writer chose.
+    page.get_by_role("button", name=re.compile("Szene 2 · Die zweite")).click()
+    expect(page.get_by_role("heading", name="Die zweite", exact=True)).to_be_visible()
+    expect(page.get_by_role("textbox", name=PROSE)).to_have_text(SEED_BODY)
+    expect(page.get_by_role("button", name=PILL)).to_have_count(0)
+    expect(page.get_by_role("alertdialog")).to_have_count(0)
+
+    assert writes == []
+    assert rows(DATABASE, "SELECT body FROM scenes WHERE id = :id", {"id": str(first["id"])}) == [
+        ("Worte der ersten Szene.",)
+    ]
+    assert rows(DATABASE, "SELECT body FROM scenes WHERE id = :id", {"id": str(second["id"])}) == [
+        (SEED_BODY,)
+    ]
 
 
 def test_a_quick_pill_round_trips_its_prompt(page: Page, installed: Stack) -> None:
