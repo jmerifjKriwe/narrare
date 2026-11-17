@@ -11,13 +11,13 @@ from uuid import UUID
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
+from sqlalchemy import delete, text
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.api.main import app
 from app.capabilities.knowledge.repository import EntityRepository
 from app.kernel.auth import LOCAL_USER_ID
-from app.kernel.contracts.models import Chapter, Entity, EntitySuggestion, Novel
+from app.kernel.contracts.models import Chapter, Entity, EntitySuggestion, Novel, Scene
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, TextProvider
@@ -66,7 +66,8 @@ async def _chapter(client: AsyncClient, title: str = "Der Nebel") -> tuple[str, 
         f"/api/writing/novels/{novel.json()['id']}/chapters", json={"title": "Ankunft"}
     )
     chapter_id = chapter.json()["id"]
-    await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": CHAPTER_BODY})
+    # The prose lives on a scene now (W4 §5): the chapter is the shell.
+    await client.post(f"/api/writing/chapters/{chapter_id}/scenes", json={"body": CHAPTER_BODY})
     return novel.json()["id"], chapter_id
 
 
@@ -156,8 +157,10 @@ class _RecordingProvider:
 
 
 async def _write_body(client: AsyncClient, chapter_id: str, body: str) -> None:
-    """Replace a chapter's body the way the editor does, before enqueueing."""
-    response = await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": body})
+    """Replace a chapter's prose the way the editor does, before enqueueing —
+    a scene write now (W4 §5): the chapter's one scene carries the body."""
+    scenes = (await client.get(f"/api/writing/chapters/{chapter_id}/scenes")).json()
+    response = await client.put(f"/api/writing/scenes/{scenes[0]['id']}", json={"body": body})
     assert response.status_code == 200
 
 
@@ -214,6 +217,55 @@ async def test_the_limit_counts_characters_not_bytes(monkeypatch: pytest.MonkeyP
 
     assert done["result"] == {"suggestions": 0, "truncated": False}
     assert provider.requests[0].messages[0].content.count("é") == 20_000
+
+
+async def test_extraction_reads_a_chapters_scenes_joined_in_position_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The knowledge seam mirrors the export's (W4 §5): a chapter's prose is its
+    scenes joined in position order with one blank line — ``_prose_by_chapter``.
+    Two scenes inserted OUT of position order reach the provider as Erste then
+    Zweite, byte-for-byte behind the source marker: the join's seam and ordering
+    pinned on the knowledge side, as the interchange suite pins the export's.
+    """
+    import app.capabilities.knowledge.jobs as jobs
+    from app.kernel.llm import SOURCE_PREFIX
+
+    provider = _RecordingProvider()
+    monkeypatch.setattr(jobs, "resolve_provider", _resolving(provider))
+    async with _client() as client:
+        novel_id, chapter_id = await _chapter(client)
+        # Replace the wrap's one scene with two, inserted out of position order:
+        # the join walks position, not insertion or creation order.
+        async with Session() as session:
+            await session.execute(delete(Scene).where(Scene.chapter_id == UUID(chapter_id)))
+            session.add_all(
+                [
+                    Scene(
+                        user_id=LOCAL_USER_ID,
+                        chapter_id=UUID(chapter_id),
+                        position=2,
+                        title="",
+                        body="Zweite Szene.",
+                    ),
+                    Scene(
+                        user_id=LOCAL_USER_ID,
+                        chapter_id=UUID(chapter_id),
+                        position=1,
+                        title="",
+                        body="Erste Szene.",
+                    ),
+                ]
+            )
+            await session.commit()
+        job_id = await _enqueue_extraction(client, novel_id, chapter_id)
+        assert await _run_lane_once() is True
+        done = (await client.get(f"/api/jobs/{job_id}")).json()
+        assert done["status"] == "done"
+
+    sent = provider.requests[0].messages[0].content
+    assert f"{SOURCE_PREFIX}Erste Szene.\n\nZweite Szene." in sent
+    assert f"{SOURCE_PREFIX}Zweite Szene.\n\nErste Szene." not in sent
 
 
 async def test_extraction_enqueues_then_the_worker_files_suggestions() -> None:

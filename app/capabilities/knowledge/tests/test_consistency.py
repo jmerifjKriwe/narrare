@@ -103,7 +103,9 @@ async def _novel_with_chapters(
             # are harmless — titles carry no uniqueness.
             json={"title": CHAPTER_TITLES[position % len(CHAPTER_TITLES)]},
         )
-        await client.put(f"/api/writing/chapters/{chapter.json()['id']}", json={"body": body})
+        chapter_id = chapter.json()["id"]
+        # The prose lives on a scene now (W4 §5): one scene per chapter body.
+        await client.post(f"/api/writing/chapters/{chapter_id}/scenes", json={"body": body})
     return novel_id
 
 

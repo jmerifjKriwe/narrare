@@ -43,8 +43,27 @@
         "type": "object"
       },
       "ActivityRead": {
-        "description": "The atelier's activity across all the user's novels (W3).\n\n``points`` cover the requested window oldest-first, zero-days\nincluded; ``streak_days`` counts consecutive days with a nonzero net\nending today — or yesterday, which keeps the streak alive until the\nday after tomorrow without writing; ``weekly_average`` is the mean\nnet words per day over ALL days of the window (zero-days in the\nbasis), one decimal; ``today_words`` is today's net across novels.",
+        "description": "The atelier's activity across all the user's novels (W3).\n\n``points`` cover the requested window oldest-first, zero-days\nincluded; ``streak_days`` counts consecutive days with a nonzero net\nending today — or yesterday, which keeps the streak alive until the\nday after tomorrow without writing; ``weekly_average`` is the mean\nnet words per day over ALL days of the window (zero-days in the\nbasis), one decimal; ``today_words`` is today's net across novels.\n\nThe daily goal (W4 row 25) is the user's own ``daily_goal_words`` —\natelier scope, never a book target; ``None`` is the honest unset.\n``goal_met`` is true exactly when a goal is stored and today's net\nreaches it; ``goal_remaining`` is what the day still owes,\n``max(0, goal - today_words)`` — a negative day owes the goal plus\nthe removal — and 0 when no goal is stored or the day is done.",
         "properties": {
+          "daily_goal_words": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Goal Words"
+          },
+          "goal_met": {
+            "title": "Goal Met",
+            "type": "boolean"
+          },
+          "goal_remaining": {
+            "title": "Goal Remaining",
+            "type": "integer"
+          },
           "points": {
             "items": {
               "$ref": "#/components/schemas/ActivityPoint"
@@ -69,7 +88,10 @@
           "points",
           "streak_days",
           "weekly_average",
-          "today_words"
+          "today_words",
+          "daily_goal_words",
+          "goal_met",
+          "goal_remaining"
         ],
         "title": "ActivityRead",
         "type": "object"
@@ -245,10 +267,6 @@
       },
       "ChapterRead": {
         "properties": {
-          "body": {
-            "title": "Body",
-            "type": "string"
-          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -268,6 +286,11 @@
             "title": "Position",
             "type": "integer"
           },
+          "scene_count": {
+            "default": 0,
+            "title": "Scene Count",
+            "type": "integer"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -276,6 +299,11 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "word_count": {
+            "default": 0,
+            "title": "Word Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -283,7 +311,6 @@
           "novel_id",
           "title",
           "position",
-          "body",
           "created_at",
           "updated_at"
         ],
@@ -292,17 +319,6 @@
       },
       "ChapterUpdate": {
         "properties": {
-          "body": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Body"
-          },
           "title": {
             "anyOf": [
               {
@@ -1362,6 +1378,17 @@
       },
       "NovelRead": {
         "properties": {
+          "ai_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Role"
+          },
           "archived_at": {
             "anyOf": [
               {
@@ -1385,6 +1412,17 @@
             ],
             "title": "Author"
           },
+          "author_typology": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Typology"
+          },
           "blurb": {
             "anyOf": [
               {
@@ -1396,6 +1434,17 @@
             ],
             "title": "Blurb"
           },
+          "canon_strictness": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canon Strictness"
+          },
           "chapter_count": {
             "default": 0,
             "title": "Chapter Count",
@@ -1405,6 +1454,17 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "dramatic_form": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dramatic Form"
           },
           "genre": {
             "anyOf": [
@@ -1519,8 +1579,19 @@
         "type": "object"
       },
       "NovelUpdate": {
-        "description": "The PATCH body: only the fields present are the change.\n\n``None`` is ambiguous by shape alone — an absent field and a cleared\nauthor both look like None — so the service reads\n``model_fields_set`` to tell a carried change from a missing one. The\nvalues are checked there, against the novel contract's trims and\nlimits: this schema carries the fields, the contract decides what a\nvalue may be. A carried ``null`` clears author, genre, blurb or\nlanguage; the title is never clearable.\n\nThe shelf's fields (W3) ride the same rule: ``status`` answers to the\nvocabulary (draft|revision|final) at the service boundary,\n``series_id`` must name a series the user owns, ``series_volume`` is\na positive number that needs a series link, and ``archived_at`` is a\ntimestamp — carrying one archives the book, carrying ``null``\nunarchives it.",
+        "description": "The PATCH body: only the fields present are the change.\n\n``None`` is ambiguous by shape alone — an absent field and a cleared\nauthor both look like None — so the service reads\n``model_fields_set`` to tell a carried change from a missing one. The\nvalues are checked there, against the novel contract's trims and\nlimits: this schema carries the fields, the contract decides what a\nvalue may be. A carried ``null`` clears author, genre, blurb or\nlanguage; the title is never clearable.\n\nThe shelf's fields (W3) ride the same rule: ``status`` answers to the\nvocabulary (draft|revision|final) at the service boundary,\n``series_id`` must name a series the user owns, ``series_volume`` is\na positive number that needs a series link, and ``archived_at`` is a\ntimestamp — carrying one archives the book, carrying ``null``\nunarchives it.\n\nThe wizard's per-novel answers (W4 §5) ride it too: ``target_words``\nand the four setup settings — typology, dramatic form, AI role, canon\nstrictness — are checked at the service boundary against the kernel\ncontract's shared vocabularies and bounds, the same constants setup's\nrequest validates against. A carried ``null`` clears the answer back\nto the honest unset; the book-settings dialog edits what setup bound.",
         "properties": {
+          "ai_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Role"
+          },
           "archived_at": {
             "anyOf": [
               {
@@ -1544,6 +1615,17 @@
             ],
             "title": "Author"
           },
+          "author_typology": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Typology"
+          },
           "blurb": {
             "anyOf": [
               {
@@ -1554,6 +1636,28 @@
               }
             ],
             "title": "Blurb"
+          },
+          "canon_strictness": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canon Strictness"
+          },
+          "dramatic_form": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dramatic Form"
           },
           "genre": {
             "anyOf": [
@@ -1610,6 +1714,17 @@
               }
             ],
             "title": "Status"
+          },
+          "target_words": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Words"
           },
           "title": {
             "anyOf": [
@@ -2489,7 +2604,7 @@
           },
           "scenes": {
             "items": {
-              "$ref": "#/components/schemas/SceneRead"
+              "$ref": "#/components/schemas/app__capabilities__planning__schemas__SceneRead"
             },
             "title": "Scenes",
             "type": "array"
@@ -2522,74 +2637,152 @@
         "title": "SceneAggregateUpdate",
         "type": "object"
       },
-      "SceneRead": {
+      "SceneCreate": {
         "properties": {
-          "beats": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Beats",
-            "type": "array"
-          },
-          "chapter_id": {
-            "format": "uuid",
-            "title": "Chapter Id",
+          "body": {
+            "default": "",
+            "title": "Body",
             "type": "string"
           },
-          "conflict": {
-            "title": "Conflict",
-            "type": "string"
+          "setting": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setting"
           },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "position": {
-            "title": "Position",
-            "type": "integer"
-          },
-          "purpose": {
-            "title": "Purpose",
-            "type": "string"
-          },
-          "resolution": {
-            "title": "Resolution",
-            "type": "string"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
+          "story_time": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Story Time"
           },
           "title": {
+            "default": "",
+            "maxLength": 200,
             "title": "Title",
-            "type": "string"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
             "type": "string"
           }
         },
+        "title": "SceneCreate",
+        "type": "object"
+      },
+      "SceneOrderMismatchDetail": {
+        "properties": {
+          "code": {
+            "default": "order_mismatch",
+            "title": "Code",
+            "type": "string"
+          },
+          "scene_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Scene Ids",
+            "type": "array"
+          }
+        },
         "required": [
-          "id",
-          "chapter_id",
-          "position",
-          "title",
-          "purpose",
-          "conflict",
-          "resolution",
-          "beats",
-          "status",
-          "created_at",
-          "updated_at"
+          "scene_ids"
         ],
-        "title": "SceneRead",
+        "title": "SceneOrderMismatchDetail",
+        "type": "object"
+      },
+      "SceneOrderMismatchRead": {
+        "description": "The 409 body for a scene-order mismatch: the stored ids in position order.",
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/SceneOrderMismatchDetail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "SceneOrderMismatchRead",
+        "type": "object"
+      },
+      "SceneOrderUpdate": {
+        "description": "The PUT scene-order body: the whole chapter, in its new order.\n\nEvery scene of the chapter and nothing else — an arrangement is a\npermutation of the ids the chapter holds this moment, so the service\ncompares the body against the stored set as one whole and refuses a\nstale one (a second tab's add, delete or repeat) with the current\norder, rather than reshape what the writer no longer sees.",
+        "properties": {
+          "ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "SceneOrderUpdate",
+        "type": "object"
+      },
+      "SceneUpdate": {
+        "description": "The PUT scene body: only the fields present are the change.\n\nTitle and body keep the chapter's rule — ``None`` is unchanged, ``\"\"``\nafter the service's trim is the honest empty (the title's placeholder a\nrendering, the body emptied). The two labels are present-and-nullable\nlike the novel's metadata: an absent field is no change, a carried\n``null`` clears the label back to the honest unset. The service reads\n``model_fields_set`` to tell a carried change from a missing one; the\nlengths are the schema's one refusal.",
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "setting": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setting"
+          },
+          "story_time": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Story Time"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "SceneUpdate",
         "type": "object"
       },
       "SceneUpsert": {
@@ -2699,6 +2892,39 @@
       },
       "SettingsRead": {
         "properties": {
+          "author_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Name"
+          },
+          "daily_goal_words": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Goal Words"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
           "locale": {
             "anyOf": [
               {
@@ -2724,7 +2950,10 @@
         },
         "required": [
           "locale",
-          "theme"
+          "theme",
+          "author_name",
+          "daily_goal_words",
+          "email"
         ],
         "title": "SettingsRead",
         "type": "object"
@@ -2771,6 +3000,30 @@
       },
       "SettingsUpdate": {
         "properties": {
+          "author_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Name"
+          },
+          "daily_goal_words": {
+            "anyOf": [
+              {
+                "maximum": 2147483647,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Goal Words"
+          },
           "locale": {
             "anyOf": [
               {
@@ -2794,12 +3047,6 @@
           "ai_role": {
             "anyOf": [
               {
-                "enum": [
-                  "archivar",
-                  "coautor",
-                  "lektor",
-                  "sparring"
-                ],
                 "type": "string"
               },
               {
@@ -2811,11 +3058,6 @@
           "author_typology": {
             "anyOf": [
               {
-                "enum": [
-                  "plotter",
-                  "pantser",
-                  "plantser"
-                ],
                 "type": "string"
               },
               {
@@ -3569,6 +3811,152 @@
           "detail"
         ],
         "title": "WritingErrorRead",
+        "type": "object"
+      },
+      "app__capabilities__planning__schemas__SceneRead": {
+        "properties": {
+          "beats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Beats",
+            "type": "array"
+          },
+          "chapter_id": {
+            "format": "uuid",
+            "title": "Chapter Id",
+            "type": "string"
+          },
+          "conflict": {
+            "title": "Conflict",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "resolution": {
+            "title": "Resolution",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "chapter_id",
+          "position",
+          "title",
+          "purpose",
+          "conflict",
+          "resolution",
+          "beats",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SceneRead",
+        "type": "object"
+      },
+      "app__capabilities__writing__schemas__SceneRead": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "chapter_id": {
+            "format": "uuid",
+            "title": "Chapter Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "setting": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setting"
+          },
+          "story_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Story Time"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "word_count": {
+            "default": 0,
+            "title": "Word Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "chapter_id",
+          "position",
+          "title",
+          "body",
+          "setting",
+          "story_time",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SceneRead",
         "type": "object"
       }
     }
@@ -5802,6 +6190,7 @@
         ]
       },
       "patch": {
+        "description": "The preference row's write in one transaction: the locale is always\ncarried (present-and-nullable — a ``null`` hands it back to the browser,\nan absent one is the schema's refusal); the author name and the daily\ngoal are partial — a carried ``null`` clears, an absent field keeps.",
         "operationId": "update_settings_api_settings_patch",
         "requestBody": {
           "content": {
@@ -6480,7 +6869,7 @@
     },
     "/api/writing/activity": {
       "get": {
-        "description": "The atelier's daily words across all owned novels: the window's\npoints (zero-days included), the streak of consecutive days with a\nnonzero net ending today or yesterday, the mean net words per day\nover the whole window, and today's net. ``days`` bounds the window\nto 1..365; the default is 30. The day boundary is the server's UTC\ndate.",
+        "description": "The atelier's daily words across all owned novels: the window's\npoints (zero-days included), the streak of consecutive days with a\nnonzero net ending today or yesterday, the mean net words per day\nover the whole window, and today's net. ``days`` bounds the window\nto 1..365; the default is 30. The day boundary is the server's UTC\ndate. The user's daily goal rides along (W4 row 25):\n``daily_goal_words`` (null when unset), ``goal_met`` and\n``goal_remaining`` — the day's progress against it, never a book\ntarget.",
         "operationId": "activity_api_writing_activity_get",
         "parameters": [
           {
@@ -6571,7 +6960,7 @@
         ]
       },
       "get": {
-        "description": "Return an owned chapter; respond with HTTP 404 when it is not found.",
+        "description": "Return an owned chapter with its scene-derived counts; respond with\nHTTP 404 when it is not found.",
         "operationId": "get_chapter_api_writing_chapters__chapter_id__get",
         "parameters": [
           {
@@ -6623,7 +7012,7 @@
         ]
       },
       "put": {
-        "description": "Update an owned chapter; respond with HTTP 404 when it is not found.",
+        "description": "Update an owned chapter's title (its prose lives on scenes now);\nrespond with HTTP 404 when it is not found.",
         "operationId": "update_chapter_api_writing_chapters__chapter_id__put",
         "parameters": [
           {
@@ -6685,10 +7074,77 @@
         ]
       }
     },
-    "/api/writing/chapters/{chapter_id}/continue": {
-      "post": {
-        "description": "Stream a continuation for an owned chapter; return HTTP 404 when it is not found.",
-        "operationId": "continue_chapter_api_writing_chapters__chapter_id__continue_post",
+    "/api/writing/chapters/{chapter_id}/scene-order": {
+      "put": {
+        "description": "Rewrite an owned chapter's scene order as one whole.\n\nThe body carries every scene of the chapter in its new order. Respond\nwith HTTP 204, HTTP 404 for an absent or unowned chapter, or HTTP 409\nwhen the body is not the chapter's current whole — a scene added or\ndeleted in a second tab, or an id repeated — with ``detail.scene_ids``\nholding the stored ids in their position order: the arrangement the\nclient reverts to.",
+        "operationId": "reorder_scenes_api_writing_chapters__chapter_id__scene_order_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SceneOrderUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Chapter not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneOrderMismatchRead"
+                }
+              }
+            },
+            "description": "The body is not the chapter's current whole of scene ids"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reorder Scenes",
+        "tags": [
+          "writing"
+        ]
+      }
+    },
+    "/api/writing/chapters/{chapter_id}/scenes": {
+      "get": {
+        "description": "List an owned chapter's scenes in position order, each with its derived\nword count; respond with HTTP 404 when the chapter is not found.",
+        "operationId": "list_scenes_api_writing_chapters__chapter_id__scenes_get",
         "parameters": [
           {
             "in": "path",
@@ -6704,10 +7160,13 @@
         "responses": {
           "200": {
             "content": {
-              "text/event-stream": {
-                "description": "Server-sent events: data frames of the continuation, then one terminal event: done or error.",
+              "application/json": {
                 "schema": {
-                  "type": "string"
+                  "items": {
+                    "$ref": "#/components/schemas/app__capabilities__writing__schemas__SceneRead"
+                  },
+                  "title": "Response List Scenes Api Writing Chapters  Chapter Id  Scenes Get",
+                  "type": "array"
                 }
               }
             },
@@ -6734,7 +7193,79 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Continue Chapter",
+        "summary": "List Scenes",
+        "tags": [
+          "writing"
+        ]
+      },
+      "post": {
+        "description": "Create a scene under an owned chapter; return HTTP 404 for a missing\nchapter or HTTP 409 if setup is required.",
+        "operationId": "create_scene_api_writing_chapters__chapter_id__scenes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SceneCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__capabilities__writing__schemas__SceneRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Chapter not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Setup required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Scene",
         "tags": [
           "writing"
         ]
@@ -7005,7 +7536,7 @@
         ]
       },
       "patch": {
-        "description": "Correct a novel by hand: only the fields the body carries change.\n\nReturn the novel with its derived counts; raise HTTP 404 for an absent\nor unowned novel, or HTTP 422 naming the field for a blank or over-long\ntitle, an over-long genre or author, a language that is over-long\nor not a BCP-47-ish code, a status outside the vocabulary, a series\nlink that names no series of the user, or a volume without a series.",
+        "description": "Correct a novel by hand: only the fields the body carries change.\n\nReturn the novel with its derived counts; raise HTTP 404 for an absent\nor unowned novel, or HTTP 422 naming the field for a blank or over-long\ntitle, an over-long genre or author, a language that is over-long\nor not a BCP-47-ish code, a status outside the vocabulary, a word\ntarget outside the column's bounds, a wizard answer outside the shared\nvocabularies (typology, AI role, canon strictness) or over-long\n(dramatic form), a series link that names no series of the user, or a\nvolume without a series.",
         "operationId": "update_novel_api_writing_novels__novel_id__patch",
         "parameters": [
           {
@@ -7400,6 +7931,222 @@
           }
         },
         "summary": "Export Novel",
+        "tags": [
+          "writing"
+        ]
+      }
+    },
+    "/api/writing/scenes/{scene_id}": {
+      "delete": {
+        "description": "Delete an owned scene; the survivors close the gap, renumbered\ncontiguously in the same transaction, and the novel's timestamp\nadvances. Always allowed — an empty chapter is a real state (D16).\n\nRaise HTTP 404 for an absent or unowned scene.",
+        "operationId": "delete_scene_api_writing_scenes__scene_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scene_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scene Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Scene not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Scene",
+        "tags": [
+          "writing"
+        ]
+      },
+      "get": {
+        "description": "Return an owned scene with its derived word count; respond with HTTP\n404 when it is not found.",
+        "operationId": "get_scene_api_writing_scenes__scene_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scene_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scene Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__capabilities__writing__schemas__SceneRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Scene not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Scene",
+        "tags": [
+          "writing"
+        ]
+      },
+      "put": {
+        "description": "Update an owned scene: only the fields the body carries change.\n\nRespond with HTTP 404 when it is not found, or HTTP 422 for an over-long\ntitle or label.",
+        "operationId": "update_scene_api_writing_scenes__scene_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scene_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scene Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SceneUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__capabilities__writing__schemas__SceneRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Scene not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Scene",
+        "tags": [
+          "writing"
+        ]
+      }
+    },
+    "/api/writing/scenes/{scene_id}/continue": {
+      "post": {
+        "description": "Stream a continuation for an owned scene; return HTTP 404 when it is not found.\n\nThe unit is the scene (W4 §5): the context is the active scene's tail plus\nthe book's earlier scenes nearest first. The SSE contract is the chapter\nendpoint's own, unchanged — the same frames, headers and coded refusals;\nonly the unit and the context assembly moved onto scenes.",
+        "operationId": "continue_scene_api_writing_scenes__scene_id__continue_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scene_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scene Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "description": "Server-sent events: data frames of the continuation, then one terminal event: done or error.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Scene not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Continue Scene",
         "tags": [
           "writing"
         ]

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The icon set's contract, pinned as records rather than single samples:
- * `icons` carries exactly the fifty-five names (the wave's whole vocabulary
+ * `icons` carries exactly the fifty-seven names (the wave's whole vocabulary
  * — a name that drifts in or out breaks a P9 consumer), and every one of
  * them renders through `Icon` as the same hidden 16×16 svg — stroked in
  * the ink around it, filled with nothing, sized by `size` alone. The
@@ -14,9 +14,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Icon, icons, type IconName } from "./icons";
 
 /**
- * The fifty-five names, verbatim: the set is exactly this and no more.
+ * The fifty-seven names, verbatim: the set is exactly this and no more.
  *
- * The first eighteen are the app's own vocabulary (the library, the
+ * The first nineteen are the app's own vocabulary (the library, the
  * editor, the knowledge base, the chat, the settings, the shell's
  * rails and their marks). The twenty-four that follow are the drafted
  * concepts the Literary Modernism screens introduce — deviation #1
@@ -25,9 +25,10 @@ import { Icon, icons, type IconName } from "./icons";
  * The next three are the quick menu's concepts (shelf-quick-menu): the
  * copy, the archive box and its symmetric return. The next eight are the
  * welcome screen's concepts (welcome-atelier), drawn in the same language
- * when the welcome port brought the set back. The last two are the
+ * when the welcome port brought the set back. The next two are the
  * provisioning step's concepts: the failure card's warning and the retry's
- * refresh (setup-states-reference panels 3–4).
+ * refresh (setup-states-reference panels 3–4). The last is the app-wide
+ * chrome's: the book switcher's unfold_more (W4 chrome-rail-topbar).
  */
 const THE_SET = [
   "books",
@@ -46,6 +47,7 @@ const THE_SET = [
   "check",
   "cross",
   "chevronDown",
+  "expandLess",
   "selectChevron",
   "planning",
   // The drafted concepts.
@@ -89,6 +91,8 @@ const THE_SET = [
   // The provisioning step's concepts.
   "warning",
   "refresh",
+  // The app-wide chrome's concepts.
+  "unfoldMore",
 ] as const satisfies readonly IconName[];
 
 /** Every attribute a rendered glyph carries, with its pinned value at the default size. */
@@ -289,7 +293,7 @@ function geometryValues(svg: SVGSVGElement): number[] {
 afterEach(cleanup);
 
 describe("icons", () => {
-  it("carries exactly the fifty-five names of the set, verbatim", () => {
+  it("carries exactly the fifty-seven names of the set, verbatim", () => {
     expect(Object.keys(icons).sort()).toEqual([...THE_SET].sort());
   });
 
@@ -324,10 +328,10 @@ describe("icons", () => {
     ).toEqual([]);
   });
 
-  it("keeps all fifty-five drawings distinct — cross dismisses, close folds a panel", () => {
+  it("keeps all fifty-seven drawings distinct — cross dismisses, close folds a panel", () => {
     // cross and close must never converge on the same ✕: a dismissal drops
     // content, a close folds a panel away — and no two names may share a drawing.
-    expect(new Set(THE_SET.map((name) => JSON.stringify(icons[name]))).size).toBe(55);
+    expect(new Set(THE_SET.map((name) => JSON.stringify(icons[name]))).size).toBe(57);
     expect(icons.close).not.toEqual(icons.cross);
   });
 

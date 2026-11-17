@@ -3,6 +3,15 @@
 import re
 
 from app.capabilities.writing.schemas import NovelUpdate  # noqa: TC001
+from app.kernel.contracts.models import (
+    AI_ROLES,
+    AUTHOR_TYPOLOGIES,
+    CANON_STRICTNESS_MAX,
+    CANON_STRICTNESS_MIN,
+    DRAMATIC_FORM_MAX_LENGTH,
+    WORD_GOAL_MAX,
+    WORD_GOAL_MIN,
+)
 
 
 class InvalidNovelUpdateError(ValueError):
@@ -80,6 +89,48 @@ def _normalize_series_volume(value: int | None) -> int | None:
     return value
 
 
+def _normalize_target_words(value: int | None) -> int | None:
+    # The bounds are the kernel contract's own — the same ones setup's
+    # request and the new-book dialog carry: a goal counts from one, and the
+    # ceiling is the Integer column's, refused here rather than overflowing
+    # at the write.
+    if value is not None and not WORD_GOAL_MIN <= value <= WORD_GOAL_MAX:
+        raise InvalidNovelUpdateError("target_words")
+    return value
+
+
+def _normalize_author_typology(value: str | None) -> str | None:
+    # The status rule: trim, whitespace is the honest unset, and the value
+    # answers to the shared vocabulary — the one home setup validates against.
+    typology = (value or "").strip() or None
+    if typology is not None and typology not in AUTHOR_TYPOLOGIES:
+        raise InvalidNovelUpdateError("author_typology")
+    return typology
+
+
+def _normalize_dramatic_form(value: str | None) -> str | None:
+    # A free string until the template wave pins its vocabulary; the width
+    # is the shared bound, the column's own.
+    form = (value or "").strip() or None
+    if form is not None and len(form) > DRAMATIC_FORM_MAX_LENGTH:
+        raise InvalidNovelUpdateError("dramatic_form")
+    return form
+
+
+def _normalize_ai_role(value: str | None) -> str | None:
+    role = (value or "").strip() or None
+    if role is not None and role not in AI_ROLES:
+        raise InvalidNovelUpdateError("ai_role")
+    return role
+
+
+def _normalize_canon_strictness(value: int | None) -> int | None:
+    # The wizard's one-to-five track, the shared bounds.
+    if value is not None and not CANON_STRICTNESS_MIN <= value <= CANON_STRICTNESS_MAX:
+        raise InvalidNovelUpdateError("canon_strictness")
+    return value
+
+
 _COPY_PREFIX = "„"
 _COPY_SUFFIX = ' (Kopie)"'
 """The copy's name, as the shelf's plan pins it: ``„<title> (Kopie)"`` —
@@ -126,4 +177,14 @@ def normalized_novel_updates(changes: NovelUpdate) -> dict[str, object]:
         updates["series_volume"] = _normalize_series_volume(changes.series_volume)
     if "archived_at" in provided:
         updates["archived_at"] = changes.archived_at
+    if "target_words" in provided:
+        updates["target_words"] = _normalize_target_words(changes.target_words)
+    if "author_typology" in provided:
+        updates["author_typology"] = _normalize_author_typology(changes.author_typology)
+    if "dramatic_form" in provided:
+        updates["dramatic_form"] = _normalize_dramatic_form(changes.dramatic_form)
+    if "ai_role" in provided:
+        updates["ai_role"] = _normalize_ai_role(changes.ai_role)
+    if "canon_strictness" in provided:
+        updates["canon_strictness"] = _normalize_canon_strictness(changes.canon_strictness)
     return updates

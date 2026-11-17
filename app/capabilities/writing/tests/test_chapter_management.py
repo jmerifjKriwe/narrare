@@ -15,8 +15,8 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from app.api.main import app
-from app.capabilities.writing.repository import ChapterRepository
-from app.capabilities.writing.schemas import ChapterUpdate
+from app.capabilities.writing.repository import ChapterRepository, SceneRepository
+from app.capabilities.writing.schemas import SceneUpdate
 from app.capabilities.writing.service import WritingService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Chapter, ConsistencyFinding, EntitySuggestion
@@ -240,41 +240,47 @@ async def test_a_save_and_a_delete_cannot_deadlock_over_one_book(
 ) -> None:
     """A save and a delete of one book must take its rows in one order.
 
-    The inversion the lock forbids: a save dirties its chapter, the touch's
-    read autoflushes the UPDATE — the save holds the chapter row — and only
+    The inversion the lock forbids: a save dirties its scene, the touch's
+    read autoflushes the UPDATE — the save holds the scene row — and only
     then asks for the book's row; a delete holds the book's row and
     rewrites the chapter rows under it. Overlap and each waits for the
     other's row: Postgres answers 40P01 and the writing loop sees a raw
     500. The book's row first, always — the delete's and the reorder's
     order — and the two writers queue on the one lock instead.
 
-    The save is the service's own method, gated open at its touch — after
-    the flush that takes the chapter row, the moment the inverted order
+    The save is the service's own scene method, gated open at its touch —
+    after the flush that takes the scene row, the moment the inverted order
     would be holding it without the book's — and the delete of ANOTHER
     chapter of the same book runs beside it on its own session. Both
     must finish, in either order the lock permits, and neither may die.
     """
     async with _client() as client:
         novel_id, chapters = await _three_chapters(client)
-    saved_id, doomed = UUID(chapters[0]["id"]), UUID(chapters[2]["id"])
+        saved_scene = (
+            await client.post(f"/api/writing/chapters/{chapters[0]['id']}/scenes", json={})
+        ).json()["id"]
+        other_scene = (
+            await client.post(f"/api/writing/chapters/{chapters[1]['id']}/scenes", json={})
+        ).json()["id"]
+    doomed = UUID(chapters[2]["id"])
 
     reached = asyncio.Event()
     release = asyncio.Event()
-    original_touch = ChapterRepository.touch_novel
+    original_touch = SceneRepository.touch_novel
 
-    async def touch_novel_gated(repository: ChapterRepository, novel_id: UUID) -> None:
+    async def touch_novel_gated(repository: SceneRepository, novel_id: UUID) -> None:
         await original_touch(repository, novel_id)
-        # Mid-transaction: the save's UPDATE has autoflushed — the chapter
+        # Mid-transaction: the save's UPDATE has autoflushed — the scene
         # row is held — and (the fixed order) the book's row before it.
         reached.set()
         await release.wait()
 
-    monkeypatch.setattr(ChapterRepository, "touch_novel", touch_novel_gated)
+    monkeypatch.setattr(SceneRepository, "touch_novel", touch_novel_gated)
 
     async with Session() as a:
         save = asyncio.create_task(
-            WritingService(a, LOCAL_USER_ID).update_chapter(
-                saved_id, ChapterUpdate(body="Der Nebel hob sich.")
+            WritingService(a, LOCAL_USER_ID).update_scene(
+                UUID(saved_scene), SceneUpdate(body="Der Nebel hob sich.")
             )
         )
         await asyncio.wait_for(reached.wait(), timeout=5)
@@ -285,7 +291,7 @@ async def test_a_save_and_a_delete_cannot_deadlock_over_one_book(
                     WritingService(b, LOCAL_USER_ID).delete_chapter(doomed)
                 )
                 # The delete waits — on the book's lock, the one order —
-                # never on the save's chapter row while the save waits on
+                # never on the save's scene row while the save waits on
                 # the book's (the cycle the inversion built).
                 _, pending = await asyncio.wait({delete}, timeout=0.5)
                 assert delete in pending
@@ -298,11 +304,12 @@ async def test_a_save_and_a_delete_cannot_deadlock_over_one_book(
             await save
 
     # Both writes landed: the survivors closed the gap, and the gated
-    # save's body is on the row it meant.
+    # save's body is on the scene it meant.
     async with _client() as client:
         listed = (await client.get(f"/api/writing/novels/{novel_id}/chapters")).json()
+        saved = await client.get(f"/api/writing/scenes/{saved_scene}")
     assert [chapter["position"] for chapter in listed] == [0, 1]
-    assert listed[0]["body"] == "Der Nebel hob sich."
+    assert saved.json()["body"] == "Der Nebel hob sich."
 
     # The save still bumps the book's row — the lock must not cost the
     # touch: one more save, alone, advances the timestamp it reads.
@@ -311,7 +318,7 @@ async def test_a_save_and_a_delete_cannot_deadlock_over_one_book(
             (await client.get(f"/api/writing/novels/{novel_id}")).json()["updated_at"]
         )
         again = await client.put(
-            f"/api/writing/chapters/{chapters[1]['id']}", json={"body": "Der Mond stieg."}
+            f"/api/writing/scenes/{other_scene}", json={"body": "Der Mond stieg."}
         )
         assert again.status_code == 200
         after = datetime.fromisoformat(
@@ -334,8 +341,8 @@ async def test_delete_chapter_answers_404_for_a_foreign_chapter() -> None:
         await session.execute(
             text(
                 "INSERT INTO chapters "
-                "(id, user_id, novel_id, title, position, body, created_at, updated_at) "
-                "VALUES (:id, :user_id, :novel_id, :title, 0, '', now(), now())"
+                "(id, user_id, novel_id, title, position, created_at, updated_at) "
+                "VALUES (:id, :user_id, :novel_id, :title, 0, now(), now())"
             ),
             {"id": chapter_id, "user_id": OTHER_USER, "novel_id": novel_id, "title": "Fremd"},
         )
@@ -463,8 +470,8 @@ async def test_reorder_refuses_a_foreign_id() -> None:
         await session.execute(
             text(
                 "INSERT INTO chapters "
-                "(id, user_id, novel_id, title, position, body, created_at, updated_at) "
-                "VALUES (:id, :user_id, :novel_id, :title, 0, '', now(), now())"
+                "(id, user_id, novel_id, title, position, created_at, updated_at) "
+                "VALUES (:id, :user_id, :novel_id, :title, 0, now(), now())"
             ),
             {
                 "id": foreign_chapter,

@@ -62,11 +62,11 @@ async def test_patch_answers_the_real_chapter_and_word_counts() -> None:
             f"/api/writing/novels/{novel_id}/chapters", json={"title": "Ankunft"}
         )
         assert chapter.status_code == 201
-        written = await client.put(
-            f"/api/writing/chapters/{chapter.json()['id']}",
+        written = await client.post(
+            f"/api/writing/chapters/{chapter.json()['id']}/scenes",
             json={"body": "Der Nebel legt sich über die Bucht."},
         )
-        assert written.status_code == 200
+        assert written.status_code == 201
         patched = await client.patch(
             f"/api/writing/novels/{novel_id}", json={"author": "J. Autorin"}
         )

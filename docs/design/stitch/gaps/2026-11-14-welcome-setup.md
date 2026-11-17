@@ -138,13 +138,15 @@ These ship real and are listed so nobody mistakes them for gaps:
   metric, and the binding face shows no percentage at all.
 - **The landing roster's active mark** — deleted with the landing (#862);
   it was a real title match against the shelf's row, never a hardcoded slug.
-- **The language switchers** — three faces are real: the welcome's and the
-  wizard header's pre-setup mirror contract and the shelf's post-setup row
-  contract (the shelf's copy joined in `2051b84c`; the landing's face went
-  with its deletion, #862). Three capability-local copies of one contract
-  are an extraction gap, not a placeholder — the W3 ledger carries the row
-  (row 12 there; trigger: the shell rebuild re-owns the top bar, or a fourth
-  face appears).
+- **The language switchers** — real, and since W4 Task 10 (D17 / #892) one
+  contract: the welcome's and the wizard header's pre-setup radio faces and
+  the chrome chip's post-setup menu face ride the shared shell home
+  (`web/lib/language.tsx`) — one switcher UI, one keyboard contract, one
+  refusal restore. The shelf's post-setup radio copy retired with the
+  wordmark header the chrome replaced (the W3 ledger's rows 12 / 20, both
+  resolved); the landing's face went with its deletion (#862). The
+  extraction gap the W3 ledger carried (row 12) closed in-wave: the chrome
+  chip is the fifth face, so the trigger fired.
 
 ## How a row becomes real
 

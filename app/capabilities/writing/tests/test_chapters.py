@@ -43,21 +43,26 @@ async def test_chapters_are_listed_in_creation_order() -> None:
         assert [chapter["position"] for chapter in listed.json()] == [0, 1, 2]
 
 
-async def test_saving_the_body_persists_it() -> None:
+async def test_the_chapters_prose_lives_on_its_scenes() -> None:
     async with _client() as client:
         novel_id = await _create_novel(client)
         chapter = (
             await client.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": "Ankunft"})
         ).json()
 
-        saved = await client.put(
-            f"/api/writing/chapters/{chapter['id']}",
+        # The chapter is a grouping shell (W4 §5): it carries no prose of its
+        # own, the prose lands on a scene, and the chapter read derives its
+        # figures from the scenes.
+        scene = await client.post(
+            f"/api/writing/chapters/{chapter['id']}/scenes",
             json={"body": "Der Nebel kam von See."},
         )
-        assert saved.status_code == 200
+        assert scene.status_code == 201
 
         reloaded = await client.get(f"/api/writing/chapters/{chapter['id']}")
-        assert reloaded.json()["body"] == "Der Nebel kam von See."
+        assert "body" not in reloaded.json()  # the shell has no prose column
+        assert reloaded.json()["word_count"] == 5
+        assert reloaded.json()["scene_count"] == 1
 
 
 async def test_chapter_writes_advance_the_novels_updated_at() -> None:
@@ -73,11 +78,11 @@ async def test_chapter_writes_advance_the_novels_updated_at() -> None:
         ]
         assert datetime.fromisoformat(after_chapter_create) > datetime.fromisoformat(at_creation)
 
-        saved = await client.put(
-            f"/api/writing/chapters/{chapter['id']}",
+        saved = await client.post(
+            f"/api/writing/chapters/{chapter['id']}/scenes",
             json={"body": "Der Nebel kam von See."},
         )
-        assert saved.status_code == 200
+        assert saved.status_code == 201
         assert saved.json()["updated_at"]
 
         after_body_save = (await client.get(f"/api/writing/novels/{novel_id}")).json()["updated_at"]
@@ -140,22 +145,27 @@ async def test_a_whitespace_title_is_untitled() -> None:
         assert reloaded.json()["title"] == ""
 
 
-async def test_a_title_only_update_leaves_the_body_alone() -> None:
+async def test_a_title_only_update_leaves_the_scenes_alone() -> None:
     async with _client() as client:
         novel_id = await _create_novel(client)
         chapter = (
             await client.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": ""})
         ).json()
-        await client.put(
-            f"/api/writing/chapters/{chapter['id']}", json={"body": "Der Nebel kam von See."}
-        )
+        scene = (
+            await client.post(
+                f"/api/writing/chapters/{chapter['id']}/scenes",
+                json={"body": "Der Nebel kam von See."},
+            )
+        ).json()
 
         renamed = await client.put(f"/api/writing/chapters/{chapter['id']}", json={"title": "Wald"})
         assert renamed.status_code == 200
 
         reloaded = await client.get(f"/api/writing/chapters/{chapter['id']}")
         assert reloaded.json()["title"] == "Wald"
-        assert reloaded.json()["body"] == "Der Nebel kam von See."
+        assert reloaded.json()["word_count"] == 5
+        scene_reloaded = await client.get(f"/api/writing/scenes/{scene['id']}")
+        assert scene_reloaded.json()["body"] == "Der Nebel kam von See."
 
 
 async def test_a_chapter_cannot_be_added_to_another_users_novel() -> None:
@@ -192,8 +202,8 @@ async def test_another_users_chapter_cannot_be_saved() -> None:
         await session.execute(
             text(
                 "INSERT INTO chapters "
-                "(id, user_id, novel_id, title, position, body, created_at, updated_at) "
-                "VALUES (:id, :user_id, :novel_id, :title, 0, '', now(), now())"
+                "(id, user_id, novel_id, title, position, created_at, updated_at) "
+                "VALUES (:id, :user_id, :novel_id, :title, 0, now(), now())"
             ),
             {
                 "id": chapter_id,
@@ -206,6 +216,6 @@ async def test_another_users_chapter_cannot_be_saved() -> None:
 
     async with _client() as client:
         saved = await client.put(
-            f"/api/writing/chapters/{chapter_id}", json={"body": "Überschrieben"}
+            f"/api/writing/chapters/{chapter_id}", json={"title": "Überschrieben"}
         )
         assert saved.status_code == 404

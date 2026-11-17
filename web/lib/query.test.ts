@@ -212,6 +212,9 @@ describe("useActivityQuery — the atelier's aggregate, the banner's read", () =
     streak_days: 1,
     weekly_average: 13.7,
     today_words: 412,
+    daily_goal_words: 750,
+    goal_met: false,
+    goal_remaining: 338,
   };
 
   it("the default ask keeps its bare shape and caches under the days key", async () => {
@@ -254,7 +257,7 @@ describe("the shelf's invalidation family — the list and the aggregate move to
     api.GET.mockImplementation(async (path: string) => {
       if (path === "/api/writing/activity") {
         return {
-          data: { points: [], streak_days: 0, weekly_average: 0, today_words: 0 },
+          data: { points: [], streak_days: 0, weekly_average: 0, today_words: 0, daily_goal_words: null, goal_met: false, goal_remaining: 0 },
           response: ok(),
         };
       }

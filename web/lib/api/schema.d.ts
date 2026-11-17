@@ -730,7 +730,13 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update Settings */
+        /**
+         * Update Settings
+         * @description The preference row's write in one transaction: the locale is always
+         *     carried (present-and-nullable — a ``null`` hands it back to the browser,
+         *     an absent one is the schema's refusal); the author name and the daily
+         *     goal are partial — a carried ``null`` clears, an absent field keeps.
+         */
         patch: operations["update_settings_api_settings_patch"];
         trace?: never;
     };
@@ -1028,7 +1034,10 @@ export interface paths {
          *     nonzero net ending today or yesterday, the mean net words per day
          *     over the whole window, and today's net. ``days`` bounds the window
          *     to 1..365; the default is 30. The day boundary is the server's UTC
-         *     date.
+         *     date. The user's daily goal rides along (W4 row 25):
+         *     ``daily_goal_words`` (null when unset), ``goal_met`` and
+         *     ``goal_remaining`` — the day's progress against it, never a book
+         *     target.
          */
         get: operations["activity_api_writing_activity_get"];
         put?: never;
@@ -1048,12 +1057,14 @@ export interface paths {
         };
         /**
          * Get Chapter
-         * @description Return an owned chapter; respond with HTTP 404 when it is not found.
+         * @description Return an owned chapter with its scene-derived counts; respond with
+         *     HTTP 404 when it is not found.
          */
         get: operations["get_chapter_api_writing_chapters__chapter_id__get"];
         /**
          * Update Chapter
-         * @description Update an owned chapter; respond with HTTP 404 when it is not found.
+         * @description Update an owned chapter's title (its prose lives on scenes now);
+         *     respond with HTTP 404 when it is not found.
          */
         put: operations["update_chapter_api_writing_chapters__chapter_id__put"];
         post?: never;
@@ -1072,7 +1083,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/writing/chapters/{chapter_id}/continue": {
+    "/api/writing/chapters/{chapter_id}/scene-order": {
         parameters: {
             query?: never;
             header?: never;
@@ -1080,12 +1091,45 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        /**
+         * Reorder Scenes
+         * @description Rewrite an owned chapter's scene order as one whole.
+         *
+         *     The body carries every scene of the chapter in its new order. Respond
+         *     with HTTP 204, HTTP 404 for an absent or unowned chapter, or HTTP 409
+         *     when the body is not the chapter's current whole — a scene added or
+         *     deleted in a second tab, or an id repeated — with ``detail.scene_ids``
+         *     holding the stored ids in their position order: the arrangement the
+         *     client reverts to.
+         */
+        put: operations["reorder_scenes_api_writing_chapters__chapter_id__scene_order_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/writing/chapters/{chapter_id}/scenes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Scenes
+         * @description List an owned chapter's scenes in position order, each with its derived
+         *     word count; respond with HTTP 404 when the chapter is not found.
+         */
+        get: operations["list_scenes_api_writing_chapters__chapter_id__scenes_get"];
         put?: never;
         /**
-         * Continue Chapter
-         * @description Stream a continuation for an owned chapter; return HTTP 404 when it is not found.
+         * Create Scene
+         * @description Create a scene under an owned chapter; return HTTP 404 for a missing
+         *     chapter or HTTP 409 if setup is required.
          */
-        post: operations["continue_chapter_api_writing_chapters__chapter_id__continue_post"];
+        post: operations["create_scene_api_writing_chapters__chapter_id__scenes_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1176,8 +1220,11 @@ export interface paths {
          *     Return the novel with its derived counts; raise HTTP 404 for an absent
          *     or unowned novel, or HTTP 422 naming the field for a blank or over-long
          *     title, an over-long genre or author, a language that is over-long
-         *     or not a BCP-47-ish code, a status outside the vocabulary, a series
-         *     link that names no series of the user, or a volume without a series.
+         *     or not a BCP-47-ish code, a status outside the vocabulary, a word
+         *     target outside the column's bounds, a wizard answer outside the shared
+         *     vocabularies (typology, AI role, canon strictness) or over-long
+         *     (dramatic form), a series link that names no series of the user, or a
+         *     volume without a series.
          */
         patch: operations["update_novel_api_writing_novels__novel_id__patch"];
         trace?: never;
@@ -1285,6 +1332,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/writing/scenes/{scene_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Scene
+         * @description Return an owned scene with its derived word count; respond with HTTP
+         *     404 when it is not found.
+         */
+        get: operations["get_scene_api_writing_scenes__scene_id__get"];
+        /**
+         * Update Scene
+         * @description Update an owned scene: only the fields the body carries change.
+         *
+         *     Respond with HTTP 404 when it is not found, or HTTP 422 for an over-long
+         *     title or label.
+         */
+        put: operations["update_scene_api_writing_scenes__scene_id__put"];
+        post?: never;
+        /**
+         * Delete Scene
+         * @description Delete an owned scene; the survivors close the gap, renumbered
+         *     contiguously in the same transaction, and the novel's timestamp
+         *     advances. Always allowed — an empty chapter is a real state (D16).
+         *
+         *     Raise HTTP 404 for an absent or unowned scene.
+         */
+        delete: operations["delete_scene_api_writing_scenes__scene_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/writing/scenes/{scene_id}/continue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Continue Scene
+         * @description Stream a continuation for an owned scene; return HTTP 404 when it is not found.
+         *
+         *     The unit is the scene (W4 §5): the context is the active scene's tail plus
+         *     the book's earlier scenes nearest first. The SSE contract is the chapter
+         *     endpoint's own, unchanged — the same frames, headers and coded refusals;
+         *     only the unit and the context assembly moved onto scenes.
+         */
+        post: operations["continue_scene_api_writing_scenes__scene_id__continue_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1326,8 +1434,21 @@ export interface components {
          *     day after tomorrow without writing; ``weekly_average`` is the mean
          *     net words per day over ALL days of the window (zero-days in the
          *     basis), one decimal; ``today_words`` is today's net across novels.
+         *
+         *     The daily goal (W4 row 25) is the user's own ``daily_goal_words`` —
+         *     atelier scope, never a book target; ``None`` is the honest unset.
+         *     ``goal_met`` is true exactly when a goal is stored and today's net
+         *     reaches it; ``goal_remaining`` is what the day still owes,
+         *     ``max(0, goal - today_words)`` — a negative day owes the goal plus
+         *     the removal — and 0 when no goal is stored or the day is done.
          */
         ActivityRead: {
+            /** Daily Goal Words */
+            daily_goal_words: number | null;
+            /** Goal Met */
+            goal_met: boolean;
+            /** Goal Remaining */
+            goal_remaining: number;
             /** Points */
             points: components["schemas"]["ActivityPoint"][];
             /** Streak Days */
@@ -1407,8 +1528,6 @@ export interface components {
         };
         /** ChapterRead */
         ChapterRead: {
-            /** Body */
-            body: string;
             /**
              * Created At
              * Format: date-time
@@ -1426,6 +1545,11 @@ export interface components {
             novel_id: string;
             /** Position */
             position: number;
+            /**
+             * Scene Count
+             * @default 0
+             */
+            scene_count: number;
             /** Title */
             title: string;
             /**
@@ -1433,11 +1557,14 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /**
+             * Word Count
+             * @default 0
+             */
+            word_count: number;
         };
         /** ChapterUpdate */
         ChapterUpdate: {
-            /** Body */
-            body?: string | null;
             /** Title */
             title?: string | null;
         };
@@ -1888,12 +2015,18 @@ export interface components {
         };
         /** NovelRead */
         NovelRead: {
+            /** Ai Role */
+            ai_role?: string | null;
             /** Archived At */
             archived_at?: string | null;
             /** Author */
             author: string | null;
+            /** Author Typology */
+            author_typology?: string | null;
             /** Blurb */
             blurb: string | null;
+            /** Canon Strictness */
+            canon_strictness?: number | null;
             /**
              * Chapter Count
              * @default 0
@@ -1904,6 +2037,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Dramatic Form */
+            dramatic_form?: string | null;
             /** Genre */
             genre: string | null;
             /**
@@ -1954,14 +2089,29 @@ export interface components {
          *     a positive number that needs a series link, and ``archived_at`` is a
          *     timestamp — carrying one archives the book, carrying ``null``
          *     unarchives it.
+         *
+         *     The wizard's per-novel answers (W4 §5) ride it too: ``target_words``
+         *     and the four setup settings — typology, dramatic form, AI role, canon
+         *     strictness — are checked at the service boundary against the kernel
+         *     contract's shared vocabularies and bounds, the same constants setup's
+         *     request validates against. A carried ``null`` clears the answer back
+         *     to the honest unset; the book-settings dialog edits what setup bound.
          */
         NovelUpdate: {
+            /** Ai Role */
+            ai_role?: string | null;
             /** Archived At */
             archived_at?: string | null;
             /** Author */
             author?: string | null;
+            /** Author Typology */
+            author_typology?: string | null;
             /** Blurb */
             blurb?: string | null;
+            /** Canon Strictness */
+            canon_strictness?: number | null;
+            /** Dramatic Form */
+            dramatic_form?: string | null;
             /** Genre */
             genre?: string | null;
             /** Language */
@@ -1972,6 +2122,8 @@ export interface components {
             series_volume?: number | null;
             /** Status */
             status?: string | null;
+            /** Target Words */
+            target_words?: number | null;
             /** Title */
             title?: string | null;
         };
@@ -2368,7 +2520,7 @@ export interface components {
              */
             chapter_id: string;
             /** Scenes */
-            scenes: components["schemas"]["SceneRead"][];
+            scenes: components["schemas"]["app__capabilities__planning__schemas__SceneRead"][];
             /**
              * Version Updated At
              * Format: date-time
@@ -2383,42 +2535,75 @@ export interface components {
             /** Scenes */
             scenes?: components["schemas"]["SceneUpsert"][];
         };
-        /** SceneRead */
-        SceneRead: {
-            /** Beats */
-            beats: string[];
+        /** SceneCreate */
+        SceneCreate: {
             /**
-             * Chapter Id
-             * Format: uuid
+             * Body
+             * @default
              */
-            chapter_id: string;
-            /** Conflict */
-            conflict: string;
+            body: string;
+            /** Setting */
+            setting?: string | null;
+            /** Story Time */
+            story_time?: string | null;
             /**
-             * Created At
-             * Format: date-time
+             * Title
+             * @default
              */
-            created_at: string;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Position */
-            position: number;
-            /** Purpose */
-            purpose: string;
-            /** Resolution */
-            resolution: string;
-            /** Status */
-            status: string;
-            /** Title */
             title: string;
+        };
+        /** SceneOrderMismatchDetail */
+        SceneOrderMismatchDetail: {
             /**
-             * Updated At
-             * Format: date-time
+             * Code
+             * @default order_mismatch
              */
-            updated_at: string;
+            code: string;
+            /** Scene Ids */
+            scene_ids: string[];
+        };
+        /**
+         * SceneOrderMismatchRead
+         * @description The 409 body for a scene-order mismatch: the stored ids in position order.
+         */
+        SceneOrderMismatchRead: {
+            detail: components["schemas"]["SceneOrderMismatchDetail"];
+        };
+        /**
+         * SceneOrderUpdate
+         * @description The PUT scene-order body: the whole chapter, in its new order.
+         *
+         *     Every scene of the chapter and nothing else — an arrangement is a
+         *     permutation of the ids the chapter holds this moment, so the service
+         *     compares the body against the stored set as one whole and refuses a
+         *     stale one (a second tab's add, delete or repeat) with the current
+         *     order, rather than reshape what the writer no longer sees.
+         */
+        SceneOrderUpdate: {
+            /** Ids */
+            ids: string[];
+        };
+        /**
+         * SceneUpdate
+         * @description The PUT scene body: only the fields present are the change.
+         *
+         *     Title and body keep the chapter's rule — ``None`` is unchanged, ``""``
+         *     after the service's trim is the honest empty (the title's placeholder a
+         *     rendering, the body emptied). The two labels are present-and-nullable
+         *     like the novel's metadata: an absent field is no change, a carried
+         *     ``null`` clears the label back to the honest unset. The service reads
+         *     ``model_fields_set`` to tell a carried change from a missing one; the
+         *     lengths are the schema's one refusal.
+         */
+        SceneUpdate: {
+            /** Body */
+            body?: string | null;
+            /** Setting */
+            setting?: string | null;
+            /** Story Time */
+            story_time?: string | null;
+            /** Title */
+            title?: string | null;
         };
         /**
          * SceneUpsert
@@ -2490,6 +2675,12 @@ export interface components {
         };
         /** SettingsRead */
         SettingsRead: {
+            /** Author Name */
+            author_name: string | null;
+            /** Daily Goal Words */
+            daily_goal_words: number | null;
+            /** Email */
+            email: string | null;
             /** Locale */
             locale: string | null;
             /** Theme */
@@ -2507,15 +2698,19 @@ export interface components {
         };
         /** SettingsUpdate */
         SettingsUpdate: {
+            /** Author Name */
+            author_name?: string | null;
+            /** Daily Goal Words */
+            daily_goal_words?: number | null;
             /** Locale */
             locale: string | null;
         };
         /** SetupRequest */
         SetupRequest: {
             /** Ai Role */
-            ai_role?: ("archivar" | "coautor" | "lektor" | "sparring") | null;
+            ai_role?: string | null;
             /** Author Typology */
-            author_typology?: ("plotter" | "pantser" | "plantser") | null;
+            author_typology?: string | null;
             /** Canon Strictness */
             canon_strictness?: number | null;
             /** Demo */
@@ -2838,6 +3033,81 @@ export interface components {
         WritingErrorRead: {
             /** Detail */
             detail: string;
+        };
+        /** SceneRead */
+        app__capabilities__planning__schemas__SceneRead: {
+            /** Beats */
+            beats: string[];
+            /**
+             * Chapter Id
+             * Format: uuid
+             */
+            chapter_id: string;
+            /** Conflict */
+            conflict: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Position */
+            position: number;
+            /** Purpose */
+            purpose: string;
+            /** Resolution */
+            resolution: string;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** SceneRead */
+        app__capabilities__writing__schemas__SceneRead: {
+            /** Body */
+            body: string;
+            /**
+             * Chapter Id
+             * Format: uuid
+             */
+            chapter_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Position */
+            position: number;
+            /** Setting */
+            setting: string | null;
+            /** Story Time */
+            story_time: string | null;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Word Count
+             * @default 0
+             */
+            word_count: number;
         };
     };
     responses: never;
@@ -4968,7 +5238,58 @@ export interface operations {
             };
         };
     };
-    continue_chapter_api_writing_chapters__chapter_id__continue_post: {
+    reorder_scenes_api_writing_chapters__chapter_id__scene_order_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SceneOrderUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Chapter not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description The body is not the chapter's current whole of scene ids */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SceneOrderMismatchRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_scenes_api_writing_chapters__chapter_id__scenes_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -4985,12 +5306,64 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @description Server-sent events: data frames of the continuation, then one terminal event: done or error. */
-                    "text/event-stream": string;
+                    "application/json": components["schemas"]["app__capabilities__writing__schemas__SceneRead"][];
                 };
             };
             /** @description Chapter not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_scene_api_writing_chapters__chapter_id__scenes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SceneCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__capabilities__writing__schemas__SceneRead"];
+                };
+            };
+            /** @description Chapter not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Setup required */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5512,6 +5885,169 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FieldRefusalsRead"];
+                };
+            };
+        };
+    };
+    get_scene_api_writing_scenes__scene_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scene_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__capabilities__writing__schemas__SceneRead"];
+                };
+            };
+            /** @description Scene not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_scene_api_writing_scenes__scene_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scene_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SceneUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__capabilities__writing__schemas__SceneRead"];
+                };
+            };
+            /** @description Scene not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_scene_api_writing_scenes__scene_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scene_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scene not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    continue_scene_api_writing_scenes__scene_id__continue_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scene_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /** @description Server-sent events: data frames of the continuation, then one terminal event: done or error. */
+                    "text/event-stream": string;
+                };
+            };
+            /** @description Scene not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

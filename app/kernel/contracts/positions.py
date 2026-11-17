@@ -1,11 +1,13 @@
-"""Chapter numbering: one allocator, one lock, wherever a chapter is appended.
+"""Chapter and scene numbering: one allocator, one lock, wherever a row is appended.
 
 Reading ``max(position)`` and writing it back is two statements with a commit
 between them for everyone else in the book — a second click on "Neues
 Kapitel", or an import landing beside a creation, otherwise takes the same
 number and the rail shows "Kapitel 1" twice with no order between the rows
 (#521). The parent novel row is the lock: the second writer waits, then reads
-the first writer's committed chapter.
+the first writer's committed chapter. Scenes ride the same lock one level
+down — their number is unique per chapter, but the book's row is what
+serialises the writers, so a scene append and a chapter delete cannot race.
 
 Two paths append chapters — the writing repository and the import engine —
 and WP6's delete and reorder rewrite the numbers beside those appends, so
@@ -18,7 +20,7 @@ from uuid import UUID  # noqa: TC003
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-from app.kernel.contracts.models import Chapter, Novel
+from app.kernel.contracts.models import Chapter, Novel, Scene
 
 
 async def lock_novel(session: AsyncSession, *, user_id: UUID, novel_id: UUID) -> None:
@@ -53,3 +55,25 @@ async def next_chapter_position(session: AsyncSession, *, user_id: UUID, novel_i
         )
     )
     return 0 if current is None else current + 1
+
+
+async def next_scene_position(
+    session: AsyncSession, *, user_id: UUID, novel_id: UUID, chapter_id: UUID
+) -> int:
+    """Lock the book, then the number one past the chapter's last scene.
+
+    The chapters invariant (#521) one level down: a scene append takes the
+    same book-row lock every numbering writer passes, so two clicks on "Neue
+    Szene" cannot share a number. Scenes are 1-based — the migration wraps
+    each chapter's prose at position 1, and a new chapter's first scene joins
+    it there — so an empty chapter starts at 1, not 0. Must be called before
+    the caller's own insert and inside its transaction: the lock is held
+    until that commit, which is what serialises the writers.
+    """
+    await lock_novel(session, user_id=user_id, novel_id=novel_id)
+    current = await session.scalar(
+        select(func.max(Scene.position)).where(
+            Scene.chapter_id == chapter_id, Scene.user_id == user_id
+        )
+    )
+    return 1 if current is None else current + 1

@@ -1,4 +1,13 @@
-"""Continuation: the stream is SSE, the chunks add up, and the door stays shut."""
+"""Scene continuation: the stream is SSE, the chunks add up, and the door stays shut.
+
+The unit is the scene (W4 §5): ``POST /api/writing/scenes/{id}/continue`` streams
+the continuation, and the context is assembled nearest-first from the prose on
+scenes — the active scene's tail, the chapter's earlier scenes, then earlier
+chapters' scenes, chapter titles as separators. The SSE contract is the chapter
+endpoint's own, unchanged: the same data/done/error frames, the same headers, the
+same coded refusals (key-unavailable, prompt-refused incl. budget), the same
+FinalizingStreamingResponse audit. These tests mirror the chapter oracle on scenes.
+"""
 
 import json
 from collections.abc import AsyncIterator  # noqa: TC003
@@ -16,16 +25,17 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 from app.api.main import app
 from app.capabilities.writing import router as writing_router
 from app.capabilities.writing import service as writing_service
-from app.capabilities.writing.prompts import continuation_prompt
+from app.capabilities.writing.prompts import PredecessorScene, continuation_prompt
 from app.capabilities.writing.repository import EntityRepository
 from app.capabilities.writing.router import (
     _continuation_events,  # pyright: ignore[reportPrivateUsage]  test the stream's finalizer
-    continue_chapter,
+    continue_scene,
 )
+from app.capabilities.writing.schemas import SceneCreate
 from app.capabilities.writing.service import WritingService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.context import BudgetImpossibleError, ContextBudgets
-from app.kernel.contracts.models import Chapter, Entity, Novel
+from app.kernel.contracts.models import Entity, Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.llm.contract import (
@@ -194,23 +204,26 @@ def _deltas(body: str) -> list[str]:
     return deltas
 
 
-async def _create_chapter(client: AsyncClient, body: str = "") -> str:
-    """Create a novel and chapter through the API, optionally saving an initial body."""
+async def _create_scene(client: AsyncClient, body: str = "") -> str:
+    """Create a novel, chapter and one scene through the API; return the scene id.
+
+    The prose lives on the scene now (W4 §5): the chapter is the grouping shell,
+    so the continuation's unit is the scene this helper lands."""
     novel = await client.post("/api/writing/novels", json={"title": "Der Nebel"})
     chapter = await client.post(
         f"/api/writing/novels/{novel.json()['id']}/chapters", json={"title": "Ankunft"}
     )
-    chapter_id = chapter.json()["id"]
-    if body:
-        await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": body})
-    return chapter_id
+    scene = await client.post(
+        f"/api/writing/chapters/{chapter.json()['id']}/scenes", json={"body": body}
+    )
+    return scene.json()["id"]
 
 
 async def test_the_continuation_streams_the_provider_chunks() -> None:
     """Verify continuation emits multiple SSE deltas and finishes with a done event."""
     async with _client() as client:
-        chapter_id = await _create_chapter(client)
-        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
+        scene_id = await _create_scene(client)
+        response = await client.post(f"/api/writing/scenes/{scene_id}/continue")
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
@@ -224,13 +237,17 @@ async def test_the_continuation_streams_the_provider_chunks() -> None:
 async def test_the_continuation_records_its_audit_row() -> None:
     """Verify a successful continuation audits its novel, answer, tokens, and free fake."""
     async with _client() as client:
-        chapter_id = await _create_chapter(client)
-        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
+        scene_id = await _create_scene(client)
+        response = await client.post(f"/api/writing/scenes/{scene_id}/continue")
         assert response.status_code == 200
 
     async with Session() as session:
         novel_id = await session.scalar(
-            text("SELECT novel_id FROM chapters WHERE id = :id"), {"id": UUID(chapter_id)}
+            text(
+                "SELECT c.novel_id FROM scenes s JOIN chapters c ON c.id = s.chapter_id"
+                " WHERE s.id = :id"
+            ),
+            {"id": UUID(scene_id)},
         )
         row = (
             await session.execute(
@@ -310,8 +327,8 @@ async def test_a_provider_that_dies_mid_stream_ends_with_its_coded_frame(
 
     monkeypatch.setattr(writing_router, "resolve_provider", _dying)
     async with _client() as client:
-        chapter_id = await _create_chapter(client)
-        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
+        scene_id = await _create_scene(client)
+        response = await client.post(f"/api/writing/scenes/{scene_id}/continue")
 
     assert response.status_code == 200
     assert _deltas(response.text) == ["Halb"]  # what arrived, arrived
@@ -332,8 +349,8 @@ async def test_a_provider_that_dies_mid_stream_errors_and_audits_the_failure(
 
     monkeypatch.setattr(writing_router, "resolve_provider", _dying)
     async with _client() as client:
-        chapter_id = await _create_chapter(client)
-        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
+        scene_id = await _create_scene(client)
+        response = await client.post(f"/api/writing/scenes/{scene_id}/continue")
 
     assert response.status_code == 200
     assert _deltas(response.text) == ["Halb"]  # what arrived, arrived
@@ -379,8 +396,8 @@ async def test_a_profile_whose_key_is_lost_ends_the_stream_with_the_one_error_fr
         await session.commit()
 
     async with _client() as client:
-        chapter_id = await _create_chapter(client)
-        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
+        scene_id = await _create_scene(client)
+        response = await client.post(f"/api/writing/scenes/{scene_id}/continue")
 
     assert response.status_code == 200
     assert response.text == 'event: error\ndata: {"code": "key-unavailable"}\n\n'
@@ -405,8 +422,8 @@ async def test_an_impossible_budget_pair_ends_the_stream_with_the_one_error_fram
 
     monkeypatch.setattr(writing_service, "allocate", _impossible)
     async with _client() as client:
-        chapter_id = await _create_chapter(client)
-        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
+        scene_id = await _create_scene(client)
+        response = await client.post(f"/api/writing/scenes/{scene_id}/continue")
 
     assert response.status_code == 200
     assert response.text == 'event: error\ndata: {"code": "prompt-refused", "reason": "budget"}\n\n'
@@ -484,8 +501,8 @@ async def test_the_continuation_request_carries_the_reservation_and_set_facts_on
 
     monkeypatch.setattr(writing_router, "resolve_provider", _resolved_probe)
     async with _client() as client:
-        chapter_id = await _create_chapter(client)
-        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
+        scene_id = await _create_scene(client, body="Der Nebel kam von See.")
+        response = await client.post(f"/api/writing/scenes/{scene_id}/continue")
 
     assert response.status_code == 200
     assert "event: done" in response.text
@@ -507,18 +524,18 @@ async def test_the_route_hands_back_the_finalizing_response() -> None:
     fails here instead of silently losing the audit guarantee.
     """
     async with _client() as client:
-        chapter_id = await _create_chapter(client)
+        scene_id = await _create_scene(client)
     async with Session() as session:
         service = WritingService(session, LOCAL_USER_ID)
-        response = await continue_chapter(UUID(chapter_id), service, LOCAL_USER_ID)
+        response = await continue_scene(UUID(scene_id), service, LOCAL_USER_ID)
     assert isinstance(response, FinalizingStreamingResponse)
 
 
-async def test_another_users_chapter_cannot_be_continued() -> None:
-    """Verify continuation hides another user's chapter with HTTP 404."""
+async def _seed_foreign_scene() -> UUID:
+    """A scene (under its chapter and novel) another user owns."""
     await seed_user(OTHER_USER)
     async with Session() as session:
-        novel_id, chapter_id = uuid4(), uuid4()
+        novel_id, chapter_id, scene_id = uuid4(), uuid4(), uuid4()
         await session.execute(
             text(
                 "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
@@ -529,42 +546,50 @@ async def test_another_users_chapter_cannot_be_continued() -> None:
         await session.execute(
             text(
                 "INSERT INTO chapters "
-                "(id, user_id, novel_id, title, position, body, created_at, updated_at) "
-                "VALUES (:id, :user_id, :novel_id, :title, 0, '', now(), now())"
+                "(id, user_id, novel_id, title, position, created_at, updated_at) "
+                "VALUES (:id, :user_id, :novel_id, :title, 0, now(), now())"
             ),
-            {
-                "id": chapter_id,
-                "user_id": OTHER_USER,
-                "novel_id": novel_id,
-                "title": "Fremd",
-            },
+            {"id": chapter_id, "user_id": OTHER_USER, "novel_id": novel_id, "title": "Fremd"},
+        )
+        await session.execute(
+            text(
+                "INSERT INTO scenes "
+                "(id, user_id, chapter_id, position, title, body, created_at, updated_at) "
+                "VALUES (:id, :user_id, :chapter_id, 1, '', '', now(), now())"
+            ),
+            {"id": scene_id, "user_id": OTHER_USER, "chapter_id": chapter_id},
         )
         await session.commit()
+    return scene_id
 
+
+async def test_another_users_scene_cannot_be_continued() -> None:
+    """Verify continuation hides another user's scene with HTTP 404."""
+    scene_id = await _seed_foreign_scene()
     async with _client() as client:
-        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
+        response = await client.post(f"/api/writing/scenes/{scene_id}/continue")
         assert response.status_code == 404
 
 
-async def test_a_missing_chapter_is_still_a_404_on_the_plain_tier() -> None:
+async def test_a_missing_scene_is_still_a_404_on_the_plain_tier() -> None:
     """Resolution first moved the builder behind it; the normal paths keep 404.
 
     No profile anywhere and the environment tier resolving to the fake: the
-    missing chapter is refused with HTTP 404 exactly as before the reorder.
+    missing scene is refused with HTTP 404 exactly as before the reorder.
     """
     async with _client() as client:
-        response = await client.post(f"/api/writing/chapters/{uuid4()}/continue")
+        response = await client.post(f"/api/writing/scenes/{uuid4()}/continue")
     assert response.status_code == 404
 
 
-async def test_a_broken_key_wins_over_a_missing_chapter(
+async def test_a_broken_key_wins_over_a_missing_scene(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A broken key plus a missing chapter is the error frame, never a 404.
+    """A broken key plus a missing scene is the error frame, never a 404.
 
     Resolution runs before the builder, so the lost key refuses first even
-    when the chapter does not exist: a future reorder that resolves the
-    chapter before the provider would surface a 404 instead, and this pins
+    when the scene does not exist: a future reorder that resolves the
+    scene before the provider would surface a 404 instead, and this pins
     the current order.
     """
     monkeypatch.setenv("NARRE_KEYRING", "off")
@@ -586,16 +611,38 @@ async def test_a_broken_key_wins_over_a_missing_chapter(
         await session.commit()
 
     async with _client() as client:
-        response = await client.post(f"/api/writing/chapters/{uuid4()}/continue")
+        response = await client.post(f"/api/writing/scenes/{uuid4()}/continue")
 
     assert response.status_code == 200
     assert response.text == 'event: error\ndata: {"code": "key-unavailable"}\n\n'
+
+
+async def test_the_old_chapter_endpoint_is_gone() -> None:
+    """The chapter continue endpoint is removed (W4 §5): no UI consumes it
+    post-rebuild, and the scene endpoint is the one door. A chapter id posted
+    to the old path is a 404/405, never a stream."""
+    async with _client() as client:
+        novel = await client.post("/api/writing/novels", json={"title": "Der Nebel"})
+        chapter = await client.post(
+            f"/api/writing/novels/{novel.json()['id']}/chapters", json={"title": "Ankunft"}
+        )
+        response = await client.post(f"/api/writing/chapters/{chapter.json()['id']}/continue")
+    assert response.status_code in (404, 405)
 
 
 _INSTRUCTION_END = (
     "Continue the chapter in the same voice. Keep the language of the existing "
     "text. Return only the new text, without a heading or commentary."
 )
+
+
+def _pred(title: str, body: str, chapter_id: UUID | None = None) -> PredecessorScene:
+    """One earlier scene in a named chapter — the predecessor unit, nearest first."""
+    return PredecessorScene(
+        chapter_id=chapter_id if chapter_id is not None else uuid4(),
+        chapter_title=title,
+        body=body,
+    )
 
 
 def test_each_section_renders_under_its_heading_and_the_instruction_stays_last() -> None:
@@ -609,7 +656,7 @@ def test_each_section_renders_under_its_heading_and_the_instruction_stays_last()
         chapter_title="Ankunft",
         body="Der Nebel kam von See.",
         entities=[Entity(name="Mira", type="character", content="Die Wanderin.", aliases=[])],
-        predecessors=[Chapter(title="Ursprung", position=0, body="Mira kam.")],
+        predecessors=[_pred("Ursprung", "Mira kam.")],
         genre="Mystery",
         blurb="Ein Nebeljahr.",
     )
@@ -650,7 +697,7 @@ def test_a_zero_floor_slice_omits_its_section_entirely() -> None:
         chapter_title="Ankunft",
         body="Der Nebel kam von See.",
         entities=[Entity(name="Mira", type="character", content="Die Wanderin.", aliases=[])],
-        predecessors=[Chapter(title="Ursprung", position=0, body="Mira kam.")],
+        predecessors=[_pred("Ursprung", "Mira kam.")],
         genre="Mystery",
         blurb="Ein Nebeljahr.",
     )
@@ -661,7 +708,7 @@ def test_a_zero_floor_slice_omits_its_section_entirely() -> None:
 
 
 def test_a_section_without_entries_is_absent_not_a_bare_heading() -> None:
-    """The ordinary first-chapter case: no entity and no predecessor section."""
+    """The ordinary first-scene case: no entity and no predecessor section."""
     budgets = ContextBudgets(
         immediate_text=2000, referenced_entities=500, recent_chapters=400, style_hints=0
     )
@@ -727,7 +774,7 @@ def test_a_slice_that_cannot_hold_its_heading_is_omitted_whole() -> None:
         chapter_title="Ankunft",
         body="Der Nebel kam von See.",
         entities=[Entity(name="Mira", type="character", content="Die Wanderin.", aliases=[])],
-        predecessors=[Chapter(title="Ursprung", position=0, body="Mira kam.")],
+        predecessors=[_pred("Ursprung", "Mira kam.")],
     )
     assert "Referenced entities:" not in prompt  # 22 < 20 + 3
     assert "Previous chapters:" not in prompt  # 20 < 18 + 3
@@ -740,7 +787,7 @@ def test_a_slice_that_cannot_hold_its_heading_is_omitted_whole() -> None:
         chapter_title="Ankunft",
         body="Der Nebel kam von See.",
         entities=[Entity(name="Mira", type="character", content="Die Wanderin.", aliases=[])],
-        predecessors=[Chapter(title="Ursprung", position=0, body="Mira kam.")],
+        predecessors=[_pred("Ursprung", "Mira kam.")],
     )
     # With the bare-heading fix, a section whose entries all skip is omitted
     # whole instead of rendering a heading alone.
@@ -763,8 +810,8 @@ def test_predecessors_render_nearest_first_with_hard_cut_tails() -> None:
         chapter_title="Ankunft",
         body="Der Nebel kam von See.",
         predecessors=[
-            Chapter(title="Naehe", position=1, body=near_body),
-            Chapter(title="Ursprung", position=0, body=old_body),
+            _pred("Naehe", near_body),
+            _pred("Ursprung", old_body),
         ],
     )
     assert prompt.index("### Naehe") < prompt.index("### Ursprung")
@@ -773,6 +820,81 @@ def test_predecessors_render_nearest_first_with_hard_cut_tails() -> None:
     assert near_body in prompt  # first claim: the whole short body fits
     assert old_body not in prompt  # the remainder was hard-cut
     assert old_body[-60:] in prompt
+
+
+def test_the_active_chapters_earlier_scenes_render_without_a_chapter_separator() -> None:
+    """The chapter's own earlier scenes share the header's chapter: no ``###``
+    separator repeats it, and they arrive nearest first (reverse position)."""
+    active = uuid4()
+    budgets = ContextBudgets(
+        immediate_text=2000, referenced_entities=0, recent_chapters=400, style_hints=0
+    )
+    prompt = continuation_prompt(
+        budgets=budgets,
+        novel_title="Der Nebel",
+        chapter_title="Ankunft",
+        active_chapter_id=active,
+        body="Dritte Szene.",
+        predecessors=[
+            PredecessorScene(chapter_id=active, chapter_title="Ankunft", body="Zweite Szene."),
+            PredecessorScene(chapter_id=active, chapter_title="Ankunft", body="Erste Szene."),
+        ],
+    )
+    section = prompt[prompt.index("Previous chapters:") : prompt.index("Continue the chapter")]
+    assert "###" not in section  # the active chapter's title is the header's, not a separator
+    assert section.index("Zweite Szene.") < section.index("Erste Szene.")  # nearest first
+
+
+def test_earlier_chapters_scenes_carry_their_title_as_separator() -> None:
+    """Crossing into an earlier chapter renders its title once as a separator;
+    the chapter's scenes follow nearest first beneath it."""
+    active = uuid4()
+    naehe, ankunft = uuid4(), uuid4()
+    budgets = ContextBudgets(
+        immediate_text=2000, referenced_entities=0, recent_chapters=400, style_hints=0
+    )
+    prompt = continuation_prompt(
+        budgets=budgets,
+        novel_title="Der Nebel",
+        chapter_title="Drittes",
+        active_chapter_id=active,
+        body="Aktiv.",
+        predecessors=[
+            PredecessorScene(chapter_id=naehe, chapter_title="Naehe", body="N2."),
+            PredecessorScene(chapter_id=naehe, chapter_title="Naehe", body="N1."),
+            PredecessorScene(chapter_id=ankunft, chapter_title="Ankunft", body="A2."),
+            PredecessorScene(chapter_id=ankunft, chapter_title="Ankunft", body="A1."),
+        ],
+    )
+    section = prompt[prompt.index("Previous chapters:") : prompt.index("Continue the chapter")]
+    assert section.count("### Naehe") == 1
+    assert section.count("### Ankunft") == 1
+    assert section.index("### Naehe") < section.index("N2.") < section.index("N1.")
+    assert section.index("N1.") < section.index("### Ankunft") < section.index("A2.")
+    assert section.index("A2.") < section.index("A1.")
+
+
+def test_an_empty_predecessor_scene_is_skipped() -> None:
+    """An empty scene carries no prose: it renders neither a separator nor an
+    entry, and a section with only empty scenes is absent whole."""
+    active = uuid4()
+    other = uuid4()
+    budgets = ContextBudgets(
+        immediate_text=2000, referenced_entities=0, recent_chapters=400, style_hints=0
+    )
+    prompt = continuation_prompt(
+        budgets=budgets,
+        novel_title="Der Nebel",
+        chapter_title="Ankunft",
+        active_chapter_id=active,
+        body="Aktiv.",
+        predecessors=[
+            PredecessorScene(chapter_id=other, chapter_title="Leer", body=""),
+            PredecessorScene(chapter_id=other, chapter_title="Leer", body="   "),
+        ],
+    )
+    assert "Previous chapters:" not in prompt
+    assert "Leer" not in prompt
 
 
 def test_style_notes_truncate_to_the_style_budget() -> None:
@@ -809,13 +931,13 @@ def test_style_notes_are_omitted_when_the_novel_carries_neither_genre_nor_blurb(
 
 
 async def _fixture_novel(session: AsyncSession) -> Novel:
-    """A novel with style facts, two predecessor chapters and three entities."""
+    """A novel with style facts, two predecessor chapters (one scene each) and three entities."""
     service = WritingService(session, LOCAL_USER_ID)
     novel = await service.create_novel("Der Nebel", genre="Mystery", blurb="Ein Nebeljahr.")
     first = await service.create_chapter(novel.id, "Ankunft")
-    first.body = "Der Ursprung: Mira kam von See."
+    await service.create_scene(first.id, _scene_payload("Der Ursprung: Mira kam von See."))
     second = await service.create_chapter(novel.id, "Naehe")
-    second.body = "Die Naehe wuchs. Brander schwieg."
+    await service.create_scene(second.id, _scene_payload("Die Naehe wuchs. Brander schwieg."))
     session.add_all(
         [
             Entity(
@@ -848,17 +970,24 @@ async def _fixture_novel(session: AsyncSession) -> Novel:
     return novel
 
 
+def _scene_payload(body: str) -> SceneCreate:
+    """A SceneCreate carrying just the prose — the fixture's scene seed."""
+    return SceneCreate(body=body)
+
+
 async def test_an_entity_found_by_alias_in_different_case_is_ordered_by_first_occurrence() -> None:
     """The scan folds both sides: an uppercase alias match orders before a later name."""
     async with Session() as session:
         novel = await _fixture_novel(session)
         service = WritingService(session, LOCAL_USER_ID)
         current = await service.create_chapter(novel.id, "Schweigen")
-        current.body = "DIE WANDERIN ging voran. Spater schwieg Brander."
+        scene = await service.create_scene(
+            current.id, _scene_payload("DIE WANDERIN ging voran. Spater schwieg Brander.")
+        )
         await session.commit()
 
         prompt = await service.continuation_prompt(
-            current.id, context_window=8192, max_output_tokens=1024, model="fake"
+            scene.id, context_window=8192, max_output_tokens=1024, model="fake"
         )
     assert prompt.index("### Mira (character)") < prompt.index("### Brander (character)")
     assert "Die Wanderin von der See." in prompt
@@ -872,15 +1001,64 @@ async def test_predecessors_arrive_nearest_first() -> None:
         novel = await _fixture_novel(session)
         service = WritingService(session, LOCAL_USER_ID)
         current = await service.create_chapter(novel.id, "Drittes")
-        current.body = "Das Kapitel endet hier."
+        scene = await service.create_scene(current.id, _scene_payload("Das Kapitel endet hier."))
         await session.commit()
 
-        prompt = await service.continuation_prompt(current.id)
+        prompt = await service.continuation_prompt(scene.id)
     assert prompt.index("### Naehe") < prompt.index("### Ankunft")
     assert "Die Naehe wuchs. Brander schwieg." in prompt
     assert "Der Ursprung: Mira kam von See." in prompt
-    assert "Das Kapitel endet hier." in prompt  # the current chapter is the tail itself
+    assert "Das Kapitel endet hier." in prompt  # the active scene is the tail itself
     assert "### Drittes" not in prompt
+
+
+async def test_the_tail_is_the_active_scene_not_the_whole_chapter() -> None:
+    """The immediate slice carries the active scene's prose alone; the chapter's
+    earlier scenes ride the predecessor section, nearest first, no separator."""
+    async with Session() as session:
+        service = WritingService(session, LOCAL_USER_ID)
+        novel = await service.create_novel("Der Nebel")
+        chapter = await service.create_chapter(novel.id, "Ankunft")
+        await service.create_scene(chapter.id, _scene_payload("Erste Szene des Kapitels."))
+        await service.create_scene(chapter.id, _scene_payload("Zweite Szene des Kapitels."))
+        active = await service.create_scene(chapter.id, _scene_payload("Dritte Szene aktiv."))
+        await session.commit()
+
+        prompt = await service.continuation_prompt(active.id)
+    # The tail is the active scene's own prose.
+    assert "Text so far:\nDritte Szene aktiv." in prompt
+    # The earlier scenes are predecessors, nearest first, under no chapter separator.
+    section = prompt[prompt.index("Previous chapters:") : prompt.index("Continue the chapter")]
+    assert "###" not in section
+    assert section.index("Zweite Szene des Kapitels.") < section.index("Erste Szene des Kapitels.")
+    # The active scene's prose is not duplicated into the predecessors.
+    assert "Dritte Szene aktiv." not in section
+
+
+async def test_earlier_chapters_scenes_arrive_nearest_first_with_separators() -> None:
+    """Earlier chapters' scenes ride nearest first — chapter reverse, scenes
+    reverse within each — with the chapter title as the boundary separator."""
+    async with Session() as session:
+        service = WritingService(session, LOCAL_USER_ID)
+        novel = await service.create_novel("Der Nebel")
+        first = await service.create_chapter(novel.id, "Ankunft")
+        await service.create_scene(first.id, _scene_payload("A1 Prosa."))
+        await service.create_scene(first.id, _scene_payload("A2 Prosa."))
+        second = await service.create_chapter(novel.id, "Naehe")
+        await service.create_scene(second.id, _scene_payload("N1 Prosa."))
+        await service.create_scene(second.id, _scene_payload("N2 Prosa."))
+        current = await service.create_chapter(novel.id, "Drittes")
+        active = await service.create_scene(current.id, _scene_payload("Aktive Szene."))
+        await session.commit()
+
+        prompt = await service.continuation_prompt(active.id)
+    section = prompt[prompt.index("Previous chapters:") : prompt.index("Continue the chapter")]
+    assert section.count("### Naehe") == 1
+    assert section.count("### Ankunft") == 1
+    # Naehe (nearer chapter) before Ankunft; within each, the later scene first.
+    assert section.index("### Naehe") < section.index("N2 Prosa.") < section.index("N1 Prosa.")
+    assert section.index("N1 Prosa.") < section.index("### Ankunft")
+    assert section.index("### Ankunft") < section.index("A2 Prosa.") < section.index("A1 Prosa.")
 
 
 async def test_a_small_window_omits_sections_whose_heading_does_not_fit() -> None:
@@ -891,19 +1069,19 @@ async def test_a_small_window_omits_sections_whose_heading_does_not_fit() -> Non
         novel = await _fixture_novel(session)
         service = WritingService(session, LOCAL_USER_ID)
         current = await service.create_chapter(novel.id, "Klein")
-        current.body = "Rest."
+        scene = await service.create_scene(current.id, _scene_payload("Rest."))
         await session.commit()
 
         # allocate(1000, 997): room 10 — the fixed scaffold alone exceeds the
         # immediate slice, so the builder refuses instead of overflowing.
         with pytest.raises(BudgetImpossibleError):
             await service.continuation_prompt(
-                current.id, context_window=1000, max_output_tokens=997, model="fake"
+                scene.id, context_window=1000, max_output_tokens=997, model="fake"
             )
         # allocate(1000, 990): room 35 — same refusal: the scaffold does not fit.
         with pytest.raises(BudgetImpossibleError):
             await service.continuation_prompt(
-                current.id, context_window=1000, max_output_tokens=990, model="fake"
+                scene.id, context_window=1000, max_output_tokens=990, model="fake"
             )
 
 
@@ -913,17 +1091,18 @@ async def test_an_impossible_pair_is_refused_before_any_gathering() -> None:
         novel = await _fixture_novel(session)
         service = WritingService(session, LOCAL_USER_ID)
         current = await service.create_chapter(novel.id, "Weiter")
+        scene = await service.create_scene(current.id, _scene_payload("Weiter geht es."))
         await session.commit()
 
         with pytest.raises(BudgetImpossibleError) as raised:
             await service.continuation_prompt(
-                current.id, context_window=4096, max_output_tokens=5000, model="vendor/small"
+                scene.id, context_window=4096, max_output_tokens=5000, model="vendor/small"
             )
         message = str(raised.value)
         assert "4096" in message
         assert "5000" in message
         assert "vendor/small" in message
-        # A missing chapter stays inside the refusal: gathering never ran.
+        # A missing scene stays inside the refusal: gathering never ran.
         with pytest.raises(BudgetImpossibleError):
             await service.continuation_prompt(
                 uuid4(), context_window=4096, max_output_tokens=5000, model="vendor/small"
@@ -936,12 +1115,12 @@ async def test_a_tiny_window_omits_the_three_small_sections() -> None:
         novel = await _fixture_novel(session)
         service = WritingService(session, LOCAL_USER_ID)
         current = await service.create_chapter(novel.id, "Ende")
-        current.body = "Sie schwiegen."
+        scene = await service.create_scene(current.id, _scene_payload("Sie schwiegen."))
         await session.commit()
 
         with pytest.raises(BudgetImpossibleError):
             await service.continuation_prompt(
-                current.id, context_window=1000, max_output_tokens=999, model="fake"
+                scene.id, context_window=1000, max_output_tokens=999, model="fake"
             )
 
 

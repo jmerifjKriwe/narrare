@@ -1,8 +1,9 @@
 """Duplicating a novel: one transaction copies the book and every chapter.
 
 The copy keeps the book's own facts — genre, front matter, the wizard's
-settings, status, the series link — and its chapters' titles, bodies and
-positions. The shelf's tracking starts fresh: no volume, no archive
+settings, status, the series link — and its chapters' titles and positions,
+with each chapter's scenes (prose, overline, in-story label) riding along.
+The shelf's tracking starts fresh: no volume, no archive
 stamp, no export trace. The refusals are the shelf's own: a foreign or
 unknown book is a 404 that writes nothing, and a copy that dies mid-write
 leaves no half book behind.
@@ -46,8 +47,9 @@ async def _add_chapter(client: AsyncClient, novel_id: str, title: str, body: str
     created = await client.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": title})
     assert created.status_code == 201
     chapter_id = created.json()["id"]
-    written = await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": body})
-    assert written.status_code == 200
+    # The prose lives on a scene now (W4 §5): the chapter is the shell.
+    written = await client.post(f"/api/writing/chapters/{chapter_id}/scenes", json={"body": body})
+    assert written.status_code == 201
     return chapter_id
 
 
@@ -120,12 +122,22 @@ async def test_the_copy_carries_the_books_own_facts() -> None:
         assert stored.last_exported_at is None
 
 
-async def test_the_chapters_keep_titles_bodies_and_positions() -> None:
+async def test_the_chapters_keep_titles_positions_and_their_scenes() -> None:
     async with _client() as client:
         novel_id = await _create_novel(client)
-        await _add_chapter(client, novel_id, "Ankunft", "Der Nebel legt sich über die Bucht.")
+        first = await _add_chapter(
+            client, novel_id, "Ankunft", "Der Nebel legt sich über die Bucht."
+        )
         await _add_chapter(client, novel_id, "Die Stadt", "Gassen wie graue Bänder.")
         await _add_chapter(client, novel_id, "Der Turm", "Ein Licht dreht sich im Kreis.")
+        # The overline and in-story label ride the copy too: label the first
+        # chapter's scene so the assertion has something to carry.
+        first_scene = (await client.get(f"/api/writing/chapters/{first}/scenes")).json()[0]
+        labeled = await client.put(
+            f"/api/writing/scenes/{first_scene['id']}",
+            json={"setting": "Hafen bei Nacht", "story_time": "Dritte Stunde"},
+        )
+        assert labeled.status_code == 200
         # A rearranged rail: the copy keeps this order, not creation order.
         listed = (await client.get(f"/api/writing/novels/{novel_id}/chapters")).json()
         reordered = [listed[2]["id"], listed[0]["id"], listed[1]["id"]]
@@ -141,12 +153,29 @@ async def test_the_chapters_keep_titles_bodies_and_positions() -> None:
 
         original = (await client.get(f"/api/writing/novels/{novel_id}/chapters")).json()
         copied = (await client.get(f"/api/writing/novels/{copy['id']}/chapters")).json()
-        assert [(c["title"], c["body"], c["position"]) for c in copied] == [
-            (c["title"], c["body"], c["position"]) for c in original
+        assert [(c["title"], c["position"]) for c in copied] == [
+            (c["title"], c["position"]) for c in original
         ]
         assert [c["position"] for c in copied] == [0, 1, 2]
         # New rows, not shared ones.
         assert {c["id"] for c in copied}.isdisjoint({c["id"] for c in original})
+        # The prose rides the scenes: each copy chapter carries its original's
+        # scenes — body, overline, in-story label and position — as new rows.
+        for source, target in zip(original, copied, strict=True):
+            source_scenes = (
+                await client.get(f"/api/writing/chapters/{source['id']}/scenes")
+            ).json()
+            target_scenes = (
+                await client.get(f"/api/writing/chapters/{target['id']}/scenes")
+            ).json()
+            assert [
+                (s["title"], s["body"], s["setting"], s["story_time"], s["position"])
+                for s in target_scenes
+            ] == [
+                (s["title"], s["body"], s["setting"], s["story_time"], s["position"])
+                for s in source_scenes
+            ]
+            assert {s["id"] for s in target_scenes}.isdisjoint({s["id"] for s in source_scenes})
         assert copy["chapter_count"] == 3
         assert copy["word_count"] == original_novel["word_count"]
 
@@ -214,11 +243,7 @@ async def test_a_foreign_novel_is_404_and_writes_nothing() -> None:
         foreign = Novel(user_id=OTHER_USER, title="Fremd")
         session.add(foreign)
         await session.flush()
-        session.add(
-            Chapter(
-                user_id=OTHER_USER, novel_id=foreign.id, title="Kapitel", position=0, body="Text"
-            )
-        )
+        session.add(Chapter(user_id=OTHER_USER, novel_id=foreign.id, title="Kapitel", position=0))
         await session.commit()
         foreign_id = foreign.id
 

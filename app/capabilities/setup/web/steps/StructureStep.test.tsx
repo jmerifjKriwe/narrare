@@ -31,7 +31,7 @@ import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
-import { storePreSetupLocale } from "../preSetupLocale";
+import { storePreSetupLocale } from "@shell/lib/preSetupLocale";
 import { routes } from "../routes";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
@@ -321,7 +321,7 @@ describe("the structure step's header", () => {
     renderStructure();
     await screen.findByRole("heading", { level: 1 });
 
-    const group = screen.getByRole("radiogroup", { name: de["setup.welcome.language"] });
+    const group = screen.getByRole("radiogroup", { name: de["shell.language"] });
     const radios = within(group).getAllByRole("radio");
     expect(radios.map((radio) => radio.textContent)).toEqual(["DE", "EN", "FR"]);
     expect(radios[0].getAttribute("aria-checked")).toBe("true");

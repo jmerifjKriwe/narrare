@@ -28,7 +28,7 @@ from app.capabilities.knowledge.repository import (
     EntityRepository,
     EntitySuggestionRepository,
 )
-from app.kernel.contracts.models import ENTITY_TYPES, Chapter, Novel
+from app.kernel.contracts.models import ENTITY_TYPES, Chapter, Novel, Scene
 from app.kernel.llm.audit import record_call
 from app.kernel.llm.resolution import resolve_provider
 from app.kernel.prompts import render
@@ -286,6 +286,33 @@ def parse_findings(answer: str) -> list[ParsedFinding]:
     return findings
 
 
+async def _prose_by_chapter(
+    session: AsyncSession, user_id: UUID, chapter_ids: Sequence[UUID]
+) -> dict[UUID, str]:
+    """Each chapter's prose as its scenes carry it (W4 §5): the scene bodies
+    joined in position order with a blank line, the manuscript's paragraph
+    seam. A chapter is a grouping shell now — its prose lives on its scenes —
+    so the jobs read the scenes, never the retired chapter body. The join is
+    the one convention the interchange export shares: a single-scene chapter
+    reads back verbatim (the migration's wrap), an empty chapter reads "".
+    Scoped to the job's owner; chapters without scenes have no entry and the
+    caller's ``.get(..., "")`` answers the empty prose.
+    """
+    if not chapter_ids:
+        return {}
+    scenes = (
+        await session.scalars(
+            select(Scene)
+            .where(Scene.chapter_id.in_(chapter_ids), Scene.user_id == user_id)
+            .order_by(Scene.chapter_id, Scene.position)
+        )
+    ).all()
+    bodies: dict[UUID, list[str]] = {}
+    for scene in scenes:
+        bodies.setdefault(scene.chapter_id, []).append(scene.body)
+    return {chapter_id: "\n\n".join(parts) for chapter_id, parts in bodies.items()}
+
+
 async def extract_entities(
     session: AsyncSession, job: Job, report: ProgressReport
 ) -> dict[str, object]:
@@ -318,7 +345,7 @@ async def extract_entities(
         # as a failed row the user can see, not disappear from the lane.
         raise ValueError(f"chapter {chapter_id} is gone or not the job owner's")
 
-    body = chapter.body
+    body = (await _prose_by_chapter(session, job.user_id, [chapter.id])).get(chapter.id, "")
     truncated = len(body) > BODY_LIMIT
     # The prompt renders through the registry's effective chain — the novel's
     # override, else the user's global one, else the bundled template. The cut
@@ -381,31 +408,34 @@ async def extract_entities(
 
 def _chapter_groups(
     chapters: Sequence[Chapter],
+    prose: dict[UUID, str],
 ) -> tuple[list[list[Chapter]], list[dict[str, object]]]:
     """Pack chapters into prompt-sized groups in reading order.
 
-    A group carries at most ``BODY_LIMIT`` characters of body, so a pass cannot
-    overflow a real model's window. Chapters over the bound on their own come
-    back as skipped: a chapter half-read would yield findings that claim a
-    completeness the check does not have.
+    A group carries at most ``BODY_LIMIT`` characters of prose, so a pass cannot
+    overflow a real model's window. The prose is the chapter's scenes joined
+    (``_prose_by_chapter``), not a chapter column. Chapters over the bound on
+    their own come back as skipped: a chapter half-read would yield findings
+    that claim a completeness the check does not have.
     """
     groups: list[list[Chapter]] = []
     skipped: list[dict[str, object]] = []
     current: list[Chapter] = []
     size = 0
     for chapter in chapters:
-        if len(chapter.body) > BODY_LIMIT:
+        body = prose.get(chapter.id, "")
+        if len(body) > BODY_LIMIT:
             # Position and stored title, no invented wording: a chapter usually
             # has no title yet (renaming is WP6), and the dock carries the
             # localized fallback. The backend must not speak one locale.
             skipped.append({"position": chapter.position, "title": chapter.title})
             continue
-        if current and size + len(chapter.body) > BODY_LIMIT:
+        if current and size + len(body) > BODY_LIMIT:
             groups.append(current)
             current = []
             size = 0
         current.append(chapter)
-        size += len(chapter.body)
+        size += len(body)
     if current:
         groups.append(current)
     return groups, skipped
@@ -459,7 +489,8 @@ async def check_consistency(
     entities = await EntityRepository(session, job.user_id).list_for_novel(novel_id)
 
     canon = [(entity.name, entity.type) for entity in entities]
-    groups, skipped = _chapter_groups(chapters)
+    prose = await _prose_by_chapter(session, job.user_id, [chapter.id for chapter in chapters])
+    groups, skipped = _chapter_groups(chapters, prose)
     resolved = await resolve_provider(session, job.user_id, "knowledge.check-consistency")
 
     async def audit(call: AuditedCall) -> None:
@@ -500,7 +531,8 @@ async def check_consistency(
             job.user_id,
             CONSISTENCY_KEY,
             consistency_variables(
-                entities=canon, chapters=[(chapter.title, chapter.body) for chapter in group]
+                entities=canon,
+                chapters=[(chapter.title, prose.get(chapter.id, "")) for chapter in group],
             ),
             novel_id=novel_id,
         )

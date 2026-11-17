@@ -59,6 +59,7 @@ from app.capabilities.settings.schemas import (
 )
 from app.capabilities.settings.service import SettingsService
 from app.kernel.auth import SetupRequiredError, current_user_id
+from app.kernel.contracts.models import User
 from app.kernel.db.session import get_session
 from app.kernel.llm.models import LLMProvider, ProviderProfile
 from app.kernel.secrets import KeyUnavailableError, NoKeyStoreError
@@ -127,6 +128,22 @@ def _provider_masked(provider: LLMProvider) -> ProviderRead:
     )
 
 
+def _settings(user: User | None) -> SettingsRead:
+    """The settings row as every read shows it; an uninstalled instance has
+    no answers, and a read creates nothing (D14)."""
+    if user is None:
+        return SettingsRead(
+            locale=None, theme=None, author_name=None, daily_goal_words=None, email=None
+        )
+    return SettingsRead(
+        locale=user.locale,
+        theme=user.theme,
+        author_name=user.author_name,
+        daily_goal_words=user.daily_goal_words,
+        email=user.email,
+    )
+
+
 def _refusal(error: ProfileRefusedError | ProviderRefusedError) -> HTTPException:
     """The gate's refusal as a 422 naming each missing or refused field."""
     return HTTPException(
@@ -164,16 +181,20 @@ def _provider_errors(error: Exception) -> HTTPException:
 
 @router.get("", response_model=SettingsRead)
 async def get_settings(service: ServiceDep) -> SettingsRead:
-    return SettingsRead(locale=await service.read_locale(), theme=await service.read_theme())
+    return _settings(await service.read())
 
 
 @router.patch("", response_model=SettingsRead)
 async def update_settings(payload: SettingsUpdate, service: ServiceDep) -> SettingsRead:
+    """The preference row's write in one transaction: the locale is always
+    carried (present-and-nullable — a ``null`` hands it back to the browser,
+    an absent one is the schema's refusal); the author name and the daily
+    goal are partial — a carried ``null`` clears, an absent field keeps."""
     try:
-        locale = await service.write_locale(payload.locale)
+        user = await service.write(payload)
     except SetupRequiredError:
         raise HTTPException(status_code=409, detail="setup required") from None
-    return SettingsRead(locale=locale, theme=await service.read_theme())
+    return _settings(user)
 
 
 @router.patch("/theme", response_model=SettingsThemeRead)

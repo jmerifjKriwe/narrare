@@ -40,15 +40,20 @@ export const queryClient = new QueryClient({
 });
 
 /**
- * The stored settings row, as `{ locale, theme }` — the same contract the boot
- * effect in the shell used to own: an answer carries the row's choices, an
- * unreachable service resolves to `null`s, and the browser's language and the
- * system's colour scheme decide from there. The outage is an answer, not an
- * error state, so no consumer needs a fallback branch of its own.
+ * The stored settings row, as `{ locale, theme, author_name, email }` — the
+ * same contract the boot effect in the shell used to own: an answer carries
+ * the row's choices, an unreachable service resolves to `null`s, and the
+ * browser's language and the system's colour scheme decide from there. The
+ * outage is an answer, not an error state, so no consumer needs a fallback
+ * branch of its own. The profile's two fields (W4 Task 10) ride the same
+ * read: the chrome's user block names `author_name`, falling back to the
+ * row's `email` label — the settings capability owns the user row.
  */
 export function useSettingsQuery(): UseQueryResult<{
   locale: string | null;
   theme: string | null;
+  author_name: string | null;
+  email: string | null;
 }> {
   return useQuery({
     queryKey: ["settings"],
@@ -59,12 +64,37 @@ export function useSettingsQuery(): UseQueryResult<{
     queryFn: async () => {
       try {
         const { data } = await client.GET("/api/settings");
-        return { locale: data?.locale ?? null, theme: data?.theme ?? null };
+        return {
+          locale: data?.locale ?? null,
+          theme: data?.theme ?? null,
+          author_name: data?.author_name ?? null,
+          email: data?.email ?? null,
+        };
       } catch {
-        return { locale: null, theme: null };
+        return { locale: null, theme: null, author_name: null, email: null };
       }
     },
   });
+}
+
+/**
+ * The chrome's active book (W4 Task 10): the latest-edited unarchived novel
+ * — the shelf hero's own rule, read here because the shell owns the chrome
+ * and a capability's module never crosses into it (rule 1). The two homes
+ * state the same rule: parsed instants, strict comparison, ties keep the
+ * first row, archived books never lead. The workspace route (Task 11) will
+ * resolve the active book from its own param; until it lands, the rail's
+ * switcher and the topbar read this choice.
+ */
+export function activeNovelFallback(novels: readonly Novel[]): Novel | null {
+  let active: Novel | null = null;
+  for (const novel of novels) {
+    if (novel.archived_at != null) continue;
+    if (active === null || Date.parse(novel.updated_at) > Date.parse(active.updated_at)) {
+      active = novel;
+    }
+  }
+  return active;
 }
 
 /**

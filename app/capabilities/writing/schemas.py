@@ -6,6 +6,8 @@ from uuid import UUID  # noqa: TC003
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.kernel.contracts.models import WORD_GOAL_MAX, WORD_GOAL_MIN
+
 
 class WritingErrorRead(BaseModel):
     """The JSON body for missing resources and incomplete setup."""
@@ -24,15 +26,27 @@ class OrderMismatchRead(BaseModel):
     detail: OrderMismatchDetail
 
 
+class SceneOrderMismatchDetail(BaseModel):
+    code: str = "order_mismatch"
+    scene_ids: list[UUID]
+
+
+class SceneOrderMismatchRead(BaseModel):
+    """The 409 body for a scene-order mismatch: the stored ids in position order."""
+
+    detail: SceneOrderMismatchDetail
+
+
 class NovelCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     genre: str | None = Field(default=None, max_length=80)
     blurb: str | None = None
-    # The new-book dialog's word target (W3). The same bounds SetupRequest
-    # carries: the Integer column's own ceiling (2**31 - 1), so a larger
-    # goal is a 422 here, not an int32 overflow at the insert. Absent keeps
-    # the shelf's honest neutral — no guessed goal.
-    target_words: int | None = Field(default=None, ge=1, le=2_147_483_647)
+    # The new-book dialog's word target (W3). The same shared bounds
+    # SetupRequest carries (the kernel contract's WORD_GOAL_MIN/MAX): the
+    # Integer column's own ceiling, so a larger goal is a 422 here, not an
+    # int32 overflow at the insert. Absent keeps the shelf's honest neutral
+    # — no guessed goal.
+    target_words: int | None = Field(default=None, ge=WORD_GOAL_MIN, le=WORD_GOAL_MAX)
 
 
 class NovelRead(BaseModel):
@@ -71,6 +85,13 @@ class NovelRead(BaseModel):
     # carries one — the shelf then shows the count alone with an empty
     # track, never a guessed goal.
     target_words: int | None = None
+    # The wizard's other per-novel answers (W4 §5), read straight off the
+    # row — the book-settings surface edits what setup bound. None until
+    # the book carries an answer; the defaults keep old clients unbroken.
+    author_typology: str | None = None
+    dramatic_form: str | None = None
+    ai_role: str | None = None
+    canon_strictness: int | None = None
 
 
 class NovelUpdate(BaseModel):
@@ -90,6 +111,13 @@ class NovelUpdate(BaseModel):
     a positive number that needs a series link, and ``archived_at`` is a
     timestamp — carrying one archives the book, carrying ``null``
     unarchives it.
+
+    The wizard's per-novel answers (W4 §5) ride it too: ``target_words``
+    and the four setup settings — typology, dramatic form, AI role, canon
+    strictness — are checked at the service boundary against the kernel
+    contract's shared vocabularies and bounds, the same constants setup's
+    request validates against. A carried ``null`` clears the answer back
+    to the honest unset; the book-settings dialog edits what setup bound.
     """
 
     title: str | None = None
@@ -101,6 +129,11 @@ class NovelUpdate(BaseModel):
     series_id: UUID | None = None
     series_volume: int | None = None
     archived_at: datetime | None = None
+    target_words: int | None = None
+    author_typology: str | None = None
+    dramatic_form: str | None = None
+    ai_role: str | None = None
+    canon_strictness: int | None = None
 
 
 class ChapterCreate(BaseModel):
@@ -113,8 +146,9 @@ class ChapterUpdate(BaseModel):
     # `None` means unchanged (`exclude_none` keeps that); `""` after the
     # service's trim is the honest unnamed — the chapter list's placeholder
     # is a rendering, not a value. The length is the schema's one refusal.
+    # The prose lives on scenes now (W4 D1/D2): a chapter is a grouping
+    # shell, so its body is no longer a field this door carries.
     title: str | None = Field(default=None, max_length=200)
-    body: str | None = None
 
 
 class ChapterOrderUpdate(BaseModel):
@@ -137,9 +171,74 @@ class ChapterRead(BaseModel):
     novel_id: UUID
     title: str
     position: int
-    body: str
     created_at: datetime
     updated_at: datetime
+    # Derived from the chapter's scenes (W4 §5), not stored: how many
+    # scenes the chapter groups and how long they are together — a word
+    # per whitespace-separated token of each trimmed scene body. The
+    # defaults keep an empty chapter at zeros (D16 — a real state) and
+    # old clients reading the grown payload unbroken.
+    word_count: int = 0
+    scene_count: int = 0
+
+
+class SceneCreate(BaseModel):
+    # Empty is the honest default, the chapters' own rule: the database
+    # stores no locale, the scene list shows the localized placeholder for
+    # an untitled scene. The prose starts empty the same way; the overline
+    # and in-story label stay unset until the writer answers them.
+    title: str = Field(default="", max_length=200)
+    body: str = ""
+    setting: str | None = Field(default=None, max_length=200)
+    story_time: str | None = Field(default=None, max_length=200)
+
+
+class SceneUpdate(BaseModel):
+    """The PUT scene body: only the fields present are the change.
+
+    Title and body keep the chapter's rule — ``None`` is unchanged, ``""``
+    after the service's trim is the honest empty (the title's placeholder a
+    rendering, the body emptied). The two labels are present-and-nullable
+    like the novel's metadata: an absent field is no change, a carried
+    ``null`` clears the label back to the honest unset. The service reads
+    ``model_fields_set`` to tell a carried change from a missing one; the
+    lengths are the schema's one refusal.
+    """
+
+    title: str | None = Field(default=None, max_length=200)
+    body: str | None = None
+    setting: str | None = Field(default=None, max_length=200)
+    story_time: str | None = Field(default=None, max_length=200)
+
+
+class SceneOrderUpdate(BaseModel):
+    """The PUT scene-order body: the whole chapter, in its new order.
+
+    Every scene of the chapter and nothing else — an arrangement is a
+    permutation of the ids the chapter holds this moment, so the service
+    compares the body against the stored set as one whole and refuses a
+    stale one (a second tab's add, delete or repeat) with the current
+    order, rather than reshape what the writer no longer sees.
+    """
+
+    ids: list[UUID]
+
+
+class SceneRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    chapter_id: UUID
+    position: int
+    title: str
+    body: str
+    setting: str | None
+    story_time: str | None
+    created_at: datetime
+    updated_at: datetime
+    # Derived, not stored: a word per whitespace-separated token of the
+    # trimmed body, an empty body worth nothing — the shelf's one rule.
+    word_count: int = 0
 
 
 class ActivityPoint(BaseModel):
@@ -162,12 +261,22 @@ class ActivityRead(BaseModel):
     day after tomorrow without writing; ``weekly_average`` is the mean
     net words per day over ALL days of the window (zero-days in the
     basis), one decimal; ``today_words`` is today's net across novels.
+
+    The daily goal (W4 row 25) is the user's own ``daily_goal_words`` —
+    atelier scope, never a book target; ``None`` is the honest unset.
+    ``goal_met`` is true exactly when a goal is stored and today's net
+    reaches it; ``goal_remaining`` is what the day still owes,
+    ``max(0, goal - today_words)`` — a negative day owes the goal plus
+    the removal — and 0 when no goal is stored or the day is done.
     """
 
     points: list[ActivityPoint]
     streak_days: int
     weekly_average: float
     today_words: int
+    daily_goal_words: int | None
+    goal_met: bool
+    goal_remaining: int
 
 
 class ExportRequest(BaseModel):

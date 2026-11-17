@@ -17,13 +17,20 @@ and the next active book leads (#863); the new-book dialog creates the hero
 with a neutral word stand and the atelier's inherited answers — the setup
 book standing as their source — while the empty-shelf door creates with
 honest NULLs when no source remains; an API chapter write moves the banner
-through the shelf's own invalidation seam — without a reload; the pre-setup
-gate hands `/` to the welcome and the inverse gate hands `/setup` back; and
+through the shelf's own invalidation seam — without a reload; the banner's
+goal line reads the atelier's daily goal (W4 row 25): the unset neutral,
+the open remainder and the reached done-copy, never the hero book's pin;
+the pre-setup gate hands `/` to the welcome and the inverse gate hands `/setup` back; the
+app-wide chrome frames the shelf (W4 Task 10, D15/D17): the rail's nav and
+real book-switcher menu, the topbar's breadcrumb, word total, interim save
+chip, disabled ⌘K chip (#882), the language chip as the real switcher, the
+tri-state theme toggle and the user block's author_name → email fallback; and
 the dark face clears the same axe WCAG A/AA floor the setup suite rides
 (``assert_accessible``).
 """
 
 import json
+import re
 import zipfile
 from typing import TYPE_CHECKING
 
@@ -38,9 +45,11 @@ from app.capabilities.writing.e2e.conftest import (
     get_activity,
     get_novel,
     patch_novel,
+    set_author_name,
+    set_daily_goal,
     set_theme,
     word_body,
-    write_chapter,
+    write_scene,
 )
 from app.kernel.testing.a11y import assert_accessible
 from app.kernel.testing.db_rows import rows as _shared_rows
@@ -149,7 +158,7 @@ def _seed_klang_with_chapter(words: int) -> dict[str, object]:
     """The rich book: genre, blurb, target and one written chapter."""
     novel = create_novel(KLANG, genre=KLANG_GENRE, blurb=KLANG_BLURB, target_words=80000)
     chapter = create_chapter(str(novel["id"]), "Der erste Schnee")
-    write_chapter(str(chapter["id"]), word_body(words))
+    write_scene(str(chapter["id"]), word_body(words))
     return novel
 
 
@@ -160,6 +169,9 @@ def test_the_shelf_renders_the_rows_own_facts(page: Page, installed: Stack) -> N
     create_novel(GAERTNERIN, genre="Historischer Roman", target_words=50000)
     create_novel(WINTERHAUS)
     _seed_klang_with_chapter(1200)
+    # The atelier's daily goal (W4 row 25) — the banner reads the user's
+    # answer, not the hero book's target: 2.000 stored, 1.200 written.
+    set_daily_goal(2000)
 
     _goto_shelf(page)
     expect(page).to_have_title(f"{SHELF_TITLE} — Narrare")
@@ -192,14 +204,17 @@ def test_the_shelf_renders_the_rows_own_facts(page: Page, installed: Stack) -> N
     expect(gaertnerin.get_by_text("0 Kapitel", exact=True)).to_be_visible()
     expect(gaertnerin.get_by_text("0 %", exact=True)).to_be_visible()
 
-    # The metrics strip and the banner read the same rows.
+    # The metrics strip and the banner read the same rows. The banner's
+    # goal line is the daily goal — the hero-book pin ended (row 25); the
+    # hero panel above keeps the book's own pair.
     expect(_metric(page, "Aktive Projekte")).to_contain_text("3 Romane")
     expect(_metric(page, "Gesamtwörter")).to_contain_text("1.200")
     expect(_metric(page, "Schreibstreak")).to_contain_text("1 Tag")
     banner = _banner(page)
-    expect(banner).to_contain_text(f"Ziel für ‚{KLANG}‘: 1.200 / 80.000 Wörter")
+    expect(banner).to_contain_text("Heutiges Schreibziel: 2.000 Wörter")
     expect(banner).to_contain_text("Du hast heute bereits 1.200 Wörter verfasst.")
-    expect(banner).to_contain_text("Noch 78.800 Wörter bis zum Ziel.")
+    expect(banner).to_contain_text("Noch 800 Wörter bis zum Tagesziel.")
+    expect(banner).not_to_contain_text("Ziel für")
     expect(banner.get_by_text("40,0 W/Tag", exact=True)).to_be_visible()
     assert_accessible(page)
 
@@ -211,6 +226,7 @@ def test_the_shelf_renders_the_rows_own_facts(page: Page, installed: Stack) -> N
     ]
     assert _rows("SELECT title FROM chapters") == [("Der erste Schnee",)]
     assert _rows("SELECT SUM(words) FROM daily_words") == [(1200,)]
+    assert _rows("SELECT daily_goal_words FROM users") == [(2000,)]
 
 
 def test_search_answers_titles_genres_and_figures(page: Page, installed: Stack) -> None:
@@ -349,16 +365,16 @@ def test_filter_facets_compose_within_and_across_groups(page: Page, installed: S
 
 
 def test_duplicate_grows_the_shelf_with_an_equal_copy(page: Page, installed: Stack) -> None:
-    """Spec 4: Duplizieren copies the whole book — chapters, titles, bodies,
-    positions — under „<Titel> (Kopie)"; the copy is the newest row and leads
-    as the hero, the displaced hero joins the grid, and the copy starts fresh:
-    unarchived, never exported, no volume."""
+    """Spec 4: Duplizieren copies the whole book — chapters, titles, positions
+    and the scenes' prose — under „<Titel> (Kopie)"; the copy is the newest row
+    and leads as the hero, the displaced hero joins the grid, and the copy
+    starts fresh: unarchived, never exported, no volume."""
     novel = create_novel(KLANG, genre=KLANG_GENRE, blurb=KLANG_BLURB, target_words=80000)
     patch_novel(str(novel["id"]), status="draft")
     first = create_chapter(str(novel["id"]), "Das Flüstern im Wald")
-    write_chapter(str(first["id"]), word_body(300))
+    write_scene(str(first["id"]), word_body(300))
     second = create_chapter(str(novel["id"]), "Die Grenze zwischen Welten")
-    write_chapter(str(second["id"]), word_body(200))
+    write_scene(str(second["id"]), word_body(200))
     create_novel(WINTERHAUS)  # created last → the hero; Klang stands in the grid
 
     _goto_shelf(page)
@@ -389,10 +405,16 @@ def test_duplicate_grows_the_shelf_with_an_equal_copy(page: Page, installed: Sta
     # fresh shelf tracking beside the carried facts.
     original_id = _rows("SELECT id FROM novels WHERE title = :t", {"t": KLANG})[0][0]
     copy_id = _rows("SELECT id FROM novels WHERE title = :t", {"t": COPY_TITLE})[0][0]
-    chapters_sql = (
-        "SELECT title, body, position FROM chapters WHERE novel_id = :n ORDER BY position"
-    )
+    chapters_sql = "SELECT title, position FROM chapters WHERE novel_id = :n ORDER BY position"
     assert _rows(chapters_sql, {"n": copy_id}) == _rows(chapters_sql, {"n": original_id})
+    # The prose rides the scenes (W4 §5): the copy carries each chapter's scenes
+    # verbatim — title, body and position — in the same book reading order.
+    scenes_sql = (
+        "SELECT s.title, s.body, s.position FROM scenes s"
+        " JOIN chapters c ON c.id = s.chapter_id"
+        " WHERE c.novel_id = :n ORDER BY c.position, s.position"
+    )
+    assert _rows(scenes_sql, {"n": copy_id}) == _rows(scenes_sql, {"n": original_id})
     assert _rows(
         "SELECT genre, blurb, target_words, status, archived_at, last_exported_at, series_volume"
         " FROM novels WHERE title = :t",
@@ -647,7 +669,9 @@ def test_the_new_book_dialog_creates_the_hero_end_to_end(
     expect(hero.get_by_text("Kapitel", exact=True)).to_be_visible()
     expect(hero.get_by_text("/ 30.000 Wörter", exact=True)).to_be_visible()
     expect(hero.get_by_text("0 %", exact=True)).to_be_visible()
-    expect(_banner(page)).to_contain_text("Ziel für ‚Die Prüferin‘: 0 / 30.000 Wörter")
+    # The banner's goal is the atelier's — none is stored on this fresh
+    # instance, so the honest unset stands (row 25), not the new book's pin.
+    expect(_banner(page)).to_contain_text("Noch kein Schreibziel")
     expect(_metric(page, "Aktive Projekte")).to_contain_text("2 Romane")
     expect(_metric(page, "Gesamtwörter")).to_contain_text("0")
     expect(_metric(page, "Schreibstreak")).to_contain_text("0 Tage")
@@ -741,17 +765,20 @@ def test_an_api_chapter_write_moves_the_banner_through_the_seam(
     the average move WITHOUT a reload, and the aggregate is the rows' own."""
     create_novel(WINTERHAUS, target_words=40000)
     novel = create_novel(KLANG, target_words=60000)  # created last → the hero
+    # The daily goal rides the same aggregate (row 25): 600 stored, the
+    # day empty — the remainder moves with the day's words, not the book.
+    set_daily_goal(600)
 
     _goto_shelf(page)
     banner = _banner(page)
     expect(banner).to_contain_text(BANNER_NEUTRAL)
-    expect(banner).to_contain_text(f"Ziel für ‚{KLANG}‘: 0 / 60.000 Wörter")
+    expect(banner).to_contain_text("Heutiges Schreibziel: 600 Wörter")
     expect(_metric(page, "Schreibstreak")).to_contain_text("0 Tage")
     expect(banner.get_by_text("0,0 W/Tag", exact=True)).to_be_visible()
 
     # The API write: 150 words land on today's ledger row.
     chapter = create_chapter(str(novel["id"]), "Der erste Schnee")
-    write_chapter(str(chapter["id"]), word_body(150))
+    write_scene(str(chapter["id"]), word_body(150))
 
     # The cache holds — no invalidation has fired, the banner still speaks the
     # old answer (the 30 s staleTime, honestly stale until the family asks).
@@ -764,10 +791,10 @@ def test_an_api_chapter_write_moves_the_banner_through_the_seam(
     expect(page.get_by_role("article")).to_have_count(0)
 
     # The banner moved without a reload: the day's words, the streak, the
-    # average and the hero's goal pair — all the aggregate's own.
+    # average and the daily goal's remainder — all the aggregate's own.
     expect(banner).to_contain_text("Du hast heute bereits 150 Wörter verfasst.")
-    expect(banner).to_contain_text("Noch 59.850 Wörter bis zum Ziel.")
-    expect(banner).to_contain_text(f"Ziel für ‚{KLANG}‘: 150 / 60.000 Wörter")
+    expect(banner).to_contain_text("Noch 450 Wörter bis zum Tagesziel.")
+    expect(banner).to_contain_text("Heutiges Schreibziel: 600 Wörter")
     expect(_metric(page, "Schreibstreak")).to_contain_text("1 Tag")
     expect(banner.get_by_text("5,0 W/Tag", exact=True)).to_be_visible()
     assert_accessible(page)
@@ -778,7 +805,66 @@ def test_an_api_chapter_write_moves_the_banner_through_the_seam(
     assert aggregate["streak_days"] == 1
     assert aggregate["weekly_average"] == 5.0
     assert aggregate["points"][-1]["words"] == 150
+    assert aggregate["daily_goal_words"] == 600
+    assert aggregate["goal_met"] is False
+    assert aggregate["goal_remaining"] == 450
     assert _rows("SELECT SUM(words) FROM daily_words") == [(150,)]
+
+
+def test_the_banners_daily_goal_speaks_unset_open_and_met(page: Page, installed: Stack) -> None:
+    """Spec 8b (W4 row 25): the banner's goal line is the atelier's daily
+    goal — the settings PATCH stores it, the aggregate carries the day's
+    progress, and the three faces speak honestly: no goal stored is the
+    neutral, an open goal owes the remainder, a reached day speaks the
+    done-state copy. The hero book's target never stands in for it."""
+    novel = create_novel(KLANG, target_words=80000)
+    chapter = create_chapter(str(novel["id"]), "Der erste Schnee")
+    write_scene(str(chapter["id"]), word_body(1200))
+
+    _goto_shelf(page)
+    banner = _banner(page)
+    # Unset: the honest neutral — the book's 80.000-word target is the
+    # book's truth (the hero panel carries it), never the banner's goal.
+    expect(banner).to_contain_text("Noch kein Schreibziel")
+    expect(banner).to_contain_text("Du hast heute bereits 1.200 Wörter verfasst.")
+    expect(banner).not_to_contain_text("Ziel für")
+    expect(banner).not_to_contain_text("Tagesziel")
+    aggregate = get_activity()
+    assert aggregate["daily_goal_words"] is None
+    assert aggregate["goal_met"] is False
+    assert aggregate["goal_remaining"] == 0
+
+    # Open: 2.000 stored, 1.200 written — 800 remain. The goal change is
+    # the settings' own write; a reload asks the aggregate again.
+    set_daily_goal(2000)
+    page.reload()
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
+    banner = _banner(page)
+    expect(banner).to_contain_text("Heutiges Schreibziel: 2.000 Wörter")
+    expect(banner).to_contain_text("Noch 800 Wörter bis zum Tagesziel.")
+    aggregate = get_activity()
+    assert aggregate["daily_goal_words"] == 2000
+    assert aggregate["goal_met"] is False
+    assert aggregate["goal_remaining"] == 800
+
+    # Met: the goal lowered to what the day already holds — the done-state
+    # copy stands, no remainder beside it.
+    set_daily_goal(1000)
+    page.reload()
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
+    banner = _banner(page)
+    expect(banner).to_contain_text("Heutiges Schreibziel: 1.000 Wörter")
+    expect(banner).to_contain_text("Tagesziel erreicht.")
+    expect(banner).not_to_contain_text("bis zum Tagesziel")
+    aggregate = get_activity()
+    assert aggregate["daily_goal_words"] == 1000
+    assert aggregate["goal_met"] is True
+    assert aggregate["goal_remaining"] == 0
+    assert_accessible(page)
+
+    # The honest check: the goal is the user's row, the words the ledger's.
+    assert _rows("SELECT daily_goal_words FROM users") == [(1000,)]
+    assert _rows("SELECT SUM(words) FROM daily_words") == [(1200,)]
 
 
 def test_pre_setup_root_hands_off_to_the_welcome(page: Page, uninstalled: Stack) -> None:
@@ -806,6 +892,110 @@ def test_post_setup_setup_hands_back_to_the_shelf(page: Page, installed: Stack) 
     expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
 
 
+def test_the_chrome_frames_the_shelf(page: Page, installed: Stack) -> None:
+    """W4 Task 10 (D15, D17): the app-wide rail and topbar frame the shelf —
+    the nav's one live door and four honest later-wave ones, the book
+    switcher's real novels menu, the interim sync state, the real word
+    total, the disabled ⌘K chip (#882), the language chip as the real
+    switcher, the tri-state theme toggle and the user block's fallback.
+    The database assertions remain the honest check."""
+    create_novel(WINTERHAUS)
+    novel = create_novel(KLANG, genre=KLANG_GENRE, target_words=80000)
+    chapter = create_chapter(str(novel["id"]), "Der erste Schnee")
+    write_scene(str(chapter["id"]), word_body(1200))
+
+    _goto_shelf(page)
+    topbar = page.locator("header")
+    # The rail's nav is one landmark; the switcher, sync, theme and user
+    # block stand in the aside around it (complementary).
+    aside = page.get_by_role("complementary")
+
+    # The rail: the shelf door live and current, the editor door live with
+    # the workspace (W4 Task 11 — it opens the active book), the three
+    # later-wave doors honestly disabled.
+    rail = page.get_by_role("navigation", name="Navigation")
+    expect(rail.get_by_role("link", name="Bücherregal")).to_have_attribute("aria-current", "page")
+    editor = rail.get_by_role("link", name="Editor")
+    expect(editor).to_have_attribute("href", f"/novels/{novel['id']}")
+    expect(editor).not_to_have_attribute("aria-current", "page")
+    for label in ("Wissen", "Planung", "Einstellungen"):
+        expect(rail.get_by_role("button", name=label)).to_be_disabled()
+
+    # The topbar's shelf face (tile 7): the breadcrumb, the real total over
+    # the active population, the interim save chip the rail foot shares.
+    expect(topbar.get_by_role("link", name="Atelier")).to_have_attribute("href", "/")
+    expect(topbar.get_by_text("Das Bücherregal")).to_be_visible()
+    expect(topbar.get_by_text("1.200 W. Gesamt")).to_be_visible()
+    expect(topbar.get_by_text("Gespeichert")).to_be_visible()
+    # The rail's own label stands when the rail glides open on hover — the
+    # collapsed face is the dot alone (the draft's two faces).
+    rail.hover()
+    expect(aside.get_by_text("Gespeichert")).to_be_visible()
+
+    # The ⌘K chip: honestly disabled until the shell palette wave (#882).
+    expect(topbar.get_by_role("button", name="Suchen")).to_be_disabled()
+
+    # The book switcher: the user's real novels, the active one marked, and
+    # the workspace navigation (W4 Task 11 — each row opens its book).
+    aside.get_by_role("button", name=re.compile("Aktives Buch")).click()
+    menu = page.get_by_role("menu", name="Atelier-Werke")
+    expect(menu).to_be_visible()
+    expect(menu.get_by_text("2 Romane")).to_be_visible()
+    active_row = menu.get_by_role("menuitem", name=re.compile(KLANG))
+    expect(active_row).to_have_attribute("aria-current", "true")
+    expect(active_row).to_contain_text("1 %")  # 1.200 / 80.000, the row's own
+    expect(menu.get_by_role("menuitem", name="Neues Buch anlegen")).to_be_visible()
+    # The rows open their book's workspace; the menu closes on the choice.
+    # Winterhaus holds no chapters — the empty-book face answers honestly.
+    winter_row = menu.get_by_role("menuitem", name=re.compile(WINTERHAUS))
+    winter_id = str(_rows("SELECT id FROM novels WHERE title = :t", {"t": WINTERHAUS})[0][0])
+    winter_row.click()
+    expect(menu).to_have_count(0)
+    expect(page).to_have_url(f"{BASE}/novels/{winter_id}")
+    expect(page.get_by_role("heading", name="Ein unbeschriebenes Werk")).to_be_visible()
+    # Back to the shelf for the chrome's remaining faces.
+    page.goto(BASE + "/")
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
+
+    # The language chip is the real switcher (D17): the choice PATCHes the
+    # row, the whole chrome and shelf speak it, and the row is the record.
+    topbar.get_by_role("button", name=re.compile("Sprache")).click()
+    page.get_by_role("menu", name="Sprache").get_by_role(
+        "menuitemradio", name=re.compile("English")
+    ).click()
+    expect(page.get_by_role("heading", name="The Bookshelf")).to_be_visible()
+    expect(rail.get_by_role("link", name="Bookshelf")).to_be_visible()
+    assert _rows("SELECT locale FROM users") == [("en",)]
+    # And back through the same chip — one contract, every face.
+    topbar.get_by_role("button", name=re.compile("Language")).click()
+    page.get_by_role("menu", name="Language").get_by_role(
+        "menuitemradio", name=re.compile("Deutsch")
+    ).click()
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
+    assert _rows("SELECT locale FROM users") == [("de",)]
+
+    # The theme toggle: the first step leaves the system for light, applied
+    # at once and stored on the row — the document and the row agree.
+    aside.get_by_role("button", name=re.compile("Erscheinungsbild")).click()
+    expect(page.locator("html")).to_have_attribute("data-theme", "light")
+    assert _rows("SELECT theme FROM users") == [("light",)]
+
+    # The user block: the local row carries neither name nor email — the
+    # honest profile neutral, no tier; a stored author name answers with
+    # its initials after the boot re-reads the row. The name line stands
+    # in the open rail (the collapsed face is the avatar chip alone).
+    expect(aside.get_by_title("Benutzerprofil")).to_be_visible()
+    set_author_name("H. Calder")
+    page.reload()
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
+    rail.hover()
+    expect(aside.get_by_text("H. Calder")).to_be_visible()
+    expect(aside.get_by_text("HC")).to_be_visible()
+    expect(aside.get_by_title("Benutzerprofil: H. Calder")).to_be_visible()
+
+    assert_accessible(page)
+
+
 def test_the_dark_shelf_face_clears_the_axe_floor(page: Page, installed: Stack) -> None:
     """Spec 11: the settings row's dark theme, adopted at boot — the shelf
     renders on the tokens' dark halves (the body's own dark ground), and the
@@ -819,7 +1009,8 @@ def test_the_dark_shelf_face_clears_the_axe_floor(page: Page, installed: Stack) 
     assert page.evaluate("getComputedStyle(document.body).backgroundColor") == "rgb(22, 20, 15)"
     expect(page.get_by_role("heading", name=KLANG, exact=True)).to_be_visible()
     expect(_card(page, WINTERHAUS)).to_be_visible()
-    expect(_banner(page)).to_contain_text(f"Ziel für ‚{KLANG}‘")
+    # No goal stored on this instance — the banner's honest unset (row 25).
+    expect(_banner(page)).to_contain_text("Noch kein Schreibziel")
     assert_accessible(page)
 
     # The quick menu's dark face — the popover over the dark card.
@@ -832,4 +1023,20 @@ def test_the_dark_shelf_face_clears_the_axe_floor(page: Page, installed: Stack) 
     _hero(page).get_by_role("button", name=CARD_OPTIONS).click()
     hero_menu = page.get_by_role("dialog", name=MENU_TITLE)
     expect(hero_menu.get_by_text(LAST_EXPORT, exact=True)).to_be_visible()
+    assert_accessible(page)
+    page.locator("h1").click()  # an outside press closes the hero menu
+
+    # The chrome's dark face (W4 Task 10) — the same rail and topbar on the
+    # tokens' dark halves, the theme toggle naming the stored choice, and
+    # the language chip's open menu clearing the floor too.
+    rail = page.get_by_role("navigation", name="Navigation")
+    expect(rail.get_by_role("link", name="Bücherregal")).to_have_attribute("aria-current", "page")
+    expect(page.locator("header").get_by_text("1.200 W. Gesamt")).to_be_visible()
+    expect(
+        page.get_by_role("complementary").get_by_role(
+            "button", name=re.compile("Erscheinungsbild: Dunkel")
+        )
+    ).to_be_visible()
+    page.locator("header").get_by_role("button", name=re.compile("Sprache")).click()
+    expect(page.get_by_role("menu", name="Sprache")).to_be_visible()
     assert_accessible(page)

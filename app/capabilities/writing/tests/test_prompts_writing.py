@@ -8,12 +8,14 @@ template whose glue grows as the tail shrinks is refused by name — never
 truncated — and the sections themselves are never cut.
 """
 
+from uuid import UUID
+
 import pytest
 
-from app.capabilities.writing.prompts import continuation_prompt
+from app.capabilities.writing.prompts import PredecessorScene, continuation_prompt
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.context import ContextBudgets
-from app.kernel.contracts.models import Chapter, Entity, Novel
+from app.kernel.contracts.models import Entity, Novel
 from app.kernel.db.session import Session
 from app.kernel.prompts import PromptRenderError, no_includes, render_source
 
@@ -24,7 +26,15 @@ NOVEL_TITLE = "Der Nebel"
 CHAPTER_TITLE = "Ankunft"
 BODY = "Der Nebel kam von See."
 ENTITIES = [Entity(name="Mira", type="character", content="Die Wanderin.", aliases=[])]
-PREDECESSORS = [Chapter(title="Ursprung", position=0, body="Mira kam.")]
+# One earlier scene in another chapter — the predecessor unit (W4 §5). Its
+# chapter differs from the active one, so the packer renders the title separator.
+PREDECESSORS = [
+    PredecessorScene(
+        chapter_id=UUID("00000000-0000-0000-0000-0000000000a1"),
+        chapter_title="Ursprung",
+        body="Mira kam.",
+    )
+]
 GENRE = "Mystery"
 BLURB = "Ein Nebeljahr."
 
@@ -325,9 +335,12 @@ async def test_a_refused_override_ends_the_stream_with_the_one_error_frame() -> 
         chapter = await client.post(
             f"/api/writing/novels/{novel.json()['id']}/chapters", json={"title": "Ankunft"}
         )
-        chapter_id = chapter.json()["id"]
-        await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": "B" * 200})
-        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
+        # The tail is the active scene's prose (W4 §5): seed a scene so the
+        # if-branch renders, and continue the scene — the one door now.
+        scene = await client.post(
+            f"/api/writing/chapters/{chapter.json()['id']}/scenes", json={"body": "B" * 200}
+        )
+        response = await client.post(f"/api/writing/scenes/{scene.json()['id']}/continue")
 
     assert response.status_code == 200
     assert response.text == 'event: error\ndata: {"code": "prompt-refused", "reason": "budget"}\n\n'

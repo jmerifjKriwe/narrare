@@ -102,13 +102,51 @@ def create_chapter(novel_id: str, title: str = "") -> dict[str, Any]:
     return chapter
 
 
-def write_chapter(chapter_id: str, body: str) -> dict[str, Any]:
-    """The body write that feeds the activity ledger — the seam's trigger."""
+def write_scene(
+    chapter_id: str,
+    body: str,
+    *,
+    title: str | None = None,
+    setting: str | None = None,
+    story_time: str | None = None,
+) -> dict[str, Any]:
+    """The prose write that feeds the activity ledger — the seam's trigger.
+    Prose lives on a scene now (W4 §5): the chapter is the shell, so the write
+    lands a scene under it, and the scene create feeds today's ledger. The
+    workspace read legs (Task 11) seed the scene's own metadata through the
+    same door — only carried fields join the body."""
+    payload: dict[str, Any] = {"body": body}
+    if title is not None:
+        payload["title"] = title
+    if setting is not None:
+        payload["setting"] = setting
+    if story_time is not None:
+        payload["story_time"] = story_time
     with _client() as client:
-        response = client.put(f"/api/writing/chapters/{chapter_id}", json={"body": body})
+        response = client.post(f"/api/writing/chapters/{chapter_id}/scenes", json=payload)
     response.raise_for_status()
-    chapter: dict[str, Any] = response.json()
-    return chapter
+    scene: dict[str, Any] = response.json()
+    return scene
+
+
+def patch_scene(scene_id: str, **fields: Any) -> dict[str, Any]:
+    """Correct a seeded scene (W4 Task 11's read legs): only carried fields
+    change — a body touch advances updated_at, the last-edited rule's source."""
+    with _client() as client:
+        response = client.put(f"/api/writing/scenes/{scene_id}", json=fields)
+    response.raise_for_status()
+    scene: dict[str, Any] = response.json()
+    return scene
+
+
+def continue_scene(scene_id: str) -> httpx.Response:
+    """Stream a scene continuation through the real stack — the SSE door (W4 §5).
+
+    The fake provider answers deterministically, so the response carries the
+    whole frame sequence (data deltas, then done or error). The response is
+    returned read: status, headers and text survive the client's close."""
+    with _client() as client:
+        return client.post(f"/api/writing/scenes/{scene_id}/continue")
 
 
 def get_novel(novel_id: str) -> dict[str, Any]:
@@ -131,6 +169,33 @@ def set_theme(theme: str) -> None:
     """The settings row's theme — the shell adopts it at boot (dark face)."""
     with _client() as client:
         response = client.patch("/api/settings/theme", json={"theme": theme})
+    response.raise_for_status()
+
+
+def set_daily_goal(words: int | None) -> None:
+    """The atelier's daily goal — the settings PATCH the banner's aggregate
+    reads (W4 row 25). The stored locale rides along untouched: absent and
+    null are different answers, so the read's own value is carried back."""
+    with _client() as client:
+        current = client.get("/api/settings")
+        current.raise_for_status()
+        response = client.patch(
+            "/api/settings",
+            json={"locale": current.json()["locale"], "daily_goal_words": words},
+        )
+    response.raise_for_status()
+
+
+def set_author_name(name: str | None) -> None:
+    """The profile's author name (W4 D9/D22) — the chrome user block's
+    label. The stored locale rides along untouched, the daily-goal rule."""
+    with _client() as client:
+        current = client.get("/api/settings")
+        current.raise_for_status()
+        response = client.patch(
+            "/api/settings",
+            json={"locale": current.json()["locale"], "author_name": name},
+        )
     response.raise_for_status()
 
 

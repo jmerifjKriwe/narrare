@@ -16,10 +16,12 @@
  */
 
 :root {
-  /* The rail's rendered width, as the shell's one chrome offset: 48 px on a
-   * fine pointer, the open rail's 168 px where there is no hover to open it
-   * with. The top bar reads it so its container stays on the page's axis. */
-  --rail-width: 48px;
+  /* The rail's rendered width, as the shell's one chrome offset: the
+   * chrome draft's collapsed 64 px on a fine pointer, the open rail's
+   * 168 px where there is no hover to open it with (W4 chrome-rail-topbar
+   * pins 64/168; the pre-rebuild shell's 48 px rail is gone). The top bar
+   * reads it so its container stays on the page's axis. */
+  --rail-width: 64px;
   /* The tokens follow the reader's choice; `light-dark()` resolves against
    * `color-scheme`, which makes the browser's own surfaces follow too:
    * scrollbars, native select popups and form controls are painted light on a
@@ -335,6 +337,24 @@ body {
   --text-hero--line-height: 1.2;
   --text-hero--font-weight: 700;
   --text-hero--letter-spacing: -0.025em;
+}
+
+/* The workspace's read-only prose (W4 Task 11): the scene-centric draft's
+ * drop cap — the first letter floats at the manuscript's own scale, in the
+ * one action's colour. The drafted weight 500 resolves to the subset's real
+ * 400 face (no 500 cut exists, and none is synthesized); the serif stack is
+ * the token's, never a second family. Task 12's TipTap surface inherits the
+ * same mark when the editor goes live. */
+.workspace-drop-cap::first-letter {
+  float: left;
+  font-size: 4.25rem;
+  line-height: 0.82;
+  padding-top: 0.12rem;
+  padding-right: 0.75rem;
+  padding-bottom: 0.15rem;
+  color: var(--primary);
+  font-family: var(--font-serif);
+  font-weight: 500;
 }
 
 /*

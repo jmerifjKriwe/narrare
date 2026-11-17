@@ -61,14 +61,10 @@ async def test_the_schema_refuses_two_chapters_at_one_position() -> None:
         novel_id = await _novel(client)
 
     async with Session() as session:
-        session.add(
-            Chapter(user_id=LOCAL_USER_ID, novel_id=UUID(novel_id), title="", position=0, body="")
-        )
+        session.add(Chapter(user_id=LOCAL_USER_ID, novel_id=UUID(novel_id), title="", position=0))
         await session.commit()
 
-        session.add(
-            Chapter(user_id=LOCAL_USER_ID, novel_id=UUID(novel_id), title="", position=0, body="")
-        )
+        session.add(Chapter(user_id=LOCAL_USER_ID, novel_id=UUID(novel_id), title="", position=0))
         with pytest.raises(IntegrityError):
             await session.commit()
 
@@ -156,9 +152,9 @@ async def test_a_direct_duplicate_position_is_refused_at_commit() -> None:
     async with Session() as session:
         await session.execute(
             text(
-                "INSERT INTO chapters (id, user_id, novel_id, title, position, body, "
+                "INSERT INTO chapters (id, user_id, novel_id, title, position, "
                 "created_at, updated_at) "
-                "VALUES (:id, :user_id, :novel_id, '', 0, '', now(), now())"
+                "VALUES (:id, :user_id, :novel_id, '', 0, now(), now())"
             ),
             {"id": uuid4(), "user_id": LOCAL_USER_ID, "novel_id": UUID(novel_id)},
         )

@@ -1,7 +1,8 @@
-import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
+import { createRootRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
-import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
+import { ChromeFrame } from "../components/ChromeFrame";
 import { useTranslation } from "../lib/i18n";
 import { adoptServerLocale, activeLocale, subscribeLocale } from "../lib/locale";
 import { PageTitleProvider, applyBaseTitle, usePageTitle } from "../lib/pageTitle";
@@ -10,9 +11,12 @@ import { adoptServerTheme } from "../lib/theme";
 import "../globals.css";
 
 /** The shell root: providers, locale and theme adoption, the tab title's
- * floor, and the one outlet. The interim app has no chrome — the bar, rail
- * and palette are demolished with the UI they served and return with the
- * rebuilt screens; the plumbing they rode on stays. */
+ * floor, and the one outlet. The app-wide chrome (W4 Task 10, D15) frames
+ * every post-setup surface — the shelf today, the workspace from Task 11 —
+ * while the welcome and the wizard (`/setup/*`) stay standalone, their
+ * drafts chrome-less guided flows. The plumbing the demolished interim
+ * chrome rode on stays: the settings gate, the locale/theme adoption, the
+ * title floor. */
 function Shell() {
   // The language is user data on the server, so the first paint waits for it.
   // Rendering first and switching after would flash the wrong language on
@@ -35,6 +39,13 @@ function Shell() {
   // changes.
   const locale = useSyncExternalStore(subscribeLocale, activeLocale, activeLocale);
 
+  // The chrome's one route question: the guided flows stand alone, every
+  // other surface wears the frame. The pathname is reactive — a navigation
+  // between the shelf and the wizard re-picks the frame without a remount
+  // of the providers above it.
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const standalone = pathname.startsWith("/setup");
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: locale is the deliberate re-run key, not a value the body reads — a language change must recompose the tab title.
   useEffect(() => {
     // The tab's floor: the app's own name until a page names itself, and a
@@ -47,17 +58,13 @@ function Shell() {
 
   return (
     <PageTitleProvider>
-      {/* The shell owns the page's one main landmark; routes render content
-          inside it. tabIndex makes the landing hold focus — fragment
-          navigation focuses a target only if it can. Capability pages load
-          lazily, each as its own bundle chunk; the one boundary lives in the
-          shell so no capability needs one, and the fallback is null on
-          purpose — the gap while a chunk arrives stays quiet. */}
-      <main id="main" tabIndex={0}>
-        <Suspense fallback={null}>
-          <Outlet />
-        </Suspense>
-      </main>
+      {/* The chrome frames the post-setup surfaces; the guided flows stand
+          alone. The frame keeps the outlet at a constant tree depth in
+          both modes — a branch flip must never remount the page being
+          navigated away from (ChromeFrame's own note). */}
+      <ChromeFrame standalone={standalone}>
+        <Outlet />
+      </ChromeFrame>
     </PageTitleProvider>
   );
 }

@@ -429,6 +429,52 @@ async def _seed_prose(database_url: str) -> tuple[Any, Any, str, str]:
     return novel_id, chapter_id, title, body
 
 
+async def _seed_prose_on_scenes(database_url: str) -> tuple[Any, Any, str, str]:
+    """The prose seed for a models-built schema: a user, a novel, its chapter
+    shell and the scene that carries the prose (W4 §5).
+
+    ``_seed_prose`` writes ``chapters.body`` for the 0.2.0 snapshot the bootstrap
+    gates replay; a models-built database has no such column — the prose lives
+    on the scene — so this seed lands it there. Returns the same
+    ``(novel_id, chapter_id, title, body)`` shape the byte-identity assertions name.
+    """
+    novel_id, chapter_id, scene_id = uuid4(), uuid4(), uuid4()
+    title, body = "Die Prüfung", "Wort für Wort"
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(
+                text("INSERT INTO users (id, created_at) VALUES (:id, now())"),
+                {"id": LOCAL_USER_ID},
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                    "VALUES (:id, :user_id, :title, now(), now())"
+                ),
+                {"id": novel_id, "user_id": LOCAL_USER_ID, "title": title},
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO chapters (id, user_id, novel_id, title, position, "
+                    "created_at, updated_at) "
+                    "VALUES (:id, :user_id, :novel_id, :title, 0, now(), now())"
+                ),
+                {"id": chapter_id, "user_id": LOCAL_USER_ID, "novel_id": novel_id, "title": title},
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO scenes (id, user_id, chapter_id, position, title, body, "
+                    "created_at, updated_at) "
+                    "VALUES (:id, :user_id, :chapter_id, 1, '', :body, now(), now())"
+                ),
+                {"id": scene_id, "user_id": LOCAL_USER_ID, "chapter_id": chapter_id, "body": body},
+            )
+    finally:
+        await engine.dispose()
+    return novel_id, chapter_id, title, body
+
+
 async def test_release_snapshot_upgrades_without_losing_prose(url: str) -> None:
     """This release's 0.2.0 snapshot bootstraps with its prose intact (D3.3).
 
@@ -460,15 +506,19 @@ async def test_release_snapshot_upgrades_without_losing_prose(url: str) -> None:
     engine = create_async_engine(url)
     try:
         async with engine.connect() as connection:
-            chapter_body: str | None = await connection.scalar(
-                text("SELECT body FROM chapters WHERE id = :id"), {"id": chapter_id}
+            # The prose survives the upgrade on the chapter's wrapped scene:
+            # the scene step (666563abba5d) carried chapters.body into one scene
+            # and the body drop (58fcdeca1503) retired the shell's column, so the
+            # far side reads the prose from the scene, byte-identical (W4 §5).
+            scene_body: str | None = await connection.scalar(
+                text("SELECT body FROM scenes WHERE chapter_id = :id"), {"id": chapter_id}
             )
             novel_title: str | None = await connection.scalar(
                 text("SELECT title FROM novels WHERE id = :id"), {"id": novel_id}
             )
     finally:
         await engine.dispose()
-    assert chapter_body is not None and chapter_body.encode("utf-8") == body.encode("utf-8")
+    assert scene_body is not None and scene_body.encode("utf-8") == body.encode("utf-8")
     assert novel_title == title
     assert await _models_diff(url) == []  # the stamped schema is still the models'
     assert await _version_row(url) == head_revision()
@@ -623,6 +673,206 @@ async def test_the_provider_step_gives_every_profile_a_provider(url: str) -> Non
         "gAAAA-ciphertext-abcd",
         "abcd",
     )
+
+
+# ---------------------------------------------------------------------------
+# A data-carrying replay: the scene step's wrap (W4 design §5)
+# ---------------------------------------------------------------------------
+
+SCENE_STEP_PREDECESSOR = "9c651aea0d75"
+"""The revision before the scene step, named as the replay's first stop.
+
+The provider-step precedent: a hardcoded id reads better here than a walk of
+the script directory — what the test is about is exactly what lies between the
+two upgrades, and history growing above the scene step does not change that.
+The second upgrade to head replays the scene step for real: the wrap runs
+against chapters that already hold prose, the shape an upgraded deployment has.
+"""
+
+
+async def _seed_chapters_with_prose(
+    database_url: str,
+) -> list[tuple[UUID, UUID, UUID, str, int]]:
+    """Chapters the way the pre-scene schema holds them: prose on the chapter.
+
+    Two users, so a wrap that crossed ownership would surface; the first user's
+    novel carries three chapters (a multi-word body with umlauts, an empty body,
+    a whitespace-only body), the second user's novel one chapter. Returns
+    ``(chapter_id, novel_id, user_id, body, word_count)`` per chapter — the word
+    count is the whitespace-token rule the shelf counts by, computed here over
+    the seeds' plain spaces so the re-derivation assertion has an expected value.
+    """
+    first_user, second_user = uuid4(), uuid4()
+    first_novel, second_novel = uuid4(), uuid4()
+    seeds = [
+        (first_user, first_novel, 0, "Die Prüfung", "Wort für Wort, eines nach dem anderen."),
+        (first_user, first_novel, 1, "Leere", ""),
+        (first_user, first_novel, 2, "Nur Leerraum", "   \t  "),
+        (second_user, second_novel, 0, "Zweites Buch", "A second voice, counted on its own."),
+    ]
+    rows: list[tuple[UUID, UUID, UUID, str, int]] = []
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.begin() as connection:
+            for user_id in (first_user, second_user):
+                await connection.execute(
+                    text("INSERT INTO users (id, created_at) VALUES (:id, now())"),
+                    {"id": user_id},
+                )
+            for novel_id, user_id, title in (
+                (first_novel, first_user, "Erstes Buch"),
+                (second_novel, second_user, "Zweites Buch"),
+            ):
+                await connection.execute(
+                    text(
+                        "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                        "VALUES (:id, :user_id, :title, now(), now())"
+                    ),
+                    {"id": novel_id, "user_id": user_id, "title": title},
+                )
+            for user_id, novel_id, position, title, body in seeds:
+                chapter_id = uuid4()
+                await connection.execute(
+                    text(
+                        "INSERT INTO chapters (id, user_id, novel_id, title, position, body, "
+                        "created_at, updated_at) "
+                        "VALUES (:id, :user_id, :novel_id, :title, :position, :body, now(), now())"
+                    ),
+                    {
+                        "id": chapter_id,
+                        "user_id": user_id,
+                        "novel_id": novel_id,
+                        "title": title,
+                        "position": position,
+                        "body": body,
+                    },
+                )
+                rows.append((chapter_id, novel_id, user_id, body, len(body.split())))
+    finally:
+        await engine.dispose()
+    return rows
+
+
+async def test_the_scene_step_wraps_every_chapter_body_into_one_scene(url: str) -> None:
+    """Every chapter's prose lands in exactly one scene, byte-identical (W4 §5).
+
+    The gate replays real history over real rows: upgrade to the revision before
+    the scene step, seed chapters the old way (prose on ``chapters.body``) for
+    two users, upgrade to head. Each chapter then owns exactly one scene at
+    position 1 with an empty title and no setting/story_time, carrying the
+    chapter's own user and its prose byte-for-byte — empty and whitespace-only
+    bodies included, so an empty chapter wraps to an empty scene, not to nothing.
+    The word counts re-derive from the wrapped prose: per scene and per novel they
+    equal the seeds' counts, so the shelf's figures keep their shape across the
+    move and nothing is double-counted or crossed between users.
+    """
+    await drop_every_table(url)
+    await asyncio.to_thread(command.upgrade, alembic_config(url), SCENE_STEP_PREDECESSOR)
+    seeds = await _seed_chapters_with_prose(url)
+
+    await asyncio.to_thread(command.upgrade, alembic_config(url), "head")
+
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as connection:
+            scene_count: int | None = await connection.scalar(text("SELECT count(*) FROM scenes"))
+            rows = (
+                await connection.execute(
+                    text(
+                        "SELECT s.chapter_id, s.user_id, s.position, s.title, s.body,"
+                        " s.setting, s.story_time, c.user_id, c.novel_id"
+                        " FROM scenes s JOIN chapters c ON c.id = s.chapter_id"
+                    )
+                )
+            ).all()
+    finally:
+        await engine.dispose()
+
+    # One scene per chapter — no orphans, no copies, no chapter left unwrapped.
+    assert scene_count == len(seeds)
+    assert len(rows) == len(seeds)
+    by_chapter = {str(row[0]): row for row in rows}
+    assert len(by_chapter) == len(seeds)
+
+    expected_totals: dict[UUID, int] = {}
+    actual_totals: dict[UUID, int] = {}
+    for chapter_id, novel_id, user_id, body, words in seeds:
+        row = by_chapter[str(chapter_id)]
+        scene_user, position, title, scene_body, setting, story_time, chapter_user = row[1:8]
+        assert position == 1
+        assert title == ""
+        assert setting is None and story_time is None
+        # Ownership rides the chapter's chain: the scene's user is the chapter's.
+        assert scene_user == chapter_user == user_id
+        assert scene_body.encode("utf-8") == body.encode("utf-8")
+        assert len(scene_body.split()) == words  # the count re-derives from the scene prose
+        expected_totals[novel_id] = expected_totals.get(novel_id, 0) + words
+        actual_totals[novel_id] = actual_totals.get(novel_id, 0) + len(scene_body.split())
+    # The per-novel totals are unchanged by the wrap — the shelf's shape survives.
+    assert actual_totals == expected_totals
+
+
+async def test_the_scenes_positions_constraint_is_deferrable_after_replay(url: str) -> None:
+    """The replayed history leaves scene positions DEFERRABLE INITIALLY DEFERRED.
+
+    The chapters pin's precedent (``test_empty_database_migrated_equals_the_models``):
+    the models-vs-replay diff cannot see deferrability, so the gate pins the
+    property a diff is blind to by catalog query. A scene reorder passes through
+    intermediate states the plain form refuses; the check belongs at commit. A
+    history that rebuilt the constraint plain would pass the diff while every
+    upgraded database refused scene reorders.
+    """
+    await drop_every_table(url)
+    await asyncio.to_thread(command.upgrade, alembic_config(url), "head")
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as connection:
+            deferrable, initially_deferred = (
+                await connection.execute(
+                    text(
+                        "SELECT condeferrable, condeferred FROM pg_constraint "
+                        "WHERE contype = 'u' AND conrelid = 'scenes'::regclass "
+                        "AND conname = 'uq_scenes_chapter_id_position'"
+                    )
+                )
+            ).one()
+    finally:
+        await engine.dispose()
+    assert deferrable is True
+    assert initially_deferred is True
+
+
+async def test_the_scene_step_refuses_a_destructive_downgrade(url: str) -> None:
+    """The way back is the pre-migration dump, not a destructive down (D6/ADR-103).
+
+    Every revision in this history refuses a downward run that would drop data;
+    the scene step is no exception — downgrading would drop the wrapped scenes.
+    The gate pins the refusal and that it is clean: the version row stays at head
+    and the wrapped prose still stands, so a refused downgrade leaves the database
+    exactly as the upgrade left it. The restorable copy ``prepare_database`` takes
+    before the upgrade (D5) is the operator's way back.
+    """
+    await drop_every_table(url)
+    await asyncio.to_thread(command.upgrade, alembic_config(url), SCENE_STEP_PREDECESSOR)
+    seeds = await _seed_chapters_with_prose(url)
+    await asyncio.to_thread(command.upgrade, alembic_config(url), "head")
+    head = head_revision()
+    assert await _version_row(url) == head
+
+    with pytest.raises(RuntimeError) as refused:
+        await asyncio.to_thread(command.downgrade, alembic_config(url), SCENE_STEP_PREDECESSOR)
+    assert "downgrade is not supported" in str(refused.value)
+    assert "pre-migration dump" in str(refused.value)
+
+    # The refusal changed nothing: still at head, every wrapped scene still there.
+    assert await _version_row(url) == head
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as connection:
+            scene_count: int | None = await connection.scalar(text("SELECT count(*) FROM scenes"))
+    finally:
+        await engine.dispose()
+    assert scene_count == len(seeds)
 
 
 # ---------------------------------------------------------------------------
@@ -909,8 +1159,11 @@ async def test_unversioned_database_is_stamped_at_the_baseline_revision(
             probe_values: int | None = await connection.scalar(
                 text("SELECT count(*) FROM chapters WHERE probe IS NOT NULL")
             )
-            chapter_body: str | None = await connection.scalar(
-                text("SELECT body FROM chapters WHERE id = :id"), {"id": chapter_id}
+            # The replay carries the prose onto the wrapped scene and retires
+            # chapters.body (the scene step + the body drop, W4 §5): the far
+            # side reads it from the scene, byte-identical.
+            scene_body: str | None = await connection.scalar(
+                text("SELECT body FROM scenes WHERE chapter_id = :id"), {"id": chapter_id}
             )
             novel_title: str | None = await connection.scalar(
                 text("SELECT title FROM novels WHERE id = :id"), {"id": novel_id}
@@ -918,7 +1171,7 @@ async def test_unversioned_database_is_stamped_at_the_baseline_revision(
     finally:
         await engine.dispose()
     assert probe_values == 0  # the column exists, every value null — the add ran
-    assert chapter_body is not None and chapter_body.encode("utf-8") == body.encode("utf-8")
+    assert scene_body is not None and scene_body.encode("utf-8") == body.encode("utf-8")
     assert novel_title == title
     # The restorable copy (D5): pending revisions and tables — the dump ran.
     assert outcome.backup is not None
@@ -1293,7 +1546,7 @@ async def test_dump_and_restore_round_trip(url: str, tmp_path: Path) -> None:
     )
 
     await reset_schema(url)
-    novel_id, _chapter_id, title, _body = await _seed_prose(url)
+    novel_id, _chapter_id, title, _body = await _seed_prose_on_scenes(url)
 
     dump = await dump_database(url, tmp_path)
     assert dump.read_bytes()[:5] == b"PGDMP"

@@ -4,7 +4,7 @@ from collections.abc import Sequence  # noqa: TC003
 from typing import Any
 from uuid import UUID  # noqa: TC003
 
-from sqlalchemy import case, func, select
+from sqlalchemy import and_, case, func, select
 
 from app.capabilities.planning.models import (
     ChapterStage,
@@ -12,7 +12,7 @@ from app.capabilities.planning.models import (
     ScenePlan,
     TimelineEvent,
 )
-from app.kernel.contracts.models import Chapter, Novel
+from app.kernel.contracts.models import Chapter, Novel, Scene
 from app.kernel.db.base import ScopedRepository
 
 # The shelf's word counting, mirrored for per-chapter reads: a word is a
@@ -28,10 +28,11 @@ _TRIM_PATTERN = f"^{_WS}+|{_WS}+$"
 _SPLIT_PATTERN = _WS + "+"
 
 
-def _word_count_expression() -> Any:
+def _word_count_expression(body: Any) -> Any:
     """The per-row word count the shelf's grouped query sums: tokens of the
-    trimmed body, zero when the trim is empty."""
-    trimmed = func.regexp_replace(Chapter.body, _TRIM_PATTERN, "", "g")
+    trimmed body, zero when the trim is empty. The body is a scene's now
+    (W4 §5) — the chapter is a grouping shell, its prose lives on its scenes."""
+    trimmed = func.regexp_replace(body, _TRIM_PATTERN, "", "g")
     return case(
         (
             trimmed != "",
@@ -150,16 +151,20 @@ class StoryboardRepository(ScopedRepository[ChapterStage]):
     async def word_counts(self, novel_id: UUID) -> dict[UUID, int]:
         """Per-chapter word counts for one novel, one grouped query.
 
-        The same tokens the shelf sums per novel, here per chapter: bodies
-        never leave the database, and a chapter with no row reports zero
-        through the caller's default, not through this dict.
+        The same tokens the shelf sums per novel, here per chapter: the prose
+        lives on the chapter's scenes now (W4 §5), so the count rides a left
+        join from chapters to scenes and sums the scene bodies — a chapter
+        with no scenes still reports zero, never a missing row. Bodies never
+        leave the database.
         """
+        words = func.coalesce(func.sum(_word_count_expression(Scene.body)), 0)
         rows = await self.session.execute(
-            select(Chapter.id, _word_count_expression()).where(
-                Chapter.novel_id == novel_id, Chapter.user_id == self.user_id
-            )
+            select(Chapter.id, words)
+            .outerjoin(Scene, and_(Scene.chapter_id == Chapter.id, Scene.user_id == self.user_id))
+            .where(Chapter.novel_id == novel_id, Chapter.user_id == self.user_id)
+            .group_by(Chapter.id)
         )
-        return {chapter_id: int(words) for chapter_id, words in rows}
+        return {chapter_id: int(count) for chapter_id, count in rows}
 
     async def assignments_for_chapters(
         self, chapter_ids: Sequence[UUID]

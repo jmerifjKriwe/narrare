@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
 /**
- * The activity banner (Task 10) — the `shelf` draft's cadence panel wired to
- * the real aggregate. Rendered directly under the one query client with only
- * the API client mocked at its module boundary; the mock keeps the backend's
- * contract (ActivityRead, zero-days dense, UTC day boundary). Every case
- * renders German and asserts the du-tone copy the catalog carries: the five
- * data shapes (populated, mixed, empty, loading, error), the goal pair only
- * when the hero carries a target, the sparkline's path the pure helper's own,
- * and the retry family that holds its notice while it asks again.
+ * The activity banner (Task 10, W4 Task 9) — the `shelf` draft's cadence
+ * panel wired to the real aggregate. Rendered directly under the one query
+ * client with only the API client mocked at its module boundary; the mock
+ * keeps the backend's contract (ActivityRead, zero-days dense, UTC day
+ * boundary, the goal progress the aggregate derives). Every case renders
+ * German and asserts the du-tone copy the catalog carries: the five data
+ * shapes (populated, mixed, empty, loading, error), the daily goal's three
+ * faces (set, unset, reached — gap row 25), the sparkline's path the pure
+ * helper's own, and the retry family that holds its notice while it asks
+ * again. The hero-book pin is gone: the banner reads the atelier's goal,
+ * no book title and no book pair stand in it.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -23,7 +26,7 @@ vi.mock("@shell/lib/api/client", () => ({
   },
 }));
 
-import { client, type Activity, type Novel } from "@shell/lib/api/client";
+import { client, type Activity } from "@shell/lib/api/client";
 import { catalogs } from "@shell/lib/generated/catalogs";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
@@ -39,34 +42,6 @@ function ok(): Response {
   return new Response(null, { status: 200 });
 }
 
-/** A novel row as the API answers it — the hero the banner's goal reads. */
-function novelRow(overrides: Partial<Novel> & { id: string; title: string }): Novel {
-  return {
-    genre: null,
-    blurb: null,
-    author: null,
-    language: null,
-    chapter_count: 0,
-    word_count: 0,
-    created_at: "2026-11-01T10:00:00Z",
-    updated_at: "2026-11-14T14:22:00Z",
-    last_exported_at: null,
-    status: null,
-    series_title: null,
-    series_volume: null,
-    archived_at: null,
-    target_words: null,
-    ...overrides,
-  };
-}
-
-const HERO = novelRow({
-  id: "11111111-1111-1111-1111-111111111111",
-  title: "Dead Signal",
-  word_count: 48342,
-  target_words: 65000,
-});
-
 /** Thirty days, zero-days dense, the last three written — today 412. */
 const WORDS30 = [
   0, 0, 120, 0, 340, 0, 0, 180, 0, 0, 0, 260, 0, 0, 90, 0, 0, 0, 0, 0,
@@ -77,12 +52,17 @@ const POINTS30 = WORDS30.map((words, at) => ({
   words,
 }));
 
+/** The aggregate as the API answers it — the draft's own goal figures:
+ *  750 stored, 412 written today, 338 remaining (gap row 25's draft). */
 function activityRow(overrides: Partial<Activity> = {}): Activity {
   return {
     points: POINTS30,
     streak_days: 3,
     weekly_average: 840,
     today_words: 412,
+    daily_goal_words: 750,
+    goal_met: false,
+    goal_remaining: 338,
     ...overrides,
   };
 }
@@ -93,16 +73,19 @@ let activityAnswer: () => Promise<{ data?: unknown; response: Response }> = asyn
   response: ok(),
 });
 
-function renderBanner(hero: Novel | null = HERO) {
+function renderBanner() {
   return render(
     <QueryClientProvider client={queryClient}>
-      <ShelfBanner hero={hero} noteId="banner-note" />
+      <ShelfBanner noteId="banner-note" />
     </QueryClientProvider>,
   );
 }
 
 /** The banner's own section — the one this harness renders. */
 const banner = () => document.querySelector("section") as HTMLElement;
+
+/** The goal heading's anchor — the daily-goal label span. */
+const goalHeading = () => t("writing.shelf.banner.dailyGoal");
 
 beforeEach(() => {
   activityAnswer = async () => ({ data: activityRow(), response: ok() });
@@ -127,40 +110,41 @@ afterEach(() => {
 describe("the banner — a populated window speaks the aggregate's own figures", () => {
   it("asks the aggregate on mount, the default window in its bare shape", async () => {
     renderBanner();
-    await screen.findByText(t("writing.shelf.banner.goal", { title: HERO.title }));
+    await screen.findByText(goalHeading());
     // days=30 is the server's own default — the ask keeps the bare shape.
     expect(api.GET).toHaveBeenCalledWith("/api/writing/activity");
   });
 
-  it("the goal line is the hero's own pair — the active book's goal, disclosed", async () => {
+  it("the goal line is the atelier's daily goal — the draft's own line", async () => {
     renderBanner();
     const heading = await screen.findByRole("heading", { level: 3 });
     expect(heading.textContent).toBe(
-      `${t("writing.shelf.banner.goal", { title: "Dead Signal" })}: ${t("writing.shelf.words.pair", { count: 48342, target: 65000 })}`,
+      `${goalHeading()}: ${t("writing.shelf.words.count", { count: 750 })}`,
     );
-    // 65.000 − 48.342 — the draft's second sentence, the book goal's remainder.
-    expect(heading.textContent).toContain("48.342 / 65.000 Wörter");
+    // „Heutiges Schreibziel: 750 Wörter" — the figure in the tabular span.
+    expect(heading.textContent).toBe("Heutiges Schreibziel: 750 Wörter");
+    expect(heading.querySelector("span.tabular-nums")?.textContent).toBe(": 750 Wörter");
   });
 
   it("today's words stand where the draft places them, with the goal's remainder", async () => {
     renderBanner();
-    await screen.findByText(t("writing.shelf.banner.goal", { title: HERO.title }));
+    await screen.findByText(goalHeading());
     const body = banner().querySelector("p.text-meta");
     expect(body?.textContent).toBe(
-      `Du hast heute bereits 412 Wörter verfasst. Noch 16.658 Wörter bis zum Ziel.`,
+      `Du hast heute bereits 412 Wörter verfasst. Noch 338 Wörter bis zum Tagesziel.`,
     );
   });
 
   it("the weekly average is the API's number at one decimal, de-DE grouped", async () => {
     renderBanner();
-    await screen.findByText(t("writing.shelf.banner.goal", { title: HERO.title }));
+    await screen.findByText(goalHeading());
     expect(screen.getByText(de["writing.shelf.banner.weekly"])).toBeTruthy();
     expect(screen.getByText("840,0 W/Tag")).toBeTruthy();
   });
 
   it("the sparkline is the helper's own path — thirty points, today marked, UTC named", async () => {
     renderBanner();
-    await screen.findByText(t("writing.shelf.banner.goal", { title: HERO.title }));
+    await screen.findByText(goalHeading());
     const figure = screen.getByRole("img");
     expect(figure.getAttribute("aria-label")).toBe(
       t("writing.shelf.banner.sparkline", { days: 30 }),
@@ -181,26 +165,38 @@ describe("the banner — a populated window speaks the aggregate's own figures",
 
   it("the statistics door stays honestly disabled with the drafted note", async () => {
     renderBanner();
-    await screen.findByText(t("writing.shelf.banner.goal", { title: HERO.title }));
+    await screen.findByText(goalHeading());
     const door = screen.getByRole("button", { name: de["writing.shelf.banner.stats"] });
     expect(door.hasAttribute("disabled")).toBe(true);
     const noteId = door.getAttribute("aria-describedby");
     expect(document.getElementById(noteId as string)?.textContent).toBe(de["writing.shelf.comingSoon"]);
   });
+
+  it("the hero-book pin is gone — no book title, no book pair in the banner", async () => {
+    renderBanner();
+    await screen.findByText(goalHeading());
+    // The W3 pin („Ziel für ‚…': … / … Wörter") ended with row 25: the
+    // banner names no book and carries no spaced-slash pair (the average's
+    // „W/Tag" unit is its own word, not a pair).
+    expect(within(banner()).queryByText(/Ziel für/)).toBeNull();
+    expect(within(banner()).queryByText(/ \/ /)).toBeNull();
+  });
 });
 
 describe("the banner — a mixed window stays honest, negative days and all", () => {
-  it("a negative today speaks the removal voice, the number unfloored", async () => {
+  it("a negative today speaks the removal voice, the remainder owes the loss too", async () => {
     activityAnswer = async () => ({
-      data: activityRow({ today_words: -120, weekly_average: -12.5 }),
+      data: activityRow({ today_words: -120, weekly_average: -12.5, goal_remaining: 870 }),
       response: ok(),
     });
     renderBanner();
-    await screen.findByText(t("writing.shelf.banner.goal", { title: HERO.title }));
+    await screen.findByText(goalHeading());
     const body = banner().querySelector("p.text-meta");
     expect(body?.textContent).toContain(
       "Heute hast du mehr Text entfernt als hinzugefügt — dein Tag steht bei -120 Wörtern.",
     );
+    // 750 + 120 — the aggregate's own remainder, the net unfloored.
+    expect(body?.textContent).toContain("Noch 870 Wörter bis zum Tagesziel.");
     // The average rides the same honesty: one decimal, the sign intact.
     expect(screen.getByText("-12,5 W/Tag")).toBeTruthy();
   });
@@ -214,21 +210,23 @@ describe("the banner — a mixed window stays honest, negative days and all", ()
     }));
     activityAnswer = async () => ({ data: activityRow({ points }), response: ok() });
     renderBanner();
-    await screen.findByText(t("writing.shelf.banner.goal", { title: HERO.title }));
+    await screen.findByText(goalHeading());
     const path = screen.getByRole("img").querySelector("path");
     expect(path?.getAttribute("d")).toBe(sparkline(points)?.d);
     expect(path?.getAttribute("d")?.split(" L ")).toHaveLength(30);
   });
 
-  it("a quiet today speaks the quiet voice — zero, never hidden", async () => {
+  it("a quiet today speaks the quiet voice — the whole goal still owed", async () => {
     activityAnswer = async () => ({
-      data: activityRow({ today_words: 0 }),
+      data: activityRow({ today_words: 0, goal_remaining: 750 }),
       response: ok(),
     });
     renderBanner();
-    await screen.findByText(t("writing.shelf.banner.goal", { title: HERO.title }));
+    await screen.findByText(goalHeading());
     const body = banner().querySelector("p.text-meta");
-    expect(body?.textContent).toContain("Heute hast du noch keine Wörter verfasst.");
+    expect(body?.textContent).toBe(
+      `Heute hast du noch keine Wörter verfasst. Noch 750 Wörter bis zum Tagesziel.`,
+    );
   });
 });
 
@@ -241,6 +239,7 @@ describe("the banner — an empty window answers the drafted neutral", () => {
     streak_days: 0,
     weekly_average: 0,
     today_words: 0,
+    goal_remaining: 750,
   });
 
   it("no rows ever: the neutral copy, no invented values, the flat honest line", async () => {
@@ -250,9 +249,9 @@ describe("the banner — an empty window answers the drafted neutral", () => {
     // The neutral stands alone — no today sentence, no remainder beside it.
     const body = banner().querySelector("p.text-meta");
     expect(body?.textContent).toBe(de["writing.shelf.banner.body"]);
-    // The book's goal is the book's truth, independent of the empty window.
-    expect(screen.getByRole("heading", { level: 3 }).textContent).toContain(
-      t("writing.shelf.words.pair", { count: 48342, target: 65000 }),
+    // The daily goal is the user's truth, independent of the empty window.
+    expect(screen.getByRole("heading", { level: 3 }).textContent).toBe(
+      "Heutiges Schreibziel: 750 Wörter",
     );
     // The API's zeros are real figures: the average 0,0 and the flat line.
     expect(screen.getByText("0,0 W/Tag")).toBeTruthy();
@@ -261,22 +260,86 @@ describe("the banner — an empty window answers the drafted neutral", () => {
     expect(path?.getAttribute("d")).toContain("M 0,16");
   });
 
-  it("an empty window without a target keeps the dash — no noTarget pile-on", async () => {
-    activityAnswer = async () => ({ data: EMPTY, response: ok() });
-    renderBanner({ ...HERO, target_words: null });
+  it("an empty window without a goal keeps the honest unset heading", async () => {
+    activityAnswer = async () => ({
+      data: { ...EMPTY, daily_goal_words: null, goal_remaining: 0 },
+      response: ok(),
+    });
+    renderBanner();
     expect(await screen.findByText(de["writing.shelf.banner.body"])).toBeTruthy();
-    const heading = screen.getByRole("heading", { level: 3 });
-    expect(heading.textContent).toBe(
-      `${t("writing.shelf.banner.goal", { title: "Dead Signal" })}: —`,
+    expect(screen.getByRole("heading", { level: 3 }).textContent).toBe(
+      de["writing.shelf.banner.noGoal"],
     );
     expect(banner().querySelector("p.text-meta")?.textContent).toBe(de["writing.shelf.banner.body"]);
   });
+});
 
-  it("an empty window without a hero names no goal at all", async () => {
-    activityAnswer = async () => ({ data: EMPTY, response: ok() });
-    renderBanner(null);
+describe("the banner — the daily goal's three faces (gap row 25)", () => {
+  it("unset: the honest neutral heading, the today line alone — no goal copy", async () => {
+    activityAnswer = async () => ({
+      data: activityRow({ daily_goal_words: null, goal_met: false, goal_remaining: 0 }),
+      response: ok(),
+    });
+    renderBanner();
     expect(await screen.findByText(de["writing.shelf.banner.noGoal"])).toBeTruthy();
-    expect(screen.getByText(de["writing.shelf.banner.body"])).toBeTruthy();
+    const body = banner().querySelector("p.text-meta");
+    expect(body?.textContent).toBe("Du hast heute bereits 412 Wörter verfasst.");
+    expect(screen.queryByText(/Tagesziel/)).toBeNull();
+    expect(screen.queryByText(de["writing.shelf.banner.dailyMet"])).toBeNull();
+  });
+
+  it("open: the remainder reads the aggregate's own field, de-DE grouped", async () => {
+    activityAnswer = async () => ({
+      data: activityRow({ daily_goal_words: 20000, goal_remaining: 12345 }),
+      response: ok(),
+    });
+    renderBanner();
+    const heading = await screen.findByRole("heading", { level: 3 });
+    expect(heading.textContent).toBe("Heutiges Schreibziel: 20.000 Wörter");
+    const body = banner().querySelector("p.text-meta");
+    expect(body?.textContent).toBe(
+      `Du hast heute bereits 412 Wörter verfasst. Noch 12.345 Wörter bis zum Tagesziel.`,
+    );
+  });
+
+  it("reached: the done-state copy stands, no remainder beside it", async () => {
+    activityAnswer = async () => ({
+      data: activityRow({ daily_goal_words: 400, goal_met: true, goal_remaining: 0 }),
+      response: ok(),
+    });
+    renderBanner();
+    const heading = await screen.findByRole("heading", { level: 3 });
+    expect(heading.textContent).toBe("Heutiges Schreibziel: 400 Wörter");
+    const body = banner().querySelector("p.text-meta");
+    expect(body?.textContent).toBe(
+      `Du hast heute bereits 412 Wörter verfasst. ${de["writing.shelf.banner.dailyMet"]}`,
+    );
+    expect(screen.queryByText(/Noch .* Wörter bis zum Tagesziel/)).toBeNull();
+  });
+
+  it("reached exactly at the goal is reached — the aggregate's mark decides", async () => {
+    activityAnswer = async () => ({
+      data: activityRow({ daily_goal_words: 412, goal_met: true, goal_remaining: 0 }),
+      response: ok(),
+    });
+    renderBanner();
+    await screen.findByText(goalHeading());
+    const body = banner().querySelector("p.text-meta");
+    expect(body?.textContent).toContain(de["writing.shelf.banner.dailyMet"]);
+    expect(body?.textContent).not.toContain("bis zum Tagesziel");
+  });
+
+  it("the unset neutral wins over any progress field — presence decides", async () => {
+    // A stale remainder beside a null goal is no goal: the banner reads
+    // the stored answer's presence first, never the progress alone.
+    activityAnswer = async () => ({
+      data: activityRow({ daily_goal_words: null, goal_met: false, goal_remaining: 338 }),
+      response: ok(),
+    });
+    renderBanner();
+    expect(await screen.findByText(de["writing.shelf.banner.noGoal"])).toBeTruthy();
+    const body = banner().querySelector("p.text-meta");
+    expect(body?.textContent).toBe("Du hast heute bereits 412 Wörter verfasst.");
   });
 });
 
@@ -305,7 +368,7 @@ describe("the banner — loading stands in the shelf's skeleton family", () => {
     ).toBe(true);
 
     resolveActivity({ data: activityRow(), response: ok() });
-    expect(await screen.findByText(t("writing.shelf.banner.goal", { title: HERO.title }))).toBeTruthy();
+    expect(await screen.findByText(goalHeading())).toBeTruthy();
     expect(container.querySelectorAll(".animate-pulse")).toHaveLength(0);
   });
 });
@@ -329,7 +392,7 @@ describe("the banner — error answers the honest retry family", () => {
     expect(screen.getByText("—")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: de["writing.shelf.error.retry"] }));
-    expect(await screen.findByText(t("writing.shelf.banner.goal", { title: HERO.title }))).toBeTruthy();
+    expect(await screen.findByText(goalHeading())).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
     expect(attempts).toBe(2);
   });
@@ -355,61 +418,32 @@ describe("the banner — error answers the honest retry family", () => {
     expect(container.querySelectorAll(".animate-pulse")).toHaveLength(0);
 
     resolveSecond({ data: activityRow(), response: ok() });
-    expect(await screen.findByText(t("writing.shelf.banner.goal", { title: HERO.title }))).toBeTruthy();
+    expect(await screen.findByText(goalHeading())).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
-  });
-});
-
-describe("the banner — the goal pair stands only when the target is real", () => {
-  it("a missing target keeps the dash and names the missing goal once", async () => {
-    renderBanner({ ...HERO, target_words: null });
-    const heading = await screen.findByRole("heading", { level: 3 });
-    expect(heading.textContent).toBe(
-      `${t("writing.shelf.banner.goal", { title: "Dead Signal" })}: —`,
-    );
-    const body = banner().querySelector("p.text-meta");
-    expect(body?.textContent).toBe(
-      `Du hast heute bereits 412 Wörter verfasst. ${de["writing.shelf.noTarget"]}`,
-    );
-    expect(heading.textContent).not.toContain("/");
-  });
-
-  it("a zero target is no target — the progress rule's own neutral", async () => {
-    renderBanner({ ...HERO, target_words: 0 });
-    const heading = await screen.findByRole("heading", { level: 3 });
-    expect(heading.textContent).toContain(": —");
-  });
-
-  it("no hero names no goal — the today line still speaks the atelier", async () => {
-    renderBanner(null);
-    expect(await screen.findByText(de["writing.shelf.banner.noGoal"])).toBeTruthy();
-    const body = banner().querySelector("p.text-meta");
-    expect(body?.textContent).toBe("Du hast heute bereits 412 Wörter verfasst.");
-    // No goal pair — the pair's spaced slash stands nowhere (the average's
-    // „W/Tag" unit is its own word, not a pair).
-    expect(screen.queryByText(/ \/ /)).toBeNull();
-  });
-
-  it("a finished book carries the pair without a remainder — nothing left to owe", async () => {
-    renderBanner({ ...HERO, word_count: 70000 });
-    const heading = await screen.findByRole("heading", { level: 3 });
-    expect(heading.textContent).toContain(
-      t("writing.shelf.words.pair", { count: 70000, target: 65000 }),
-    );
-    const body = banner().querySelector("p.text-meta");
-    expect(body?.textContent).toBe("Du hast heute bereits 412 Wörter verfasst.");
   });
 });
 
 describe("the banner — the copy speaks the catalog's du-tone German", () => {
   it("the populated face is the catalog's own, not an English fallback", async () => {
     renderBanner();
-    await screen.findByText(t("writing.shelf.banner.goal", { title: HERO.title }));
-    expect(screen.getByText("Ziel für ‚Dead Signal‘")).toBeTruthy();
+    await screen.findByText(goalHeading());
+    expect(screen.getByText("Heutiges Schreibziel")).toBeTruthy();
     expect(screen.getByText(/Du hast heute bereits 412 Wörter verfasst\./)).toBeTruthy();
-    expect(screen.getByText(/Noch 16\.658 Wörter bis zum Ziel\./)).toBeTruthy();
+    expect(screen.getByText(/Noch 338 Wörter bis zum Tagesziel\./)).toBeTruthy();
     expect(screen.getByText("Wochenschnitt")).toBeTruthy();
     expect(screen.getByText("Statistiken öffnen")).toBeTruthy();
     expect(within(banner()).queryByText(/Today|Goal for|Weekly/)).toBeNull();
+    // The dead pin's copy stands nowhere — the hero-book goal ended.
+    expect(within(banner()).queryByText(/Ziel für/)).toBeNull();
+  });
+
+  it("the reached face speaks the done-state copy, du-tone", async () => {
+    activityAnswer = async () => ({
+      data: activityRow({ daily_goal_words: 400, goal_met: true, goal_remaining: 0 }),
+      response: ok(),
+    });
+    renderBanner();
+    await screen.findByText(goalHeading());
+    expect(screen.getByText(/Tagesziel erreicht\./)).toBeTruthy();
   });
 });

@@ -10,6 +10,9 @@
  * lies on the midline: nothing moved, nothing invented. Negative days ride
  * the same scale, unfloored (Task 4's honesty). The marked point is the
  * last one: today, the day the banner's today-line speaks.
+ *
+ * The daily goal's voice (goalState) reads the aggregate's goal fields —
+ * the user's stored answer and the day's progress against it (W4 row 25).
  */
 
 import type { Activity, ActivityPoint } from "@shell/lib/api/client";
@@ -64,4 +67,15 @@ export function todayState(todayWords: number): TodayState {
   if (todayWords > 0) return "written";
   if (todayWords < 0) return "removed";
   return "quiet";
+}
+
+/** The daily goal's voice (W4 row 25), selected from the aggregate's own
+ *  fields: no goal stored is the unset neutral — presence decides, never
+ *  the progress alone; a stored goal the day reached is met, else open.
+ *  The remainder math is the server's (the aggregate derives it the way
+ *  it derives the streak); the copy reads the answer, never recomputes. */
+export type GoalState = "unset" | "open" | "met";
+export function goalState(activity: Activity): GoalState {
+  if (activity.daily_goal_words === null) return "unset";
+  return activity.goal_met ? "met" : "open";
 }

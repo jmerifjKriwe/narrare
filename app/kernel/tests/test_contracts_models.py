@@ -7,6 +7,7 @@ def test_the_aggregator_registers_every_shared_table() -> None:
         "users",
         "novels",
         "chapters",
+        "scenes",
         "entities",
         "entity_relations",
         "entity_suggestions",

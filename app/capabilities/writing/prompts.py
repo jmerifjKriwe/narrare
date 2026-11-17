@@ -1,10 +1,14 @@
 """The budgeted continuation prompt. Writing owns its prompt text, per the spec.
 
 The context a continuation carries is assembled from the four named slices the
-kernel allocator sized (`app.kernel.context`): the chapter tail, the entities
-the tail names, the previous chapters' tails and the novel's style hints — each
-hard-cut to its slice, scaffolding included, so a slice never overflows. A
-slice whose floor is zero is omitted at assembly; nothing rides free.
+kernel allocator sized (`app.kernel.context`): the active scene's tail, the
+entities the tail names, the preceding scenes' tails and the novel's style hints
+— each hard-cut to its slice, scaffolding included, so a slice never overflows.
+A slice whose floor is zero is omitted at assembly; nothing rides free.
+
+The prose unit is the scene (W4 §5): the predecessors are the active chapter's
+earlier scenes, then earlier chapters' scenes, nearest first, with chapter titles
+as separators — the chapter-predecessors logic refined onto scenes, not replaced.
 
 The packers fill, the template arranges (the B docking): the three optional
 sections arrive pre-packed within their slices as opaque strings, and the
@@ -21,16 +25,34 @@ passes in.
 
 import asyncio
 from collections.abc import Awaitable, Callable, Sequence  # noqa: TC003
+from dataclasses import dataclass
 from typing import Final
 from uuid import UUID  # noqa: TC003
 
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.kernel.context import BudgetImpossibleError, ContextBudgets
-from app.kernel.contracts.models import Chapter, Entity  # noqa: TC001
+from app.kernel.contracts.models import Entity  # noqa: TC001
 from app.kernel.prompts import PromptRenderError, get_registry, no_includes, render, render_source
 
 CONTINUATION_KEY: Final = "writing.continuation"
+
+
+@dataclass(frozen=True)
+class PredecessorScene:
+    """One earlier scene in the continuation's context, nearest first (W4 §5).
+
+    ``chapter_id``/``chapter_title`` name the chapter the scene belongs to: the
+    block renders the title as a ``###`` separator when the stream crosses into
+    a new chapter, and the id (not the title) decides the boundary, so two
+    unnamed chapters still separate. ``body`` is the scene's prose, hard-cut to
+    the slice's remaining room at assembly.
+    """
+
+    chapter_id: UUID
+    chapter_title: str
+    body: str
+
 
 _ENTITIES_HEADING = "Referenced entities:"
 _PREDECESSORS_HEADING = "Previous chapters:"
@@ -75,9 +97,10 @@ def _packed_variables(
     novel_title: str,
     chapter_title: str,
     entities: Sequence[Entity],
-    predecessors: Sequence[Chapter],
+    predecessors: Sequence[PredecessorScene],
     genre: str | None,
     blurb: str | None,
+    active_chapter_id: UUID | None = None,
 ) -> dict[str, str]:
     """The template's variables: the three sections packed within their slices.
 
@@ -98,7 +121,9 @@ def _packed_variables(
         if entities_block:
             variables["entities_section"] = entities_block + "\n\n"
     if budgets.recent_chapters >= len(_PREDECESSORS_HEADING) + _SECTION_OVERHEAD and predecessors:
-        predecessors_block = _predecessors_block(predecessors, budgets.recent_chapters)
+        predecessors_block = _predecessors_block(
+            predecessors, active_chapter_id, budgets.recent_chapters
+        )
         if predecessors_block:
             variables["predecessors_section"] = predecessors_block + "\n\n"
     if budgets.style_hints >= len(_STYLE_HEADING) + _SECTION_OVERHEAD and (
@@ -202,9 +227,10 @@ def continuation_prompt(
     chapter_title: str,
     body: str,
     entities: Sequence[Entity] = (),
-    predecessors: Sequence[Chapter] = (),
+    predecessors: Sequence[PredecessorScene] = (),
     genre: str | None = None,
     blurb: str | None = None,
+    active_chapter_id: UUID | None = None,
 ) -> str:
     """The bundled continuation prompt, rendered offline inside the four budgets.
 
@@ -217,14 +243,16 @@ def continuation_prompt(
     optional section's heading shares its own slice. An entity entry is
     ``### {name} ({type})`` plus its body; when it exceeds the slice's
     remaining room it degrades to the ``{name} ({type})`` line, and when even
-    the line does not fit the entity is skipped, silently. A predecessor
-    contributes its title and a tail hard-cut to what remains of its slice.
-    Sections whose slice is zero — or too small for the heading and its
-    separator — are absent whole, as is a section with no entries at all; the
-    style section is also omitted when the novel carries neither genre nor
-    blurb. The arrangement is the bundled template's own: the sections are
-    packed, the frame measured against the template, the tail cut to fit —
-    the same flow the chain render runs.
+    the line does not fit the entity is skipped, silently. A predecessor scene
+    contributes a tail hard-cut to what remains of its slice, under its
+    chapter's ``###`` separator when the stream crosses into a new chapter
+    (``active_chapter_id`` names the chapter the tail belongs to, so its own
+    earlier scenes carry no separator). Sections whose slice is zero — or too
+    small for the heading and its separator — are absent whole, as is a section
+    with no entries at all; the style section is also omitted when the novel
+    carries neither genre nor blurb. The arrangement is the bundled template's
+    own: the sections are packed, the frame measured against the template, the
+    tail cut to fit — the same flow the chain render runs.
     """
 
     async def bundled(variables: dict[str, str]) -> str:
@@ -236,7 +264,14 @@ def continuation_prompt(
             budgets,
             body,
             _packed_variables(
-                budgets, novel_title, chapter_title, entities, predecessors, genre, blurb
+                budgets,
+                novel_title,
+                chapter_title,
+                entities,
+                predecessors,
+                genre,
+                blurb,
+                active_chapter_id,
             ),
         )
     )
@@ -252,9 +287,10 @@ async def render_continuation(
     chapter_title: str,
     body: str,
     entities: Sequence[Entity],
-    predecessors: Sequence[Chapter],
+    predecessors: Sequence[PredecessorScene],
     genre: str | None,
     blurb: str | None,
+    active_chapter_id: UUID | None = None,
 ) -> str:
     """The continuation prompt through the effective chain, the budgets held.
 
@@ -276,7 +312,14 @@ async def render_continuation(
         budgets,
         body,
         _packed_variables(
-            budgets, novel_title, chapter_title, entities, predecessors, genre, blurb
+            budgets,
+            novel_title,
+            chapter_title,
+            entities,
+            predecessors,
+            genre,
+            blurb,
+            active_chapter_id,
         ),
     )
 
@@ -299,20 +342,37 @@ def _entities_block(entities: Sequence[Entity], budget: int) -> str:
     return heading + "".join(f"\n{entry}" for entry in entries)
 
 
-def _predecessors_block(predecessors: Sequence[Chapter], budget: int) -> str:
-    """Nearest first, each tail hard-cut to what the slice still has left."""
+def _predecessors_block(
+    predecessors: Sequence[PredecessorScene], active_chapter_id: UUID | None, budget: int
+) -> str:
+    """Nearest first, each scene's tail hard-cut to what the slice still has left.
+
+    The unit is the scene (W4 §5): the active chapter's earlier scenes, then
+    earlier chapters' scenes, each chapter's nearest first. A chapter title
+    rides as a ``###`` separator when the stream crosses into a new chapter —
+    the active chapter's own earlier scenes share the header's chapter and
+    carry none. An empty (or whitespace-only) scene carries no prose and is
+    skipped, separator and all; a scene that does not fit stops the packing,
+    since farther ones must not skip past the nearest that failed.
+    """
     heading = _PREDECESSORS_HEADING
     entries: list[str] = []
     used = len(heading) + _SECTION_OVERHEAD
-    for chapter in predecessors:
+    current_chapter = active_chapter_id
+    for scene in predecessors:
+        if not scene.body.strip():
+            continue
         join = 1 if entries else 0
-        title_line = f"### {chapter.title}\n"
-        tail_room = budget - used - join - len(title_line)
+        separator = ""
+        if scene.chapter_id != current_chapter:
+            separator = f"### {scene.chapter_title}\n"
+            current_chapter = scene.chapter_id
+        tail_room = budget - used - join - len(separator)
         if tail_room <= 0:
-            # The nearest chapter did not fit; older ones are farther away and
-            # must not skip past it, so stop packing here.
+            # The nearest scene did not fit; farther ones must not skip past
+            # it, so stop packing here.
             break
-        entry = title_line + chapter.body[-tail_room:]
+        entry = separator + scene.body[-tail_room:]
         entries.append(entry)
         used += join + len(entry)
     if not entries:

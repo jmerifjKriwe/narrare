@@ -9,6 +9,7 @@ from app.capabilities.writing.metadata import (
     normalized_novel_updates,
 )
 from app.capabilities.writing.schemas import NovelUpdate
+from app.kernel.contracts.models import AI_ROLES, AUTHOR_TYPOLOGIES
 
 
 def test_absent_fields_are_not_updates() -> None:
@@ -99,6 +100,79 @@ def test_archived_at_passes_through_as_carried() -> None:
     stamp = datetime(2026, 11, 15, 10, 0, tzinfo=UTC)
     assert normalized_novel_updates(NovelUpdate(archived_at=stamp)) == {"archived_at": stamp}
     assert normalized_novel_updates(NovelUpdate(archived_at=None)) == {"archived_at": None}
+
+
+def test_target_words_is_positive_bounded_or_clears() -> None:
+    assert normalized_novel_updates(NovelUpdate(target_words=65000)) == {"target_words": 65000}
+    assert normalized_novel_updates(NovelUpdate(target_words=2_147_483_647)) == {
+        "target_words": 2_147_483_647
+    }
+    assert normalized_novel_updates(NovelUpdate(target_words=None)) == {"target_words": None}
+    for value in (0, -1, 2_147_483_648):
+        with pytest.raises(InvalidNovelUpdateError) as refused:
+            normalized_novel_updates(NovelUpdate(target_words=value))
+        assert refused.value.field == "target_words"
+
+
+def test_author_typology_carries_the_shared_vocabulary_and_null_clears() -> None:
+    for value in AUTHOR_TYPOLOGIES:
+        assert normalized_novel_updates(NovelUpdate(author_typology=value)) == {
+            "author_typology": value
+        }
+    assert normalized_novel_updates(NovelUpdate(author_typology=None)) == {"author_typology": None}
+    assert normalized_novel_updates(NovelUpdate(author_typology="   ")) == {"author_typology": None}
+    # Trimmed like the status: the door normalizes before it checks the set.
+    assert normalized_novel_updates(NovelUpdate(author_typology="  plotter  ")) == {
+        "author_typology": "plotter"
+    }
+
+
+def test_an_author_typology_outside_the_vocabulary_is_refused_by_name() -> None:
+    for value in ("bogus", "Plotter", "dreamer"):
+        with pytest.raises(InvalidNovelUpdateError) as refused:
+            normalized_novel_updates(NovelUpdate(author_typology=value))
+        assert refused.value.field == "author_typology"
+
+
+def test_ai_role_carries_the_shared_vocabulary_and_null_clears() -> None:
+    for value in AI_ROLES:
+        assert normalized_novel_updates(NovelUpdate(ai_role=value)) == {"ai_role": value}
+    assert normalized_novel_updates(NovelUpdate(ai_role=None)) == {"ai_role": None}
+    assert normalized_novel_updates(NovelUpdate(ai_role="   ")) == {"ai_role": None}
+
+
+def test_an_ai_role_outside_the_vocabulary_is_refused_by_name() -> None:
+    for value in ("bogus", "Lektor", "autor"):
+        with pytest.raises(InvalidNovelUpdateError) as refused:
+            normalized_novel_updates(NovelUpdate(ai_role=value))
+        assert refused.value.field == "ai_role"
+
+
+def test_dramatic_form_is_trimmed_empty_clears_and_width_is_checked() -> None:
+    assert normalized_novel_updates(NovelUpdate(dramatic_form="  three-act  ")) == {
+        "dramatic_form": "three-act"
+    }
+    assert normalized_novel_updates(NovelUpdate(dramatic_form="   ")) == {"dramatic_form": None}
+    assert normalized_novel_updates(NovelUpdate(dramatic_form="x" * 80)) == {
+        "dramatic_form": "x" * 80
+    }
+    with pytest.raises(InvalidNovelUpdateError) as refused:
+        normalized_novel_updates(NovelUpdate(dramatic_form="x" * 81))
+    assert refused.value.field == "dramatic_form"
+
+
+def test_canon_strictness_is_one_to_five_or_clears() -> None:
+    for value in (1, 2, 3, 4, 5):
+        assert normalized_novel_updates(NovelUpdate(canon_strictness=value)) == {
+            "canon_strictness": value
+        }
+    assert normalized_novel_updates(NovelUpdate(canon_strictness=None)) == {
+        "canon_strictness": None
+    }
+    for value in (0, -1, 6):
+        with pytest.raises(InvalidNovelUpdateError) as refused:
+            normalized_novel_updates(NovelUpdate(canon_strictness=value))
+        assert refused.value.field == "canon_strictness"
 
 
 def test_the_copy_title_wraps_the_original_in_quotes_and_suffix() -> None:

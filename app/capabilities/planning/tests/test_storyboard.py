@@ -43,8 +43,9 @@ async def _chapter(client: AsyncClient, novel_id: str, title: str, body: str = "
     assert created.status_code == 201
     chapter_id = created.json()["id"]
     if body:
-        saved = await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": body})
-        assert saved.status_code == 200
+        # The prose lives on a scene now (W4 §5): the chapter is the shell.
+        saved = await client.post(f"/api/writing/chapters/{chapter_id}/scenes", json={"body": body})
+        assert saved.status_code == 201
     return chapter_id
 
 
@@ -150,15 +151,16 @@ async def test_sync_statuses_follow_the_rule_priority() -> None:
         await _scenes(client, novel_id, planned, "planned")
         await _scenes(client, novel_id, finished, "complete", "complete")
         await _chapter(client, novel_id, "x")  # placeholder to shift positions
-        finished_body = await client.put(
-            f"/api/writing/chapters/{finished}", json={"body": "Wort für Wort"}
+        # Prose rides a scene now (W4 §5): the chapter shell carries no body.
+        finished_body = await client.post(
+            f"/api/writing/chapters/{finished}/scenes", json={"body": "Wort für Wort"}
         )
-        assert finished_body.status_code == 200
+        assert finished_body.status_code == 201
         await _scenes(client, novel_id, drifting, "complete")
-        drifted_body = await client.put(
-            f"/api/writing/chapters/{drifting}", json={"body": "noch mehr Worte hier"}
+        drifted_body = await client.post(
+            f"/api/writing/chapters/{drifting}/scenes", json={"body": "noch mehr Worte hier"}
         )
-        assert drifted_body.status_code == 200
+        assert drifted_body.status_code == 201
         moved = await client.put(_stage(novel_id, drifting), json={"stage_key": "resolution"})
         assert moved.status_code == 200
         assert moved.json()["assignment_source"] == "assigned"

@@ -123,7 +123,8 @@ async def _chapter(client: AsyncClient) -> tuple[str, str]:
         f"/api/writing/novels/{novel_id}/chapters", json={"title": CHAPTER_TITLE}
     )
     chapter_id = chapter.json()["id"]
-    await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": CHAPTER_BODY})
+    # The prose lives on a scene now (W4 §5): the chapter is the shell.
+    await client.post(f"/api/writing/chapters/{chapter_id}/scenes", json={"body": CHAPTER_BODY})
     return novel_id, chapter_id
 
 
