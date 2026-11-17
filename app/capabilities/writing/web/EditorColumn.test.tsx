@@ -7,8 +7,8 @@
  * textbox), and the foot's live word count + the one save-status owner's
  * three faces (rest / saving / KACHEL 9's failure with Wiederholen). No
  * folio, no page count (row 9), no ghost text or prompt bar (PR 4). The
- * empty faces answer per the states sheet, their create doors disabled
- * until Task 13.
+ * empty faces answer per the states sheet; Kachel 4's first-scene door is
+ * LIVE (Task 13) — the canonical new-chapter experience (D16).
  */
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -94,10 +94,12 @@ function renderColumn(
     novel?: Novel;
     onRetry?: () => void;
     onBodyChange?: (body: string) => void;
+    onCreateScene?: () => void;
   } = {},
 ) {
   const onRetry = props.onRetry ?? vi.fn();
   const onBodyChange = props.onBodyChange ?? vi.fn();
+  const onCreateScene = props.onCreateScene ?? vi.fn();
   const utils = render(
     <EditorColumn
       novel={props.novel ?? novelRow()}
@@ -106,9 +108,10 @@ function renderColumn(
       status={props.status ?? "idle"}
       onRetry={onRetry}
       onBodyChange={onBodyChange}
+      onCreateScene={onCreateScene}
     />,
   );
-  return { ...utils, onRetry, onBodyChange };
+  return { ...utils, onRetry, onBodyChange, onCreateScene };
 }
 
 beforeEach(() => {
@@ -134,6 +137,7 @@ describe("the scene face", () => {
         status="idle"
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
+        onCreateScene={vi.fn()}
       />,
     );
     expect(screen.getByTestId("workspace-running-head").textContent).toBe("Dead Signal");
@@ -160,6 +164,7 @@ describe("the scene face", () => {
         status="idle"
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
+        onCreateScene={vi.fn()}
       />,
     );
     expect(
@@ -178,9 +183,36 @@ describe("the scene face", () => {
         status="idle"
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
+        onCreateScene={vi.fn()}
       />,
     );
     expect(screen.getByText("Forschungsstation 7")).toBeTruthy();
+    rerender(
+      <EditorColumn
+        novel={novelRow()}
+        entry={entryOf(sceneRow({ setting: null }))}
+        emptyChapter={false}
+        status="idle"
+        onRetry={vi.fn()}
+        onBodyChange={vi.fn()}
+        onCreateScene={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("27. Oktober 2094, 03:14 UTC")).toBeTruthy();
+    // The neither leg: both labels unset, the overline is absent — no empty
+    // line, no stray separator (the name's claim, made true again).
+    rerender(
+      <EditorColumn
+        novel={novelRow()}
+        entry={entryOf(sceneRow({ setting: null, story_time: null }))}
+        emptyChapter={false}
+        status="idle"
+        onRetry={vi.fn()}
+        onBodyChange={vi.fn()}
+        onCreateScene={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId("workspace-overline")).toBeNull();
   });
 
   it("the prose is an editable textbox rendering the body's paragraphs", async () => {
@@ -259,6 +291,7 @@ describe("the ribbon", () => {
           status={status}
           onRetry={vi.fn()}
           onBodyChange={vi.fn()}
+          onCreateScene={vi.fn()}
         />,
       );
       const present = within(screen.getByTestId("workspace-ribbon")).queryByText(
@@ -302,15 +335,16 @@ describe("the empty faces", () => {
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 
-  it("the empty chapter explains the scene and disables the create door", () => {
-    renderColumn({ entry: null, emptyChapter: true });
+  it("the empty chapter explains the scene — the first-scene door live (D16's canonical new chapter)", () => {
+    const { onCreateScene } = renderColumn({ entry: null, emptyChapter: true });
     expect(
       screen.getByRole("heading", { level: 1, name: de["writing.workspace.emptyChapter.title"] }),
     ).toBeTruthy();
     expect(screen.getByText(de["writing.workspace.emptyChapter.body"])).toBeTruthy();
     const button = screen.getByRole("button", { name: de["writing.workspace.emptyChapter.action"] });
-    expect(button.hasAttribute("disabled")).toBe(true);
-    expect(button.getAttribute("title")).toBe(de["writing.workspace.crudNote"]);
+    expect(button.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(button);
+    expect(onCreateScene).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("workspace-ribbon")).toBeNull();
   });
 });

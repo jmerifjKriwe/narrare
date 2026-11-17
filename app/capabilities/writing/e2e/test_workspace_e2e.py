@@ -7,7 +7,8 @@ tabular word counts, the last-edited active scene, the written-out scene
 header, the daily ring from the activity aggregate, the tension card's
 stage label from planning's storyboard, the dock's real cover miniature —
 and every door the further build-out has not reached stays disabled with
-its note. The shelf hero's door resumes the last-edited scene and names
+its note (the CRUD doors went live in Task 13 — their own suite drives
+them). The shelf hero's door resumes the last-edited scene and names
 chapter + scene honestly (gap row 3); the empty book and empty chapter
 answer per the states sheet; a deleted book degrades to the shelf with the
 note; the dark face clears the same axe WCAG A/AA floor the shelf rides.
@@ -72,7 +73,11 @@ def _seed_klang() -> dict[str, object]:
 
 def _goto_workspace(page: Page, novel_id: str) -> None:
     page.goto(f"{BASE}/novels/{novel_id}")
-    expect(page.get_by_role("heading", level=1)).to_be_visible()
+    # The ready-state surface, not any h1 — the loading skeleton carries an
+    # sr-only heading Playwright counts as visible (a 1x1 box).
+    expect(
+        page.get_by_test_id("explorer-tree").or_(page.get_by_test_id("explorer-empty-book"))
+    ).to_be_visible()
 
 
 def test_the_workspace_reads_the_seeded_book(page: Page, installed: Stack) -> None:
@@ -139,12 +144,11 @@ def test_the_workspace_reads_the_seeded_book(page: Page, installed: Stack) -> No
     rail = page.get_by_role("navigation", name="Navigation")
     expect(rail.get_by_role("link", name="Editor")).to_have_attribute("aria-current", "page")
 
-    # Every unbuilt door stays disabled with its note — the CRUD (Task 13),
-    # the ribbon's focus/history/export (#875/#876), the wiki (#867), the
-    # layout tune (#881); the ⌘J chip carries its „bald" mark (#869).
+    # Every unbuilt door stays disabled with its note — the ribbon's
+    # focus/history/export (#875/#876), the wiki (#867), the layout tune
+    # (#881); the ⌘J chip carries its „bald" mark (#869). The CRUD doors
+    # are LIVE (Task 13) — the create suite drives them.
     for name in (
-        "Neues Kapitel",
-        "Neue Szene",
         "Verlauf",
         "Export",
         "Fokus (F9)",
@@ -152,6 +156,8 @@ def test_the_workspace_reads_the_seeded_book(page: Page, installed: Stack) -> No
         "Workspace-Layout",
     ):
         expect(page.get_by_role("button", name=name, exact=True)).to_be_disabled()
+    for name in ("Neues Kapitel", "Neue Szene"):
+        expect(page.get_by_role("button", name=name, exact=True)).to_be_enabled()
     expect(page.get_by_text("bald")).to_be_visible()
 
     # Selecting another scene moves the editor and the marker — read-only
@@ -170,7 +176,8 @@ def test_the_workspace_reads_the_seeded_book(page: Page, installed: Stack) -> No
 
 def test_the_empty_book_and_empty_chapter_faces(page: Page, installed: Stack) -> None:
     """The states sheet's Kacheln 3 and 4: the invitation and the first-scene
-    explanation, their create doors disabled until Task 13."""
+    explanation, their create doors live (Task 13 — the create suite drives
+    the full flow; here the faces stand on the seeded rows)."""
     novel = create_novel("Leeres Buch")
     novel_id = str(novel["id"])
 
@@ -178,20 +185,20 @@ def test_the_empty_book_and_empty_chapter_faces(page: Page, installed: Stack) ->
     expect(page.get_by_role("heading", name=EMPTY_BOOK_TITLE)).to_be_visible()
     expect(page.get_by_text("Noch keine Kapitel")).to_be_visible()
     expect(page.get_by_text("Beginne mit dem ersten Kapitel deines Romans.")).to_be_visible()
-    expect(page.get_by_role("button", name="+ Erstes Kapitel anlegen")).to_be_disabled()
+    expect(page.get_by_role("button", name="+ Erstes Kapitel anlegen")).to_be_enabled()
     # The book is real, only empty: identity card and dock stand.
     expect(page.get_by_text("Leeres Buch").first).to_be_visible()
     expect(page.get_by_text("Erfasst: 0 Wörter")).to_be_visible()
     assert_accessible(page)
 
     # A chapter with zero scenes is D16's real state — the tree says so,
-    # the editor explains the scene, the create door waits.
+    # the editor explains the scene, the create door stands ready.
     create_chapter(novel_id, "Erstes Kapitel")
     page.reload()
     expect(page.get_by_role("heading", name=EMPTY_CHAPTER_TITLE)).to_be_visible()
     expect(page.get_by_text("Eine Szene ist der Ort, an dem du schreibst.")).to_be_visible()
     expect(page.get_by_text("Keine Szenen angelegt")).to_be_visible()
-    expect(page.get_by_role("button", name="+ Szene 1 anlegen")).to_be_disabled()
+    expect(page.get_by_role("button", name="+ Szene 1 anlegen")).to_be_enabled()
     assert_accessible(page)
 
 

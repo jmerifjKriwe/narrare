@@ -7,12 +7,26 @@
  * skeleton, the error retry and the 404 degrade to the shelf. Only the
  * API client is mocked at its module boundary; the chrome stays real and
  * its book face reads the route param (Task 11's chrome seam).
+ *
+ * Task 13's CRUD legs: the create flow (empty book → chapter → empty
+ * chapter face → scene → editor, D16's canonical path), the delete flows
+ * (last scene → empty chapter; active scene → the neighbour; chapter →
+ * the cascade and the next chapter), rename/metadata round-trips through
+ * the dialogs, and the reorder contract (optimistic order, the 409's
+ * stored-ids revert, the refusal's restore, the honest notice + retry).
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// The full-suite run spawns one worker per file (46 on this repo) on a
+// four-core box: the default 1 s findBy budget is tighter than the loaded
+// jsdom render of the whole chrome + TipTap + router needs. The budget is
+// a load allowance, not a lenience — a heading that never renders still
+// fails the assertion (the solo runs and the E2E prove the render).
+configure({ asyncUtilTimeout: 5000 });
 
 vi.mock("@shell/lib/api/client", () => ({
   client: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() },
@@ -169,6 +183,24 @@ let activityAnswer: () => Promise<{ data?: unknown; response: Response }>;
 let storyboardAnswer: () => Promise<{ data?: unknown; response: Response }>;
 let setupComplete: boolean;
 
+// Task 13's write doors — each test scripts the answers it asserts on.
+let postChapterAnswer: () => Promise<{ data?: unknown; response: Response }>;
+let postSceneAnswer: (chapterId: string) => Promise<{ data?: unknown; response: Response }>;
+let putChapterAnswer: (chapterId: string, body: unknown) => Promise<{ data?: unknown; response: Response }>;
+let putSceneAnswer: (sceneId: string, body: unknown) => Promise<{ data?: unknown; response: Response }>;
+let chapterOrderAnswer: (body: { chapter_ids: string[] }) => Promise<{ data?: unknown; error?: unknown; response: Response }>;
+let sceneOrderAnswer: (chapterId: string, body: { ids: string[] }) => Promise<{ data?: unknown; error?: unknown; response: Response }>;
+let deleteChapterAnswer: (chapterId: string) => Promise<{ data?: unknown; response: Response }>;
+let deleteSceneAnswer: (sceneId: string) => Promise<{ data?: unknown; response: Response }>;
+
+const CH3: Chapter = { ...CH2, id: "c3", position: 2, title: "Drittes Kapitel", scene_count: 0, word_count: 0 };
+const NEW_CHAPTER: Chapter = { ...CH1, id: "c-new", position: 0, title: "", scene_count: 0, word_count: 0 };
+const NEW_SCENE: Scene = { ...S11, id: "s-new", chapter_id: "c-new", position: 1, title: "", body: "", word_count: 0 };
+
+function noContent(): Response {
+  return new Response(null, { status: 204 });
+}
+
 function scriptApi() {
   api.GET.mockImplementation(async (path: string, init?: { params?: { path?: Record<string, string> } }) => {
     if (path === "/api/settings") {
@@ -184,6 +216,34 @@ function scriptApi() {
     if (path === "/api/writing/activity") return activityAnswer();
     if (path === "/api/planning/novels/{novel_id}/storyboard") return storyboardAnswer();
     throw new Error(`unexpected request: ${path}`);
+  });
+  api.POST.mockImplementation(async (path: string, init?: { params?: { path?: Record<string, string> } }) => {
+    if (path === "/api/writing/novels/{novel_id}/chapters") return postChapterAnswer();
+    if (path === "/api/writing/chapters/{chapter_id}/scenes") {
+      return postSceneAnswer(init?.params?.path?.chapter_id ?? "");
+    }
+    throw new Error(`unexpected POST: ${path}`);
+  });
+  api.PUT.mockImplementation(
+    async (path: string, init?: { params?: { path?: Record<string, string> }; body?: Record<string, unknown> }) => {
+      const params = init?.params?.path ?? {};
+      const body = init?.body ?? {};
+      if (path === "/api/writing/scenes/{scene_id}") return putSceneAnswer(params.scene_id ?? "", body);
+      if (path === "/api/writing/chapters/{chapter_id}") return putChapterAnswer(params.chapter_id ?? "", body);
+      if (path === "/api/writing/novels/{novel_id}/chapter-order") {
+        return chapterOrderAnswer(body as { chapter_ids: string[] });
+      }
+      if (path === "/api/writing/chapters/{chapter_id}/scene-order") {
+        return sceneOrderAnswer(params.chapter_id ?? "", body as { ids: string[] });
+      }
+      throw new Error(`unexpected PUT: ${path}`);
+    },
+  );
+  api.DELETE.mockImplementation(async (path: string, init?: { params?: { path?: Record<string, string> } }) => {
+    const params = init?.params?.path ?? {};
+    if (path === "/api/writing/chapters/{chapter_id}") return deleteChapterAnswer(params.chapter_id ?? "");
+    if (path === "/api/writing/scenes/{scene_id}") return deleteSceneAnswer(params.scene_id ?? "");
+    throw new Error(`unexpected DELETE: ${path}`);
   });
 }
 
@@ -214,10 +274,21 @@ beforeEach(() => {
   });
   activityAnswer = async () => ({ data: ACTIVITY, response: ok() });
   storyboardAnswer = async () => ({ data: STORYBOARD, response: ok() });
+  postChapterAnswer = async () => ({ data: NEW_CHAPTER, response: ok() });
+  postSceneAnswer = async () => ({ data: NEW_SCENE, response: ok() });
+  putChapterAnswer = async (chapterId, body) => ({
+    data: { ...CH1, id: chapterId, ...(body as { title?: string }) },
+    response: ok(),
+  });
+  putSceneAnswer = async (sceneId, body) => ({
+    data: { ...S12, id: sceneId, ...(body as Partial<Scene>) },
+    response: ok(),
+  });
+  chapterOrderAnswer = async () => ({ data: undefined, response: noContent() });
+  sceneOrderAnswer = async () => ({ data: undefined, response: noContent() });
+  deleteChapterAnswer = async () => ({ data: undefined, response: noContent() });
+  deleteSceneAnswer = async () => ({ data: undefined, response: noContent() });
   scriptApi();
-  // The scene save's default answer: a landed write returns the row. The
-  // guard tests script a refusal where they need one.
-  api.PUT.mockResolvedValue({ data: S12, response: ok() });
 });
 
 afterEach(() => {
@@ -295,7 +366,7 @@ describe("the populated workspace", () => {
 });
 
 describe("the empty faces", () => {
-  it("the empty book invites the first chapter — both create doors disabled", async () => {
+  it("the empty book invites the first chapter — the door live (Task 13)", async () => {
     chaptersAnswer = async () => ({ data: [], response: ok() });
     await renderWorkspace();
     expect(
@@ -303,13 +374,13 @@ describe("the empty faces", () => {
     ).toBeTruthy();
     expect(screen.getByText(de["writing.workspace.emptyBook.title"])).toBeTruthy();
     const first = screen.getByRole("button", { name: de["writing.workspace.emptyBook.action"] });
-    expect(first.hasAttribute("disabled")).toBe(true);
+    expect(first.hasAttribute("disabled")).toBe(false);
     // The identity card and the dock stand — the book is real, only empty.
     expect(screen.getByTestId("explorer-identity")).toBeTruthy();
     expect(screen.getByTestId("dock-cover")).toBeTruthy();
   });
 
-  it("the empty chapter explains the scene — D16's real state", async () => {
+  it("the empty chapter explains the scene — D16's real state, the door live", async () => {
     chaptersAnswer = async () => ({ data: [{ ...CH1, scene_count: 0, word_count: 0 }], response: ok() });
     scenesAnswer = async () => ({ data: [], response: ok() });
     await renderWorkspace();
@@ -318,7 +389,7 @@ describe("the empty faces", () => {
     ).toBeTruthy();
     expect(screen.getByText(de["writing.workspace.tree.emptyChapter"])).toBeTruthy();
     const create = screen.getByRole("button", { name: de["writing.workspace.emptyChapter.action"] });
-    expect(create.hasAttribute("disabled")).toBe(true);
+    expect(create.hasAttribute("disabled")).toBe(false);
   });
 
   it("an empty chapter beside a populated one opens on the last-edited scene, and selects empty on click", async () => {
@@ -495,5 +566,387 @@ describe("the leave guard (Kachel 10) — flush first, ask only on a failed writ
     await waitFor(() => expect(router.state.location.pathname).toBe("/"));
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(api.PUT).not.toHaveBeenCalled();
+  });
+});
+
+// --- Task 13: the tree's CRUD goes live ------------------------------------
+
+describe("the create flow — D16's canonical new chapter", () => {
+  it("empty book → first chapter → the empty-chapter face → first scene → the editor", async () => {
+    // The world the refetch reads after each write — switched before the
+    // click, so the invalidation's ask lands on the post-write truth.
+    let chapterCreated = false;
+    let sceneCreated = false;
+    chaptersAnswer = async () => ({ data: chapterCreated ? [NEW_CHAPTER] : [], response: ok() });
+    scenesAnswer = async () => ({ data: sceneCreated ? [NEW_SCENE] : [], response: ok() });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: de["writing.workspace.emptyBook.editorTitle"] });
+
+    // The invitation door creates the chapter — zero scenes, the honest
+    // empty title — and the page selects it: the empty-chapter face.
+    chapterCreated = true;
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.emptyBook.action"] }));
+    await waitFor(() => expect(api.POST).toHaveBeenCalled());
+    expect(api.POST.mock.calls[0][0]).toBe("/api/writing/novels/{novel_id}/chapters");
+    expect(api.POST.mock.calls[0][1].body).toEqual({ title: "" });
+    expect(
+      await screen.findByRole("heading", { level: 1, name: de["writing.workspace.emptyChapter.title"] }),
+    ).toBeTruthy();
+    expect(screen.getByText(de["writing.workspace.tree.emptyChapter"])).toBeTruthy();
+
+    // Kachel 4's door creates the scene under the empty chapter and opens
+    // the editor on it — born empty, ready for the first word.
+    sceneCreated = true;
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.emptyChapter.action"] }));
+    await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(2));
+    expect(api.POST.mock.calls[1][0]).toBe("/api/writing/chapters/{chapter_id}/scenes");
+    expect(api.POST.mock.calls[1][1].params.path.chapter_id).toBe("c-new");
+    expect(api.POST.mock.calls[1][1].body).toEqual({ title: "", body: "" });
+    expect(await screen.findByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] })).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { level: 1, name: de["writing.workspace.untitledScene"] }),
+    ).toBeTruthy();
+  });
+
+  it("the tree's scene door creates under the active chapter and selects the new scene", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    // A collapsed chapter opens for its new scene — the active row stands
+    // visible (the select-a-chapter rule's discipline).
+    fireEvent.click(screen.getByRole("button", { name: "Kapitel 1 einklappen" }));
+    expect(screen.queryByText("Szene 1 · An Bord der Vanguard")).toBeNull();
+    scenesAnswer = async (chapterId) => ({
+      data: chapterId === "c1" ? [S11, S12, { ...NEW_SCENE, id: "s-new", chapter_id: "c1" }] : [S21],
+      response: ok(),
+    });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.newScene"] }));
+    await waitFor(() => expect(api.POST).toHaveBeenCalled());
+    expect(api.POST.mock.calls[0][1].params.path.chapter_id).toBe("c1");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: de["writing.workspace.untitledScene"] }),
+    ).toBeTruthy();
+    expect(screen.getByText("Szene 1 · An Bord der Vanguard")).toBeTruthy();
+  });
+
+  it("a refused create names the loss-free notice under the tree — the retry re-runs it", async () => {
+    postChapterAnswer = async () => ({ data: undefined, response: new Response(null, { status: 503 }) });
+    chaptersAnswer = async () => ({ data: [], response: ok() });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: de["writing.workspace.emptyBook.editorTitle"] });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.emptyBook.action"] }));
+    const notice = await screen.findByTestId("explorer-notice");
+    expect(within(notice).getByText(de["writing.workspace.crud.createChapterError"])).toBeTruthy();
+    // The retry re-runs the very create; the landed chapter opens its face.
+    postChapterAnswer = async () => ({ data: NEW_CHAPTER, response: ok() });
+    chaptersAnswer = async () => ({ data: [NEW_CHAPTER], response: ok() });
+    scenesAnswer = async () => ({ data: [], response: ok() });
+    fireEvent.click(within(notice).getByRole("button", { name: de["writing.shelf.error.retry"] }));
+    // (the answers above were switched before the retry click — the
+    // invalidation's refetch reads the post-create world)
+    expect(
+      await screen.findByRole("heading", { level: 1, name: de["writing.workspace.emptyChapter.title"] }),
+    ).toBeTruthy();
+    expect(screen.queryByTestId("explorer-notice")).toBeNull();
+  });
+});
+
+describe("the delete flows — always allowed, the cascade honest", () => {
+  async function openSceneMenu(sceneLabel: RegExp) {
+    const row = screen.getByRole("button", { name: sceneLabel }).closest("[data-testid^='tree-scene-']");
+    const trigger = within(row as HTMLElement).getByRole("button", {
+      name: de["writing.workspace.tree.sceneOptions"],
+    });
+    fireEvent.click(trigger);
+  }
+
+  it("the last scene goes — the chapter stands empty (D16), the counts read zero", async () => {
+    chaptersAnswer = async () => ({ data: [{ ...CH1, scene_count: 1, word_count: 342 }], response: ok() });
+    scenesAnswer = async () => ({ data: [S11], response: ok() });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "An Bord der Vanguard" });
+
+    await openSceneMenu(/Szene 1 · An Bord der Vanguard/);
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.delete"] }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText("«An Bord der Vanguard» wird endgültig gelöscht. Das Kapitel bleibt bestehen."),
+    ).toBeTruthy();
+    chaptersAnswer = async () => ({ data: [{ ...CH1, scene_count: 0, word_count: 0 }], response: ok() });
+    scenesAnswer = async () => ({ data: [], response: ok() });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.workspace.crud.deleteConfirm"] }));
+    await waitFor(() => expect(api.DELETE).toHaveBeenCalled());
+    expect(api.DELETE.mock.calls[0][0]).toBe("/api/writing/scenes/{scene_id}");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: de["writing.workspace.emptyChapter.title"] }),
+    ).toBeTruthy();
+    expect(screen.getByText(de["writing.workspace.tree.emptyChapter"])).toBeTruthy();
+    expect(screen.getByText("Kapitel 1 — Ghost in the Machine")).toBeTruthy();
+  });
+
+  it("deleting the active scene selects its neighbour — and drops the dead scene's draft", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    // A pending body on the active scene — the delete must discard it,
+    // never flush it into a row that no longer exists.
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    screen.getByRole("textbox").focus();
+    await user.keyboard(" Ungesichert.");
+    expect(await screen.findByText(de["writing.workspace.ribbon.unsaved"])).toBeTruthy();
+
+    await openSceneMenu(/Szene 2 · Das Signal im Permafrost/);
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.delete"] }));
+    chaptersAnswer = async () => ({ data: [{ ...CH1, scene_count: 1, word_count: 342 }, CH2], response: ok() });
+    scenesAnswer = async (chapterId) => ({ data: chapterId === "c1" ? [S11] : [S21], response: ok() });
+    fireEvent.click(
+      await screen.findByRole("button", { name: de["writing.workspace.crud.deleteConfirm"] }),
+    );
+    await waitFor(() => expect(api.DELETE).toHaveBeenCalled());
+    // The neighbour (the previous scene — the deleted one was the last).
+    expect(await screen.findByRole("heading", { level: 1, name: "An Bord der Vanguard" })).toBeTruthy();
+    // The discarded draft never reached the wire: no PUT to the dead scene.
+    const deadPuts = api.PUT.mock.calls.filter(
+      (call) => call[0] === "/api/writing/scenes/{scene_id}" && call[1].params.path.scene_id === "s12",
+    );
+    expect(deadPuts).toEqual([]);
+  });
+
+  it("deleting a chapter cascades its scenes and opens the neighbour — the last chapter leaves the empty book", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    const trigger = screen.getAllByRole("button", { name: de["writing.workspace.tree.chapterOptions"] })[0];
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.delete"] }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText("«Ghost in the Machine» wird mit 2 Szenen endgültig gelöscht."),
+    ).toBeTruthy();
+    chaptersAnswer = async () => ({ data: [{ ...CH2, position: 0 }], response: ok() });
+    scenesAnswer = async () => ({ data: [S21], response: ok() });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["writing.workspace.crud.deleteConfirm"] }));
+    await waitFor(() => expect(api.DELETE).toHaveBeenCalled());
+    expect(api.DELETE.mock.calls[0][0]).toBe("/api/writing/chapters/{chapter_id}");
+    // The neighbour chapter's first scene opens; the dead chapter's scene
+    // list is retired from the cache.
+    expect(await screen.findByRole("heading", { level: 1, name: "Sub-Basement" })).toBeTruthy();
+    expect(screen.queryByText("Kapitel 1 — Ghost in the Machine")).toBeNull();
+    expect(queryClient.getQueryData(["scenes", "c1"])).toBeUndefined();
+
+    // The last chapter goes — the empty book's invitation stands.
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.chapterOptions"] }));
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.delete"] }));
+    chaptersAnswer = async () => ({ data: [], response: ok() });
+    scenesAnswer = async () => ({ data: [], response: ok() });
+    fireEvent.click(
+      await screen.findByRole("button", { name: de["writing.workspace.crud.deleteConfirm"] }),
+    );
+    expect(
+      await screen.findByRole("heading", { level: 1, name: de["writing.workspace.emptyBook.editorTitle"] }),
+    ).toBeTruthy();
+  });
+
+  it("Abbrechen keeps the chapter — no write, the tree stands", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.click(screen.getAllByRole("button", { name: de["writing.workspace.tree.chapterOptions"] })[0]);
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.delete"] }));
+    fireEvent.click(await screen.findByRole("button", { name: de["writing.workspace.crud.cancel"] }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(api.DELETE).not.toHaveBeenCalled();
+    expect(screen.getByText("Kapitel 1 — Ghost in the Machine")).toBeTruthy();
+  });
+});
+
+describe("rename and metadata — the dialog round-trips", () => {
+  it("a chapter rename lands the title and the tree speaks it", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.click(screen.getAllByRole("button", { name: de["writing.workspace.tree.chapterOptions"] })[0]);
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.rename"] }));
+    const input = await screen.findByRole("textbox", { name: de["writing.workspace.crud.titleLabel"] });
+    fireEvent.change(input, { target: { value: "Der neue Name" } });
+    chaptersAnswer = async () => ({ data: [{ ...CH1, title: "Der neue Name" }, CH2], response: ok() });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.crud.save"] }));
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    expect(api.PUT.mock.calls[0][0]).toBe("/api/writing/chapters/{chapter_id}");
+    expect(api.PUT.mock.calls[0][1].body).toEqual({ title: "Der neue Name" });
+    expect(await screen.findByText("Kapitel 1 — Der neue Name")).toBeTruthy();
+  });
+
+  it("a scene edit carries the labels — the overline appears, a clear removes it", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    // S12 carries both labels; clear them — the overline goes (null carried).
+    const row = screen
+      .getByRole("button", { name: /Szene 2 · Das Signal im Permafrost/ })
+      .closest("[data-testid^='tree-scene-']") as HTMLElement;
+    fireEvent.click(within(row).getByRole("button", { name: de["writing.workspace.tree.sceneOptions"] }));
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.editScene"] }));
+    const setting = await screen.findByRole("textbox", { name: de["writing.workspace.crud.settingLabel"] });
+    const storyTime = screen.getByRole("textbox", { name: de["writing.workspace.crud.storyTimeLabel"] });
+    fireEvent.change(setting, { target: { value: "" } });
+    fireEvent.change(storyTime, { target: { value: "" } });
+    scenesAnswer = async (chapterId) => ({
+      data: chapterId === "c1" ? [S11, { ...S12, setting: null, story_time: null }] : [S21],
+      response: ok(),
+    });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.crud.save"] }));
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    expect(api.PUT.mock.calls[0][1].body).toEqual({
+      title: "Das Signal im Permafrost",
+      setting: null,
+      story_time: null,
+    });
+    await waitFor(() => expect(screen.queryByTestId("workspace-overline")).toBeNull());
+
+    // And back: a carried label rides trimmed, the overline returns.
+    fireEvent.click(within(row).getByRole("button", { name: de["writing.workspace.tree.sceneOptions"] }));
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.editScene"] }));
+    fireEvent.change(
+      await screen.findByRole("textbox", { name: de["writing.workspace.crud.settingLabel"] }),
+      { target: { value: "  Hafen bei Nacht  " } },
+    );
+    scenesAnswer = async (chapterId) => ({
+      data: chapterId === "c1" ? [S11, { ...S12, setting: "Hafen bei Nacht", story_time: null }] : [S21],
+      response: ok(),
+    });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.crud.save"] }));
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(2));
+    expect(api.PUT.mock.calls[1][1].body.setting).toBe("Hafen bei Nacht");
+    expect(await screen.findByTestId("workspace-overline")).toBeTruthy();
+    expect(screen.getByText("Hafen bei Nacht")).toBeTruthy();
+  });
+});
+
+describe("the reorder contract — optimistic, the 409 honest, the retry real", () => {
+  function chapterOrderOnScreen(): string[] {
+    return screen
+      .getAllByText(/^Kapitel \d+ — /)
+      .map((node) => (node.textContent ?? "").replace(/^Kapitel \d+ — /, ""));
+  }
+
+  it("a keyboard step PUTs the whole rail — the tree flips before the answer", async () => {
+    let release: (() => void) | undefined;
+    chapterOrderAnswer = async () => {
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return { data: undefined, response: noContent() };
+    };
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.keyDown(screen.getByRole("button", { name: "Kapitel 1 verschieben" }), { key: "ArrowDown" });
+    // The optimistic order stands while the PUT is on the wire — the
+    // positions renumbered (Nevada Echoes leads as Kapitel 1). The cache
+    // notification lands a microtask later; the gated PUT has not answered.
+    await waitFor(() =>
+      expect(chapterOrderOnScreen()).toEqual(["Nevada Echoes", "Ghost in the Machine"]),
+    );
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    expect(api.PUT.mock.calls[0][0]).toBe("/api/writing/novels/{novel_id}/chapter-order");
+    expect(api.PUT.mock.calls[0][1].body).toEqual({ chapter_ids: ["c2", "c1"] });
+    release?.();
+    await waitFor(() => expect(screen.queryByTestId("explorer-notice")).toBeNull());
+  });
+
+  it("a scene step PUTs the whole chapter under its own door", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.keyDown(screen.getByRole("button", { name: "Szene 1 in Kapitel 1 verschieben" }), {
+      key: "ArrowDown",
+    });
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    expect(api.PUT.mock.calls[0][0]).toBe("/api/writing/chapters/{chapter_id}/scene-order");
+    expect(api.PUT.mock.calls[0][1].params.path.chapter_id).toBe("c1");
+    expect(api.PUT.mock.calls[0][1].body).toEqual({ ids: ["s12", "s11"] });
+  });
+
+  it("a 409 whose stored ids the cache holds reverts to them — no refetch, the notice stands", async () => {
+    chapterOrderAnswer = async () => ({
+      data: undefined,
+      error: { detail: { code: "order_mismatch", chapter_ids: ["c1", "c2"] } },
+      response: new Response(null, { status: 409 }),
+    });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    const getsBefore = api.GET.mock.calls.filter(
+      (call) => call[0] === "/api/writing/novels/{novel_id}/chapters",
+    ).length;
+    fireEvent.keyDown(screen.getByRole("button", { name: "Kapitel 1 verschieben" }), { key: "ArrowDown" });
+    const notice = await screen.findByTestId("explorer-notice");
+    expect(within(notice).getByText(de["writing.workspace.crud.reorderConflict"])).toBeTruthy();
+    // The stored order is back — the arrangement the server named.
+    expect(chapterOrderOnScreen()).toEqual(["Ghost in the Machine", "Nevada Echoes"]);
+    const getsAfter = api.GET.mock.calls.filter(
+      (call) => call[0] === "/api/writing/novels/{novel_id}/chapters",
+    ).length;
+    expect(getsAfter).toBe(getsBefore);
+  });
+
+  it("a 409 naming a row the cache lacks refetches the truth — the second tab's chapter appears", async () => {
+    chapterOrderAnswer = async () => ({
+      data: undefined,
+      error: { detail: { code: "order_mismatch", chapter_ids: ["c1", "c2", "c3"] } },
+      response: new Response(null, { status: 409 }),
+    });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    chaptersAnswer = async () => ({ data: [CH1, CH2, CH3], response: ok() });
+    scenesAnswer = async (chapterId) => ({
+      data: chapterId === "c1" ? [S11, S12] : chapterId === "c2" ? [S21] : [],
+      response: ok(),
+    });
+    fireEvent.keyDown(screen.getByRole("button", { name: "Kapitel 1 verschieben" }), { key: "ArrowDown" });
+    expect(await screen.findByText("Kapitel 3 — Drittes Kapitel")).toBeTruthy();
+    expect(screen.getByTestId("explorer-notice")).toBeTruthy();
+    // The conflict's retry asks the truth again — a refetch, never the
+    // stale arrangement re-sent.
+    const putsBefore = api.PUT.mock.calls.length;
+    fireEvent.click(
+      within(screen.getByTestId("explorer-notice")).getByRole("button", {
+        name: de["writing.shelf.error.retry"],
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        api.GET.mock.calls.filter((call) => call[0] === "/api/writing/novels/{novel_id}/chapters").length,
+      ).toBeGreaterThan(1),
+    );
+    expect(api.PUT.mock.calls.length).toBe(putsBefore);
+    expect(screen.queryByTestId("explorer-notice")).toBeNull();
+  });
+
+  it("a refused reorder restores the order and the retry re-sends the very arrangement", async () => {
+    let failures = 1;
+    chapterOrderAnswer = async () => {
+      if (failures > 0) {
+        failures -= 1;
+        return { data: undefined, response: new Response(null, { status: 503 }) };
+      }
+      return { data: undefined, response: noContent() };
+    };
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.keyDown(screen.getByRole("button", { name: "Kapitel 1 verschieben" }), { key: "ArrowDown" });
+    const notice = await screen.findByTestId("explorer-notice");
+    expect(within(notice).getByText(de["writing.workspace.crud.reorderError"])).toBeTruthy();
+    // The pre-drag order stands again — nothing lost.
+    expect(chapterOrderOnScreen()).toEqual(["Ghost in the Machine", "Nevada Echoes"]);
+    fireEvent.click(within(notice).getByRole("button", { name: de["writing.shelf.error.retry"] }));
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(2));
+    expect(api.PUT.mock.calls[1][1].body).toEqual({ chapter_ids: ["c2", "c1"] });
+    await waitFor(() => expect(screen.queryByTestId("explorer-notice")).toBeNull());
+    expect(chapterOrderOnScreen()).toEqual(["Nevada Echoes", "Ghost in the Machine"]);
+  });
+
+  it("the notice dismisses — the tree stands as it is", async () => {
+    chapterOrderAnswer = async () => ({ data: undefined, response: new Response(null, { status: 503 }) });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.keyDown(screen.getByRole("button", { name: "Kapitel 1 verschieben" }), { key: "ArrowDown" });
+    const notice = await screen.findByTestId("explorer-notice");
+    fireEvent.click(
+      within(notice).getByRole("button", { name: de["writing.workspace.crud.noticeClose"] }),
+    );
+    expect(screen.queryByTestId("explorer-notice")).toBeNull();
   });
 });

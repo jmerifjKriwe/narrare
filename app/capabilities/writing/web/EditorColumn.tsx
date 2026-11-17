@@ -34,8 +34,9 @@
  *   ends where the scene's own words end.
  *
  * The empty faces answer per `workspace-states` (Kacheln 3/4): the
- * unwritten work and the first-scene invitation, their create doors
- * disabled until Task 13 wires the CRUD.
+ * unwritten work and the first-scene invitation. Kachel 4's create door
+ * is LIVE (Task 13) — the empty chapter is the canonical new-chapter
+ * experience (D16), and „+ Szene 1 anlegen" starts it.
  */
 
 import type { Novel } from "@shell/lib/api/client";
@@ -250,7 +251,11 @@ function ScenePaper({
           <h1 className={`${SERIF} text-3xl font-normal tracking-tight text-foreground md:text-4xl`}>
             {title}
           </h1>
-          {overline !== "" && <div className="text-meta text-muted">{overline}</div>}
+          {overline !== "" && (
+            <div data-testid="workspace-overline" className="text-meta text-muted">
+              {overline}
+            </div>
+          )}
           <div aria-hidden="true" className="flex items-center justify-center pt-2">
             <span className="h-px w-12 bg-primary/40" />
           </div>
@@ -297,6 +302,7 @@ export function EditorColumn({
   status,
   onRetry,
   onBodyChange,
+  onCreateScene,
 }: {
   novel: Novel;
   /** The active scene — null on the empty faces. */
@@ -309,6 +315,9 @@ export function EditorColumn({
   onRetry: () => void;
   /** Every prose edit, handed to the page's autosave debounce. */
   onBodyChange: (body: string) => void;
+  /** Kachel 4's first-scene door — the page creates under the empty
+   *  chapter and selects the new scene (D16's canonical flow). */
+  onCreateScene: () => void;
 }) {
   const t = useTranslation();
   return (
@@ -331,8 +340,8 @@ export function EditorColumn({
             onBodyChange={onBodyChange}
           />
         ) : emptyChapter ? (
-          /* Kachel 4 — the empty chapter: the scene explained, the create
-             door disabled until Task 13 wires the CRUD. */
+          /* Kachel 4 — the empty chapter: the scene explained, the
+             first-scene door live (D16's canonical new-chapter flow). */
           <div className="flex w-full max-w-[48rem] flex-col items-center justify-center rounded-xl border border-border bg-panel p-8 text-center shadow-card">
             <span className="mb-1 text-primary/70">
               <Icon name="write" size={28} />
@@ -345,9 +354,8 @@ export function EditorColumn({
             </p>
             <button
               type="button"
-              disabled
-              title={t("writing.workspace.crudNote")}
-              className={`mt-3 flex cursor-not-allowed items-center gap-1 rounded bg-primary px-3 py-1.5 text-meta font-medium text-primary-foreground opacity-50 shadow-sm ${FOCUS}`}
+              onClick={onCreateScene}
+              className={`mt-3 flex items-center gap-1 rounded bg-primary px-3 py-1.5 text-meta font-medium text-primary-foreground shadow-sm transition-all hover:opacity-95 ${FOCUS}`}
             >
               <Icon name="plus" size={13} />
               <span>{t("writing.workspace.emptyChapter.action")}</span>
@@ -356,7 +364,7 @@ export function EditorColumn({
         ) : (
           /* Kachel 3 — the empty book: the open-book mark, the contemplative
              invitation. The explorer's invitation card carries the create
-             door (also disabled until Task 13). */
+             door (live — the first chapter opens on Kachel 4). */
           <div className="flex w-full max-w-[48rem] flex-col items-center justify-center rounded-xl border border-border bg-panel p-8 text-center shadow-card">
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-container-low text-primary">
               <Icon name="autoStories" size={24} />

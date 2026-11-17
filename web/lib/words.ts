@@ -21,13 +21,13 @@ const WORD_GAP = /[\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\
 const WORD_EDGE = new RegExp(`^${WORD_GAP.source}|${WORD_GAP.source}$`, "g");
 
 /**
- * Count the words of a chapter body — the Markdown the storage format keeps,
- * the same string the server counts. A body that is empty or whitespace-only
- * by the class is worth zero, which a bare split would count as its one
- * empty token.
+ * Count the words of a body — the same string the server counts, whatever
+ * the storage format keeps (the scene model stores plain prose; the rule is
+ * format-agnostic). A body that is empty or whitespace-only by the class is
+ * worth zero, which a bare split would count as its one empty token.
  */
-export function countWords(markdown: string): number {
-  const trimmed = markdown.replace(WORD_EDGE, "");
+export function countWords(body: string): number {
+  const trimmed = body.replace(WORD_EDGE, "");
   return trimmed === "" ? 0 : trimmed.split(WORD_GAP).length;
 }
 

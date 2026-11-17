@@ -46,7 +46,10 @@ def _seed_scene(title: str = "Die Szene", body: str = "") -> tuple[str, str]:
 
 def _open(page: Page, novel_id: str) -> None:
     page.goto(f"{BASE}/novels/{novel_id}")
-    expect(page.get_by_role("heading", level=1)).to_be_visible()
+    # The ready editor, not any h1: the loading skeleton's sr-only heading
+    # counts as visible (a 1x1 box), and a gate on it races the scene reads
+    # — stopping the API before the reads land would strand the skeleton.
+    expect(page.get_by_role("textbox", name=PROSE)).to_be_visible()
 
 
 def _type(page: Page, text: str) -> None:
