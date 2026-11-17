@@ -1,6 +1,7 @@
 """Request and response shapes for the writing capability."""
 
-from datetime import date, datetime  # noqa: TC003  Pydantic resolves these at runtime
+from datetime import date as date_type  # noqa: TC003  Pydantic resolves these at runtime
+from datetime import datetime  # noqa: TC003
 from typing import Literal
 from uuid import UUID  # noqa: TC003
 
@@ -248,7 +249,7 @@ class ActivityPoint(BaseModel):
     a negative count, and a day without a row carries zero.
     """
 
-    date: date
+    date: date_type
     words: int
 
 

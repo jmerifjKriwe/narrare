@@ -7,7 +7,7 @@ writing reads and writes it, so it lives here, not in the kernel's shared
 contracts.
 """
 
-from datetime import date
+from datetime import date as date_type
 from uuid import UUID
 
 from sqlalchemy import Date, ForeignKey
@@ -34,5 +34,5 @@ class DailyWords(UserOwned):
     novel_id: Mapped[UUID] = mapped_column(
         ForeignKey("novels.id", ondelete="CASCADE"), primary_key=True
     )
-    date: Mapped[date] = mapped_column(Date, primary_key=True)
+    date: Mapped[date_type] = mapped_column(Date, primary_key=True)
     words: Mapped[int] = mapped_column(default=0)
