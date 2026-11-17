@@ -145,7 +145,8 @@ export function WorkspaceError({
  * Semantics at modal weight, the NewBookDialog discipline: role="alertdialog"
  * + aria-modal, labelled by its heading and described by its body, Tab wraps
  * inside the panel, the page behind the scrim held still. The page owns the
- * two outcomes — stay (reset the leave) or discard (drop the draft, then go).
+ * two outcomes — stay (reset the leave) or discard (drop the draft, then go);
+ * both return focus to the control that raised the guard.
  */
 export function LeaveGuardDialog({
   onStay,
@@ -161,13 +162,19 @@ export function LeaveGuardDialog({
   const bodyId = useId();
 
   // Opening lands focus on the safe answer and holds the page still; both
-  // leave with the dialog.
+  // leave with the dialog — and closing returns focus to the control that
+  // raised the guard (the TreeDialogs' focus-return discipline): a keyboard
+  // writer is never stranded on <body> mid-crisis. A control the leave
+  // itself retired is simply not focused — focus() on a detached node is a
+  // no-op, the shelf's own rule.
   useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     stayRef.current?.focus();
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previous;
+      opener?.focus();
     };
   }, []);
 

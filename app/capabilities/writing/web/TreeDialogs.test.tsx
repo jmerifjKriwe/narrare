@@ -5,9 +5,11 @@
  * (NewBookDialog's form weight, LeaveGuardDialog's destructive calm). The
  * edit dialog carries the chapter's title alone or the scene's three
  * fields — the labels present-and-nullable (an empty input clears to null,
- * the honest unset). The delete confirm names the loss before it happens:
- * the chapter's cascade with its scene count, the scene's words with the
- * chapter remaining (D16). Focus returns to the opener on every close.
+ * the honest unset) — and the dirty-state rule: typed changes hold the
+ * scrim/Escape/cross, only Abbrechen and Speichern answer. The delete
+ * confirm names the loss before it happens: the chapter's cascade with its
+ * scene count, the scene's words with the chapter remaining (D16). Focus
+ * returns to the opener on every close.
  */
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -245,6 +247,112 @@ describe("the scene edit dialog — title, setting, story_time", () => {
     fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.crud.save"] }));
     await waitFor(() => expect(api.PUT).toHaveBeenCalled());
     expect(api.PUT.mock.calls[0][1].body).not.toHaveProperty("body");
+  });
+});
+
+describe("the dirty-state rule — typed changes hold the silent paths", () => {
+  /** The chapter shape (one field) on the stateful harness: a close
+   *  unmounts the dialog, as the page's own state does. */
+  function renderChapter() {
+    const onClose = vi.fn();
+    renderWithOpener((openerId, close) => (
+      <TreeEditDialog
+        novelId="n1"
+        target={{ kind: "chapter", chapter: CHAPTER }}
+        openerId={openerId}
+        onClose={() => {
+          onClose();
+          close();
+        }}
+      />
+    ));
+    return onClose;
+  }
+
+  function typeTitle(value: string) {
+    fireEvent.change(screen.getByRole("textbox", { name: de["writing.workspace.crud.titleLabel"] }), {
+      target: { value },
+    });
+  }
+
+  function pressScrim() {
+    fireEvent.mouseDown(screen.getByRole("dialog").parentElement as Element);
+  }
+
+  it("pristine: the scrim closes — no typed change stands to lose", () => {
+    const onClose = renderChapter();
+    pressScrim();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("pristine: Escape closes", () => {
+    const onClose = renderChapter();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("dirty: the scrim holds — a press outside is not an answer", () => {
+    const onClose = renderChapter();
+    typeTitle("Ein neuer Name");
+    pressScrim();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(
+      (screen.getByRole("textbox", { name: de["writing.workspace.crud.titleLabel"] }) as HTMLInputElement).value,
+    ).toBe("Ein neuer Name");
+  });
+
+  it("dirty: Escape holds — only the named answers leave", () => {
+    const onClose = renderChapter();
+    typeTitle("Ein neuer Name");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("dirty: the cross is honestly unavailable — Abbrechen and Speichern alone answer", () => {
+    const onClose = renderChapter();
+    typeTitle("Ein neuer Name");
+    const cross = screen.getByRole("button", { name: de["writing.workspace.crud.close"] });
+    expect(cross.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(cross);
+    expect(onClose).not.toHaveBeenCalled();
+    // Abbrechen is the deliberate discard — it answers with edits standing.
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.crud.cancel"] }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("a field returned to its stored value is pristine again — the rule compares, not latches", () => {
+    const onClose = renderChapter();
+    typeTitle("Ein neuer Name");
+    typeTitle("Ghost in the Machine");
+    pressScrim();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("the scene shape: any field counts — a label alone holds Escape", () => {
+    const onClose = vi.fn();
+    renderWithOpener((openerId, close) => (
+      <TreeEditDialog
+        novelId="n1"
+        target={{ kind: "scene", entry: ENTRY }}
+        openerId={openerId}
+        onClose={() => {
+          onClose();
+          close();
+        }}
+      />
+    ));
+    fireEvent.change(screen.getByRole("textbox", { name: de["writing.workspace.crud.settingLabel"] }), {
+      target: { value: "Hafen bei Nacht" },
+    });
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+    pressScrim();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeTruthy();
   });
 });
 

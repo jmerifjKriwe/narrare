@@ -9,6 +9,7 @@
  * healthy pending body first); here it is driven directly.
  */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { catalogs } from "@shell/lib/generated/catalogs";
@@ -96,5 +97,59 @@ describe("the Abschiedsschutz face (KACHEL 10)", () => {
     stay.focus();
     fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
     expect(document.activeElement).toBe(discard);
+  });
+});
+
+/** The guard the way the page raises it: a focused control asks to leave,
+ *  the flush fails, the dialog mounts over it; an answer unmounts the
+ *  dialog as the page's own state does. The opener keeps the focus it had
+ *  when the click raised the guard (jsdom does not focus on click). */
+function mountOverOpener(onStay = vi.fn(), onDiscard = vi.fn()) {
+  function Harness() {
+    const [open, setOpen] = useState(false);
+    return (
+      <div>
+        <button type="button" id="opener" onClick={() => setOpen(true)}>
+          opener
+        </button>
+        {open && (
+          <LeaveGuardDialog
+            onStay={() => {
+              onStay();
+              setOpen(false);
+            }}
+            onDiscard={() => {
+              onDiscard();
+              setOpen(false);
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+  render(<Harness />);
+  const opener = screen.getByRole("button", { name: "opener" });
+  opener.focus();
+  fireEvent.click(opener);
+  return { onStay, onDiscard, opener };
+}
+
+describe("the focus return — neither path strands the writer", () => {
+  it("Bleiben returns focus to the control that raised the guard", () => {
+    const { opener } = mountOverOpener();
+    // The safe answer holds the focus while the question stands.
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: de["writing.workspace.guard.stay"] }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.guard.stay"] }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("Verwerfen und verlassen returns focus too — the discard is no stranding", () => {
+    const { opener } = mountOverOpener();
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.guard.discard"] }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
   });
 });

@@ -2,12 +2,18 @@
  * The tree's dialogs (W4 Task 13) — the rename/metadata edit and the delete
  * confirm, on the modal discipline the workspace already speaks: the
  * NewBookDialog's form weight for the edit (labelled fields, focus on the
- * first input, Tab wraps, Escape/scrim/cancel close, busy holds every
- * close path, a refusal keeps the answers and names the loss-free error
- * with a retry), the LeaveGuardDialog's destructive calm for the delete
- * (role="alertdialog", focus on the safe answer, Escape cancels, the scrim
- * does NOT dismiss — only the named answers leave, the consequence on the
- * delete control's own title, the drafted second step).
+ * first input, Tab wraps, busy holds every close path, a refusal keeps the
+ * answers and names the loss-free error with a retry), the LeaveGuardDialog's
+ * destructive calm for the delete (role="alertdialog", focus on the safe
+ * answer, Escape cancels, the scrim does NOT dismiss — only the named
+ * answers leave, the consequence on the delete control's own title, the
+ * drafted second step).
+ *
+ * The edit carries the DIRTY-STATE RULE (the whole-branch review's ruling):
+ * pristine — every field reads its stored value — keeps the scrim/Escape
+ * close; any typed change refuses both silent paths and holds the cross
+ * unavailable, so only Abbrechen and Speichern answer while edits stand.
+ * Typed input is never lost to a press outside the question.
  *
  * The edit dialog carries the chapter's title alone, or the scene's three
  * fields — title, setting, story_time. The two labels are
@@ -184,13 +190,25 @@ export function TreeEditDialog({
   const t = useTranslation();
   const chapter = target.kind === "chapter" ? target.chapter : target.entry.chapter;
   const scene = target.kind === "scene" ? target.entry.scene : null;
-  const [title, setTitle] = useState(scene?.title ?? chapter.title);
-  const [setting, setSetting] = useState(scene?.setting ?? "");
-  const [storyTime, setStoryTime] = useState(scene?.story_time ?? "");
+  // The stored values the fields open on — the dirty rule's own baseline.
+  const storedTitle = scene?.title ?? chapter.title;
+  const storedSetting = scene?.setting ?? "";
+  const storedStoryTime = scene?.story_time ?? "";
+  const [title, setTitle] = useState(storedTitle);
+  const [setting, setSetting] = useState(storedSetting);
+  const [storyTime, setStoryTime] = useState(storedStoryTime);
   const [error, setError] = useState(false);
   const updateChapter = useUpdateChapter(novelId);
   const updateScene = useUpdateScene(novelId);
   const busy = updateChapter.isPending || updateScene.isPending;
+  // The dirty-state rule (the whole-branch review's ruling): any field that
+  // differs from its stored value holds the dialog against the silent paths
+  // — scrim and Escape answer only while every field reads pristine, and
+  // the cross is honestly unavailable; only Abbrechen and Speichern leave
+  // with edits standing. A comparison, not a latch: a field returned to its
+  // stored value is pristine again.
+  const dirty =
+    title !== storedTitle || setting !== storedSetting || storyTime !== storedStoryTime;
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const titleRef = useRef<HTMLInputElement | null>(null);
@@ -207,7 +225,7 @@ export function TreeEditDialog({
   }, [openerId]);
 
   useModalKeys(panelRef, () => {
-    if (!busy) onClose();
+    if (!busy && !dirty) onClose();
   });
 
   function save() {
@@ -239,7 +257,9 @@ export function TreeEditDialog({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4 backdrop-blur-[1px]"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !busy) onClose();
+        // The dirty rule: a press outside is not an answer while typed
+        // changes stand — the delete confirm's calm, re-owned for the edit.
+        if (event.target === event.currentTarget && !busy && !dirty) onClose();
       }}
     >
       <div
@@ -255,10 +275,10 @@ export function TreeEditDialog({
           </h2>
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || dirty}
             aria-label={t("writing.workspace.crud.close")}
             onClick={onClose}
-            className={`rounded p-0.5 text-muted transition-colors hover:text-foreground ${FOCUS} ${busy ? "cursor-not-allowed opacity-50" : ""}`}
+            className={`rounded p-0.5 text-muted transition-colors hover:text-foreground ${FOCUS} ${busy || dirty ? "cursor-not-allowed opacity-50" : ""}`}
           >
             <Icon name="cross" size={14} />
           </button>
