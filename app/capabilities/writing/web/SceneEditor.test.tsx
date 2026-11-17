@@ -7,14 +7,44 @@
  * hard breaks by a single newline, the same shape the read-only port drew
  * and the server's whitespace rule counts). Content initializes once per
  * scene; a switch remounts (the page keys it), never resets a live caret.
+ *
+ * Task 16 adds the ghost layer: the continuation's three faces at the scene
+ * tail (KACHEL 7's streaming chrome, the light draft's pending preview with
+ * the [Tab] keycap pill, KACHEL 8's corrected error face), the keyboard
+ * contract (Tab accepts from the prose, Esc dismisses BEFORE the leave
+ * guard's own Esc) and the autosave handoff (the insertion rides onChange,
+ * the one write path).
  */
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { client } from "@shell/lib/api/client";
+import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 
 import { SceneEditor, bodyToHtml } from "./SceneEditor";
+import { LeaveGuardDialog } from "./WorkspaceStates";
+import { useAutosave, AUTOSAVE_DELAY_MS } from "./useAutosave";
+import type { Continuation, ContinuationPhase } from "./workspace";
+
+vi.mock("@shell/lib/api/client", () => ({
+  client: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() },
+}));
+
+const de = catalogs.de;
+const api = client as unknown as { PUT: ReturnType<typeof vi.fn> };
+
+// jsdom lays out nothing: ProseMirror reads Range rects when it scrolls a
+// selection into view (the focus the streaming start and the acceptance
+// command). Hand it the zeros the elements claim (the page test's own
+// polyfill).
+const zeroRect = { top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0 } as DOMRect;
+Range.prototype.getClientRects = function (): DOMRectList {
+  return [zeroRect] as unknown as DOMRectList;
+};
+Range.prototype.getBoundingClientRect = () => zeroRect;
 
 beforeEach(() => {
   applyLocale("de");
@@ -147,5 +177,276 @@ describe("the editing surface", () => {
     // The page keys the editor by scene id: a new key is a new document.
     rerender(<SceneEditor key="s2" body="Szene zwei." onChange={() => {}} label="Prosa" />);
     await waitFor(() => expect(screen.getByRole("textbox").textContent).toBe("Szene zwei."));
+  });
+});
+
+// --- The ghost layer (W4 Task 16) ------------------------------------------
+
+const GHOST_TEXT = "Der Nebel hob sich vom See und legte sich über die Straße.";
+const BODY = "Der Nebel kam von See.";
+
+/** The continuation as a stateful stand-in: dismiss rests the ghost at idle
+ *  exactly as the hook does, so the keyboard legs see the real precedence. */
+function GhostHarness({
+  body = BODY,
+  initialPhase = "pending" as ContinuationPhase,
+  text = GHOST_TEXT,
+  onChange = () => {},
+  onDismiss,
+  onRetry,
+  guard = false,
+  onStay = () => {},
+}: {
+  body?: string;
+  initialPhase?: ContinuationPhase;
+  text?: string;
+  onChange?: (body: string) => void;
+  onDismiss?: () => void;
+  onRetry?: () => void;
+  guard?: boolean;
+  onStay?: () => void;
+}) {
+  const [phase, setPhase] = useState<ContinuationPhase>(initialPhase);
+  const continuation: Continuation = {
+    phase,
+    text,
+    errorCode: phase === "error" ? "network" : null,
+    start: () => setPhase("streaming"),
+    dismiss: () => {
+      onDismiss?.();
+      setPhase("idle");
+    },
+    retry: () => {
+      onRetry?.();
+      setPhase("streaming");
+    },
+  };
+  return (
+    <>
+      <SceneEditor body={body} onChange={onChange} label="Szenenprosa" continuation={continuation} />
+      {guard && <LeaveGuardDialog onStay={onStay} onDiscard={() => {}} />}
+    </>
+  );
+}
+
+describe("the ghost's streaming face — KACHEL 7", () => {
+  it("the ARIA chip pulses over the accumulating preview, outside the document", async () => {
+    render(<GhostHarness initialPhase="streaming" text="Der Nebel hob sich " />);
+    await screen.findByRole("textbox");
+    expect(screen.getByRole("status").textContent).toContain(de["writing.workspace.ghost.writing"]);
+    const ghost = screen.getByTestId("ghost-preview");
+    expect(ghost.textContent).toContain("Der Nebel hob sich ");
+    // The preview is italic and wears the writing area's ink (the /70 draft
+    // tone fails the AA floor on both themes — the ink rides full strength,
+    // the wash carries the softness; the amber pill's own discipline).
+    const preview = ghost.querySelector("p");
+    expect(preview?.className).toContain("italic");
+    expect(preview?.className).toContain("text-area-writing");
+    // The ghost is NOT the scene's words: the textbox holds the body alone.
+    expect(screen.getByRole("textbox").textContent).toBe(BODY);
+  });
+
+  it("the streaming start moves the caret to the prose — Tab's seat", async () => {
+    render(<GhostHarness initialPhase="streaming" />);
+    const box = await screen.findByRole("textbox");
+    await waitFor(() => expect(document.activeElement).toBe(box));
+  });
+});
+
+describe("the ghost's pending face — the light draft's preview + keycap pill", () => {
+  it("stands at the tail with the [Tab] pill, outside the document", async () => {
+    render(<GhostHarness />);
+    await screen.findByRole("textbox");
+    const ghost = screen.getByTestId("ghost-preview");
+    expect(ghost.textContent).toContain(GHOST_TEXT);
+    const pill = screen.getByRole("button", { name: /Vorschlag übernehmen/ });
+    expect(pill.textContent).toContain("Tab");
+    expect(pill.getAttribute("aria-keyshortcuts")).toBe("Tab");
+    expect(screen.getByRole("textbox").textContent).toBe(BODY);
+  });
+
+  it("the pill accepts: the proposal joins the tail as a new paragraph", async () => {
+    const onChange = vi.fn();
+    const onDismiss = vi.fn();
+    render(<GhostHarness onChange={onChange} onDismiss={onDismiss} />);
+    await screen.findByRole("textbox");
+    fireEvent.click(screen.getByRole("button", { name: /Vorschlag übernehmen/ }));
+    expect(onDismiss).toHaveBeenCalled();
+    expect(onChange).toHaveBeenLastCalledWith(`${BODY}\n\n${GHOST_TEXT}`);
+    expect(screen.getByRole("textbox").textContent).toBe(BODY + GHOST_TEXT);
+    expect(screen.queryByTestId("ghost-preview")).toBeNull();
+  });
+
+  it("Tab in the prose accepts — the keyboard's own door", async () => {
+    const onChange = vi.fn();
+    render(<GhostHarness onChange={onChange} />);
+    const box = await screen.findByRole("textbox");
+    box.focus();
+    fireEvent.keyDown(box, { key: "Tab" });
+    expect(onChange).toHaveBeenLastCalledWith(`${BODY}\n\n${GHOST_TEXT}`);
+    expect(screen.queryByTestId("ghost-preview")).toBeNull();
+  });
+
+  it("Tab outside the prose keeps its native meaning — focus moves, nothing inserts", async () => {
+    const onChange = vi.fn();
+    render(
+      <>
+        <GhostHarness onChange={onChange} />
+        <button type="button">Anderswo</button>
+      </>,
+    );
+    await screen.findByRole("textbox");
+    const other = screen.getByRole("button", { name: "Anderswo" });
+    other.focus();
+    fireEvent.keyDown(other, { key: "Tab" });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByTestId("ghost-preview")).not.toBeNull();
+  });
+
+  it("an empty scene takes the proposal alone — no leading paragraph gap", async () => {
+    const onChange = vi.fn();
+    render(<GhostHarness body="" onChange={onChange} />);
+    const box = await screen.findByRole("textbox");
+    box.focus();
+    fireEvent.keyDown(box, { key: "Tab" });
+    expect(onChange).toHaveBeenLastCalledWith(GHOST_TEXT);
+  });
+
+  it("a multi-paragraph proposal keeps its own structure", async () => {
+    const onChange = vi.fn();
+    render(<GhostHarness text={"Erster Vorschlag.\n\nZweiter Vorschlag."} onChange={onChange} />);
+    const box = await screen.findByRole("textbox");
+    box.focus();
+    fireEvent.keyDown(box, { key: "Tab" });
+    expect(onChange).toHaveBeenLastCalledWith(`${BODY}\n\nErster Vorschlag.\n\nZweiter Vorschlag.`);
+  });
+});
+
+describe("Esc — the ghost owns it first", () => {
+  it("dismisses the pending ghost", async () => {
+    const onDismiss = vi.fn();
+    render(<GhostHarness onDismiss={onDismiss} />);
+    const box = await screen.findByRole("textbox");
+    fireEvent.keyDown(box, { key: "Escape" });
+    expect(onDismiss).toHaveBeenCalled();
+    expect(screen.queryByTestId("ghost-preview")).toBeNull();
+  });
+
+  it("dismisses the streaming ghost too — a chosen stop, no error face", async () => {
+    const onDismiss = vi.fn();
+    render(<GhostHarness initialPhase="streaming" onDismiss={onDismiss} />);
+    const box = await screen.findByRole("textbox");
+    fireEvent.keyDown(box, { key: "Escape" });
+    expect(onDismiss).toHaveBeenCalled();
+    expect(screen.queryByTestId("ghost-preview")).toBeNull();
+    expect(screen.queryByTestId("ghost-error")).toBeNull();
+  });
+
+  it("stands BEFORE the leave guard: Esc drops the ghost, the guard stays", async () => {
+    const onDismiss = vi.fn();
+    const onStay = vi.fn();
+    render(<GhostHarness guard onDismiss={onDismiss} onStay={onStay} />);
+    await screen.findByRole("textbox");
+    const stay = screen.getByRole("button", { name: de["writing.workspace.guard.stay"] });
+    // The guard holds focus (its own opening rule); Esc lands there.
+    fireEvent.keyDown(stay, { key: "Escape" });
+    expect(onDismiss).toHaveBeenCalled();
+    expect(onStay).not.toHaveBeenCalled();
+    expect(screen.getByRole("alertdialog")).not.toBeNull();
+    expect(screen.queryByTestId("ghost-preview")).toBeNull();
+    // The ghost is gone: the next Esc is the guard's own — Bleiben.
+    fireEvent.keyDown(stay, { key: "Escape" });
+    expect(onStay).toHaveBeenCalledTimes(1);
+  });
+
+  it("no ghost, no interception — the guard's Esc works as before", async () => {
+    const onStay = vi.fn();
+    render(<GhostHarness initialPhase="idle" guard onStay={onStay} />);
+    await screen.findByRole("textbox");
+    const stay = screen.getByRole("button", { name: de["writing.workspace.guard.stay"] });
+    fireEvent.keyDown(stay, { key: "Escape" });
+    expect(onStay).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("the ghost's error face — KACHEL 8, the corrected copy", () => {
+  it("names the failure calmly: the Grund chip, the title, the reassurance, the two doors", async () => {
+    render(<GhostHarness initialPhase="error" />);
+    await screen.findByRole("textbox");
+    const face = screen.getByRole("alert");
+    expect(face.textContent).toContain(de["writing.workspace.ghost.errorChip"]);
+    expect(face.textContent).toContain(de["writing.workspace.ghost.errorTitle"]);
+    expect(face.textContent).toContain(de["writing.workspace.ghost.errorBody"]);
+    // The body stays untouched — the reassurance is true.
+    expect(screen.getByRole("textbox").textContent).toBe(BODY);
+    expect(screen.getByRole("button", { name: de["writing.workspace.ghost.retry"] })).not.toBeNull();
+    expect(screen.getByRole("button", { name: de["writing.workspace.ghost.discard"] })).not.toBeNull();
+  });
+
+  it("Erneut versuchen re-runs the ask; Verwerfen clears the face", async () => {
+    const onRetry = vi.fn();
+    const onDismiss = vi.fn();
+    const { unmount } = render(<GhostHarness initialPhase="error" onRetry={onRetry} onDismiss={onDismiss} />);
+    await screen.findByRole("textbox");
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.ghost.retry"] }));
+    expect(onRetry).toHaveBeenCalled();
+    // The retry stands the streaming face up again.
+    expect(screen.getByTestId("ghost-preview")).not.toBeNull();
+    unmount();
+
+    render(<GhostHarness initialPhase="error" onDismiss={onDismiss} />);
+    await screen.findByRole("textbox");
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.ghost.discard"] }));
+    expect(onDismiss).toHaveBeenCalled();
+    expect(screen.queryByTestId("ghost-error")).toBeNull();
+  });
+});
+
+describe("the autosave handoff — Tab inserts, the one write path saves", () => {
+  function HandoffHarness() {
+    const autosave = useAutosave("s1", "c1", "n1");
+    const [phase, setPhase] = useState<ContinuationPhase>("pending");
+    const continuation: Continuation = {
+      phase,
+      text: GHOST_TEXT,
+      errorCode: null,
+      start: () => setPhase("streaming"),
+      dismiss: () => setPhase("idle"),
+      retry: () => setPhase("streaming"),
+    };
+    return (
+      <SceneEditor
+        body={BODY}
+        label="Szenenprosa"
+        continuation={continuation}
+        onChange={(body) => {
+          continuation.dismiss();
+          autosave.schedule(body);
+        }}
+      />
+    );
+  }
+
+  it("the accepted body rides the debounce into the scene's PUT", async () => {
+    api.PUT.mockResolvedValue({ error: undefined, response: new Response(null, { status: 200 }) });
+    render(<HandoffHarness />);
+    const box = await screen.findByRole("textbox");
+    await waitFor(() => expect(box.textContent).toBe(BODY));
+    // The debounce is the autosave's own clock — fake it from here on.
+    vi.useFakeTimers();
+    try {
+      box.focus();
+      fireEvent.keyDown(box, { key: "Tab" });
+      expect(api.PUT).not.toHaveBeenCalled();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+      });
+      expect(api.PUT).toHaveBeenCalledWith("/api/writing/scenes/{scene_id}", {
+        params: { path: { scene_id: "s1" } },
+        body: { body: `${BODY}\n\n${GHOST_TEXT}` },
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

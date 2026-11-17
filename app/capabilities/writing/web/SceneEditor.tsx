@@ -25,14 +25,47 @@
  * aria-prohibited-attr while the editor is empty — the MarkdownEditor's own
  * lesson). The drop cap and the editorial face ride globals.css's
  * `.workspace-prose-live` rules, the read-only mark inherited unchanged.
+ *
+ * The ghost layer (W4 Task 16, design G4): the continuation's proposal
+ * stands at the scene tail, NEVER inside the document — the textbox holds
+ * the scene's own words until Tab accepts. Three faces: KACHEL 7's
+ * streaming chrome (the pulsing „ARIA schreibt …" chip, the block cursor),
+ * the light draft's pending preview (italic, the writing area's ink, the
+ * [Tab] keycap pill) and KACHEL 8's corrected error face (the Grund chip,
+ * the calm title, the reassurance, Erneut versuchen / Verwerfen). The
+ * keyboard contract is the ghost's own: Tab accepts from the prose, Esc
+ * dismisses in the CAPTURE phase — before the leave guard's bubble-phase
+ * Esc, so a standing ghost is dropped first and the guard keeps its ask.
+ * Acceptance inserts the proposal as new paragraph(s) at the tail and emits
+ * the joined body through onChange: the autosave chain owns the write (and
+ * its invalidation family), exactly as a typed edit does.
+ *
+ * The draft's area-writing/70 ink fails the axe AA floor on both themes
+ * (~3.2:1 light, ~3.9:1 dark on the paper); the ink rides full strength
+ * (6.1:1 / 6.6:1) and the /5 wash carries the softness — the amber pill's
+ * own discipline (Task 12): the identity stays, the floor is kept.
  */
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
+
+import { useTranslation } from "@shell/lib/i18n";
+import { Icon } from "@shell/ui/icons";
+
+import type { Continuation } from "./workspace";
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
 const SERIF = "[font-family:var(--font-serif)]";
+
+/** The shell's focus ring on the ghost's one control. */
+const FOCUS =
+  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
+
+/** The proposal's editorial face — the prose's own scale and leading, the
+ *  italic voice the draft draws, the writing area's ink at full strength
+ *  (the AA floor; the docblock above carries the measured reason). */
+const GHOST_PROSE = `${SERIF} text-[1.18rem] italic leading-[1.85] text-area-writing md:text-[1.22rem]`;
 
 /** Prose only: the StarterKit with every non-prose node and mark disabled.
  *  One identity for the component's life — a fresh array per render would
@@ -84,11 +117,109 @@ export function bodyToHtml(body: string): string {
     .join("");
 }
 
+/** KACHEL 7 — the streaming face: the pulsing ARIA chip over the growing
+ *  preview, the block cursor at the wire's edge. The chip is the live
+ *  announcement (once, when the stream starts); the preview itself is not
+ *  a live region — a delta-by-delta readout would spam the reader. */
+function GhostStreaming({ text }: { text: string }) {
+  const t = useTranslation();
+  return (
+    <div
+      data-testid="ghost-preview"
+      className="mt-6 rounded-lg border border-area-writing/30 bg-area-writing/5 p-3.5"
+    >
+      <div
+        role="status"
+        className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-area-writing"
+      >
+        <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-area-writing" />
+        {t("writing.workspace.ghost.writing")}
+      </div>
+      <p className={GHOST_PROSE}>
+        {text}
+        <span aria-hidden="true" className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse bg-area-writing align-middle" />
+      </p>
+    </div>
+  );
+}
+
+/** The light draft's pending face — the italic preview at the tail with
+ *  the [Tab] keycap pill inline after it. The pill is a real button (the
+ *  dark face draws it as one): pointer users accept by click, the keyboard
+ *  by Tab from the prose or Enter on the pill itself. */
+function GhostPending({ text, onAccept }: { text: string; onAccept: () => void }) {
+  const t = useTranslation();
+  return (
+    <div data-testid="ghost-preview" className="mt-6">
+      <p className={`${GHOST_PROSE} text-justify`}>
+        <span role="status" className="rounded bg-area-writing/5 px-1 py-0.5">
+          {text}
+        </span>
+        <button
+          type="button"
+          onClick={onAccept}
+          aria-keyshortcuts="Tab"
+          className={`ml-2 inline-flex items-center gap-1.5 rounded-full bg-primary px-2 py-0.5 align-middle font-sans text-[11px] font-medium not-italic text-primary-foreground shadow-sm transition-all hover:opacity-95 ${FOCUS}`}
+        >
+          <kbd className="rounded border border-primary-foreground/40 px-1 font-mono text-[10px]">Tab</kbd>
+          <span>{t("writing.workspace.ghost.accept")}</span>
+        </button>
+      </p>
+    </div>
+  );
+}
+
+/** KACHEL 8 — the corrected error face (the round-2 authority, verbatim
+ *  tri-catalog): the Grund chip, the calm title, the reassurance that the
+ *  scene's own words stand untouched, and the two doors — Erneut versuchen
+ *  re-runs the very ask, Verwerfen clears the face. No blocking dialog.
+ *  The body's muted ink rides the panel, not the draft's red wash: the
+ *  wash fails the AA floor for small text in the dark half (the amber
+ *  pill's discipline again — the identity rides the ink and the border). */
+function GhostError({ onRetry, onDismiss }: { onRetry: () => void; onDismiss: () => void }) {
+  const t = useTranslation();
+  return (
+    <div
+      role="alert"
+      data-testid="ghost-error"
+      className="mt-6 space-y-2 rounded-md border border-danger/40 bg-panel p-3 text-left"
+    >
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-danger/40 bg-surface-container-low px-2 py-0.5 text-[10px] font-semibold text-danger">
+        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-danger" />
+        {t("writing.workspace.ghost.errorChip")}
+      </span>
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-danger">
+        <Icon name="warning" size={15} />
+        <span>{t("writing.workspace.ghost.errorTitle")}</span>
+      </div>
+      <p className="text-[11px] leading-relaxed text-muted">{t("writing.workspace.ghost.errorBody")}</p>
+      <div className="flex items-center gap-2 pt-1 font-sans">
+        <button
+          type="button"
+          onClick={onRetry}
+          className={`flex items-center gap-1 rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground shadow-sm transition-all hover:opacity-95 ${FOCUS}`}
+        >
+          <Icon name="refresh" size={13} />
+          <span>{t("writing.workspace.ghost.retry")}</span>
+        </button>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className={`rounded border border-border bg-panel px-2.5 py-1 text-xs font-medium text-muted transition-colors hover:text-foreground ${FOCUS}`}
+        >
+          {t("writing.workspace.ghost.discard")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function SceneEditor({
   body,
   onChange,
   label,
   onReady,
+  continuation,
 }: {
   /** The scene's plain body — initializes the document once (mount-only). */
   body: string;
@@ -96,15 +227,20 @@ export function SceneEditor({
   onChange: (body: string) => void;
   /** The textbox's accessible name. */
   label: string;
-  /** The live instance, once mounted (null before and after) — the ghost
-   *  layer (PR 4) drives the view; kept in a ref here so a fresh closure per
-   *  render cannot remount the editor. */
+  /** The live instance, once mounted (null before and after) — kept in a
+   *  ref here so a fresh closure per render cannot remount the editor. */
   onReady?: (editor: Editor | null) => void;
+  /** The continuation's state (the page's hook) — the ghost layer renders
+   *  its faces and owns the keyboard contract; absent, the prose stands
+   *  alone (the read-only faces, the tests of the editor itself). */
+  continuation?: Continuation;
 }) {
   const emit = useRef(onChange);
   emit.current = onChange;
   const ready = useRef(onReady);
   ready.current = onReady;
+  const ghost = useRef(continuation ?? null);
+  ghost.current = continuation ?? null;
 
   const editor = useEditor({
     extensions: PROSE_EXTENSIONS,
@@ -125,15 +261,93 @@ export function SceneEditor({
     return () => ready.current?.(null);
   }, [editor]);
 
+  /** Tab's acceptance: the proposal joins the tail as new paragraph(s) —
+   *  the plain-prose format's own join (a blank line between blocks), an
+   *  empty scene takes it alone. The insertion emits through onUpdate →
+   *  onChange: the autosave chain owns the write, the one path every edit
+   *  rides. The ghost dismisses FIRST, so the emission finds no standing
+   *  proposal to drop again. */
+  const accept = useCallback(() => {
+    const proposal = ghost.current;
+    if (editor === null || proposal == null || proposal.phase !== "pending" || proposal.text === "") {
+      return;
+    }
+    const html = bodyToHtml(proposal.text);
+    proposal.dismiss();
+    const size = editor.state.doc.content.size;
+    if (editor.getText().trim() === "") {
+      editor.commands.insertContentAt({ from: 0, to: size }, html);
+    } else {
+      editor.commands.insertContentAt(size, html);
+    }
+    editor.commands.focus("end");
+  }, [editor]);
+  const acceptRef = useRef(accept);
+  acceptRef.current = accept;
+
+  // The ghost's keyboard contract, in the CAPTURE phase: Esc dismisses
+  // before the leave guard's bubble-phase handler ever sees it (the guard
+  // keeps its ask — the next Esc is its own). Tab accepts only from the
+  // prose, the writer's seat; everywhere else it keeps its native meaning.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      const proposal = ghost.current;
+      if (proposal == null || proposal.phase === "idle") return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        proposal.dismiss();
+        return;
+      }
+      if (event.key === "Tab" && !event.shiftKey && proposal.phase === "pending") {
+        const target = event.target;
+        if (target instanceof HTMLElement && target.closest(".workspace-prose-live") !== null) {
+          event.preventDefault();
+          event.stopPropagation();
+          acceptRef.current();
+        }
+      }
+    }
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, []);
+
+  // The streaming start moves the caret to the prose tail — the ghost
+  // appears where the writer now sits, and Tab's seat is ready. The focus
+  // lands once per streaming spell, whichever arrives last: the phase or
+  // the editor instance (the mount order is not the page's to choose).
+  const streamFocused = useRef(false);
+  useEffect(() => {
+    const phase = continuation?.phase ?? "idle";
+    if (phase !== "streaming") {
+      streamFocused.current = false;
+      return;
+    }
+    if (!streamFocused.current && editor !== null) {
+      streamFocused.current = true;
+      editor.commands.focus("end");
+    }
+  }, [continuation?.phase, editor]);
+
+  const phase = continuation?.phase ?? "idle";
   return (
-    <EditorContent
-      editor={editor}
-      // The editorial face the read-only port drew, inherited: the serif,
-      // the draft's 1.85 leading and manuscript scale. The paragraph
-      // justify, gap and drop cap ride globals.css (.workspace-prose-live).
-      // The focus ring is the shell's own — visible whenever the caret is
-      // inside, gone when it leaves (the MarkdownEditor's F18 pattern).
-      className={`workspace-prose-live ${SERIF} rounded text-[1.18rem] leading-[1.85] text-foreground/95 focus-within:ring-2 focus-within:ring-focus md:text-[1.22rem]`}
-    />
+    <>
+      <EditorContent
+        editor={editor}
+        // The editorial face the read-only port drew, inherited: the serif,
+        // the draft's 1.85 leading and manuscript scale. The paragraph
+        // justify, gap and drop cap ride globals.css (.workspace-prose-live).
+        // The focus ring is the shell's own — visible whenever the caret is
+        // inside, gone when it leaves (the MarkdownEditor's F18 pattern).
+        className={`workspace-prose-live ${SERIF} rounded text-[1.18rem] leading-[1.85] text-foreground/95 focus-within:ring-2 focus-within:ring-focus md:text-[1.22rem]`}
+      />
+      {/* The ghost stands at the tail, outside the document — the scene's
+          own words are the textbox's alone until Tab accepts. */}
+      {phase === "streaming" && <GhostStreaming text={continuation?.text ?? ""} />}
+      {phase === "pending" && <GhostPending text={continuation?.text ?? ""} onAccept={accept} />}
+      {phase === "error" && (
+        <GhostError onRetry={() => continuation?.retry()} onDismiss={() => continuation?.dismiss()} />
+      )}
+    </>
   );
 }

@@ -7,7 +7,7 @@
  * The figures are the rows' own — never the draft's mock numbers.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -31,11 +31,13 @@ import {
   lastEditedEntry,
   movedIds,
   orderedSceneEntries,
+  promptWithinBound,
   rowsInOrder,
   sceneCodeNumbers,
   stageTitleKey,
   tensionCodes,
   useChapterScenes,
+  useContinuation,
   useCreateChapter,
   useCreateScene,
   useDeleteChapter,
@@ -582,5 +584,258 @@ describe("the reorder mutations — the whole set or a 409 naming the stored ids
       storedIds: null,
     });
     expect(invalidated).toEqual([]);
+  });
+});
+
+// --- The continuation stream (W4 Task 16) ---------------------------------
+//
+// The ghost's lifecycle rides the SSE door: fetch is stubbed at the global
+// boundary (the typed client buffers — a stream must arrive piece by piece),
+// the frames are the kernel's own bytes. The hook owns the phase machine;
+// what the ghost renders and what Tab inserts belong to the editor's tests.
+
+/** A stream the test feeds by hand — the wire's timing is the test's own. */
+function controlledStream() {
+  let controller!: ReadableStreamDefaultController<Uint8Array>;
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c;
+    },
+  });
+  const encoder = new TextEncoder();
+  return {
+    stream,
+    push: (text: string) => controller.enqueue(encoder.encode(text)),
+    close: () => controller.close(),
+  };
+}
+
+function sseResponse(stream: ReadableStream<Uint8Array>, status = 200): Response {
+  return new Response(stream, { status, headers: { "Content-Type": "text/event-stream" } });
+}
+
+const DELTA_A = 'data: {"delta": "Der Nebel hob sich "}\n\n';
+const DELTA_B = 'data: {"delta": "vom See."}\n\n';
+const DONE = "event: done\ndata: {}\n\n";
+
+describe("promptWithinBound — the client's mirror of the schema's bound", () => {
+  it("1 and 2000 raw characters pass, no trim — the chat question's precedent", () => {
+    expect(promptWithinBound("X")).toBe(true);
+    expect(promptWithinBound("X".repeat(2000))).toBe(true);
+    // Whitespace is a character too: the schema does not trim, neither does
+    // the mirror (Task 15's no-trim pin).
+    expect(promptWithinBound(" ")).toBe(true);
+    expect(promptWithinBound(" X ")).toBe(true);
+  });
+
+  it("empty and over-long refuse — the 422 the client never lets reach the wire", () => {
+    expect(promptWithinBound("")).toBe(false);
+    expect(promptWithinBound("X".repeat(2001))).toBe(false);
+  });
+});
+
+describe("useContinuation — the ghost's lifecycle", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function mount(sceneId: string | null = "s1") {
+    return renderHook(({ id }: { id: string | null }) => useContinuation(id), {
+      initialProps: { id: sceneId },
+    });
+  }
+
+  it("streams deltas into the ghost text and rests pending at done", async () => {
+    const wire = controlledStream();
+    fetchMock.mockResolvedValue(sseResponse(wire.stream));
+    const { result } = mount();
+    expect(result.current.phase).toBe("idle");
+
+    act(() => result.current.start());
+    expect(result.current.phase).toBe("streaming");
+    expect(result.current.text).toBe("");
+    // The bare continuation: no body at all, the endpoint's own shape.
+    expect(fetchMock).toHaveBeenCalledWith("/api/writing/scenes/s1/continue", {
+      method: "POST",
+      signal: expect.any(AbortSignal),
+    });
+
+    await act(async () => wire.push(DELTA_A));
+    await waitFor(() => expect(result.current.text).toBe("Der Nebel hob sich "));
+    expect(result.current.phase).toBe("streaming");
+
+    await act(async () => wire.push(DELTA_B + DONE));
+    await waitFor(() => expect(result.current.phase).toBe("pending"));
+    expect(result.current.text).toBe("Der Nebel hob sich vom See.");
+    expect(result.current.errorCode).toBeNull();
+  });
+
+  it("a carried prompt rides the JSON body — the pill's round-trip", async () => {
+    const wire = controlledStream();
+    fetchMock.mockResolvedValue(sseResponse(wire.stream));
+    const { result } = mount();
+    act(() => result.current.start("Spannungsspitze einbauen"));
+    expect(fetchMock).toHaveBeenCalledWith("/api/writing/scenes/s1/continue", {
+      method: "POST",
+      signal: expect.any(AbortSignal),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: "Spannungsspitze einbauen" }),
+    });
+    await act(async () => wire.push(DONE));
+    // An empty answer is no continuation — the error face, not a blank pill.
+    await waitFor(() => expect(result.current.phase).toBe("error"));
+    expect(result.current.errorCode).toBe("empty");
+  });
+
+  it("the coded error frame names the failure — the ghost never half-stands", async () => {
+    const wire = controlledStream();
+    fetchMock.mockResolvedValue(sseResponse(wire.stream));
+    const { result } = mount();
+    act(() => result.current.start());
+    await act(async () => wire.push(DELTA_A));
+    await act(async () => wire.push('event: error\ndata: {"code": "key-unavailable"}\n\n'));
+    await waitFor(() => expect(result.current.phase).toBe("error"));
+    expect(result.current.errorCode).toBe("key-unavailable");
+    // What arrived stays readable in the state — the face owns the copy.
+    expect(result.current.text).toBe("Der Nebel hob sich ");
+  });
+
+  it("a JSON refusal before the stream is the error face by status", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 422 }));
+    const { result } = mount();
+    act(() => result.current.start("X".repeat(2001)));
+    await waitFor(() => expect(result.current.phase).toBe("error"));
+    expect(result.current.errorCode).toBe("http-422");
+  });
+
+  it("a dead connection is the error face, never a silent idle", async () => {
+    fetchMock.mockRejectedValue(new TypeError("failed to fetch"));
+    const { result } = mount();
+    act(() => result.current.start());
+    await waitFor(() => expect(result.current.phase).toBe("error"));
+    expect(result.current.errorCode).toBe("network");
+  });
+
+  it("a silent close without a terminal frame is a failure — the router's own rule", async () => {
+    const wire = controlledStream();
+    fetchMock.mockResolvedValue(sseResponse(wire.stream));
+    const { result } = mount();
+    act(() => result.current.start());
+    await act(async () => {
+      wire.push(DELTA_A);
+      wire.close();
+    });
+    await waitFor(() => expect(result.current.phase).toBe("error"));
+    expect(result.current.errorCode).toBe("interrupted");
+  });
+
+  it("dismiss aborts the stream and clears the ghost — no error face for a chosen stop", async () => {
+    const wire = controlledStream();
+    fetchMock.mockResolvedValue(sseResponse(wire.stream));
+    const { result } = mount();
+    act(() => result.current.start());
+    await act(async () => wire.push(DELTA_A));
+    await waitFor(() => expect(result.current.text).not.toBe(""));
+
+    act(() => result.current.dismiss());
+    expect(result.current.phase).toBe("idle");
+    expect(result.current.text).toBe("");
+    // The wire keeps moving after the stop — the retired loop must not answer.
+    await act(async () => {
+      wire.push(DELTA_B + DONE);
+      wire.close();
+    });
+    expect(result.current.phase).toBe("idle");
+    expect(result.current.text).toBe("");
+  });
+
+  it("dismiss clears the error face too — Verwerfen", async () => {
+    fetchMock.mockRejectedValue(new TypeError("failed to fetch"));
+    const { result } = mount();
+    act(() => result.current.start());
+    await waitFor(() => expect(result.current.phase).toBe("error"));
+    act(() => result.current.dismiss());
+    expect(result.current.phase).toBe("idle");
+    expect(result.current.errorCode).toBeNull();
+  });
+
+  it("retry re-runs the very ask — the last prompt rides again", async () => {
+    const first = controlledStream();
+    const second = controlledStream();
+    fetchMock.mockResolvedValueOnce(sseResponse(first.stream)).mockResolvedValueOnce(sseResponse(second.stream));
+    const { result } = mount();
+    act(() => result.current.start("Dialog vertiefen"));
+    await act(async () => first.push('event: error\ndata: {"code": "unknown"}\n\n'));
+    await waitFor(() => expect(result.current.phase).toBe("error"));
+
+    act(() => result.current.retry());
+    expect(result.current.phase).toBe("streaming");
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/writing/scenes/s1/continue", {
+      method: "POST",
+      signal: expect.any(AbortSignal),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: "Dialog vertiefen" }),
+    });
+    await act(async () => second.push(DELTA_A + DONE));
+    await waitFor(() => expect(result.current.phase).toBe("pending"));
+  });
+
+  it("a new start replaces a standing stream — one ghost at a time", async () => {
+    const first = controlledStream();
+    const second = controlledStream();
+    fetchMock.mockResolvedValueOnce(sseResponse(first.stream)).mockResolvedValueOnce(sseResponse(second.stream));
+    const { result } = mount();
+    act(() => result.current.start());
+    await act(async () => first.push(DELTA_A));
+    await waitFor(() => expect(result.current.text).toBe("Der Nebel hob sich "));
+
+    act(() => result.current.start("Details ausschmücken"));
+    expect(result.current.text).toBe("");
+    await act(async () => {
+      first.push(DELTA_B + DONE);
+      second.push(DELTA_B + DONE);
+    });
+    await waitFor(() => expect(result.current.phase).toBe("pending"));
+    // Only the second stream's words stand — the retired one never answered.
+    expect(result.current.text).toBe("vom See.");
+  });
+
+  it("a scene switch retires the ghost — it belongs to the tail it was asked for", async () => {
+    const wire = controlledStream();
+    fetchMock.mockResolvedValue(sseResponse(wire.stream));
+    const { result, rerender } = mount("s1");
+    act(() => result.current.start());
+    await act(async () => wire.push(DELTA_A + DONE));
+    await waitFor(() => expect(result.current.phase).toBe("pending"));
+
+    rerender({ id: "s2" });
+    await waitFor(() => expect(result.current.phase).toBe("idle"));
+    expect(result.current.text).toBe("");
+  });
+
+  it("no scene, no ask — the empty faces carry no continuation", () => {
+    const { result } = mount(null);
+    act(() => result.current.start());
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.phase).toBe("idle");
+  });
+
+  it("unmount aborts the stream — the audit records the interruption server-side", async () => {
+    const wire = controlledStream();
+    fetchMock.mockResolvedValue(sseResponse(wire.stream));
+    const { result, unmount } = mount();
+    act(() => result.current.start());
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const signal = fetchMock.mock.calls[0][1].signal as AbortSignal;
+    expect(signal.aborted).toBe(false);
+    unmount();
+    expect(signal.aborted).toBe(true);
   });
 });

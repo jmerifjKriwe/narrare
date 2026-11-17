@@ -6,11 +6,15 @@
  * written-out eyebrow, the overline, the EDITABLE drop-cap prose (a real
  * textbox), and the foot's live word count + the one save-status owner's
  * three faces (rest / saving / KACHEL 9's failure with Wiederholen). No
- * folio, no page count (row 9), no ghost text or prompt bar (PR 4). The
- * empty faces answer per the states sheet; Kachel 4's first-scene door is
- * LIVE (Task 13) — the canonical new-chapter experience (D16).
+ * folio, no page count (row 9). The ghost text and the prompt bar are LIVE
+ * (Task 16): the bar floats over the scene face alone, and a prose edit
+ * dismisses the standing ghost (the page's wiring, proven here at the
+ * column's door). The empty faces answer per the states sheet; Kachel 4's
+ * first-scene door is LIVE (Task 13) — the canonical new-chapter
+ * experience (D16).
  */
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -24,9 +28,32 @@ import type { SaveStatus } from "@shell/lib/saveStatus";
 import { countWords } from "@shell/lib/words";
 
 import { EditorColumn } from "./EditorColumn";
-import type { SceneEntry } from "./workspace";
+import type { Continuation, SceneEntry } from "./workspace";
 
 const de = catalogs.de;
+
+// jsdom lays out nothing: ProseMirror reads Range rects when it scrolls a
+// selection into view (the typing leg focuses the live editor). Hand it the
+// zeros the elements claim (the page test's own polyfill).
+const zeroRect = { top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0 } as DOMRect;
+Range.prototype.getClientRects = function (): DOMRectList {
+  return [zeroRect] as unknown as DOMRectList;
+};
+Range.prototype.getBoundingClientRect = () => zeroRect;
+
+/** The continuation at rest — the column's tests drive the faces, the
+ *  hook's own lifecycle lives in the workspace seam's tests. */
+function continuationOf(overrides: Partial<Continuation> = {}): Continuation {
+  return {
+    phase: "idle",
+    text: "",
+    errorCode: null,
+    start: vi.fn(),
+    dismiss: vi.fn(),
+    retry: vi.fn(),
+    ...overrides,
+  };
+}
 
 function novelRow(overrides: Partial<Novel> = {}): Novel {
   return {
@@ -95,6 +122,7 @@ function renderColumn(
     onRetry?: () => void;
     onBodyChange?: (body: string) => void;
     onCreateScene?: () => void;
+    continuation?: Continuation;
   } = {},
 ) {
   const onRetry = props.onRetry ?? vi.fn();
@@ -109,6 +137,7 @@ function renderColumn(
       onRetry={onRetry}
       onBodyChange={onBodyChange}
       onCreateScene={onCreateScene}
+      continuation={props.continuation ?? continuationOf()}
     />,
   );
   return { ...utils, onRetry, onBodyChange, onCreateScene };
@@ -138,6 +167,7 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        continuation={continuationOf()}
       />,
     );
     expect(screen.getByTestId("workspace-running-head").textContent).toBe("Dead Signal");
@@ -165,6 +195,7 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        continuation={continuationOf()}
       />,
     );
     expect(
@@ -184,6 +215,7 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        continuation={continuationOf()}
       />,
     );
     expect(screen.getByText("Forschungsstation 7")).toBeTruthy();
@@ -196,6 +228,7 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        continuation={continuationOf()}
       />,
     );
     expect(screen.getByText("27. Oktober 2094, 03:14 UTC")).toBeTruthy();
@@ -210,6 +243,7 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        continuation={continuationOf()}
       />,
     );
     expect(screen.queryByTestId("workspace-overline")).toBeNull();
@@ -219,18 +253,18 @@ describe("the scene face", () => {
     renderColumn();
     const box = await screen.findByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] });
     expect(box.getAttribute("aria-multiline")).toBe("true");
-    await waitFor(() => expect(screen.getByRole("textbox").querySelectorAll("p")).toHaveLength(2));
-    const paragraphs = screen.getByRole("textbox").querySelectorAll("p");
+    await waitFor(() => expect(box.querySelectorAll("p")).toHaveLength(2));
+    const paragraphs = box.querySelectorAll("p");
     expect(paragraphs[0].textContent).toBe("Ich war gerade dabei, die Sensoren zu kalibrieren.");
     expect(paragraphs[1].textContent).toBe("»Quelle triangulieren«, befahl ich leise.");
     // The live prose wears the drop-cap wrapper class (globals.css).
-    expect(screen.getByRole("textbox").closest(".workspace-prose-live")).not.toBeNull();
+    expect(box.closest(".workspace-prose-live")).not.toBeNull();
   });
 
   it("an empty body keeps the paper honest — an empty editor, no invented prose", async () => {
     renderColumn({ entry: entryOf(sceneRow({ body: "  " })) });
-    await screen.findByRole("textbox");
-    await waitFor(() => expect(screen.getByRole("textbox").textContent).toBe(""));
+    const box = await screen.findByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] });
+    await waitFor(() => expect(box.textContent).toBe(""));
   });
 
 });
@@ -292,6 +326,7 @@ describe("the ribbon", () => {
           onRetry={vi.fn()}
           onBodyChange={vi.fn()}
           onCreateScene={vi.fn()}
+          continuation={continuationOf()}
         />,
       );
       const present = within(screen.getByTestId("workspace-ribbon")).queryByText(
@@ -346,5 +381,61 @@ describe("the empty faces", () => {
     fireEvent.click(button);
     expect(onCreateScene).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("workspace-ribbon")).toBeNull();
+  });
+});
+
+describe("the prompt bar and the ghost (Task 16)", () => {
+  it("the bar floats on the scene face — input, primary and the three pills", async () => {
+    renderColumn();
+    await screen.findByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] });
+    expect(
+      screen.getByRole("textbox", { name: de["writing.workspace.promptBar.inputLabel"] }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: de["writing.workspace.promptBar.pillTension"] }),
+    ).toBeTruthy();
+  });
+
+  it("the empty faces carry no bar — no scene, nothing to continue", () => {
+    renderColumn({ entry: null });
+    expect(
+      screen.queryByRole("textbox", { name: de["writing.workspace.promptBar.inputLabel"] }),
+    ).toBeNull();
+    renderColumn({ entry: null, emptyChapter: true });
+    expect(
+      screen.queryByRole("button", { name: de["writing.workspace.promptBar.continue"] }),
+    ).toBeNull();
+  });
+
+  it("a prose edit rides the onChange door with the whole body — the page wires the dismissal", async () => {
+    const continuation = continuationOf({ phase: "pending", text: "Der Nebel hob sich." });
+    const onBodyChange = vi.fn();
+    renderColumn({ continuation, onBodyChange });
+    const box = await screen.findByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] });
+    await waitFor(() => expect(box.textContent).toContain("Ich war gerade dabei"));
+    expect(screen.getByTestId("ghost-preview")).toBeTruthy();
+    // A real keystroke through TipTap — the onChange door the page wires
+    // (the dismissal itself is the page's wrapper, proven in its own test).
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    box.focus();
+    await user.keyboard("X");
+    await waitFor(() => expect(onBodyChange).toHaveBeenCalled());
+    expect(onBodyChange.mock.calls[0][0]).toContain("Ich war gerade dabei");
+    expect(onBodyChange.mock.calls[0][0]).toContain("X");
+  });
+
+  it("the streaming ghost renders at the tail with the ARIA chip", async () => {
+    renderColumn({
+      continuation: continuationOf({ phase: "streaming", text: "Der Nebel hob sich " }),
+    });
+    await screen.findByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] });
+    expect(screen.getByTestId("ghost-preview").textContent).toContain("Der Nebel hob sich ");
+    expect(screen.getByText(de["writing.workspace.ghost.writing"])).toBeTruthy();
+    // KACHEL 7's busy bar stands in for the input row.
+    expect(screen.getByText(de["writing.workspace.promptBar.busy"])).toBeTruthy();
+    expect(screen.getByRole("button", { name: de["writing.workspace.promptBar.stop"] })).toBeTruthy();
   });
 });
