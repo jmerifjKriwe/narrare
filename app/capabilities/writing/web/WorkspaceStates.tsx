@@ -3,18 +3,21 @@
  * Kacheln 1 and 2 on the shell's tokens. The skeleton is the shell's quiet
  * pulse (the Bone family, the shelf's own discipline — the draft's moving
  * shimmer would need a keyframe the token surface does not carry; the calm
- * is the draft's own requirement). The error card keeps the draft's
- * geometry — the round mark, the heading, the retry — with HONEST copy:
+ * is the draft's own requirement).
  *
- * - INTERIM #887: the draft's body claims a browser-cache offline copy
- *   („Deine lokalen Entwürfe im Browser-Cache sind unversehrt") and offers
- *   an „Offline-Kopie ansehen" door. Nothing in web/ or app/ implements
- *   either; the port names the real cause (the local service did not
- *   answer) and omits the door. The owner's honest-copy ruling is recorded
- *   in the gap doc; a Stitch rework may replace the copy later.
- * - The loading line is „Manuskript wird geladen …" — the draft's
- *   „Manuskript-Index wird synchronisiert …" would name a sync engine that
- *   does not exist (the #884 family).
+ * The error card carries the ROUND-2 CORRECTED copy verbatim (d8e51c9d,
+ * PR #889 — the owner's #887 ruling: rework via Stitch, the browser-cache
+ * reassurance and the „Offline-Kopie ansehen" door gone, the retry alone).
+ * The body's autosave reassurance („Deine Änderungen bleiben im Editor,
+ * bis sie gesichert sind.") becomes true with Task 12's autosave engine
+ * (PR 3, this same wave, sequential): the coordinator ruled the verbatim
+ * authority wins over a self-devised true-today body — a short, documented
+ * interim, not a papered-over claim.
+ *
+ * The loading line stays „Manuskript wird geladen …": the round corrected
+ * only the error tile, KACHEL 1 still draws „Manuskript-Index wird
+ * synchronisiert …" — a sync-engine claim nothing implements (the #884
+ * family), so the port keeps the honest loading verb.
  */
 
 import { useTranslation } from "@shell/lib/i18n";

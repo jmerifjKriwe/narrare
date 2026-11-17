@@ -135,13 +135,15 @@ export function stageTitleKey(
 }
 
 /**
- * One chapter's scenes, cached under `["scenes", chapterId]`. The tree and
- * the editor read the same answer; Task 12's save seam invalidates the key
- * when a scene's prose lands. An answer that is not ok throws, so the cache
- * holds either the list or the failure — never a half-current list.
+ * One chapter's scenes question — the key and the ask in one home, so the
+ * per-chapter list below and any future single-chapter reader cannot drift.
+ * The tree and the editor read the same answer; Task 12's save seam
+ * invalidates the key when a scene's prose lands. An answer that is not ok
+ * throws, so the cache holds either the list or the failure — never a
+ * half-current list.
  */
-export function useScenesQuery(chapterId: string): UseQueryResult<Scene[]> {
-  return useQuery({
+function scenesQueryOptions(chapterId: string) {
+  return {
     queryKey: ["scenes", chapterId],
     queryFn: async () => {
       const { data, response } = await client.GET("/api/writing/chapters/{chapter_id}/scenes", {
@@ -150,7 +152,7 @@ export function useScenesQuery(chapterId: string): UseQueryResult<Scene[]> {
       if (!response.ok) throw new Error(`scenes unavailable: ${response.status}`);
       return data ?? [];
     },
-  });
+  };
 }
 
 /**
@@ -161,16 +163,7 @@ export function useScenesQuery(chapterId: string): UseQueryResult<Scene[]> {
  */
 export function useChapterScenes(chapters: readonly Chapter[]): UseQueryResult<Scene[]>[] {
   return useQueries({
-    queries: chapters.map((chapter) => ({
-      queryKey: ["scenes", chapter.id],
-      queryFn: async () => {
-        const { data, response } = await client.GET("/api/writing/chapters/{chapter_id}/scenes", {
-          params: { path: { chapter_id: chapter.id } },
-        });
-        if (!response.ok) throw new Error(`scenes unavailable: ${response.status}`);
-        return data ?? [];
-      },
-    })),
+    queries: chapters.map((chapter) => scenesQueryOptions(chapter.id)),
   });
 }
 

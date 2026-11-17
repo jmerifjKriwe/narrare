@@ -409,6 +409,50 @@ describe("the scene tree", () => {
     expect(header.getAttribute("title")).toBe(`Kapitel 1 — ${long}`);
   });
 
+  it("many chapters scroll — every chapter stands, the count presentation holds (Kachel 6)", async () => {
+    // Twelve chapters, three scenes each — the state tile's dense scale.
+    const chapters = Array.from({ length: 12 }, (_, at) => ({
+      ...CH1,
+      id: `c${at + 1}`,
+      position: at,
+      title: `Kapitel ${at + 1} Titel`,
+      scene_count: 3,
+      word_count: 100,
+    }));
+    const scenesByChapter = new Map(
+      chapters.map((chapter) => [
+        chapter.id,
+        Array.from({ length: 3 }, (_, at) => ({
+          ...S11,
+          id: `${chapter.id}-s${at + 1}`,
+          chapter_id: chapter.id,
+          position: at + 1,
+          word_count: 33,
+          title: `Titel ${chapter.id}-s${at + 1}`,
+        })),
+      ]),
+    );
+    await renderExplorer({
+      novel: novelRow({ chapter_count: 12, word_count: 1200 }),
+      chapters,
+      sceneResults: chapters.map((chapter) => queryOf(scenesByChapter.get(chapter.id) ?? [])),
+      entries: orderedSceneEntries(chapters, scenesByChapter),
+      activeSceneId: "c9-s2",
+      activeChapterId: "c9",
+    });
+    // The explorer body is the scroll container — the tree grows inside it.
+    const body = screen.getByTestId("explorer-body");
+    expect(body.className).toContain("overflow-y-auto");
+    // Every chapter and every scene stands; the total is the rows' own Σ.
+    expect(screen.getAllByText(/^Kapitel \d+ — Kapitel \d+ Titel$/)).toHaveLength(12);
+    expect(screen.getAllByText(/^Szene \d · /)).toHaveLength(36);
+    expect(screen.getByText("Gesamt: 1.200 W.")).toBeTruthy();
+    // The active marker survives the density — chapter 9's second scene.
+    expect(
+      screen.getByRole("button", { name: /Szene 2 · Titel c9-s2/ }).getAttribute("aria-current"),
+    ).toBe("true");
+  });
+
   it("the create doors stay disabled until Task 13 wires the CRUD", async () => {
     await renderExplorer();
     for (const name of [de["writing.workspace.tree.newChapter"], de["writing.workspace.tree.newScene"]]) {

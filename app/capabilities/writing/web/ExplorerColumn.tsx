@@ -405,7 +405,7 @@ export function ExplorerColumn({
       aria-label={t("writing.workspace.explorer.label")}
       className="flex h-full w-[280px] shrink-0 flex-col border-r border-border bg-surface-container-low/60 text-meta"
     >
-      <div className="flex-1 space-y-3 overflow-y-auto p-3">
+      <div data-testid="explorer-body" className="flex-1 space-y-3 overflow-y-auto p-3">
         <IdentityCard novel={novel} />
         <DailyRing activity={activity} />
         <TensionCard

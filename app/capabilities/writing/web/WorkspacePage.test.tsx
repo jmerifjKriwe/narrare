@@ -351,13 +351,25 @@ describe("loading, error and the 404 degrade", () => {
       return { data: NOVEL, response: ok() };
     };
     await renderWorkspace();
+    // The round-2 corrected tile's copy, VERBATIM (d8e51c9d, PR #889 —
+    // #887's ruling): the library's timeout named, the autosave reassurance
+    // the coordinator ruled ships ahead of Task 12's engine (PR 3, this
+    // wave), the retry alone.
     expect(
-      await screen.findByRole("heading", { level: 1, name: de["writing.workspace.error.title"] }),
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Die Bibliothek antwortet im Moment nicht rechtzeitig.",
+      }),
     ).toBeTruthy();
-    // The honest body — no browser-cache claim (#887), no offline door.
+    expect(
+      screen.getByText("Deine Änderungen bleiben im Editor, bis sie gesichert sind."),
+    ).toBeTruthy();
     expect(screen.getByText(de["writing.workspace.error.body"])).toBeTruthy();
+    // The offline door is gone — the retry stands alone.
     expect(screen.queryByText(/Offline/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: de["writing.shelf.error.retry"] }));
+    const alert = screen.getByRole("alert");
+    expect(within(alert).getAllByRole("button")).toHaveLength(1);
+    fireEvent.click(within(alert).getByRole("button", { name: "Erneut versuchen" }));
     expect(
       await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" }),
     ).toBeTruthy();

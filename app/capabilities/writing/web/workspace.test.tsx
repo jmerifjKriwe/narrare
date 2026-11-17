@@ -32,7 +32,6 @@ import {
   stageTitleKey,
   tensionCodes,
   useChapterScenes,
-  useScenesQuery,
   useStoryboardQuery,
 } from "./workspace";
 
@@ -241,20 +240,20 @@ describe("the scene reads", () => {
     });
   });
 
-  it("useScenesQuery asks the chapter's scenes and caches under the chapter", async () => {
-    const { result } = renderHook(() => useScenesQuery("c1"), { wrapper });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.map((scene) => scene.id)).toEqual(["s11", "s12"]);
+  it("a one-chapter list asks the chapter's scenes and caches under the chapter", async () => {
+    const { result } = renderHook(() => useChapterScenes([CH1]), { wrapper });
+    await waitFor(() => expect(result.current[0].isSuccess).toBe(true));
+    expect(result.current[0].data?.map((scene) => scene.id)).toEqual(["s11", "s12"]);
     expect(api.GET).toHaveBeenCalledWith("/api/writing/chapters/{chapter_id}/scenes", {
       params: { path: { chapter_id: "c1" } },
     });
     expect(queryClient.getQueryData(["scenes", "c1"])).toEqual([S11, S12]);
   });
 
-  it("useScenesQuery throws on a refusal — never a half-current list", async () => {
+  it("a refusal throws — never a half-current list", async () => {
     api.GET.mockImplementation(async () => ({ data: undefined, response: new Response(null, { status: 503 }) }));
-    const { result } = renderHook(() => useScenesQuery("c1"), { wrapper });
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    const { result } = renderHook(() => useChapterScenes([CH1]), { wrapper });
+    await waitFor(() => expect(result.current[0].isError).toBe(true));
   });
 
   it("useChapterScenes asks one question per chapter, aligned with the list", async () => {

@@ -139,14 +139,6 @@ def patch_scene(scene_id: str, **fields: Any) -> dict[str, Any]:
     return scene
 
 
-def get_scenes(chapter_id: str) -> list[dict[str, Any]]:
-    with _client() as client:
-        response = client.get(f"/api/writing/chapters/{chapter_id}/scenes")
-    response.raise_for_status()
-    scenes: list[dict[str, Any]] = response.json()
-    return scenes
-
-
 def continue_scene(scene_id: str) -> httpx.Response:
     """Stream a scene continuation through the real stack — the SSE door (W4 §5).
 
