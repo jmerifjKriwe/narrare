@@ -2637,6 +2637,26 @@
         "title": "SceneAggregateUpdate",
         "type": "object"
       },
+      "SceneContinue": {
+        "description": "The continue body (W4 D5): the writer's optional instruction.\n\nAn absent body, an empty object and a carried ``null`` are one behavior —\ntoday's continuation, no instruction. The bound is the chat question's own\n(``ChatRequest.question``: 1-2000 characters of the raw string, no trim):\nthe schema's one refusal, a 422 naming the field before any stream starts.\nWhat the window cannot hold beside the scaffold is the builder's refusal,\nthe coded budget frame — never a truncated instruction.",
+        "properties": {
+          "prompt": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          }
+        },
+        "title": "SceneContinue",
+        "type": "object"
+      },
       "SceneCreate": {
         "properties": {
           "body": {
@@ -8099,7 +8119,7 @@
     },
     "/api/writing/scenes/{scene_id}/continue": {
       "post": {
-        "description": "Stream a continuation for an owned scene; return HTTP 404 when it is not found.\n\nThe unit is the scene (W4 §5): the context is the active scene's tail plus\nthe book's earlier scenes nearest first. The SSE contract is the chapter\nendpoint's own, unchanged — the same frames, headers and coded refusals;\nonly the unit and the context assembly moved onto scenes.",
+        "description": "Stream a continuation for an owned scene; return HTTP 404 when it is not found.\n\nThe unit is the scene (W4 §5): the context is the active scene's tail plus\nthe book's earlier scenes nearest first. The SSE contract is the chapter\nendpoint's own, unchanged — the same frames, headers and coded refusals;\nonly the unit and the context assembly moved onto scenes.\n\nThe optional body carries the writer's instruction (W4 D5): an absent\nbody or a carried ``null`` is today's continuation; a prompt outside the\nchat question's 1-2000 bound is the schema's 422 before any stream, and a\nprompt the window cannot hold is the coded budget frame below — never a\npartial answer.",
         "operationId": "continue_scene_api_writing_scenes__scene_id__continue_post",
         "parameters": [
           {
@@ -8113,6 +8133,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/SceneContinue"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {

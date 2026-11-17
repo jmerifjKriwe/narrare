@@ -18,6 +18,7 @@ import pytest
 
 from app.capabilities.writing.e2e.conftest import (
     DATABASE,
+    _client,  # pyright: ignore[reportPrivateUsage]  the stack's own client, for the raw body
     continue_scene,
     create_chapter,
     create_novel,
@@ -78,4 +79,45 @@ def test_a_missing_scene_is_a_404_on_the_real_stack(installed: object) -> None:
     response = continue_scene(str(uuid4()))
     assert response.status_code == 404
     assert response.json()["detail"] == "scene not found"
+    assert rows(DATABASE, "SELECT count(*) FROM llm_calls") == [(0,)]
+
+
+def test_a_prompt_rides_the_real_stack_stream(installed: object) -> None:
+    """The optional body (W4 D5) is accepted on the real stack: the stream's
+    frames and the audit row are the bare continuation's own — the prompt
+    changes the prompt alone, and the fake answers it the same way."""
+    novel = create_novel("Der Nebel")
+    chapter = create_chapter(str(novel["id"]), "Ankunft")
+    scene = write_scene(str(chapter["id"]), "Der Nebel kam von See.")
+
+    response = continue_scene(str(scene["id"]), prompt="Lass Mira am Ufer zögern.")
+
+    assert response.status_code == 200
+    assert "".join(_deltas(response.text)) == "".join(FakeProvider.CHUNKS)
+    assert "event: done" in response.text
+    assert "event: error" not in response.text
+    audit = rows(DATABASE, "SELECT task_key, status, novel_id, cost_usd FROM llm_calls")
+    assert len(audit) == 1
+    task_key, status, novel_id, cost_usd = audit[0]
+    assert task_key == "writing.continuation"
+    assert status == "ok"
+    assert str(novel_id) == str(novel["id"])
+    assert cost_usd == 0.0
+
+
+def test_an_overlong_prompt_is_a_422_on_the_real_stack(installed: object) -> None:
+    """The bound refusal is the schema's own on the real stack: a JSON 422
+    naming the field before any stream — no partial answer, no audit row."""
+    novel = create_novel("Der Nebel")
+    chapter = create_chapter(str(novel["id"]), "Ankunft")
+    scene = write_scene(str(chapter["id"]), "Der Nebel kam von See.")
+
+    with _client() as client:
+        response = client.post(
+            f"/api/writing/scenes/{scene['id']}/continue", json={"prompt": "X" * 2001}
+        )
+
+    assert response.status_code == 422
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json()["detail"][0]["loc"] == ["body", "prompt"]
     assert rows(DATABASE, "SELECT count(*) FROM llm_calls") == [(0,)]

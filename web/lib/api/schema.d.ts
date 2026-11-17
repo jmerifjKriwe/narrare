@@ -1385,6 +1385,12 @@ export interface paths {
          *     the book's earlier scenes nearest first. The SSE contract is the chapter
          *     endpoint's own, unchanged — the same frames, headers and coded refusals;
          *     only the unit and the context assembly moved onto scenes.
+         *
+         *     The optional body carries the writer's instruction (W4 D5): an absent
+         *     body or a carried ``null`` is today's continuation; a prompt outside the
+         *     chat question's 1-2000 bound is the schema's 422 before any stream, and a
+         *     prompt the window cannot hold is the coded budget frame below — never a
+         *     partial answer.
          */
         post: operations["continue_scene_api_writing_scenes__scene_id__continue_post"];
         delete?: never;
@@ -2534,6 +2540,21 @@ export interface components {
         SceneAggregateUpdate: {
             /** Scenes */
             scenes?: components["schemas"]["SceneUpsert"][];
+        };
+        /**
+         * SceneContinue
+         * @description The continue body (W4 D5): the writer's optional instruction.
+         *
+         *     An absent body, an empty object and a carried ``null`` are one behavior —
+         *     today's continuation, no instruction. The bound is the chat question's own
+         *     (``ChatRequest.question``: 1-2000 characters of the raw string, no trim):
+         *     the schema's one refusal, a 422 naming the field before any stream starts.
+         *     What the window cannot hold beside the scaffold is the builder's refusal,
+         *     the coded budget frame — never a truncated instruction.
+         */
+        SceneContinue: {
+            /** Prompt */
+            prompt?: string | null;
         };
         /** SceneCreate */
         SceneCreate: {
@@ -6020,7 +6041,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SceneContinue"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

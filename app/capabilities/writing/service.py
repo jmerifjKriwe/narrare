@@ -411,6 +411,7 @@ class WritingService:
         context_window: int | None = None,
         max_output_tokens: int | None = None,
         model: str | None = None,
+        prompt: str | None = None,
     ) -> str:
         """The prompt for a scene continuation, or NotFoundError if the scene is not ours.
 
@@ -431,6 +432,13 @@ class WritingService:
         the chapter predecessors' own, refined onto scenes: each scene's tail is
         hard-cut to the slice's remaining room and a scene that does not fit
         stops the packing.
+
+        The optional writer instruction (W4 D5) rides the same budgets: the
+        schema bounds it (the chat question's 1-2000), the render charges its
+        block to the immediate slice — the entity scan window shrinks by it,
+        the tail shrinks by it, and a block the slice cannot hold refuses
+        `BudgetImpossibleError` before any provider call. None is today's
+        continuation, byte for byte.
         """
         budgets = allocate(
             context_window=context_window, max_output_tokens=max_output_tokens, model=model
@@ -443,7 +451,7 @@ class WritingService:
         # never part of the tail, so scanning it would rank entities that the
         # builder never renders and spend entity budget on them.
         scan_window = budgets.immediate_text - scaffold_length(
-            novel.title if novel else "", chapter.title
+            novel.title if novel else "", chapter.title, prompt
         )
         tail = scene.body[-scan_window:] if scan_window > 0 else ""
         folded = tail.casefold()
@@ -474,6 +482,7 @@ class WritingService:
             genre=novel.genre if novel else None,
             blurb=novel.blurb if novel else None,
             active_chapter_id=chapter.id,
+            prompt=prompt,
         )
 
     async def _continuation_predecessors(

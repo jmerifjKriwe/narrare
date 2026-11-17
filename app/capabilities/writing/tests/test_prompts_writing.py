@@ -14,7 +14,7 @@ import pytest
 
 from app.capabilities.writing.prompts import PredecessorScene, continuation_prompt
 from app.kernel.auth import LOCAL_USER_ID
-from app.kernel.context import ContextBudgets
+from app.kernel.context import BudgetImpossibleError, ContextBudgets
 from app.kernel.contracts.models import Entity, Novel
 from app.kernel.db.session import Session
 from app.kernel.prompts import PromptRenderError, no_includes, render_source
@@ -349,6 +349,202 @@ async def test_a_refused_override_ends_the_stream_with_the_one_error_frame() -> 
     # The refusal is logged by the router branch that handled it (budget or
     # prompt); the caplog fixture does not reliably capture it across the ASGI
     # transport, so the response text above is the contract.
+
+
+# The writer instruction's block (W4 D5): the packer's whole output for a
+# carried prompt — leading separator, heading, the prompt verbatim. It rides
+# the immediate slice as frame, never a section of its own.
+INSTRUCTION_BLOCK = "\n\nWriter's instruction:\nLass Mira am Ufer zögern."
+INSTRUCTION_PROMPT = "Lass Mira am Ufer zögern."
+
+
+def test_the_writer_instruction_renders_after_the_closing_instruction() -> None:
+    """A carried prompt appends its block to the pinned arrangement — the
+    golden plus the block, byte for byte; nothing else moves."""
+    prompt = continuation_prompt(
+        budgets=BUDGETS,
+        novel_title=NOVEL_TITLE,
+        chapter_title=CHAPTER_TITLE,
+        body=BODY,
+        entities=ENTITIES,
+        predecessors=PREDECESSORS,
+        genre=GENRE,
+        blurb=BLURB,
+        prompt=INSTRUCTION_PROMPT,
+    )
+    assert prompt == GOLDEN + INSTRUCTION_BLOCK
+
+
+def test_the_instruction_shrinks_the_tail_and_holds_the_slice() -> None:
+    """The instruction is frame: the tail shrinks by its measured length and
+    the whole render stays exactly the immediate slice — never truncated."""
+    # The bundled frame for these titles is 188 characters (header 48, the
+    # tail's newline, the blank separator, the 138-character closing
+    # instruction); the block adds 24 + 25 = 49, leaving 400 - 237 = 163.
+    budgets = ContextBudgets(
+        immediate_text=400, referenced_entities=0, recent_chapters=0, style_hints=0
+    )
+    prompt = continuation_prompt(
+        budgets=budgets,
+        novel_title=NOVEL_TITLE,
+        chapter_title=CHAPTER_TITLE,
+        body="Z" * 5000,
+        prompt=INSTRUCTION_PROMPT,
+    )
+    assert prompt == (
+        "Novel: Der Nebel\n"
+        "Chapter: Ankunft\n"
+        "\n"
+        "Text so far:\n" + "Z" * 163 + "\n"
+        "\n"
+        "Continue the chapter in the same voice. Keep the language of the existing "
+        "text. Return only the new text, without a heading or commentary." + INSTRUCTION_BLOCK
+    )
+    assert len(prompt) == 400
+
+
+def test_an_instruction_exactly_filling_the_slice_renders_with_an_empty_tail() -> None:
+    """At the limit the instruction rides whole and the tail degrades to empty
+    — the frame 188 + the block 24 + 12 fills the slice exactly, no refusal."""
+    budgets = ContextBudgets(
+        immediate_text=224, referenced_entities=0, recent_chapters=0, style_hints=0
+    )
+    prompt = continuation_prompt(
+        budgets=budgets,
+        novel_title=NOVEL_TITLE,
+        chapter_title=CHAPTER_TITLE,
+        body="Z" * 5000,
+        prompt="X" * 12,
+    )
+    assert "Z" not in prompt  # the tail gave its whole room to the instruction
+    assert prompt.endswith("\n\nWriter's instruction:\n" + "X" * 12)
+    assert len(prompt) == 224
+
+
+def test_an_instruction_that_cannot_fit_is_refused_not_truncated() -> None:
+    """A prompt the slice cannot hold beside the scaffold refuses `budget` —
+    the same window without the prompt still renders: the refusal is the
+    instruction's charge, and the instruction is never cut to fit."""
+    budgets = ContextBudgets(
+        immediate_text=200, referenced_entities=0, recent_chapters=0, style_hints=0
+    )
+    without = continuation_prompt(
+        budgets=budgets, novel_title=NOVEL_TITLE, chapter_title=CHAPTER_TITLE, body="Z" * 5000
+    )
+    assert len(without) == 200  # the scaffold alone fits; the tail takes the rest
+    with pytest.raises(BudgetImpossibleError):
+        continuation_prompt(
+            budgets=budgets,
+            novel_title=NOVEL_TITLE,
+            chapter_title=CHAPTER_TITLE,
+            body="Z" * 5000,
+            prompt="X" * 100,
+        )
+
+
+async def test_the_chain_renders_the_instruction_through_the_bundled_source() -> None:
+    """No override: the chain render carries the instruction exactly as the
+    offline arrangement does — the golden plus the block."""
+    from app.capabilities.writing.prompts import render_continuation
+
+    async with Session() as session:
+        prompt = await render_continuation(
+            session,
+            LOCAL_USER_ID,
+            None,
+            budgets=BUDGETS,
+            novel_title=NOVEL_TITLE,
+            chapter_title=CHAPTER_TITLE,
+            body=BODY,
+            entities=ENTITIES,
+            predecessors=PREDECESSORS,
+            genre=GENRE,
+            blurb=BLURB,
+            prompt=INSTRUCTION_PROMPT,
+        )
+    assert prompt == GOLDEN + INSTRUCTION_BLOCK
+
+
+async def test_an_override_places_the_instruction_where_it_arranges() -> None:
+    """The override owns the arrangement: the instruction variable renders
+    where the re-voiced template puts it, whole and charged to the frame."""
+    from app.capabilities.writing.prompts import render_continuation
+    from app.kernel.prompts.models import PromptTemplateRepository
+
+    override = "{{ instruction }}\nNovel: {{ novel_title }}\n\nText so far:\n{{ tail }}"
+    async with Session() as session:
+        await PromptTemplateRepository(session, LOCAL_USER_ID).save(
+            "writing.continuation", override, None
+        )
+        await session.commit()
+        prompt = await render_continuation(
+            session,
+            LOCAL_USER_ID,
+            None,
+            budgets=BUDGETS,
+            novel_title=NOVEL_TITLE,
+            chapter_title=CHAPTER_TITLE,
+            body=BODY,
+            entities=(),
+            predecessors=(),
+            genre=None,
+            blurb=None,
+            prompt=INSTRUCTION_PROMPT,
+        )
+    assert prompt.startswith(INSTRUCTION_BLOCK + "\nNovel: Der Nebel")
+    assert prompt.endswith("Text so far:\n" + BODY)
+
+
+async def test_an_override_without_the_instruction_still_renders_with_a_prompt() -> None:
+    """An override saved before the parameter carries no instruction variable:
+    it renders unbroken, the instruction simply absent — and its unrendered
+    length is never charged to the tail's room (the frame is what rendered)."""
+    from app.capabilities.writing.prompts import render_continuation
+    from app.kernel.prompts.models import PromptTemplateRepository
+
+    override = "Novel: {{ novel_title }}\n\nText so far:\n{{ tail }}"
+    async with Session() as session:
+        await PromptTemplateRepository(session, LOCAL_USER_ID).save(
+            "writing.continuation", override, None
+        )
+        await session.commit()
+        prompt = await render_continuation(
+            session,
+            LOCAL_USER_ID,
+            None,
+            budgets=ContextBudgets(
+                immediate_text=300, referenced_entities=0, recent_chapters=0, style_hints=0
+            ),
+            novel_title=NOVEL_TITLE,
+            chapter_title=CHAPTER_TITLE,
+            body="Z" * 5000,
+            entities=(),
+            predecessors=(),
+            genre=None,
+            blurb=None,
+            prompt=INSTRUCTION_PROMPT,
+        )
+    assert "Writer's instruction:" not in prompt
+    # The override's frame is 31 characters (17 + 1 + 13; the template ends at
+    # the tail, no trailing newline): the tail takes the whole rest, no phantom
+    # charge for the absent block.
+    assert prompt.count("Z") == 269
+
+
+async def test_the_save_gate_accepts_an_override_using_the_instruction_variable() -> None:
+    """The legend carries the instruction: an override naming it passes the
+    save-time gate (the sample render knows the variable)."""
+    from httpx import ASGITransport, AsyncClient
+
+    from app.api.main import app
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        saved = await client.put(
+            "/api/prompts/writing.continuation",
+            json={"content": "{{ instruction }}\nText so far:\n{{ tail }}"},
+        )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["override"]["content"] == "{{ instruction }}\nText so far:\n{{ tail }}"
 
 
 async def test_a_stable_oversized_override_is_refused_by_name() -> None:

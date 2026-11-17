@@ -25,10 +25,11 @@ def _bundled(name: str) -> str:
 
 # Today's sample renders — the bundled template against its sample factory —
 # captured when the prompts docked. Provenance: writing's literal is the
-# capability suite's own GOLDEN string; chat's sample rides that suite's
-# QUESTION and first passage; the knowledge extract sample's body is the
-# writing suite's BODY (not a shortened knowledge CHAPTER_BODY). A drift in
-# either tier — template or factory — rots here first.
+# capability suite's own GOLDEN string plus the instruction sample block
+# (W4 D5 — the legend shows the writer instruction the override may place);
+# chat's sample rides that suite's QUESTION and first passage; the knowledge
+# extract sample's body is the writing suite's BODY (not a shortened knowledge
+# CHAPTER_BODY). A drift in either tier — template or factory — rots here first.
 GOLDENS: dict[str, str] = {
     "chat.ask": (
         "Answer the question using only the sources below. Quote the passage that "
@@ -104,6 +105,7 @@ GOLDENS: dict[str, str] = {
         "\n"
         "Continue the chapter in the same voice. Keep the language of the existing "
         "text. Return only the new text, without a heading or commentary."
+        "\n\nWriter's instruction:\nLass Mira am Ufer zögern."
     ),
 }
 

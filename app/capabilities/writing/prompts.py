@@ -18,6 +18,15 @@ global — replaces it through the registry's effective chain, and its frame is
 measured the same way, so a re-voiced prompt holds the budgets or is refused
 by name (`PromptRenderError`, reason `budget`): sections are never cut to fit.
 
+The writer's optional instruction (W4 D5) rides the same system: a carried
+prompt arrives as one pre-packed block — separator, heading, the prompt
+verbatim — placed by the template after the closing instruction. It is frame,
+not a section: it shares the immediate-text slice with the scaffold and the
+tail, the tail shrinks by its measured length, and a block the slice cannot
+hold beside the scaffold refuses `budget` like any frame too big — the
+instruction is never truncated to fit. An override that does not place the
+`instruction` variable renders without it, its unrendered length never charged.
+
 No environment variable remains here: the allocator is the one context
 authority, and the resolved profile's limits decide the budgets the caller
 passes in.
@@ -57,6 +66,7 @@ class PredecessorScene:
 _ENTITIES_HEADING = "Referenced entities:"
 _PREDECESSORS_HEADING = "Previous chapters:"
 _STYLE_HEADING = "Style notes:"
+_INSTRUCTION_HEADING = "Writer's instruction:"
 # Heading + the heading's newline + the blank section separator. A slice below
 # this cannot hold its section whole, so the section is omitted — a slice never
 # overflows and no heading is ever truncated.
@@ -72,6 +82,7 @@ CONTINUATION_TEMPLATE = (
     "{{ entities_section }}{{ predecessors_section }}{{ style_section }}"
     "Continue the chapter in the same voice. Keep the language of the existing "
     "text. Return only the new text, without a heading or commentary."
+    "{{ instruction }}"
 )
 
 
@@ -89,7 +100,23 @@ def sample_variables() -> dict[str, object]:
         "entities_section": "Referenced entities:\n### Mira (character)\nDie Wanderin.\n\n",
         "predecessors_section": "Previous chapters:\n### Ursprung\nMira kam.\n\n",
         "style_section": "Style notes:\nGenre: Mystery\nBlurb: Ein Nebeljahr.\n\n",
+        "instruction": "\n\nWriter's instruction:\nLass Mira am Ufer zögern.",
     }
+
+
+def _instruction_block(prompt: str | None) -> str:
+    """The writer instruction as one pre-packed block, or nothing (W4 D5).
+
+    None — and the empty string the schema already refuses — is no
+    instruction: the variable renders empty and the arrangement is today's,
+    byte for byte. A carried prompt rides verbatim under its heading with the
+    leading separator; the block is last, so it carries no trailing one. The
+    prompt is never trimmed here — the chat question's precedent bounds the
+    raw string at the schema, and what passes renders as written.
+    """
+    if not prompt:
+        return ""
+    return f"\n\n{_INSTRUCTION_HEADING}\n{prompt}"
 
 
 def _packed_variables(
@@ -101,6 +128,7 @@ def _packed_variables(
     genre: str | None,
     blurb: str | None,
     active_chapter_id: UUID | None = None,
+    prompt: str | None = None,
 ) -> dict[str, str]:
     """The template's variables: the three sections packed within their slices.
 
@@ -108,6 +136,8 @@ def _packed_variables(
     whose slice cannot hold its heading plus separator — or that has no
     entries, or no style facts — arrives empty and renders nothing; a packed
     one carries its own blank-line separator, so the template needs none.
+    The writer instruction (W4 D5) is no section: its block rides whole as
+    frame, charged to the immediate slice by the fit, never packed or cut.
     """
     variables = {
         "novel_title": novel_title,
@@ -115,6 +145,7 @@ def _packed_variables(
         "entities_section": "",
         "predecessors_section": "",
         "style_section": "",
+        "instruction": _instruction_block(prompt),
     }
     if budgets.referenced_entities >= len(_ENTITIES_HEADING) + _SECTION_OVERHEAD and entities:
         entities_block = _entities_block(entities, budgets.referenced_entities)
@@ -201,13 +232,15 @@ async def _fit_tail(
     return rendered
 
 
-def scaffold_length(novel_title: str, chapter_title: str) -> int:
+def scaffold_length(novel_title: str, chapter_title: str, prompt: str | None = None) -> int:
     """The bundled template's fixed frame for an empty tail and no sections.
 
     The allocator's immediate slice also carries the header, the ``Text so
     far:`` scaffolding and the instruction; this is what that fixed frame
     measures, so a scan that ranks entities by their position in the tail
-    excludes the characters that never reach the model.
+    excludes the characters that never reach the model. A carried writer
+    instruction (W4 D5) is frame too: its block rides in the measurement, so
+    the scan window shrinks by exactly the room the instruction takes.
     """
     variables = {
         "novel_title": novel_title,
@@ -216,6 +249,7 @@ def scaffold_length(novel_title: str, chapter_title: str) -> int:
         "entities_section": "",
         "predecessors_section": "",
         "style_section": "",
+        "instruction": _instruction_block(prompt),
     }
     return len(render_source(CONTINUATION_TEMPLATE, variables, include=no_includes))
 
@@ -231,6 +265,7 @@ def continuation_prompt(
     genre: str | None = None,
     blurb: str | None = None,
     active_chapter_id: UUID | None = None,
+    prompt: str | None = None,
 ) -> str:
     """The bundled continuation prompt, rendered offline inside the four budgets.
 
@@ -252,7 +287,10 @@ def continuation_prompt(
     with no entries at all; the style section is also omitted when the novel
     carries neither genre nor blurb. The arrangement is the bundled template's
     own: the sections are packed, the frame measured against the template, the
-    tail cut to fit — the same flow the chain render runs.
+    tail cut to fit — the same flow the chain render runs. A carried writer
+    instruction (W4 D5) rides as frame after the closing instruction: the tail
+    shrinks by its block, and a block the slice cannot hold refuses
+    `BudgetImpossibleError` — never a truncated instruction.
     """
 
     async def bundled(variables: dict[str, str]) -> str:
@@ -272,6 +310,7 @@ def continuation_prompt(
                 genre,
                 blurb,
                 active_chapter_id,
+                prompt,
             ),
         )
     )
@@ -291,6 +330,7 @@ async def render_continuation(
     genre: str | None,
     blurb: str | None,
     active_chapter_id: UUID | None = None,
+    prompt: str | None = None,
 ) -> str:
     """The continuation prompt through the effective chain, the budgets held.
 
@@ -302,6 +342,11 @@ async def render_continuation(
     slice can never hold — is refused with ``PromptRenderError`` and reason
     ``budget``, the caller's error frame, never a truncated prompt. Read-only:
     the override chain is read, nothing written.
+
+    The writer instruction (W4 D5) rides the same fit: its block is frame the
+    source may place anywhere — an override that does not name the
+    ``instruction`` variable renders without it, and only what rendered is
+    charged. A block the slice cannot hold refuses like any frame too big.
     """
 
     async def chain(variables: dict[str, str]) -> str:
@@ -320,6 +365,7 @@ async def render_continuation(
             genre,
             blurb,
             active_chapter_id,
+            prompt,
         ),
     )
 
