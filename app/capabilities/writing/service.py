@@ -780,8 +780,6 @@ class WritingService:
         chapter = await self.get_chapter(chapter_id)
         novel_id = chapter.novel_id
         await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
-        if await self.chapters.get(chapter_id) is None:
-            raise NotFoundError
         current = [scene.id for scene in await self.scenes.list_for_chapter(chapter_id)]
         # Set and length, one comparison each: the set catches an id the
         # chapter does not hold (a deleted scene, a foreign one), the length
