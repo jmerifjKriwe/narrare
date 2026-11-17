@@ -2914,6 +2914,17 @@
             ],
             "title": "Daily Goal Words"
           },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
           "locale": {
             "anyOf": [
               {
@@ -2941,7 +2952,8 @@
           "locale",
           "theme",
           "author_name",
-          "daily_goal_words"
+          "daily_goal_words",
+          "email"
         ],
         "title": "SettingsRead",
         "type": "object"

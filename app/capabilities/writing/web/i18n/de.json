@@ -13,7 +13,6 @@
   "writing.shelf.banner.stats": "Statistiken öffnen",
   "writing.shelf.banner.today": "{state, select, written {Du hast heute bereits {count, number} Wörter verfasst.} quiet {Heute hast du noch keine Wörter verfasst.} removed {Heute hast du mehr Text entfernt als hinzugefügt — dein Tag steht bei {count, number} Wörtern.} other {Heutiger Stand im Atelier: {count, number} Wörter.}}",
   "writing.shelf.banner.weekly": "Wochenschnitt",
-  "writing.shelf.breadcrumb": "Bücherregal",
   "writing.shelf.card.options": "Projekt-Optionen",
   "writing.shelf.card.percent": "{percent} %",
   "writing.shelf.chapters": "{count, plural, one {# Kapitel} other {# Kapitel}}",
@@ -92,7 +91,6 @@
   "writing.shelf.hero.wordsUnit": "Wörter",
   "writing.shelf.hero.write": "Weiterschreiben — Kapitel 1",
   "writing.shelf.import": "Importieren",
-  "writing.shelf.language": "Sprache",
   "writing.shelf.lastEdited": "Zuletzt bearbeitet: {when}",
   "writing.shelf.loading": "Indizes laden…",
   "writing.shelf.loading.library": "Bibliothek",
@@ -133,7 +131,6 @@
   "writing.shelf.status.revision": "Überarbeitung",
   "writing.shelf.subtitle": "Verwalte deine Manuskripte, Buchstrukturen und schriftstellerischen Entwürfe.",
   "writing.shelf.title": "Das Bücherregal",
-  "writing.shelf.wordmark": "Atelier Narrare",
   "writing.shelf.words.count": "{count, number} Wörter",
   "writing.shelf.words.pair": "{count, number} / {target, number} Wörter"
 }

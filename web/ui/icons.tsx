@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The icon set: fifty-one line glyphs on one 16×16 grid, drawn for the
+ * The icon set: fifty-seven line glyphs on one 16×16 grid, drawn for the
  * stroke they run on — `currentColor` at 1.5, round caps and joins, no
  * fills — so a glyph wears the ink of whatever it sits beside and carries
  * no color of its own. The whole presentation contract lives on the
@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
  */
 
 /**
- * The fifty-one drawings. Each stays inside the 2.35–13.65 envelope —
+ * The fifty-seven drawings. Each stays inside the 2.35–13.65 envelope —
  * knowledge's stack sets both extremes; on the x axis the ink never leaves
  * 2.5–13.5 — so the 1.5 stroke, reaching half its width past the ink, never
  * clips the viewBox. Each is a single-stroke metaphor: detail that
@@ -79,6 +79,9 @@ export const icons = {
   cross: <path d="M4.5 4.5L11.5 11.5M11.5 4.5L4.5 11.5" />,
   /** Disclosure: selects and menus point down. */
   chevronDown: <path d="M3.5 6L8 10.5L12.5 6" />,
+  /** The open menu's mark: the disclosure turned upward — the chrome's
+   *  language chip wears it while its menu stands (the draft's expand_less). */
+  expandLess: <path d="M3.5 10L8 5.5L12.5 10" />,
   /** The select's own caret: the disclosure mark, tightened for a control
    *  that has text beside it — a wide chevron crowds the value. */
   selectChevron: <path d="M4.5 6.5L8 10L11.5 6.5" />,
@@ -393,6 +396,13 @@ export const icons = {
       <path d="M10.9 2.9V4.9H12.9" />
     </>
   ),
+
+  // The app-wide chrome's concepts (chrome-rail-topbar, W4). Same rule as
+  // above: a Material name pins the concept, the drawing is the app's own.
+
+  /** The drafts' `unfold_more`: the two chevrons facing apart — the book
+   *  switcher's mark, a choice that opens both ways. */
+  unfoldMore: <path d="M4.5 6.5L8 3.5L11.5 6.5M4.5 9.5L8 12.5L11.5 9.5" />,
 } satisfies Record<string, ReactNode>;
 
 /** A name in the icon set — the wave's whole glyph vocabulary. */

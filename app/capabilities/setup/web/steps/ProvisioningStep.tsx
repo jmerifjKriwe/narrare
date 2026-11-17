@@ -8,7 +8,7 @@ import { usePageTitle } from "@shell/lib/pageTitle";
 import { queryClient } from "@shell/lib/query";
 import { Icon } from "@shell/ui/icons";
 
-import { readPreSetupLocale, storePreSetupLocale } from "../preSetupLocale";
+import { readPreSetupLocale, storePreSetupLocale } from "@shell/lib/preSetupLocale";
 import { useSetupStatus } from "../useSetupStatus";
 import { WizardHeader } from "../WizardHeader";
 import {

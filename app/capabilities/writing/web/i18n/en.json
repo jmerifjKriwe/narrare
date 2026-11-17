@@ -13,7 +13,6 @@
   "writing.shelf.banner.stats": "Open Statistics",
   "writing.shelf.banner.today": "{state, select, written {You have already written {count, number} words today.} quiet {No words written today yet.} removed {You removed more text than you added today — the day stands at {count, number} words.} other {Today''s net in the atelier: {count, number} words.}}",
   "writing.shelf.banner.weekly": "Weekly Average",
-  "writing.shelf.breadcrumb": "Bookshelf",
   "writing.shelf.card.options": "Project options",
   "writing.shelf.card.percent": "{percent}%",
   "writing.shelf.chapters": "{count, plural, one {# Chapter} other {# Chapters}}",
@@ -92,7 +91,6 @@
   "writing.shelf.hero.wordsUnit": "words",
   "writing.shelf.hero.write": "Continue Writing — Chapter 1",
   "writing.shelf.import": "Import",
-  "writing.shelf.language": "Language",
   "writing.shelf.lastEdited": "Last edited: {when}",
   "writing.shelf.loading": "Loading indexes…",
   "writing.shelf.loading.library": "Library",
@@ -133,7 +131,6 @@
   "writing.shelf.status.revision": "Revision",
   "writing.shelf.subtitle": "Manage your manuscripts, book structures and literary drafts.",
   "writing.shelf.title": "The Bookshelf",
-  "writing.shelf.wordmark": "Atelier Narrare",
   "writing.shelf.words.count": "{count, number} words",
   "writing.shelf.words.pair": "{count, number} / {target, number} words"
 }

@@ -132,12 +132,15 @@ def _settings(user: User | None) -> SettingsRead:
     """The settings row as every read shows it; an uninstalled instance has
     no answers, and a read creates nothing (D14)."""
     if user is None:
-        return SettingsRead(locale=None, theme=None, author_name=None, daily_goal_words=None)
+        return SettingsRead(
+            locale=None, theme=None, author_name=None, daily_goal_words=None, email=None
+        )
     return SettingsRead(
         locale=user.locale,
         theme=user.theme,
         author_name=user.author_name,
         daily_goal_words=user.daily_goal_words,
+        email=user.email,
     )
 
 

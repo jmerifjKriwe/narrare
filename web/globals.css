@@ -16,10 +16,12 @@
  */
 
 :root {
-  /* The rail's rendered width, as the shell's one chrome offset: 48 px on a
-   * fine pointer, the open rail's 168 px where there is no hover to open it
-   * with. The top bar reads it so its container stays on the page's axis. */
-  --rail-width: 48px;
+  /* The rail's rendered width, as the shell's one chrome offset: the
+   * chrome draft's collapsed 64 px on a fine pointer, the open rail's
+   * 168 px where there is no hover to open it with (W4 chrome-rail-topbar
+   * pins 64/168; the pre-rebuild shell's 48 px rail is gone). The top bar
+   * reads it so its container stays on the page's axis. */
+  --rail-width: 64px;
   /* The tokens follow the reader's choice; `light-dark()` resolves against
    * `color-scheme`, which makes the browser's own surfaces follow too:
    * scrollbars, native select popups and form controls are painted light on a

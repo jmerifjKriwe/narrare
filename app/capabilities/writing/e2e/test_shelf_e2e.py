@@ -20,12 +20,17 @@ honest NULLs when no source remains; an API chapter write moves the banner
 through the shelf's own invalidation seam — without a reload; the banner's
 goal line reads the atelier's daily goal (W4 row 25): the unset neutral,
 the open remainder and the reached done-copy, never the hero book's pin;
-the pre-setup gate hands `/` to the welcome and the inverse gate hands `/setup` back; and
+the pre-setup gate hands `/` to the welcome and the inverse gate hands `/setup` back; the
+app-wide chrome frames the shelf (W4 Task 10, D15/D17): the rail's nav and
+real book-switcher menu, the topbar's breadcrumb, word total, interim save
+chip, disabled ⌘K chip (#882), the language chip as the real switcher, the
+tri-state theme toggle and the user block's author_name → email fallback; and
 the dark face clears the same axe WCAG A/AA floor the setup suite rides
 (``assert_accessible``).
 """
 
 import json
+import re
 import zipfile
 from typing import TYPE_CHECKING
 
@@ -40,6 +45,7 @@ from app.capabilities.writing.e2e.conftest import (
     get_activity,
     get_novel,
     patch_novel,
+    set_author_name,
     set_daily_goal,
     set_theme,
     word_body,
@@ -886,6 +892,101 @@ def test_post_setup_setup_hands_back_to_the_shelf(page: Page, installed: Stack) 
     expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
 
 
+def test_the_chrome_frames_the_shelf(page: Page, installed: Stack) -> None:
+    """W4 Task 10 (D15, D17): the app-wide rail and topbar frame the shelf —
+    the nav's one live door and four honest later-wave ones, the book
+    switcher's real novels menu, the interim sync state, the real word
+    total, the disabled ⌘K chip (#882), the language chip as the real
+    switcher, the tri-state theme toggle and the user block's fallback.
+    The database assertions remain the honest check."""
+    create_novel(WINTERHAUS)
+    novel = create_novel(KLANG, genre=KLANG_GENRE, target_words=80000)
+    chapter = create_chapter(str(novel["id"]), "Der erste Schnee")
+    write_scene(str(chapter["id"]), word_body(1200))
+
+    _goto_shelf(page)
+    topbar = page.locator("header")
+    # The rail's nav is one landmark; the switcher, sync, theme and user
+    # block stand in the aside around it (complementary).
+    aside = page.get_by_role("complementary")
+
+    # The rail: the shelf door live and current, the four later-wave doors
+    # honestly disabled — no routes exist for them yet.
+    rail = page.get_by_role("navigation", name="Navigation")
+    expect(rail.get_by_role("link", name="Bücherregal")).to_have_attribute("aria-current", "page")
+    for label in ("Editor", "Wissen", "Planung", "Einstellungen"):
+        expect(rail.get_by_role("button", name=label)).to_be_disabled()
+
+    # The topbar's shelf face (tile 7): the breadcrumb, the real total over
+    # the active population, the interim save chip the rail foot shares.
+    expect(topbar.get_by_role("link", name="Atelier")).to_have_attribute("href", "/")
+    expect(topbar.get_by_text("Das Bücherregal")).to_be_visible()
+    expect(topbar.get_by_text("1.200 W. Gesamt")).to_be_visible()
+    expect(topbar.get_by_text("Gespeichert")).to_be_visible()
+    # The rail's own label stands when the rail glides open on hover — the
+    # collapsed face is the dot alone (the draft's two faces).
+    rail.hover()
+    expect(aside.get_by_text("Gespeichert")).to_be_visible()
+
+    # The ⌘K chip: honestly disabled until the shell palette wave (#882).
+    expect(topbar.get_by_role("button", name="Suchen")).to_be_disabled()
+
+    # The book switcher: the user's real novels, the active one marked, and
+    # the honest / navigation until the workspace route lands (Task 11).
+    aside.get_by_role("button", name=re.compile("Aktives Buch")).click()
+    menu = page.get_by_role("menu", name="Atelier-Werke")
+    expect(menu).to_be_visible()
+    expect(menu.get_by_text("2 Romane")).to_be_visible()
+    active_row = menu.get_by_role("menuitem", name=re.compile(KLANG))
+    expect(active_row).to_have_attribute("aria-current", "true")
+    expect(active_row).to_contain_text("1 %")  # 1.200 / 80.000, the row's own
+    expect(menu.get_by_role("menuitem", name="Neues Buch anlegen")).to_be_visible()
+    # The rows navigate to the shelf — the honest book surface until the
+    # workspace route lands (Task 11); the menu closes on the choice.
+    menu.get_by_role("menuitem", name=re.compile(WINTERHAUS)).click()
+    expect(menu).to_have_count(0)
+    expect(page).to_have_url(BASE + "/")
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
+
+    # The language chip is the real switcher (D17): the choice PATCHes the
+    # row, the whole chrome and shelf speak it, and the row is the record.
+    topbar.get_by_role("button", name=re.compile("Sprache")).click()
+    page.get_by_role("menu", name="Sprache").get_by_role(
+        "menuitemradio", name=re.compile("English")
+    ).click()
+    expect(page.get_by_role("heading", name="The Bookshelf")).to_be_visible()
+    expect(rail.get_by_role("link", name="Bookshelf")).to_be_visible()
+    assert _rows("SELECT locale FROM users") == [("en",)]
+    # And back through the same chip — one contract, every face.
+    topbar.get_by_role("button", name=re.compile("Language")).click()
+    page.get_by_role("menu", name="Language").get_by_role(
+        "menuitemradio", name=re.compile("Deutsch")
+    ).click()
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
+    assert _rows("SELECT locale FROM users") == [("de",)]
+
+    # The theme toggle: the first step leaves the system for light, applied
+    # at once and stored on the row — the document and the row agree.
+    aside.get_by_role("button", name=re.compile("Erscheinungsbild")).click()
+    expect(page.locator("html")).to_have_attribute("data-theme", "light")
+    assert _rows("SELECT theme FROM users") == [("light",)]
+
+    # The user block: the local row carries neither name nor email — the
+    # honest profile neutral, no tier; a stored author name answers with
+    # its initials after the boot re-reads the row. The name line stands
+    # in the open rail (the collapsed face is the avatar chip alone).
+    expect(aside.get_by_title("Benutzerprofil")).to_be_visible()
+    set_author_name("H. Calder")
+    page.reload()
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
+    rail.hover()
+    expect(aside.get_by_text("H. Calder")).to_be_visible()
+    expect(aside.get_by_text("HC")).to_be_visible()
+    expect(aside.get_by_title("Benutzerprofil: H. Calder")).to_be_visible()
+
+    assert_accessible(page)
+
+
 def test_the_dark_shelf_face_clears_the_axe_floor(page: Page, installed: Stack) -> None:
     """Spec 11: the settings row's dark theme, adopted at boot — the shelf
     renders on the tokens' dark halves (the body's own dark ground), and the
@@ -913,4 +1014,20 @@ def test_the_dark_shelf_face_clears_the_axe_floor(page: Page, installed: Stack) 
     _hero(page).get_by_role("button", name=CARD_OPTIONS).click()
     hero_menu = page.get_by_role("dialog", name=MENU_TITLE)
     expect(hero_menu.get_by_text(LAST_EXPORT, exact=True)).to_be_visible()
+    assert_accessible(page)
+    page.locator("h1").click()  # an outside press closes the hero menu
+
+    # The chrome's dark face (W4 Task 10) — the same rail and topbar on the
+    # tokens' dark halves, the theme toggle naming the stored choice, and
+    # the language chip's open menu clearing the floor too.
+    rail = page.get_by_role("navigation", name="Navigation")
+    expect(rail.get_by_role("link", name="Bücherregal")).to_have_attribute("aria-current", "page")
+    expect(page.locator("header").get_by_text("1.200 W. Gesamt")).to_be_visible()
+    expect(
+        page.get_by_role("complementary").get_by_role(
+            "button", name=re.compile("Erscheinungsbild: Dunkel")
+        )
+    ).to_be_visible()
+    page.locator("header").get_by_role("button", name=re.compile("Sprache")).click()
+    expect(page.get_by_role("menu", name="Sprache")).to_be_visible()
     assert_accessible(page)

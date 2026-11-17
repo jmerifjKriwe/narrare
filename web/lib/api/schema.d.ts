@@ -2679,6 +2679,8 @@ export interface components {
             author_name: string | null;
             /** Daily Goal Words */
             daily_goal_words: number | null;
+            /** Email */
+            email: string | null;
             /** Locale */
             locale: string | null;
             /** Theme */

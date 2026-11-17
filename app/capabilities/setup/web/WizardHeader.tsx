@@ -1,22 +1,19 @@
 import { Link } from "@tanstack/react-router";
-import { Fragment, useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import { Fragment } from "react";
 
-import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
-import { activeLocale, applyLocale, chosenLocale, type Locale } from "@shell/lib/locale";
-import { queryClient } from "@shell/lib/query";
+import { LanguageSwitcher } from "@shell/lib/language";
 import { Icon } from "@shell/ui/icons";
-
-import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
 
 /**
  * The wizard's shared header chrome — one home for the bar the four ported
  * steps repeat. The review found three copies diverging, with the narrow-
  * screen wrap fix landed in only one; the brand and context line, the four-
- * step progress stepper, the DE|EN|FR switcher with its pre-setup mirror
- * contract and the honestly disabled help button now live here once, and
- * each step mounts the header with its own number.
+ * step progress stepper, the DE|EN|FR switcher and the honestly disabled
+ * help button now live here once, and each step mounts the header with its
+ * own number. The switcher is the shared language contract's wizard face
+ * (`@shell/lib/language`, D17 / #892) — the pre-setup mirror contract rides
+ * the one home, not a copy here.
  *
  * The inner line wraps (`flex-wrap gap-y-2`): at narrow widths the longer
  * French brand line („Configuration du projet") pushed the right control
@@ -46,9 +43,6 @@ const SERIF = "[font-family:var(--font-serif)]";
 const FOCUS =
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
 
-/** The draft draws DE|EN|FR with DE leading; the switcher keeps that order. */
-const SWITCHER_ORDER: readonly Locale[] = ["de", "en", "fr"];
-
 /** The four steps in the drafts' order; the done ones link back, keeping
  *  the search. The const keeps each `to` a literal the router checks. */
 const STEPS = [
@@ -68,54 +62,6 @@ export function WizardHeader({
   locked?: boolean;
 }) {
   const t = useTranslation();
-  const locale = activeLocale();
-  const switcherRefs = useRef<Partial<Record<Locale, HTMLElement | null>>>({});
-
-  // The pre-setup mirror, the welcome's contract: adopt before paint when
-  // the settings row holds no choice yet.
-  useLayoutEffect(() => {
-    if (chosenLocale() !== null) return;
-    const mirrored = readPreSetupLocale();
-    if (mirrored !== null) applyLocale(mirrored);
-  }, []);
-
-  /** Apply and persist a locale — the welcome switcher's contract: the
-   *  structural 409 keeps the mirror, a success clears it, any other refusal
-   *  restores the prior choice. */
-  async function chooseLocale(next: Locale) {
-    if (next === activeLocale()) return;
-    const previous = chosenLocale();
-    applyLocale(next);
-    storePreSetupLocale(next);
-    try {
-      const { response } = await client.PATCH("/api/settings", { body: { locale: next } });
-      if (response.status === 409) return; // setup required: the mirror stands
-      if (!response.ok) throw new Error(`refused: ${response.status}`);
-      storePreSetupLocale(null);
-      void queryClient.invalidateQueries({ queryKey: ["settings"] });
-    } catch {
-      applyLocale(previous);
-      storePreSetupLocale(previous);
-    }
-  }
-
-  /** The switcher's keyboard contract, the welcome's: arrows cycle and wrap,
-   *  Home/End jump to the ends, Space/Enter select; the move selects and
-   *  focuses. */
-  function radioKey(event: KeyboardEvent<HTMLElement>, at: number) {
-    const span = SWITCHER_ORDER.length;
-    let next: number;
-    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (at + 1) % span;
-    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (at - 1 + span) % span;
-    else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = span - 1;
-    else if (event.key === " " || event.key === "Enter") next = at;
-    else return;
-    event.preventDefault();
-    const code = SWITCHER_ORDER[next];
-    void chooseLocale(code);
-    switcherRefs.current[code]?.focus();
-  }
 
   return (
     // Sticky, the drafts' surface-bright bar; the inner line wraps so the
@@ -229,34 +175,8 @@ export function WizardHeader({
 
         {/* Language switcher & controls */}
         <div className="flex items-center gap-3">
-          <div
-            role="radiogroup"
-            aria-label={t("setup.welcome.language")}
-            className="inline-flex rounded-lg border border-border bg-surface-container-lowest p-0.5 text-meta"
-          >
-            {SWITCHER_ORDER.map((code, at) => (
-              <button
-                key={code}
-                type="button"
-                role="radio"
-                aria-label={catalogs[code]["locale.name"]}
-                aria-checked={code === locale}
-                tabIndex={code === locale ? 0 : -1}
-                ref={(node) => {
-                  switcherRefs.current[code] = node;
-                }}
-                onKeyDown={(event) => radioKey(event, at)}
-                onClick={() => void chooseLocale(code)}
-                className={
-                  code === locale
-                    ? `rounded bg-surface-container-high px-2 py-0.5 font-semibold text-primary ${FOCUS}`
-                    : `rounded px-2 py-0.5 text-muted transition-colors hover:text-foreground ${FOCUS}`
-                }
-              >
-                {code.toUpperCase()}
-              </button>
-            ))}
-          </div>
+          {/* The shared language contract's wizard face (D17 / #892). */}
+          <LanguageSwitcher variant="wizard" preSetup />
           <div aria-hidden="true" className="h-4 w-px bg-border" />
           {/* The handbook does not exist yet: honestly disabled (gap doc). */}
           <button

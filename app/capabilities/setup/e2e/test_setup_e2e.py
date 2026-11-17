@@ -382,3 +382,67 @@ def test_the_wizard_state_survives_deep_links_and_a_returning_visit_shows_the_sh
         other_context.close()
 
     assert_accessible(page)
+
+
+def test_the_language_contract_rides_one_home_and_the_chrome_frames_only_the_shelf(
+    page: Page, stack: Stack
+) -> None:
+    """W4 Task 10 (D17 / D15, shelf rows 12 / 20): the welcome's and the
+    wizard's switchers are the shared contract's pre-setup faces — the
+    choice applies at once, the structural 409 keeps the mirror, a refresh
+    speaks it without a write — and the guided flows stand chrome-less.
+    Once bound, the shelf wears the app-wide chrome, the provisioning seam
+    carries the mirror into the row, and the row is the language's record."""
+    page.goto(BASE + "/")
+    expect(page).to_have_url(BASE + "/setup")
+
+    # The welcome stands alone: no rail nav, no topbar search chip.
+    expect(page.get_by_role("navigation", name="Navigation")).to_have_count(0)
+    expect(page.get_by_role("button", name="Suchen")).to_have_count(0)
+
+    # The pre-setup switcher: English applies at once; the row cannot hold
+    # it yet (409), the mirror keeps it across a refresh — nothing installed.
+    page.get_by_role("radio", name="English").click()
+    expect(page.get_by_role("heading", name="Step in. Your unwritten work awaits.")).to_be_visible()
+    page.reload()
+    expect(page.get_by_role("heading", name="Step in. Your unwritten work awaits.")).to_be_visible()
+    assert _rows("SELECT id FROM users") == []
+
+    # The wizard header carries the same contract — the step stands alone
+    # too, and the mirrored choice is the step's own language.
+    page.get_by_role("link", name="Set up the atelier").click()
+    expect(page).to_have_url(re.compile(r"/setup/basis$"))
+    expect(page.get_by_role("radio", name="English")).to_have_attribute("aria-checked", "true")
+    expect(page.get_by_role("navigation", name="Navigation")).to_have_count(0)
+    expect(
+        page.get_by_role("heading", name="How would you like to begin your literary work?")
+    ).to_be_visible()
+
+    # The wizard's switcher is the same contract: back to German, the step
+    # speaks it at once, the mirror holds — still no row.
+    page.get_by_role("radio", name="Deutsch").click()
+    expect(page.get_by_role("heading", name=BASIS_HERO)).to_be_visible()
+    assert _rows("SELECT id FROM users") == []
+
+    # The demo path binds with the wizard's answers; the provisioning seam
+    # carries the mirror into the fresh row.
+    page.goto(BASE + "/setup/basis?demo=im-stillen-wald")
+    page.get_by_role("button", name=CONTINUE_TO_STRUCTURE, exact=True).click()
+    expect(page).to_have_url(re.compile(r"/setup/structure"))
+    page.get_by_role("radio", name="Der Architekt (Plotter)").check()
+    page.get_by_role("radio", name="Klassischer 3-Akt-Bogen").check()
+    page.get_by_role("button", name=CONTINUE_TO_AI_RULES, exact=True).click()
+    expect(page).to_have_url(re.compile(r"/setup/ai-rules"))
+    page.get_by_role("radio", name="Stiller Archivar & Faktenchecker").check()
+    page.get_by_role("button", name=CONTINUE_TO_PROVISIONING, exact=True).click()
+    expect(page).to_have_url(re.compile(r"/setup/provisioning"))
+    expect(page.get_by_text("Bereit (100 %)")).to_be_visible()
+
+    # The bound shelf wears the chrome; the row holds the mirrored language.
+    page.get_by_role("link", name=BACK_TO_SHELF).click()
+    expect(page).to_have_url(BASE + "/")
+    expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
+    expect(page.get_by_role("navigation", name="Navigation")).to_be_visible()
+    expect(page.locator("header").get_by_role("button", name="Suchen")).to_be_disabled()
+    assert _rows("SELECT locale FROM users") == [("de",)]
+    assert_accessible(page)

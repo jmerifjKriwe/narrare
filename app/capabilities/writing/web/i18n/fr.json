@@ -13,7 +13,6 @@
   "writing.shelf.banner.stats": "Ouvrir les statistiques",
   "writing.shelf.banner.today": "{state, select, written {Tu as déjà écrit {count, number} mots aujourd''hui.} quiet {Tu n''as pas encore écrit de mots aujourd''hui.} removed {Tu as supprimé plus de texte que tu n''en as ajouté — la journée s''établit à {count, number} mots.} other {Le net du jour dans l''atelier : {count, number} mots.}}",
   "writing.shelf.banner.weekly": "Moyenne hebdomadaire",
-  "writing.shelf.breadcrumb": "Bibliothèque",
   "writing.shelf.card.options": "Options du projet",
   "writing.shelf.card.percent": "{percent} %",
   "writing.shelf.chapters": "{count, plural, one {# chapitre} other {# chapitres}}",
@@ -92,7 +91,6 @@
   "writing.shelf.hero.wordsUnit": "mots",
   "writing.shelf.hero.write": "Continuer l'écriture — Chapitre 1",
   "writing.shelf.import": "Importer",
-  "writing.shelf.language": "Langue",
   "writing.shelf.lastEdited": "Dernière modification : {when}",
   "writing.shelf.loading": "Chargement des index…",
   "writing.shelf.loading.library": "Bibliothèque",
@@ -133,7 +131,6 @@
   "writing.shelf.status.revision": "Révision",
   "writing.shelf.subtitle": "Gère tes manuscrits, tes structures de livre et tes brouillons littéraires.",
   "writing.shelf.title": "La bibliothèque",
-  "writing.shelf.wordmark": "Atelier Narrare",
   "writing.shelf.words.count": "{count, number} mots",
   "writing.shelf.words.pair": "{count, number} / {target, number} mots"
 }

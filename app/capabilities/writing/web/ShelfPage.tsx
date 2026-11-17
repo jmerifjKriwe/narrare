@@ -1,11 +1,9 @@
-import { Fragment, useCallback, useId, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useId, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
-import { client, type Novel } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
+import { type Novel } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
-import { activeLocale, applyLocale, chosenLocale, type Locale } from "@shell/lib/locale";
 import { usePageTitle } from "@shell/lib/pageTitle";
-import { queryClient, useActivityQuery, useNovelsQuery } from "@shell/lib/query";
+import { useActivityQuery, useNovelsQuery } from "@shell/lib/query";
 import { formatWordCount } from "@shell/lib/words";
 import { Icon, type IconName } from "@shell/ui/icons";
 
@@ -29,14 +27,15 @@ import { ShelfError, ShelfLoading } from "./ShelfStates";
  * mock and never ship. A missing target keeps the landing's honest neutral
  * (the count alone, an empty track), a missing status no pill at all.
  *
- * The page carries its own wordmark header, the landing's established
- * post-setup pattern: the draft's rail and editor top bar are shell chrome
- * that returns with the shell rebuild, and a document breadcrumb or a
- * „Saved" pill on the shelf would claim a state no row backs. The language
- * switcher is the post-setup contract — the settings row is the record, a
- * choice applies at once and PATCHes the row, a refusal restores the prior
- * language. The pre-setup mirror stays setup's own seam; the shelf is only
- * ever reached once the row exists.
+ * The page rides inside the app-wide chrome (W4 Task 10, D15 / row 20):
+ * the shell's rail and topbar frame the shelf — the brand, the breadcrumb,
+ * the word total and the language switcher are the chrome's now, and the
+ * landing's interim wordmark header retired with them. The language
+ * contract is the shared shell home's (`@shell/lib/language`, D17 / #892):
+ * the topbar chip is the post-setup switcher — the settings row is the
+ * record, a choice applies at once and PATCHes the row, a refusal restores
+ * the prior language. The pre-setup mirror stays setup's own seam; the
+ * shelf is only ever reached once the row exists.
  *
  * The activity banner and the streak chip are real (Task 10): the atelier's
  * aggregate feeds the goal line (the hero book's own target), today's words,
@@ -75,9 +74,6 @@ const SERIF = "[font-family:var(--font-serif)]";
 const FOCUS =
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
 
-/** The draft draws DE|EN|FR with DE leading; the switcher keeps that order. */
-const SWITCHER_ORDER: readonly Locale[] = ["de", "en", "fr"];
-
 /** One metric chip — the draft's quick-metrics geometry. */
 function MetricChip({
   icon,
@@ -104,10 +100,7 @@ function MetricChip({
 }
 
 export function ShelfPage() {
-  // useTranslation subscribes to the locale store, so reading activeLocale
-  // in render stays fresh across a switch — the landing's same subscription.
   const t = useTranslation();
-  const locale = activeLocale();
 
   // Task 7's filter state — transient, the page's own memory: no URL, no
   // storage, a remount starts fresh (pinned). The archive toggle is the
@@ -126,7 +119,6 @@ export function ShelfPage() {
   const doorsNoteId = useId();
   const bannerNoteId = useId();
   const emptyNoteId = useId();
-  const radioRefs = useRef<Partial<Record<Locale, HTMLButtonElement | null>>>({});
   usePageTitle(t("writing.shelf.title"));
 
   // The new-book dialog (Task 9): transient page state — the dialog holds
@@ -148,39 +140,9 @@ export function ShelfPage() {
     else topNewBookRef.current?.focus();
   }, []);
 
-  /** Apply a locale and write the row — the post-setup contract. The row
-   *  exists once setup has run: a success invalidates the cached row so the
-   *  shell adopts the written choice; a refusal restores the prior language.
-   *  No mirror write — the pre-setup mirror is setup's seam, spent by then. */
-  async function choose(next: Locale) {
-    if (next === activeLocale()) return;
-    const previous = chosenLocale();
-    applyLocale(next);
-    try {
-      const { response } = await client.PATCH("/api/settings", { body: { locale: next } });
-      if (!response.ok) throw new Error(`refused: ${response.status}`);
-      void queryClient.invalidateQueries({ queryKey: ["settings"] });
-    } catch {
-      applyLocale(previous);
-    }
-  }
-
-  /** The radio group's keyboard contract, the landing's: arrows cycle and
-   *  wrap, Home/End jump to the ends; the move selects and focuses, and the
-   *  roving tabindex keeps the group one tab stop. */
-  function radioKey(event: KeyboardEvent<HTMLButtonElement>, at: number) {
-    const span = SWITCHER_ORDER.length;
-    let next: number;
-    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (at + 1) % span;
-    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (at - 1 + span) % span;
-    else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = span - 1;
-    else return;
-    event.preventDefault();
-    const code = SWITCHER_ORDER[next];
-    void choose(code);
-    radioRefs.current[code]?.focus();
-  }
+  // The language switcher is the chrome's now (D17 / #892): the topbar chip
+  // mounts the shared contract's post-setup face (`@shell/lib/language`) —
+  // the row is the record, a refusal restores, no mirror write.
 
   // The retry keeps the error notice on screen with a busy button: a refetch
   // clears the query's error while it runs (the state goes pending again),
@@ -260,65 +222,11 @@ export function ShelfPage() {
       : "—";
 
   return (
-    // The draft's body: full-bleed parchment, the header sticky above it.
-    // The shell owns the one <main> landmark; this is its content.
-    <div className="flex min-h-screen w-full flex-col selection:bg-secondary-container selection:text-secondary-container-foreground">
-      {/* The wordmark header — the landing's established post-setup chrome. */}
-      <header className="sticky top-0 z-40 w-full border-b border-border bg-panel">
-        <div className="mx-auto flex min-h-14 w-full max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded border border-outline-variant bg-cover-ink shadow-sm">
-              <span className={`${SERIF} text-title font-semibold leading-none text-surface-container-lowest`}>
-                N
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className={`${SERIF} text-title font-semibold tracking-tight text-primary`}>
-                {t("writing.shelf.wordmark")}
-              </span>
-              <span aria-hidden="true" className="text-meta text-muted">
-                /
-              </span>
-              <span className="text-label font-medium text-muted">{t("writing.shelf.breadcrumb")}</span>
-            </div>
-          </div>
-          <div
-            role="radiogroup"
-            aria-label={t("writing.shelf.language")}
-            className="flex items-center rounded border border-border bg-surface-container-low px-1 py-0.5 text-meta"
-          >
-            {SWITCHER_ORDER.map((code, at) => (
-              <Fragment key={code}>
-                {at > 0 && (
-                  <span aria-hidden="true" className="px-0.5 text-border">
-                    |
-                  </span>
-                )}
-                <button
-                  type="button"
-                  role="radio"
-                  aria-label={catalogs[code]["locale.name"]}
-                  aria-checked={code === locale}
-                  tabIndex={code === locale ? 0 : -1}
-                  ref={(node) => {
-                    radioRefs.current[code] = node;
-                  }}
-                  onKeyDown={(event) => radioKey(event, at)}
-                  onClick={() => void choose(code)}
-                  className={
-                    code === locale
-                      ? `rounded bg-surface-container-lowest px-1.5 py-0.5 font-semibold text-primary shadow-sm ${FOCUS}`
-                      : `rounded px-1.5 py-0.5 text-muted transition-colors hover:text-foreground ${FOCUS}`
-                  }
-                >
-                  {code.toUpperCase()}
-                </button>
-              </Fragment>
-            ))}
-          </div>
-        </div>
-      </header>
-
+    // The draft's body: full-bleed parchment inside the chrome's scrolling
+    // main. The shell owns the one <main> landmark and the rail/topbar
+    // frame (W4 Task 10); this is its content — the wordmark header the
+    // landing interim carried retired with the chrome's arrival (row 20).
+    <div className="flex min-h-full w-full flex-col selection:bg-secondary-container selection:text-secondary-container-foreground">
       <div className="mx-auto w-full max-w-7xl flex-1 space-y-8 px-4 py-8 lg:px-8">
         {/* The title bar and the quick-metrics strip. */}
         <div className="flex flex-col justify-between gap-4 pb-1 lg:flex-row lg:items-end">

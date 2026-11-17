@@ -52,8 +52,10 @@ import { GenreMotif } from "./motifs";
 /** R2: the literal ground/ink utilities per channel — the scanner sees each.
  * These literals render the model's groundToken/inkToken (CHANNEL_TOKENS in
  * cover.ts); R2 requires literals, so the token names are advisory here and
- * the palette-pin test in BookCover.test.tsx keeps the two in sync. */
-const PALETTE: Record<CoverChannel, { ground: string; ink: string }> = {
+ * the palette-pin test in BookCover.test.tsx keeps the two in sync. Exported
+ * for the chrome's cover chip (W4 Task 10): the rail's book switcher wears
+ * the cover system's pigment at chip size, from this one literal record. */
+export const PALETTE: Record<CoverChannel, { ground: string; ink: string }> = {
   scifi: { ground: "bg-cover-ink", ink: "text-cover-ink-ink" },
   fantasy: { ground: "bg-cover-fantasy", ink: "text-cover-fantasy-ink" },
   mystery: { ground: "bg-cover-pale", ink: "text-cover-pale-ink" },

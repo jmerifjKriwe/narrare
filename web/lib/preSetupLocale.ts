@@ -2,6 +2,9 @@ import { locales, type Locale } from "@shell/lib/generated/catalogs";
 
 /**
  * The language choice before setup — the welcome screen's and the wizard's.
+ * Shell-owned since the language contract extracted (D17, #892): the one
+ * home in `language.tsx` reads and writes this mirror for every pre-setup
+ * face, and the provisioning seam carries it into the fresh row.
  *
  * The settings row is the record once it exists, but the row is created by
  * setup itself: `PATCH /api/settings` refuses with 409 "setup required"

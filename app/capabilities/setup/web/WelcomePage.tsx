@@ -1,16 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Fragment, useId, useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import { useId } from "react";
 
-import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { demos } from "@shell/lib/generated/demos";
 import { useTranslation } from "@shell/lib/i18n";
-import { activeLocale, applyLocale, chosenLocale, type Locale } from "@shell/lib/locale";
+import { LanguageSwitcher } from "@shell/lib/language";
 import { usePageTitle } from "@shell/lib/pageTitle";
-import { queryClient } from "@shell/lib/query";
 import { Icon } from "@shell/ui/icons";
-
-import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
 
 /**
  * The welcome screen — the `welcome-atelier` draft ported 1:1 onto the
@@ -34,8 +29,9 @@ import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
  * the search param Task 5's basis step reads), and the import entry stays
  * honestly disabled — the manuscript import comes with the further
  * build-out, and the card says so instead of pretending. The language
- * switcher works before setup, when the settings row cannot hold a choice
- * yet: see `preSetupLocale.ts` for the mirror and the write's contract.
+ * switcher is the shared contract's welcome face (`@shell/lib/language`,
+ * D17 / #892): it works before setup, when the settings row cannot hold a
+ * choice yet — the mirror and the write's contract live in the one home.
  *
  * The composition is the draft's `main` — full-bleed, the footer pinned to
  * the bottom of a tall viewport — and the switcher is a radio group in the
@@ -52,73 +48,13 @@ const SERIF = "[font-family:var(--font-serif)]";
 const FOCUS =
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
 
-/** The draft draws DE|EN|FR with DE leading (welcome-atelier.html's header).
- *  The generated catalog order is the compiler's, not the design's, so the
- *  switcher keeps its own display order. */
-const SWITCHER_ORDER: readonly Locale[] = ["de", "en", "fr"];
-
 /** The formats the import card names — file extensions, not copy. */
 const FORMATS = [".docx", ".scriv", ".epub", ".md"] as const;
 
 export function WelcomePage() {
-  // useTranslation subscribes to the locale store, so reading activeLocale
-  // in render stays fresh across a switch — the same subscription the
-  // archived LanguageSwitcher spelled out by hand.
   const t = useTranslation();
-  const locale = activeLocale();
   const importNoteId = useId();
-  const radioRefs = useRef<Partial<Record<Locale, HTMLButtonElement | null>>>({});
   usePageTitle(t("setup.welcome"));
-
-  // The row holds no choice before setup (the shell adopted its null), so
-  // the browser's mirror is the record: adopt it before paint, the way the
-  // shell adopts the row — a refresh keeps the language, never flashes the
-  // browser's own past it.
-  useLayoutEffect(() => {
-    if (chosenLocale() !== null) return;
-    const mirrored = readPreSetupLocale();
-    if (mirrored !== null) applyLocale(mirrored);
-  }, []);
-
-  /** Apply and persist a locale. The write goes through the settings API;
-   *  before setup the row cannot hold it yet (409 "setup required"), so the
-   *  mirror keeps the choice — the control works on the only screen that
-   *  shows it. A success clears the mirror (the row is the record from then
-   *  on) and invalidates the cached row; any other refusal restores the
-   *  prior choice, the archived LanguageSwitcher's honesty. */
-  async function choose(next: Locale) {
-    if (next === activeLocale()) return;
-    const previous = chosenLocale();
-    applyLocale(next);
-    storePreSetupLocale(next);
-    try {
-      const { response } = await client.PATCH("/api/settings", { body: { locale: next } });
-      if (response.status === 409) return; // setup required: the mirror stands
-      if (!response.ok) throw new Error(`refused: ${response.status}`);
-      storePreSetupLocale(null);
-      void queryClient.invalidateQueries({ queryKey: ["settings"] });
-    } catch {
-      applyLocale(previous);
-      storePreSetupLocale(previous);
-    }
-  }
-
-  /** The radio group's keyboard contract: the arrows cycle the draft's order
-   *  and wrap, Home/End jump to its ends; the move selects and focuses, and
-   *  the roving tabindex keeps the group one tab stop. */
-  function radioKey(event: KeyboardEvent<HTMLButtonElement>, at: number) {
-    const span = SWITCHER_ORDER.length;
-    let next: number;
-    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (at + 1) % span;
-    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (at - 1 + span) % span;
-    else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = span - 1;
-    else return;
-    event.preventDefault();
-    const code = SWITCHER_ORDER[next];
-    void choose(code);
-    radioRefs.current[code]?.focus();
-  }
 
   return (
     // The draft's `main`: full-bleed and pinned — header at the top, footer
@@ -149,42 +85,9 @@ export function WelcomePage() {
           </div>
         </div>
         <div className="flex items-center gap-6 text-meta">
-          <div
-            role="radiogroup"
-            aria-label={t("setup.welcome.language")}
-            className="flex items-center gap-1 rounded border border-border/60 bg-surface-container px-2 py-1"
-          >
-            {SWITCHER_ORDER.map((code, at) => (
-              <Fragment key={code}>
-                {at > 0 ? (
-                  <span aria-hidden="true" className="text-outline-variant opacity-40">
-                    |
-                  </span>
-                ) : null}
-                <button
-                  type="button"
-                  role="radio"
-                  // The endonym names the radio for assistive tech — the
-                  // visible face stays the draft's compact code.
-                  aria-label={catalogs[code]["locale.name"]}
-                  aria-checked={code === locale}
-                  tabIndex={code === locale ? 0 : -1}
-                  ref={(node) => {
-                    radioRefs.current[code] = node;
-                  }}
-                  onKeyDown={(event) => radioKey(event, at)}
-                  onClick={() => void choose(code)}
-                  className={
-                    code === locale
-                      ? `rounded bg-surface px-1.5 py-0.5 font-bold text-primary shadow-xs ${FOCUS}`
-                      : `px-1.5 py-0.5 text-muted transition-colors hover:text-foreground ${FOCUS}`
-                  }
-                >
-                  {code.toUpperCase()}
-                </button>
-              </Fragment>
-            ))}
-          </div>
+          {/* The shared language contract's welcome face (D17 / #892): the
+              draft's DE|EN|FR radio group, the pre-setup mirror contract. */}
+          <LanguageSwitcher variant="welcome" preSetup />
           <span className="inline-flex items-center gap-1.5">
             <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-success" />
             {t("setup.welcome.engine")}

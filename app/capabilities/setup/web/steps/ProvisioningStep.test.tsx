@@ -34,7 +34,7 @@ import { applyLocale, chosenLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
-import { storePreSetupLocale } from "../preSetupLocale";
+import { storePreSetupLocale } from "@shell/lib/preSetupLocale";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
 const api = client as unknown as Record<
@@ -380,7 +380,7 @@ describe("the provisioning step — the header locks while the book binds", () =
       expect(done.closest("[aria-disabled]")?.getAttribute("aria-disabled")).toBe("true");
     }
     // The lock is the stepper's alone: the switcher stays as it is.
-    expect(screen.getByRole("radiogroup", { name: de["setup.welcome.language"] })).toBeTruthy();
+    expect(screen.getByRole("radiogroup", { name: de["shell.language"] })).toBeTruthy();
 
     // Once the POST lands, the done steps link again.
     resolvePost({ data: RESULT, response: new Response(null, { status: 201 }) });

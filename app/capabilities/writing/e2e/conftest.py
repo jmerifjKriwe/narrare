@@ -160,6 +160,19 @@ def set_daily_goal(words: int | None) -> None:
     response.raise_for_status()
 
 
+def set_author_name(name: str | None) -> None:
+    """The profile's author name (W4 D9/D22) — the chrome user block's
+    label. The stored locale rides along untouched, the daily-goal rule."""
+    with _client() as client:
+        current = client.get("/api/settings")
+        current.raise_for_status()
+        response = client.patch(
+            "/api/settings",
+            json={"locale": current.json()["locale"], "author_name": name},
+        )
+    response.raise_for_status()
+
+
 def word_body(count: int) -> str:
     """A body of exactly ``count`` words under the shelf's one whitespace
     rule: plain ASCII tokens, single spaces, no leading or trailing gap."""

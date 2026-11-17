@@ -28,8 +28,14 @@ pytestmark = pytest.mark.timeout(30)
 OTHER_USER = UUID("00000000-0000-0000-0000-000000000002")
 
 # The unset row every read of a fresh instance answers: no choice, no label,
-# no goal — the browser, the email and the neutral decide from there.
-UNSET = {"locale": None, "theme": None, "author_name": None, "daily_goal_words": None}
+# no goal, no email — the browser, the email and the neutral decide from there.
+UNSET = {
+    "locale": None,
+    "theme": None,
+    "author_name": None,
+    "daily_goal_words": None,
+    "email": None,
+}
 
 
 def _client() -> AsyncClient:
@@ -108,6 +114,27 @@ async def test_the_author_name_round_trips_through_the_user_row() -> None:
         user = await session.get(User, LOCAL_USER_ID)
         assert user is not None
         assert user.author_name == "J. Autorin"
+
+
+async def test_the_read_carries_the_email_the_user_block_falls_back_to() -> None:
+    """The chrome's user block (W4 D9/D22): author_name first, the row's
+    email label when no name is stored. The read exposes the email; the
+    preference write does not carry it — the email is the row's own, not a
+    preference, and a locale-only body leaves it untouched."""
+    async with Session() as session:
+        user = await session.get(User, LOCAL_USER_ID)
+        assert user is not None
+        user.email = "h.calder@station7.de"
+        await session.commit()
+
+    async with _client() as client:
+        assert (await client.get("/api/settings")).json()["email"] == "h.calder@station7.de"
+        written = await client.patch(
+            "/api/settings", json={"locale": None, "author_name": "H. Calder"}
+        )
+        assert written.status_code == 200
+        assert written.json()["email"] == "h.calder@station7.de"
+        assert (await client.get("/api/settings")).json()["email"] == "h.calder@station7.de"
 
 
 async def test_the_author_name_is_trimmed_and_whitespace_clears() -> None:

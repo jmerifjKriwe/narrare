@@ -2,10 +2,13 @@
 /**
  * The shelf — the `shelf` draft family ported onto the shell's tokens,
  * rendered directly on a harness route under the real root route (the
- * landing's harness precedent: the settings observer, the title provider
- * and the main landmark stay real). Only the API client is mocked at its
- * module boundary; the mock keeps the backend's contract — the novels list
- * carries the rows the shelf must speak, never an invented figure.
+ * landing's harness precedent: the settings observer, the title provider,
+ * the main landmark and — since W4 Task 10 — the app-wide chrome stay
+ * real). Only the API client is mocked at its module boundary; the mock
+ * keeps the backend's contract — the novels list carries the rows the
+ * shelf must speak, never an invented figure. The language switcher is the
+ * chrome's topbar chip (the shared contract, D17 / #892); the shelf's own
+ * wordmark header retired with the chrome's arrival (row 20).
  *
  * Every case renders German (the row holds `de`, the browser speaks de-DE)
  * and asserts the du-tone copy the catalog carries: the hero is the
@@ -552,17 +555,23 @@ describe("the shelf — every door honest about what is not built yet", () => {
 });
 
 describe("the shelf — the language switcher writes the row", () => {
+  // The switcher is the chrome's topbar chip now (W4 Task 10, D17 / #892):
+  // the shared contract's post-setup face, the same write the shelf's
+  // retired radio copy rode — the harness mounts the real shell root, so
+  // the chip is live here.
   it("switching to English PATCHes the settings row and speaks English", async () => {
     renderShelf();
     await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
 
-    fireEvent.click(screen.getByRole("radio", { name: catalogs.en["locale.name"] }));
+    fireEvent.click(screen.getByRole("button", { name: /Sprache/ }));
+    const menu = await screen.findByRole("menu", { name: de["shell.language"] });
+    fireEvent.click(within(menu).getAllByRole("menuitemradio")[1]);
     await waitFor(() =>
       expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "en" } }),
     );
     const en = catalogs.en;
     expect(await screen.findByRole("button", { name: en["writing.shelf.hero.write"] })).toBeTruthy();
-    expect(screen.getByRole("radio", { name: en["locale.name"] }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("button", { name: /Language/ }).textContent).toContain("EN (English)");
   });
 
   it("a refused switch restores the prior language", async () => {
@@ -573,12 +582,14 @@ describe("the shelf — the language switcher writes the row", () => {
     renderShelf();
     await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
 
-    fireEvent.click(screen.getByRole("radio", { name: catalogs.fr["locale.name"] }));
+    fireEvent.click(screen.getByRole("button", { name: /Sprache/ }));
+    const menu = await screen.findByRole("menu");
+    fireEvent.click(within(menu).getAllByRole("menuitemradio")[2]);
     await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(screen.getByRole("button", { name: de["writing.shelf.hero.write"] })).toBeTruthy(),
     );
-    expect(screen.getByRole("radio", { name: de["locale.name"] }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("button", { name: /Sprache/ }).textContent).toContain("DE (Deutsch)");
   });
 });
 
@@ -1618,14 +1629,18 @@ describe("the shelf — the quick menu's review fixes", () => {
     const dialog = openMenu("Winterhaus");
     // The lg-band columns run 222–264px while the popover needs 264px; the
     // draft lets it overhang freely. Walk the ancestor chain: no element
-    // between the popover and the page may carry an overflow clip, or the
-    // narrow card would sever the menu's icons and first characters.
+    // between the popover and the content region may carry an overflow
+    // clip, or the narrow card would sever the menu's icons and first
+    // characters. Since the app-wide chrome (W4 Task 10) the content's
+    // scroll region is the shell's `main` — the popover's page — and the
+    // walk ends there; the chrome's own frame above it is the shell's.
     const clippers: string[] = [];
     let node: HTMLElement | null = dialog;
     while (node && node !== document.body) {
       if (/overflow-(hidden|clip|x-hidden|y-hidden|x-clip|y-clip)/.test(node.className)) {
         clippers.push(`${node.tagName}.${node.className}`);
       }
+      if (node.id === "main") break;
       node = node.parentElement;
     }
     expect(clippers).toEqual([]);
@@ -2019,13 +2034,16 @@ describe("the shelf — the hero book acts through the same quick menu", () => {
 
     const dialog = openHeroMenu();
     // The draft lets the popover overhang the hero's edge freely; walk the
-    // ancestor chain: no element between the popover and the page may clip.
+    // ancestor chain: no element between the popover and the content
+    // region (the shell's `main` since the app-wide chrome, W4 Task 10)
+    // may clip.
     const clippers: string[] = [];
     let node: HTMLElement | null = dialog;
     while (node && node !== document.body) {
       if (/overflow-(hidden|clip|x-hidden|y-hidden|x-clip|y-clip)/.test(node.className)) {
         clippers.push(`${node.tagName}.${node.className}`);
       }
+      if (node.id === "main") break;
       node = node.parentElement;
     }
     expect(clippers).toEqual([]);

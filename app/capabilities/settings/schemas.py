@@ -29,6 +29,11 @@ class SettingsRead(BaseModel):
     # no goal — never a guessed value.
     author_name: str | None
     daily_goal_words: int | None
+    # The row's own email (W4 Task 10): the user block's fallback label when
+    # no author name is stored. Read-only — the preference write carries no
+    # email; the local instance's row may hold none, and None is the honest
+    # answer then.
+    email: str | None
 
 
 class SettingsUpdate(BaseModel):

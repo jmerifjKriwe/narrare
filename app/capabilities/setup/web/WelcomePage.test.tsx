@@ -33,7 +33,7 @@ import { activeLocale, applyLocale, chosenLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
-import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
+import { readPreSetupLocale, storePreSetupLocale } from "@shell/lib/preSetupLocale";
 import { routes } from "./routes";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
@@ -186,7 +186,7 @@ describe("the language switcher", () => {
     // The generated order is the compiler's (en first); the design's is not.
     expect(locales[0]).toBe("en");
     const group = screen.getByRole("radiogroup", {
-      name: catalogs.de["setup.welcome.language"],
+      name: catalogs.de["shell.language"],
     });
     const radios = within(group).getAllByRole("radio");
     expect(radios.map((radio) => radio.textContent)).toEqual(["DE", "EN", "FR"]);
