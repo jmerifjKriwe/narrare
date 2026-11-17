@@ -607,7 +607,9 @@ async function consumeContinuation(
   try {
     // Fixed same-origin base + the encoded server-issued id, concatenated
     // (never interpolated) — one path segment, no SSRF-shaped template.
-    response = await fetch("/api/writing/scenes/" + encodeURIComponent(sceneId) + "/continue", {
+    // SSRF false positive: the base is a constant relative path and the id a
+    // server-issued UUID — no user-controlled URL (PR #901's Codacy round).
+    response = await fetch("/api/writing/scenes/" + encodeURIComponent(sceneId) + "/continue", { // nosemgrep: Semgrep_rules_lgpl_javascript_ssrf_rule-node-ssrf
       method: "POST",
       signal,
       // The bare continuation carries no body at all — the endpoint's own
