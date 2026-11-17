@@ -339,6 +339,24 @@ body {
   --text-hero--letter-spacing: -0.025em;
 }
 
+/* The workspace's read-only prose (W4 Task 11): the scene-centric draft's
+ * drop cap — the first letter floats at the manuscript's own scale, in the
+ * one action's colour. The drafted weight 500 resolves to the subset's real
+ * 400 face (no 500 cut exists, and none is synthesized); the serif stack is
+ * the token's, never a second family. Task 12's TipTap surface inherits the
+ * same mark when the editor goes live. */
+.workspace-drop-cap::first-letter {
+  float: left;
+  font-size: 4.25rem;
+  line-height: 0.82;
+  padding-top: 0.12rem;
+  padding-right: 0.75rem;
+  padding-bottom: 0.15rem;
+  color: var(--primary);
+  font-family: var(--font-serif);
+  font-weight: 500;
+}
+
 /*
  * The brand serif, subset for the prose surface: the face long-form text is
  * read in, in both voices it speaks — 400 is the reading word, 600 (the

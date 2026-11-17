@@ -11,6 +11,15 @@ export type Activity = components["schemas"]["ActivityRead"];
 export type ActivityPoint = components["schemas"]["ActivityPoint"];
 export type SetupResult = components["schemas"]["SetupResult"];
 export type Chapter = components["schemas"]["ChapterRead"];
+/** Writing's prose scene (W4 §5). The generated schema prefixes both
+ *  capabilities' SceneRead — writing's and planning's — because the bare
+ *  name collides (#890's decision: the prefixed generated names stand, the
+ *  UI types against the clean alias, the same pattern every row here uses).
+ *  Planning's ScenePlan read keeps its prefixed name until its own wave
+ *  types against it. */
+export type Scene = components["schemas"]["app__capabilities__writing__schemas__SceneRead"];
+export type Storyboard = components["schemas"]["StoryboardRead"];
+export type StoryboardStage = components["schemas"]["StoryboardStageRead"];
 export type KnowledgeDocument = components["schemas"]["DocumentRead"];
 export type Hit = components["schemas"]["SearchHit"];
 export type Job = components["schemas"]["JobRead"];

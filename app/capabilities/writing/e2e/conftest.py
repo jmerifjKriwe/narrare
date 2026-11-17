@@ -102,15 +102,49 @@ def create_chapter(novel_id: str, title: str = "") -> dict[str, Any]:
     return chapter
 
 
-def write_scene(chapter_id: str, body: str) -> dict[str, Any]:
+def write_scene(
+    chapter_id: str,
+    body: str,
+    *,
+    title: str | None = None,
+    setting: str | None = None,
+    story_time: str | None = None,
+) -> dict[str, Any]:
     """The prose write that feeds the activity ledger — the seam's trigger.
     Prose lives on a scene now (W4 §5): the chapter is the shell, so the write
-    lands a scene under it, and the scene create feeds today's ledger."""
+    lands a scene under it, and the scene create feeds today's ledger. The
+    workspace read legs (Task 11) seed the scene's own metadata through the
+    same door — only carried fields join the body."""
+    payload: dict[str, Any] = {"body": body}
+    if title is not None:
+        payload["title"] = title
+    if setting is not None:
+        payload["setting"] = setting
+    if story_time is not None:
+        payload["story_time"] = story_time
     with _client() as client:
-        response = client.post(f"/api/writing/chapters/{chapter_id}/scenes", json={"body": body})
+        response = client.post(f"/api/writing/chapters/{chapter_id}/scenes", json=payload)
     response.raise_for_status()
     scene: dict[str, Any] = response.json()
     return scene
+
+
+def patch_scene(scene_id: str, **fields: Any) -> dict[str, Any]:
+    """Correct a seeded scene (W4 Task 11's read legs): only carried fields
+    change — a body touch advances updated_at, the last-edited rule's source."""
+    with _client() as client:
+        response = client.put(f"/api/writing/scenes/{scene_id}", json=fields)
+    response.raise_for_status()
+    scene: dict[str, Any] = response.json()
+    return scene
+
+
+def get_scenes(chapter_id: str) -> list[dict[str, Any]]:
+    with _client() as client:
+        response = client.get(f"/api/writing/chapters/{chapter_id}/scenes")
+    response.raise_for_status()
+    scenes: list[dict[str, Any]] = response.json()
+    return scenes
 
 
 def continue_scene(scene_id: str) -> httpx.Response:

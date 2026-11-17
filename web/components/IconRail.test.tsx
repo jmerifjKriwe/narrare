@@ -140,10 +140,22 @@ const railRoute = createRoute({
   path: "/rail-test",
   component: () => <IconRail />,
 });
+/** The workspace route's harness face (W4 Task 11): the rail's editor door
+ *  and switcher rows navigate here; the page itself is the capability's. */
+const novelRoute = createRoute({
+  getParentRoute: () => testRoot,
+  path: "/novels/$novelId",
+  component: () => (
+    <>
+      <p>workspace</p>
+      <IconRail />
+    </>
+  ),
+});
 
 function renderRail(path = "/rail-test") {
   const router = createRouter({
-    routeTree: testRoot.addChildren([homeRoute, railRoute]),
+    routeTree: testRoot.addChildren([homeRoute, railRoute, novelRoute]),
     history: createMemoryHistory({ initialEntries: [path] }),
   });
   render(
@@ -206,9 +218,8 @@ describe("the rail — brand and book switcher", () => {
 
     const menu = await screen.findByRole("menu", { name: de["shell.rail.menu.title"] });
     expect(within(menu).getByText(t("shell.rail.menu.count", { count: 2 }))).toBeTruthy();
-    // The active book leads the menu's mark; every row navigates to the
-    // shelf — the honest book surface until the workspace route lands
-    // (Task 11).
+    // The active book leads the menu's mark; every row opens its book's
+    // workspace (W4 Task 11).
     const dead = within(menu).getByRole("menuitem", { name: /Dead Signal/ });
     expect(dead.getAttribute("aria-current")).toBe("true");
     expect(dead.textContent).toContain("Science Fiction");
@@ -222,7 +233,9 @@ describe("the rail — brand and book switcher", () => {
     // The draft's new-book action stands; the shelf owns the create dialog.
     expect(within(menu).getByRole("menuitem", { name: de["shell.rail.newBook"] })).toBeTruthy();
     fireEvent.click(winter);
-    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(`/novels/${WINTERHAUS.id}`),
+    );
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
@@ -291,10 +304,41 @@ describe("the rail — nav", () => {
     expect(shelf.getAttribute("aria-current")).toBeNull();
   });
 
-  it("the four later-wave doors stay honestly disabled with their notes", async () => {
+  it("the editor door opens the active book's workspace — current on a workspace route", async () => {
+    renderRail();
+    const editor = await screen.findByRole("link", { name: de["shell.nav.editor"] });
+    expect(editor.getAttribute("href")).toBe(`/novels/${DEAD_SIGNAL.id}`);
+    expect(editor.getAttribute("aria-current")).toBeNull();
+    cleanup();
+    renderRail(`/novels/${WINTERHAUS.id}`);
+    const current = await screen.findByRole("link", { name: de["shell.nav.editor"] });
+    expect(current.getAttribute("aria-current")).toBe("page");
+    // The switcher's active book is the route's own, not the hero rule's.
+    expect(
+      screen.getByRole("button", { name: t("shell.rail.switcher.named", { title: "W Winterhaus" }) }),
+    ).toBeTruthy();
+  });
+
+  it("with no book standing the editor waits disabled — the three later-wave doors keep their notes", async () => {
+    novelsAnswer = async () => ({ data: [], response: ok() });
+    renderRail();
+    const editor = await screen.findByRole("button", { name: de["shell.nav.editor"] });
+    expect(editor.hasAttribute("disabled")).toBe(true);
+    expect(editor.getAttribute("title")).toBe(de["shell.nav.editor.note"]);
+    for (const [label, note] of [
+      [de["shell.nav.knowledge"], de["shell.nav.knowledge.note"]],
+      [de["shell.nav.planning"], de["shell.nav.planning.note"]],
+      [de["shell.nav.settings"], de["shell.nav.settings.note"]],
+    ] as const) {
+      const button = screen.getByRole("button", { name: label });
+      expect(button.hasAttribute("disabled")).toBe(true);
+      expect(button.getAttribute("title")).toBe(note);
+    }
+  });
+
+  it("the three later-wave doors stay honestly disabled with their notes while books stand", async () => {
     renderRail();
     for (const [label, note] of [
-      [de["shell.nav.editor"], de["shell.nav.editor.note"]],
       [de["shell.nav.knowledge"], de["shell.nav.knowledge.note"]],
       [de["shell.nav.planning"], de["shell.nav.planning.note"]],
       [de["shell.nav.settings"], de["shell.nav.settings.note"]],

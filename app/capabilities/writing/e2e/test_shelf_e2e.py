@@ -910,11 +910,15 @@ def test_the_chrome_frames_the_shelf(page: Page, installed: Stack) -> None:
     # block stand in the aside around it (complementary).
     aside = page.get_by_role("complementary")
 
-    # The rail: the shelf door live and current, the four later-wave doors
-    # honestly disabled — no routes exist for them yet.
+    # The rail: the shelf door live and current, the editor door live with
+    # the workspace (W4 Task 11 — it opens the active book), the three
+    # later-wave doors honestly disabled.
     rail = page.get_by_role("navigation", name="Navigation")
     expect(rail.get_by_role("link", name="Bücherregal")).to_have_attribute("aria-current", "page")
-    for label in ("Editor", "Wissen", "Planung", "Einstellungen"):
+    editor = rail.get_by_role("link", name="Editor")
+    expect(editor).to_have_attribute("href", f"/novels/{novel['id']}")
+    expect(editor).not_to_have_attribute("aria-current", "page")
+    for label in ("Wissen", "Planung", "Einstellungen"):
         expect(rail.get_by_role("button", name=label)).to_be_disabled()
 
     # The topbar's shelf face (tile 7): the breadcrumb, the real total over
@@ -932,7 +936,7 @@ def test_the_chrome_frames_the_shelf(page: Page, installed: Stack) -> None:
     expect(topbar.get_by_role("button", name="Suchen")).to_be_disabled()
 
     # The book switcher: the user's real novels, the active one marked, and
-    # the honest / navigation until the workspace route lands (Task 11).
+    # the workspace navigation (W4 Task 11 — each row opens its book).
     aside.get_by_role("button", name=re.compile("Aktives Buch")).click()
     menu = page.get_by_role("menu", name="Atelier-Werke")
     expect(menu).to_be_visible()
@@ -941,11 +945,16 @@ def test_the_chrome_frames_the_shelf(page: Page, installed: Stack) -> None:
     expect(active_row).to_have_attribute("aria-current", "true")
     expect(active_row).to_contain_text("1 %")  # 1.200 / 80.000, the row's own
     expect(menu.get_by_role("menuitem", name="Neues Buch anlegen")).to_be_visible()
-    # The rows navigate to the shelf — the honest book surface until the
-    # workspace route lands (Task 11); the menu closes on the choice.
-    menu.get_by_role("menuitem", name=re.compile(WINTERHAUS)).click()
+    # The rows open their book's workspace; the menu closes on the choice.
+    # Winterhaus holds no chapters — the empty-book face answers honestly.
+    winter_row = menu.get_by_role("menuitem", name=re.compile(WINTERHAUS))
+    winter_id = str(_rows("SELECT id FROM novels WHERE title = :t", {"t": WINTERHAUS})[0][0])
+    winter_row.click()
     expect(menu).to_have_count(0)
-    expect(page).to_have_url(BASE + "/")
+    expect(page).to_have_url(f"{BASE}/novels/{winter_id}")
+    expect(page.get_by_role("heading", name="Ein unbeschriebenes Werk")).to_be_visible()
+    # Back to the shelf for the chrome's remaining faces.
+    page.goto(BASE + "/")
     expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
 
     # The language chip is the real switcher (D17): the choice PATCHes the

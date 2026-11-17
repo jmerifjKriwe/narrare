@@ -29,6 +29,9 @@ vi.mock("@shell/lib/api/client", () => ({
 // The shelf's own face, mocked so the gate's choice is observable here; the
 // shelf's contract lives in ShelfPage.test and the E2E pins it on the real stack.
 vi.mock("./ShelfPage", () => ({ ShelfPage: () => <p>shelf placeholder</p> }));
+// The workspace's face, mocked for the same reason (W4 Task 11): this file
+// pins the gate, WorkspacePage.test pins the page.
+vi.mock("./WorkspacePage", () => ({ WorkspacePage: () => <p>workspace placeholder</p> }));
 
 import { client } from "@shell/lib/api/client";
 import { capabilityRoutes } from "@shell/lib/generated/routes";
@@ -131,5 +134,27 @@ describe("the / shelf gate", () => {
     expect(alert.textContent).toContain("503");
     expect(screen.queryByText("shelf placeholder")).toBeNull();
     expect(screen.queryByText(t("setup.welcome.heroTitle"))).toBeNull();
+  });
+});
+
+describe("the /novels/$novelId workspace gate (W4 Task 11)", () => {
+  it("shows the workspace once setup is complete", async () => {
+    scriptStatus(async () => ({ data: { complete: true }, response: ok() }));
+    const router = renderTree("/novels/11111111-1111-1111-1111-111111111111");
+
+    expect(await screen.findByText("workspace placeholder")).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/novels/11111111-1111-1111-1111-111111111111");
+    expect(screen.queryByText("shelf placeholder")).toBeNull();
+  });
+
+  it("hands an unconfigured instance to the welcome — the same gate as the shelf", async () => {
+    scriptStatus(async () => ({ data: { complete: false }, response: ok() }));
+    const router = renderTree("/novels/11111111-1111-1111-1111-111111111111");
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: t("setup.welcome.heroTitle") }),
+    ).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/setup");
+    expect(screen.queryByText("workspace placeholder")).toBeNull();
   });
 });

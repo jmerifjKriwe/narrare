@@ -121,7 +121,9 @@ const homeRoute = createRoute({
 });
 const bookRoute = createRoute({
   getParentRoute: () => testRoot,
-  path: "/novels/$id",
+  // The real workspace route's id (W4 Task 11): the chrome resolves the
+  // active book from this route's novelId param via the generated leaf.
+  path: "/novels/$novelId",
   component: () => <TopBar />,
 });
 

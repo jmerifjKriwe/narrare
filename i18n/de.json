@@ -21,7 +21,7 @@
   "shell.error": "Diese Seite konnte nicht angezeigt werden.",
   "shell.language": "Sprache",
   "shell.nav.editor": "Editor",
-  "shell.nav.editor.note": "Der Editor kommt mit der Workspace-Welle",
+  "shell.nav.editor.note": "Der Editor öffnet mit dem ersten Buch",
   "shell.nav.knowledge": "Wissen",
   "shell.nav.knowledge.note": "Der Lore-Graph kommt mit der Wissens-Welle",
   "shell.nav.label": "Navigation",

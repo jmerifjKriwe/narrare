@@ -12,6 +12,10 @@ const ShelfPage = lazy(async () => {
   const page = await import("./ShelfPage");
   return { default: page.ShelfPage };
 });
+const WorkspacePage = lazy(async () => {
+  const page = await import("./WorkspacePage");
+  return { default: page.WorkspacePage };
+});
 
 /**
  * The one fact the shelf's door reads: whether this instance has been set
@@ -55,6 +59,22 @@ const homeRoute = createRoute({
   component: ShelfPage,
 });
 
+/**
+ * The read-only workspace (W4 Task 11): the scene-centric writing surface
+ * at `/novels/$novelId`. The same setup gate as the shelf — an unconfigured
+ * instance is handed to `/setup` before the workspace ever mounts; the
+ * book's own reads (novel, chapters, scenes) answer inside the page.
+ */
+const novelRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/novels/$novelId",
+  beforeLoad: async () => {
+    const complete = await queryClient.ensureQueryData(setupStatusQueryOptions);
+    if (!complete) throw redirect({ to: "/setup" });
+  },
+  component: WorkspacePage,
+});
+
 // The capability route contract: every route this capability mounts under the
 // shell root, as a const tuple. The generated table (web/lib/generated/
 // routes.ts) imports this array; a capability without this file mounts
@@ -63,4 +83,11 @@ const homeRoute = createRoute({
 // The route consts stand on their own on purpose: a contextual type here
 // (a `Route[]` annotation or satisfies) degrades createRoute's inference to
 // `any` paths, and with it the router's checked `to=` props.
-export const routes = [homeRoute] as const;
+export const routes = [homeRoute, novelRoute] as const;
+
+// The workspace convention (scripts/generate_capabilities.py): the shell's
+// chrome reads the route id from the generated leaf (web/lib/generated/
+// workspace.ts) to resolve the active book from the route's own param —
+// never a parsed pathname. The id is the route's full path under the root.
+export const workspaceRoute = novelRoute;
+export const workspaceRouteId = "/novels/$novelId";

@@ -1,9 +1,9 @@
-import { useCallback, useId, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
 import { type Novel } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
-import { useActivityQuery, useNovelsQuery } from "@shell/lib/query";
+import { useActivityQuery, useNovelsQuery, takeNovelDeletedElsewhere } from "@shell/lib/query";
 import { formatWordCount } from "@shell/lib/words";
 import { Icon, type IconName } from "@shell/ui/icons";
 
@@ -120,6 +120,15 @@ export function ShelfPage() {
   const bannerNoteId = useId();
   const emptyNoteId = useId();
   usePageTitle(t("writing.shelf.title"));
+
+  // The workspace's 404 degrade (W4 Task 11): the book the workspace tried
+  // to open was deleted elsewhere — the note seam's one-shot. Taken in an
+  // EFFECT, never a render-phase initializer: a concurrent render may retry
+  // the initializer and consume the one-shot without committing it.
+  const [deletedElsewhere, setDeletedElsewhere] = useState(false);
+  useEffect(() => {
+    if (takeNovelDeletedElsewhere()) setDeletedElsewhere(true);
+  }, []);
 
   // The new-book dialog (Task 9): transient page state — the dialog holds
   // its own answers and forgets them on unmount. The opener is remembered
@@ -292,6 +301,13 @@ export function ShelfPage() {
             </div>
           </div>
         </div>
+
+        {/* The deleted-elsewhere note — the workspace's 404 degrade, once. */}
+        {deletedElsewhere && (
+          <p role="status" className="rounded-lg border border-border bg-surface-container-low px-4 py-3 text-body text-muted">
+            {t("writing.shelf.deletedElsewhere")}
+          </p>
+        )}
 
         {/* The content, by the list's own state. Nothing to show — no
             active hero and no grid rows (the archive included only when

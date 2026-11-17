@@ -176,6 +176,13 @@ let novelsAnswer: () => Promise<{ data?: unknown; response: Response }> = async 
   data: SHELF_ROWS,
   response: ok(),
 });
+/** The hero door's reads (W4 Task 11, row 3): the hero book's chapters and
+ *  their scenes. The default is the empty book — the door keeps the plain
+ *  verb and opens the workspace's empty face; a test scripts the resume. */
+let chaptersAnswer: (novelId: string) => Promise<{ data?: unknown; response: Response }> =
+  async () => ({ data: [], response: ok() });
+let scenesAnswer: (chapterId: string) => Promise<{ data?: unknown; response: Response }> =
+  async () => ({ data: [], response: ok() });
 /** What the endpoint answers when include_archived asks for the archive. */
 let archivedAnswer: () => Promise<{ data?: unknown; response: Response }> = async () => ({
   data: [...SHELF_ROWS, ARCHIVED],
@@ -210,7 +217,7 @@ let createAnswer: (body: {
 };
 
 function scriptApi() {
-  api.GET.mockImplementation(async (path: string, init?: { params?: { query?: { include_archived?: boolean } } }) => {
+  api.GET.mockImplementation(async (path: string, init?: { params?: { query?: { include_archived?: boolean }; path?: Record<string, string> } }) => {
     if (path === "/api/settings") {
       return { data: { locale: rowLocale, theme: null }, response: ok() };
     }
@@ -218,6 +225,12 @@ function scriptApi() {
       return init?.params?.query?.include_archived ? archivedAnswer() : novelsAnswer();
     }
     if (path === "/api/writing/activity") return activityAnswer();
+    if (path === "/api/writing/novels/{novel_id}/chapters") {
+      return chaptersAnswer(init?.params?.path?.novel_id ?? "");
+    }
+    if (path === "/api/writing/chapters/{chapter_id}/scenes") {
+      return scenesAnswer(init?.params?.path?.chapter_id ?? "");
+    }
     throw new Error(`unexpected request: ${path}`);
   });
   api.POST.mockImplementation(async (path: string, init?: { params?: { path?: { novel_id?: string } }; body?: { title?: string; genre?: string; target_words?: number } }) => {
@@ -263,6 +276,8 @@ beforeEach(() => {
   rowLocale = "de";
   activityAnswer = async () => ({ data: activityRow(), response: ok() });
   novelsAnswer = async () => ({ data: SHELF_ROWS, response: ok() });
+  chaptersAnswer = async () => ({ data: [], response: ok() });
+  scenesAnswer = async () => ({ data: [], response: ok() });
   archivedAnswer = async () => ({ data: [...SHELF_ROWS, ARCHIVED], response: ok() });
   duplicateAnswer = async () => {
     throw new Error("duplicate not scripted");
@@ -472,17 +487,20 @@ describe("the shelf — the hero and the grid speak the rows' own facts", () => 
 });
 
 describe("the shelf — every door honest about what is not built yet", () => {
-  it("the hero's two doors stay disabled with the drafted note", async () => {
+  it("the hero's workspace door is live; the lore door stays disabled with the drafted note", async () => {
     renderShelf();
     await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
 
-    for (const name of [de["writing.shelf.hero.write"], de["writing.shelf.hero.lore"]]) {
-      const button = screen.getByRole("button", { name });
-      expect(button.hasAttribute("disabled")).toBe(true);
-      const noteId = button.getAttribute("aria-describedby");
-      expect(noteId).not.toBeNull();
-      expect(document.getElementById(noteId as string)?.textContent).toBe(de["writing.shelf.comingSoon"]);
-    }
+    // Task 11 (row 3): the door opens the book's workspace. With no scenes
+    // scripted it keeps the plain verb — no chapter claim it cannot prove.
+    const write = screen.getByRole("link", { name: de["writing.shelf.hero.write"] });
+    expect(write.getAttribute("href")).toBe(`/novels/${HERO.id}`);
+
+    const lore = screen.getByRole("button", { name: de["writing.shelf.hero.lore"] });
+    expect(lore.hasAttribute("disabled")).toBe(true);
+    const noteId = lore.getAttribute("aria-describedby");
+    expect(noteId).not.toBeNull();
+    expect(document.getElementById(noteId as string)?.textContent).toBe(de["writing.shelf.comingSoon"]);
   });
 
   it("the top bar's new-book door opens the dialog; import stays disabled with the note", async () => {
@@ -554,6 +572,57 @@ describe("the shelf — every door honest about what is not built yet", () => {
   });
 });
 
+describe("the shelf — the hero door resumes the last-edited scene (W4 Task 11, row 3)", () => {
+  it("the label names chapter and scene honestly; the door opens the book's workspace", async () => {
+    const chapter = (id: string, position: number, updatedAt: string) => ({
+      id,
+      novel_id: HERO.id,
+      title: `Kapitel ${position + 1}`,
+      position,
+      scene_count: 1,
+      word_count: 100,
+      created_at: "2026-11-01T10:00:00Z",
+      updated_at: updatedAt,
+    });
+    const scene = (id: string, chapterId: string, position: number, updatedAt: string) => ({
+      id,
+      chapter_id: chapterId,
+      title: `Szene ${position + 1}`,
+      body: "Prosa",
+      setting: null,
+      story_time: null,
+      position,
+      word_count: 100,
+      created_at: "2026-11-01T10:00:00Z",
+      updated_at: updatedAt,
+    });
+    chaptersAnswer = async (novelId) => ({
+      data:
+        novelId === HERO.id
+          ? [chapter("ch1", 0, "2026-11-12T10:00:00Z"), chapter("ch2", 1, "2026-11-13T10:00:00Z")]
+          : [],
+      response: ok(),
+    });
+    scenesAnswer = async (chapterId) => ({
+      data:
+        chapterId === "ch1"
+          ? [scene("sc1", "ch1", 1, "2026-11-12T11:00:00Z")]
+          : chapterId === "ch2"
+            ? [scene("sc2", "ch2", 3, "2026-11-14T11:00:00Z")]
+            : [],
+      response: ok(),
+    });
+    renderShelf();
+    await screen.findByRole("heading", { level: 2, name: "Dead Signal" });
+
+    // The last-edited scene is chapter 2's third scene (position 2) — the
+    // label counts from one, the door opens the hero book's workspace.
+    const label = t("writing.shelf.hero.writeScene", { chapter: 2, scene: 3 });
+    const door = await screen.findByRole("link", { name: label });
+    expect(door.getAttribute("href")).toBe(`/novels/${HERO.id}`);
+  });
+});
+
 describe("the shelf — the language switcher writes the row", () => {
   // The switcher is the chrome's topbar chip now (W4 Task 10, D17 / #892):
   // the shared contract's post-setup face, the same write the shelf's
@@ -570,7 +639,7 @@ describe("the shelf — the language switcher writes the row", () => {
       expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "en" } }),
     );
     const en = catalogs.en;
-    expect(await screen.findByRole("button", { name: en["writing.shelf.hero.write"] })).toBeTruthy();
+    expect(await screen.findByRole("link", { name: en["writing.shelf.hero.write"] })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Language/ }).textContent).toContain("EN (English)");
   });
 
@@ -587,7 +656,7 @@ describe("the shelf — the language switcher writes the row", () => {
     fireEvent.click(within(menu).getAllByRole("menuitemradio")[2]);
     await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: de["writing.shelf.hero.write"] })).toBeTruthy(),
+      expect(screen.getByRole("link", { name: de["writing.shelf.hero.write"] })).toBeTruthy(),
     );
     expect(screen.getByRole("button", { name: /Sprache/ }).textContent).toContain("DE (Deutsch)");
   });

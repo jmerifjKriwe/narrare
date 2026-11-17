@@ -18,13 +18,17 @@
  * fallback, initials, NO tier — the drafts pin „KEIN Tier").
  *
  * The switcher's menu docks 4px off the chip (tile 2) and escapes the
- * rail's clip with fixed positioning; its book rows navigate to `/` for
- * now — the workspace route rides Task 11, and the shelf is the honest
- * book surface until it lands. The new-book action navigates to the shelf
- * too: the create dialog is writing's, across a boundary the shell does
- * not cross; Task 11+ wires the direct door. The menu keeps the quick
- * menu's popover discipline: arrows walk with wrap, Escape closes and
- * returns focus, an outside press closes without stealing focus.
+ * rail's clip with fixed positioning; its book rows navigate to the
+ * book's workspace (`/novels/$novelId`, W4 Task 11) — the shelf stays the
+ * new-book action's target, the create dialog is writing's across a
+ * boundary the shell does not cross. The menu keeps the quick menu's
+ * popover discipline: arrows walk with wrap, Escape closes and returns
+ * focus, an outside press closes without stealing focus.
+ *
+ * The nav's Editor door is live with the workspace (Task 11): it opens
+ * the active book's workspace and wears the active face on a workspace
+ * route; with no book standing it waits honestly disabled. Wissen,
+ * Planung and Einstellungen keep their later-wave notes.
  *
  * The user menu the draft's tile 4 draws (Autorenname bearbeiten,
  * Tagesziel festlegen, Einstellungen, Abmelden) rides the settings wave
@@ -75,8 +79,9 @@ const FOCUS =
 const LABEL =
   "w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[width] duration-200 group-hover/rail:w-auto group-hover/rail:opacity-100 group-focus-within/rail:w-auto group-focus-within/rail:opacity-100 pointer-coarse:w-auto pointer-coarse:opacity-100";
 
-/** The nav's five entries in the draft's order. Only the shelf has a route
- *  today; the rest wait honestly disabled, each with its later-wave note. */
+/** The nav's five entries in the draft's order. The shelf and the editor
+ *  have routes (the editor's is the active book's workspace, resolved at
+ *  render); the rest wait honestly disabled, each with its later-wave note. */
 const NAV: readonly {
   label: MessageKey;
   icon: IconName;
@@ -142,7 +147,7 @@ const THEME_CYCLE: Record<"system" | Theme, { next: Theme | null; name: MessageK
 export function IconRail() {
   const t = useTranslation();
   const navigate = useNavigate();
-  const { novels, active } = useChromeNovels();
+  const { novels, active, bookId } = useChromeNovels();
   const settings = useSettingsQuery();
   // The interim sync owner (Task 12 wires it live): one state, the rail
   // foot and the topbar chip read the same hook.
@@ -391,9 +396,8 @@ export function IconRail() {
                     type="button"
                     // The rows are menu actions, not links: the router marks
                     // every Link to the current route aria-current="page",
-                    // which would flatten the active book's mark. The
-                    // workspace route rides Task 11; until it lands the
-                    // shelf is the honest book surface, so every row goes /.
+                    // which would flatten the active book's mark. Each row
+                    // opens its book's workspace (W4 Task 11).
                     role="menuitem"
                     aria-current={novel.id === active?.id ? "true" : undefined}
                     ref={(node) => {
@@ -402,7 +406,7 @@ export function IconRail() {
                     onKeyDown={(event) => itemKey(event, at)}
                     onClick={() => {
                       closeMenu(true);
-                      void navigate({ to: "/" });
+                      void navigate({ to: "/novels/$novelId", params: { novelId: novel.id } });
                     }}
                     className={`flex w-full items-center gap-2.5 rounded-md border p-2 text-left transition-colors ${
                       novel.id === active?.id
@@ -458,27 +462,63 @@ export function IconRail() {
 
         <div aria-hidden="true" className="h-px w-8 bg-border" />
 
-        {/* The nav: the shelf live with its per-route active face, the four
-            later-wave doors honestly disabled with their notes. */}
+        {/* The nav: the shelf and the editor live (the editor opens the
+            active book's workspace, Task 11), the three later-wave doors
+            honestly disabled with their notes. */}
         <nav aria-label={t("shell.nav.label")} className="flex w-full flex-col items-center gap-1.5">
-          {NAV.map((entry) =>
-            entry.to !== undefined ? (
+          {NAV.map((entry) => {
+            const face = (isCurrent: boolean) =>
+              `flex w-full items-center justify-center gap-0 rounded-lg border px-2 py-1.5 transition-colors group-hover/rail:justify-start group-hover/rail:gap-2.5 pointer-coarse:justify-start pointer-coarse:gap-2.5 ${
+                isCurrent
+                  ? "border-primary/20 bg-primary/10 font-semibold text-primary"
+                  : "border-transparent text-muted hover:bg-surface-container-low hover:text-foreground"
+              } ${FOCUS}`;
+            const children = (
+              <>
+                <span className="shrink-0">
+                  <Icon name={entry.icon} size={22} />
+                </span>
+                <span className={`${LABEL} text-meta font-medium`}>{t(entry.label)}</span>
+              </>
+            );
+            // The editor's door is the active book's workspace — with no
+            // book standing there is nothing to edit, and the note says so.
+            if (entry.label === "shell.nav.editor") {
+              return active !== null ? (
+                <Link
+                  key={entry.label}
+                  to="/novels/$novelId"
+                  params={{ novelId: active.id }}
+                  aria-label={t(entry.label)}
+                  title={t(entry.label)}
+                  aria-current={bookId !== null ? "page" : undefined}
+                  className={face(bookId !== null)}
+                >
+                  {children}
+                </Link>
+              ) : (
+                <button
+                  key={entry.label}
+                  type="button"
+                  disabled
+                  aria-label={t(entry.label)}
+                  title={entry.note !== undefined ? t(entry.note) : undefined}
+                  className="flex w-full cursor-not-allowed items-center justify-center gap-0 rounded-lg border border-transparent px-2 py-1.5 text-muted opacity-50 group-hover/rail:justify-start group-hover/rail:gap-2.5 pointer-coarse:justify-start pointer-coarse:gap-2.5"
+                >
+                  {children}
+                </button>
+              );
+            }
+            return entry.to !== undefined ? (
               <Link
                 key={entry.label}
                 to={entry.to}
                 aria-label={t(entry.label)}
                 title={t(entry.label)}
                 aria-current={pathname === entry.to ? "page" : undefined}
-                className={`flex w-full items-center justify-center gap-0 rounded-lg border px-2 py-1.5 transition-colors group-hover/rail:justify-start group-hover/rail:gap-2.5 pointer-coarse:justify-start pointer-coarse:gap-2.5 ${
-                  pathname === entry.to
-                    ? "border-primary/20 bg-primary/10 font-semibold text-primary"
-                    : "border-transparent text-muted hover:bg-surface-container-low hover:text-foreground"
-                } ${FOCUS}`}
+                className={face(pathname === entry.to)}
               >
-                <span className="shrink-0">
-                  <Icon name={entry.icon} size={22} />
-                </span>
-                <span className={`${LABEL} text-meta font-medium`}>{t(entry.label)}</span>
+                {children}
               </Link>
             ) : (
               <button
@@ -489,13 +529,10 @@ export function IconRail() {
                 title={entry.note !== undefined ? t(entry.note) : undefined}
                 className="flex w-full cursor-not-allowed items-center justify-center gap-0 rounded-lg border border-transparent px-2 py-1.5 text-muted opacity-50 group-hover/rail:justify-start group-hover/rail:gap-2.5 pointer-coarse:justify-start pointer-coarse:gap-2.5"
               >
-                <span className="shrink-0">
-                  <Icon name={entry.icon} size={22} />
-                </span>
-                <span className={`${LABEL} text-meta font-medium`}>{t(entry.label)}</span>
+                {children}
               </button>
-            ),
-          )}
+            );
+          })}
         </nav>
       </div>
 
