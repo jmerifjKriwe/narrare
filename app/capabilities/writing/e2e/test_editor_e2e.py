@@ -16,7 +16,7 @@ import re
 from typing import TYPE_CHECKING
 
 import pytest
-from playwright.sync_api import Dialog, Page, expect
+from playwright.sync_api import Dialog, Locator, Page, expect
 
 from app.capabilities.writing.e2e.conftest import (
     create_chapter,
@@ -57,10 +57,18 @@ def _type(page: Page, text: str) -> None:
     page.keyboard.type(text)
 
 
+def _rail(page: Page) -> Locator:
+    """The icon rail's aside — the one that owns the Navigation landmark.
+    The sync foot sits beside the nav, not inside it, so the landmark alone
+    cannot scope the rail's save face."""
+    return page.locator("aside").filter(has=page.get_by_role("navigation", name="Navigation"))
+
+
 def test_typing_autosaves_and_survives_a_reload(page: Page, installed: Stack) -> None:
     """type → the engaged indicator → the landed save → the row after reload.
-    The foot's live count moves with the writing; the chrome's chip and the
-    rail dot rest green once the server answered."""
+    The foot's live count moves with the writing; the saving face stands on
+    all three surfaces the one owner feeds while the debounce runs, and the
+    chrome's chip and the rail dot rest green once the server answered."""
     novel_id, scene_id = _seed_scene()
     _open(page, novel_id)
 
@@ -74,6 +82,11 @@ def test_typing_autosaves_and_survives_a_reload(page: Page, installed: Stack) ->
         _type(page, "Der erste Satz.")
         # The engaged indicator stands while the debounce runs (Kachel 9's pill).
         expect(page.get_by_text("Ungesicherte Änderungen")).to_be_visible()
+        # The saving face on all three surfaces the one owner feeds — the
+        # foot, the topbar chip and the rail's sync label (the collapsed
+        # rail keeps its label in the DOM): one status, three faces, never
+        # a disagreement, proven in the same debounce window.
+        expect(page.get_by_text("Sicherung läuft …", exact=True)).to_have_count(3)
     assert saved.value.ok
 
     # The landed save: the foot's live count, the green faces, no failure.
@@ -81,6 +94,9 @@ def test_typing_autosaves_and_survives_a_reload(page: Page, installed: Stack) ->
     expect(page.get_by_text("Automatisch gesichert")).to_be_visible()
     expect(page.locator("header").get_by_text("Gespeichert")).to_be_visible()
     expect(page.get_by_text("Ungesicherte Änderungen")).to_have_count(0)
+    # The rail's sync face rests green beside the chip — its label rides
+    # collapsed in the DOM; the hover reveal is styling, not wiring.
+    expect(_rail(page).get_by_text("Gespeichert", exact=True)).to_have_count(1)
     # The tree's scene count follows the saved row (the invalidation family).
     expect(page.get_by_text("3 W.").first).to_be_visible()
 
@@ -106,6 +122,9 @@ def test_a_refused_save_is_named_and_retries(page: Page, installed: Stack) -> No
         expect(page.get_by_text("Wiederholen")).to_be_visible()
         expect(page.locator("header").get_by_text("Sicherung fehlgeschlagen")).to_be_visible()
         expect(page.get_by_text("Automatisch gesichert")).to_have_count(0)
+        # The rail's sync face wears the refusal beside the chip — the
+        # third surface of the one owner, on the failure state too.
+        expect(_rail(page).get_by_text("Sicherung fehlgeschlagen", exact=True)).to_have_count(1)
         # The failure face clears the axe floor before the retry.
         assert_accessible(page)
     finally:
