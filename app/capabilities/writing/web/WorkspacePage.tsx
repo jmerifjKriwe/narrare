@@ -11,9 +11,19 @@
  *
  * The page's one selection rule: the active scene defaults to the
  * LAST-EDITED one (updated_at — the hero door's own rule, gap row 3);
- * clicking a scene or a chapter selects it locally. Nothing writes: the
- * create doors, the reorder grips and the setters wait for Tasks 12/13/19,
- * each named in code where its geometry stands.
+ * clicking a scene or a chapter selects it locally. The editor is LIVE
+ * (Task 12): the active scene's body is edited through TipTap, debounced
+ * into the scene's PUT by `useAutosave`, whose status feeds the one shell
+ * store the chrome's three sync faces read. The create doors, the reorder
+ * grips and the setters wait for Tasks 13/19, each named in code.
+ *
+ * The leave guard (WP0b's rule, the states sheet's Kachel 10): a leave —
+ * a scene/chapter switch, any route navigation (the router blocker, which
+ * also carries the browser's unload prompt) — first FLUSHES a healthy
+ * pending body; only a write that actually failed raises the dialog.
+ * „Bleiben" stays, „Verwerfen und verlassen" drops the draft and goes. A
+ * refused body stays in memory until a retry lands it, so the error card's
+ * reassurance („Deine Änderungen bleiben im Editor …") is true.
  *
  * The reads: the novel row (a 404 degrades to the shelf with the
  * deleted-elsewhere note — the query seam's documented contract), the
@@ -23,8 +33,8 @@
  * the states sheet's skeleton, error in its honest retry card (#887's
  * fictional offline claim never ships).
  */
-import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { getRouteApi, useBlocker, useNavigate } from "@tanstack/react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Chapter } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
@@ -40,6 +50,7 @@ import {
 import { EditorColumn } from "./EditorColumn";
 import { ExplorerColumn } from "./ExplorerColumn";
 import { InspectorDock } from "./InspectorDock";
+import { useAutosave } from "./useAutosave";
 import {
   lastEditedEntry,
   orderedSceneEntries,
@@ -48,7 +59,7 @@ import {
   useStoryboardQuery,
   type SceneEntry,
 } from "./workspace";
-import { WorkspaceError, WorkspaceLoading } from "./WorkspaceStates";
+import { LeaveGuardDialog, WorkspaceError, WorkspaceLoading } from "./WorkspaceStates";
 
 const routeApi = getRouteApi("/novels/$novelId");
 
@@ -72,6 +83,9 @@ export function WorkspacePage() {
 
   const [selection, setSelection] = useState<Selection>(null);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  // A scene/chapter switch whose flush failed waits here for the guard's
+  // answer — the target the user asked for, held until they stay or discard.
+  const [pendingSelect, setPendingSelect] = useState<Selection>(null);
 
   // A navigation between two books reuses this component — the selection
   // and the collapse state belong to the book that was opened, never the
@@ -80,6 +94,7 @@ export function WorkspacePage() {
   useEffect(() => {
     setSelection(null);
     setCollapsed(new Set());
+    setPendingSelect(null);
   }, [novelId]);
 
   // The 404 degrade — the book was deleted elsewhere: the shelf's note
@@ -117,6 +132,69 @@ export function WorkspacePage() {
     const fallbackId = activeChapterFallback([...chapterList]);
     activeChapter = chapterList.find((chapter) => chapter.id === fallbackId) ?? null;
   }
+
+  // The autosave lives at the page, not the editor: its lifetime matches the
+  // page, and the leave guards sit next to the paths that change the
+  // selection. The active scene's id/chapter feed the write; null on the
+  // empty faces asks nothing. The status mirrors into the one shell store
+  // the chrome reads (the hook owns that seam).
+  const autosave = useAutosave(
+    activeEntry?.scene.id ?? null,
+    activeEntry?.chapter.id ?? null,
+    novelId,
+  );
+  // The blocker reads the live autosave through a ref, so its callbacks stay
+  // stable (a fresh closure per render would re-register the history block).
+  const autosaveRef = useRef(autosave);
+  autosaveRef.current = autosave;
+
+  // A route leave (the rail's switcher, the topbar's Manuscripts link, the
+  // shelf mini-card, the browser's back) flushes a healthy pending body
+  // first; only a failed write blocks. The resolver then raises the guard.
+  const shouldBlock = useCallback(async () => {
+    const save = autosaveRef.current;
+    if (!save.unsaved) return false;
+    const outcome = await save.flush();
+    return outcome === "failed";
+  }, []);
+  const enableBeforeUnload = useCallback(() => autosaveRef.current.unsaved, []);
+  const blocker = useBlocker({ shouldBlockFn: shouldBlock, enableBeforeUnload, withResolver: true });
+
+  // A scene/chapter switch is local state, not a route change — the same
+  // flush-first rule guards it. A failed flush holds the target for the
+  // dialog; a healthy one selects straight away.
+  const requestSelect = useCallback(
+    (next: Selection) => {
+      void autosaveRef.current.flush().then((outcome) => {
+        if (outcome === "failed") setPendingSelect(next);
+        else setSelection(next);
+      });
+    },
+    [],
+  );
+
+  // The one guard, two triggers: a blocked route leave or a failed switch.
+  // „Bleiben" resets the leave; „Verwerfen und verlassen" drops the draft
+  // (so the unmount flush cannot re-send it) and then goes.
+  const guard =
+    blocker.status === "blocked"
+      ? {
+          stay: () => blocker.reset(),
+          discard: () => {
+            autosave.discard();
+            blocker.proceed();
+          },
+        }
+      : pendingSelect !== null
+        ? {
+            stay: () => setPendingSelect(null),
+            discard: () => {
+              autosave.discard();
+              setSelection(pendingSelect);
+              setPendingSelect(null);
+            },
+          }
+        : null;
 
   // The retry keeps the error card on screen while the asks run (a v5
   // refetch clears the error into pending — the flag holds the panel, the
@@ -167,7 +245,7 @@ export function WorkspacePage() {
           });
         }}
         onSelectChapter={(chapterId) => {
-          setSelection({ kind: "chapter", id: chapterId });
+          requestSelect({ kind: "chapter", id: chapterId });
           // Selecting a chapter opens it — a collapsed card reveals its rows.
           setCollapsed((previous) => {
             if (!previous.has(chapterId)) return previous;
@@ -176,7 +254,7 @@ export function WorkspacePage() {
             return next;
           });
         }}
-        onSelectScene={(sceneId) => setSelection({ kind: "scene", id: sceneId })}
+        onSelectScene={(sceneId) => requestSelect({ kind: "scene", id: sceneId })}
         activity={activity}
         storyboard={storyboard}
       />
@@ -184,8 +262,12 @@ export function WorkspacePage() {
         novel={novel.data}
         entry={activeEntry}
         emptyChapter={chapterList.length > 0 && activeEntry === null}
+        status={autosave.status}
+        onRetry={() => void autosave.flush()}
+        onBodyChange={autosave.schedule}
       />
       <InspectorDock novel={novel.data} />
+      {guard !== null && <LeaveGuardDialog onStay={guard.stay} onDiscard={guard.discard} />}
     </div>
   );
 }

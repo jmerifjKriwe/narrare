@@ -16,7 +16,7 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -34,6 +34,7 @@ import { catalogs } from "@shell/lib/generated/catalogs";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { setSaveStatus } from "@shell/lib/saveStatus";
 import { TopBar } from "./TopBar";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
@@ -157,6 +158,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   applyLocale(null);
   localStorage.clear();
+  setSaveStatus("idle");
 });
 
 describe("the topbar — the shelf face (tile 7)", () => {
@@ -202,8 +204,25 @@ describe("the topbar — the book face (the live stage)", () => {
 });
 
 describe("the topbar — save, search, language", () => {
-  it("the save chip reads the same interim state as the rail foot", async () => {
+  it("the save chip rests at Gespeichert — the idle/saved green face", async () => {
     renderTopBar("/");
+    expect(await screen.findByText(de["shell.rail.saved"])).toBeTruthy();
+  });
+
+  it("the save chip speaks the live owner's three faces (tile 3)", async () => {
+    renderTopBar("/");
+    expect(await screen.findByText(de["shell.rail.saved"])).toBeTruthy();
+    // Engaged: the amber face, the honest sub-label as the tooltip.
+    act(() => setSaveStatus("saving"));
+    expect(await screen.findByText(de["shell.rail.saving"])).toBeTruthy();
+    expect(screen.queryByText(de["shell.rail.saved"])).toBeNull();
+    expect(screen.getByTitle(de["shell.rail.saving.note"])).toBeTruthy();
+    // Refused: the red face.
+    act(() => setSaveStatus("failed"));
+    expect(await screen.findByText(de["shell.rail.failed"])).toBeTruthy();
+    expect(screen.getByTitle(de["shell.rail.failed.note"])).toBeTruthy();
+    // A landed write rests green again.
+    act(() => setSaveStatus("saved"));
     expect(await screen.findByText(de["shell.rail.saved"])).toBeTruthy();
   });
 

@@ -11,8 +11,8 @@
  * own genre/progress/chapter facts, never the draft's mock figures) — the
  * nav (Bücherregal live with its per-route active face; Editor, Wissen,
  * Planung and Einstellungen honestly disabled with their later-wave notes,
- * no routes exist yet), and the foot: the sync dot (INTERIM static
- * „Gespeichert" — Task 12 wires the autosave owner, `saveStatus.ts`), the
+ * no routes exist yet), and the foot: the sync dot (the LIVE autosave
+ * owner's face, `saveStatus.ts` — Task 12 wired it; tile 3's three states), the
  * real tri-state theme toggle (system → light → dark, the settings theme
  * PATCH, a refusal restores), and the user block (author_name → email
  * fallback, initials, NO tier — the drafts pin „KEIN Tier").
@@ -57,7 +57,7 @@ import { PALETTE } from "../lib/cover/BookCover";
 import { coverModel } from "../lib/cover/cover";
 import { useTranslation, type MessageKey } from "../lib/i18n";
 import { queryClient, useSettingsQuery } from "../lib/query";
-import { useSaveStatus } from "../lib/saveStatus";
+import { SAVE_FACES, SAVE_TONE_CLASS, useSaveStatus } from "../lib/saveStatus";
 import { applyTheme, type Theme } from "../lib/theme";
 import { Icon, type IconName } from "../ui/icons";
 import { useChromeNovels } from "./chrome";
@@ -149,9 +149,11 @@ export function IconRail() {
   const navigate = useNavigate();
   const { novels, active, bookId } = useChromeNovels();
   const settings = useSettingsQuery();
-  // The interim sync owner (Task 12 wires it live): one state, the rail
-  // foot and the topbar chip read the same hook.
+  // The live sync owner (Task 12): one state, the rail foot, the topbar
+  // chip and the editor foot read the same hook.
   const saveStatus = useSaveStatus();
+  const saveFace = SAVE_FACES[saveStatus];
+  const saveTone = SAVE_TONE_CLASS[saveFace.tone];
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -538,20 +540,21 @@ export function IconRail() {
 
       {/* The foot: sync, theme, user — the draft's three marks, no tier. */}
       <div className="flex w-full flex-col items-center gap-3 border-t border-border/80 pt-3">
-        {/* The sync dot: INTERIM static „Gespeichert" (Task 12 wires the
-            autosave owner). The draft's other states wait for the live
-            hook — no invented states ship before it. */}
+        {/* The sync dot: the live autosave owner's face (tile 3) — green at
+            rest, amber pulsing while the write is engaged, red on a refusal.
+            One state with the topbar chip and the editor foot; the honest
+            sub-label is the tooltip. */}
         <div
           className="flex w-full items-center justify-center gap-2 group-hover/rail:justify-start pointer-coarse:justify-start"
-          title={t("shell.rail.saved")}
+          title={t(saveFace.note)}
         >
           <span
             aria-hidden="true"
-            className={`h-2.5 w-2.5 shrink-0 rounded-full ring-4 ${
-              saveStatus === "saved" ? "bg-success ring-success/15" : "bg-muted ring-muted/15"
+            className={`h-2.5 w-2.5 shrink-0 rounded-full ring-4 ${saveTone.dot} ${saveTone.ring} ${
+              saveStatus === "saving" ? "animate-pulse" : ""
             }`}
           />
-          <span className={`${LABEL} text-meta font-medium text-success`}>{t("shell.rail.saved")}</span>
+          <span className={`${LABEL} text-meta font-medium ${saveTone.text}`}>{t(saveFace.label)}</span>
         </div>
 
         {/* The theme toggle: one button, three states, the row's own door. */}

@@ -24,6 +24,7 @@ import {
 } from "@shell/lib/api/client";
 import { catalogs } from "@shell/lib/generated/catalogs";
 import type { MessageKey } from "@shell/lib/i18n";
+import { queryClient } from "@shell/lib/query";
 
 /** A scene's or chapter's title as the page speaks it: the trimmed title,
  *  or the localized placeholder — the database stores no locale (the
@@ -137,10 +138,10 @@ export function stageTitleKey(
 /**
  * One chapter's scenes question — the key and the ask in one home, so the
  * per-chapter list below and any future single-chapter reader cannot drift.
- * The tree and the editor read the same answer; Task 12's save seam
- * invalidates the key when a scene's prose lands. An answer that is not ok
- * throws, so the cache holds either the list or the failure — never a
- * half-current list.
+ * The tree and the editor read the same answer; the save seam
+ * (`invalidateSceneReads`) invalidates the key when a scene's prose lands.
+ * An answer that is not ok throws, so the cache holds either the list or the
+ * failure — never a half-current list.
  */
 function scenesQueryOptions(chapterId: string) {
   return {
@@ -165,6 +166,25 @@ export function useChapterScenes(chapters: readonly Chapter[]): UseQueryResult<S
   return useQueries({
     queries: chapters.map((chapter) => scenesQueryOptions(chapter.id)),
   });
+}
+
+/**
+ * The read family a landed scene save refreshes (W4 Task 12) — one home for
+ * the autosave hook's invalidation, so the shelf's hero door and the
+ * workspace can never disagree (PR 2's carry-note). The scene's own list
+ * (`["scenes", chapterId]`) carries the new body, word count and
+ * `updated_at` — the last-edited rule the hero door resumes reads it; the
+ * chapter list carries the derived Σ; the novels family the book's own count
+ * and timestamp (the hero's order, the topbar chip); the activity aggregate
+ * the day's words the ring shows. A body write moves all four on the server
+ * (`service.update_scene`), so all four ask again. Success only — a refused
+ * write changed nothing and asks for nothing.
+ */
+export function invalidateSceneReads(chapterId: string, novelId: string): void {
+  void queryClient.invalidateQueries({ queryKey: ["scenes", chapterId] });
+  void queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
+  void queryClient.invalidateQueries({ queryKey: ["novels"] });
+  void queryClient.invalidateQueries({ queryKey: ["activity"] });
 }
 
 /**

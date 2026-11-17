@@ -11,6 +11,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -26,6 +27,17 @@ import { rootRoute } from "@shell/routes/__root";
 
 const de = catalogs.de;
 const NOVEL_ID = "11111111-1111-1111-1111-111111111111";
+
+// jsdom lays out nothing: Element geometry reports zeros, but Range geometry
+// is simply missing — and ProseMirror reads Range rects whenever it scrolls
+// a selection into view (after typing, after focus). Hand it the same zeros
+// the elements already claim, so „nothing to scroll" is the only answer
+// (the pre-rebuild ChapterEditor test's own polyfill).
+const zeroRect = { top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0 } as DOMRect;
+Range.prototype.getClientRects = function (): DOMRectList {
+  return [zeroRect] as unknown as DOMRectList;
+};
+Range.prototype.getBoundingClientRect = () => zeroRect;
 
 const api = client as unknown as Record<
   "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
@@ -191,7 +203,8 @@ async function renderWorkspace(novelId: string = NOVEL_ID) {
 
 beforeEach(() => {
   applyLocale("de");
-  vi.stubGlobal("navigator", { language: "de-DE", languages: ["de-DE"] });
+  // TipTap's platform detection reads userAgent — the stub must carry it.
+  vi.stubGlobal("navigator", { language: "de-DE", languages: ["de-DE"], userAgent: "jsdom" });
   setupComplete = true;
   novelAnswer = async () => ({ data: NOVEL, response: ok() });
   chaptersAnswer = async () => ({ data: [CH1, CH2], response: ok() });
@@ -202,6 +215,9 @@ beforeEach(() => {
   activityAnswer = async () => ({ data: ACTIVITY, response: ok() });
   storyboardAnswer = async () => ({ data: STORYBOARD, response: ok() });
   scriptApi();
+  // The scene save's default answer: a landed write returns the row. The
+  // guard tests script a refusal where they need one.
+  api.PUT.mockResolvedValue({ data: S12, response: ok() });
 });
 
 afterEach(() => {
@@ -395,5 +411,89 @@ describe("the setup gate", () => {
     setupComplete = false;
     const router = await renderWorkspace();
     await waitFor(() => expect(router.state.location.pathname).toBe("/setup"));
+  });
+});
+
+describe("the leave guard (Kachel 10) — flush first, ask only on a failed write", () => {
+  /** Focus the live editor and type — the real TipTap path. The leave action
+   *  under test flushes (clearing the debounce), so no timer wait is owed:
+   *  the unsaved pill stands the instant a keystroke lands. */
+  async function typeIntoScene(text: string) {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await screen.findByRole("textbox");
+    await waitFor(() => expect(screen.getByRole("textbox").textContent).not.toBe(""));
+    screen.getByRole("textbox").focus();
+    await user.keyboard(text);
+    expect(await screen.findByText(de["writing.workspace.ribbon.unsaved"])).toBeTruthy();
+  }
+
+  it("a healthy pending body flushes on a scene switch — no dialog", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await typeIntoScene(" Ein neuer Satz.");
+    fireEvent.click(screen.getByRole("button", { name: /Szene 1 · Sub-Basement/ }));
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    expect(api.PUT.mock.calls[0][1].body.body).toContain("Ein neuer Satz.");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(await screen.findByRole("heading", { level: 1, name: "Sub-Basement" })).toBeTruthy();
+  });
+
+  it("a failed save raises the guard on a switch — Bleiben stays, Verwerfen goes", async () => {
+    api.PUT.mockResolvedValue({ data: undefined, response: new Response(null, { status: 500 }) });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await typeIntoScene(" Ungesichert.");
+
+    fireEvent.click(screen.getByRole("button", { name: /Szene 1 · Sub-Basement/ }));
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    expect(screen.getByText(de["writing.workspace.guard.title"])).toBeTruthy();
+    expect(screen.getByText(de["writing.workspace.foot.failed"])).toBeTruthy();
+
+    // Bleiben stays on the same scene, the failed body intact.
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.guard.stay"] }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(screen.getByRole("heading", { level: 1, name: "Das Signal im Permafrost" })).toBeTruthy();
+    expect(screen.getByText(de["writing.workspace.foot.failed"])).toBeTruthy();
+
+    // Verwerfen und verlassen drops the draft and switches.
+    fireEvent.click(screen.getByRole("button", { name: /Szene 1 · Sub-Basement/ }));
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.guard.discard"] }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Sub-Basement" })).toBeTruthy();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("a failed save blocks a route leave — the resolver holds navigation until the answer", async () => {
+    api.PUT.mockResolvedValue({ data: undefined, response: new Response(null, { status: 500 }) });
+    const router = await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await typeIntoScene(" Ungesichert.");
+
+    // A route leave (the topbar's Manuscripts link path) flushes, fails, blocks.
+    // The blocker holds the navigate promise until the dialog is answered, so
+    // it is fired, not awaited — the resolver raises the guard meanwhile.
+    void router.navigate({ to: "/" });
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}`);
+
+    // Bleiben resets the leave — still on the workspace.
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.guard.stay"] }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}`);
+
+    // Verwerfen discards and proceeds to the shelf.
+    void router.navigate({ to: "/" });
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.guard.discard"] }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+  });
+
+  it("a clean workspace leaves without a dialog", async () => {
+    const router = await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await router.navigate({ to: "/" });
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(api.PUT).not.toHaveBeenCalled();
   });
 });

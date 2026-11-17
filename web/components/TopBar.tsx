@@ -10,8 +10,10 @@
  * chip when the book belongs to a series (the live stage). The workspace
  * route rides Task 11 — the book face is structurally ready now.
  *
- * Beside the breadcrumb: the save chip, reading the same interim sync
- * owner as the rail foot (`saveStatus.ts` — Task 12 wires it live). On the
+ * Beside the breadcrumb: the save chip, reading the same LIVE sync owner
+ * as the rail foot and the editor foot (`saveStatus.ts` — Task 12 wired it;
+ * the draft's tile-3 faces, Gespeichert / Sicherung läuft … / Sicherung
+ * fehlgeschlagen). On the
  * right: the ⌘K search chip, honestly disabled with the drafted tooltip
  * (INTERIM #882 — the command palette is a later shell wave's; the chip
  * keeps its geometry and its note, never a pretend door), the real word
@@ -27,7 +29,7 @@ import { useId } from "react";
 
 import { useTranslation } from "../lib/i18n";
 import { LanguageChip } from "../lib/language";
-import { useSaveStatus } from "../lib/saveStatus";
+import { SAVE_FACES, SAVE_TONE_CLASS, useSaveStatus } from "../lib/saveStatus";
 import { Icon } from "../ui/icons";
 import { useChromeNovels } from "./chrome";
 
@@ -42,8 +44,12 @@ const FOCUS =
 export function TopBar() {
   const t = useTranslation();
   const { novels, active, bookId } = useChromeNovels();
-  // The interim sync owner — one state with the rail foot (Task 12).
+  // The live sync owner — one state with the rail foot and the editor foot
+  // (Task 12). The face is the draft's tile-3 vocabulary, the honest sub-label
+  // rides as the tooltip.
   const saveStatus = useSaveStatus();
+  const saveFace = SAVE_FACES[saveStatus];
+  const saveTone = SAVE_TONE_CLASS[saveFace.tone];
   const searchNoteId = useId();
 
   const bookFace = bookId !== null;
@@ -102,13 +108,18 @@ export function TopBar() {
           </>
         )}
         {/* The save chip — the draft's sync-state geometry (tile 3), the
-            same interim owner as the rail foot. Task 12 wires it live. */}
-        <span className="ml-3 flex shrink-0 items-center gap-1.5 rounded border border-border bg-surface-container-low px-2 py-0.5 text-meta font-medium text-success">
+            same live owner as the rail foot and the editor foot. The dot
+            pulses while the write is engaged; the honest sub-label is the
+            tooltip. */}
+        <span
+          title={t(saveFace.note)}
+          className={`ml-3 flex shrink-0 items-center gap-1.5 rounded border border-border bg-surface-container-low px-2 py-0.5 text-meta font-medium ${saveTone.text}`}
+        >
           <span
             aria-hidden="true"
-            className={`h-2 w-2 rounded-full ${saveStatus === "saved" ? "bg-success" : "bg-muted"}`}
+            className={`h-2 w-2 rounded-full ${saveTone.dot} ${saveStatus === "saving" ? "animate-pulse" : ""}`}
           />
-          {t("shell.rail.saved")}
+          {t(saveFace.label)}
         </span>
       </div>
 
