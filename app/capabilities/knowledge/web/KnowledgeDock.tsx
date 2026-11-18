@@ -193,9 +193,12 @@ function SuggestionCard({
             {t("knowledge.dock.suggestionRelations")}
           </span>
           <ul className="mt-0.5 space-y-0.5">
-            {suggestion.relations.map((relation) => (
+            {suggestion.relations.map((relation, index) => (
               <li
-                key={`${relation.target_name}\u0000${relation.relation_type}`}
+                // The index rides the key: a proposal may name the same
+                // (target, type) pair twice, and the pair alone would
+                // collide — the position makes every row's key its own.
+                key={`${relation.target_name}\u0000${relation.relation_type}\u0000${index}`}
                 className="text-[11px] text-muted"
               >
                 → {relation.target_name} · <span>{relationTypeLabel(t, relation.relation_type)}</span>
