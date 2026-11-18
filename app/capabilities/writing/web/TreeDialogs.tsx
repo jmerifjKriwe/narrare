@@ -65,14 +65,14 @@ const TITLE_MAX = 200;
 
 /** The shell's busy face (the quick menu's spinner): a ring with one
  *  transparent quarter, turning. No glyph — the motion is the mark.
- *  Exported: the goal setters and the book settings ride the same face. */
-export function Spinner({ tone = "primary" }: { tone?: "primary" | "danger" }) {
+ *  Exported: the goal setters and the book settings ride the same face;
+ *  the zen swap's doors ride the muted tone (their own ink, not a CTA's). */
+export function Spinner({ tone = "primary" }: { tone?: "primary" | "danger" | "muted" }) {
+  const ring = tone === "danger" ? "border-danger" : tone === "muted" ? "border-muted" : "border-primary-foreground";
   return (
     <span
       aria-hidden="true"
-      className={`h-3.5 w-3.5 shrink-0 animate-spin rounded-full border border-t-transparent ${
-        tone === "danger" ? "border-danger" : "border-primary-foreground"
-      }`}
+      className={`h-3.5 w-3.5 shrink-0 animate-spin rounded-full border border-t-transparent ${ring}`}
     />
   );
 }

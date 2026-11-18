@@ -18,6 +18,7 @@
  * a region mounted populated never speaks, so the preview wears no role.
  */
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
 import { useEffect, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -179,6 +180,73 @@ describe("the editing surface", () => {
     // The page keys the editor by scene id: a new key is a new document.
     rerender(<SceneEditor key="s2" body="Szene zwei." onChange={() => {}} label="Prosa" />);
     await waitFor(() => expect(screen.getByRole("textbox").textContent).toBe("Szene zwei."));
+  });
+});
+
+// --- The editable seam (the Codacy swap-window fix) -------------------------
+//
+// The zen swap's transition window (flush → invalidate → refetch → swap)
+// locks the LIVE editor: keystrokes in that window would die with the
+// unmount (the refetched body predates them). The lock is TipTap's own
+// editability — contenteditable flips, ProseMirror gates the edit events —
+// and lifts on the same instance, never a remount.
+
+describe("the editable seam — the swap window's lock", () => {
+  it("editable=false locks the live prose — keystrokes blocked, no onChange; the lift restores editing", async () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<SceneEditor body="Ein Satz." onChange={onChange} label="Prosa" />);
+    const box = await screen.findByRole("textbox");
+    await waitFor(() => expect(box.textContent).toBe("Ein Satz."));
+    expect(box.getAttribute("contenteditable")).toBe("true");
+    // The writer's seat is live when the window opens — the lock falls on
+    // the focused editor, exactly as the page's transition does.
+    box.focus();
+    rerender(<SceneEditor body="Ein Satz." onChange={onChange} label="Prosa" editable={false} />);
+    await waitFor(() => expect(box.getAttribute("contenteditable")).toBe("false"));
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await user.keyboard(" Mehr.");
+    expect(box.textContent).toBe("Ein Satz.");
+    expect(onChange).not.toHaveBeenCalled();
+    // The lift: the SAME instance edits again — no remount, no body reset.
+    rerender(<SceneEditor body="Ein Satz." onChange={onChange} label="Prosa" editable />);
+    await waitFor(() => expect(box.getAttribute("contenteditable")).toBe("true"));
+    await user.keyboard(" Mehr.");
+    expect(box.textContent).toContain("Mehr.");
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it("a locked prose refuses the ghost's Tab acceptance — the proposal stands for the next face", async () => {
+    const onChange = vi.fn();
+    const dismiss = vi.fn();
+    const continuation: Continuation = {
+      phase: "pending",
+      text: "Der Vorschlag steht.",
+      errorCode: null,
+      start: () => {},
+      dismiss,
+      retry: () => {},
+    };
+    const { rerender } = render(
+      <SceneEditor body="Der Nebel kam vom See." onChange={onChange} label="Prosa" continuation={continuation} />,
+    );
+    const box = await screen.findByRole("textbox");
+    await waitFor(() => expect(box.textContent).toContain("Der Nebel kam vom See."));
+    box.focus();
+    rerender(
+      <SceneEditor
+        body="Der Nebel kam vom See."
+        onChange={onChange}
+        label="Prosa"
+        continuation={continuation}
+        editable={false}
+      />,
+    );
+    await waitFor(() => expect(box.getAttribute("contenteditable")).toBe("false"));
+    fireEvent.keyDown(box, { key: "Tab" });
+    // The acceptance would insert words the unmount drops — it waits.
+    expect(onChange).not.toHaveBeenCalled();
+    expect(dismiss).not.toHaveBeenCalled();
+    expect(screen.getByTestId("ghost-preview").textContent).toContain("Der Vorschlag steht.");
   });
 });
 

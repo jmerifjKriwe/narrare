@@ -59,6 +59,12 @@
  * every doc change and selection move; the sentence geometry is the zen
  * seam's pure splitter, the position mapping the document's own (a hard
  * break is whitespace to the splitter, never a decoratable span).
+ *
+ * The editable seam (the Codacy swap-window fix): the page's zen transition
+ * (flush → invalidate → refetch → swap) locks the live prose through the
+ * `editable` prop — TipTap's setEditable, no update emission, no remount —
+ * so keystrokes in the window cannot die with the unmount; the ghost's Tab
+ * acceptance waits with the lock.
  */
 import { EditorContent, useEditor } from "@tiptap/react";
 import { Extension, type Editor } from "@tiptap/core";
@@ -422,6 +428,7 @@ export function SceneEditor({
   continuation,
   focus,
   autoFocus,
+  editable = true,
 }: {
   /** The scene's plain body — initializes the document once (mount-only). */
   body: string;
@@ -443,6 +450,13 @@ export function SceneEditor({
   /** Focus the prose tail once the editor mounts — the zen entry's seat
    *  (the writer lands where the writing continues). */
   autoFocus?: boolean;
+  /** The zen swap window's lock (the Codacy fix): false makes the LIVE
+   *  prose non-editable — TipTap's own editability, contenteditable flipped,
+   *  ProseMirror gating the edit events — so keystrokes in the transition
+   *  window (flush → invalidate → refetch → swap) cannot die with the
+   *  unmount. The lock lifts on the same instance, never a remount; the
+   *  ghost's Tab acceptance waits with it. Default true: the writing face. */
+  editable?: boolean;
 }) {
   const emit = useRef(onChange);
   emit.current = onChange;
@@ -484,6 +498,18 @@ export function SceneEditor({
     }
   }, [editor, focusMode]);
 
+  // The swap window's lock (the Codacy fix): editability rides TipTap's own
+  // setEditable — the view's contenteditable flips and ProseMirror gates the
+  // edit events, the caret and the document untouched. No update emission:
+  // a lock is not an edit, and a phantom onChange would schedule an autosave
+  // of unchanged words. The effect runs on the live instance, so the lock
+  // falls and lifts without a remount (a remount would re-initialize the
+  // body — the very loss the window exists to prevent).
+  useEffect(() => {
+    if (editor === null) return;
+    if (editor.isEditable !== editable) editor.setEditable(editable, false);
+  }, [editor, editable]);
+
   // The zen entry's seat: the caret lands at the prose tail once the
   // instance exists — the writer continues where the scene stands.
   useEffect(() => {
@@ -498,7 +524,16 @@ export function SceneEditor({
    *  proposal to drop again. */
   const accept = useCallback(() => {
     const proposal = ghost.current;
-    if (editor === null || proposal == null || proposal.phase !== "pending" || proposal.text === "") {
+    // A locked prose (the swap window) refuses the acceptance too: the
+    // inserted words would die with the unmount. The proposal stands for
+    // the next face — the page's one continuation rides the swap.
+    if (
+      editor === null ||
+      !editor.isEditable ||
+      proposal == null ||
+      proposal.phase !== "pending" ||
+      proposal.text === ""
+    ) {
       return;
     }
     const html = bodyToHtml(proposal.text);

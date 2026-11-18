@@ -1148,6 +1148,30 @@ describe("the continuation wiring (Task 16) — the page's own doors", () => {
   });
 });
 
+/** The world the refetch reads after a save — the typed body lands in the
+ *  cache the remounting editor initializes from (the flush-first rule).
+ *  Shared by the zen legs and the swap-window legs below. */
+function liveBodyWorld() {
+  let s12Body = S12.body;
+  scenesAnswer = async (chapterId) => ({
+    data: chapterId === "c1" ? [S11, { ...S12, body: s12Body }] : chapterId === "c2" ? [S21] : [],
+    response: ok(),
+  });
+  putSceneAnswer = async (sceneId, body) => {
+    const carried = (body as { body?: string }).body;
+    if (sceneId === "s12" && typeof carried === "string") s12Body = carried;
+    return { data: { ...S12, id: sceneId, ...(body as Partial<Scene>) }, response: ok() };
+  };
+}
+
+async function typeIntoProse(text: string) {
+  const user = userEvent.setup({ pointerEventsCheck: 0 });
+  const box = await screen.findByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] });
+  await waitFor(() => expect(box.textContent).not.toBe(""));
+  box.focus();
+  await user.keyboard(text);
+}
+
 describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
   const EXIT = de["writing.workspace.zen.exit"];
   const PROSE = de["writing.workspace.editor.proseLabel"];
@@ -1165,29 +1189,6 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     return fetchMock;
-  }
-
-  /** The world the refetch reads after a save — the typed body lands in the
-   *  cache the remounting editor initializes from (the flush-first rule). */
-  function liveBodyWorld() {
-    let s12Body = S12.body;
-    scenesAnswer = async (chapterId) => ({
-      data: chapterId === "c1" ? [S11, { ...S12, body: s12Body }] : chapterId === "c2" ? [S21] : [],
-      response: ok(),
-    });
-    putSceneAnswer = async (sceneId, body) => {
-      const carried = (body as { body?: string }).body;
-      if (sceneId === "s12" && typeof carried === "string") s12Body = carried;
-      return { data: { ...S12, id: sceneId, ...(body as Partial<Scene>) }, response: ok() };
-    };
-  }
-
-  async function typeIntoProse(text: string) {
-    const user = userEvent.setup({ pointerEventsCheck: 0 });
-    const box = await screen.findByRole("textbox", { name: PROSE });
-    await waitFor(() => expect(box.textContent).not.toBe(""));
-    box.focus();
-    await user.keyboard(text);
   }
 
   async function enterZen() {
@@ -1376,6 +1377,12 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(screen.getByRole("button", { name: EXIT })).toBeTruthy();
+    // The failed flush lifted the swap window — the room's prose edits
+    // again (the pin: a failed flush leaves editing ON).
+    const stayedBox = screen.getByRole("textbox", { name: PROSE });
+    expect(stayedBox.getAttribute("contenteditable")).toBe("true");
+    await typeIntoProse(" Bleibt.");
+    expect(stayedBox.textContent).toContain("Bleibt.");
     // The next exit ask fails again — the draft is still unsaved.
     fireEvent.keyDown(document, { key: "Escape" });
     expect(await screen.findByRole("alertdialog")).toBeTruthy();
@@ -1416,6 +1423,123 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
     await enterZen();
     expect(await screen.findByText(/Heute: — · Sitzung: 0 W/)).toBeTruthy();
+  });
+});
+
+describe("the zen swap window (the Codacy fix) — the transition locks the live editor", () => {
+  const PROSE = de["writing.workspace.editor.proseLabel"];
+  const FOCUS = de["writing.workspace.ribbon.focus"];
+  const FOCUS_BUSY = de["writing.workspace.ribbon.focusBusy"];
+  const EXIT = de["writing.workspace.zen.exit"];
+  const EXIT_BUSY = de["writing.workspace.zen.exitBusy"];
+
+  /** Hold the scene refetch the swap awaits — the window stands open until
+   *  release. Armed AFTER the initial reads, so only the swap's own refetch
+   *  (the flush's invalidation family) waits on the gate. */
+  function refetchGate() {
+    const base = scenesAnswer;
+    let held = false;
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    scenesAnswer = async (chapterId) => {
+      if (held) await gate;
+      return base(chapterId);
+    };
+    return {
+      hold: () => {
+        held = true;
+      },
+      release: () => release?.(),
+    };
+  }
+
+  it("entry: the window locks the desk editor and busies the Fokus door — the swap lifts both", async () => {
+    liveBodyWorld();
+    const gate = refetchGate();
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await typeIntoProse(" Mehr Text.");
+    const box = screen.getByRole("textbox", { name: PROSE });
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    gate.hold();
+    fireEvent.keyDown(document, { key: "F9" });
+    // The flush lands; the refetch the swap awaits is held — the window stands.
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    await waitFor(() => expect(box.getAttribute("contenteditable")).toBe("false"));
+    const door = screen.getByRole("button", { name: FOCUS_BUSY });
+    expect(door.hasAttribute("disabled")).toBe(true);
+    // Keystrokes in the window are blocked — they would die with the unmount
+    // (the refetched body predates them). No second write owes itself.
+    await user.keyboard(" Fensterwort.");
+    expect(box.textContent).not.toContain("Fensterwort.");
+    expect(api.PUT).toHaveBeenCalledTimes(1);
+    // A second F9 in the window is ignored — one swap, not a toggle race.
+    fireEvent.keyDown(document, { key: "F9" });
+    gate.release();
+    // The swap lands: the room stands on the saved words, its editor live,
+    // the pending flag lifted (the exit chip wears its resting face).
+    expect(await screen.findByRole("button", { name: EXIT })).toBeTruthy();
+    const zenBox = screen.getByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(zenBox.getAttribute("contenteditable")).toBe("true"));
+    expect(zenBox.textContent).toContain("Mehr Text.");
+    expect(zenBox.textContent).not.toContain("Fensterwort.");
+    expect(screen.getByRole("button", { name: EXIT }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("exit: the window locks the room editor and busies the exit chip — the swap lifts both", async () => {
+    liveBodyWorld();
+    const gate = refetchGate();
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.keyDown(document, { key: "F9" });
+    expect(await screen.findByRole("button", { name: EXIT })).toBeTruthy();
+    await typeIntoProse(" Noch ein Satz.");
+    const box = screen.getByRole("textbox", { name: PROSE });
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    gate.hold();
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    await waitFor(() => expect(box.getAttribute("contenteditable")).toBe("false"));
+    const chip = screen.getByRole("button", { name: EXIT_BUSY });
+    expect(chip.hasAttribute("disabled")).toBe(true);
+    await user.keyboard(" Fensterwort.");
+    expect(box.textContent).not.toContain("Fensterwort.");
+    expect(api.PUT).toHaveBeenCalledTimes(1);
+    // A second Esc in the window is ignored — the guard owns no ask here.
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    gate.release();
+    // The desk returns on the saved words, its editor live, the door resting.
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+    const deskBox = screen.getByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(deskBox.getAttribute("contenteditable")).toBe("true"));
+    expect(deskBox.textContent).toContain("Noch ein Satz.");
+    expect(deskBox.textContent).not.toContain("Fensterwort.");
+    expect(screen.getByRole("button", { name: FOCUS }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("a failed entry flush keeps editing on — the window lifts, the room stays closed", async () => {
+    liveBodyWorld();
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await typeIntoProse(" Ungesichert.");
+    putSceneAnswer = async () => ({ data: undefined, response: new Response(null, { status: 503 }) });
+    fireEvent.keyDown(document, { key: "F9" });
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    // The failed flush keeps the room closed (the writer saves first) and
+    // lifts the window: the door rests, the prose edits again.
+    expect(screen.queryByRole("button", { name: EXIT })).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: FOCUS }).hasAttribute("disabled")).toBe(false),
+    );
+    const box = screen.getByRole("textbox", { name: PROSE });
+    expect(box.getAttribute("contenteditable")).toBe("true");
+    box.focus();
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await user.keyboard(" Weiter.");
+    expect(box.textContent).toContain("Weiter.");
   });
 });
 

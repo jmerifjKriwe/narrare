@@ -101,6 +101,7 @@ function renderZen(
     continuation?: Continuation;
     onBodyChange?: (body: string) => void;
     onExit?: () => void;
+    zenBusy?: boolean;
   } = {},
 ) {
   const onBodyChange = props.onBodyChange ?? vi.fn();
@@ -114,6 +115,7 @@ function renderZen(
       continuation={continuation}
       onBodyChange={onBodyChange}
       onExit={onExit}
+      zenBusy={props.zenBusy ?? false}
     />,
   );
   return { onBodyChange, onExit, continuation };
@@ -173,6 +175,19 @@ describe("the zen anatomy — the round's zen-focus-2 authority", () => {
     const { onExit } = renderZen();
     fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.zen.exit"] }));
     expect(onExit).toHaveBeenCalledTimes(1);
+  });
+
+  it("a busy exit holds the chip and locks the prose — the swap window's face", async () => {
+    const { onExit } = renderZen({ zenBusy: true });
+    // The chip wears the family's busy face: the busy label, disabled.
+    const chip = screen.getByRole("button", { name: de["writing.workspace.zen.exitBusy"] });
+    expect(chip.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(chip);
+    expect(onExit).not.toHaveBeenCalled();
+    // The room's prose is locked — keystrokes in the window would die with
+    // the unmount (the refetched body predates them).
+    const box = await screen.findByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] });
+    await waitFor(() => expect(box.getAttribute("contenteditable")).toBe("false"));
   });
 });
 

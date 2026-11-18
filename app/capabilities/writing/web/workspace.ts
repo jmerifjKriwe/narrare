@@ -949,20 +949,34 @@ export interface ZenTimer {
 
 /**
  * The session-only pomodoro (D6, design §12): starts full and running —
- * the draft's timer is already on when the room opens — counts down one
- * second at a time, rests at zero (never negative), and keeps nothing:
- * no localStorage, no sessionStorage, no server row. The hook's lifetime
- * IS the session; the zen surface mounts it on entry and unmounts it on
- * exit, so a re-entry starts a fresh span by construction.
+ * the draft's timer is already on when the room opens — rests at zero
+ * (never negative), and keeps nothing: no localStorage, no sessionStorage,
+ * no server row. The hook's lifetime IS the session; the zen surface mounts
+ * it on entry and unmounts it on exit, so a re-entry starts a fresh span by
+ * construction.
+ *
+ * The remaining time reads a WALL-CLOCK DEADLINE, never the tick count
+ * (the Codacy drift fix): interval callbacks are throttled in background
+ * tabs and stop across a machine sleep — counting them would stretch the
+ * session past its span. The tick only re-renders the time the deadline
+ * already names; pause holds the exact remaining span and resume rebuilds
+ * the deadline from it, so a sleep while held spends nothing.
  */
 export function useZenTimer(): ZenTimer {
   const [remaining, setRemaining] = useState(POMODORO_SECONDS);
   const [running, setRunning] = useState(true);
   const done = remaining === 0;
+  // The instant the span ends (Date.now() ms). Rebuilt on resume/reset,
+  // never advanced by a tick — the clock is the authority.
+  const deadline = useRef(Date.now() + POMODORO_SECONDS * 1000);
+  // The exact span held at pause (ms) — null while running.
+  const held = useRef<number | null>(null);
 
   useEffect(() => {
     if (!running || done) return;
-    const id = window.setInterval(() => setRemaining((seconds) => Math.max(0, seconds - 1)), 1000);
+    const id = window.setInterval(() => {
+      setRemaining(Math.max(0, Math.ceil((deadline.current - Date.now()) / 1000)));
+    }, 1000);
     return () => window.clearInterval(id);
   }, [running, done]);
 
@@ -974,14 +988,30 @@ export function useZenTimer(): ZenTimer {
 
   const toggle = useCallback(() => {
     if (done) {
+      deadline.current = Date.now() + POMODORO_SECONDS * 1000;
+      held.current = null;
       setRemaining(POMODORO_SECONDS);
       setRunning(true);
       return;
     }
-    setRunning((value) => !value);
-  }, [done]);
+    if (running) {
+      // Pause: hold the exact remainder and freeze the face on it — the
+      // last tick may be a fraction of a second behind the clock.
+      held.current = Math.max(0, deadline.current - Date.now());
+      setRemaining(Math.ceil(held.current / 1000));
+      setRunning(false);
+    } else {
+      // Resume: the held span becomes a fresh deadline from NOW — a sleep
+      // while paused spends none of it.
+      deadline.current = Date.now() + (held.current ?? POMODORO_SECONDS * 1000);
+      held.current = null;
+      setRunning(true);
+    }
+  }, [done, running]);
 
   const reset = useCallback(() => {
+    deadline.current = Date.now() + POMODORO_SECONDS * 1000;
+    held.current = null;
     setRemaining(POMODORO_SECONDS);
     setRunning(true);
   }, []);

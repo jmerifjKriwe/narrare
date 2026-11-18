@@ -1112,6 +1112,69 @@ describe("useZenTimer — the session-only pomodoro", () => {
     expect(result.current.remaining).toBe(POMODORO_SECONDS - 61);
   });
 
+  // The Codacy drift fix: the remaining time reads a wall-clock deadline,
+  // never the tick count. A throttled background tab (or a machine sleep)
+  // fires fewer ticks than seconds passed — counting callbacks would
+  // stretch the session past its span. The tick only re-renders the time
+  // the deadline already names.
+  it("a throttled tick cannot stretch the session — the remaining time tracks the wall clock", () => {
+    const intervals = vi.spyOn(window, "setInterval");
+    const { result } = renderHook(() => useZenTimer());
+    const tick = intervals.mock.calls.find((call) => call[1] === 1000)?.[0] as () => void;
+    // Sixty wall-clock seconds pass, but only ONE tick fires.
+    act(() => {
+      vi.setSystemTime(Date.now() + 60_000);
+      tick();
+    });
+    expect(result.current.remaining).toBe(POMODORO_SECONDS - 60);
+    intervals.mockRestore();
+  });
+
+  it("a burst of ticks without wall time spends nothing — the deadline is the authority", () => {
+    const intervals = vi.spyOn(window, "setInterval");
+    const { result } = renderHook(() => useZenTimer());
+    const tick = intervals.mock.calls.find((call) => call[1] === 1000)?.[0] as () => void;
+    act(() => {
+      tick();
+      tick();
+      tick();
+      tick();
+      tick();
+    });
+    expect(result.current.remaining).toBe(POMODORO_SECONDS);
+    intervals.mockRestore();
+  });
+
+  it("pause holds the span across a clock jump — resume carries the held remainder", () => {
+    const { result } = renderHook(() => useZenTimer());
+    act(() => vi.advanceTimersByTime(10_000));
+    act(() => result.current.toggle());
+    // The machine sleeps an hour while the clock is held — the held span
+    // is the remainder at pause, not a deadline the sleep runs past.
+    act(() => vi.setSystemTime(Date.now() + 3_600_000));
+    expect(result.current.remaining).toBe(POMODORO_SECONDS - 10);
+    act(() => result.current.toggle());
+    act(() => vi.advanceTimersByTime(5_000));
+    expect(result.current.remaining).toBe(POMODORO_SECONDS - 15);
+  });
+
+  it("a sleep past the deadline expires honestly — the first tick after waking rests at zero", () => {
+    const intervals = vi.spyOn(window, "setInterval");
+    const { result } = renderHook(() => useZenTimer());
+    const tick = intervals.mock.calls.find((call) => call[1] === 1000)?.[0] as () => void;
+    act(() => {
+      vi.setSystemTime(Date.now() + POMODORO_SECONDS * 1000 + 60_000);
+      tick();
+    });
+    expect(result.current.remaining).toBe(0);
+    expect(result.current.done).toBe(true);
+    expect(result.current.running).toBe(false);
+    // Further ticks keep the rest — never negative, never a restart.
+    act(() => tick());
+    expect(result.current.remaining).toBe(0);
+    intervals.mockRestore();
+  });
+
   it("pause holds the clock, resume carries it on", () => {
     const { result } = renderHook(() => useZenTimer());
     act(() => vi.advanceTimersByTime(10_000));

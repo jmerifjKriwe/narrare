@@ -10,7 +10,10 @@
  * the manuscript head, and the room's own chrome replaces the app's — the
  * exit chip, the counters and the pomodoro above, the focus presets below.
  * The page owns the toggle and the flush-first leave; this component is
- * the room itself.
+ * the room itself. While the swap window stands (flush → invalidate →
+ * refetch → swap, the Codacy fix), the room's prose is locked and the exit
+ * chip wears the family's busy face — keystrokes in the window would die
+ * with the unmount (the refetched body predates them).
  *
  * What is REAL (D6, frontend-real): the Absatz-/Satz-/Normal dimming (the
  * editor's decoration plugin, the mode rides the segment control), the
@@ -52,6 +55,7 @@ import { Icon } from "@shell/ui/icons";
 import { todayState } from "./activity";
 import { PromptBar } from "./PromptBar";
 import { SceneEditor } from "./SceneEditor";
+import { Spinner } from "./TreeDialogs";
 import {
   formatClock,
   sceneCodeNumbers,
@@ -89,6 +93,7 @@ export function ZenMode({
   continuation,
   onBodyChange,
   onExit,
+  zenBusy,
 }: {
   novel: Novel;
   /** The active scene — the room's prose, overline and chapter head. */
@@ -102,6 +107,10 @@ export function ZenMode({
   onBodyChange: (body: string) => void;
   /** The exit chip's leave — the page flushes first (the leave guard's rule). */
   onExit: () => void;
+  /** The zen swap window stands (the page's flush → invalidate → refetch
+   *  → swap): the exit chip wears the family's busy face and the prose is
+   *  locked — keystrokes in the window would die with the unmount. */
+  zenBusy: boolean;
 }) {
   const t = useTranslation();
   const roomRef = useRef<HTMLDivElement>(null);
@@ -221,12 +230,13 @@ export function ZenMode({
           <button
             type="button"
             onClick={onExit}
-            aria-label={t("writing.workspace.zen.exit")}
+            disabled={zenBusy}
+            aria-label={t(zenBusy ? "writing.workspace.zen.exitBusy" : "writing.workspace.zen.exit")}
             aria-keyshortcuts="Escape"
-            className={`group flex items-center gap-2 rounded-lg border border-border/70 bg-card/80 px-3 py-1.5 text-meta text-muted shadow-sm backdrop-blur-md transition-all hover:bg-card hover:text-foreground ${FOCUS}`}
+            className={`group flex items-center gap-2 rounded-lg border border-border/70 bg-card/80 px-3 py-1.5 text-meta text-muted shadow-sm backdrop-blur-md transition-all hover:bg-card hover:text-foreground ${FOCUS} ${zenBusy ? "cursor-not-allowed opacity-60" : ""}`}
           >
-            <Icon name="arrowLeft" size={15} />
-            <span>{t("writing.workspace.zen.exit")}</span>
+            {zenBusy ? <Spinner tone="muted" /> : <Icon name="arrowLeft" size={15} />}
+            <span>{t(zenBusy ? "writing.workspace.zen.exitBusy" : "writing.workspace.zen.exit")}</span>
             <kbd className="ml-1 rounded border border-border bg-soft/80 px-1.5 py-0.5 font-mono text-[10px] text-muted/80">
               Esc
             </kbd>
@@ -313,6 +323,7 @@ export function ZenMode({
               continuation={continuation}
               focus={focus}
               autoFocus
+              editable={!zenBusy}
               onChange={handleBodyChange}
             />
           </div>

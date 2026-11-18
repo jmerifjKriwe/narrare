@@ -54,6 +54,7 @@ import { useCallback, useState } from "react";
 
 import { PromptBar } from "./PromptBar";
 import { SceneEditor } from "./SceneEditor";
+import { Spinner } from "./TreeDialogs";
 import type { Continuation, SceneEntry } from "./workspace";
 import { sceneCodeNumbers, sceneTitle, takeDeskFocus } from "./workspace";
 
@@ -117,12 +118,14 @@ function Ribbon({
   status,
   onEnterZen,
   onEditTarget,
+  zenBusy,
 }: {
   novel: Novel;
   entry: SceneEntry;
   status: SaveStatus;
   onEnterZen: () => void;
   onEditTarget: () => void;
+  zenBusy: boolean;
 }) {
   const t = useTranslation();
   const code = sceneCodeNumbers(entry);
@@ -167,16 +170,20 @@ function Ribbon({
       <div className="flex shrink-0 items-center gap-1.5">
         {/* Fokus: LIVE (Task 18, D19) — the door opens the zen room; F9 is
             the keyboard's own way in (the page owns the toggle). The exit
-            returns the focus here (the dialogs' focus-return discipline). */}
+            returns the focus here (the dialogs' focus-return discipline).
+            While the swap window stands (the page's flush → invalidate →
+            refetch → swap), the door wears the family's busy face — the
+            spinner, the busy label, disabled — and the prose is locked. */}
         <button
           type="button"
           id="workspace-focus-door"
           ref={focusDoorRef}
           onClick={onEnterZen}
-          className={`flex items-center gap-1 rounded border border-border/70 bg-surface-container-low/40 px-2.5 py-1 text-meta text-muted transition-colors hover:text-foreground ${FOCUS}`}
+          disabled={zenBusy}
+          className={`flex items-center gap-1 rounded border border-border/70 bg-surface-container-low/40 px-2.5 py-1 text-meta text-muted transition-colors hover:text-foreground ${FOCUS} ${zenBusy ? "cursor-not-allowed opacity-60" : ""}`}
         >
-          <Icon name="focus" size={12} />
-          <span>{t("writing.workspace.ribbon.focus")}</span>
+          {zenBusy ? <Spinner tone="muted" /> : <Icon name="focus" size={12} />}
+          <span>{t(zenBusy ? "writing.workspace.ribbon.focusBusy" : "writing.workspace.ribbon.focus")}</span>
         </button>
         {/* Verlauf: INTERIM #875 — the editing wave's revision-history
             surface; the light draft's honest note wins over the dark's
@@ -246,6 +253,7 @@ function ScenePaper({
   onRetry,
   onBodyChange,
   continuation,
+  zenBusy,
 }: {
   novel: Novel;
   entry: SceneEntry;
@@ -253,6 +261,7 @@ function ScenePaper({
   onRetry: () => void;
   onBodyChange: (body: string) => void;
   continuation: Continuation;
+  zenBusy: boolean;
 }) {
   const t = useTranslation();
   const locale = activeLocale();
@@ -309,6 +318,7 @@ function ScenePaper({
             body={entry.scene.body}
             label={t("writing.workspace.editor.proseLabel")}
             continuation={continuation}
+            editable={!zenBusy}
             onChange={(body) => {
               setWords(countWords(body));
               onBodyChange(body);
@@ -348,6 +358,7 @@ export function EditorColumn({
   onEnterZen,
   onEditTarget,
   continuation,
+  zenBusy,
 }: {
   novel: Novel;
   /** The active scene — null on the empty faces. */
@@ -371,6 +382,10 @@ export function EditorColumn({
   /** The continuation's state (the page's hook) — the ghost layer and the
    *  prompt bar ride it; the empty faces carry neither. */
   continuation: Continuation;
+  /** The zen swap window stands (the page's flush → invalidate → refetch
+   *  → swap): the Fokus door wears the family's busy face and the prose is
+   *  locked — keystrokes in the window would die with the unmount. */
+  zenBusy: boolean;
 }) {
   const t = useTranslation();
   return (
@@ -379,7 +394,7 @@ export function EditorColumn({
       className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-surface-container-low"
     >
       {entry !== null && (
-        <Ribbon novel={novel} entry={entry} status={status} onEnterZen={onEnterZen} onEditTarget={onEditTarget} />
+        <Ribbon novel={novel} entry={entry} status={status} onEnterZen={onEnterZen} onEditTarget={onEditTarget} zenBusy={zenBusy} />
       )}
       {/* The scrolling stage — tabIndex gives the scroll region keyboard
           access (axe scrollable-region-focusable); the prose itself is a
@@ -399,6 +414,7 @@ export function EditorColumn({
             onRetry={onRetry}
             onBodyChange={onBodyChange}
             continuation={continuation}
+            zenBusy={zenBusy}
           />
         ) : emptyChapter ? (
           /* Kachel 4 — the empty chapter: the scene explained, the

@@ -126,6 +126,7 @@ function renderColumn(
     onEnterZen?: () => void;
     onEditTarget?: () => void;
     continuation?: Continuation;
+    zenBusy?: boolean;
   } = {},
 ) {
   const onRetry = props.onRetry ?? vi.fn();
@@ -145,6 +146,7 @@ function renderColumn(
       onEnterZen={onEnterZen}
       onEditTarget={onEditTarget}
       continuation={props.continuation ?? continuationOf()}
+      zenBusy={props.zenBusy ?? false}
     />,
   );
   return { ...utils, onRetry, onBodyChange, onCreateScene, onEnterZen, onEditTarget };
@@ -176,6 +178,7 @@ describe("the scene face", () => {
         onCreateScene={vi.fn()}
         onEnterZen={vi.fn()}
         onEditTarget={vi.fn()}
+        zenBusy={false}
         continuation={continuationOf()}
       />,
     );
@@ -206,6 +209,7 @@ describe("the scene face", () => {
         onCreateScene={vi.fn()}
         onEnterZen={vi.fn()}
         onEditTarget={vi.fn()}
+        zenBusy={false}
         continuation={continuationOf()}
       />,
     );
@@ -228,6 +232,7 @@ describe("the scene face", () => {
         onCreateScene={vi.fn()}
         onEnterZen={vi.fn()}
         onEditTarget={vi.fn()}
+        zenBusy={false}
         continuation={continuationOf()}
       />,
     );
@@ -243,6 +248,7 @@ describe("the scene face", () => {
         onCreateScene={vi.fn()}
         onEnterZen={vi.fn()}
         onEditTarget={vi.fn()}
+        zenBusy={false}
         continuation={continuationOf()}
       />,
     );
@@ -260,6 +266,7 @@ describe("the scene face", () => {
         onCreateScene={vi.fn()}
         onEnterZen={vi.fn()}
         onEditTarget={vi.fn()}
+        zenBusy={false}
         continuation={continuationOf()}
       />,
     );
@@ -345,6 +352,7 @@ describe("the ribbon", () => {
           onCreateScene={vi.fn()}
           onEnterZen={vi.fn()}
           onEditTarget={vi.fn()}
+          zenBusy={false}
           continuation={continuationOf()}
         />,
       );
@@ -399,6 +407,20 @@ describe("the ribbon", () => {
     expect(door.getAttribute("title")).toBeNull();
     fireEvent.click(door);
     expect(onEnterZen).toHaveBeenCalledTimes(1);
+  });
+
+  it("a busy zen transition holds the Fokus door and locks the prose — the family's busy face", async () => {
+    const { onEnterZen } = renderColumn({ zenBusy: true });
+    const ribbon = screen.getByTestId("workspace-ribbon");
+    // The door wears the family's busy face: the busy label, disabled.
+    const door = within(ribbon).getByRole("button", { name: de["writing.workspace.ribbon.focusBusy"] });
+    expect(door.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(door);
+    expect(onEnterZen).not.toHaveBeenCalled();
+    // The live prose is locked — keystrokes in the swap window would die
+    // with the unmount (the refetched body predates them).
+    const box = await screen.findByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] });
+    await waitFor(() => expect(box.getAttribute("contenteditable")).toBe("false"));
   });
 });
 

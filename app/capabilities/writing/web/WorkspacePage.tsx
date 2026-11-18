@@ -31,8 +31,13 @@
  * cache catch up before the surface swaps (each face's editor initializes
  * from the cache on mount — a stale remount would drop unsaved words); a
  * failed exit flush raises the same guard: stay in zen, or discard and
- * go. The room mounts OVER the columns — one live editor at a time, the
- * page's one autosave and one continuation serve both faces.
+ * go. The swap window is LOCKED (the Codacy fix): the transition flag
+ * spans flush → invalidate → await-refetch → swap on both directions, the
+ * active editor is non-editable while it stands (keystrokes in the window
+ * would die with the unmount), the face's zen trigger wears the family's
+ * busy face, and a failed flush lifts the flag — editing stays on. The
+ * room mounts OVER the columns — one live editor at a time, the page's
+ * one autosave and one continuation serve both faces.
  *
  * The tree's CRUD is LIVE (Task 13): the page owns the writes the explorer
  * asks for — create (chapter zero scenes, D16's empty-chapter face the
@@ -170,6 +175,12 @@ export function WorkspacePage() {
   // flush waits here for the guard's answer, the pendingSelect discipline.
   const [zen, setZen] = useState(false);
   const [pendingZenExit, setPendingZenExit] = useState(false);
+  // The swap window (the Codacy fix): entry and exit span flush →
+  // invalidate → await-refetch → swap. While it stands, the ACTIVE editor
+  // is non-editable and the face's zen trigger wears the family's busy
+  // face — keystrokes in the window would die with the unmount (the
+  // refetched body predates them). A failed flush lifts it: editing stays on.
+  const [zenTransition, setZenTransition] = useState(false);
   // Task 19: the book-settings dialog (the identity card's door) and the
   // inline goal setters (D20 — the ring's daily, the pill's chapter).
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -187,6 +198,7 @@ export function WorkspacePage() {
     setNotice(null);
     setZen(false);
     setPendingZenExit(false);
+    setZenTransition(false);
     setSettingsOpen(false);
     setGoalDialog(null);
   }, [novelId]);
@@ -283,27 +295,45 @@ export function WorkspacePage() {
   // unsaved words from the document. A failed entry flush keeps the room
   // closed (the autosave's failure face stands — the writer saves first);
   // a failed exit flush raises the guard: stay in zen, or discard and go.
+  //
+  // The swap window (the Codacy fix): between the flush resolving and the
+  // swap committing, the OLD editor stays mounted — and editable, before
+  // the fix. Keystrokes in that window died with the unmount (the refetched
+  // body predates them). The transition flag spans flush → invalidate →
+  // await-refetch → swap on BOTH directions: while it stands, the active
+  // editor is non-editable (SceneEditor's editable seam) and the face's zen
+  // trigger wears the family's busy face; a re-trigger is ignored. A failed
+  // flush lifts the flag — editing stays on.
   const requestZenEntry = useCallback(() => {
     const target = activeEntryRef.current;
-    if (target === null) return;
+    if (target === null || zenTransitionRef.current) return;
+    setZenTransition(true);
     void autosaveRef.current.flush().then(async (outcome) => {
-      if (outcome === "failed") return;
+      if (outcome === "failed") {
+        setZenTransition(false);
+        return;
+      }
       await queryClient.invalidateQueries({ queryKey: ["scenes", target.chapter.id] });
       setZen(true);
+      setZenTransition(false);
     });
   }, []);
 
   const requestZenExit = useCallback(() => {
     const target = activeEntryRef.current;
+    if (zenTransitionRef.current) return;
+    setZenTransition(true);
     void autosaveRef.current.flush().then(async (outcome) => {
       if (outcome === "failed") {
         setPendingZenExit(true);
+        setZenTransition(false);
         return;
       }
       if (target !== null) {
         await queryClient.invalidateQueries({ queryKey: ["scenes", target.chapter.id] });
       }
       setZen(false);
+      setZenTransition(false);
       returnFocusToDesk();
     });
   }, []);
@@ -326,6 +356,8 @@ export function WorkspacePage() {
   // dark face pins the rule).
   const zenRef = useRef(zen);
   zenRef.current = zen;
+  const zenTransitionRef = useRef(zenTransition);
+  zenTransitionRef.current = zenTransition;
   const continuationRef = useRef(continuation);
   continuationRef.current = continuation;
   const activeEntryRef = useRef(activeEntry);
@@ -333,6 +365,9 @@ export function WorkspacePage() {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.repeat) return;
+      // The swap window owns the toggle — a re-trigger mid-transition is
+      // ignored (one swap at a time; the busy doors hold the pointer too).
+      if (zenTransitionRef.current) return;
       if (event.key === "F9") {
         if (guardRef.current !== null || overlayRef.current) return;
         if (activeEntryRef.current === null) return;
@@ -600,6 +635,7 @@ export function WorkspacePage() {
           continuation={continuation}
           onBodyChange={handleBodyChange}
           onExit={requestZenExit}
+          zenBusy={zenTransition}
         />
       ) : (
         <div className="flex h-full overflow-hidden">
@@ -663,6 +699,7 @@ export function WorkspacePage() {
               if (activeChapter !== null) setGoalDialog({ kind: "chapter", chapter: activeChapter });
             }}
             continuation={continuation}
+            zenBusy={zenTransition}
           />
           <InspectorDock novel={novel.data} />
         </div>
