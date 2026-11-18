@@ -77,6 +77,10 @@ function FindingCard({
 }) {
   const ackBusy = acknowledge.isPending && acknowledge.variables === finding.id;
   const dismissBusy = dismiss.isPending && dismiss.variables === finding.id;
+  // One outstanding decision locks BOTH doors on its card: the server
+  // consumes the finding once, so the sibling click would race the same
+  // row into a 409. The busy ink stays on the door whose ask is in flight.
+  const busy = ackBusy || dismissBusy;
   const failed =
     (acknowledge.isError && acknowledge.variables === finding.id) ||
     (dismiss.isError && dismiss.variables === finding.id);
@@ -105,7 +109,7 @@ function FindingCard({
       <div className="flex items-center gap-1.5 pl-2">
         <button
           type="button"
-          disabled={ackBusy}
+          disabled={busy}
           aria-busy={ackBusy}
           onClick={() => acknowledge.mutate(finding.id)}
           className={`flex items-center gap-1 rounded bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground shadow-sm transition-all hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`}
@@ -115,7 +119,7 @@ function FindingCard({
         </button>
         <button
           type="button"
-          disabled={dismissBusy}
+          disabled={busy}
           aria-busy={dismissBusy}
           onClick={() => dismiss.mutate(finding.id)}
           className={`rounded px-2 py-1 text-[11px] font-medium text-muted transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`}

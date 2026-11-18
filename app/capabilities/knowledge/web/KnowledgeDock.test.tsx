@@ -268,12 +268,44 @@ describe("the two review decisions are real mutations", () => {
     fireEvent.click(ack);
     await waitFor(() => expect((ack as HTMLButtonElement).disabled).toBe(true));
     expect(ack.getAttribute("aria-busy")).toBe("true");
+    // The card's OTHER door locks with it — the server consumes the
+    // finding once, so a sibling click would race the same row into a 409.
+    const ownDismiss = within(cards[0]).getByRole("button", { name: de["knowledge.dock.dismiss"] });
+    expect((ownDismiss as HTMLButtonElement).disabled).toBe(true);
     // The sibling card's decisions stay live — one pending ask locks one
     // card, never the whole queue.
     const sibling = within(cards[1]).getByRole("button", { name: de["knowledge.dock.acknowledge"] });
     expect((sibling as HTMLButtonElement).disabled).toBe(false);
+    const siblingDismiss = within(cards[1]).getByRole("button", { name: de["knowledge.dock.dismiss"] });
+    expect((siblingDismiss as HTMLButtonElement).disabled).toBe(false);
     queue = [F2];
     resolveAck({ data: findingRow({ status: "acknowledged" }), response: ok() });
+    await waitFor(() => expect(screen.getAllByTestId("knowledge-finding")).toHaveLength(1));
+  });
+
+  it("a pending dismiss locks its card's acknowledge too — the guard is symmetric", async () => {
+    let resolveDismiss: (value: { data: Finding; response: Response }) => void = () => {};
+    api.POST.mockImplementation(
+      (path: string) =>
+        new Promise((resolve) => {
+          if (path === "/api/knowledge/findings/{finding_id}/dismiss") resolveDismiss = resolve;
+        }),
+    );
+    await renderDock();
+    const cards = await screen.findAllByTestId("knowledge-finding");
+    const dismiss = within(cards[1]).getByRole("button", { name: de["knowledge.dock.dismiss"] });
+    fireEvent.click(dismiss);
+    await waitFor(() => expect((dismiss as HTMLButtonElement).disabled).toBe(true));
+    expect(dismiss.getAttribute("aria-busy")).toBe("true");
+    const ownAck = within(cards[1]).getByRole("button", { name: de["knowledge.dock.acknowledge"] });
+    expect((ownAck as HTMLButtonElement).disabled).toBe(true);
+    // The busy ink stays on the door whose ask is in flight — the locked
+    // sibling is disabled, not busy.
+    expect(ownAck.getAttribute("aria-busy")).toBe("false");
+    const otherAck = within(cards[0]).getByRole("button", { name: de["knowledge.dock.acknowledge"] });
+    expect((otherAck as HTMLButtonElement).disabled).toBe(false);
+    queue = [findingRow()];
+    resolveDismiss({ data: findingRow({ id: "f2", status: "dismissed" }), response: ok() });
     await waitFor(() => expect(screen.getAllByTestId("knowledge-finding")).toHaveLength(1));
   });
 
