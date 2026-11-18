@@ -13,8 +13,24 @@
  * Sektion 04 — the workspace draft's 48×64 chip is a mock object, the
  * cover system owns its sizes), and the dock speaks du-tone in all three
  * catalogs, never a German fallback.
+ *
+ * W5 Task 1's pins: the dock registry composes through the generated
+ * table — one tab per row, the matched child route is the open state,
+ * the knowledge region yields to the Outlet while the atmosphere and
+ * cover slots stand. The harness mirrors the generated composition: a
+ * workspace route hosting the dock, a child route at the registry's own
+ * path standing in for the capability face (the face itself is pinned
+ * in its own capability's tests).
  */
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -23,6 +39,7 @@ vi.mock("@shell/lib/api/client", () => ({
 
 import type { Novel } from "@shell/lib/api/client";
 import { catalogs } from "@shell/lib/generated/catalogs";
+import { docks } from "@shell/lib/generated/docks";
 import { applyLocale } from "@shell/lib/locale";
 
 import { InspectorDock } from "./InspectorDock";
@@ -51,6 +68,37 @@ function novelRow(overrides: Partial<Novel> = {}): Novel {
   };
 }
 
+/** The dock under a bare router root — the registry's tabs navigate and
+ *  the Outlet reads the matched child, so the chrome needs the router
+ *  context the workspace provides. The child route stands at the
+ *  registry's own path: a drifted registry row would miss the match and
+ *  fail the composition pins below. */
+const harnessRoot = createRootRoute({ component: () => <Outlet /> });
+
+async function renderDock(novel: Novel = novelRow(), entry?: string) {
+  const workspace = createRoute({
+    getParentRoute: () => harnessRoot,
+    path: "/novels/$novelId",
+    component: () => <InspectorDock novel={novel} />,
+  });
+  const dockChildren = docks.map((dock) =>
+    createRoute({
+      getParentRoute: () => workspace,
+      // The registry's path is the full route id under the root; the
+      // child's own segment is its last piece.
+      path: dock.path.split("/").pop() as string,
+      component: () => <div data-testid="dock-face-marker">{dock.id} face</div>,
+    }),
+  );
+  const router = createRouter({
+    routeTree: harnessRoot.addChildren([workspace.addChildren(dockChildren)]),
+    history: createMemoryHistory({ initialEntries: [entry ?? `/novels/${novel.id}`] }),
+  });
+  await router.load();
+  render(<RouterProvider router={router} />);
+  return router;
+}
+
 beforeEach(() => {
   applyLocale("de");
   vi.stubGlobal("navigator", { language: "de-DE", languages: ["de-DE"] });
@@ -62,13 +110,13 @@ afterEach(() => {
 });
 
 describe("the dock's neutral geometry", () => {
-  it("the header names the consistency checker with the neutral badge", () => {
-    render(<InspectorDock novel={novelRow()} />);
+  it("the header names the consistency checker with the neutral badge", async () => {
+    await renderDock();
     expect(screen.getByRole("heading", { name: de["writing.workspace.dock.title"] })).toBeTruthy();
   });
 
-  it("the finding card stays neutral until the knowledge wave (#866)", () => {
-    render(<InspectorDock novel={novelRow()} />);
+  it("the finding card stays neutral until the knowledge wave (#866)", async () => {
+    await renderDock();
     const card = screen.getByTestId("dock-finding");
     expect(within(card).getByText(de["writing.workspace.dock.finding"])).toBeTruthy();
     expect(within(card).getByText(de["writing.workspace.dock.findingEmpty"])).toBeTruthy();
@@ -76,8 +124,8 @@ describe("the dock's neutral geometry", () => {
     expect(card.className).toContain("border-dashed");
   });
 
-  it("the entity spotlight keeps its neutral fields and the disabled wiki door (#867)", () => {
-    render(<InspectorDock novel={novelRow()} />);
+  it("the entity spotlight keeps its neutral fields and the disabled wiki door (#867)", async () => {
+    await renderDock();
     const card = screen.getByTestId("dock-entity");
     for (const key of [
       "writing.workspace.dock.entityName",
@@ -90,16 +138,16 @@ describe("the dock's neutral geometry", () => {
     expect(wiki.hasAttribute("disabled")).toBe(true);
   });
 
-  it("the atmosphere grid keeps its neutral values — no mock scene label (#868)", () => {
-    render(<InspectorDock novel={novelRow()} />);
+  it("the atmosphere grid keeps its neutral values — no mock scene label (#868)", async () => {
+    await renderDock();
     const card = screen.getByTestId("dock-atmosphere");
     expect(within(card).getByText(de["writing.workspace.dock.light"])).toBeTruthy();
     expect(within(card).getByText(de["writing.workspace.dock.acoustics"])).toBeTruthy();
     expect(screen.queryByText("Permafrost Station 7")).toBeNull();
   });
 
-  it("the foot's ⌘J chip and layout tune stay disabled with their marks (#869, #881)", () => {
-    render(<InspectorDock novel={novelRow()} />);
+  it("the foot's ⌘J chip and layout tune stay disabled with their marks (#869, #881)", async () => {
+    await renderDock();
     const foot = screen.getByTestId("dock-foot");
     const assistant = within(foot).getByText(de["writing.workspace.dock.assistant"]);
     expect(assistant.closest("[aria-disabled='true']")).not.toBeNull();
@@ -114,27 +162,27 @@ describe("the interim notes speak their child issue's own language", () => {
   // The literals are the issues' own words (#866, #881) — a catalog echo
   // would pass with any copy; these pin the note to the issue's language
   // so a drift in either home fails here.
-  it("the finding card carries #866's neutral pair verbatim", () => {
-    render(<InspectorDock novel={novelRow()} />);
+  it("the finding card carries #866's neutral pair verbatim", async () => {
+    await renderDock();
     const card = screen.getByTestId("dock-finding");
     expect(within(card).getByText("Keine offenen Brüche")).toBeTruthy();
     expect(within(card).getByText("Wird mit der Wissens-Welle aktiv")).toBeTruthy();
   });
 
-  it("the layout tune's tooltip is the draft's own parenthetical (#881)", () => {
+  it("the layout tune's tooltip is the draft's own parenthetical (#881)", async () => {
     // workspace-scene-centric.html, dock foot: title="Workspace-Layout
     // (später verfügbar)" — the note rides lowercase inside the brackets,
     // exactly as the light draft draws it (the dark face is enabled and
     // loses per the archive convention).
-    render(<InspectorDock novel={novelRow()} />);
+    await renderDock();
     const layout = within(screen.getByTestId("dock-foot")).getByRole("button", {
       name: "Workspace-Layout",
     });
     expect(layout.getAttribute("title")).toBe("Workspace-Layout (später verfügbar)");
   });
 
-  it("the ⌘J chip carries the „bald“ mark the issue names (#869)", () => {
-    render(<InspectorDock novel={novelRow()} />);
+  it("the ⌘J chip carries the „bald“ mark the issue names (#869)", async () => {
+    await renderDock();
     const foot = screen.getByTestId("dock-foot");
     expect(within(foot).getByText("bald")).toBeTruthy();
     expect(within(foot).getByText("KI-Assistent")).toBeTruthy();
@@ -143,8 +191,8 @@ describe("the interim notes speak their child issue's own language", () => {
 });
 
 describe("the cover miniature — the dock's one real card", () => {
-  it("renders the cover system's miniature with the book's own figures", () => {
-    render(<InspectorDock novel={novelRow()} />);
+  it("renders the cover system's miniature with the book's own figures", async () => {
+    await renderDock();
     const card = screen.getByTestId("dock-cover");
     // The cover system's monogram — the real object, never the draft's chip.
     expect(within(card).getByText("DS")).toBeTruthy();
@@ -155,25 +203,25 @@ describe("the cover miniature — the dock's one real card", () => {
     expect(within(card).getByText("2 % Gesamt")).toBeTruthy();
   });
 
-  it("a missing target keeps the honest neutral — no percent, empty track", () => {
-    render(<InspectorDock novel={novelRow({ target_words: null })} />);
+  it("a missing target keeps the honest neutral — no percent, empty track", async () => {
+    await renderDock(novelRow({ target_words: null }));
     const card = screen.getByTestId("dock-cover");
     expect(within(card).queryByText(/Gesamt/)).toBeNull();
     expect(within(card).getByText(/1\.855/)).toBeTruthy();
   });
 
-  it("the progress never overflows the track — a finished book reads 100", () => {
-    render(<InspectorDock novel={novelRow({ word_count: 90000 })} />);
+  it("the progress never overflows the track — a finished book reads 100", async () => {
+    await renderDock(novelRow({ word_count: 90000 }));
     const card = screen.getByTestId("dock-cover");
     expect(within(card).getByText("100 % Gesamt")).toBeTruthy();
   });
 
-  it("stands at the cover system's drafted miniature size — 36×48, monogram alone", () => {
+  it("stands at the cover system's drafted miniature size — 36×48, monogram alone", async () => {
     // cover-system.html Sektion 04 pins the miniature at 36 × 48 px with
     // the monogram alone; the workspace draft's 48×64 chip is a mock
     // object, the cover system owns its sizes (Task 11's recorded
     // deviation). The procedural cover renders, never the draft's chip.
-    render(<InspectorDock novel={novelRow()} />);
+    await renderDock();
     const card = screen.getByTestId("dock-cover");
     const cover = card.querySelector("[data-channel]");
     expect(cover).not.toBeNull();
@@ -186,11 +234,69 @@ describe("the cover miniature — the dock's one real card", () => {
   });
 });
 
+describe("the dock registry composition (W5 Task 1)", () => {
+  it("the registry's tab stands on the default face — named, unpressed", async () => {
+    await renderDock();
+    const group = screen.getByRole("group", { name: de["writing.workspace.dock.tabs"] });
+    const tab = within(group).getByRole("button", { name: de["knowledge.dockTitle"] });
+    expect(tab.getAttribute("aria-pressed")).toBe("false");
+    // The interim neutrals stand while no dock child is matched.
+    expect(screen.getByTestId("dock-finding")).toBeTruthy();
+    expect(screen.getByTestId("dock-entity")).toBeTruthy();
+  });
+
+  it("opening the tab navigates to the dock route — the knowledge region yields to the Outlet", async () => {
+    const router = await renderDock();
+    const group = screen.getByRole("group", { name: de["writing.workspace.dock.tabs"] });
+    fireEvent.click(within(group).getByRole("button", { name: de["knowledge.dockTitle"] }));
+    // The matched child renders through the Outlet; the two knowledge
+    // slots yield, the writing-owned slots stand (content, never slots).
+    expect(await screen.findByTestId("dock-face-marker")).toBeTruthy();
+    expect(screen.queryByTestId("dock-finding")).toBeNull();
+    expect(screen.queryByTestId("dock-entity")).toBeNull();
+    expect(screen.getByTestId("dock-atmosphere")).toBeTruthy();
+    expect(screen.getByTestId("dock-cover")).toBeTruthy();
+    expect(screen.getByTestId("dock-foot")).toBeTruthy();
+    // The URL is the open state — the registry row's own path.
+    expect(router.state.location.pathname).toBe(
+      `/novels/${novelRow().id}/${docks[0].path.split("/").pop() as string}`,
+    );
+    expect(
+      within(group).getByRole("button", { name: de["knowledge.dockTitle"] }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("the pressed tab closes the dock — the interim neutrals return", async () => {
+    const router = await renderDock();
+    const group = screen.getByRole("group", { name: de["writing.workspace.dock.tabs"] });
+    const tab = within(group).getByRole("button", { name: de["knowledge.dockTitle"] });
+    fireEvent.click(tab);
+    expect(await screen.findByTestId("dock-face-marker")).toBeTruthy();
+    fireEvent.click(tab);
+    await screen.findByTestId("dock-finding");
+    expect(screen.queryByTestId("dock-face-marker")).toBeNull();
+    expect(screen.getByTestId("dock-entity")).toBeTruthy();
+    expect(tab.getAttribute("aria-pressed")).toBe("false");
+    expect(router.state.location.pathname).toBe(`/novels/${novelRow().id}`);
+  });
+
+  it("the URL is the whole open state — a direct dock entry renders the face", async () => {
+    const novel = novelRow();
+    await renderDock(novel, `/novels/${novel.id}/${docks[0].path.split("/").pop() as string}`);
+    expect(screen.getByTestId("dock-face-marker")).toBeTruthy();
+    expect(screen.queryByTestId("dock-finding")).toBeNull();
+    const group = screen.getByRole("group", { name: de["writing.workspace.dock.tabs"] });
+    expect(
+      within(group).getByRole("button", { name: de["knowledge.dockTitle"] }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+});
+
 describe("the dock speaks du-tone in every catalog — no German fallback", () => {
-  it("the English face speaks the English catalog's own copy", () => {
+  it("the English face speaks the English catalog's own copy", async () => {
     applyLocale("en");
     const en = catalogs.en;
-    render(<InspectorDock novel={novelRow()} />);
+    await renderDock();
     expect(screen.getByRole("heading", { name: "Consistency Checker" })).toBeTruthy();
     const finding = screen.getByTestId("dock-finding");
     expect(within(finding).getByText("No open fractures")).toBeTruthy();
@@ -201,14 +307,20 @@ describe("the dock speaks du-tone in every catalog — no German fallback", () =
     expect(within(foot).getByRole("button", { name: "Workspace layout" }).getAttribute("title")).toBe(
       "Workspace layout (available later)",
     );
+    // The registry tab speaks the English catalog too.
+    expect(
+      within(screen.getByRole("group", { name: en["writing.workspace.dock.tabs"] })).getByRole("button", {
+        name: en["knowledge.dockTitle"],
+      }),
+    ).toBeTruthy();
     // The German copy is absent — the face is translated, not fallen back.
     expect(screen.queryByText("Keine offenen Brüche")).toBeNull();
     expect(screen.queryByText("Konsistenz-Prüfer")).toBeNull();
   });
 
-  it("the French face speaks the French catalog's own copy", () => {
+  it("the French face speaks the French catalog's own copy", async () => {
     applyLocale("fr");
-    render(<InspectorDock novel={novelRow()} />);
+    await renderDock();
     expect(screen.getByRole("heading", { name: "Vérificateur de cohérence" })).toBeTruthy();
     const finding = screen.getByTestId("dock-finding");
     expect(within(finding).getByText("Aucune fracture ouverte")).toBeTruthy();

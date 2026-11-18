@@ -301,6 +301,7 @@
   "writing.workspace.dock.meta": "Novel Metadata",
   "writing.workspace.dock.percentTotal": "{percent}% total",
   "writing.workspace.dock.soon": "soon",
+  "writing.workspace.dock.tabs": "Dock views",
   "writing.workspace.dock.target": "Planned length:",
   "writing.workspace.dock.title": "Consistency Checker",
   "writing.workspace.dock.wiki": "Open wiki",

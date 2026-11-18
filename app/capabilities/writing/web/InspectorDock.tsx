@@ -25,10 +25,24 @@
  * workspace draft's 48×64 chip is a mock object; the cover system owns
  * its sizes). The slots are the draft's: the knowledge/chat waves replace
  * content, never slots.
+ *
+ * W5 Task 1 opens the knowledge slot: the dock registry (the generated
+ * table, web/lib/generated/docks.ts) names one tab per capability dock,
+ * and the matched dock child route renders through the Outlet in the
+ * knowledge region — the finding card and the entity spotlight yield to
+ * the capability's own face. The composition is the generated route
+ * table's alone (rule 1): this file imports no capability, only the
+ * registry and the router. With no dock child matched the interim
+ * neutrals stand — the URL is the dock's whole open state, so the back
+ * button closes it. The tab's count badge and the header badge retire
+ * with #866 in Task 2.
  */
+
+import { Outlet, useChildMatches, useNavigate } from "@tanstack/react-router";
 
 import type { Novel } from "@shell/lib/api/client";
 import { BookCover } from "@shell/lib/cover/BookCover";
+import { docks } from "@shell/lib/generated/docks";
 import { useTranslation } from "@shell/lib/i18n";
 import { Icon } from "@shell/ui/icons";
 
@@ -50,8 +64,21 @@ function NeutralRow({ label }: { label: string }) {
   );
 }
 
+/** The shell's focus ring on every control the dock offers. */
+const FOCUS = "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
+
 export function InspectorDock({ novel }: { novel: Novel }) {
   const t = useTranslation();
+  const navigate = useNavigate();
+  // The matched child — not a local flag — is the dock's open state, so
+  // the URL is the whole truth and the back button closes it. The tab
+  // for a registry row is pressed exactly while that row's own route is
+  // the match; the workspace knows no dock by name (the registry is the
+  // whole vocabulary, and a new dock appears by existing in it).
+  const childMatches = useChildMatches();
+  const activeDock = docks.find((dock) =>
+    childMatches.some((match) => match.routeId === dock.path),
+  );
   const result = progress(novel.word_count, novel.target_words);
   return (
     <aside
@@ -60,7 +87,7 @@ export function InspectorDock({ novel }: { novel: Novel }) {
     >
       {/* The dock header — the checker's name and the neutral badge. The
           badge is the checker's own count: it ships „—" with the finding
-          card's family (INTERIM #866 — the knowledge wave fills both). */}
+          card's family (INTERIM #866 — Task 2 retires it with the count). */}
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-panel px-3.5">
         <div className="flex items-center gap-2">
           <span className="text-primary">
@@ -75,45 +102,99 @@ export function InspectorDock({ novel }: { novel: Novel }) {
         </span>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto p-3">
-        {/* Fund-Karte — INTERIM #866: the dashed placeholder, the knowledge
-            wave fills it from the findings API. No invented finding. */}
-        <div data-testid="dock-finding" className="rounded-lg border border-dashed border-border bg-panel p-3">
-          <div className="mb-1.5 flex items-center justify-between">
-            <span className={CARD_EYEBROW}>{t("writing.workspace.dock.finding")}</span>
-            <span className="font-mono text-muted">—</span>
-          </div>
-          <div className="space-y-1 py-3 text-center">
-            <span className="inline-block text-muted/60">
-              <Icon name="clock" size={20} />
-            </span>
-            <p className="text-meta font-medium text-muted">{t("writing.workspace.dock.findingEmpty")}</p>
-            <p className="text-[10px] text-muted">{t("writing.workspace.dock.findingNote")}</p>
-          </div>
+      {/* The dock registry's tabs (W5 Task 1) — the AI-dock draft's tab
+          switcher, one tab per registry row, the row's own glyph (the
+          icon set names the registry ids). Opening and closing are
+          navigations to and from the dock child route; the pressed tab
+          closes its dock. The count badge the draft draws beside the
+          label rides with #866's retirement (Task 2). */}
+      {docks.length > 0 && (
+        <div
+          role="group"
+          aria-label={t("writing.workspace.dock.tabs")}
+          className="flex shrink-0 items-center gap-1 border-b border-border bg-surface-container-low p-1.5"
+        >
+          {docks.map((dock) => {
+            const active = activeDock?.id === dock.id;
+            return (
+              <button
+                key={dock.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() =>
+                  void navigate(
+                    active
+                      ? { to: "/novels/$novelId", params: { novelId: novel.id } }
+                      : { to: dock.path, params: { novelId: novel.id } },
+                  )
+                }
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-meta font-medium transition-all ${FOCUS} ${
+                  active
+                    ? "bg-surface text-primary shadow-sm"
+                    : "text-muted hover:bg-surface hover:text-foreground"
+                }`}
+              >
+                <Icon name={dock.id} size={15} />
+                <span>{t(dock.titleKey)}</span>
+              </button>
+            );
+          })}
         </div>
+      )}
 
-        {/* Entity spotlight — INTERIM #867: neutral fields, the wiki door
-            disabled until the knowledge wave serves the content. */}
-        <div data-testid="dock-entity" className="space-y-2.5 rounded-lg border border-border bg-panel p-3 shadow-card">
-          <div className="flex items-center justify-between">
-            <span className={CARD_EYEBROW}>{t("writing.workspace.dock.entity")}</span>
-            <span className="font-mono text-muted">—</span>
-          </div>
-          <div className="space-y-1.5 py-1">
-            <NeutralRow label={t("writing.workspace.dock.entityName")} />
-            <NeutralRow label={t("writing.workspace.dock.entityFirst")} />
-            <NeutralRow label={t("writing.workspace.dock.entityBinding")} />
-          </div>
-          <button
-            type="button"
-            disabled
-            title={t("writing.workspace.dock.wikiNote")}
-            className="flex w-full cursor-not-allowed items-center justify-center gap-1 rounded border border-border/70 bg-surface-container-low/60 px-2 py-1.5 text-[11px] font-medium text-muted opacity-60"
-          >
-            <Icon name="menuBook" size={12} />
-            <span>{t("writing.workspace.dock.wiki")}</span>
-          </button>
-        </div>
+      <div className="flex-1 space-y-3 overflow-y-auto p-3">
+        {activeDock ? (
+          /* The knowledge region yields to the registry's matched dock:
+             the capability's own face renders through the Outlet the
+             generated route table parents here (rule 1 — no capability
+             import). The atmosphere and cover slots below stay standing:
+             the waves replace content, never slots. */
+          <Outlet />
+        ) : (
+          <>
+            {/* Fund-Karte — INTERIM #866: the dashed placeholder, the
+                knowledge wave fills it from the findings API (the Wissen
+                tab above opens the live face; Task 2 retires the interim).
+                No invented finding. */}
+            <div data-testid="dock-finding" className="rounded-lg border border-dashed border-border bg-panel p-3">
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className={CARD_EYEBROW}>{t("writing.workspace.dock.finding")}</span>
+                <span className="font-mono text-muted">—</span>
+              </div>
+              <div className="space-y-1 py-3 text-center">
+                <span className="inline-block text-muted/60">
+                  <Icon name="clock" size={20} />
+                </span>
+                <p className="text-meta font-medium text-muted">{t("writing.workspace.dock.findingEmpty")}</p>
+                <p className="text-[10px] text-muted">{t("writing.workspace.dock.findingNote")}</p>
+              </div>
+            </div>
+
+            {/* Entity spotlight — INTERIM #867: neutral fields, the wiki
+                door disabled until the knowledge wave serves the content
+                (Task 2 fills the dock's entity face). */}
+            <div data-testid="dock-entity" className="space-y-2.5 rounded-lg border border-border bg-panel p-3 shadow-card">
+              <div className="flex items-center justify-between">
+                <span className={CARD_EYEBROW}>{t("writing.workspace.dock.entity")}</span>
+                <span className="font-mono text-muted">—</span>
+              </div>
+              <div className="space-y-1.5 py-1">
+                <NeutralRow label={t("writing.workspace.dock.entityName")} />
+                <NeutralRow label={t("writing.workspace.dock.entityFirst")} />
+                <NeutralRow label={t("writing.workspace.dock.entityBinding")} />
+              </div>
+              <button
+                type="button"
+                disabled
+                title={t("writing.workspace.dock.wikiNote")}
+                className="flex w-full cursor-not-allowed items-center justify-center gap-1 rounded border border-border/70 bg-surface-container-low/60 px-2 py-1.5 text-[11px] font-medium text-muted opacity-60"
+              >
+                <Icon name="menuBook" size={12} />
+                <span>{t("writing.workspace.dock.wiki")}</span>
+              </button>
+            </div>
+          </>
+        )}
 
         {/* Atmosphere — INTERIM #868: no atmosphere fields exist; the grid
             keeps its geometry with neutral values, the label neutral too

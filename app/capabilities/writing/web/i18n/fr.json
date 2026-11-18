@@ -301,6 +301,7 @@
   "writing.workspace.dock.meta": "Métadonnées du roman",
   "writing.workspace.dock.percentTotal": "{percent} % du total",
   "writing.workspace.dock.soon": "bientôt",
+  "writing.workspace.dock.tabs": "Vues du dock",
   "writing.workspace.dock.target": "Longueur prévue :",
   "writing.workspace.dock.title": "Vérificateur de cohérence",
   "writing.workspace.dock.wiki": "Ouvrir le wiki",
