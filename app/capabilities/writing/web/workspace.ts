@@ -1016,3 +1016,22 @@ export function useSessionWords(initialBody: string): SessionWords {
   }, []);
   return { words, track };
 }
+
+// The zen exit's focus return (Task 21's fidelity gate). The desk's Fokus door
+// focuses itself when it remounts after the room leaves — a flag the door's ref
+// callback takes exactly at mount, not a timer. The columns remount in React's
+// async commit, so a rAF poll races it (the door is still null when the frame
+// fires, the focus strands on the body) and, retried, spins the event loop under
+// load. The flag is deterministic: no race, no overhead. The page sets it only
+// when the door is not already mounted; the door clears it by taking it.
+let deskFocusPending = false;
+
+export function requestDeskFocus(): void {
+  deskFocusPending = true;
+}
+
+export function takeDeskFocus(): boolean {
+  const pending = deskFocusPending;
+  deskFocusPending = false;
+  return pending;
+}

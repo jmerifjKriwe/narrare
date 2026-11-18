@@ -50,12 +50,12 @@ import { capitalizedWord } from "@shell/lib/numberWords";
 import { unsavedStatus, type SaveStatus } from "@shell/lib/saveStatus";
 import { countWords } from "@shell/lib/words";
 import { Icon } from "@shell/ui/icons";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { PromptBar } from "./PromptBar";
 import { SceneEditor } from "./SceneEditor";
 import type { Continuation, SceneEntry } from "./workspace";
-import { sceneCodeNumbers, sceneTitle } from "./workspace";
+import { sceneCodeNumbers, sceneTitle, takeDeskFocus } from "./workspace";
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
 const SERIF = "[font-family:var(--font-serif)]";
@@ -126,6 +126,13 @@ function Ribbon({
 }) {
   const t = useTranslation();
   const code = sceneCodeNumbers(entry);
+  // The zen exit's focus return (Task 21): the door takes the page's pending
+  // flag exactly when it remounts after the room leaves — deterministic, no
+  // rAF race with React's async commit. A stable ref, so it fires on mount
+  // alone, not on every re-render.
+  const focusDoorRef = useCallback((node: HTMLButtonElement | null) => {
+    if (node !== null && takeDeskFocus()) node.focus();
+  }, []);
   return (
     <div
       data-testid="workspace-ribbon"
@@ -164,6 +171,7 @@ function Ribbon({
         <button
           type="button"
           id="workspace-focus-door"
+          ref={focusDoorRef}
           onClick={onEnterZen}
           className={`flex items-center gap-1 rounded border border-border/70 bg-surface-container-low/40 px-2.5 py-1 text-meta text-muted transition-colors hover:text-foreground ${FOCUS}`}
         >

@@ -1358,7 +1358,8 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     expect(box.textContent).not.toContain("Words.");
     // The discard exit returns the desk's focus (the healthy exit's own
     // rule) — the guard's opener-restore no-ops on the detached zen node,
-    // so the exit carries it. rAF: one frame after the columns render.
+    // so the exit carries it. The door's ref takes the pending flag exactly
+    // at remount (Task 21's deterministic return, no rAF race).
     await waitFor(() =>
       expect(document.activeElement).toBe(
         screen.getByRole("button", { name: de["writing.workspace.ribbon.focus"] }),

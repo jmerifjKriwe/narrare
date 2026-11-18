@@ -89,6 +89,7 @@ import { useAutosave } from "./useAutosave";
 import {
   lastEditedEntry,
   orderedSceneEntries,
+  requestDeskFocus,
   rowsInOrder,
   scenesByChapterFrom,
   useChapterScenes,
@@ -123,10 +124,20 @@ type CrudDialog =
 /** Every zen exit's focus return — the ribbon door that opened the room
  *  (the dialogs' own focus-return discipline). ONE home: the healthy exit
  *  and the guard's discard branch both leave through here, so no exit
- *  strand the focus on the body. rAF: the columns render in the same
- *  commit the room leaves, the door exists one frame later. */
+ *  strands the focus on the body. The columns remount in the commit the room
+ *  leaves, but that commit is async — a rAF poll races it (the door is still
+ *  null when the frame fires; Task 21's E2E caught the race the unit act()
+ *  flush hid, and a retried poll spins the event loop under load). So the
+ *  return is deterministic: if the door is already mounted, focus it now;
+ *  otherwise leave the flag for the door's own ref callback, which takes it
+ *  exactly at remount (EditorColumn's `focusDoorRef`). No timer, no race. */
 function returnFocusToDesk(): void {
-  window.requestAnimationFrame(() => document.getElementById("workspace-focus-door")?.focus());
+  const door = document.getElementById("workspace-focus-door");
+  if (door !== null) {
+    door.focus();
+    return;
+  }
+  requestDeskFocus();
 }
 
 export function WorkspacePage() {

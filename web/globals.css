@@ -422,6 +422,18 @@ p.zen-dim-block:hover {
   transition: opacity 300ms;
 }
 
+/* The idle focus preset's ink (W4 Task 21's fidelity gate). The draft draws
+ * full muted on the soft/80 track (zen-focus-2.html:281/284). The light half
+ * clears AA there (4.6:1), but the dark token's muted on the same blended
+ * track lands at 4.1:1 — below the floor, because the soft wash is lighter
+ * than the card the muted token is measured against. So the dark half rides a
+ * lighter ink (foreground at 60%, 5.0:1 on the track) while the light keeps
+ * the draft's muted. Geometry, the pressed chip and the hover are untouched;
+ * the dim above is the room's one sanctioned below-AA exemption, this is not. */
+.zen-preset-idle {
+  color: light-dark(var(--muted), color-mix(in srgb, var(--foreground) 60%, transparent));
+}
+
 /* The active paragraph's focal card — the draft's raised card with the
  * terracotta bookmark notch (the Lesezeichen-Kerbe). The card spans the
  * prose column; its padding insets the focal paragraph the way the draft

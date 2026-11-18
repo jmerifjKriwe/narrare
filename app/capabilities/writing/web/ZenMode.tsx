@@ -196,7 +196,12 @@ export function ZenMode({
         aria-hidden="true"
         className="pointer-events-none fixed inset-y-0 left-0 z-10 flex w-8 select-none items-center justify-center"
       >
-        <div className="rotate-180 whitespace-nowrap text-eyebrow uppercase tracking-[0.24em] text-muted/40 [writing-mode:vertical-rl]">
+        {/* The draft's spine ink is muted/40 (zen-focus-2.html:174/179) — below
+            the AA floor (1.7:1). The fidelity gate rides it at full muted
+            (4.8:1 light / 5.1:1 dark), the PR4 ghost-ink discipline: geometry
+            kept, floor measured. The dim itself is the room's one sanctioned
+            below-AA exemption; the decoration is not. */}
+        <div className="rotate-180 whitespace-nowrap text-eyebrow uppercase tracking-[0.24em] text-muted [writing-mode:vertical-rl]">
           {t("writing.workspace.zen.spine")}
         </div>
       </aside>
@@ -204,7 +209,7 @@ export function ZenMode({
         aria-hidden="true"
         className="pointer-events-none fixed inset-y-0 right-0 z-10 flex w-8 select-none items-center justify-center"
       >
-        <div className="whitespace-nowrap text-eyebrow uppercase tracking-[0.24em] text-muted/40 [writing-mode:vertical-rl]">
+        <div className="whitespace-nowrap text-eyebrow uppercase tracking-[0.24em] text-muted [writing-mode:vertical-rl]">
           {t("writing.workspace.zen.spine")}
         </div>
       </aside>
@@ -275,7 +280,9 @@ export function ZenMode({
       <div className="flex min-h-full flex-col items-center justify-center px-6 pb-48 pt-24">
         <article className="w-full max-w-[36rem]">
           <header className="mb-10 select-none text-center">
-            <div className="mb-2 text-eyebrow uppercase tracking-[0.16em] text-muted/80">
+            {/* The draft's eyebrow is muted/80 (zen-focus-2.html:222, 3.3:1) —
+                the gate rides full muted so the book's own name clears AA. */}
+            <div className="mb-2 text-eyebrow uppercase tracking-[0.16em] text-muted">
               {t("writing.workspace.zen.eyebrow", { title: novel.title })}
             </div>
             <h1 className={`${SERIF} text-[2rem] font-medium leading-[1.2] tracking-tight text-primary`}>
@@ -286,7 +293,9 @@ export function ZenMode({
                 {overline}
               </p>
             )}
-            <div aria-hidden="true" className="mt-6 flex items-center justify-center gap-3 text-muted/40">
+            {/* The draft's divider ink is muted/40 (zen-focus-2.html:228) — the
+                gate rides full muted (the spine's discipline, same floor). */}
+            <div aria-hidden="true" className="mt-6 flex items-center justify-center gap-3 text-muted">
               <span className="h-px w-10 bg-border" />
               <span className="text-[10px] uppercase tracking-[0.2em]">
                 {t("writing.workspace.zen.focusDivider")}
@@ -307,8 +316,10 @@ export function ZenMode({
               onChange={handleBodyChange}
             />
           </div>
+          {/* The draft's end mark is muted/45 (zen-focus-2.html:265, 1.8:1) —
+              the gate rides full muted (the spine's discipline, same floor). */}
           <div aria-hidden="true" className="mt-14 select-none text-center">
-            <span className={`${SERIF} pl-2 text-lg font-medium tracking-[0.6em] text-muted/45`}>§ § §</span>
+            <span className={`${SERIF} pl-2 text-lg font-medium tracking-[0.6em] text-muted`}>§ § §</span>
           </div>
         </article>
       </div>
@@ -338,7 +349,7 @@ export function ZenMode({
                 className={`rounded-full px-3 py-1 text-meta transition-all ${FOCUS} ${
                   focus === preset.mode
                     ? "border border-border/50 bg-card font-semibold text-primary shadow-sm"
-                    : "font-medium text-muted hover:text-foreground"
+                    : "zen-preset-idle font-medium hover:text-foreground"
                 }`}
               >
                 {t(preset.key)}
