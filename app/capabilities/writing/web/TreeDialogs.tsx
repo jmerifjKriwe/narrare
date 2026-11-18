@@ -7,7 +7,9 @@
  * destructive calm for the delete (role="alertdialog", focus on the safe
  * answer, Escape cancels, the scrim does NOT dismiss — only the named
  * answers leave, the consequence on the delete control's own title, the
- * drafted second step).
+ * drafted second step). The keyboard discipline rides the shell's one home
+ * (`@shell/ui/modalKeys`, #895) — the trap and the wrap shared, the Escape
+ * answer the dialog's own.
  *
  * The edit carries the DIRTY-STATE RULE (the whole-branch review's ruling):
  * pristine — every field reads its stored value — keeps the scrim/Escape
@@ -34,11 +36,12 @@
  * row) is simply not focused, the shelf's own rule.
  */
 
-import { useEffect, useId, useRef, useState, type Ref, type RefObject } from "react";
+import { useEffect, useId, useRef, useState, type Ref } from "react";
 
 import type { Chapter } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { Icon } from "@shell/ui/icons";
+import { useModalKeys } from "@shell/ui/modalKeys";
 
 import {
   sceneTitle,
@@ -56,10 +59,6 @@ const SERIF = "[font-family:var(--font-serif)]";
 const FOCUS =
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
 
-/** The trap's population: every live control inside the panel, in DOM order. */
-const FOCUSABLE =
-  'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
-
 /** The schema's one length refusal, mirrored on the inputs so the writer
  *  meets the bound before the wire does. */
 const TITLE_MAX = 200;
@@ -75,39 +74,6 @@ function Spinner({ tone = "primary" }: { tone?: "primary" | "danger" }) {
       }`}
     />
   );
-}
-
-/** The modal shell's keyboard discipline: Tab wraps inside the panel at
- *  both ends; Escape answers through the caller's own rule. */
-function useModalKeys(panelRef: RefObject<HTMLDivElement | null>, onEscape: () => void) {
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onEscape();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const panel = panelRef.current;
-      if (panel === null) return;
-      const nodes = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (nodes.length === 0) return;
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      const active = document.activeElement;
-      if (event.shiftKey) {
-        if (active === first || !panel.contains(active)) {
-          event.preventDefault();
-          last.focus();
-        }
-      } else if (active === last || !panel.contains(active)) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [panelRef, onEscape]);
 }
 
 /** The loss-free error line with the retry that re-runs the very ask —
