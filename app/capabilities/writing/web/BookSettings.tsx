@@ -333,13 +333,15 @@ function SettingsForm({
   // --- The inline series create -----------------------------------------
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
-  const [createError, setCreateError] = useState(false);
+  // The create's refusal face: the duplicate name (409) speaks its own
+  // note, every other refusal the family's loss-free line.
+  const [createError, setCreateError] = useState<null | "duplicate" | "failed">(null);
   const createSeries = useCreateSeries();
 
   // --- The save ----------------------------------------------------------
   const updateNovel = useUpdateNovel(novel.id);
   const updateSettings = useUpdateSettings();
-  const busy = updateNovel.isPending || updateSettings.isPending;
+  const busy = updateNovel.isPending || updateSettings.isPending || createSeries.isPending;
   const [error, setError] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ title?: boolean; target?: boolean; daily?: boolean; volume?: boolean }>({});
 
@@ -456,7 +458,7 @@ function SettingsForm({
   function submitSeries() {
     const name = newName.trim();
     if (name === "" || createSeries.isPending) return;
-    setCreateError(false);
+    setCreateError(null);
     createSeries.mutate(
       { title: name },
       {
@@ -468,8 +470,10 @@ function SettingsForm({
           setSeriesId(row.id);
           setCreating(false);
           setNewName("");
+          setCreateError(null);
         },
-        onError: () => setCreateError(true),
+        onError: (failure) =>
+          setCreateError((failure as { status?: number }).status === 409 ? "duplicate" : "failed"),
       },
     );
   }
@@ -963,7 +967,7 @@ function SettingsForm({
                         onClick={() => {
                           setCreating(false);
                           setNewName("");
-                          setCreateError(false);
+                          setCreateError(null);
                         }}
                         className={`h-9 shrink-0 rounded border border-border px-2.5 text-label text-muted transition-colors hover:bg-surface-container ${FOCUS}`}
                       >
@@ -972,7 +976,11 @@ function SettingsForm({
                     </div>
                     {createError && (
                       <p role="alert" className="text-meta text-danger">
-                        {t("writing.settings.seriesCreateError")}
+                        {t(
+                          createError === "duplicate"
+                            ? "writing.settings.seriesDuplicate"
+                            : "writing.settings.seriesCreateError",
+                        )}
                       </p>
                     )}
                   </div>

@@ -74,13 +74,15 @@ export function seriesIdForTitle(
 }
 
 /** A volume input's answer: empty is the honest unset, a whole number
- *  from one the volume, anything else the refusal. The series link's
- *  presence is the form's own cross-field rule (the server checks it too). */
+ *  from one up to the Integer column's ceiling (WORD_GOAL_MAX, the
+ *  target's bound — the service refuses the same range) the volume,
+ *  anything else the refusal. The series link's presence is the form's
+ *  own cross-field rule (the server checks it too). */
 export function parseVolume(raw: string): WordGoalAnswer {
   const trimmed = raw.trim();
   if (trimmed === "") return null;
   if (!/^\d+$/.test(trimmed)) return "invalid";
   const value = Number(trimmed);
-  if (!Number.isSafeInteger(value) || value < 1) return "invalid";
+  if (!Number.isSafeInteger(value) || value < 1 || value > TARGET_WORDS_MAX) return "invalid";
   return value;
 }

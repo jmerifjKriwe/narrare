@@ -76,6 +76,7 @@ import {
   useActivityQuery,
   useChaptersQuery,
   useNovelQuery,
+  useSettingsQuery,
 } from "@shell/lib/query";
 
 import { BookSettings } from "./BookSettings";
@@ -139,6 +140,9 @@ export function WorkspacePage() {
   const sceneResults = useChapterScenes(chapterList);
   const activity = useActivityQuery();
   const storyboard = useStoryboardQuery(novelId);
+  // The atelier's row — the daily setter opens on the STORED goal (the
+  // save's own source), never on the aggregate's pending face.
+  const settings = useSettingsQuery();
 
   usePageTitle(novel.data?.title ?? t("writing.workspace.pageTitle"));
 
@@ -688,7 +692,7 @@ export function WorkspacePage() {
       {goalDialog?.kind === "daily" && (
         <GoalSetterDialog
           kind="daily"
-          initial={activity.data?.daily_goal_words ?? null}
+          initial={settings.data?.daily_goal_words ?? null}
           openerId="explorer-goal-door"
           onClose={() => setGoalDialog(null)}
         />

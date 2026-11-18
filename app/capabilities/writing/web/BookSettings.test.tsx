@@ -198,12 +198,14 @@ describe("the pure model", () => {
     expect(seriesIdForTitle(SERIES, "Gone")).toBeNull();
   });
 
-  it("parseVolume counts from one, empty is the unset", () => {
+  it("parseVolume counts from one, empty is the unset, the column's ceiling holds", () => {
     expect(parseVolume("1")).toBe(1);
     expect(parseVolume("12")).toBe(12);
     expect(parseVolume("")).toBeNull();
     expect(parseVolume("0")).toBe("invalid");
     expect(parseVolume("I")).toBe("invalid");
+    expect(parseVolume("2147483647")).toBe(2147483647);
+    expect(parseVolume("2147483648")).toBe("invalid");
   });
 });
 
@@ -384,6 +386,43 @@ describe("the series section", () => {
     await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
     expect(api.PATCH.mock.calls[0][1].body).toEqual({ series_id: null, series_volume: null });
   });
+
+  it("a duplicate name answers with its own note — the link stands unchanged", async () => {
+    await openDialog();
+    api.POST.mockResolvedValueOnce({ data: undefined, response: new Response(null, { status: 409 }) });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.settings.seriesCreate"] }));
+    fireEvent.change(screen.getByLabelText(de["writing.settings.seriesCreateLabel"]), {
+      target: { value: "Tiefsee-Chroniken" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.settings.seriesCreateConfirm"] }));
+    expect(await screen.findByText(de["writing.settings.seriesDuplicate"])).toBeTruthy();
+    expect(valueOf(screen.getByLabelText(de["writing.settings.seriesLabel"]))).toBe("se2");
+  });
+
+  it("Speichern waits for the inline create — one write family at a time", async () => {
+    await openDialog();
+    // The node reference stays valid while its label flips to the busy
+    // face — the guard is the disabled state, not the name.
+    const save = screen.getByRole("button", { name: de["writing.workspace.crud.save"] }) as HTMLButtonElement;
+    let settleCreate: (answer: unknown) => void = () => {};
+    api.POST.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          settleCreate = resolve;
+        }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: de["writing.settings.seriesCreate"] }));
+    fireEvent.change(screen.getByLabelText(de["writing.settings.seriesCreateLabel"]), {
+      target: { value: "Neue Chroniken" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.settings.seriesCreateConfirm"] }));
+    await waitFor(() => expect(save.disabled).toBe(true));
+    settleCreate({
+      data: { id: "se3", title: "Neue Chroniken", created_at: "2026-11-18T10:00:00Z" },
+      response: ok(),
+    });
+    await waitFor(() => expect(save.disabled).toBe(false));
+  });
 });
 
 describe("the refusals stay client-side before the wire", () => {
@@ -414,6 +453,14 @@ describe("the refusals stay client-side before the wire", () => {
   it("a volume without a number is refused", async () => {
     await openDialog();
     fireEvent.change(screen.getByLabelText(de["writing.settings.volumeLabel"]), { target: { value: "I" } });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.crud.save"] }));
+    expect(await screen.findByText(de["writing.settings.volumeInvalid"])).toBeTruthy();
+    expect(api.PATCH).not.toHaveBeenCalled();
+  });
+
+  it("a volume beyond the column's ceiling is refused before the wire", async () => {
+    await openDialog();
+    fireEvent.change(screen.getByLabelText(de["writing.settings.volumeLabel"]), { target: { value: "2147483648" } });
     fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.crud.save"] }));
     expect(await screen.findByText(de["writing.settings.volumeInvalid"])).toBeTruthy();
     expect(api.PATCH).not.toHaveBeenCalled();

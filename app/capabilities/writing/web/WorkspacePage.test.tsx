@@ -1442,6 +1442,18 @@ describe("book settings and the goal setters (Task 19) — the page's doors", ()
     expect(api.PATCH.mock.calls[0][1].body).toEqual({ locale: "de", daily_goal_words: 750 });
   }, 15000);
 
+  it("the daily setter opens on the stored goal while the aggregate is pending", async () => {
+    // The aggregate never answers — the ring keeps its skeleton, but the
+    // setter's field reads the SETTINGS row (the save's own source).
+    activityAnswer = () => new Promise(() => {});
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    const ring = screen.getByTestId("explorer-ring");
+    fireEvent.click(within(ring).getByRole("button", { name: de["writing.workspace.ring.edit"] }));
+    const field = await screen.findByLabelText(de["writing.workspace.goal.dailyLabel"]);
+    expect((field as HTMLInputElement).value).toBe("500");
+  }, 15000);
+
   it("the ribbon pill's setter opens the chapter goal dialog — the save rides the chapter PUT", async () => {
     await renderWorkspace();
     await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
