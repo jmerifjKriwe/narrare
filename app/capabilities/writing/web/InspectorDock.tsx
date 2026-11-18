@@ -1,5 +1,5 @@
 /**
- * The inspector dock (W4 Task 11) — the scene-centric draft's 320px right
+ * The inspector dock (W4 Tasks 11/20) — the scene-centric draft's 320px right
  * column, ported 1:1 onto the shell's tokens with the gap doc's honest
  * neutrals (D21: placeholders stay visibly neutral as drafted):
  *
@@ -16,11 +16,15 @@
  *   (the shelf's floored-percent rule, never the draft's 4 %).
  * - Foot: the ⌘J assistant chip disabled with the „bald" mark (INTERIM
  *   #869 — the chat wave owns the composer) and the Workspace-Layout tune
- *   disabled with „später verfügbar" (INTERIM #881 — light wins over the
- *   dark's enabled button).
+ *   disabled with the draft's own parenthetical „später verfügbar"
+ *   (INTERIM #881 — light wins over the dark's enabled button).
  *
- * Task 20 finalizes the dock's placeholder family; the geometry stands
- * here so the knowledge/chat waves replace content, never slots.
+ * Task 20 finalized the family: the geometry is audited against both
+ * faces of the round draft, every interim names its child issue, and the
+ * cover miniature stands at the cover system's drafted size (36×48 — the
+ * workspace draft's 48×64 chip is a mock object; the cover system owns
+ * its sizes). The slots are the draft's: the knowledge/chat waves replace
+ * content, never slots.
  */
 
 import type { Novel } from "@shell/lib/api/client";
@@ -54,7 +58,9 @@ export function InspectorDock({ novel }: { novel: Novel }) {
       aria-label={t("writing.workspace.dock.label")}
       className="flex h-full w-[320px] shrink-0 flex-col border-l border-border bg-surface-container-low/60 text-meta"
     >
-      {/* The dock header — the checker's name and the neutral badge. */}
+      {/* The dock header — the checker's name and the neutral badge. The
+          badge is the checker's own count: it ships „—" with the finding
+          card's family (INTERIM #866 — the knowledge wave fills both). */}
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-panel px-3.5">
         <div className="flex items-center gap-2">
           <span className="text-primary">
