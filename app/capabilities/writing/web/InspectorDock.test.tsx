@@ -1,18 +1,23 @@
 // @vitest-environment jsdom
 /**
- * The inspector dock (W4 Tasks 11/20): the scene-centric draft's round
- * geometry with honest neutrals — the finding card (INTERIM #866), the
- * entity spotlight (#867), the atmosphere grid (#868), the disabled ⌘J
+ * The inspector dock (W4 Tasks 11/20, W5 Tasks 1/2): the scene-centric
+ * draft's round geometry — the atmosphere grid (#868), the disabled ⌘J
  * chip (#869) and layout tune (#881) — and the ONE real card: the cover
  * miniature with the book's own target, count and derived progress.
  * The draft's mock figures (85.000 / 3.384 / 4 %) never ship as data.
  *
- * Task 20's pins: every interim's note speaks its child issue's own
- * language (the literals below, not a catalog echo), the cover stands at
- * the cover system's drafted miniature size (36×48, cover-system.html
- * Sektion 04 — the workspace draft's 48×64 chip is a mock object, the
- * cover system owns its sizes), and the dock speaks du-tone in all three
- * catalogs, never a German fallback.
+ * W5 Task 2 retires the #866/#867 interims: the finding card and the
+ * entity spotlight are gone — the knowledge region belongs to the
+ * registry's matched dock face alone, and the header badge and the tab
+ * badge read the real pending-findings count through the shell's query
+ * seam (no neutral placeholder, no invented number).
+ *
+ * Task 20's pins that stand: every remaining interim's note speaks its
+ * child issue's own language (the literals below, not a catalog echo),
+ * the cover stands at the cover system's drafted miniature size (36×48,
+ * cover-system.html Sektion 04 — the workspace draft's 48×64 chip is a
+ * mock object, the cover system owns its sizes), and the dock speaks
+ * du-tone in all three catalogs, never a German fallback.
  *
  * W5 Task 1's pins: the dock registry composes through the generated
  * table — one tab per row, the matched child route is the open state,
@@ -22,7 +27,8 @@
  * path standing in for the capability face (the face itself is pinned
  * in its own capability's tests).
  */
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -37,14 +43,16 @@ vi.mock("@shell/lib/api/client", () => ({
   client: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() },
 }));
 
-import type { Novel } from "@shell/lib/api/client";
+import { client, type Finding, type Novel } from "@shell/lib/api/client";
 import { catalogs } from "@shell/lib/generated/catalogs";
 import { docks } from "@shell/lib/generated/docks";
 import { applyLocale } from "@shell/lib/locale";
+import { queryClient } from "@shell/lib/query";
 
 import { InspectorDock } from "./InspectorDock";
 
 const de = catalogs.de;
+const api = client as unknown as Record<"GET", ReturnType<typeof vi.fn>>;
 
 function novelRow(overrides: Partial<Novel> = {}): Novel {
   return {
@@ -68,11 +76,28 @@ function novelRow(overrides: Partial<Novel> = {}): Novel {
   };
 }
 
+function findingRow(overrides: Partial<Finding> = {}): Finding {
+  return {
+    id: "f1",
+    novel_id: novelRow().id,
+    summary: "Stationsbezeichnung uneinheitlich",
+    detail: null,
+    status: "pending",
+    created_at: "2026-11-18T10:00:00Z",
+    ...overrides,
+  };
+}
+
+/** The findings answer the badge reads; the tests mutate it to model the
+ *  queue the check filed. */
+let findingQueue: Finding[];
+
 /** The dock under a bare router root — the registry's tabs navigate and
  *  the Outlet reads the matched child, so the chrome needs the router
  *  context the workspace provides. The child route stands at the
  *  registry's own path: a drifted registry row would miss the match and
- *  fail the composition pins below. */
+ *  fail the composition pins below. The query provider carries the
+ *  badge's findings read (the shell's seam, the workspace's own). */
 const harnessRoot = createRootRoute({ component: () => <Outlet /> });
 
 async function renderDock(novel: Novel = novelRow(), entry?: string) {
@@ -95,47 +120,52 @@ async function renderDock(novel: Novel = novelRow(), entry?: string) {
     history: createMemoryHistory({ initialEntries: [entry ?? `/novels/${novel.id}`] }),
   });
   await router.load();
-  render(<RouterProvider router={router} />);
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
   return router;
 }
 
 beforeEach(() => {
   applyLocale("de");
   vi.stubGlobal("navigator", { language: "de-DE", languages: ["de-DE"] });
+  findingQueue = [findingRow()];
+  api.GET.mockImplementation(async (path: string) => {
+    if (path === "/api/knowledge/novels/{novel_id}/findings") {
+      return { data: findingQueue, response: new Response(null, { status: 200 }) };
+    }
+    throw new Error(`unexpected GET: ${path}`);
+  });
 });
 
 afterEach(() => {
   cleanup();
+  queryClient.clear();
+  vi.clearAllMocks();
   vi.unstubAllGlobals();
 });
 
-describe("the dock's neutral geometry", () => {
-  it("the header names the consistency checker with the neutral badge", async () => {
+describe("the dock's geometry after the knowledge retirement", () => {
+  it("the header names the consistency checker", async () => {
     await renderDock();
     expect(screen.getByRole("heading", { name: de["writing.workspace.dock.title"] })).toBeTruthy();
   });
 
-  it("the finding card stays neutral until the knowledge wave (#866)", async () => {
+  it("the knowledge region stands empty until a dock opens — #866/#867 retired", async () => {
     await renderDock();
-    const card = screen.getByTestId("dock-finding");
-    expect(within(card).getByText(de["writing.workspace.dock.finding"])).toBeTruthy();
-    expect(within(card).getByText(de["writing.workspace.dock.findingEmpty"])).toBeTruthy();
-    expect(within(card).getByText(de["writing.workspace.dock.findingNote"])).toBeTruthy();
-    expect(card.className).toContain("border-dashed");
-  });
-
-  it("the entity spotlight keeps its neutral fields and the disabled wiki door (#867)", async () => {
-    await renderDock();
-    const card = screen.getByTestId("dock-entity");
-    for (const key of [
-      "writing.workspace.dock.entityName",
-      "writing.workspace.dock.entityFirst",
-      "writing.workspace.dock.entityBinding",
-    ] as const) {
-      expect(within(card).getByText(de[key])).toBeTruthy();
-    }
-    const wiki = within(card).getByRole("button", { name: de["writing.workspace.dock.wiki"] });
-    expect(wiki.hasAttribute("disabled")).toBe(true);
+    // The interim cards are gone: no dashed finding placeholder, no
+    // neutral spotlight, no „Wissens-Welle" promise — the wave is here,
+    // and its content lives behind the registry's tab.
+    expect(screen.queryByTestId("dock-finding")).toBeNull();
+    expect(screen.queryByTestId("dock-entity")).toBeNull();
+    expect(screen.queryByText("Wird mit der Wissens-Welle aktiv")).toBeNull();
+    expect(screen.queryByText("Wiki öffnen")).toBeNull();
+    // The writing-owned slots stand — content replaced, never slots.
+    expect(screen.getByTestId("dock-atmosphere")).toBeTruthy();
+    expect(screen.getByTestId("dock-cover")).toBeTruthy();
+    expect(screen.getByTestId("dock-foot")).toBeTruthy();
   });
 
   it("the atmosphere grid keeps its neutral values — no mock scene label (#868)", async () => {
@@ -158,17 +188,75 @@ describe("the dock's neutral geometry", () => {
   });
 });
 
-describe("the interim notes speak their child issue's own language", () => {
-  // The literals are the issues' own words (#866, #881) — a catalog echo
-  // would pass with any copy; these pin the note to the issue's language
-  // so a drift in either home fails here.
-  it("the finding card carries #866's neutral pair verbatim", async () => {
+describe("the badges read the real queue (#866 retired)", () => {
+  it("the header badge counts the pending findings — the checker's own number", async () => {
+    findingQueue = [findingRow(), findingRow({ id: "f2" })];
     await renderDock();
-    const card = screen.getByTestId("dock-finding");
-    expect(within(card).getByText("Keine offenen Brüche")).toBeTruthy();
-    expect(within(card).getByText("Wird mit der Wissens-Welle aktiv")).toBeTruthy();
+    const badge = await screen.findByTestId("dock-findings-badge");
+    await waitFor(() => expect(badge.textContent).toBe("2"));
+    expect(badge.getAttribute("aria-label")).toBe("2 offene Befunde");
+    expect(badge.className).toContain("text-warning");
+    // The ask carries the novel and the pending question.
+    const call = api.GET.mock.calls.find(([path]) => path === "/api/knowledge/novels/{novel_id}/findings");
+    expect(call?.[1]).toEqual({
+      params: { path: { novel_id: novelRow().id }, query: { status: "pending" } },
+    });
   });
 
+  it("the tab badge shows the count — and only when there is one", async () => {
+    findingQueue = [findingRow(), findingRow({ id: "f2" })];
+    await renderDock();
+    const group = screen.getByRole("group", { name: de["writing.workspace.dock.tabs"] });
+    const tab = within(group).getByRole("button", { name: de["knowledge.dockTitle"] });
+    const badge = await within(tab).findByTestId("dock-tab-badge");
+    expect(badge.textContent).toBe("2");
+    // The badge is the draft's warning circle; it never renames the tab.
+    expect(badge.getAttribute("aria-hidden")).toBe("true");
+    expect(badge.className).toContain("bg-warning");
+  });
+
+  it("an empty queue reads zero — no tab badge, no invented alert", async () => {
+    findingQueue = [];
+    await renderDock();
+    const badge = await screen.findByTestId("dock-findings-badge");
+    await waitFor(() => expect(badge.textContent).toBe("0"));
+    expect(badge.className).toContain("text-muted");
+    expect(screen.queryByTestId("dock-tab-badge")).toBeNull();
+  });
+
+  it("a pending ask keeps the badge neutral — no invented count", async () => {
+    let resolveFindings: (value: { data: Finding[]; response: Response }) => void = () => {};
+    api.GET.mockImplementation(
+      (path: string) =>
+        new Promise((resolve) => {
+          if (path === "/api/knowledge/novels/{novel_id}/findings") resolveFindings = resolve;
+        }),
+    );
+    await renderDock();
+    const badge = await screen.findByTestId("dock-findings-badge");
+    expect(badge.textContent).toBe("—");
+    expect(screen.queryByTestId("dock-tab-badge")).toBeNull();
+    resolveFindings({ data: [findingRow()], response: new Response(null, { status: 200 }) });
+    await waitFor(() => expect(badge.textContent).toBe("1"));
+  });
+
+  it("an unavailable queue keeps the badge neutral — the face names the outage", async () => {
+    api.GET.mockImplementation(async () => ({
+      data: undefined,
+      response: new Response(null, { status: 500 }),
+    }));
+    await renderDock();
+    const badge = await screen.findByTestId("dock-findings-badge");
+    // The error settles; the badge never invents a number from a failure.
+    await waitFor(() => expect(badge.textContent).toBe("—"));
+    expect(screen.queryByTestId("dock-tab-badge")).toBeNull();
+  });
+});
+
+describe("the remaining interims speak their child issue's own language", () => {
+  // The literals are the issues' own words (#881, #869) — a catalog echo
+  // would pass with any copy; these pin the note to the issue's language
+  // so a drift in either home fails here.
   it("the layout tune's tooltip is the draft's own parenthetical (#881)", async () => {
     // workspace-scene-centric.html, dock foot: title="Workspace-Layout
     // (später verfügbar)" — the note rides lowercase inside the brackets,
@@ -240,20 +328,20 @@ describe("the dock registry composition (W5 Task 1)", () => {
     const group = screen.getByRole("group", { name: de["writing.workspace.dock.tabs"] });
     const tab = within(group).getByRole("button", { name: de["knowledge.dockTitle"] });
     expect(tab.getAttribute("aria-pressed")).toBe("false");
-    // The interim neutrals stand while no dock child is matched.
-    expect(screen.getByTestId("dock-finding")).toBeTruthy();
-    expect(screen.getByTestId("dock-entity")).toBeTruthy();
+    // The knowledge region stands empty while no dock child is matched —
+    // the interims retired; the writing-owned slots stand.
+    expect(screen.queryByTestId("dock-finding")).toBeNull();
+    expect(screen.queryByTestId("dock-entity")).toBeNull();
+    expect(screen.getByTestId("dock-atmosphere")).toBeTruthy();
   });
 
   it("opening the tab navigates to the dock route — the knowledge region yields to the Outlet", async () => {
     const router = await renderDock();
     const group = screen.getByRole("group", { name: de["writing.workspace.dock.tabs"] });
     fireEvent.click(within(group).getByRole("button", { name: de["knowledge.dockTitle"] }));
-    // The matched child renders through the Outlet; the two knowledge
-    // slots yield, the writing-owned slots stand (content, never slots).
+    // The matched child renders through the Outlet; the writing-owned
+    // slots stand (content, never slots).
     expect(await screen.findByTestId("dock-face-marker")).toBeTruthy();
-    expect(screen.queryByTestId("dock-finding")).toBeNull();
-    expect(screen.queryByTestId("dock-entity")).toBeNull();
     expect(screen.getByTestId("dock-atmosphere")).toBeTruthy();
     expect(screen.getByTestId("dock-cover")).toBeTruthy();
     expect(screen.getByTestId("dock-foot")).toBeTruthy();
@@ -266,16 +354,16 @@ describe("the dock registry composition (W5 Task 1)", () => {
     ).toBe("true");
   });
 
-  it("the pressed tab closes the dock — the interim neutrals return", async () => {
+  it("the pressed tab closes the dock — the knowledge region empties again", async () => {
     const router = await renderDock();
     const group = screen.getByRole("group", { name: de["writing.workspace.dock.tabs"] });
     const tab = within(group).getByRole("button", { name: de["knowledge.dockTitle"] });
     fireEvent.click(tab);
     expect(await screen.findByTestId("dock-face-marker")).toBeTruthy();
     fireEvent.click(tab);
-    await screen.findByTestId("dock-finding");
-    expect(screen.queryByTestId("dock-face-marker")).toBeNull();
-    expect(screen.getByTestId("dock-entity")).toBeTruthy();
+    await waitFor(() => expect(screen.queryByTestId("dock-face-marker")).toBeNull());
+    expect(screen.queryByTestId("dock-finding")).toBeNull();
+    expect(screen.getByTestId("dock-atmosphere")).toBeTruthy();
     expect(tab.getAttribute("aria-pressed")).toBe("false");
     expect(router.state.location.pathname).toBe(`/novels/${novelRow().id}`);
   });
@@ -284,7 +372,6 @@ describe("the dock registry composition (W5 Task 1)", () => {
     const novel = novelRow();
     await renderDock(novel, `/novels/${novel.id}/${docks[0].path.split("/").pop() as string}`);
     expect(screen.getByTestId("dock-face-marker")).toBeTruthy();
-    expect(screen.queryByTestId("dock-finding")).toBeNull();
     const group = screen.getByRole("group", { name: de["writing.workspace.dock.tabs"] });
     expect(
       within(group).getByRole("button", { name: de["knowledge.dockTitle"] }).getAttribute("aria-pressed"),
@@ -298,10 +385,9 @@ describe("the dock speaks du-tone in every catalog — no German fallback", () =
     const en = catalogs.en;
     await renderDock();
     expect(screen.getByRole("heading", { name: "Consistency Checker" })).toBeTruthy();
-    const finding = screen.getByTestId("dock-finding");
-    expect(within(finding).getByText("No open fractures")).toBeTruthy();
-    expect(within(finding).getByText("Activates with the knowledge wave")).toBeTruthy();
-    expect(within(screen.getByTestId("dock-entity")).getByRole("button", { name: "Open wiki" })).toBeTruthy();
+    // The badge speaks the English plural — the checker's real count.
+    const badge = await screen.findByTestId("dock-findings-badge");
+    await waitFor(() => expect(badge.getAttribute("aria-label")).toBe("1 open finding"));
     const foot = screen.getByTestId("dock-foot");
     expect(within(foot).getByText(en["writing.workspace.dock.soon"])).toBeTruthy();
     expect(within(foot).getByRole("button", { name: "Workspace layout" }).getAttribute("title")).toBe(
@@ -314,26 +400,22 @@ describe("the dock speaks du-tone in every catalog — no German fallback", () =
       }),
     ).toBeTruthy();
     // The German copy is absent — the face is translated, not fallen back.
-    expect(screen.queryByText("Keine offenen Brüche")).toBeNull();
     expect(screen.queryByText("Konsistenz-Prüfer")).toBeNull();
+    expect(screen.queryByText("später verfügbar")).toBeNull();
   });
 
   it("the French face speaks the French catalog's own copy", async () => {
     applyLocale("fr");
     await renderDock();
     expect(screen.getByRole("heading", { name: "Vérificateur de cohérence" })).toBeTruthy();
-    const finding = screen.getByTestId("dock-finding");
-    expect(within(finding).getByText("Aucune fracture ouverte")).toBeTruthy();
-    expect(within(finding).getByText("S'active avec la vague de connaissance")).toBeTruthy();
-    expect(
-      within(screen.getByTestId("dock-entity")).getByRole("button", { name: "Ouvrir le wiki" }),
-    ).toBeTruthy();
+    const badge = await screen.findByTestId("dock-findings-badge");
+    await waitFor(() => expect(badge.getAttribute("aria-label")).toBe("1 constat ouvert"));
     const foot = screen.getByTestId("dock-foot");
     expect(within(foot).getByText("bientôt")).toBeTruthy();
     expect(
       within(foot).getByRole("button", { name: "Disposition de l'espace" }).getAttribute("title"),
     ).toBe("Disposition de l'espace (disponible plus tard)");
-    expect(screen.queryByText("Keine offenen Brüche")).toBeNull();
+    expect(screen.queryByText("Konsistenz-Prüfer")).toBeNull();
   });
 
   it("the three catalogs carry the dock's keys in parity, each translated", () => {
@@ -348,11 +430,9 @@ describe("the dock speaks du-tone in every catalog — no German fallback", () =
       }
     }
     const translated = [
-      "writing.workspace.dock.findingEmpty",
-      "writing.workspace.dock.findingNote",
       "writing.workspace.dock.layoutNote",
+      "writing.workspace.dock.tabs",
       "writing.workspace.dock.title",
-      "writing.workspace.dock.wiki",
     ] as const;
     for (const key of translated) {
       expect(catalogs.en[key], key).not.toBe(catalogs.de[key]);

@@ -134,9 +134,16 @@ def test_the_workspace_reads_the_seeded_book(page: Page, installed: Stack) -> No
     expect(page.get_by_text("Geplante Länge:")).to_be_visible()
     expect(page.get_by_text("85.000 W.")).to_be_visible()
     expect(page.get_by_text("Erfasst: 1.855 Wörter")).to_be_visible()
-    # The neutrals stay neutral (D21): finding, entity, atmosphere.
-    expect(page.get_by_text("Keine offenen Brüche")).to_be_visible()
-    expect(page.get_by_text("Wird mit der Wissens-Welle aktiv")).to_be_visible()
+    # The knowledge interims retired (W5 #866/#867): the finding card and
+    # the entity spotlight are gone — the knowledge region belongs to the
+    # Wissen tab's face, and a closed dock owes no placeholder promise.
+    # The atmosphere stays neutral (D21, #868).
+    expect(page.get_by_text("Wird mit der Wissens-Welle aktiv")).to_have_count(0)
+    expect(page.get_by_text("Fokussierte Entität")).to_have_count(0)
+    # The dock's own tab (the rail's disabled Wissen door is a namesake).
+    expect(
+        page.get_by_role("group", name="Dock-Ansichten").get_by_role("button", name="Wissen")
+    ).to_be_visible()
 
     # The chrome's book face: the breadcrumb names the route's book, the
     # word chip the book's own count, the rail's editor door current.
@@ -148,14 +155,14 @@ def test_the_workspace_reads_the_seeded_book(page: Page, installed: Stack) -> No
     expect(rail.get_by_role("link", name="Editor")).to_have_attribute("aria-current", "page")
 
     # Every unbuilt door stays disabled with its note — the ribbon's
-    # history/export (#875/#876), the wiki (#867), the layout tune
-    # (#881); the ⌘J chip carries its „bald" mark (#869). The CRUD doors
-    # are LIVE (Task 13) — the create suite drives them; Fokus is LIVE
-    # (Task 18) — the zen suite drives it.
+    # history/export (#875/#876) and the layout tune (#881); the ⌘J chip
+    # carries its „bald" mark (#869). The wiki door retired with #867
+    # (W5 Task 2 — the dossier is the entity's expanded view, Tasks 3/5).
+    # The CRUD doors are LIVE (Task 13) — the create suite drives them;
+    # Fokus is LIVE (Task 18) — the zen suite drives it.
     for name in (
         "Verlauf",
         "Export",
-        "Wiki öffnen",
         "Workspace-Layout",
     ):
         expect(page.get_by_role("button", name=name, exact=True)).to_be_disabled()
