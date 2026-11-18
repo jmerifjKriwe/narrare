@@ -42,7 +42,7 @@ import { Icon } from "@shell/ui/icons";
 
 import { EntityDossier } from "./EntityDossier";
 import { entityTypeIcon, entityTypeLabel, typeTheme } from "./entityTypes";
-import { fitTransform, graphBounds, layoutGraph, type Transform } from "./graphLayout";
+import { fitTransform, graphBounds, graphSignature, layoutGraph, type Transform } from "./graphLayout";
 import { relationTypeLabel } from "./relations";
 
 const GRAPH_PATH = "/novels/$novelId/knowledge/graph";
@@ -84,6 +84,10 @@ export function LoreGraphPage() {
   // edges without re-seating the rest, so the picture stays put.
   const layout = useMemo(() => layoutGraph(entityList, relationList), [entityList, relationList]);
   const bounds = useMemo(() => graphBounds(layout.values()), [layout]);
+  // The set's stable key: a background refetch of the same rows answers the
+  // same key, so the viewport keeps the user's zoom; only a materially
+  // different web (a node or edge added or gone) reframes.
+  const signature = useMemo(() => graphSignature(entityList, relationList), [entityList, relationList]);
 
   // --- The viewport -------------------------------------------------------
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -110,13 +114,17 @@ export function LoreGraphPage() {
   fitRef.current = fit;
   const sizeRef = useRef(size);
   sizeRef.current = size;
+  const boundsRef = useRef(bounds);
+  boundsRef.current = bounds;
   const [view, setView] = useState<Transform | null>(null);
-  // A new web (load or refetch) reframes to the fit. The size is read live
-  // through the ref, not a re-run key — a resize alone keeps the user's view.
+  // Reframe only when the SET materially changes (the signature), not on every
+  // layout identity change — an identical-rows refetch keeps the user's view.
+  // The bounds and size are read live through refs, not re-run keys.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: signature is the deliberate re-run trigger (the set's stable key); bounds and size are read live through refs, not triggers.
   useEffect(() => {
     const { width, height } = sizeRef.current;
-    setView(fitTransform(bounds, width, height, FIT_PADDING));
-  }, [bounds]);
+    setView(fitTransform(boundsRef.current, width, height, FIT_PADDING));
+  }, [signature]);
   const effective = view ?? fit;
 
   const zoomAt = useCallback((px: number, py: number, factor: number) => {
@@ -185,6 +193,32 @@ export function LoreGraphPage() {
     },
     [navigate, novelId],
   );
+
+  // --- The edge popover's focus contract ---------------------------------
+  // Each edge is a keyboard button; the refs let Escape (and the close door)
+  // hand focus back to the edge that opened the popover.
+  const edgeRefs = useRef(new Map<string, SVGGElement>());
+  function openEdge(id: string) {
+    setEdgeId(id);
+  }
+  function closeEdge(returnFocus: boolean) {
+    if (returnFocus && edgeId !== null) edgeRefs.current.get(edgeId)?.focus();
+    setEdgeId(null);
+  }
+  // Escape closes the popover and returns focus to its opener — the dialog's
+  // own dismissal contract, keyboard-first.
+  useEffect(() => {
+    if (edgeId === null) return;
+    const opener = edgeId;
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      edgeRefs.current.get(opener)?.focus();
+      setEdgeId(null);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [edgeId]);
 
   // --- The client-side filter --------------------------------------------
   const needle = query.trim().toLowerCase();
@@ -445,7 +479,13 @@ export function LoreGraphPage() {
             </div>
           ) : (
             <div data-testid="graph-world" className="absolute left-0 top-0" style={worldStyle}>
-              <svg className="absolute left-0 top-0 overflow-visible" width={1} height={1} aria-hidden="true">
+              <svg
+                className="absolute left-0 top-0 overflow-visible"
+                width={1}
+                height={1}
+                role="group"
+                aria-label={t("knowledge.graph.relationCount", { count: visibleRelations.length })}
+              >
                 {visibleRelations.map((relation) => {
                   const geometry = edgeGeometry(relation);
                   if (geometry === null) return null;
@@ -453,6 +493,8 @@ export function LoreGraphPage() {
                   const ink = typeTheme(fromType).var;
                   const label = relationTypeLabel(t, relation.relation_type);
                   const labelWidth = label.length * 6.2 + 14;
+                  const fromName = nameById.get(relation.from_entity_id)?.name ?? relation.from_entity_id;
+                  const toName = nameById.get(relation.to_entity_id)?.name ?? relation.to_entity_id;
                   // The arrowhead: a small triangle at the tip, oriented along
                   // the edge, its base perpendicular to the direction.
                   const { tipX, tipY, ux, uy } = geometry;
@@ -464,23 +506,41 @@ export function LoreGraphPage() {
                   return (
                     <g
                       key={relation.id}
+                      ref={(node) => {
+                        if (node !== null) edgeRefs.current.set(relation.id, node);
+                        else edgeRefs.current.delete(relation.id);
+                      }}
                       data-edge
+                      data-edge-id={relation.id}
                       data-testid="graph-edge"
-                      className="cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${fromName} → ${toName}, ${label}`}
+                      className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                       onClick={(event) => {
                         event.stopPropagation();
-                        setEdgeId(relation.id);
+                        openEdge(relation.id);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openEdge(relation.id);
                       }}
                     >
-                      {/* A wide transparent stroke makes the thin line easy to click. */}
-                      <path d={geometry.d} fill="none" stroke="transparent" strokeWidth={14} />
-                      <path d={geometry.d} fill="none" style={{ stroke: ink }} strokeWidth={2} />
-                      <polygon points={arrow} style={{ fill: ink }} />
-                      <g transform={`translate(${geometry.midX}, ${geometry.midY})`}>
-                        <rect x={-labelWidth / 2} y={-11} width={labelWidth} height={22} rx={4} className="fill-surface-container-low stroke-border" strokeWidth={1} />
-                        <text textAnchor="middle" y={4} fontSize={11} fontWeight={600} style={{ fill: ink }}>
-                          {label}
-                        </text>
+                      {/* The geometry is decorative; the button's aria-label
+                          names the edge, so the drawing stays hidden from AT. */}
+                      <g aria-hidden="true">
+                        {/* A wide transparent stroke makes the thin line easy to click. */}
+                        <path d={geometry.d} fill="none" stroke="transparent" strokeWidth={14} />
+                        <path d={geometry.d} fill="none" style={{ stroke: ink }} strokeWidth={2} />
+                        <polygon points={arrow} style={{ fill: ink }} />
+                        <g transform={`translate(${geometry.midX}, ${geometry.midY})`}>
+                          <rect x={-labelWidth / 2} y={-11} width={labelWidth} height={22} rx={4} className="fill-surface-container-low stroke-border" strokeWidth={1} />
+                          <text textAnchor="middle" y={4} fontSize={11} fontWeight={600} style={{ fill: ink }}>
+                            {label}
+                          </text>
+                        </g>
                       </g>
                     </g>
                   );
@@ -530,8 +590,13 @@ export function LoreGraphPage() {
             </div>
           )}
 
-          {/* The viewport HUD — zoom in/out and the honest reset. */}
-          <div className="absolute left-4 top-4 z-20 flex flex-col gap-1 rounded-[var(--radius-surface)] border border-rule bg-panel/95 p-1 shadow-overlay">
+          {/* The viewport HUD — zoom in/out and the honest reset. A press here
+              is the HUD's own, never a pan (the popover's own guard). */}
+          <div
+            data-testid="graph-hud"
+            onPointerDown={(event) => event.stopPropagation()}
+            className="absolute left-4 top-4 z-20 flex flex-col gap-1 rounded-[var(--radius-surface)] border border-rule bg-panel/95 p-1 shadow-overlay"
+          >
             <button
               type="button"
               data-testid="zoom-in"
@@ -565,8 +630,13 @@ export function LoreGraphPage() {
             </button>
           </div>
 
-          {/* The legend — the types present and the filtered counts. */}
-          <div className="absolute bottom-4 left-4 z-20 flex flex-wrap items-center gap-3 rounded-[var(--radius-surface)] border border-rule bg-panel/95 px-3.5 py-2 text-meta text-muted shadow-card">
+          {/* The legend — the types present and the filtered counts. A press
+              here is the legend's own, never a pan. */}
+          <div
+            data-testid="graph-legend"
+            onPointerDown={(event) => event.stopPropagation()}
+            className="absolute bottom-4 left-4 z-20 flex flex-wrap items-center gap-3 rounded-[var(--radius-surface)] border border-rule bg-panel/95 px-3.5 py-2 text-meta text-muted shadow-card"
+          >
             {typeCounts.map(([type]) => {
               const theme = typeTheme(type);
               return (
@@ -596,7 +666,7 @@ export function LoreGraphPage() {
                 <span className={CARD_EYEBROW}>{t("knowledge.graph.edgeNote")}</span>
                 <button
                   type="button"
-                  onClick={() => setEdgeId(null)}
+                  onClick={() => closeEdge(true)}
                   aria-label={t("knowledge.graph.closeNote")}
                   className={`flex h-6 w-6 items-center justify-center rounded text-muted transition-colors hover:bg-surface-container hover:text-foreground ${FOCUS}`}
                 >

@@ -198,3 +198,22 @@ export function fitTransform(bounds: Bounds, width: number, height: number, padd
     k,
   };
 }
+
+/**
+ * A stable key for the SET the web draws: the sorted entity ids and the sorted
+ * edge ends. Two reads of the same rows answer the same key whatever their
+ * arrival order or object identity, so a background refetch of an unchanged
+ * canon does not reframe the viewport — only a materially different set (a node
+ * or an edge added or gone) changes the key. The separators are control
+ * characters no id carries.
+ */
+export function graphSignature(
+  entities: readonly LayoutEntity[],
+  relations: readonly LayoutRelation[],
+): string {
+  const ids = entities.map((entity) => entity.id).sort();
+  const edges = relations
+    .map((relation) => `${relation.from_entity_id}\u0000${relation.to_entity_id}`)
+    .sort();
+  return `${ids.join("\u0001")}\u0002${edges.join("\u0001")}`;
+}

@@ -411,3 +411,92 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
     expect(catalogs.de["knowledge.graph.noResults"]).toContain("deinem");
   });
 });
+
+describe("the edges speak to the keyboard (review fix — the a11y finding)", () => {
+  it("an edge is a focusable button named by its ends and type, in an un-hidden layer", async () => {
+    await renderGraph();
+    const edges = await screen.findAllByTestId("graph-edge");
+    expect(edges[0].getAttribute("role")).toBe("button");
+    expect(edges[0].getAttribute("tabindex")).toBe("0");
+    const label = edges[0].getAttribute("aria-label") ?? "";
+    expect(label).toContain("Dr. Maya Chen → ARIA");
+    expect(label).toContain(de["knowledge.relation.ally_of"]);
+    // The interactive layer is no longer hidden from assistive tech.
+    expect(edges[0].closest("svg")?.getAttribute("aria-hidden")).toBeNull();
+  });
+
+  it("Enter opens the popover; Escape closes it and returns focus to the edge", async () => {
+    await renderGraph();
+    const edges = await screen.findAllByTestId("graph-edge");
+    const edge = edges[0];
+    edge.focus();
+    expect(document.activeElement).toBe(edge);
+    fireEvent.keyDown(edge, { key: "Enter" });
+    const popover = await screen.findByTestId("edge-popover");
+    expect(within(popover).getByText("Symbiotische Co-Pilotin.")).toBeTruthy();
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByTestId("edge-popover")).toBeNull());
+    expect(document.activeElement).toBe(edge);
+  });
+
+  it("Space opens the popover too", async () => {
+    await renderGraph();
+    const edges = await screen.findAllByTestId("graph-edge");
+    fireEvent.keyDown(edges[1], { key: " " });
+    expect(await screen.findByTestId("edge-popover")).toBeTruthy();
+  });
+});
+
+describe("the HUD and legend never seize a pan (review fix)", () => {
+  it("a drag starting on the HUD or the legend leaves the viewport put", async () => {
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const canvas = screen.getByTestId("graph-canvas");
+    const before = screen.getByTestId("graph-world").style.transform;
+    for (const id of ["graph-hud", "graph-legend"]) {
+      fireEvent.pointerDown(screen.getByTestId(id), { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(canvas, { clientX: 400, clientY: 400 });
+      fireEvent.pointerUp(canvas);
+      expect(screen.getByTestId("graph-world").style.transform).toBe(before);
+    }
+    // The control: a drag on the open canvas DOES pan — the guard is the
+    // HUD/legend's own, not a dead canvas.
+    fireEvent.pointerDown(canvas, { clientX: 500, clientY: 500 });
+    fireEvent.pointerMove(canvas, { clientX: 560, clientY: 520 });
+    fireEvent.pointerUp(canvas);
+    expect(screen.getByTestId("graph-world").style.transform).not.toBe(before);
+  });
+});
+
+describe("an unchanged graph keeps your zoom (review fix)", () => {
+  it("an identical-rows refetch preserves the current transform", async () => {
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const fit = worldScale();
+    fireEvent.click(screen.getByTestId("zoom-in"));
+    await waitFor(() => expect(worldScale()).toBeGreaterThan(fit));
+    const zoomed = screen.getByTestId("graph-world").style.transform;
+    // A background refetch: fresh rows, the same set (only updated_at moves,
+    // so the cache takes the new identity but the signature does not change).
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/novels/{novel_id}/entities") {
+        return Promise.resolve({
+          data: entities.map((row) => ({ ...row, updated_at: "2026-11-19T00:00:00Z" })),
+          response: ok(),
+        });
+      }
+      if (path === "/api/knowledge/novels/{novel_id}/relations") {
+        return Promise.resolve({ data: relations.map((row) => ({ ...row })), response: ok() });
+      }
+      return baseGet(path);
+    });
+    const before = api.GET.mock.calls.filter(([p]) => p === "/api/knowledge/novels/{novel_id}/entities").length;
+    await queryClient.invalidateQueries({ queryKey: ["knowledge"] });
+    await waitFor(() =>
+      expect(api.GET.mock.calls.filter(([p]) => p === "/api/knowledge/novels/{novel_id}/entities").length).toBeGreaterThan(before),
+    );
+    // The refetch landed and re-rendered; the zoom is the user's still.
+    await waitFor(() => expect(screen.getByTestId("graph-world").style.transform).toBe(zoomed));
+    expect(worldScale()).toBeGreaterThan(fit);
+  });
+});

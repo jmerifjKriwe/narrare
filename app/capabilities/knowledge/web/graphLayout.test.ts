@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { fitTransform, graphBounds, layoutGraph, type Point } from "./graphLayout";
+import { fitTransform, graphBounds, graphSignature, layoutGraph, type Point } from "./graphLayout";
 
 function entities(...ids: string[]): { id: string }[] {
   return ids.map((id) => ({ id }));
@@ -140,5 +140,34 @@ describe("fitTransform — centre the bounds in the viewport, honestly resettabl
     expect(view.k).toBeGreaterThan(0);
     expect(view.x).toBeCloseTo(400, 5);
     expect(view.y).toBeCloseTo(300, 5);
+  });
+});
+
+describe("graphSignature — the set's stable key, the refetch's reframe guard", () => {
+  it("the same rows answer the same key whatever their order or identity", () => {
+    const fresh = entities("d", "c", "b", "a");
+    const freshEdges = [...EDGES].reverse();
+    expect(graphSignature(fresh, freshEdges)).toBe(graphSignature(WEB, EDGES));
+    // Fresh objects, identical rows — a refetch's new array, the same set.
+    const cloned = WEB.map((entity) => ({ ...entity }));
+    const clonedEdges = EDGES.map((relation) => ({ ...relation }));
+    expect(graphSignature(cloned, clonedEdges)).toBe(graphSignature(WEB, EDGES));
+  });
+
+  it("a node added or gone changes the key", () => {
+    const base = graphSignature(WEB, EDGES);
+    expect(graphSignature([...WEB, { id: "e" }], EDGES)).not.toBe(base);
+    expect(graphSignature(WEB.slice(1), EDGES)).not.toBe(base);
+  });
+
+  it("an edge added or gone changes the key", () => {
+    const base = graphSignature(WEB, EDGES);
+    expect(graphSignature(WEB, [...EDGES, edge("b", "d")])).not.toBe(base);
+    expect(graphSignature(WEB, EDGES.slice(1))).not.toBe(base);
+  });
+
+  it("an empty set has its own stable key", () => {
+    expect(graphSignature([], [])).toBe(graphSignature([], []));
+    expect(graphSignature([], [])).not.toBe(graphSignature(WEB, EDGES));
   });
 });
