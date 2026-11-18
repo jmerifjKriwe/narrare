@@ -71,6 +71,7 @@ function chapterRow(overrides: Partial<Chapter> & { id: string }): Chapter {
     title: "Kapitel",
     position: 0,
     scene_count: 0,
+    target_words: null,
     word_count: 0,
     created_at: "2026-11-01T10:00:00Z",
     updated_at: "2026-11-10T10:00:00Z",

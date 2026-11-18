@@ -64,8 +64,9 @@ const FOCUS =
 const TITLE_MAX = 200;
 
 /** The shell's busy face (the quick menu's spinner): a ring with one
- *  transparent quarter, turning. No glyph — the motion is the mark. */
-function Spinner({ tone = "primary" }: { tone?: "primary" | "danger" }) {
+ *  transparent quarter, turning. No glyph — the motion is the mark.
+ *  Exported: the goal setters and the book settings ride the same face. */
+export function Spinner({ tone = "primary" }: { tone?: "primary" | "danger" }) {
   return (
     <span
       aria-hidden="true"
@@ -77,8 +78,9 @@ function Spinner({ tone = "primary" }: { tone?: "primary" | "danger" }) {
 }
 
 /** The loss-free error line with the retry that re-runs the very ask —
- *  the shelf quick menu's gentle error, inside the panel. */
-function ErrorLine({ message, onRetry }: { message: string; onRetry: () => void }) {
+ *  the shelf quick menu's gentle error, inside the panel. Exported: the
+ *  goal setters and the book settings speak the same family. */
+export function ErrorLine({ message, onRetry }: { message: string; onRetry: () => void }) {
   const t = useTranslation();
   return (
     <div

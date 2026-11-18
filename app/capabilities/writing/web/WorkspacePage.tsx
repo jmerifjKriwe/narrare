@@ -42,7 +42,10 @@
  * stored-ids revert, the refusal's restore, the honest notice + retry).
  * A create or a delete that moves the selection flushes or discards the
  * autosave draft first — a dead scene's words never reach the wire. The
- * setters wait for Task 19, named in code.
+ * settings doors are LIVE (Task 19): the identity card opens the book
+ * settings, the ring and the chapter-target pill open the inline goal
+ * setters (D20) — the dialogs ride over both faces, their Esc before the
+ * room's.
  *
  * The leave guard (WP0b's rule, the states sheet's Kachel 10): a leave —
  * a scene/chapter switch, any route navigation (the router blocker, which
@@ -75,8 +78,10 @@ import {
   useNovelQuery,
 } from "@shell/lib/query";
 
+import { BookSettings } from "./BookSettings";
 import { EditorColumn } from "./EditorColumn";
 import { ExplorerColumn } from "./ExplorerColumn";
+import { GoalSetterDialog } from "./GoalSetter";
 import { InspectorDock } from "./InspectorDock";
 import { DeleteTreeDialog, TreeEditDialog } from "./TreeDialogs";
 import { useAutosave } from "./useAutosave";
@@ -92,6 +97,7 @@ import {
   useReorderChapters,
   useReorderScenes,
   useStoryboardQuery,
+  sceneTitle,
   type SceneEntry,
   type TreeNotice,
 } from "./workspace";
@@ -148,6 +154,10 @@ export function WorkspacePage() {
   // flush waits here for the guard's answer, the pendingSelect discipline.
   const [zen, setZen] = useState(false);
   const [pendingZenExit, setPendingZenExit] = useState(false);
+  // Task 19: the book-settings dialog (the identity card's door) and the
+  // inline goal setters (D20 — the ring's daily, the pill's chapter).
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [goalDialog, setGoalDialog] = useState<{ kind: "daily" } | { kind: "chapter"; chapter: Chapter } | null>(null);
 
   // A navigation between two books reuses this component — the selection
   // and the collapse state belong to the book that was opened, never the
@@ -161,6 +171,8 @@ export function WorkspacePage() {
     setNotice(null);
     setZen(false);
     setPendingZenExit(false);
+    setSettingsOpen(false);
+    setGoalDialog(null);
   }, [novelId]);
 
   // The 404 degrade — the book was deleted elsewhere: the shelf's note
@@ -298,7 +310,7 @@ export function WorkspacePage() {
     function onKey(event: KeyboardEvent) {
       if (event.repeat) return;
       if (event.key === "F9") {
-        if (guardRef.current !== null || dialogRef.current !== null) return;
+        if (guardRef.current !== null || overlayRef.current) return;
         if (activeEntryRef.current === null) return;
         event.preventDefault();
         if (zenRef.current) requestZenExit();
@@ -307,7 +319,7 @@ export function WorkspacePage() {
       }
       if (event.key === "Escape" && zenRef.current) {
         if (continuationRef.current.phase !== "idle") return;
-        if (guardRef.current !== null || dialogRef.current !== null) return;
+        if (guardRef.current !== null || overlayRef.current) return;
         if (document.fullscreenElement) return;
         event.preventDefault();
         requestZenExit();
@@ -352,12 +364,14 @@ export function WorkspacePage() {
               },
             }
           : null;
-  // The keyboard contract reads the live guard and dialog through refs —
+  // The keyboard contract reads the live guard and dialogs through refs —
   // a room's Esc defers to whichever owns the ask (the listener above).
+  // The settings dialog and the goal setters own their Esc too (Task 19).
   const guardRef = useRef(guard);
   guardRef.current = guard;
-  const dialogRef = useRef(dialog);
-  dialogRef.current = dialog;
+  const overlayOpen = dialog !== null || settingsOpen || goalDialog !== null;
+  const overlayRef = useRef(overlayOpen);
+  overlayRef.current = overlayOpen;
 
   // --- The tree's CRUD (Task 13) — the page owns the writes ---------------
   //
@@ -605,6 +619,8 @@ export function WorkspacePage() {
             notice={notice}
             onNoticeRetry={retryNotice}
             onNoticeDismiss={() => setNotice(null)}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onEditGoal={() => setGoalDialog({ kind: "daily" })}
             activity={activity}
             storyboard={storyboard}
           />
@@ -619,6 +635,9 @@ export function WorkspacePage() {
               if (activeChapter !== null) handleCreateScene(activeChapter.id);
             }}
             onEnterZen={requestZenEntry}
+            onEditTarget={() => {
+              if (activeChapter !== null) setGoalDialog({ kind: "chapter", chapter: activeChapter });
+            }}
             continuation={continuation}
           />
           <InspectorDock novel={novel.data} />
@@ -659,6 +678,33 @@ export function WorkspacePage() {
           openerId={dialog.openerId}
           onClose={() => setDialog(null)}
           onDeleted={() => afterSceneDelete(dialog.entry)}
+        />
+      )}
+      {/* Task 19: the book settings and the inline goal setters ride over
+          BOTH faces too — the dialogs own their Esc before the room's. */}
+      {settingsOpen && (
+        <BookSettings novel={novel.data} openerId="book-settings-door" onClose={() => setSettingsOpen(false)} />
+      )}
+      {goalDialog?.kind === "daily" && (
+        <GoalSetterDialog
+          kind="daily"
+          initial={activity.data?.daily_goal_words ?? null}
+          openerId="explorer-goal-door"
+          onClose={() => setGoalDialog(null)}
+        />
+      )}
+      {goalDialog?.kind === "chapter" && (
+        <GoalSetterDialog
+          kind="chapter"
+          initial={goalDialog.chapter.target_words ?? null}
+          novelId={novelId}
+          chapterId={goalDialog.chapter.id}
+          chapterName={t("writing.workspace.tree.chapterName", {
+            number: goalDialog.chapter.position + 1,
+            title: sceneTitle(goalDialog.chapter.title, t("writing.workspace.untitledChapter")),
+          })}
+          openerId="ribbon-target-door"
+          onClose={() => setGoalDialog(null)}
         />
       )}
     </>

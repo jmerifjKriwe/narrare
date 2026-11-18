@@ -29,7 +29,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   client,
   type Chapter,
+  type Novel,
+  type NovelChanges,
   type Scene,
+  type Series,
   type Storyboard,
 } from "@shell/lib/api/client";
 import { readSse } from "@shell/lib/api/sse";
@@ -363,17 +366,22 @@ export function useCreateScene(novelId: string): UseMutationResult<Scene, Error,
   });
 }
 
-/** Renaming a chapter: the title alone — the prose lives on scenes now.
- *  `""` after the service's trim is the honest unnamed (the placeholder a
- *  rendering, not a value). */
+/** Renaming a chapter and setting its word goal (W4 Task 19): the title
+ *  and the goal ride the one PUT door, each only when carried — `""` after
+ *  the service's trim is the honest unnamed (the placeholder a rendering,
+ *  not a value); a carried `null` goal clears back to the honest unset, an
+ *  absent one keeps the stored goal. */
 export function useUpdateChapter(
   novelId: string,
-): UseMutationResult<Chapter, Error, { chapterId: string; title: string }> {
+): UseMutationResult<Chapter, Error, { chapterId: string; title?: string; targetWords?: number | null }> {
   return useMutation({
-    mutationFn: async ({ chapterId, title }: { chapterId: string; title: string }) => {
+    mutationFn: async ({ chapterId, title, targetWords }: { chapterId: string; title?: string; targetWords?: number | null }) => {
+      const body: { title?: string; target_words?: number | null } = {};
+      if (title !== undefined) body.title = title;
+      if (targetWords !== undefined) body.target_words = targetWords;
       const { data, response } = await client.PUT("/api/writing/chapters/{chapter_id}", {
         params: { path: { chapter_id: chapterId } },
-        body: { title },
+        body,
       });
       if (!response.ok || !data) throw refused("chapter update refused", response.status);
       return data;
@@ -506,6 +514,90 @@ export function useReorderScenes(
       }
     },
     onSuccess: () => invalidateArrangement(),
+  });
+}
+
+// --- The settings writes (W4 Task 19) --------------------------------------
+//
+// The book-settings dialog's doors: the novel PATCH (only the carried
+// fields change — the client builds the diff, a carried null clears), the
+// series create/list the select rides, and the atelier's profile write
+// through the settings capability's HTTP door (read-only composition's
+// write sibling — the shell's language switcher PATCHes the same row).
+// Success alone invalidates the family the server write moves.
+
+/** The user's series, alphabetical — the book-settings select's list.
+ *  The key carries the writing prefix; the create invalidates it. */
+export function useSeriesQuery(): UseQueryResult<Series[]> {
+  return useQuery({
+    queryKey: ["series"],
+    queryFn: async () => {
+      const { data, response } = await client.GET("/api/writing/series");
+      if (!response.ok) throw new Error(`series unavailable: ${response.status}`);
+      return data ?? [];
+    },
+  });
+}
+
+/** Creating a series inline (the draft's „Neue Reihe anlegen"): the row
+ *  exists once the POST lands — the select offers it at once, and the
+ *  book's link rides the novel PATCH on Speichern. */
+export function useCreateSeries(): UseMutationResult<Series, Error, { title: string }> {
+  return useMutation({
+    mutationFn: async ({ title }: { title: string }) => {
+      const { data, response } = await client.POST("/api/writing/series", { body: { title } });
+      if (!response.ok || !data) throw refused("series create refused", response.status);
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["series"] });
+    },
+  });
+}
+
+/** The novel PATCH: the carried fields alone are the change (the server's
+ *  `model_fields_set` contract). The novels family refetches — the shelf's
+ *  pills, the hero's series line, the identity card and the running head
+ *  all read the changed row. */
+export function useUpdateNovel(novelId: string): UseMutationResult<Novel, Error, NovelChanges> {
+  return useMutation({
+    mutationFn: async (changes: NovelChanges) => {
+      const { data, response } = await client.PATCH("/api/writing/novels/{novel_id}", {
+        params: { path: { novel_id: novelId } },
+        body: changes,
+      });
+      if (!response.ok || !data) throw refused("novel update refused", response.status);
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["novels"] });
+    },
+  });
+}
+
+/** The atelier's profile write (the settings capability's row): the locale
+ *  is ALWAYS carried — the schema requires it, present and nullable — so
+ *  the caller hands the stored one through unchanged; the profile fields
+ *  ride only when carried (a carried null clears). The settings row and
+ *  the activity aggregate refetch: the chrome's user block reads the name,
+ *  the ring and the banner read the goal. */
+export function useUpdateSettings(): UseMutationResult<
+  void,
+  Error,
+  { locale: string | null; authorName?: string | null; dailyGoalWords?: number | null }
+> {
+  return useMutation({
+    mutationFn: async ({ locale, authorName, dailyGoalWords }) => {
+      const body: { locale: string | null; author_name?: string | null; daily_goal_words?: number | null } = { locale };
+      if (authorName !== undefined) body.author_name = authorName;
+      if (dailyGoalWords !== undefined) body.daily_goal_words = dailyGoalWords;
+      const { response } = await client.PATCH("/api/settings", { body });
+      if (!response.ok) throw refused("settings update refused", response.status);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+      void queryClient.invalidateQueries({ queryKey: ["activity"] });
+    },
   });
 }
 

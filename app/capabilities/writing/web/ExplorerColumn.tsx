@@ -13,7 +13,9 @@
  * - The daily ring is REAL: the activity aggregate's goal fields — the
  *   same source the shelf banner reads (today_words vs daily_goal_words,
  *   goal_remaining, goal_met). Unset keeps the honest neutral; the inline
- *   setter affordance (D20) waits disabled for Task 19's goal surface.
+ *   setter affordance (D20) is LIVE (Task 19) — it opens the goal dialog
+ *   on the atelier's daily goal. The identity card carries the
+ *   book-settings door (the dialog's opener — the draft draws none).
  * - The tension card's stage label is REAL (the planning storyboard's own
  *   title key, resolved against the catalog); the curve is the drafted
  *   PLACEHOLDER (INTERIM #879 — no tension data exists, the draft's curve
@@ -72,8 +74,11 @@ const EYEBROW = "text-[10px] font-semibold uppercase tracking-wider text-muted";
 const RING_PATH =
   "M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831";
 
-/** The identity card — the real cover chip, title, author, genre. */
-function IdentityCard({ novel }: { novel: Novel }) {
+/** The identity card — the real cover chip, title, author, genre, and
+ *  the book-settings door (Task 19 — the draft draws no opener; the
+ *  card is the book's identity face, the dialog's natural home). */
+function IdentityCard({ novel, onOpenSettings }: { novel: Novel; onOpenSettings: () => void }) {
+  const t = useTranslation();
   return (
     <div
       data-testid="explorer-identity"
@@ -98,12 +103,24 @@ function IdentityCard({ novel }: { novel: Novel }) {
           </p>
         )}
       </div>
+      <button
+        type="button"
+        id="book-settings-door"
+        onClick={onOpenSettings}
+        aria-label={t("writing.workspace.identity.settings")}
+        title={t("writing.workspace.identity.settings")}
+        className={`shrink-0 rounded p-1 text-muted transition-colors hover:bg-surface-container-low hover:text-foreground ${FOCUS}`}
+      >
+        <Icon name="tune" size={13} />
+      </button>
     </div>
   );
 }
 
-/** The daily ring — the aggregate's own goal fields, the banner's source. */
-function DailyRing({ activity }: { activity: UseQueryResult<Activity> }) {
+/** The daily ring — the aggregate's own goal fields, the banner's source.
+ *  The setter affordance is LIVE (Task 19, D20): it asks the page, which
+ *  opens the goal dialog on the atelier's daily goal. */
+function DailyRing({ activity, onEditGoal }: { activity: UseQueryResult<Activity>; onEditGoal: () => void }) {
   const t = useTranslation();
   const data = activity.data;
   const result = data != null ? progress(data.today_words, data.daily_goal_words) : null;
@@ -111,14 +128,15 @@ function DailyRing({ activity }: { activity: UseQueryResult<Activity> }) {
     <div data-testid="explorer-ring" className="rounded-lg border border-border bg-panel p-3 shadow-card">
       <div className="mb-2 flex items-center justify-between">
         <span className={EYEBROW}>{t("writing.workspace.ring.title")}</span>
-        {/* D20's inline setter affordance — INTERIM Task 19: the goal
-            surface owns the write; the geometry stands, the action waits. */}
+        {/* D20's inline setter affordance — LIVE (Task 19): the goal
+            dialog writes the atelier's daily goal. */}
         <button
           type="button"
-          disabled
+          id="explorer-goal-door"
+          onClick={onEditGoal}
           aria-label={t("writing.workspace.ring.edit")}
-          title={t("writing.workspace.ring.editNote")}
-          className="cursor-not-allowed rounded p-0.5 text-muted opacity-60"
+          title={t("writing.workspace.ring.edit")}
+          className={`rounded p-0.5 text-muted transition-colors hover:text-foreground ${FOCUS}`}
         >
           <Icon name="write" size={12} />
         </button>
@@ -639,6 +657,8 @@ export function ExplorerColumn({
   notice,
   onNoticeRetry,
   onNoticeDismiss,
+  onOpenSettings,
+  onEditGoal,
   activity,
   storyboard,
 }: {
@@ -671,6 +691,10 @@ export function ExplorerColumn({
   notice: TreeNotice | null;
   onNoticeRetry: () => void;
   onNoticeDismiss: () => void;
+  /** The settings doors (Task 19) — the identity card's book-settings
+   *  door and the ring's daily-goal setter; the page owns the dialogs. */
+  onOpenSettings: () => void;
+  onEditGoal: () => void;
   activity: UseQueryResult<Activity>;
   storyboard: UseQueryResult<Storyboard>;
 }) {
@@ -763,8 +787,8 @@ export function ExplorerColumn({
       className="flex h-full w-[280px] shrink-0 flex-col border-r border-border bg-surface-container-low/60 text-meta"
     >
       <div data-testid="explorer-body" className="flex-1 space-y-3 overflow-y-auto p-3">
-        <IdentityCard novel={novel} />
-        <DailyRing activity={activity} />
+        <IdentityCard novel={novel} onOpenSettings={onOpenSettings} />
+        <DailyRing activity={activity} onEditGoal={onEditGoal} />
         <TensionCard
           storyboard={storyboard}
           entries={entries}

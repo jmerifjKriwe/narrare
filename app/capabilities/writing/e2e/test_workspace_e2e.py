@@ -145,18 +145,18 @@ def test_the_workspace_reads_the_seeded_book(page: Page, installed: Stack) -> No
     expect(rail.get_by_role("link", name="Editor")).to_have_attribute("aria-current", "page")
 
     # Every unbuilt door stays disabled with its note — the ribbon's
-    # focus/history/export (#875/#876), the wiki (#867), the layout tune
+    # history/export (#875/#876), the wiki (#867), the layout tune
     # (#881); the ⌘J chip carries its „bald" mark (#869). The CRUD doors
-    # are LIVE (Task 13) — the create suite drives them.
+    # are LIVE (Task 13) — the create suite drives them; Fokus is LIVE
+    # (Task 18) — the zen suite drives it.
     for name in (
         "Verlauf",
         "Export",
-        "Fokus (F9)",
         "Wiki öffnen",
         "Workspace-Layout",
     ):
         expect(page.get_by_role("button", name=name, exact=True)).to_be_disabled()
-    for name in ("Neues Kapitel", "Neue Szene"):
+    for name in ("Neues Kapitel", "Neue Szene", "Fokus (F9)"):
         expect(page.get_by_role("button", name=name, exact=True)).to_be_enabled()
     expect(page.get_by_text("bald")).to_be_visible()
 
@@ -254,4 +254,95 @@ def test_the_dark_workspace_face_clears_the_axe_floor(page: Page, installed: Sta
     assert page.evaluate("getComputedStyle(document.body).backgroundColor") == "rgb(22, 20, 15)"
     expect(page.get_by_role("heading", name="Das Signal im Permafrost", exact=True)).to_be_visible()
     expect(page.get_by_text("1.855 / 2.000 W.")).to_be_visible()
+    assert_accessible(page)
+
+
+def test_the_book_settings_edit_the_real_family(page: Page, installed: Stack) -> None:
+    """Task 19: the identity door opens the dialog on the real rows; the
+    save carries the diff (target, status), the series create lands inline
+    and the link + volume ride the save — the shelf's hero line speaks it.
+    The dialog's inheritance note is true: this surface edits what setup
+    bound."""
+    novel = _seed_klang()
+    patch_novel(str(novel["id"]), status="draft")
+    _goto_workspace(page, str(novel["id"]))
+
+    page.get_by_role("button", name="Buch-Einstellungen", exact=True).click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_role("heading", name="Buch-Einstellungen")).to_be_visible()
+    expect(dialog.get_by_label("Romantitel", exact=True)).to_have_value(KLANG)
+    expect(dialog.get_by_label("Autor", exact=True)).to_have_value(AUTHOR)
+    expect(dialog.get_by_label("Zielumfang (Wörter gesamt)", exact=True)).to_have_value("85.000")
+    expect(dialog.get_by_label("Persönliches Tagesziel", exact=True)).to_have_value("2.000")
+    expect(dialog.get_by_role("radio", name="Entwurf", exact=True)).to_have_attribute(
+        "aria-checked", "true"
+    )
+
+    # The diff rides the save — the target and the status change.
+    dialog.get_by_label("Zielumfang (Wörter gesamt)", exact=True).fill("90000")
+    dialog.get_by_role("radio", name="Überarbeitung", exact=True).click()
+    dialog.get_by_role("button", name="Speichern", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    # The dock's planned length reads the new target.
+    expect(page.get_by_text("90.000 W.")).to_be_visible()
+
+    # Reopen — the stored answers stand, the series create lands inline.
+    page.get_by_role("button", name="Buch-Einstellungen", exact=True).click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_label("Zielumfang (Wörter gesamt)", exact=True)).to_have_value("90.000")
+    expect(dialog.get_by_role("radio", name="Überarbeitung", exact=True)).to_have_attribute(
+        "aria-checked", "true"
+    )
+    dialog.get_by_role("button", name="Neue Reihe anlegen", exact=True).click()
+    dialog.get_by_label("Name der neuen Reihe", exact=True).fill("Tiefsee-Chroniken")
+    dialog.get_by_role("button", name="Anlegen", exact=True).click()
+    series_select = dialog.get_by_label("Zugehörige Buchreihe", exact=True)
+    expect(series_select.locator("option:checked")).to_have_text("Tiefsee-Chroniken")
+    dialog.get_by_label("Band", exact=True).fill("2")
+    dialog.get_by_role("button", name="Speichern", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+
+    # The shelf's hero series line speaks the link and the volume.
+    page.goto(BASE + "/")
+    expect(page.get_by_text("Tiefsee-Chroniken, Band 2")).to_be_visible()
+    assert_accessible(page)
+
+
+def test_the_inline_goal_setters_write_the_real_rows(page: Page, installed: Stack) -> None:
+    """Task 19, D20: the ring's affordance writes the atelier's daily goal
+    (the ring reads it back), the pill's writes the chapter's own target
+    (the pair and the fill read it back)."""
+    novel = _seed_klang()
+    _goto_workspace(page, str(novel["id"]))
+
+    # The daily goal: 2.000 → 2.500, the ring's pair follows.
+    ring = page.get_by_test_id("explorer-ring")
+    ring.get_by_role("button", name="Tagesziel anpassen", exact=True).click()
+    goal = page.get_by_role("dialog")
+    expect(goal.get_by_label("Tagesziel (Wörter)", exact=True)).to_have_value("2.000")
+    goal.get_by_label("Tagesziel (Wörter)", exact=True).fill("2500")
+    goal.get_by_role("button", name="Speichern", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    expect(page.get_by_text("1.855 / 2.500 W.")).to_be_visible()
+
+    # The chapter goal: the neutral „—" becomes the real pair and fill.
+    ribbon = page.get_by_test_id("workspace-ribbon")
+    ribbon.get_by_role("button", name="Kapitelziel anpassen", exact=True).click()
+    goal = page.get_by_role("dialog")
+    goal.get_by_label("Kapitelziel (Wörter)", exact=True).fill("1000")
+    goal.get_by_role("button", name="Speichern", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    expect(ribbon.get_by_text("765 / 1.000 Wörter")).to_be_visible()
+    assert_accessible(page)
+
+
+def test_the_dark_book_settings_clear_the_axe_floor(page: Page, installed: Stack) -> None:
+    """The dialog on the tokens' dark halves — the same WCAG A/AA floor
+    the workspace rides, with the form open."""
+    set_theme("dark")
+    novel = _seed_klang()
+    _goto_workspace(page, str(novel["id"]))
+    page.get_by_role("button", name="Buch-Einstellungen", exact=True).click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_role("heading", name="Buch-Einstellungen")).to_be_visible()
     assert_accessible(page)

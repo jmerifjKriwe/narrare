@@ -87,6 +87,7 @@ const CH1: Chapter = {
   title: "Ghost in the Machine",
   position: 0,
   scene_count: 2,
+  target_words: null,
   word_count: 765,
   created_at: "2026-11-01T10:00:00Z",
   updated_at: "2026-11-12T10:00:00Z",
@@ -97,6 +98,7 @@ const CH2: Chapter = {
   title: "Nevada Echoes",
   position: 1,
   scene_count: 1,
+  target_words: null,
   word_count: 1090,
   created_at: "2026-11-01T10:00:00Z",
   updated_at: "2026-11-11T10:00:00Z",
@@ -204,8 +206,9 @@ function noContent(): Response {
 function scriptApi() {
   api.GET.mockImplementation(async (path: string, init?: { params?: { path?: Record<string, string> } }) => {
     if (path === "/api/settings") {
-      return { data: { locale: "de", theme: null, author_name: null, email: null }, response: ok() };
+      return { data: { locale: "de", theme: null, author_name: null, daily_goal_words: 500, email: null }, response: ok() };
     }
+    if (path === "/api/writing/series") return { data: [], response: ok() };
     if (path === "/api/setup/status") return { data: { complete: setupComplete }, response: ok() };
     if (path === "/api/writing/novels") return { data: [NOVEL], response: ok() };
     if (path === "/api/writing/novels/{novel_id}") return novelAnswer();
@@ -1384,4 +1387,83 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     await enterZen();
     expect(await screen.findByText(/Heute: — · Sitzung: 0 W/)).toBeTruthy();
   });
+});
+
+describe("book settings and the goal setters (Task 19) — the page's doors", () => {
+  it("the identity card's door opens the book settings; Fertig returns the focus", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    const door = screen.getByRole("button", { name: de["writing.workspace.identity.settings"] });
+    fireEvent.click(door);
+    // The form mounts once the reads settle — the title field is its face.
+    const titleField = (await screen.findByLabelText(de["writing.settings.titleLabel"])) as HTMLInputElement;
+    expect(screen.getByRole("heading", { name: de["writing.settings.title"] })).toBeTruthy();
+    // The dialog reads the real novel — the title field opens on it.
+    expect(titleField.value).toBe("Dead Signal");
+    fireEvent.click(screen.getByRole("button", { name: `${de["writing.settings.close"]} (${de["writing.workspace.crud.close"]})` }));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: de["writing.settings.title"] })).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(door));
+  }, 15000);
+
+  it("a settings save rides the novel PATCH and the shelf family refetches", async () => {
+    api.PATCH.mockImplementation(async (path: string, init?: { body?: Record<string, unknown> }) => {
+      if (path === "/api/writing/novels/{novel_id}") {
+        novelAnswer = async () => ({ data: { ...NOVEL, ...(init?.body ?? {}) }, response: ok() });
+        return { data: { ...NOVEL, ...(init?.body ?? {}) }, response: ok() };
+      }
+      throw new Error(`unexpected PATCH: ${path}`);
+    });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.identity.settings"] }));
+    const title = await screen.findByLabelText(de["writing.settings.titleLabel"]);
+    fireEvent.change(title, { target: { value: "Dead Signal II" } });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.crud.save"] }));
+    await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
+    expect(api.PATCH.mock.calls[0][1].body).toEqual({ title: "Dead Signal II" });
+    // The dialog closes; the refetched row speaks the new title.
+    await waitFor(() => expect(screen.queryByRole("heading", { name: de["writing.settings.title"] })).toBeNull());
+    expect((await screen.findAllByText("Dead Signal II")).length).toBeGreaterThan(0);
+  }, 15000);
+
+  it("the ring's setter opens the daily goal dialog — the save rides the settings PATCH", async () => {
+    api.PATCH.mockResolvedValue({ data: {}, response: ok() });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    const ring = screen.getByTestId("explorer-ring");
+    fireEvent.click(within(ring).getByRole("button", { name: de["writing.workspace.ring.edit"] }));
+    const field = await screen.findByLabelText(de["writing.workspace.goal.dailyLabel"]);
+    expect((field as HTMLInputElement).value).toBe("500");
+    await waitFor(() => expect((screen.getByRole("button", { name: de["writing.workspace.crud.save"] }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.change(field, { target: { value: "750" } });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.crud.save"] }));
+    await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
+    expect(api.PATCH.mock.calls[0][0]).toBe("/api/settings");
+    expect(api.PATCH.mock.calls[0][1].body).toEqual({ locale: "de", daily_goal_words: 750 });
+  }, 15000);
+
+  it("the ribbon pill's setter opens the chapter goal dialog — the save rides the chapter PUT", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    const ribbon = screen.getByTestId("workspace-ribbon");
+    fireEvent.click(within(ribbon).getByRole("button", { name: de["writing.workspace.ribbon.targetEdit"] }));
+    const field = await screen.findByLabelText(de["writing.workspace.goal.chapterLabel"]);
+    fireEvent.change(field, { target: { value: "1000" } });
+    putChapterAnswer = async (chapterId, body) => ({
+      data: { ...(chapterId === "c1" ? CH1 : CH2), ...(body as { target_words?: number | null }) },
+      response: ok(),
+    });
+    // The structure refetch reads the changed row — the goal stands.
+    chaptersAnswer = async () => ({ data: [{ ...CH1, target_words: 1000 }, CH2], response: ok() });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.crud.save"] }));
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    const call = api.PUT.mock.calls.find((entry) => entry[0] === "/api/writing/chapters/{chapter_id}");
+    expect(call?.[1].body).toEqual({ target_words: 1000 });
+    // The pill reads the refetched row — the real pair stands.
+    expect(
+      await within(ribbon).findByText(
+        de["writing.workspace.ribbon.targetValue"].replace("{count, number}", "765").replace("{target, number}", "1.000"),
+      ),
+    ).toBeTruthy();
+  }, 15000);
 });

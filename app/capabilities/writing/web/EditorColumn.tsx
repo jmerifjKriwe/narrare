@@ -24,11 +24,12 @@
  * Honest readings of the draft (the gap doc records them):
  * - The running head is `novel.author` beside the book (D22) — the book
  *   alone when no author stands. NO folio, NO page count (row 9).
- * - The chapter-target pill keeps the neutral „—": ChapterRead carries no
- *   target yet, and the setter is Task 19's (D20 places it inline here).
- *   Fokus is LIVE (Task 18) — the door opens the zen room, F9 the
- *   keyboard's own way in (D19); Verlauf waits for the editing wave
- *   (INTERIM #875), Export for the production wave (INTERIM #876).
+ * - The chapter-target pill is LIVE (Task 19, D8/D20): the pair reads the
+ *   chapter's own goal and count, the setter opens the goal dialog inline
+ *   at the element; no goal keeps the neutral „—". Fokus is LIVE (Task 18)
+ *   — the door opens the zen room, F9 the keyboard's own way in (D19);
+ *   Verlauf waits for the editing wave (INTERIM #875), Export for the
+ *   production wave (INTERIM #876).
  * - The foot's autosave line carries no timestamp: the draft's „vor 1 Min."
  *   is a mock relative claim; the honest line names the state, not a clock.
  * - The ghost text and the prompt bar are LIVE (Task 16): the continuation
@@ -42,7 +43,7 @@
  * experience (D16), and „+ Szene 1 anlegen" starts it.
  */
 
-import type { Novel } from "@shell/lib/api/client";
+import type { Chapter, Novel } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { activeLocale } from "@shell/lib/locale";
 import { capitalizedWord } from "@shell/lib/numberWords";
@@ -67,26 +68,39 @@ const FOCUS =
 const DISABLED_DOOR =
   "flex cursor-not-allowed items-center gap-1 rounded border border-border/70 bg-surface-container-low/40 px-2.5 py-1 text-meta text-muted opacity-60";
 
-/** The ribbon's neutral chapter-target pill — INTERIM Task 19: the read
- *  carries no chapter goal yet and the setter rides the book-settings
- *  surface (D20 places it inline at this element). */
-function ChapterTargetPill() {
+/** The ribbon's chapter-target pill — LIVE (Task 19, D8/D20): the pair
+ *  reads the chapter's own goal and its scene-derived count, the track
+ *  fills with the real share; no goal keeps the neutral „—" and the
+ *  empty track. The inline setter asks the page (the goal dialog writes
+ *  the chapter's target through the chapter PUT). */
+function ChapterTargetPill({ chapter, onEditTarget }: { chapter: Chapter; onEditTarget: () => void }) {
   const t = useTranslation();
+  const goal = chapter.target_words;
+  const share = goal != null && goal > 0 ? Math.min(100, (chapter.word_count / goal) * 100) : null;
   return (
     <div className="flex items-center gap-2 rounded-full border border-border bg-surface-container-low px-3 py-1 text-meta text-muted shadow-sm">
       <span>
         {t("writing.workspace.ribbon.chapterTarget")}{" "}
-        <strong className="font-mono text-foreground">—</strong>
+        {goal != null ? (
+          <strong className="font-mono text-foreground">
+            {t("writing.workspace.ribbon.targetValue", { count: chapter.word_count, target: goal })}
+          </strong>
+        ) : (
+          <strong className="font-mono text-foreground">—</strong>
+        )}
       </span>
       <div aria-hidden="true" className="h-1.5 w-16 overflow-hidden rounded-full bg-border">
-        {/* No goal, no fill — the empty track is the honest neutral. */}
+        {share !== null && (
+          <div data-chapter-target-fill className="h-full bg-primary" style={{ width: `${share}%` }} />
+        )}
       </div>
       <button
         type="button"
-        disabled
-        title={t("writing.workspace.ribbon.targetEditNote")}
+        id="ribbon-target-door"
+        onClick={onEditTarget}
         aria-label={t("writing.workspace.ribbon.targetEdit")}
-        className="cursor-not-allowed text-muted opacity-60"
+        title={t("writing.workspace.ribbon.targetEdit")}
+        className={`rounded text-muted transition-colors hover:text-foreground ${FOCUS}`}
       >
         <Icon name="write" size={12} />
       </button>
@@ -102,11 +116,13 @@ function Ribbon({
   entry,
   status,
   onEnterZen,
+  onEditTarget,
 }: {
   novel: Novel;
   entry: SceneEntry;
   status: SaveStatus;
   onEnterZen: () => void;
+  onEditTarget: () => void;
 }) {
   const t = useTranslation();
   const code = sceneCodeNumbers(entry);
@@ -140,7 +156,7 @@ function Ribbon({
           </span>
         )}
       </div>
-      <ChapterTargetPill />
+      <ChapterTargetPill chapter={entry.chapter} onEditTarget={onEditTarget} />
       <div className="flex shrink-0 items-center gap-1.5">
         {/* Fokus: LIVE (Task 18, D19) — the door opens the zen room; F9 is
             the keyboard's own way in (the page owns the toggle). The exit
@@ -322,6 +338,7 @@ export function EditorColumn({
   onBodyChange,
   onCreateScene,
   onEnterZen,
+  onEditTarget,
   continuation,
 }: {
   novel: Novel;
@@ -340,6 +357,9 @@ export function EditorColumn({
   onCreateScene: () => void;
   /** The ribbon's Fokus door (Task 18) — the page opens the zen room. */
   onEnterZen: () => void;
+  /** The chapter-target pill's setter (Task 19, D20) — the page opens
+   *  the goal dialog on the active chapter's target. */
+  onEditTarget: () => void;
   /** The continuation's state (the page's hook) — the ghost layer and the
    *  prompt bar ride it; the empty faces carry neither. */
   continuation: Continuation;
@@ -350,7 +370,9 @@ export function EditorColumn({
       aria-label={t("writing.workspace.editor.label")}
       className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-surface-container-low"
     >
-      {entry !== null && <Ribbon novel={novel} entry={entry} status={status} onEnterZen={onEnterZen} />}
+      {entry !== null && (
+        <Ribbon novel={novel} entry={entry} status={status} onEnterZen={onEnterZen} onEditTarget={onEditTarget} />
+      )}
       {/* The scrolling stage — tabIndex gives the scroll region keyboard
           access (axe scrollable-region-focusable); the prose itself is a
           focusable textbox now, the shell main's own pattern. The bottom

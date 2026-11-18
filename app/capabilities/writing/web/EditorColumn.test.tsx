@@ -84,6 +84,7 @@ function chapterRow(overrides: Partial<Chapter> = {}): Chapter {
     title: "Ghost in the Machine",
     position: 0,
     scene_count: 2,
+    target_words: null,
     word_count: 765,
     created_at: "2026-11-01T10:00:00Z",
     updated_at: "2026-11-10T10:00:00Z",
@@ -123,6 +124,7 @@ function renderColumn(
     onBodyChange?: (body: string) => void;
     onCreateScene?: () => void;
     onEnterZen?: () => void;
+    onEditTarget?: () => void;
     continuation?: Continuation;
   } = {},
 ) {
@@ -130,6 +132,7 @@ function renderColumn(
   const onBodyChange = props.onBodyChange ?? vi.fn();
   const onCreateScene = props.onCreateScene ?? vi.fn();
   const onEnterZen = props.onEnterZen ?? vi.fn();
+  const onEditTarget = props.onEditTarget ?? vi.fn();
   const utils = render(
     <EditorColumn
       novel={props.novel ?? novelRow()}
@@ -140,10 +143,11 @@ function renderColumn(
       onBodyChange={onBodyChange}
       onCreateScene={onCreateScene}
       onEnterZen={onEnterZen}
+      onEditTarget={onEditTarget}
       continuation={props.continuation ?? continuationOf()}
     />,
   );
-  return { ...utils, onRetry, onBodyChange, onCreateScene, onEnterZen };
+  return { ...utils, onRetry, onBodyChange, onCreateScene, onEnterZen, onEditTarget };
 }
 
 beforeEach(() => {
@@ -171,6 +175,7 @@ describe("the scene face", () => {
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
         onEnterZen={vi.fn()}
+        onEditTarget={vi.fn()}
         continuation={continuationOf()}
       />,
     );
@@ -200,6 +205,7 @@ describe("the scene face", () => {
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
         onEnterZen={vi.fn()}
+        onEditTarget={vi.fn()}
         continuation={continuationOf()}
       />,
     );
@@ -221,6 +227,7 @@ describe("the scene face", () => {
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
         onEnterZen={vi.fn()}
+        onEditTarget={vi.fn()}
         continuation={continuationOf()}
       />,
     );
@@ -235,6 +242,7 @@ describe("the scene face", () => {
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
         onEnterZen={vi.fn()}
+        onEditTarget={vi.fn()}
         continuation={continuationOf()}
       />,
     );
@@ -251,6 +259,7 @@ describe("the scene face", () => {
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
         onEnterZen={vi.fn()}
+        onEditTarget={vi.fn()}
         continuation={continuationOf()}
       />,
     );
@@ -335,6 +344,7 @@ describe("the ribbon", () => {
           onBodyChange={vi.fn()}
           onCreateScene={vi.fn()}
           onEnterZen={vi.fn()}
+          onEditTarget={vi.fn()}
           continuation={continuationOf()}
         />,
       );
@@ -346,11 +356,26 @@ describe("the ribbon", () => {
     }
   });
 
-  it("the chapter-target pill keeps the neutral — the read carries no chapter goal yet (Task 19)", () => {
-    renderColumn();
+  it("the chapter-target pill keeps the neutral when no goal stands — the setter ready (Task 19)", () => {
+    const { onEditTarget } = renderColumn();
     const ribbon = screen.getByTestId("workspace-ribbon");
     expect(within(ribbon).getByText(de["writing.workspace.ribbon.chapterTarget"])).toBeTruthy();
-    expect(within(ribbon).getByRole("button", { name: de["writing.workspace.ribbon.targetEdit"] }).hasAttribute("disabled")).toBe(true);
+    const edit = within(ribbon).getByRole("button", { name: de["writing.workspace.ribbon.targetEdit"] });
+    expect(edit.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(edit);
+    expect(onEditTarget).toHaveBeenCalledTimes(1);
+  });
+
+  it("a set chapter goal reads the real pair and fills the track (D8/D20, Task 19)", () => {
+    renderColumn({ entry: entryOf(sceneRow(), chapterRow({ target_words: 1000, word_count: 765 })) });
+    const ribbon = screen.getByTestId("workspace-ribbon");
+    expect(
+      within(ribbon).getByText(
+        de["writing.workspace.ribbon.targetValue"].replace("{count, number}", "765").replace("{target, number}", "1.000"),
+      ),
+    ).toBeTruthy();
+    const fill = ribbon.querySelector("[data-chapter-target-fill]");
+    expect(fill?.getAttribute("style")).toContain("76.5%");
   });
 
   it("history and export stay honestly disabled with their notes", () => {
