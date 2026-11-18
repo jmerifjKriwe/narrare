@@ -109,14 +109,17 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`revision-history`](screens/editing/revision-history.webp) | Revisions- & Diff-Historie (Time-Machine) | 4038 px |
 | Knowledge and lore | [`knowledge-ai-dock`](screens/knowledge/knowledge-ai-dock.webp) | Knowledge- & KI-Dock | 3172 px |
 |  | [`lore-graph`](screens/knowledge/lore-graph.webp) | Großansicht Entitäten- & Lore-Graph | 2232 px |
+|  | [`lore-graph-2`](screens/knowledge/lore-graph-2.webp) | Großansicht Entitäten- & Lore-Graph — Atelier Narrare (harmonisiert) | 2048 px |
 |  | [`lore-graph-causality-harmonized`](screens/knowledge/lore-graph-causality-harmonized.webp) | Großansicht Entitäten- & Lore-Graph (Kausal harmonisiert) | 2252 px |
 |  | [`lore-graph-aria-sluice-event`](screens/knowledge/lore-graph-aria-sluice-event.webp) | Großansicht Entitäten- & Lore-Graph (ARIAs Schleusen-Ereignis) | 2628 px |
 |  | [`character-setting-dossiers`](screens/knowledge/character-setting-dossiers.webp) | Figuren- & Schauplatz-Dossiers | 4150 px |
+|  | [`dossiers-2`](screens/knowledge/dossiers-2.webp) | Figuren- & Schauplatz-Dossiers — Narrare (harmonisiert) | 2214 px |
 |  | [`dossier-research-station-7-aria`](screens/knowledge/dossier-research-station-7-aria.webp) | Dossier: Forschungsstation 7 & ARIA | 4848 px |
 |  | [`worldbuilding-atlas`](screens/knowledge/worldbuilding-atlas.webp) | Weltenbau- & Geografie-Atlas | 2940 px |
 |  | [`worldbuilding-atlas-dark`](screens/knowledge/worldbuilding-atlas-dark.webp) | Weltenbau- & Geografie-Atlas (Dark Mode) | 3068 px |
 |  | [`entity-genesis-ai-dialog`](screens/knowledge/entity-genesis-ai-dialog.webp) | Entitäten-Genesis im KI-Dialog | 2496 px |
 |  | [`sources-research-archive`](screens/knowledge/sources-research-archive.webp) | Quellen-, Recherche- & Fakten-Archiv | 2740 px |
+|  | [`sources-archive-2`](screens/knowledge/sources-archive-2.webp) | Quellen-, Recherche- & Fakten-Archiv — Narrare (harmonisiert) | 2832 px |
 | Planning and structure | [`three-act-storyboard`](screens/planning/three-act-storyboard.webp) | 3-Akt-Storyboard & Szenen-Struktur - Dead Signal | 3900 px |
 |  | [`chronology-timeline`](screens/planning/chronology-timeline.webp) | Chronologie- & Timeline-Ansicht - Dead Signal | 3062 px |
 |  | [`causality-matrix-plot-twist`](screens/planning/causality-matrix-plot-twist.webp) | Kausalitäts-Matrix & Plot-Twist-Simulator | 3024 px |
