@@ -9,9 +9,9 @@
  * the active novel's cover chip and name, an `unfold_more` menu of the
  * user's real novels (the cover system's pigment at chip size, the row's
  * own genre/progress/chapter facts, never the draft's mock figures) — the
- * nav (Bücherregal live with its per-route active face; Editor, Wissen,
- * Planung and Einstellungen honestly disabled with their later-wave notes,
- * no routes exist yet), and the foot: the sync dot (the LIVE autosave
+ * nav (Bücherregal live with its per-route active face; Editor and Wissen
+ * live with the workspace and the lore graph; Planung and Einstellungen
+ * honestly disabled with their later-wave notes), and the foot: the sync dot (the LIVE autosave
  * owner's face, `saveStatus.ts` — Task 12 wired it; tile 3's three states), the
  * real tri-state theme toggle (system → light → dark, the settings theme
  * PATCH, a refusal restores), and the user block (author_name → email
@@ -27,8 +27,10 @@
  *
  * The nav's Editor door is live with the workspace (Task 11): it opens
  * the active book's workspace and wears the active face on a workspace
- * route; with no book standing it waits honestly disabled. Wissen,
- * Planung and Einstellungen keep their later-wave notes.
+ * route; with no book standing it waits honestly disabled. The Wissen door
+ * is live with the lore graph (W5 Task 3): it opens the active book's graph
+ * and wears the active face on the graph route. Planung and Einstellungen
+ * keep their later-wave notes.
  *
  * The user menu the draft's tile 4 draws (Autorenname bearbeiten,
  * Tagesziel festlegen, Einstellungen, Abmelden) rides the settings wave
@@ -155,6 +157,11 @@ export function IconRail() {
   const saveFace = SAVE_FACES[saveStatus];
   const saveTone = SAVE_TONE_CLASS[saveFace.tone];
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  // The Wissen door's active face: the lore graph route is matched (the
+  // route id, never a parsed pathname — the chrome's own discipline).
+  const knowledgeActive = useRouterState({
+    select: (state) => state.matches.some((match) => match.routeId === "/novels/$novelId/knowledge/graph"),
+  });
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);
@@ -495,6 +502,36 @@ export function IconRail() {
                   title={t(entry.label)}
                   aria-current={bookId !== null ? "page" : undefined}
                   className={face(bookId !== null)}
+                >
+                  {children}
+                </Link>
+              ) : (
+                <button
+                  key={entry.label}
+                  type="button"
+                  disabled
+                  aria-label={t(entry.label)}
+                  title={entry.note !== undefined ? t(entry.note) : undefined}
+                  className="flex w-full cursor-not-allowed items-center justify-center gap-0 rounded-lg border border-transparent px-2 py-1.5 text-muted opacity-50 group-hover/rail:justify-start group-hover/rail:gap-2.5 pointer-coarse:justify-start pointer-coarse:gap-2.5"
+                >
+                  {children}
+                </button>
+              );
+            }
+            // The Wissen door is the active book's lore graph (W5 Task 3 —
+            // the later-wave interim retired): with a book standing it opens
+            // the graph and wears the active face on the graph route; with no
+            // book it waits honestly disabled, the note saying so.
+            if (entry.label === "shell.nav.knowledge") {
+              return active !== null ? (
+                <Link
+                  key={entry.label}
+                  to="/novels/$novelId/knowledge/graph"
+                  params={{ novelId: active.id }}
+                  aria-label={t(entry.label)}
+                  title={t(entry.label)}
+                  aria-current={knowledgeActive ? "page" : undefined}
+                  className={face(knowledgeActive)}
                 >
                   {children}
                 </Link>

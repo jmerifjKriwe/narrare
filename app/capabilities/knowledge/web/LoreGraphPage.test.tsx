@@ -1,0 +1,413 @@
+// @vitest-environment jsdom
+/**
+ * The lore graph page (W5 Task 3) — the harmonized `lore-graph-2` draft on
+ * the shell's tokens, driven through the real API seam (the client mocked at
+ * its module boundary, the house pattern). The nodes are the novel's real
+ * EntityRead rows, the edges its RelationRead rows; the layout is the pure
+ * deterministic pass (pinned separately in graphLayout.test.ts). A node click
+ * opens the dossier with the REAL fields and the invented ones as honest
+ * disabled gaps; an edge click opens its note popover; the type chips and the
+ * name search narrow the canvas client-side and compose; zoom and the honest
+ * reset move the viewport; the empty canon, the loading and the outage each
+ * answer with their own face. The `entity` search param is the dock chip's
+ * deep link. The face speaks du-tone in all three catalogs.
+ */
+import { QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@shell/lib/api/client", () => ({
+  client: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() },
+}));
+
+import { client, type Entity, type Relation } from "@shell/lib/api/client";
+import { catalogs } from "@shell/lib/generated/catalogs";
+import { applyLocale } from "@shell/lib/locale";
+import { queryClient } from "@shell/lib/query";
+
+import { LoreGraphPage } from "./LoreGraphPage";
+
+const de = catalogs.de;
+const api = client as unknown as Record<"GET", ReturnType<typeof vi.fn>>;
+
+configure({ asyncUtilTimeout: 5000 });
+
+const NOVEL_ID = "11111111-1111-1111-1111-111111111111";
+const GRAPH_PATH = "/novels/$novelId/knowledge/graph";
+
+function ok(): Response {
+  return new Response(null, { status: 200 });
+}
+
+function entityRow(overrides: Partial<Entity> & { id: string; name: string }): Entity {
+  return {
+    novel_id: NOVEL_ID,
+    type: "character",
+    aliases: [],
+    tags: [],
+    content: "",
+    created_at: "2026-11-18T10:00:00Z",
+    updated_at: "2026-11-18T10:00:00Z",
+    ...overrides,
+  };
+}
+
+const MAYA = entityRow({ id: "e1", name: "Dr. Maya Chen", content: "Leitende Bio-Physikerin." });
+const ARIA = entityRow({ id: "e2", name: "ARIA", content: "Autonome Schiffs-KI." });
+const STATION = entityRow({ id: "e3", name: "Station 7", type: "location", content: "Nevada Deep-Array." });
+const RELIKT = entityRow({ id: "e4", name: "Relikt", type: "object", content: "" });
+
+function relationRow(overrides: Partial<Relation> & { id: string }): Relation {
+  return {
+    from_entity_id: "e1",
+    to_entity_id: "e2",
+    relation_type: "ally_of",
+    note: null,
+    created_at: "2026-11-18T10:00:00Z",
+    ...overrides,
+  };
+}
+
+const R1 = relationRow({ id: "r1", from_entity_id: "e1", to_entity_id: "e2", relation_type: "ally_of", note: "Symbiotische Co-Pilotin." });
+const R2 = relationRow({ id: "r2", from_entity_id: "e1", to_entity_id: "e3", relation_type: "located_in", note: "Suchziel." });
+const R3 = relationRow({ id: "r3", from_entity_id: "e2", to_entity_id: "e3", relation_type: "related_to", note: null });
+
+let entities: Entity[];
+let relations: Relation[];
+
+function baseGet(path: string): Promise<{ data: unknown; response: Response }> {
+  if (path === "/api/knowledge/novels/{novel_id}/entities") {
+    return Promise.resolve({ data: entities, response: ok() });
+  }
+  if (path === "/api/knowledge/novels/{novel_id}/relations") {
+    return Promise.resolve({ data: relations, response: ok() });
+  }
+  throw new Error(`unexpected GET: ${path}`);
+}
+
+/** The page on a harness route whose id is the real graph path, so the
+ *  page's useParams/useSearch/navigate all resolve against it. */
+const harnessRoot = createRootRoute({ component: () => <Outlet /> });
+
+async function renderGraph(entry = `/novels/${NOVEL_ID}/knowledge/graph`) {
+  const graph = createRoute({
+    getParentRoute: () => harnessRoot,
+    path: GRAPH_PATH,
+    validateSearch: (search: Record<string, unknown>): { entity?: string } =>
+      typeof search.entity === "string" && search.entity !== "" ? { entity: search.entity } : {},
+    component: LoreGraphPage,
+  });
+  const router = createRouter({
+    routeTree: harnessRoot.addChildren([graph]),
+    history: createMemoryHistory({ initialEntries: [entry] }),
+  });
+  await router.load();
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+}
+
+/** The world layer's current scale, read off its transform. */
+function worldScale(): number {
+  const world = screen.getByTestId("graph-world");
+  const match = /scale\(([^)]+)\)/.exec(world.style.transform);
+  return match === null ? NaN : Number(match[1]);
+}
+
+beforeEach(() => {
+  applyLocale("de");
+  vi.stubGlobal("navigator", { language: "de-DE", languages: ["de-DE"] });
+  entities = [MAYA, ARIA, STATION, RELIKT];
+  relations = [R1, R2, R3];
+  api.GET.mockImplementation(baseGet);
+});
+
+afterEach(() => {
+  cleanup();
+  queryClient.clear();
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
+
+describe("the graph draws the novel's real web", () => {
+  it("renders a node per entity and an edge per relation, with the real counts", async () => {
+    await renderGraph();
+    const nodes = await screen.findAllByTestId("graph-node");
+    expect(nodes).toHaveLength(4);
+    expect(screen.getAllByTestId("graph-edge")).toHaveLength(3);
+    expect(within(nodes[0]).getByText("Dr. Maya Chen")).toBeTruthy();
+    // The legend counts the whole web in the locale's own plural.
+    expect(screen.getByText("4 Entitäten • 3 Relationen")).toBeTruthy();
+    // The reads carry the novel.
+    expect(api.GET.mock.calls.some(([p]) => p === "/api/knowledge/novels/{novel_id}/entities")).toBe(true);
+    expect(api.GET.mock.calls.some(([p]) => p === "/api/knowledge/novels/{novel_id}/relations")).toBe(true);
+  });
+
+  it("the type chips name the types the canon carries, with their counts", async () => {
+    await renderGraph();
+    const chips = await screen.findAllByTestId("type-chip");
+    // All + character + location + object.
+    expect(chips).toHaveLength(4);
+    expect(within(chips[0]).getByText(de["knowledge.graph.allTypes"])).toBeTruthy();
+    expect(screen.getByText(`${de["knowledge.type.character"]} (2)`)).toBeTruthy();
+    expect(screen.getByText(`${de["knowledge.type.location"]} (1)`)).toBeTruthy();
+    expect(screen.getByText(`${de["knowledge.type.object"]} (1)`)).toBeTruthy();
+  });
+});
+
+describe("a node click opens the dossier with the real fields", () => {
+  it("shows name, type, the body as description and the entity's relations", async () => {
+    await renderGraph();
+    const nodes = await screen.findAllByTestId("graph-node");
+    fireEvent.click(within(nodes[0]).getByRole("button"));
+    const dossier = await screen.findByTestId("entity-dossier");
+    expect(within(dossier).getByText("Dr. Maya Chen")).toBeTruthy();
+    expect(within(dossier).getByText(de["knowledge.type.character"])).toBeTruthy();
+    expect(within(dossier).getByText("Leitende Bio-Physikerin.")).toBeTruthy();
+    // Maya's two edges (r1 outgoing to ARIA, r2 outgoing to Station 7).
+    expect(within(dossier).getByText("ARIA")).toBeTruthy();
+    expect(within(dossier).getByText("Station 7")).toBeTruthy();
+    expect(within(dossier).getByText("Symbiotische Co-Pilotin.")).toBeTruthy();
+    // The selection rides the URL — the clicked node wears the pressed face.
+    expect(within(nodes[0]).getByRole("button").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("the invented fields stand as honest disabled gaps, never fake content", async () => {
+    await renderGraph();
+    const nodes = await screen.findAllByTestId("graph-node");
+    fireEvent.click(within(nodes[0]).getByRole("button"));
+    const dossier = await screen.findByTestId("entity-dossier");
+    // Manuscript excerpts: the gap note, no invented quotation.
+    expect(within(dossier).getByText(de["knowledge.dossier.excerptsGap"])).toBeTruthy();
+    // The status gap row (no model carries a status).
+    expect(within(dossier).getByText(de["knowledge.dossier.status"])).toBeTruthy();
+    // Edit / jump / bookmark / export are disabled doors with their notes.
+    const edit = within(dossier).getByRole("button", { name: new RegExp(de["knowledge.dossier.edit"]) });
+    expect((edit as HTMLButtonElement).disabled).toBe(true);
+    const jump = within(dossier).getByRole("button", { name: new RegExp(de["knowledge.dossier.jump"]) });
+    expect((jump as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("an empty body reads as empty, not an invented description", async () => {
+    await renderGraph();
+    const nodes = await screen.findAllByTestId("graph-node");
+    // Relikt (e4) has an empty body.
+    fireEvent.click(within(nodes[3]).getByRole("button"));
+    const dossier = await screen.findByTestId("entity-dossier");
+    expect(within(dossier).getByText(de["knowledge.dossier.noDescription"])).toBeTruthy();
+  });
+
+  it("a relation card selects the other end", async () => {
+    await renderGraph();
+    const nodes = await screen.findAllByTestId("graph-node");
+    fireEvent.click(within(nodes[0]).getByRole("button"));
+    const dossier = await screen.findByTestId("entity-dossier");
+    fireEvent.click(within(dossier).getByText("ARIA"));
+    await waitFor(() => expect(within(screen.getByTestId("entity-dossier")).getByText("Autonome Schiffs-KI.")).toBeTruthy());
+  });
+
+  it("the close door folds the dossier and clears the selection", async () => {
+    await renderGraph();
+    const nodes = await screen.findAllByTestId("graph-node");
+    fireEvent.click(within(nodes[0]).getByRole("button"));
+    const dossier = await screen.findByTestId("entity-dossier");
+    fireEvent.click(within(dossier).getByRole("button", { name: de["knowledge.dossier.close"] }));
+    await waitFor(() => expect(screen.queryByTestId("entity-dossier")).toBeNull());
+  });
+
+  it("the entity search param opens the dossier on arrival — the dock chip's deep link", async () => {
+    await renderGraph(`/novels/${NOVEL_ID}/knowledge/graph?entity=e3`);
+    const dossier = await screen.findByTestId("entity-dossier");
+    expect(within(dossier).getByText("Station 7")).toBeTruthy();
+    expect(within(dossier).getByText("Nevada Deep-Array.")).toBeTruthy();
+  });
+});
+
+describe("an edge click opens the note popover", () => {
+  it("shows the ends, the type and the note", async () => {
+    await renderGraph();
+    const edges = await screen.findAllByTestId("graph-edge");
+    fireEvent.click(edges[0]);
+    const popover = await screen.findByTestId("edge-popover");
+    expect(within(popover).getByText(/Dr\. Maya Chen → ARIA/)).toBeTruthy();
+    expect(within(popover).getByText(de["knowledge.relation.ally_of"])).toBeTruthy();
+    expect(within(popover).getByText("Symbiotische Co-Pilotin.")).toBeTruthy();
+  });
+
+  it("a null note reads as the honest no-note face", async () => {
+    await renderGraph();
+    const edges = await screen.findAllByTestId("graph-edge");
+    // r3 (ARIA → Station 7) carries no note.
+    fireEvent.click(edges[2]);
+    const popover = await screen.findByTestId("edge-popover");
+    expect(within(popover).getByText(de["knowledge.graph.edgeNoNote"])).toBeTruthy();
+  });
+
+  it("the close door dismisses the popover", async () => {
+    await renderGraph();
+    const edges = await screen.findAllByTestId("graph-edge");
+    fireEvent.click(edges[0]);
+    const popover = await screen.findByTestId("edge-popover");
+    fireEvent.click(within(popover).getByRole("button", { name: de["knowledge.graph.closeNote"] }));
+    await waitFor(() => expect(screen.queryByTestId("edge-popover")).toBeNull());
+  });
+});
+
+describe("the type filter and the name search compose client-side", () => {
+  it("a type chip narrows the canvas to that type", async () => {
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    fireEvent.click(screen.getByText(`${de["knowledge.type.location"]} (1)`));
+    await waitFor(() => expect(screen.getAllByTestId("graph-node")).toHaveLength(1));
+    expect(screen.getByText("Station 7")).toBeTruthy();
+    // Only edges between visible nodes survive — none here.
+    expect(screen.queryAllByTestId("graph-edge")).toHaveLength(0);
+    expect(screen.getByText("1 Entität • 0 Relationen")).toBeTruthy();
+  });
+
+  it("the name search narrows by substring, case-insensitive", async () => {
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    fireEvent.change(screen.getByTestId("graph-search"), { target: { value: "maya" } });
+    await waitFor(() => expect(screen.getAllByTestId("graph-node")).toHaveLength(1));
+    expect(screen.getByText("Dr. Maya Chen")).toBeTruthy();
+  });
+
+  it("type and search compose — both must match", async () => {
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    fireEvent.click(screen.getByText(`${de["knowledge.type.character"]} (2)`));
+    fireEvent.change(screen.getByTestId("graph-search"), { target: { value: "aria" } });
+    await waitFor(() => expect(screen.getAllByTestId("graph-node")).toHaveLength(1));
+    expect(screen.getByText("ARIA")).toBeTruthy();
+    // A character filter plus a location name matches nothing.
+    fireEvent.change(screen.getByTestId("graph-search"), { target: { value: "station" } });
+    expect(await screen.findByTestId("graph-no-results")).toBeTruthy();
+  });
+
+  it("the no-results face clears both filters", async () => {
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    fireEvent.change(screen.getByTestId("graph-search"), { target: { value: "zzz" } });
+    const empty = await screen.findByTestId("graph-no-results");
+    fireEvent.click(within(empty).getByRole("button", { name: de["knowledge.graph.clearFilters"] }));
+    await waitFor(() => expect(screen.getAllByTestId("graph-node")).toHaveLength(4));
+  });
+});
+
+describe("zoom and the honest reset", () => {
+  it("zoom in raises the scale, zoom out lowers it, reset returns to the fit", async () => {
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const fit = worldScale();
+    fireEvent.click(screen.getByTestId("zoom-in"));
+    await waitFor(() => expect(worldScale()).toBeGreaterThan(fit));
+    const zoomed = worldScale();
+    fireEvent.click(screen.getByTestId("zoom-out"));
+    await waitFor(() => expect(worldScale()).toBeLessThan(zoomed));
+    fireEvent.click(screen.getByTestId("reset-view"));
+    await waitFor(() => expect(worldScale()).toBeCloseTo(fit, 5));
+  });
+});
+
+describe("the honest states", () => {
+  it("an empty canon answers the empty face, not an outage", async () => {
+    entities = [];
+    relations = [];
+    await renderGraph();
+    const empty = await screen.findByTestId("graph-empty");
+    expect(within(empty).getByText(de["knowledge.graph.empty"])).toBeTruthy();
+    expect(within(empty).getByText(de["knowledge.graph.emptyNote"])).toBeTruthy();
+    expect(screen.queryByTestId("graph-node")).toBeNull();
+  });
+
+  it("a pending ask shows the loading face, never an invented web", async () => {
+    let resolveEntities: (value: { data: Entity[]; response: Response }) => void = () => {};
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/novels/{novel_id}/entities") {
+        return new Promise((resolve) => {
+          resolveEntities = resolve;
+        });
+      }
+      return baseGet(path);
+    });
+    await renderGraph();
+    expect(await screen.findByTestId("graph-loading")).toBeTruthy();
+    expect(screen.queryByTestId("graph-node")).toBeNull();
+    resolveEntities({ data: [MAYA], response: ok() });
+    expect(await screen.findByTestId("graph-node")).toBeTruthy();
+  });
+
+  it("an unavailable web names itself and offers the retry", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/novels/{novel_id}/entities") {
+        return Promise.resolve({ data: undefined, response: new Response(null, { status: 500 }) });
+      }
+      return baseGet(path);
+    });
+    await renderGraph();
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByText(de["knowledge.graph.loadFailed"])).toBeTruthy();
+    api.GET.mockImplementation(baseGet);
+    fireEvent.click(within(alert).getByRole("button", { name: de["knowledge.graph.retry"] }));
+    expect(await screen.findAllByTestId("graph-node")).toHaveLength(4);
+  });
+});
+
+describe("the face speaks du-tone in every catalog — no German fallback", () => {
+  it("the English face speaks the English catalog's own copy", async () => {
+    applyLocale("en");
+    const en = catalogs.en;
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    expect(screen.getByText(en["knowledge.graph.allTypes"])).toBeTruthy();
+    expect(screen.getByText("4 entities • 3 relations")).toBeTruthy();
+    expect(screen.getByTestId("graph-search").getAttribute("placeholder")).toBe(en["knowledge.graph.search"]);
+    expect(screen.queryByText(de["knowledge.graph.allTypes"])).toBeNull();
+  });
+
+  it("the French face counts zero as one — the locale's own plural rule", async () => {
+    applyLocale("fr");
+    const fr = catalogs.fr;
+    entities = [];
+    relations = [];
+    await renderGraph();
+    const empty = await screen.findByTestId("graph-empty");
+    expect(within(empty).getByText(fr["knowledge.graph.empty"])).toBeTruthy();
+    expect(screen.queryByText(de["knowledge.graph.empty"])).toBeNull();
+  });
+
+  it("the three catalogs carry the graph's keys in parity, each translated", () => {
+    const keys = Object.keys(catalogs.de).filter((key) => key.startsWith("knowledge.graph.") || key.startsWith("knowledge.dossier."));
+    expect(keys.length).toBeGreaterThan(0);
+    for (const key of keys) {
+      for (const locale of ["en", "fr"] as const) {
+        expect(catalogs[locale][key as keyof typeof catalogs.en], `${locale}/${key}`).toBeTruthy();
+      }
+    }
+    const translated = ["knowledge.graph.title", "knowledge.graph.allTypes", "knowledge.graph.empty", "knowledge.dossier.title", "knowledge.dossier.description"] as const;
+    for (const key of translated) {
+      expect(catalogs.en[key], key).not.toBe(catalogs.de[key]);
+      expect(catalogs.fr[key], key).not.toBe(catalogs.de[key]);
+    }
+  });
+
+  it("the German copy keeps the du register — no Sie form sneaks in", () => {
+    for (const [key, value] of Object.entries(catalogs.de)) {
+      if (!key.startsWith("knowledge.graph.") && !key.startsWith("knowledge.dossier.")) continue;
+      expect(value, key).not.toMatch(/\b(Sie|Ihnen|Ihr|Ihre)\b/);
+    }
+    expect(catalogs.de["knowledge.graph.emptyNote"]).toContain("deinem");
+    expect(catalogs.de["knowledge.graph.noResults"]).toContain("deinem");
+  });
+});

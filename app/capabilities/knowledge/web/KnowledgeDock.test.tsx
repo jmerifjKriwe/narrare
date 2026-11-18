@@ -8,8 +8,8 @@
  * both triggers ride the 202 job lane with their honest busy until the
  * settle's refetch lands, and an empty queue reads as empty — never as an
  * outage. The entity chips are the novel's real rows, typed by the
- * contract's vocabulary; they are labels, not doors, until the dossier
- * lands (Task 3/5). The #866/#867 interims are retired.
+ * contract's vocabulary; each is a door that opens the lore graph with the
+ * row selected (Task 3 wired it). The #866/#867 interims are retired.
  *
  * The face speaks du-tone in all three catalogs — each locale its own
  * copy, never a German fallback.
@@ -22,6 +22,7 @@ import {
   createRouter,
   Outlet,
   RouterProvider,
+  useSearch,
 } from "@tanstack/react-router";
 import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -146,8 +147,15 @@ function jobRow(status: string, kind = "consistency"): Job {
 
 /** The face under the workspace route's own param — the harness mirrors
  *  the generated table's composition: the dock is a child of the
- *  workspace route, and the face reads the novel from the parent. */
+ *  workspace route, and the face reads the novel from the parent. A graph
+ *  route stub stands at the real graph path so the chip's door (Task 3)
+ *  lands somewhere observable: it shows the `entity` param it was handed. */
 const harnessRoot = createRootRoute({ component: () => <Outlet /> });
+
+function GraphTarget() {
+  const { entity } = useSearch({ from: "/novels/$novelId/knowledge/graph" });
+  return <div data-testid="graph-target">{entity ?? "none"}</div>;
+}
 
 async function renderDock() {
   const workspace = createRoute({
@@ -160,8 +168,15 @@ async function renderDock() {
     path: "knowledge",
     component: () => <KnowledgeDock />,
   });
+  const graph = createRoute({
+    getParentRoute: () => harnessRoot,
+    path: "/novels/$novelId/knowledge/graph",
+    validateSearch: (search: Record<string, unknown>): { entity?: string } =>
+      typeof search.entity === "string" && search.entity !== "" ? { entity: search.entity } : {},
+    component: GraphTarget,
+  });
   const router = createRouter({
-    routeTree: harnessRoot.addChildren([workspace.addChildren([dock])]),
+    routeTree: harnessRoot.addChildren([workspace.addChildren([dock]), graph]),
     history: createMemoryHistory({ initialEntries: [`/novels/${NOVEL_ID}/knowledge`] }),
   });
   await router.load();
@@ -554,14 +569,15 @@ describe("the entity chips read the novel's real rows", () => {
     expect(within(chip).getByText(de["knowledge.type.generic"])).toBeTruthy();
   });
 
-  it("the chips are labels, not doors — the dossier is Task 3/5's surface", async () => {
+  it("the chip is a door — it opens the lore graph with the row selected (Task 3)", async () => {
     await renderDock();
     const chips = await screen.findAllByTestId("knowledge-entity-chip");
-    // No button, no link, no disabled promise: the chip names the row;
-    // its click target (the dossier) does not exist yet.
-    expect(within(chips[0]).queryByRole("button")).toBeNull();
-    expect(within(chips[0]).queryByRole("link")).toBeNull();
-    expect(chips[0].tagName).toBe("LI");
+    // The inert interim retired: the chip is a button now, and its click
+    // navigates to the graph with this row's id in the `entity` param.
+    expect(chips[0].tagName).toBe("BUTTON");
+    fireEvent.click(chips[0]);
+    const target = await screen.findByTestId("graph-target");
+    expect(target.textContent).toBe("e1");
   });
 
   it("an empty list reads as empty — the honest face, not an outage", async () => {

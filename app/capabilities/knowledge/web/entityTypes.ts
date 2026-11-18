@@ -53,3 +53,37 @@ export function entityTypeLabel(t: (key: MessageKey) => string, type: string): s
 export function entityTypeIcon(type: string): IconName {
   return Object.hasOwn(TYPE_ICONS, type) ? TYPE_ICONS[type as keyof typeof TYPE_ICONS] : "knowledge";
 }
+
+/**
+ * The type's accent, as shell tokens (W5 Task 3 — the graph's nodes and the
+ * dossier's relation dots). The draft pins a hex per concept; the port rides
+ * the token ladder instead, one accent per contract type, each a light-dark
+ * pair so both themes carry it. The colour is the node's graphics (avatar
+ * tint, dot, edge ink — the 3:1 graphic floor); the badge's WORDS stay
+ * neutral foreground so small text keeps AA whatever the accent. An unknown
+ * type falls back to the generic muted accent, the label helper's own rule.
+ */
+export interface TypeTheme {
+  /** The CSS colour for SVG ink and inline styles. */
+  var: string;
+  /** The dot's fill utility. */
+  dot: string;
+  /** The avatar/badge tint utility. */
+  tint: string;
+}
+
+export const TYPE_THEME: Record<keyof typeof TYPE_KEYS, TypeTheme> = {
+  character: { var: "var(--primary)", dot: "bg-primary", tint: "bg-primary/10" },
+  location: { var: "var(--area-chat)", dot: "bg-area-chat", tint: "bg-area-chat/10" },
+  faction: { var: "var(--area-planning)", dot: "bg-area-planning", tint: "bg-area-planning/10" },
+  object: { var: "var(--warning)", dot: "bg-warning", tint: "bg-warning/10" },
+  system: { var: "var(--area-settings)", dot: "bg-area-settings", tint: "bg-area-settings/10" },
+  timeline: { var: "var(--secondary)", dot: "bg-secondary", tint: "bg-secondary/10" },
+  event: { var: "var(--area-knowledge)", dot: "bg-area-knowledge", tint: "bg-area-knowledge/10" },
+  generic: { var: "var(--muted)", dot: "bg-muted", tint: "bg-muted/10" },
+};
+
+/** The type's accent, with the same own-property fallback as the label. */
+export function typeTheme(type: string): TypeTheme {
+  return Object.hasOwn(TYPE_THEME, type) ? TYPE_THEME[type as keyof typeof TYPE_THEME] : TYPE_THEME.generic;
+}

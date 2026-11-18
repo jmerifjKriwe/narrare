@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The icon set: sixty-seven line glyphs on one 16×16 grid, drawn for the
+ * The icon set: sixty-eight line glyphs on one 16×16 grid, drawn for the
  * stroke they run on — `currentColor` at 1.5, round caps and joins, no
  * fills — so a glyph wears the ink of whatever it sits beside and carries
  * no color of its own. The whole presentation contract lives on the
@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
  */
 
 /**
- * The sixty-seven drawings. Each stays inside the 2.35–13.65 envelope —
+ * The sixty-eight drawings. Each stays inside the 2.35–13.65 envelope —
  * knowledge's stack sets both extremes; on the x axis the ink never leaves
  * 2.5–13.5 — so the 1.5 stroke, reaching half its width past the ink, never
  * clips the viewBox. Each is a single-stroke metaphor: detail that
@@ -73,6 +73,8 @@ export const icons = {
   ),
   /** Add: the plain plus. */
   plus: <path d="M8 3V13M3 8H13" />,
+  /** Remove: the plain minus — the plus's counterpart, the zoom-out's mark. */
+  minus: <path d="M3 8H13" />,
   /** Confirm: the plain check. */
   check: <path d="M3 8.5L6.5 12L13 4.5" />,
   /** Dismiss: the ✕. Not `close` — a dismissal drops content, a close folds a panel. */
