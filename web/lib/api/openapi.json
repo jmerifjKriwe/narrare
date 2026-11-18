@@ -291,6 +291,17 @@
             "title": "Scene Count",
             "type": "integer"
           },
+          "target_words": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Words"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -319,6 +330,17 @@
       },
       "ChapterUpdate": {
         "properties": {
+          "target_words": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Words"
+          },
           "title": {
             "anyOf": [
               {
@@ -2908,6 +2930,47 @@
           "query"
         ],
         "title": "SearchRequest",
+        "type": "object"
+      },
+      "SeriesCreate": {
+        "description": "One new series: the name the shelf groups its volumes by. The width\nis a novel title's own (the column's String(200)); the service trims\nand refuses a whitespace-only name — a series is named like a book.",
+        "properties": {
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "SeriesCreate",
+        "type": "object"
+      },
+      "SeriesRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "created_at"
+        ],
+        "title": "SeriesRead",
         "type": "object"
       },
       "SettingsRead": {
@@ -7032,7 +7095,7 @@
         ]
       },
       "put": {
-        "description": "Update an owned chapter's title (its prose lives on scenes now);\nrespond with HTTP 404 when it is not found.",
+        "description": "Update an owned chapter's title and word goal (its prose lives on\nscenes now); respond with HTTP 404 when it is not found, or HTTP 422\nnaming the field for a goal outside the shared word-goal bounds.",
         "operationId": "update_chapter_api_writing_chapters__chapter_id__put",
         "parameters": [
           {
@@ -7081,11 +7144,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/WritingErrorRead"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "A word goal outside the bounds, named"
           }
         },
         "summary": "Update Chapter",
@@ -8184,6 +8247,82 @@
           }
         },
         "summary": "Continue Scene",
+        "tags": [
+          "writing"
+        ]
+      }
+    },
+    "/api/writing/series": {
+      "get": {
+        "description": "The current user's series, alphabetical — the book-settings\nselect's list. Never another user's row (the scoped repository).",
+        "operationId": "list_series_api_writing_series_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SeriesRead"
+                  },
+                  "title": "Response List Series Api Writing Series Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Series",
+        "tags": [
+          "writing"
+        ]
+      },
+      "post": {
+        "description": "Create a series owned by the current user; the title is trimmed like\na book's. Respond with HTTP 409 if setup is required, or HTTP 422 naming\nthe field for a whitespace-only title (the schema refuses an empty or\nover-long one).",
+        "operationId": "create_series_api_writing_series_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Setup required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldRefusalsRead"
+                }
+              }
+            },
+            "description": "A nameless series, named in `detail[].loc`"
+          }
+        },
+        "summary": "Create Series",
         "tags": [
           "writing"
         ]

@@ -40,7 +40,16 @@ from app.capabilities.writing.schemas import (
 )
 from app.kernel.auth import SetupRequiredError
 from app.kernel.context import allocate
-from app.kernel.contracts.models import Chapter, Entity, Novel, Scene, User
+from app.kernel.contracts.models import (
+    WORD_GOAL_MAX,
+    WORD_GOAL_MIN,
+    Chapter,
+    Entity,
+    Novel,
+    Scene,
+    Series,
+    User,
+)
 from app.kernel.contracts.positions import lock_novel
 from app.kernel.interchange import (
     ArchiveError,
@@ -119,12 +128,15 @@ class WritingService:
         self.series = SeriesRepository(session, user_id)
         self.daily_words = DailyWordsRepository(session, user_id)
 
-    async def _require_user(self) -> None:
+    async def _require_user(self) -> User:
         """Writes belong to a user that setup created; without one there is
         nothing to own the row, and the foreign key would say so at the worst
-        possible time. The guard says it in the response instead."""
-        if await self.session.get(User, self.user_id) is None:
+        possible time. The guard says it in the response instead. The row
+        comes back for the callers that read the atelier's answers off it."""
+        user = await self.session.get(User, self.user_id)
+        if user is None:
             raise SetupRequiredError
+        return user
 
     async def create_novel(
         self,
@@ -142,11 +154,16 @@ class WritingService:
         ``created_at``, the one setup created). One read, no lock: a create
         has no concurrent writer of the source row's settings, and the copy
         never writes the source. A column without an answer stays without
-        one; no source book at all leaves all four NULL.
+        one; no source book at all leaves all four NULL. The atelier's
+        standard author name rides the same promise (W4 Task 19, D22 — the
+        book-settings note „wird automatisch in neue Manuskripte eingesetzt"):
+        the user row's ``author_name`` becomes the new book's author, the
+        unset name stays unset — the email label is the chrome's rendering,
+        never a guessed book author.
 
         Raise SetupRequiredError if setup has not created the owning user.
         """
-        await self._require_user()
+        user = await self._require_user()
         # Fold an empty/whitespace genre to None at the create boundary, the
         # way PATCH does, so "no genre" is one value everywhere.
         genre = (genre or "").strip() or None
@@ -156,6 +173,7 @@ class WritingService:
             genre=genre,
             blurb=blurb,
             target_words=target_words,
+            author=user.author_name,
             author_typology=atelier.author_typology if atelier is not None else None,
             dramatic_form=atelier.dramatic_form if atelier is not None else None,
             ai_role=atelier.ai_role if atelier is not None else None,
@@ -250,6 +268,26 @@ class WritingService:
             (await self.novels.counts(novel_id)).get(novel_id, (0, 0)),
             titles.get(novel.id),
         )
+
+    async def create_series(self, title: str) -> Series:
+        """Commit a new series for this user: the name trimmed like a
+        book's, a whitespace-only one refused by field (the schema carries
+        the width). The book-settings surface creates inline and links the
+        book through the novel PATCH's own series check.
+
+        Raise SetupRequiredError if setup has not created the owning user.
+        """
+        await self._require_user()
+        name = title.strip()
+        if not name:
+            raise FieldRefusedError(("title",), "a series needs a name")
+        series = await self.series.create(name)
+        await self.session.commit()
+        return series
+
+    async def list_series(self) -> Sequence[Series]:
+        """The user's own series, alphabetical — the settings select's list."""
+        return await self.series.list()
 
     async def delete_novel(self, novel_id: UUID) -> None:
         """Delete a novel: the row goes, and everything it carried goes with it.
@@ -522,17 +560,22 @@ class WritingService:
         return predecessors
 
     async def update_chapter(self, chapter_id: UUID, changes: ChapterUpdate) -> ChapterRead:
-        """Commit a chapter's title edit and update the parent novel's timestamp.
+        """Commit a chapter's title and word-goal edits, and update the parent
+        novel's timestamp.
 
         A chapter is a grouping shell now (W4 D1/D2): its prose lives on its
-        scenes, so this door carries the title alone — the body write moved
-        to the scene. A carried title is trimmed here, in the service, so a
-        hand-written call cannot skip it: spaces are not a name, and ``""``
-        after the trim is the chapter returned to unnamed — stored as it is,
-        with the list's placeholder a rendering of it. Over-long stays the
-        schema's 422; nothing else is refused. A title edit writes no
-        activity — the atelier's ledger follows the prose, which the scene
-        writes feed.
+        scenes, so this door carries the title and the chapter's own word
+        goal (W4 Task 19, D8/D20) — the body write moved to the scene. A
+        carried title is trimmed here, in the service, so a hand-written call
+        cannot skip it: spaces are not a name, and ``""`` after the trim is
+        the chapter returned to unnamed — stored as it is, with the list's
+        placeholder a rendering of it. Over-long stays the schema's 422.
+        The goal is present-and-nullable through ``model_fields_set`` (the
+        novel update's rule): an absent field keeps the stored goal, a
+        carried ``null`` clears it, and a value outside the kernel
+        contract's shared word-goal bounds is refused by name. A title or
+        goal edit writes no activity — the atelier's ledger follows the
+        prose, which the scene writes feed.
 
         The book's row is locked before the chapter's: the save's flush
         takes the chapter row, and a delete or reorder holding the book's
@@ -541,13 +584,19 @@ class WritingService:
         the pair from waiting on each other's row (Postgres 40P01).
 
         Return the chapter with its scene-derived figures; raise
-        NotFoundError if it is absent or another user's.
+        NotFoundError if it is absent or another user's, or
+        InvalidNovelUpdateError for a goal outside the bounds, named.
         """
         chapter = await self.get_chapter(chapter_id)
         await lock_novel(self.session, user_id=self.user_id, novel_id=chapter.novel_id)
+        updates: dict[str, object] = {}
         if changes.title is not None:
-            changes.title = changes.title.strip()
-        updates = changes.model_dump(exclude_none=True)
+            updates["title"] = changes.title.strip()
+        if "target_words" in changes.model_fields_set:
+            goal = changes.target_words
+            if goal is not None and not WORD_GOAL_MIN <= goal <= WORD_GOAL_MAX:
+                raise InvalidNovelUpdateError("target_words")
+            updates["target_words"] = goal
         chapter = await self.chapters.save(chapter, updates)
         await self.session.commit()
         counts = await self.scenes.counts([chapter.id])

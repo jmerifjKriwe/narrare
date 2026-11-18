@@ -74,6 +74,12 @@ class SeriesRepository(ScopedRepository[Series]):
         await self.session.flush()
         return series
 
+    async def list(self) -> Sequence[Series]:
+        """The user's series, alphabetical — the book-settings select's
+        order. The scoped query carries the user predicate (rule 4)."""
+        result = await self.session.scalars(self.query().order_by(Series.title))
+        return result.all()
+
 
 class NovelRepository(ScopedRepository[Novel]):
     model = Novel
