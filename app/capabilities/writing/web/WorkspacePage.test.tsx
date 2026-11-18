@@ -1219,12 +1219,17 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     ).toBeTruthy();
   });
 
-  it("Esc exits zen — D19's second door", async () => {
+  it("Esc exits zen — D19's second door, the desk's focus returned", async () => {
     await renderWorkspace();
     await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
     await enterZen();
     fireEvent.keyDown(document, { key: "Escape" });
     expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: de["writing.workspace.ribbon.focus"] }),
+      ),
+    );
   });
 
   it("the ribbon's Fokus door opens zen — the interim ends (Task 18)", async () => {
@@ -1348,6 +1353,14 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     const box = screen.getByRole("textbox", { name: PROSE });
     await waitFor(() => expect(box.textContent).toContain("Ich kalibrierte die Sensoren."));
     expect(box.textContent).not.toContain("Words.");
+    // The discard exit returns the desk's focus (the healthy exit's own
+    // rule) — the guard's opener-restore no-ops on the detached zen node,
+    // so the exit carries it. rAF: one frame after the columns render.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: de["writing.workspace.ribbon.focus"] }),
+      ),
+    );
   });
 
   it("the session is the zen spell — re-entry starts a fresh timer and counter", async () => {

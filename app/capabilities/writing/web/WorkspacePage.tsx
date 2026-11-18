@@ -113,6 +113,15 @@ type CrudDialog =
   | { kind: "deleteScene"; entry: SceneEntry; openerId: string }
   | null;
 
+/** Every zen exit's focus return — the ribbon door that opened the room
+ *  (the dialogs' own focus-return discipline). ONE home: the healthy exit
+ *  and the guard's discard branch both leave through here, so no exit
+ *  strand the focus on the body. rAF: the columns render in the same
+ *  commit the room leaves, the door exists one frame later. */
+function returnFocusToDesk(): void {
+  window.requestAnimationFrame(() => document.getElementById("workspace-focus-door")?.focus());
+}
+
 export function WorkspacePage() {
   const t = useTranslation();
   const { novelId } = routeApi.useParams();
@@ -267,9 +276,7 @@ export function WorkspacePage() {
         await queryClient.invalidateQueries({ queryKey: ["scenes", target.chapter.id] });
       }
       setZen(false);
-      // The focus returns to the door that opened the room (the dialogs'
-      // own focus-return discipline).
-      window.requestAnimationFrame(() => document.getElementById("workspace-focus-door")?.focus());
+      returnFocusToDesk();
     });
   }, []);
 
@@ -338,6 +345,10 @@ export function WorkspacePage() {
                 autosave.discard();
                 setPendingZenExit(false);
                 setZen(false);
+                // The discard exit returns the desk's focus too — the
+                // guard's own opener-restore no-ops here (its opener node
+                // left with the room), so the exit's rule carries it.
+                returnFocusToDesk();
               },
             }
           : null;

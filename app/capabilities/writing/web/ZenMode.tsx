@@ -1,11 +1,16 @@
 /**
  * The zen mode (W4 Task 18) — the round's harmonized zen authority
  * (`zen-focus-2`, light face wins; the dark rides the tokens' light-dark
- * pairs) mounted OVER the workspace: F9 clears the desk (D19), the scene's
- * prose stands centered under the manuscript head, and the room's own
- * chrome replaces the app's — the exit chip, the counters and the pomodoro
- * above, the focus presets below. The page owns the toggle and the
- * flush-first leave; this component is the room itself.
+ * pairs). F9 clears the desk (D19): the page SWAPS the workspace's columns
+ * for this room while zen stands — the columns unmount, they are not hidden
+ * beneath it (one live editor at a time; two would double the ghost's
+ * keyboard contract). The swap IS the design: entry and exit flush the
+ * autosave first and let the scene cache catch up, so each face's editor
+ * initializes on the saved truth. The scene's prose stands centered under
+ * the manuscript head, and the room's own chrome replaces the app's — the
+ * exit chip, the counters and the pomodoro above, the focus presets below.
+ * The page owns the toggle and the flush-first leave; this component is
+ * the room itself.
  *
  * What is REAL (D6, frontend-real): the Absatz-/Satz-/Normal dimming (the
  * editor's decoration plugin, the mode rides the segment control), the
@@ -28,12 +33,15 @@
  * workspace (the page's one hook, the editor's one keyboard contract:
  * Tab accepts, Esc dismisses BEFORE the room's own Esc).
  *
- * The room is modal weight: a fixed surface over the covered chrome, a
- * focus trap that keeps Tab inside (the LeaveGuard's own discipline), and
- * the page's Esc handler defers to the ghost and the guard before it
- * closes the room. The decorative spines and the end mark are the draft's
- * own, aria-hidden; the fullscreen toggle asks the browser (the draft's
- * control), the first Esc in fullscreen belongs to the browser.
+ * The room is modal weight: a fixed surface over the app chrome (the rail
+ * and topbar stay mounted beneath it, covered and out of reach), a focus
+ * trap that keeps Tab inside (the LeaveGuard's own discipline), and the
+ * page's Esc handler defers to the ghost and the guard before it closes
+ * the room. Every exit — healthy or the guard's discard — returns the
+ * focus to the ribbon door that opened the room (the page's one restore).
+ * The decorative spines and the end mark are the draft's own, aria-hidden;
+ * the fullscreen toggle asks the browser (the draft's control), the first
+ * Esc in fullscreen belongs to the browser.
  */
 import { useEffect, useRef, useState } from "react";
 
