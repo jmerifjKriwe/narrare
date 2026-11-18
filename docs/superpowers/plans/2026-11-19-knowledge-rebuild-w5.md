@@ -37,31 +37,32 @@
 
 ### PR A — Dock (makes #866–#869 real)
 
-**Task 1: Dock scaffolding + findings**
+### Task 1: Dock scaffolding + findings
+
 - The dockRoute under the workspace's dock registry (the generated table's composition point); the findings face: list, acknowledge, dismiss (real API); the consistency trigger with its async-job honest busy. Pinned by vitest + E2E leg.
 
-**Task 2: Entity chips + extraction suggestions**
+### Task 2: Entity chips + extraction suggestions
 - The entity-chip face from the row's entities; the extraction trigger + suggestion accept/discard flow (async, honest busy, accept creates the entity). The #866/#867 placeholders retire (in-code interims removed, issues close from commits).
 
 ### PR B — Lore graph + dossiers
 
-**Task 3: Graph page (the harmonized `lore-graph-2` draft)**
+### Task 3: Graph page (the harmonized `lore-graph-2` draft)
 - Route + the force-graph (nodes=entities typed by the real type set, edges=relations with notes); deterministic layout (seeded positions or a pure deterministic pass); zoom/pan; node click → dossier panel (inline, the real fields); edge click → note popover; type filter + name search (client-side over the loaded graph). i18n. Vitest: determinism, filter, selection, du-tone.
 
-**Task 4: Entity/relation CRUD + merge dialogs**
+### Task 4: Entity/relation CRUD + merge dialogs
 - Create/edit entity (name/type/description), create/edit/delete relation (type + note), merge (the existing endpoint); confirm/destructive states per the quick-menu discipline; focus contracts.
 
-**Task 5: Dossiers page (the harmonized `dossiers-2` draft)**
+### Task 5: Dossiers page (the harmonized `dossiers-2` draft)
 - Route + the dossier grid (type-filtered, searchable) + the dossier detail (real fields: name/type/description/relations); the invented fields as honest disabled areas with gap-doc rows + child issues. The dossier-detail IS the entity's expanded view (no second data model).
 
 ### PR C — Sources + E2E + wave close
 
-**Task 6: Sources page (the harmonized `sources-archive-2` draft)**
+### Task 6: Sources page (the harmonized `sources-archive-2` draft)
 - Route + document upload/list/delete + semantic search results (document title + chunk excerpt); footnote/fact-check as honest disabled areas with gap rows.
 
-**Task 7: Knowledge E2E suite + gap ledger**
+### Task 7: Knowledge E2E suite + gap ledger
 - The fake-provider flow: seed a novel → upload a document → extraction → suggestion appears → accept → entity in graph + dock chip → consistency → finding → acknowledge. de-DE; per-suite DB; two workers max.
 - The wave's gap ledger (`2026-11-19-knowledge.md`): every honest placeholder with its trigger; the dock's retired placeholders' issues close; W4's dock rows in the shelf/workspace ledgers resolve.
 
-**Task 8: Wave gate + PR**
+### Task 8: Wave gate + PR
 - `just verify` all green; whole-branch review; merge after owner.
