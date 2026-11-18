@@ -217,3 +217,26 @@ async def test_another_users_book_is_not_the_source() -> None:
         new_id = await _create_novel(client, "Die Prüferin")
 
     assert await _stored_answers(new_id) == (None, None, None, None)
+
+
+async def test_a_new_book_inherits_the_ateliers_author_name() -> None:
+    """The book-settings draft's atelier note (W4 Task 19, D22): the
+    standard author name „wird automatisch in neue Manuskripte eingesetzt"
+    — the create copies the user row's answer onto the new book."""
+    async with _client() as client:
+        written = await client.patch(
+            "/api/settings", json={"locale": None, "author_name": "H. Calder"}
+        )
+        assert written.status_code == 200
+        new_id = await _create_novel(client, "Die Prüferin")
+        read = await client.get(f"/api/writing/novels/{new_id}")
+        assert read.json()["author"] == "H. Calder"
+
+
+async def test_no_author_name_stays_no_author() -> None:
+    """The unset atelier name inherits the absence, never a guessed label
+    (the email fallback is the chrome's rendering, not a book's author)."""
+    async with _client() as client:
+        new_id = await _create_novel(client, "Die Prüferin")
+        read = await client.get(f"/api/writing/novels/{new_id}")
+        assert read.json()["author"] is None

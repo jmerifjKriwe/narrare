@@ -54,6 +54,7 @@ import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 import { useCreateNovel } from "@shell/lib/query";
 import { formatWordCount } from "@shell/lib/words";
 import { Icon } from "@shell/ui/icons";
+import { useModalKeys } from "@shell/ui/modalKeys";
 
 import {
   DEFAULT_TARGET_WORDS,
@@ -75,11 +76,6 @@ const SERIF = "[font-family:var(--font-serif)]";
 /** The shell's focus ring on every control the dialog offers. */
 const FOCUS =
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
-
-/** The trap's population: every live control inside the panel, in DOM
- *  order — the disabled CTA and the busy-held buttons stay out of it. */
-const FOCUSABLE =
-  'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
 
 /** The draft's slider range and step live in the model (newBook.ts), pinned
  *  beside the default and the column's ceiling. */
@@ -151,36 +147,11 @@ export function NewBookDialog({ onClose }: { onClose: (created: boolean) => void
   }, []);
 
   // Escape closes — never mid-flight — and Tab wraps inside the panel at
-  // both ends, the modal weight of the popover's keyboard discipline.
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        if (busy) return;
-        event.preventDefault();
-        onClose(false);
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const panel = panelRef.current;
-      if (panel === null) return;
-      const nodes = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (nodes.length === 0) return;
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      const active = document.activeElement;
-      if (event.shiftKey) {
-        if (active === first || !panel.contains(active)) {
-          event.preventDefault();
-          last.focus();
-        }
-      } else if (active === last || !panel.contains(active)) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [busy, onClose]);
+  // both ends: the shell's one modal discipline (@shell/ui/modalKeys,
+  // #895), the busy hold the dialog's own Escape rule.
+  useModalKeys(panelRef, () => {
+    if (!busy) onClose(false);
+  });
 
   function togglePill(value: string) {
     setPills((previous) =>

@@ -84,6 +84,7 @@ function chapterRow(overrides: Partial<Chapter> = {}): Chapter {
     title: "Ghost in the Machine",
     position: 0,
     scene_count: 2,
+    target_words: null,
     word_count: 765,
     created_at: "2026-11-01T10:00:00Z",
     updated_at: "2026-11-10T10:00:00Z",
@@ -122,12 +123,17 @@ function renderColumn(
     onRetry?: () => void;
     onBodyChange?: (body: string) => void;
     onCreateScene?: () => void;
+    onEnterZen?: () => void;
+    onEditTarget?: () => void;
     continuation?: Continuation;
+    zenBusy?: boolean;
   } = {},
 ) {
   const onRetry = props.onRetry ?? vi.fn();
   const onBodyChange = props.onBodyChange ?? vi.fn();
   const onCreateScene = props.onCreateScene ?? vi.fn();
+  const onEnterZen = props.onEnterZen ?? vi.fn();
+  const onEditTarget = props.onEditTarget ?? vi.fn();
   const utils = render(
     <EditorColumn
       novel={props.novel ?? novelRow()}
@@ -137,10 +143,13 @@ function renderColumn(
       onRetry={onRetry}
       onBodyChange={onBodyChange}
       onCreateScene={onCreateScene}
+      onEnterZen={onEnterZen}
+      onEditTarget={onEditTarget}
       continuation={props.continuation ?? continuationOf()}
+      zenBusy={props.zenBusy ?? false}
     />,
   );
-  return { ...utils, onRetry, onBodyChange, onCreateScene };
+  return { ...utils, onRetry, onBodyChange, onCreateScene, onEnterZen, onEditTarget };
 }
 
 beforeEach(() => {
@@ -167,6 +176,9 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        onEnterZen={vi.fn()}
+        onEditTarget={vi.fn()}
+        zenBusy={false}
         continuation={continuationOf()}
       />,
     );
@@ -195,6 +207,9 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        onEnterZen={vi.fn()}
+        onEditTarget={vi.fn()}
+        zenBusy={false}
         continuation={continuationOf()}
       />,
     );
@@ -215,6 +230,9 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        onEnterZen={vi.fn()}
+        onEditTarget={vi.fn()}
+        zenBusy={false}
         continuation={continuationOf()}
       />,
     );
@@ -228,6 +246,9 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        onEnterZen={vi.fn()}
+        onEditTarget={vi.fn()}
+        zenBusy={false}
         continuation={continuationOf()}
       />,
     );
@@ -243,6 +264,9 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        onEnterZen={vi.fn()}
+        onEditTarget={vi.fn()}
+        zenBusy={false}
         continuation={continuationOf()}
       />,
     );
@@ -326,6 +350,9 @@ describe("the ribbon", () => {
           onRetry={vi.fn()}
           onBodyChange={vi.fn()}
           onCreateScene={vi.fn()}
+          onEnterZen={vi.fn()}
+          onEditTarget={vi.fn()}
+          zenBusy={false}
           continuation={continuationOf()}
         />,
       );
@@ -337,18 +364,32 @@ describe("the ribbon", () => {
     }
   });
 
-  it("the chapter-target pill keeps the neutral — the read carries no chapter goal yet (Task 19)", () => {
-    renderColumn();
+  it("the chapter-target pill keeps the neutral when no goal stands — the setter ready (Task 19)", () => {
+    const { onEditTarget } = renderColumn();
     const ribbon = screen.getByTestId("workspace-ribbon");
     expect(within(ribbon).getByText(de["writing.workspace.ribbon.chapterTarget"])).toBeTruthy();
-    expect(within(ribbon).getByRole("button", { name: de["writing.workspace.ribbon.targetEdit"] }).hasAttribute("disabled")).toBe(true);
+    const edit = within(ribbon).getByRole("button", { name: de["writing.workspace.ribbon.targetEdit"] });
+    expect(edit.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(edit);
+    expect(onEditTarget).toHaveBeenCalledTimes(1);
   });
 
-  it("focus, history and export stay honestly disabled with their notes", () => {
+  it("a set chapter goal reads the real pair and fills the track (D8/D20, Task 19)", () => {
+    renderColumn({ entry: entryOf(sceneRow(), chapterRow({ target_words: 1000, word_count: 765 })) });
+    const ribbon = screen.getByTestId("workspace-ribbon");
+    expect(
+      within(ribbon).getByText(
+        de["writing.workspace.ribbon.targetValue"].replace("{count, number}", "765").replace("{target, number}", "1.000"),
+      ),
+    ).toBeTruthy();
+    const fill = ribbon.querySelector("[data-chapter-target-fill]");
+    expect(fill?.getAttribute("style")).toContain("76.5%");
+  });
+
+  it("history and export stay honestly disabled with their notes", () => {
     renderColumn();
     const ribbon = screen.getByTestId("workspace-ribbon");
     for (const [name, note] of [
-      [de["writing.workspace.ribbon.focus"], de["writing.workspace.ribbon.focusNote"]],
       [de["writing.workspace.ribbon.history"], de["writing.workspace.ribbon.historyNote"]],
       [de["writing.workspace.ribbon.export"], de["writing.workspace.ribbon.exportNote"]],
     ] as const) {
@@ -356,6 +397,30 @@ describe("the ribbon", () => {
       expect(button.hasAttribute("disabled")).toBe(true);
       expect(button.getAttribute("title")).toBe(note);
     }
+  });
+
+  it("the Fokus door is LIVE (Task 18) — it opens zen, the interim note is gone", () => {
+    const { onEnterZen } = renderColumn();
+    const ribbon = screen.getByTestId("workspace-ribbon");
+    const door = within(ribbon).getByRole("button", { name: de["writing.workspace.ribbon.focus"] });
+    expect(door.hasAttribute("disabled")).toBe(false);
+    expect(door.getAttribute("title")).toBeNull();
+    fireEvent.click(door);
+    expect(onEnterZen).toHaveBeenCalledTimes(1);
+  });
+
+  it("a busy zen transition holds the Fokus door and locks the prose — the family's busy face", async () => {
+    const { onEnterZen } = renderColumn({ zenBusy: true });
+    const ribbon = screen.getByTestId("workspace-ribbon");
+    // The door wears the family's busy face: the busy label, disabled.
+    const door = within(ribbon).getByRole("button", { name: de["writing.workspace.ribbon.focusBusy"] });
+    expect(door.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(door);
+    expect(onEnterZen).not.toHaveBeenCalled();
+    // The live prose is locked — keystrokes in the swap window would die
+    // with the unmount (the refetched body predates them).
+    const box = await screen.findByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] });
+    await waitFor(() => expect(box.getAttribute("contenteditable")).toBe("false"));
   });
 });
 

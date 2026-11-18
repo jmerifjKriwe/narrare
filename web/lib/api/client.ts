@@ -7,6 +7,10 @@ export const client = createClient<paths>({ baseUrl: "" });
 
 export type Novel = components["schemas"]["NovelRead"];
 export type NovelCreate = components["schemas"]["NovelCreate"];
+/** The novel PATCH body (W4 Task 19): only the carried fields change, a
+ *  carried null clears — the server's `model_fields_set` contract. */
+export type NovelChanges = components["schemas"]["NovelUpdate"];
+export type Series = components["schemas"]["SeriesRead"];
 export type Activity = components["schemas"]["ActivityRead"];
 export type ActivityPoint = components["schemas"]["ActivityPoint"];
 export type SetupResult = components["schemas"]["SetupResult"];

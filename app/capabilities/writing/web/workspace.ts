@@ -7,7 +7,10 @@
  * write moves, so the tree's counts go live without a reload. Task 16 adds
  * the continuation stream: the ghost text's lifecycle on the scene continue
  * endpoint's SSE door (the ask, the phase machine, the dismissal — the
- * editor owns the Tab insertion and the autosave handoff).
+ * editor owns the Tab insertion and the autosave handoff). Task 18 adds
+ * the zen seam: the Satz-Fokus's sentence geometry, the session-only
+ * pomodoro and the session word delta — the draft's frontend-real pieces
+ * (D6), pure and hook-shaped beside the reads.
  *
  * One rule owns the active scene: the last-edited one, by the server's
  * `updated_at` — the same rule the shelf hero's door resumes (gap row 3).
@@ -26,13 +29,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   client,
   type Chapter,
+  type Novel,
+  type NovelChanges,
   type Scene,
+  type Series,
   type Storyboard,
 } from "@shell/lib/api/client";
 import { readSse } from "@shell/lib/api/sse";
 import { catalogs } from "@shell/lib/generated/catalogs";
 import type { MessageKey } from "@shell/lib/i18n";
 import { queryClient } from "@shell/lib/query";
+import { countWords } from "@shell/lib/words";
 
 // Type-only: the autosave's flush vocabulary, erased at runtime (the
 // autosave imports this seam's invalidation door — no runtime cycle).
@@ -359,17 +366,22 @@ export function useCreateScene(novelId: string): UseMutationResult<Scene, Error,
   });
 }
 
-/** Renaming a chapter: the title alone — the prose lives on scenes now.
- *  `""` after the service's trim is the honest unnamed (the placeholder a
- *  rendering, not a value). */
+/** Renaming a chapter and setting its word goal (W4 Task 19): the title
+ *  and the goal ride the one PUT door, each only when carried — `""` after
+ *  the service's trim is the honest unnamed (the placeholder a rendering,
+ *  not a value); a carried `null` goal clears back to the honest unset, an
+ *  absent one keeps the stored goal. */
 export function useUpdateChapter(
   novelId: string,
-): UseMutationResult<Chapter, Error, { chapterId: string; title: string }> {
+): UseMutationResult<Chapter, Error, { chapterId: string; title?: string; targetWords?: number | null }> {
   return useMutation({
-    mutationFn: async ({ chapterId, title }: { chapterId: string; title: string }) => {
+    mutationFn: async ({ chapterId, title, targetWords }: { chapterId: string; title?: string; targetWords?: number | null }) => {
+      const body: { title?: string; target_words?: number | null } = {};
+      if (title !== undefined) body.title = title;
+      if (targetWords !== undefined) body.target_words = targetWords;
       const { data, response } = await client.PUT("/api/writing/chapters/{chapter_id}", {
         params: { path: { chapter_id: chapterId } },
-        body: { title },
+        body,
       });
       if (!response.ok || !data) throw refused("chapter update refused", response.status);
       return data;
@@ -502,6 +514,90 @@ export function useReorderScenes(
       }
     },
     onSuccess: () => invalidateArrangement(),
+  });
+}
+
+// --- The settings writes (W4 Task 19) --------------------------------------
+//
+// The book-settings dialog's doors: the novel PATCH (only the carried
+// fields change — the client builds the diff, a carried null clears), the
+// series create/list the select rides, and the atelier's profile write
+// through the settings capability's HTTP door (read-only composition's
+// write sibling — the shell's language switcher PATCHes the same row).
+// Success alone invalidates the family the server write moves.
+
+/** The user's series, alphabetical — the book-settings select's list.
+ *  The key carries the writing prefix; the create invalidates it. */
+export function useSeriesQuery(): UseQueryResult<Series[]> {
+  return useQuery({
+    queryKey: ["series"],
+    queryFn: async () => {
+      const { data, response } = await client.GET("/api/writing/series");
+      if (!response.ok) throw new Error(`series unavailable: ${response.status}`);
+      return data ?? [];
+    },
+  });
+}
+
+/** Creating a series inline (the draft's „Neue Reihe anlegen"): the row
+ *  exists once the POST lands — the select offers it at once, and the
+ *  book's link rides the novel PATCH on Speichern. */
+export function useCreateSeries(): UseMutationResult<Series, Error, { title: string }> {
+  return useMutation({
+    mutationFn: async ({ title }: { title: string }) => {
+      const { data, response } = await client.POST("/api/writing/series", { body: { title } });
+      if (!response.ok || !data) throw refused("series create refused", response.status);
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["series"] });
+    },
+  });
+}
+
+/** The novel PATCH: the carried fields alone are the change (the server's
+ *  `model_fields_set` contract). The novels family refetches — the shelf's
+ *  pills, the hero's series line, the identity card and the running head
+ *  all read the changed row. */
+export function useUpdateNovel(novelId: string): UseMutationResult<Novel, Error, NovelChanges> {
+  return useMutation({
+    mutationFn: async (changes: NovelChanges) => {
+      const { data, response } = await client.PATCH("/api/writing/novels/{novel_id}", {
+        params: { path: { novel_id: novelId } },
+        body: changes,
+      });
+      if (!response.ok || !data) throw refused("novel update refused", response.status);
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["novels"] });
+    },
+  });
+}
+
+/** The atelier's profile write (the settings capability's row): the locale
+ *  is ALWAYS carried — the schema requires it, present and nullable — so
+ *  the caller hands the stored one through unchanged; the profile fields
+ *  ride only when carried (a carried null clears). The settings row and
+ *  the activity aggregate refetch: the chrome's user block reads the name,
+ *  the ring and the banner read the goal. */
+export function useUpdateSettings(): UseMutationResult<
+  void,
+  Error,
+  { locale: string | null; authorName?: string | null; dailyGoalWords?: number | null }
+> {
+  return useMutation({
+    mutationFn: async ({ locale, authorName, dailyGoalWords }) => {
+      const body: { locale: string | null; author_name?: string | null; daily_goal_words?: number | null } = { locale };
+      if (authorName !== undefined) body.author_name = authorName;
+      if (dailyGoalWords !== undefined) body.daily_goal_words = dailyGoalWords;
+      const { response } = await client.PATCH("/api/settings", { body });
+      if (!response.ok) throw refused("settings update refused", response.status);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+      void queryClient.invalidateQueries({ queryKey: ["activity"] });
+    },
   });
 }
 
@@ -763,4 +859,220 @@ export function useContinuation(
   );
 
   return { phase, text, errorCode, start, dismiss, retry };
+}
+
+// --- The zen seam (W4 Task 18) ----------------------------------------------
+//
+// The frontend-real pieces of the zen draft (D6): the sentence geometry the
+// Satz-Fokus dims by, the session-only pomodoro and the session word delta.
+// The timer keeps NOTHING — no storage write, no server row (design §12:
+// „Zen timer is session-only"); its whole lifetime is the zen spell, and a
+// re-entry starts fresh. The counters' today half reads the activity
+// aggregate at the page (the ring's own source); the session half is the
+// live net delta since entry — the shared whitespace rule counts, the same
+// figure the server derives. The dimming itself rides the editor's
+// decoration plugin (SceneEditor); the presets' geometry lives here, pure
+// and testable without ProseMirror.
+
+/** The three focus presets the draft's segment control draws. */
+export type ZenFocusMode = "paragraph" | "sentence" | "normal";
+
+/** The pomodoro's span — the classic 25 minutes. The draft's „18:42" is a
+ *  mock mid-count; the session starts full. */
+export const POMODORO_SECONDS = 25 * 60;
+
+/** The timer's face: minutes and seconds, two digits each. */
+export function formatClock(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+/**
+ * The text's sentences as half-open spans — the Satz-Fokus's geometry. A
+ * sentence ends at a run of terminal punctuation (. ! ? …) followed by the
+ * closing quotes that belong to it (the German „…" face included) and then
+ * whitespace or the end; the whitespace BETWEEN sentences belongs to no
+ * span. Text without a terminal is one sentence — the whole span. Empty or
+ * whitespace-only text carries none. A simple honest splitter: no
+ * abbreviation dictionary (a „z. B." reads as a boundary — the draft draws
+ * no abbreviation rule, and a guessed one would dim the wrong words).
+ */
+export function sentenceSpans(text: string): Array<readonly [number, number]> {
+  const spans: Array<readonly [number, number]> = [];
+  const terminal = /[.!?…]+[»"“”'’)\]]*(?=\s|$)/g;
+  let start = 0;
+  let match: RegExpExecArray | null;
+  while ((match = terminal.exec(text)) !== null) {
+    const end = match.index + match[0].length;
+    if (text.slice(start, end).trim() !== "") spans.push([start, end]);
+    start = end;
+    while (start < text.length && /\s/.test(text[start])) start += 1;
+    terminal.lastIndex = start;
+  }
+  if (start < text.length && text.slice(start).trim() !== "") spans.push([start, text.length]);
+  return spans;
+}
+
+/**
+ * The sentence the caret sits in — end-inclusive (the boundary right after
+ * the terminal keeps the sentence just ended). An offset in the whitespace
+ * between sentences keeps the PREVIOUS one: the writer just finished it.
+ * No text, no sentence — null, never an invented span.
+ */
+export function activeSentence(text: string, offset: number): readonly [number, number] | null {
+  const spans = sentenceSpans(text);
+  if (spans.length === 0) return null;
+  for (const span of spans) {
+    if (offset >= span[0] && offset <= span[1]) return span;
+  }
+  let best = spans[0];
+  for (const span of spans) {
+    if (span[1] <= offset) best = span;
+  }
+  return best;
+}
+
+/** The pomodoro's state — the session's own, never stored. */
+export interface ZenTimer {
+  /** The seconds left on the clock. */
+  remaining: number;
+  /** Whether the clock is running. */
+  running: boolean;
+  /** The span is spent — the clock rests at zero. */
+  done: boolean;
+  /** Pause a running clock, resume a held one; a spent span starts fresh. */
+  toggle: () => void;
+  /** The full span again, running — the draft's start affordance. */
+  reset: () => void;
+}
+
+/**
+ * The session-only pomodoro (D6, design §12): starts full and running —
+ * the draft's timer is already on when the room opens — rests at zero
+ * (never negative), and keeps nothing: no localStorage, no sessionStorage,
+ * no server row. The hook's lifetime IS the session; the zen surface mounts
+ * it on entry and unmounts it on exit, so a re-entry starts a fresh span by
+ * construction.
+ *
+ * The remaining time reads a WALL-CLOCK DEADLINE, never the tick count
+ * (the Codacy drift fix): interval callbacks are throttled in background
+ * tabs and stop across a machine sleep — counting them would stretch the
+ * session past its span. The tick only re-renders the time the deadline
+ * already names; pause holds the exact remaining span and resume rebuilds
+ * the deadline from it, so a sleep while held spends nothing.
+ */
+export function useZenTimer(): ZenTimer {
+  const [remaining, setRemaining] = useState(POMODORO_SECONDS);
+  const [running, setRunning] = useState(true);
+  const done = remaining === 0;
+  // The instant the span ends (Date.now() ms). Rebuilt on resume/reset,
+  // never advanced by a tick — the clock is the authority.
+  const deadline = useRef(Date.now() + POMODORO_SECONDS * 1000);
+  // The exact span held at pause (ms) — null while running.
+  const held = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!running || done) return;
+    const id = window.setInterval(() => {
+      setRemaining(Math.max(0, Math.ceil((deadline.current - Date.now()) / 1000)));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [running, done]);
+
+  // The spent span rests the clock — the toggle's fresh start is the
+  // writer's own choice, never an automatic restart.
+  useEffect(() => {
+    if (done) setRunning(false);
+  }, [done]);
+
+  const toggle = useCallback(() => {
+    if (done) {
+      deadline.current = Date.now() + POMODORO_SECONDS * 1000;
+      held.current = null;
+      setRemaining(POMODORO_SECONDS);
+      setRunning(true);
+      return;
+    }
+    if (running) {
+      // Pause: hold the exact remainder and freeze the face on it — the
+      // last tick may be a fraction of a second behind the clock.
+      held.current = Math.max(0, deadline.current - Date.now());
+      setRemaining(Math.ceil(held.current / 1000));
+      setRunning(false);
+    } else {
+      // Resume: the held span becomes a fresh deadline from NOW — a sleep
+      // while paused spends none of it.
+      deadline.current = Date.now() + (held.current ?? POMODORO_SECONDS * 1000);
+      held.current = null;
+      setRunning(true);
+    }
+  }, [done, running]);
+
+  const reset = useCallback(() => {
+    deadline.current = Date.now() + POMODORO_SECONDS * 1000;
+    held.current = null;
+    setRemaining(POMODORO_SECONDS);
+    setRunning(true);
+  }, []);
+
+  return { remaining, running, done, toggle, reset };
+}
+
+/** The session word counter's state — the net delta since zen entry. */
+export interface SessionWords {
+  /** The net words the session added (a removal is honest — negative). */
+  words: number;
+  /** Feed every edit's whole body; the delta against the last figure rides
+   *  the shared whitespace rule (the server's own count). */
+  track: (body: string) => void;
+}
+
+/**
+ * The live session delta: the entry body is the baseline (zero, never a
+ * claim), every edit moves the counter by the net words it changed. The
+ * hook lives in the zen surface — its lifetime is the spell, so the
+ * counter resets on re-entry by construction. The today half of the
+ * draft's chip is NOT here: it reads the activity aggregate at the page.
+ */
+export function useSessionWords(initialBody: string): SessionWords {
+  const [words, setWords] = useState(0);
+  const previous = useRef(countWords(initialBody));
+  const track = useCallback((body: string) => {
+    const next = countWords(body);
+    const delta = next - previous.current;
+    previous.current = next;
+    if (delta !== 0) setWords((value) => value + delta);
+  }, []);
+  return { words, track };
+}
+
+// The zen exit's focus return (Task 21's fidelity gate). The desk's Fokus door
+// focuses itself when it remounts after the room leaves — a flag the door's ref
+// callback takes exactly at mount, not a timer. The columns remount in React's
+// async commit, so a rAF poll races it (the door is still null when the frame
+// fires, the focus strands on the body) and, retried, spins the event loop under
+// load. The flag is deterministic: no race, no overhead. The page sets it only
+// when the door is not already mounted; the door clears it by taking it.
+// The flag is module state, so it must not outlive the page that set it: both
+// exits today remount the door in the commit they leave, but an exit that
+// navigates instead would leave it pending — the next mount's door would take
+// it and focus itself once, unasked. WorkspacePage's unmount cleanup owns that
+// invariant (clearDeskFocus); a fresh page starts with no focus owed.
+let deskFocusPending = false;
+
+export function requestDeskFocus(): void {
+  deskFocusPending = true;
+}
+
+export function takeDeskFocus(): boolean {
+  const pending = deskFocusPending;
+  deskFocusPending = false;
+  return pending;
+}
+
+/** The page's unmount clears the pending return — the flag dies with the
+ *  page that asked it, never the next mount's door. */
+export function clearDeskFocus(): void {
+  deskFocusPending = false;
 }

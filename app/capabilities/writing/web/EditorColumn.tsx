@@ -24,10 +24,12 @@
  * Honest readings of the draft (the gap doc records them):
  * - The running head is `novel.author` beside the book (D22) — the book
  *   alone when no author stands. NO folio, NO page count (row 9).
- * - The chapter-target pill keeps the neutral „—": ChapterRead carries no
- *   target yet, and the setter is Task 19's (D20 places it inline here).
- *   Fokus waits for the zen wave (Task 18), Verlauf for the editing wave
- *   (INTERIM #875), Export for the production wave (INTERIM #876).
+ * - The chapter-target pill is LIVE (Task 19, D8/D20): the pair reads the
+ *   chapter's own goal and count, the setter opens the goal dialog inline
+ *   at the element; no goal keeps the neutral „—". Fokus is LIVE (Task 18)
+ *   — the door opens the zen room, F9 the keyboard's own way in (D19);
+ *   Verlauf waits for the editing wave (INTERIM #875), Export for the
+ *   production wave (INTERIM #876).
  * - The foot's autosave line carries no timestamp: the draft's „vor 1 Min."
  *   is a mock relative claim; the honest line names the state, not a clock.
  * - The ghost text and the prompt bar are LIVE (Task 16): the continuation
@@ -41,19 +43,20 @@
  * experience (D16), and „+ Szene 1 anlegen" starts it.
  */
 
-import type { Novel } from "@shell/lib/api/client";
+import type { Chapter, Novel } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { activeLocale } from "@shell/lib/locale";
 import { capitalizedWord } from "@shell/lib/numberWords";
 import { unsavedStatus, type SaveStatus } from "@shell/lib/saveStatus";
 import { countWords } from "@shell/lib/words";
 import { Icon } from "@shell/ui/icons";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { PromptBar } from "./PromptBar";
 import { SceneEditor } from "./SceneEditor";
+import { Spinner } from "./TreeDialogs";
 import type { Continuation, SceneEntry } from "./workspace";
-import { sceneCodeNumbers, sceneTitle } from "./workspace";
+import { sceneCodeNumbers, sceneTitle, takeDeskFocus } from "./workspace";
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
 const SERIF = "[font-family:var(--font-serif)]";
@@ -66,26 +69,39 @@ const FOCUS =
 const DISABLED_DOOR =
   "flex cursor-not-allowed items-center gap-1 rounded border border-border/70 bg-surface-container-low/40 px-2.5 py-1 text-meta text-muted opacity-60";
 
-/** The ribbon's neutral chapter-target pill — INTERIM Task 19: the read
- *  carries no chapter goal yet and the setter rides the book-settings
- *  surface (D20 places it inline at this element). */
-function ChapterTargetPill() {
+/** The ribbon's chapter-target pill — LIVE (Task 19, D8/D20): the pair
+ *  reads the chapter's own goal and its scene-derived count, the track
+ *  fills with the real share; no goal keeps the neutral „—" and the
+ *  empty track. The inline setter asks the page (the goal dialog writes
+ *  the chapter's target through the chapter PUT). */
+function ChapterTargetPill({ chapter, onEditTarget }: { chapter: Chapter; onEditTarget: () => void }) {
   const t = useTranslation();
+  const goal = chapter.target_words;
+  const share = goal != null && goal > 0 ? Math.min(100, (chapter.word_count / goal) * 100) : null;
   return (
     <div className="flex items-center gap-2 rounded-full border border-border bg-surface-container-low px-3 py-1 text-meta text-muted shadow-sm">
       <span>
         {t("writing.workspace.ribbon.chapterTarget")}{" "}
-        <strong className="font-mono text-foreground">—</strong>
+        {goal != null ? (
+          <strong className="font-mono text-foreground">
+            {t("writing.workspace.ribbon.targetValue", { count: chapter.word_count, target: goal })}
+          </strong>
+        ) : (
+          <strong className="font-mono text-foreground">—</strong>
+        )}
       </span>
       <div aria-hidden="true" className="h-1.5 w-16 overflow-hidden rounded-full bg-border">
-        {/* No goal, no fill — the empty track is the honest neutral. */}
+        {share !== null && (
+          <div data-chapter-target-fill className="h-full bg-primary" style={{ width: `${share}%` }} />
+        )}
       </div>
       <button
         type="button"
-        disabled
-        title={t("writing.workspace.ribbon.targetEditNote")}
+        id="ribbon-target-door"
+        onClick={onEditTarget}
         aria-label={t("writing.workspace.ribbon.targetEdit")}
-        className="cursor-not-allowed text-muted opacity-60"
+        title={t("writing.workspace.ribbon.targetEdit")}
+        className={`rounded text-muted transition-colors hover:text-foreground ${FOCUS}`}
       >
         <Icon name="write" size={12} />
       </button>
@@ -96,9 +112,30 @@ function ChapterTargetPill() {
 /** The ribbon — the draft's 44px bar: breadcrumb + code badge left (with
  *  KACHEL 9's amber unsaved pill while words are unsaved), the chapter-target
  *  pill center, the tool doors right. */
-function Ribbon({ novel, entry, status }: { novel: Novel; entry: SceneEntry; status: SaveStatus }) {
+function Ribbon({
+  novel,
+  entry,
+  status,
+  onEnterZen,
+  onEditTarget,
+  zenBusy,
+}: {
+  novel: Novel;
+  entry: SceneEntry;
+  status: SaveStatus;
+  onEnterZen: () => void;
+  onEditTarget: () => void;
+  zenBusy: boolean;
+}) {
   const t = useTranslation();
   const code = sceneCodeNumbers(entry);
+  // The zen exit's focus return (Task 21): the door takes the page's pending
+  // flag exactly when it remounts after the room leaves — deterministic, no
+  // rAF race with React's async commit. A stable ref, so it fires on mount
+  // alone, not on every re-render.
+  const focusDoorRef = useCallback((node: HTMLButtonElement | null) => {
+    if (node !== null && takeDeskFocus()) node.focus();
+  }, []);
   return (
     <div
       data-testid="workspace-ribbon"
@@ -129,18 +166,24 @@ function Ribbon({ novel, entry, status }: { novel: Novel; entry: SceneEntry; sta
           </span>
         )}
       </div>
-      <ChapterTargetPill />
+      <ChapterTargetPill chapter={entry.chapter} onEditTarget={onEditTarget} />
       <div className="flex shrink-0 items-center gap-1.5">
-        {/* Fokus: INTERIM Task 18 — the zen wave owns the mode (D19's F9
-            toggle lands with it); the door keeps its geometry and note. */}
+        {/* Fokus: LIVE (Task 18, D19) — the door opens the zen room; F9 is
+            the keyboard's own way in (the page owns the toggle). The exit
+            returns the focus here (the dialogs' focus-return discipline).
+            While the swap window stands (the page's flush → invalidate →
+            refetch → swap), the door wears the family's busy face — the
+            spinner, the busy label, disabled — and the prose is locked. */}
         <button
           type="button"
-          disabled
-          title={t("writing.workspace.ribbon.focusNote")}
-          className={DISABLED_DOOR}
+          id="workspace-focus-door"
+          ref={focusDoorRef}
+          onClick={onEnterZen}
+          disabled={zenBusy}
+          className={`flex items-center gap-1 rounded border border-border/70 bg-surface-container-low/40 px-2.5 py-1 text-meta text-muted transition-colors hover:text-foreground ${FOCUS} ${zenBusy ? "cursor-not-allowed opacity-60" : ""}`}
         >
-          <Icon name="focus" size={12} />
-          <span>{t("writing.workspace.ribbon.focus")}</span>
+          {zenBusy ? <Spinner tone="muted" /> : <Icon name="focus" size={12} />}
+          <span>{t(zenBusy ? "writing.workspace.ribbon.focusBusy" : "writing.workspace.ribbon.focus")}</span>
         </button>
         {/* Verlauf: INTERIM #875 — the editing wave's revision-history
             surface; the light draft's honest note wins over the dark's
@@ -210,6 +253,7 @@ function ScenePaper({
   onRetry,
   onBodyChange,
   continuation,
+  zenBusy,
 }: {
   novel: Novel;
   entry: SceneEntry;
@@ -217,6 +261,7 @@ function ScenePaper({
   onRetry: () => void;
   onBodyChange: (body: string) => void;
   continuation: Continuation;
+  zenBusy: boolean;
 }) {
   const t = useTranslation();
   const locale = activeLocale();
@@ -273,6 +318,7 @@ function ScenePaper({
             body={entry.scene.body}
             label={t("writing.workspace.editor.proseLabel")}
             continuation={continuation}
+            editable={!zenBusy}
             onChange={(body) => {
               setWords(countWords(body));
               onBodyChange(body);
@@ -309,7 +355,10 @@ export function EditorColumn({
   onRetry,
   onBodyChange,
   onCreateScene,
+  onEnterZen,
+  onEditTarget,
   continuation,
+  zenBusy,
 }: {
   novel: Novel;
   /** The active scene — null on the empty faces. */
@@ -325,9 +374,18 @@ export function EditorColumn({
   /** Kachel 4's first-scene door — the page creates under the empty
    *  chapter and selects the new scene (D16's canonical flow). */
   onCreateScene: () => void;
+  /** The ribbon's Fokus door (Task 18) — the page opens the zen room. */
+  onEnterZen: () => void;
+  /** The chapter-target pill's setter (Task 19, D20) — the page opens
+   *  the goal dialog on the active chapter's target. */
+  onEditTarget: () => void;
   /** The continuation's state (the page's hook) — the ghost layer and the
    *  prompt bar ride it; the empty faces carry neither. */
   continuation: Continuation;
+  /** The zen swap window stands (the page's flush → invalidate → refetch
+   *  → swap): the Fokus door wears the family's busy face and the prose is
+   *  locked — keystrokes in the window would die with the unmount. */
+  zenBusy: boolean;
 }) {
   const t = useTranslation();
   return (
@@ -335,7 +393,9 @@ export function EditorColumn({
       aria-label={t("writing.workspace.editor.label")}
       className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-surface-container-low"
     >
-      {entry !== null && <Ribbon novel={novel} entry={entry} status={status} />}
+      {entry !== null && (
+        <Ribbon novel={novel} entry={entry} status={status} onEnterZen={onEnterZen} onEditTarget={onEditTarget} zenBusy={zenBusy} />
+      )}
       {/* The scrolling stage — tabIndex gives the scroll region keyboard
           access (axe scrollable-region-focusable); the prose itself is a
           focusable textbox now, the shell main's own pattern. The bottom
@@ -354,6 +414,7 @@ export function EditorColumn({
             onRetry={onRetry}
             onBodyChange={onBodyChange}
             continuation={continuation}
+            zenBusy={zenBusy}
           />
         ) : emptyChapter ? (
           /* Kachel 4 — the empty chapter: the scene explained, the

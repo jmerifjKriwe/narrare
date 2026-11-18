@@ -18,6 +18,7 @@
  * a region mounted populated never speaks, so the preview wears no role.
  */
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
 import { useEffect, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -179,6 +180,73 @@ describe("the editing surface", () => {
     // The page keys the editor by scene id: a new key is a new document.
     rerender(<SceneEditor key="s2" body="Szene zwei." onChange={() => {}} label="Prosa" />);
     await waitFor(() => expect(screen.getByRole("textbox").textContent).toBe("Szene zwei."));
+  });
+});
+
+// --- The editable seam (the Codacy swap-window fix) -------------------------
+//
+// The zen swap's transition window (flush → invalidate → refetch → swap)
+// locks the LIVE editor: keystrokes in that window would die with the
+// unmount (the refetched body predates them). The lock is TipTap's own
+// editability — contenteditable flips, ProseMirror gates the edit events —
+// and lifts on the same instance, never a remount.
+
+describe("the editable seam — the swap window's lock", () => {
+  it("editable=false locks the live prose — keystrokes blocked, no onChange; the lift restores editing", async () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<SceneEditor body="Ein Satz." onChange={onChange} label="Prosa" />);
+    const box = await screen.findByRole("textbox");
+    await waitFor(() => expect(box.textContent).toBe("Ein Satz."));
+    expect(box.getAttribute("contenteditable")).toBe("true");
+    // The writer's seat is live when the window opens — the lock falls on
+    // the focused editor, exactly as the page's transition does.
+    box.focus();
+    rerender(<SceneEditor body="Ein Satz." onChange={onChange} label="Prosa" editable={false} />);
+    await waitFor(() => expect(box.getAttribute("contenteditable")).toBe("false"));
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await user.keyboard(" Mehr.");
+    expect(box.textContent).toBe("Ein Satz.");
+    expect(onChange).not.toHaveBeenCalled();
+    // The lift: the SAME instance edits again — no remount, no body reset.
+    rerender(<SceneEditor body="Ein Satz." onChange={onChange} label="Prosa" editable />);
+    await waitFor(() => expect(box.getAttribute("contenteditable")).toBe("true"));
+    await user.keyboard(" Mehr.");
+    expect(box.textContent).toContain("Mehr.");
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it("a locked prose refuses the ghost's Tab acceptance — the proposal stands for the next face", async () => {
+    const onChange = vi.fn();
+    const dismiss = vi.fn();
+    const continuation: Continuation = {
+      phase: "pending",
+      text: "Der Vorschlag steht.",
+      errorCode: null,
+      start: () => {},
+      dismiss,
+      retry: () => {},
+    };
+    const { rerender } = render(
+      <SceneEditor body="Der Nebel kam vom See." onChange={onChange} label="Prosa" continuation={continuation} />,
+    );
+    const box = await screen.findByRole("textbox");
+    await waitFor(() => expect(box.textContent).toContain("Der Nebel kam vom See."));
+    box.focus();
+    rerender(
+      <SceneEditor
+        body="Der Nebel kam vom See."
+        onChange={onChange}
+        label="Prosa"
+        continuation={continuation}
+        editable={false}
+      />,
+    );
+    await waitFor(() => expect(box.getAttribute("contenteditable")).toBe("false"));
+    fireEvent.keyDown(box, { key: "Tab" });
+    // The acceptance would insert words the unmount drops — it waits.
+    expect(onChange).not.toHaveBeenCalled();
+    expect(dismiss).not.toHaveBeenCalled();
+    expect(screen.getByTestId("ghost-preview").textContent).toContain("Der Vorschlag steht.");
   });
 });
 
@@ -573,5 +641,108 @@ describe("the autosave handoff — Tab inserts, the one write path saves", () =>
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("the zen focus dimming (W4 Task 18) — the presets dim honestly", () => {
+  const PARAGRAPHS = "Erster Absatz.\n\nZweiter Absatz.\n\nDritter Absatz.";
+
+  async function mountWithFocus(focus: "paragraph" | "sentence" | "normal", body = PARAGRAPHS) {
+    let instance: Editor | null = null;
+    render(
+      <SceneEditor
+        body={body}
+        label="Szenenprosa"
+        focus={focus}
+        onChange={() => {}}
+        onReady={(editor) => {
+          instance = editor;
+        }}
+      />,
+    );
+    const box = await screen.findByRole("textbox");
+    const editor = await editorOf(() => instance);
+    // The DOM text carries no paragraph gaps or hard breaks — the body's
+    // own characters in order (the plain text minus every newline).
+    await waitFor(() => expect(box.textContent).toBe(body.split("\n").join("")));
+    return { box, editor };
+  }
+
+  it("paragraph focus: the caret's paragraph stands, the others dim — and it follows the caret", async () => {
+    const { box, editor } = await mountWithFocus("paragraph");
+    // The default selection sits at the document start — the first paragraph.
+    await waitFor(() => {
+      const paragraphs = box.querySelectorAll("p");
+      expect(paragraphs[0].className).toContain("zen-active-block");
+      expect(paragraphs[1].className).toContain("zen-dim-block");
+      expect(paragraphs[2].className).toContain("zen-dim-block");
+    });
+    // Move the caret into the second paragraph — the dimming follows.
+    act(() => {
+      const insideSecond = editor.state.doc.child(0).nodeSize + 2;
+      editor.commands.setTextSelection(insideSecond);
+    });
+    await waitFor(() => {
+      const paragraphs = box.querySelectorAll("p");
+      expect(paragraphs[0].className).toContain("zen-dim-block");
+      expect(paragraphs[1].className).toContain("zen-active-block");
+      expect(paragraphs[2].className).toContain("zen-dim-block");
+    });
+  });
+
+  it("sentence focus: only the caret's sentence stands, across paragraph borders", async () => {
+    const { box, editor } = await mountWithFocus("sentence", "Eins zwei. Drei vier.\n\nFünf sechs.");
+    // Caret into the first paragraph's second sentence.
+    act(() => {
+      editor.commands.setTextSelection(12); // "Eins zwei. D|" — inside "Drei vier."
+    });
+    await waitFor(() => {
+      const first = box.querySelectorAll("p")[0];
+      const dimmed = first.querySelectorAll(".zen-dim-inline");
+      expect(dimmed.length).toBeGreaterThan(0);
+      expect(dimmed[0].textContent).toBe("Eins zwei. ");
+    });
+    const second = box.querySelectorAll("p")[1];
+    expect(second.querySelector(".zen-dim-inline")?.textContent).toBe("Fünf sechs.");
+    expect(box.querySelector(".zen-active-block")).toBeNull();
+  });
+
+  it("sentence focus reads across a hard break — the positions stay the document's own", async () => {
+    const { box, editor } = await mountWithFocus("sentence", "Eins\nzwei. Drei vier.");
+    act(() => {
+      editor.commands.setTextSelection(13); // inside "Drei vier."
+    });
+    await waitFor(() => {
+      const dimmed = box.querySelectorAll(".zen-dim-inline");
+      expect(dimmed.length).toBeGreaterThan(0);
+      expect(dimmed[0].textContent).toBe("Eins");
+    });
+    // The hard break itself is not text — the second line's fragment dims
+    // as its own span, never swallowing the break.
+    const dimmedTexts = [...box.querySelectorAll(".zen-dim-inline")].map((node) => node.textContent);
+    expect(dimmedTexts).toContain("zwei. ");
+    expect(box.textContent).toBe("Einszwei. Drei vier.");
+  });
+
+  it("normal focus dims nothing — and a mode change leaves the document untouched", async () => {
+    const { box, editor } = await mountWithFocus("normal");
+    expect(box.querySelector(".zen-dim-block")).toBeNull();
+    expect(box.querySelector(".zen-dim-inline")).toBeNull();
+    expect(box.querySelector(".zen-active-block")).toBeNull();
+    expect(editor.getText()).toBe(PARAGRAPHS);
+  });
+
+  it("typing keeps the dimming live — the document change recomputes it", async () => {
+    const { box, editor } = await mountWithFocus("paragraph");
+    act(() => {
+      editor.commands.insertContentAt(editor.state.doc.content.size, "<p>Vierter Absatz.</p>");
+    });
+    await waitFor(() => {
+      const paragraphs = box.querySelectorAll("p");
+      expect(paragraphs).toHaveLength(4);
+      // The insertion leaves the caret in the new paragraph — it stands.
+      expect(paragraphs[3].className).toContain("zen-active-block");
+      expect(paragraphs[0].className).toContain("zen-dim-block");
+    });
   });
 });

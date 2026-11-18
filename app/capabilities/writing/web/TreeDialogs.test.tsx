@@ -37,6 +37,7 @@ const CHAPTER: Chapter = {
   title: "Ghost in the Machine",
   position: 0,
   scene_count: 2,
+  target_words: null,
   word_count: 765,
   created_at: "2026-11-01T10:00:00Z",
   updated_at: "2026-11-12T10:00:00Z",

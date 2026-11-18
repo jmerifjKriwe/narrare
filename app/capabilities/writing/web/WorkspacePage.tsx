@@ -25,6 +25,20 @@
  * flush-first rule): the server continues the saved body, and a failed
  * save keeps the ask home — the writer saves first.
  *
+ * The zen room is LIVE (Task 18, D19): F9 toggles it, Esc exits — the
+ * ghost owns Esc first, the guard and the dialogs own theirs, the room
+ * exits last. Entry and exit both FLUSH the autosave and let the scene
+ * cache catch up before the surface swaps (each face's editor initializes
+ * from the cache on mount — a stale remount would drop unsaved words); a
+ * failed exit flush raises the same guard: stay in zen, or discard and
+ * go. The swap window is LOCKED (the Codacy fix): the transition flag
+ * spans flush → invalidate → await-refetch → swap on both directions, the
+ * active editor is non-editable while it stands (keystrokes in the window
+ * would die with the unmount), the face's zen trigger wears the family's
+ * busy face, and a failed flush lifts the flag — editing stays on. The
+ * room mounts OVER the columns — one live editor at a time, the page's
+ * one autosave and one continuation serve both faces.
+ *
  * The tree's CRUD is LIVE (Task 13): the page owns the writes the explorer
  * asks for — create (chapter zero scenes, D16's empty-chapter face the
  * canonical new chapter; scene under the active chapter), the rename and
@@ -33,7 +47,10 @@
  * stored-ids revert, the refusal's restore, the honest notice + retry).
  * A create or a delete that moves the selection flushes or discards the
  * autosave draft first — a dead scene's words never reach the wire. The
- * setters wait for Task 19, named in code.
+ * settings doors are LIVE (Task 19): the identity card opens the book
+ * settings, the ring and the chapter-target pill open the inline goal
+ * setters (D20) — the dialogs ride over both faces, their Esc before the
+ * room's.
  *
  * The leave guard (WP0b's rule, the states sheet's Kachel 10): a leave —
  * a scene/chapter switch, any route navigation (the router blocker, which
@@ -64,16 +81,21 @@ import {
   useActivityQuery,
   useChaptersQuery,
   useNovelQuery,
+  useSettingsQuery,
 } from "@shell/lib/query";
 
+import { BookSettings } from "./BookSettings";
 import { EditorColumn } from "./EditorColumn";
 import { ExplorerColumn } from "./ExplorerColumn";
+import { GoalSetterDialog } from "./GoalSetter";
 import { InspectorDock } from "./InspectorDock";
 import { DeleteTreeDialog, TreeEditDialog } from "./TreeDialogs";
 import { useAutosave } from "./useAutosave";
 import {
+  clearDeskFocus,
   lastEditedEntry,
   orderedSceneEntries,
+  requestDeskFocus,
   rowsInOrder,
   scenesByChapterFrom,
   useChapterScenes,
@@ -83,10 +105,12 @@ import {
   useReorderChapters,
   useReorderScenes,
   useStoryboardQuery,
+  sceneTitle,
   type SceneEntry,
   type TreeNotice,
 } from "./workspace";
 import { LeaveGuardDialog, WorkspaceError, WorkspaceLoading } from "./WorkspaceStates";
+import { ZenMode } from "./ZenMode";
 
 const routeApi = getRouteApi("/novels/$novelId");
 
@@ -103,6 +127,25 @@ type CrudDialog =
   | { kind: "deleteScene"; entry: SceneEntry; openerId: string }
   | null;
 
+/** Every zen exit's focus return — the ribbon door that opened the room
+ *  (the dialogs' own focus-return discipline). ONE home: the healthy exit
+ *  and the guard's discard branch both leave through here, so no exit
+ *  strands the focus on the body. The columns remount in the commit the room
+ *  leaves, but that commit is async — a rAF poll races it (the door is still
+ *  null when the frame fires; Task 21's E2E caught the race the unit act()
+ *  flush hid, and a retried poll spins the event loop under load). So the
+ *  return is deterministic: if the door is already mounted, focus it now;
+ *  otherwise leave the flag for the door's own ref callback, which takes it
+ *  exactly at remount (EditorColumn's `focusDoorRef`). No timer, no race. */
+function returnFocusToDesk(): void {
+  const door = document.getElementById("workspace-focus-door");
+  if (door !== null) {
+    door.focus();
+    return;
+  }
+  requestDeskFocus();
+}
+
 export function WorkspacePage() {
   const t = useTranslation();
   const { novelId } = routeApi.useParams();
@@ -114,6 +157,9 @@ export function WorkspacePage() {
   const sceneResults = useChapterScenes(chapterList);
   const activity = useActivityQuery();
   const storyboard = useStoryboardQuery(novelId);
+  // The atelier's row — the daily setter opens on the STORED goal (the
+  // save's own source), never on the aggregate's pending face.
+  const settings = useSettingsQuery();
 
   usePageTitle(novel.data?.title ?? t("writing.workspace.pageTitle"));
 
@@ -125,6 +171,20 @@ export function WorkspacePage() {
   // Task 13: the tree's dialog and the honest notice under the tree.
   const [dialog, setDialog] = useState<CrudDialog>(null);
   const [notice, setNotice] = useState<TreeNotice | null>(null);
+  // Task 18: the zen room (D19 — F9 toggles, Esc exits). A failed exit
+  // flush waits here for the guard's answer, the pendingSelect discipline.
+  const [zen, setZen] = useState(false);
+  const [pendingZenExit, setPendingZenExit] = useState(false);
+  // The swap window (the Codacy fix): entry and exit span flush →
+  // invalidate → await-refetch → swap. While it stands, the ACTIVE editor
+  // is non-editable and the face's zen trigger wears the family's busy
+  // face — keystrokes in the window would die with the unmount (the
+  // refetched body predates them). A failed flush lifts it: editing stays on.
+  const [zenTransition, setZenTransition] = useState(false);
+  // Task 19: the book-settings dialog (the identity card's door) and the
+  // inline goal setters (D20 — the ring's daily, the pill's chapter).
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [goalDialog, setGoalDialog] = useState<{ kind: "daily" } | { kind: "chapter"; chapter: Chapter } | null>(null);
 
   // A navigation between two books reuses this component — the selection
   // and the collapse state belong to the book that was opened, never the
@@ -136,6 +196,11 @@ export function WorkspacePage() {
     setPendingSelect(null);
     setDialog(null);
     setNotice(null);
+    setZen(false);
+    setPendingZenExit(false);
+    setZenTransition(false);
+    setSettingsOpen(false);
+    setGoalDialog(null);
   }, [novelId]);
 
   // The 404 degrade — the book was deleted elsewhere: the shelf's note
@@ -222,6 +287,107 @@ export function WorkspacePage() {
     [],
   );
 
+  // --- The zen room (Task 18, D19) -----------------------------------------
+  // F9 toggles the room, Esc exits — both flush FIRST (the leave guard's
+  // own rule): the room's editor and the workspace's editor each initialize
+  // from the cache on mount, so the draft must land and the cache catch up
+  // before the surface swaps — a remount on a stale body would drop the
+  // unsaved words from the document. A failed entry flush keeps the room
+  // closed (the autosave's failure face stands — the writer saves first);
+  // a failed exit flush raises the guard: stay in zen, or discard and go.
+  //
+  // The swap window (the Codacy fix): between the flush resolving and the
+  // swap committing, the OLD editor stays mounted — and editable, before
+  // the fix. Keystrokes in that window died with the unmount (the refetched
+  // body predates them). The transition flag spans flush → invalidate →
+  // await-refetch → swap on BOTH directions: while it stands, the active
+  // editor is non-editable (SceneEditor's editable seam) and the face's zen
+  // trigger wears the family's busy face; a re-trigger is ignored. A failed
+  // flush lifts the flag — editing stays on.
+  const requestZenEntry = useCallback(() => {
+    const target = activeEntryRef.current;
+    if (target === null || zenTransitionRef.current) return;
+    setZenTransition(true);
+    void autosaveRef.current.flush().then(async (outcome) => {
+      if (outcome === "failed") {
+        setZenTransition(false);
+        return;
+      }
+      await queryClient.invalidateQueries({ queryKey: ["scenes", target.chapter.id] });
+      setZen(true);
+      setZenTransition(false);
+    });
+  }, []);
+
+  const requestZenExit = useCallback(() => {
+    const target = activeEntryRef.current;
+    if (zenTransitionRef.current) return;
+    setZenTransition(true);
+    void autosaveRef.current.flush().then(async (outcome) => {
+      if (outcome === "failed") {
+        setPendingZenExit(true);
+        setZenTransition(false);
+        return;
+      }
+      if (target !== null) {
+        await queryClient.invalidateQueries({ queryKey: ["scenes", target.chapter.id] });
+      }
+      setZen(false);
+      setZenTransition(false);
+      returnFocusToDesk();
+    });
+  }, []);
+
+  // The focus-return flag is module state (workspace.ts), so it must die with
+  // the page that set it. Both exits today remount the door in the commit they
+  // leave and it takes the flag there — but an exit that navigates instead
+  // would leave it pending, and the NEXT mount's door would focus itself once,
+  // unasked. The unmount cleanup owns the invariant: a fresh page starts with
+  // no focus owed (Task 21's review pin).
+  useEffect(() => clearDeskFocus, []);
+
+  // The room's keyboard contract, read through refs so the listener stays
+  // stable. The order is the draft's and the ghost's own: the ghost's
+  // capture-phase Esc dismisses BEFORE anything here (and stops the
+  // event); when the event targets the document itself, this handler
+  // defers while a ghost stands, so the ghost's listener still runs first.
+  // The guard and the dialogs own their Esc next; the room exits last.
+  // In fullscreen the browser's Esc leaves fullscreen first (the draft's
+  // dark face pins the rule).
+  const zenRef = useRef(zen);
+  zenRef.current = zen;
+  const zenTransitionRef = useRef(zenTransition);
+  zenTransitionRef.current = zenTransition;
+  const continuationRef = useRef(continuation);
+  continuationRef.current = continuation;
+  const activeEntryRef = useRef(activeEntry);
+  activeEntryRef.current = activeEntry;
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.repeat) return;
+      // The swap window owns the toggle — a re-trigger mid-transition is
+      // ignored (one swap at a time; the busy doors hold the pointer too).
+      if (zenTransitionRef.current) return;
+      if (event.key === "F9") {
+        if (guardRef.current !== null || overlayRef.current) return;
+        if (activeEntryRef.current === null) return;
+        event.preventDefault();
+        if (zenRef.current) requestZenExit();
+        else requestZenEntry();
+        return;
+      }
+      if (event.key === "Escape" && zenRef.current) {
+        if (continuationRef.current.phase !== "idle") return;
+        if (guardRef.current !== null || overlayRef.current) return;
+        if (document.fullscreenElement) return;
+        event.preventDefault();
+        requestZenExit();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [requestZenEntry, requestZenExit]);
+
   // The one guard, two triggers: a blocked route leave or a failed switch.
   // „Bleiben" resets the leave; „Verwerfen und verlassen" drops the draft
   // (so the unmount flush cannot re-send it) and then goes.
@@ -243,7 +409,28 @@ export function WorkspacePage() {
               setPendingSelect(null);
             },
           }
-        : null;
+        : pendingZenExit
+          ? {
+              stay: () => setPendingZenExit(false),
+              discard: () => {
+                autosave.discard();
+                setPendingZenExit(false);
+                setZen(false);
+                // The discard exit returns the desk's focus too — the
+                // guard's own opener-restore no-ops here (its opener node
+                // left with the room), so the exit's rule carries it.
+                returnFocusToDesk();
+              },
+            }
+          : null;
+  // The keyboard contract reads the live guard and dialogs through refs —
+  // a room's Esc defers to whichever owns the ask (the listener above).
+  // The settings dialog and the goal setters own their Esc too (Task 19).
+  const guardRef = useRef(guard);
+  guardRef.current = guard;
+  const overlayOpen = dialog !== null || settingsOpen || goalDialog !== null;
+  const overlayRef = useRef(overlayOpen);
+  overlayRef.current = overlayOpen;
 
   // --- The tree's CRUD (Task 13) — the page owns the writes ---------------
   //
@@ -425,70 +612,100 @@ export function WorkspacePage() {
   }
   if (novel.data == null) return null;
 
+  // Every prose edit rides the one path: typing dismisses the ghost (design
+  // G4 — the writer's own words win over the proposal, a running stream
+  // aborts with it), the autosave owns the wire. The zen room's editor and
+  // the workspace's editor feed the same door.
+  function handleBodyChange(body: string) {
+    continuation.dismiss();
+    autosave.schedule(body);
+  }
+
   return (
-    <div className="flex h-full overflow-hidden">
-      <ExplorerColumn
-        novel={novel.data}
-        chapters={chapterList}
-        sceneResults={sceneResults}
-        entries={entries}
-        activeSceneId={activeEntry?.scene.id ?? null}
-        activeChapterId={activeChapter?.id ?? null}
-        collapsed={collapsed}
-        onToggleChapter={(chapterId) => {
-          setCollapsed((previous) => {
-            const next = new Set(previous);
-            if (next.has(chapterId)) next.delete(chapterId);
-            else next.add(chapterId);
-            return next;
-          });
-        }}
-        onSelectChapter={(chapterId) => {
-          requestSelect({ kind: "chapter", id: chapterId });
-          // Selecting a chapter opens it — a collapsed card reveals its rows.
-          setCollapsed((previous) => {
-            if (!previous.has(chapterId)) return previous;
-            const next = new Set(previous);
-            next.delete(chapterId);
-            return next;
-          });
-        }}
-        onSelectScene={(sceneId) => requestSelect({ kind: "scene", id: sceneId })}
-        onCreateChapter={handleCreateChapter}
-        onCreateScene={handleCreateScene}
-        onEditChapter={(chapter, openerId) => setDialog({ kind: "editChapter", chapter, openerId })}
-        onEditScene={(entry, openerId) => setDialog({ kind: "editScene", entry, openerId })}
-        onDeleteChapter={(chapter, openerId) => setDialog({ kind: "deleteChapter", chapter, openerId })}
-        onDeleteScene={(entry, openerId) => setDialog({ kind: "deleteScene", entry, openerId })}
-        onReorderChapters={(ids) => commitReorder("chapters", null, ids)}
-        onReorderScenes={(chapterId, ids) => commitReorder("scenes", chapterId, ids)}
-        reorderBusy={reorderBusy}
-        createBusy={createBusy}
-        notice={notice}
-        onNoticeRetry={retryNotice}
-        onNoticeDismiss={() => setNotice(null)}
-        activity={activity}
-        storyboard={storyboard}
-      />
-      <EditorColumn
-        novel={novel.data}
-        entry={activeEntry}
-        emptyChapter={chapterList.length > 0 && activeEntry === null}
-        status={autosave.status}
-        onRetry={() => void autosave.flush()}
-        onBodyChange={(body) => {
-          // Typing dismisses the ghost (design G4): the writer's own words
-          // win over the proposal — a running stream aborts with it. The
-          // acceptance insertion rides this same door, already dismissed.
-          continuation.dismiss();
-          autosave.schedule(body);
-        }}
-        onCreateScene={() => {
-          if (activeChapter !== null) handleCreateScene(activeChapter.id);
-        }}
-        continuation={continuation}
-      />
-      <InspectorDock novel={novel.data} />
+    <>
+      {zen && activeEntry !== null ? (
+        /* The zen room (Task 18) — mounted OVER the workspace: the columns
+           yield (one live editor at a time — two would double the ghost's
+           keyboard contract), the chrome stays covered beneath the fixed
+           surface. The counters read the aggregate the page already owns. */
+        <ZenMode
+          novel={novel.data}
+          entry={activeEntry}
+          todayWords={activity.data?.today_words ?? null}
+          continuation={continuation}
+          onBodyChange={handleBodyChange}
+          onExit={requestZenExit}
+          zenBusy={zenTransition}
+        />
+      ) : (
+        <div className="flex h-full overflow-hidden">
+          <ExplorerColumn
+            novel={novel.data}
+            chapters={chapterList}
+            sceneResults={sceneResults}
+            entries={entries}
+            activeSceneId={activeEntry?.scene.id ?? null}
+            activeChapterId={activeChapter?.id ?? null}
+            collapsed={collapsed}
+            onToggleChapter={(chapterId) => {
+              setCollapsed((previous) => {
+                const next = new Set(previous);
+                if (next.has(chapterId)) next.delete(chapterId);
+                else next.add(chapterId);
+                return next;
+              });
+            }}
+            onSelectChapter={(chapterId) => {
+              requestSelect({ kind: "chapter", id: chapterId });
+              // Selecting a chapter opens it — a collapsed card reveals its rows.
+              setCollapsed((previous) => {
+                if (!previous.has(chapterId)) return previous;
+                const next = new Set(previous);
+                next.delete(chapterId);
+                return next;
+              });
+            }}
+            onSelectScene={(sceneId) => requestSelect({ kind: "scene", id: sceneId })}
+            onCreateChapter={handleCreateChapter}
+            onCreateScene={handleCreateScene}
+            onEditChapter={(chapter, openerId) => setDialog({ kind: "editChapter", chapter, openerId })}
+            onEditScene={(entry, openerId) => setDialog({ kind: "editScene", entry, openerId })}
+            onDeleteChapter={(chapter, openerId) => setDialog({ kind: "deleteChapter", chapter, openerId })}
+            onDeleteScene={(entry, openerId) => setDialog({ kind: "deleteScene", entry, openerId })}
+            onReorderChapters={(ids) => commitReorder("chapters", null, ids)}
+            onReorderScenes={(chapterId, ids) => commitReorder("scenes", chapterId, ids)}
+            reorderBusy={reorderBusy}
+            createBusy={createBusy}
+            notice={notice}
+            onNoticeRetry={retryNotice}
+            onNoticeDismiss={() => setNotice(null)}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onEditGoal={() => setGoalDialog({ kind: "daily" })}
+            activity={activity}
+            storyboard={storyboard}
+          />
+          <EditorColumn
+            novel={novel.data}
+            entry={activeEntry}
+            emptyChapter={chapterList.length > 0 && activeEntry === null}
+            status={autosave.status}
+            onRetry={() => void autosave.flush()}
+            onBodyChange={handleBodyChange}
+            onCreateScene={() => {
+              if (activeChapter !== null) handleCreateScene(activeChapter.id);
+            }}
+            onEnterZen={requestZenEntry}
+            onEditTarget={() => {
+              if (activeChapter !== null) setGoalDialog({ kind: "chapter", chapter: activeChapter });
+            }}
+            continuation={continuation}
+            zenBusy={zenTransition}
+          />
+          <InspectorDock novel={novel.data} />
+        </div>
+      )}
+      {/* The guard and the dialogs ride over BOTH faces — a blocked route
+          leave asks the same question whether the room is zen or the desk. */}
       {guard !== null && <LeaveGuardDialog onStay={guard.stay} onDiscard={guard.discard} />}
       {dialog?.kind === "editChapter" && (
         <TreeEditDialog
@@ -524,6 +741,33 @@ export function WorkspacePage() {
           onDeleted={() => afterSceneDelete(dialog.entry)}
         />
       )}
-    </div>
+      {/* Task 19: the book settings and the inline goal setters ride over
+          BOTH faces too — the dialogs own their Esc before the room's. */}
+      {settingsOpen && (
+        <BookSettings novel={novel.data} openerId="book-settings-door" onClose={() => setSettingsOpen(false)} />
+      )}
+      {goalDialog?.kind === "daily" && (
+        <GoalSetterDialog
+          kind="daily"
+          initial={settings.data?.daily_goal_words ?? null}
+          openerId="explorer-goal-door"
+          onClose={() => setGoalDialog(null)}
+        />
+      )}
+      {goalDialog?.kind === "chapter" && (
+        <GoalSetterDialog
+          kind="chapter"
+          initial={goalDialog.chapter.target_words ?? null}
+          novelId={novelId}
+          chapterId={goalDialog.chapter.id}
+          chapterName={t("writing.workspace.tree.chapterName", {
+            number: goalDialog.chapter.position + 1,
+            title: sceneTitle(goalDialog.chapter.title, t("writing.workspace.untitledChapter")),
+          })}
+          openerId="ribbon-target-door"
+          onClose={() => setGoalDialog(null)}
+        />
+      )}
+    </>
   );
 }

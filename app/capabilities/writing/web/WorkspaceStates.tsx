@@ -25,6 +25,7 @@ import { useEffect, useId, useRef } from "react";
 
 import { useTranslation } from "@shell/lib/i18n";
 import { Icon } from "@shell/ui/icons";
+import { useModalKeys } from "@shell/ui/modalKeys";
 
 import { Bone } from "./ShelfStates";
 
@@ -34,10 +35,6 @@ const FOCUS =
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
 const SERIF = "[font-family:var(--font-serif)]";
-
-/** The trap's population: every live control inside the panel, in DOM order. */
-const FOCUSABLE =
-  'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
 
 /** Kachel 1 — the skeleton at the page's own geometry: the ribbon, the
  *  explorer strips, the editor card. Layout-stable, no flicker. */
@@ -179,35 +176,9 @@ export function LeaveGuardDialog({
   }, []);
 
   // Escape stays — never discards by accident — and Tab wraps inside the
-  // panel at both ends, the modal weight of the popover's keyboard discipline.
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onStay();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const panel = panelRef.current;
-      if (panel === null) return;
-      const nodes = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (nodes.length === 0) return;
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      const active = document.activeElement;
-      if (event.shiftKey) {
-        if (active === first || !panel.contains(active)) {
-          event.preventDefault();
-          last.focus();
-        }
-      } else if (active === last || !panel.contains(active)) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onStay]);
+  // panel at both ends: the shell's one modal discipline (@shell/ui/
+  // modalKeys, #895), the Escape answer the guard's own.
+  useModalKeys(panelRef, onStay);
 
   return (
     // The scrim: the token's own 40% pair over the editor, the draft's soft

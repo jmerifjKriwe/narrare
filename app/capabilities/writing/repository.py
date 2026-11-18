@@ -74,6 +74,18 @@ class SeriesRepository(ScopedRepository[Series]):
         await self.session.flush()
         return series
 
+    async def list(self) -> Sequence[Series]:
+        """The user's series, alphabetical — the book-settings select's
+        order. The scoped query carries the user predicate (rule 4)."""
+        result = await self.session.scalars(self.query().order_by(Series.title))
+        return result.all()
+
+    async def find_by_title(self, title: str) -> Series | None:
+        """The user's series carrying this exact (trimmed) name — the
+        create's per-user uniqueness check. The select resolves a book's
+        link by title, so one atelier holds one series per name."""
+        return await self.session.scalar(self.query().where(Series.title == title))
+
 
 class NovelRepository(ScopedRepository[Novel]):
     model = Novel

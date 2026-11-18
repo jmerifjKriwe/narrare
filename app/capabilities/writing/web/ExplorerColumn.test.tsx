@@ -78,6 +78,7 @@ const CH1: Chapter = {
   title: "Ghost in the Machine",
   position: 0,
   scene_count: 2,
+  target_words: null,
   word_count: 765,
   created_at: "2026-11-01T10:00:00Z",
   updated_at: "2026-11-12T10:00:00Z",
@@ -88,6 +89,7 @@ const CH2: Chapter = {
   title: "Nevada Echoes",
   position: 1,
   scene_count: 1,
+  target_words: null,
   word_count: 1090,
   created_at: "2026-11-01T10:00:00Z",
   updated_at: "2026-11-11T10:00:00Z",
@@ -219,6 +221,8 @@ function explorerProps(overrides: Partial<ExplorerProps> = {}): ExplorerProps {
     notice: null,
     onNoticeRetry: vi.fn(),
     onNoticeDismiss: vi.fn(),
+    onOpenSettings: vi.fn(),
+    onEditGoal: vi.fn(),
     activity: queryOf(activityRow()),
     storyboard: queryOf(STORYBOARD),
     ...overrides,
@@ -272,6 +276,14 @@ describe("the identity card", () => {
     expect(within(card).queryByText("H. Calder")).toBeNull();
     expect(within(card).queryByText("Hard Sci-Fi / Mystery")).toBeNull();
   });
+
+  it("the settings door asks the page to open the book settings (Task 19)", async () => {
+    const props = await renderExplorer();
+    const card = screen.getByTestId("explorer-identity");
+    const door = within(card).getByRole("button", { name: de["writing.workspace.identity.settings"] });
+    fireEvent.click(door);
+    expect(mock(props.onOpenSettings)).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("the daily ring — the aggregate's own goal fields", () => {
@@ -286,7 +298,7 @@ describe("the daily ring — the aggregate's own goal fields", () => {
     expect(ring?.getAttribute("stroke-dasharray")).toBe("82, 100");
   });
 
-  it("no goal keeps the honest neutral — today alone, no percent, the setter waits", async () => {
+  it("no goal keeps the honest neutral — today alone, no percent, the setter ready", async () => {
     await renderExplorer({ activity: queryOf(activityRow({ daily_goal_words: null, goal_remaining: 0 })) });
     const card = screen.getByTestId("explorer-ring");
     expect(within(card).getByText("412")).toBeTruthy();
@@ -294,7 +306,16 @@ describe("the daily ring — the aggregate's own goal fields", () => {
     expect(within(card).getByText(de["writing.workspace.ring.noGoal"])).toBeTruthy();
     expect(within(card).queryByText(/%/)).toBeNull();
     const edit = within(card).getByRole("button", { name: de["writing.workspace.ring.edit"] });
-    expect(edit.hasAttribute("disabled")).toBe(true);
+    expect(edit.hasAttribute("disabled")).toBe(false);
+  });
+
+  it("the ring's setter affordance is live — it asks the page (D20, Task 19)", async () => {
+    const props = await renderExplorer();
+    const card = screen.getByTestId("explorer-ring");
+    const edit = within(card).getByRole("button", { name: de["writing.workspace.ring.edit"] });
+    expect(edit.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(edit);
+    expect(mock(props.onEditGoal)).toHaveBeenCalledTimes(1);
   });
 
   it("a reached day speaks the done copy at 100 percent", async () => {
@@ -444,6 +465,7 @@ describe("the scene tree", () => {
       position: at,
       title: `Kapitel ${at + 1} Titel`,
       scene_count: 3,
+      target_words: null,
       word_count: 100,
     }));
     const scenesByChapter = new Map(

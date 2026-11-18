@@ -40,19 +40,22 @@ export const queryClient = new QueryClient({
 });
 
 /**
- * The stored settings row, as `{ locale, theme, author_name, email }` — the
- * same contract the boot effect in the shell used to own: an answer carries
- * the row's choices, an unreachable service resolves to `null`s, and the
- * browser's language and the system's colour scheme decide from there. The
- * outage is an answer, not an error state, so no consumer needs a fallback
- * branch of its own. The profile's two fields (W4 Task 10) ride the same
- * read: the chrome's user block names `author_name`, falling back to the
- * row's `email` label — the settings capability owns the user row.
+ * The stored settings row, as `{ locale, theme, author_name,
+ * daily_goal_words, email }` — the same contract the boot effect in the
+ * shell used to own: an answer carries the row's choices, an unreachable
+ * service resolves to `null`s, and the browser's language and the system's
+ * colour scheme decide from there. The outage is an answer, not an error
+ * state, so no consumer needs a fallback branch of its own. The profile's
+ * fields (W4 Tasks 10/19) ride the same read: the chrome's user block
+ * names `author_name`, falling back to the row's `email` label, and the
+ * book-settings atelier section edits the name and the daily goal — the
+ * settings capability owns the user row.
  */
 export function useSettingsQuery(): UseQueryResult<{
   locale: string | null;
   theme: string | null;
   author_name: string | null;
+  daily_goal_words: number | null;
   email: string | null;
 }> {
   return useQuery({
@@ -68,10 +71,11 @@ export function useSettingsQuery(): UseQueryResult<{
           locale: data?.locale ?? null,
           theme: data?.theme ?? null,
           author_name: data?.author_name ?? null,
+          daily_goal_words: data?.daily_goal_words ?? null,
           email: data?.email ?? null,
         };
       } catch {
-        return { locale: null, theme: null, author_name: null, email: null };
+        return { locale: null, theme: null, author_name: null, daily_goal_words: null, email: null };
       }
     },
   });

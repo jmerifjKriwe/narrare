@@ -21,6 +21,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from app.capabilities.writing.e2e.conftest import (
+    DATABASE,
     create_chapter,
     create_novel,
     patch_novel,
@@ -30,7 +31,9 @@ from app.capabilities.writing.e2e.conftest import (
     word_body,
     write_scene,
 )
+from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.db_rows import rows
 from app.kernel.testing.stack import WEB_URL
 
 if TYPE_CHECKING:
@@ -145,18 +148,18 @@ def test_the_workspace_reads_the_seeded_book(page: Page, installed: Stack) -> No
     expect(rail.get_by_role("link", name="Editor")).to_have_attribute("aria-current", "page")
 
     # Every unbuilt door stays disabled with its note — the ribbon's
-    # focus/history/export (#875/#876), the wiki (#867), the layout tune
+    # history/export (#875/#876), the wiki (#867), the layout tune
     # (#881); the ⌘J chip carries its „bald" mark (#869). The CRUD doors
-    # are LIVE (Task 13) — the create suite drives them.
+    # are LIVE (Task 13) — the create suite drives them; Fokus is LIVE
+    # (Task 18) — the zen suite drives it.
     for name in (
         "Verlauf",
         "Export",
-        "Fokus (F9)",
         "Wiki öffnen",
         "Workspace-Layout",
     ):
         expect(page.get_by_role("button", name=name, exact=True)).to_be_disabled()
-    for name in ("Neues Kapitel", "Neue Szene"):
+    for name in ("Neues Kapitel", "Neue Szene", "Fokus (F9)"):
         expect(page.get_by_role("button", name=name, exact=True)).to_be_enabled()
     expect(page.get_by_text("bald")).to_be_visible()
 
@@ -255,3 +258,172 @@ def test_the_dark_workspace_face_clears_the_axe_floor(page: Page, installed: Sta
     expect(page.get_by_role("heading", name="Das Signal im Permafrost", exact=True)).to_be_visible()
     expect(page.get_by_text("1.855 / 2.000 W.")).to_be_visible()
     assert_accessible(page)
+
+
+def test_the_book_settings_edit_the_real_family(page: Page, installed: Stack) -> None:
+    """Task 19: the identity door opens the dialog on the real rows; the
+    save carries the diff (target, status), the series create lands inline
+    and the link + volume ride the save — the shelf's hero line speaks it.
+    The dialog's inheritance note is true: this surface edits what setup
+    bound."""
+    novel = _seed_klang()
+    patch_novel(str(novel["id"]), status="draft")
+    _goto_workspace(page, str(novel["id"]))
+
+    page.get_by_role("button", name="Buch-Einstellungen", exact=True).click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_role("heading", name="Buch-Einstellungen")).to_be_visible()
+    expect(dialog.get_by_label("Romantitel", exact=True)).to_have_value(KLANG)
+    expect(dialog.get_by_label("Autor", exact=True)).to_have_value(AUTHOR)
+    expect(dialog.get_by_label("Zielumfang (Wörter gesamt)", exact=True)).to_have_value("85.000")
+    expect(dialog.get_by_label("Persönliches Tagesziel", exact=True)).to_have_value("2.000")
+    expect(dialog.get_by_role("radio", name="Entwurf", exact=True)).to_have_attribute(
+        "aria-checked", "true"
+    )
+
+    # The diff rides the save — the target and the status change.
+    dialog.get_by_label("Zielumfang (Wörter gesamt)", exact=True).fill("90000")
+    dialog.get_by_role("radio", name="Überarbeitung", exact=True).click()
+    dialog.get_by_role("button", name="Speichern", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    # The dock's planned length reads the new target.
+    expect(page.get_by_text("90.000 W.")).to_be_visible()
+
+    # Reopen — the stored answers stand, the series create lands inline.
+    page.get_by_role("button", name="Buch-Einstellungen", exact=True).click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_label("Zielumfang (Wörter gesamt)", exact=True)).to_have_value("90.000")
+    expect(dialog.get_by_role("radio", name="Überarbeitung", exact=True)).to_have_attribute(
+        "aria-checked", "true"
+    )
+    dialog.get_by_role("button", name="Neue Reihe anlegen", exact=True).click()
+    dialog.get_by_label("Name der neuen Reihe", exact=True).fill("Tiefsee-Chroniken")
+    dialog.get_by_role("button", name="Anlegen", exact=True).click()
+    series_select = dialog.get_by_label("Zugehörige Buchreihe", exact=True)
+    expect(series_select.locator("option:checked")).to_have_text("Tiefsee-Chroniken")
+    dialog.get_by_label("Band", exact=True).fill("2")
+    dialog.get_by_role("button", name="Speichern", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+
+    # The shelf's hero series line speaks the link and the volume.
+    page.goto(BASE + "/")
+    expect(page.get_by_text("Tiefsee-Chroniken, Band 2")).to_be_visible()
+    assert_accessible(page)
+
+
+def test_the_inline_goal_setters_write_the_real_rows(page: Page, installed: Stack) -> None:
+    """Task 19, D20: the ring's affordance writes the atelier's daily goal
+    (the ring reads it back), the pill's writes the chapter's own target
+    (the pair and the fill read it back)."""
+    novel = _seed_klang()
+    _goto_workspace(page, str(novel["id"]))
+
+    # The daily goal: 2.000 → 2.500, the ring's pair follows.
+    ring = page.get_by_test_id("explorer-ring")
+    ring.get_by_role("button", name="Tagesziel anpassen", exact=True).click()
+    goal = page.get_by_role("dialog")
+    expect(goal.get_by_label("Tagesziel (Wörter)", exact=True)).to_have_value("2.000")
+    goal.get_by_label("Tagesziel (Wörter)", exact=True).fill("2500")
+    goal.get_by_role("button", name="Speichern", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    expect(page.get_by_text("1.855 / 2.500 W.")).to_be_visible()
+
+    # The chapter goal: the neutral „—" becomes the real pair and fill.
+    ribbon = page.get_by_test_id("workspace-ribbon")
+    ribbon.get_by_role("button", name="Kapitelziel anpassen", exact=True).click()
+    goal = page.get_by_role("dialog")
+    goal.get_by_label("Kapitelziel (Wörter)", exact=True).fill("1000")
+    goal.get_by_role("button", name="Speichern", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    expect(ribbon.get_by_text("765 / 1.000 Wörter")).to_be_visible()
+    assert_accessible(page)
+
+
+def test_the_dark_book_settings_clear_the_axe_floor(page: Page, installed: Stack) -> None:
+    """The dialog on the tokens' dark halves — the same WCAG A/AA floor
+    the workspace rides, with the form open."""
+    set_theme("dark")
+    novel = _seed_klang()
+    _goto_workspace(page, str(novel["id"]))
+    page.get_by_role("button", name="Buch-Einstellungen", exact=True).click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_role("heading", name="Buch-Einstellungen")).to_be_visible()
+    assert_accessible(page)
+
+
+def test_the_light_book_settings_clear_the_axe_floor(page: Page, installed: Stack) -> None:
+    """The dialog's light face with the form open — the same WCAG A/AA floor
+    the dark face rides (Task 21's fidelity gate, both themes)."""
+    novel = _seed_klang()
+    _goto_workspace(page, str(novel["id"]))
+    page.get_by_role("button", name="Buch-Einstellungen", exact=True).click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_role("heading", name="Buch-Einstellungen")).to_be_visible()
+    assert_accessible(page)
+
+
+def test_the_settings_save_lands_on_the_db_rows(page: Page, installed: Stack) -> None:
+    """Task 21's fidelity gate: the dialog's save is not a UI echo — it lands
+    on the real rows. The status, target and per-book author ride the novel
+    PATCH; the series create lands its own user-owned row and the link +
+    volume ride the novel; the atelier's author name and daily goal ride the
+    settings PATCH. Every field is read back from Postgres, not the form."""
+    novel = _seed_klang()
+    novel_id = str(novel["id"])
+    patch_novel(novel_id, status="draft")
+    _goto_workspace(page, novel_id)
+
+    page.get_by_role("button", name="Buch-Einstellungen", exact=True).click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_role("heading", name="Buch-Einstellungen")).to_be_visible()
+
+    # The novel's own fields: author, target, status.
+    dialog.get_by_label("Autor", exact=True).fill("M. Reyes")
+    dialog.get_by_label("Zielumfang (Wörter gesamt)", exact=True).fill("90000")
+    dialog.get_by_role("radio", name="Überarbeitung", exact=True).click()
+
+    # The series create lands inline, the link and volume ride the save.
+    dialog.get_by_role("button", name="Neue Reihe anlegen", exact=True).click()
+    dialog.get_by_label("Name der neuen Reihe", exact=True).fill("Tiefsee-Chroniken")
+    dialog.get_by_role("button", name="Anlegen", exact=True).click()
+    expect(
+        dialog.get_by_label("Zugehörige Buchreihe", exact=True).locator("option:checked")
+    ).to_have_text("Tiefsee-Chroniken")
+    dialog.get_by_label("Band", exact=True).fill("2")
+
+    # The atelier: the profile's author name and the daily goal (user scope).
+    dialog.get_by_label("Standard-Autorenname", exact=True).fill("M. Reyes Atelier")
+    dialog.get_by_label("Persönliches Tagesziel", exact=True).fill("2500")
+
+    dialog.get_by_role("button", name="Speichern", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+
+    # The novel row: the diff landed, the series link and volume with it.
+    novel_row = rows(
+        DATABASE,
+        "SELECT status, target_words, author, series_id, series_volume FROM novels WHERE id = :id",
+        {"id": novel_id},
+    )
+    assert len(novel_row) == 1
+    status, target_words, author, series_id, series_volume = novel_row[0]
+    assert status == "revision"
+    assert target_words == 90000
+    assert author == "M. Reyes"
+    assert series_id is not None
+    assert series_volume == 2
+
+    # The series row: created, user-owned (rule 4), named as the dialog asked.
+    series_row = rows(
+        DATABASE,
+        "SELECT title, user_id FROM series WHERE id = :id",
+        {"id": str(series_id)},
+    )
+    assert series_row == [("Tiefsee-Chroniken", LOCAL_USER_ID)]
+
+    # The atelier row: the profile's author name and the daily goal landed.
+    user_row = rows(
+        DATABASE,
+        "SELECT author_name, daily_goal_words FROM users WHERE id = :id",
+        {"id": LOCAL_USER_ID},
+    )
+    assert user_row == [("M. Reyes Atelier", 2500)]

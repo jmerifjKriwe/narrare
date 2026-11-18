@@ -50,16 +50,35 @@
  * (~3.2:1 light, ~3.9:1 dark on the paper); the ink rides full strength
  * (6.1:1 / 6.6:1) and the /5 wash carries the softness — the amber pill's
  * own discipline (Task 12): the identity stays, the floor is kept.
+ *
+ * The zen focus dimming (W4 Task 18, D6): a decoration plugin dims the
+ * prose outside the caret's paragraph (Absatz-Fokus) or sentence
+ * (Satz-Fokus); Normal dims nothing. The mode arrives by meta transaction
+ * from the zen surface's segment control — one extension set for the
+ * editor's life, the caret never dropped by a rebuild. The dimming follows
+ * every doc change and selection move; the sentence geometry is the zen
+ * seam's pure splitter, the position mapping the document's own (a hard
+ * break is whitespace to the splitter, never a decoratable span).
+ *
+ * The editable seam (the Codacy swap-window fix): the page's zen transition
+ * (flush → invalidate → refetch → swap) locks the live prose through the
+ * `editable` prop — TipTap's setEditable, no update emission, no remount —
+ * so keystrokes in the window cannot die with the unmount; the ghost's Tab
+ * acceptance waits with the lock.
  */
 import { EditorContent, useEditor } from "@tiptap/react";
-import type { Editor } from "@tiptap/core";
+import { Extension, type Editor } from "@tiptap/core";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import type { Node } from "@tiptap/pm/model";
+import type { Selection } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import StarterKit from "@tiptap/starter-kit";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@shell/lib/i18n";
 import { Icon } from "@shell/ui/icons";
 
-import type { Continuation } from "./workspace";
+import { activeSentence, type Continuation, type ZenFocusMode } from "./workspace";
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
 const SERIF = "[font-family:var(--font-serif)]";
@@ -73,10 +92,159 @@ const FOCUS =
  *  (the AA floor; the docblock above carries the measured reason). */
 const GHOST_PROSE = `${SERIF} text-[1.18rem] italic leading-[1.85] text-area-writing md:text-[1.22rem]`;
 
+// --- The zen focus dimming (W4 Task 18) -------------------------------------
+//
+// The draft's Absatz-/Satz-/Normal presets, frontend-real (D6): a decoration
+// plugin that dims everything outside the caret's paragraph (Absatz) or
+// sentence (Satz) and dims nothing at all (Normal). The mode arrives as a
+// meta transaction (the zen surface's segment control), the decorations
+// recompute on every doc change and selection move — the dimming follows
+// the caret honestly. The classes ride globals.css (.zen-dim-block,
+// .zen-dim-inline, .zen-active-block); the sentence geometry is the zen
+// seam's pure splitter (workspace.ts), the position mapping here is the
+// document's own — a hard break is whitespace to the splitter but carries
+// no text position, so the inline spans never swallow it.
+
+/** The plugin's meta key — the mode transaction's own door. */
+const ZEN_FOCUS = new PluginKey("zenFocus");
+
+interface ZenFocusPluginState {
+  mode: ZenFocusMode;
+  decorations: DecorationSet;
+}
+
+/** One textblock's characters with their DOCUMENT positions: text nodes
+ *  map one-to-one, a hard break reads as whitespace to the sentence
+ *  splitter but is not decoratable text (it has no text position). */
+function textblockCharMap(node: Node, blockFrom: number) {
+  const chars: string[] = [];
+  const positions: number[] = [];
+  const decoratable: boolean[] = [];
+  node.forEach((child, offset) => {
+    const text = child.text;
+    if (child.isText && text != null) {
+      for (let at = 0; at < text.length; at += 1) {
+        chars.push(text[at]);
+        positions.push(blockFrom + offset + at);
+        decoratable.push(true);
+      }
+    } else if (child.type.name === "hardBreak") {
+      chars.push("\n");
+      positions.push(blockFrom + offset);
+      decoratable.push(false);
+    }
+  });
+  return { text: chars.join(""), positions, decoratable };
+}
+
+/** The inline spans one dim range asks for — consecutive decoratable
+ *  characters grouped, a hard break (or any gap) splitting the span. */
+function dimRange(
+  from: number,
+  to: number,
+  map: ReturnType<typeof textblockCharMap>,
+  decos: Decoration[],
+): void {
+  let start = -1;
+  for (let at = from; at <= to; at += 1) {
+    const solid = at < to && map.decoratable[at];
+    if (solid && start === -1) start = at;
+    if (!solid && start !== -1) {
+      decos.push(
+        Decoration.inline(map.positions[start], map.positions[at - 1] + 1, { class: "zen-dim-inline" }),
+      );
+      start = -1;
+    }
+  }
+}
+
+/** The decorations one mode asks for on the current document and caret. */
+function focusDecorations(mode: ZenFocusMode, doc: Node, selection: Selection): DecorationSet {
+  if (mode === "normal") return DecorationSet.empty;
+  const head = selection.head;
+  const decos: Decoration[] = [];
+  if (mode === "paragraph") {
+    // The top-level block the caret sits in stands; every other dims. The
+    // prose is flat paragraphs (the StarterKit's prose-only set), so the
+    // document's own children are the blocks.
+    let activeIndex = -1;
+    let at = 0;
+    let index = 0;
+    doc.forEach((node) => {
+      if (head >= at && head <= at + node.nodeSize) activeIndex = index;
+      at += node.nodeSize;
+      index += 1;
+    });
+    at = 0;
+    index = 0;
+    doc.forEach((node) => {
+      const cls = index === activeIndex ? "zen-active-block" : "zen-dim-block";
+      decos.push(Decoration.node(at, at + node.nodeSize, { class: cls }));
+      at += node.nodeSize;
+      index += 1;
+    });
+    return DecorationSet.create(doc, decos);
+  }
+  // Sentence mode: every textblock's text outside the caret's sentence
+  // dims inline — the caret's block keeps its active span, every other
+  // block dims wholly.
+  doc.descendants((node, pos) => {
+    if (!node.isTextblock) return;
+    const map = textblockCharMap(node, pos + 1);
+    if (map.text === "") return;
+    const caretInside = head >= pos && head <= pos + node.nodeSize;
+    let caretOffset = 0;
+    if (caretInside) {
+      for (const position of map.positions) {
+        if (position < head) caretOffset += 1;
+      }
+    }
+    const active = caretInside ? activeSentence(map.text, caretOffset) : null;
+    if (active === null) {
+      dimRange(0, map.text.length, map, decos);
+      return;
+    }
+    if (active[0] > 0) dimRange(0, active[0], map, decos);
+    if (active[1] < map.text.length) dimRange(active[1], map.text.length, map, decos);
+  });
+  return DecorationSet.create(doc, decos);
+}
+
+/** The focus plugin — one instance shared by every editor (the plugin
+ *  STATE is per-editor, ProseMirror's own); the mode rides meta, the
+ *  decorations follow the document and the caret. */
+const zenFocusExtension = Extension.create({
+  name: "zenFocus",
+  addProseMirrorPlugins() {
+    return [
+      new Plugin<ZenFocusPluginState>({
+        key: ZEN_FOCUS,
+        state: {
+          init: () => ({ mode: "normal", decorations: DecorationSet.empty }),
+          apply(tr, old) {
+            const meta = tr.getMeta(ZEN_FOCUS) as ZenFocusMode | undefined;
+            if (meta === undefined && !tr.docChanged && !tr.selectionSet) return old;
+            const mode = meta ?? old.mode;
+            return { mode, decorations: focusDecorations(mode, tr.doc, tr.selection) };
+          },
+        },
+        props: {
+          decorations(state) {
+            return ZEN_FOCUS.getState(state)?.decorations ?? DecorationSet.empty;
+          },
+        },
+      }),
+    ];
+  },
+});
+
 /** Prose only: the StarterKit with every non-prose node and mark disabled.
  *  One identity for the component's life — a fresh array per render would
  *  rebuild the editor. Document, paragraph, text, hardBreak and undoRedo
- *  stay; the draft draws no heading, list, quote, rule or formatting. */
+ *  stay; the draft draws no heading, list, quote, rule or formatting. The
+ *  zen focus plugin rides along at rest (mode „normal", no decorations) —
+ *  one extension set for the component's life, the mode arrives by meta
+ *  transaction, never by a rebuild that would drop the caret. */
 const PROSE_EXTENSIONS = [
   StarterKit.configure({
     blockquote: false,
@@ -97,6 +265,7 @@ const PROSE_EXTENSIONS = [
     trailingNode: false,
     underline: false,
   }),
+  zenFocusExtension,
 ];
 
 function escapeHtml(text: string): string {
@@ -257,6 +426,9 @@ export function SceneEditor({
   label,
   onReady,
   continuation,
+  focus,
+  autoFocus,
+  editable = true,
 }: {
   /** The scene's plain body — initializes the document once (mount-only). */
   body: string;
@@ -271,6 +443,20 @@ export function SceneEditor({
    *  its faces and owns the keyboard contract; absent, the prose stands
    *  alone (the read-only faces, the tests of the editor itself). */
   continuation?: Continuation;
+  /** The zen focus preset (W4 Task 18) — the dimming the plugin draws.
+   *  Absent or „normal": the prose stands at full strength, the workspace's
+   *  own face. The mode rides a meta transaction, never an editor rebuild. */
+  focus?: ZenFocusMode;
+  /** Focus the prose tail once the editor mounts — the zen entry's seat
+   *  (the writer lands where the writing continues). */
+  autoFocus?: boolean;
+  /** The zen swap window's lock (the Codacy fix): false makes the LIVE
+   *  prose non-editable — TipTap's own editability, contenteditable flipped,
+   *  ProseMirror gating the edit events — so keystrokes in the transition
+   *  window (flush → invalidate → refetch → swap) cannot die with the
+   *  unmount. The lock lifts on the same instance, never a remount; the
+   *  ghost's Tab acceptance waits with it. Default true: the writing face. */
+  editable?: boolean;
 }) {
   const emit = useRef(onChange);
   emit.current = onChange;
@@ -299,6 +485,37 @@ export function SceneEditor({
     return () => ready.current?.(null);
   }, [editor]);
 
+  // The zen focus mode (Task 18): a meta transaction carries the preset to
+  // the plugin — the decorations recompute, the caret never moves. The
+  // dispatch only fires on a real change (the plugin's own state is the
+  // authority), so a re-render cannot spam the document with transactions.
+  const focusMode = focus ?? "normal";
+  useEffect(() => {
+    if (editor === null) return;
+    const current = ZEN_FOCUS.getState(editor.state)?.mode ?? "normal";
+    if (current !== focusMode) {
+      editor.view.dispatch(editor.state.tr.setMeta(ZEN_FOCUS, focusMode));
+    }
+  }, [editor, focusMode]);
+
+  // The swap window's lock (the Codacy fix): editability rides TipTap's own
+  // setEditable — the view's contenteditable flips and ProseMirror gates the
+  // edit events, the caret and the document untouched. No update emission:
+  // a lock is not an edit, and a phantom onChange would schedule an autosave
+  // of unchanged words. The effect runs on the live instance, so the lock
+  // falls and lifts without a remount (a remount would re-initialize the
+  // body — the very loss the window exists to prevent).
+  useEffect(() => {
+    if (editor === null) return;
+    if (editor.isEditable !== editable) editor.setEditable(editable, false);
+  }, [editor, editable]);
+
+  // The zen entry's seat: the caret lands at the prose tail once the
+  // instance exists — the writer continues where the scene stands.
+  useEffect(() => {
+    if (editor !== null && autoFocus) editor.commands.focus("end");
+  }, [editor, autoFocus]);
+
   /** Tab's acceptance: the proposal joins the tail as new paragraph(s) —
    *  the plain-prose format's own join (a blank line between blocks), an
    *  empty scene takes it alone. The insertion emits through onUpdate →
@@ -307,7 +524,16 @@ export function SceneEditor({
    *  proposal to drop again. */
   const accept = useCallback(() => {
     const proposal = ghost.current;
-    if (editor === null || proposal == null || proposal.phase !== "pending" || proposal.text === "") {
+    // A locked prose (the swap window) refuses the acceptance too: the
+    // inserted words would die with the unmount. The proposal stands for
+    // the next face — the page's one continuation rides the swap.
+    if (
+      editor === null ||
+      !editor.isEditable ||
+      proposal == null ||
+      proposal.phase !== "pending" ||
+      proposal.text === ""
+    ) {
       return;
     }
     const html = bodyToHtml(proposal.text);

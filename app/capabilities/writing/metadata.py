@@ -82,9 +82,12 @@ def _normalize_status(value: str | None) -> str | None:
 
 
 def _normalize_series_volume(value: int | None) -> int | None:
-    # A volume counts from one; zero and below name no book. Whether the
-    # number has a series to belong to is the service's cross-field check.
-    if value is not None and value < 1:
+    # A volume counts from one; zero and below name no book. The ceiling
+    # is the Integer column's own (WORD_GOAL_MAX, the target's bound) —
+    # refused here rather than overflowing at the flush (review fix).
+    # Whether the number has a series to belong to is the service's
+    # cross-field check.
+    if value is not None and not WORD_GOAL_MIN <= value <= WORD_GOAL_MAX:
         raise InvalidNovelUpdateError("series_volume")
     return value
 

@@ -39,6 +39,8 @@ import { applyLocale } from "@shell/lib/locale";
 import { queryClient, takeNovelDeletedElsewhere } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
+import { requestDeskFocus } from "./workspace";
+
 const de = catalogs.de;
 const NOVEL_ID = "11111111-1111-1111-1111-111111111111";
 
@@ -87,6 +89,7 @@ const CH1: Chapter = {
   title: "Ghost in the Machine",
   position: 0,
   scene_count: 2,
+  target_words: null,
   word_count: 765,
   created_at: "2026-11-01T10:00:00Z",
   updated_at: "2026-11-12T10:00:00Z",
@@ -97,6 +100,7 @@ const CH2: Chapter = {
   title: "Nevada Echoes",
   position: 1,
   scene_count: 1,
+  target_words: null,
   word_count: 1090,
   created_at: "2026-11-01T10:00:00Z",
   updated_at: "2026-11-11T10:00:00Z",
@@ -204,8 +208,9 @@ function noContent(): Response {
 function scriptApi() {
   api.GET.mockImplementation(async (path: string, init?: { params?: { path?: Record<string, string> } }) => {
     if (path === "/api/settings") {
-      return { data: { locale: "de", theme: null, author_name: null, email: null }, response: ok() };
+      return { data: { locale: "de", theme: null, author_name: null, daily_goal_words: 500, email: null }, response: ok() };
     }
+    if (path === "/api/writing/series") return { data: [], response: ok() };
     if (path === "/api/setup/status") return { data: { complete: setupComplete }, response: ok() };
     if (path === "/api/writing/novels") return { data: [NOVEL], response: ok() };
     if (path === "/api/writing/novels/{novel_id}") return novelAnswer();
@@ -1141,4 +1146,490 @@ describe("the continuation wiring (Task 16) — the page's own doors", () => {
       expect.objectContaining({ method: "POST" }),
     );
   });
+});
+
+/** The world the refetch reads after a save — the typed body lands in the
+ *  cache the remounting editor initializes from (the flush-first rule).
+ *  Shared by the zen legs and the swap-window legs below. */
+function liveBodyWorld() {
+  let s12Body = S12.body;
+  scenesAnswer = async (chapterId) => ({
+    data: chapterId === "c1" ? [S11, { ...S12, body: s12Body }] : chapterId === "c2" ? [S21] : [],
+    response: ok(),
+  });
+  putSceneAnswer = async (sceneId, body) => {
+    const carried = (body as { body?: string }).body;
+    if (sceneId === "s12" && typeof carried === "string") s12Body = carried;
+    return { data: { ...S12, id: sceneId, ...(body as Partial<Scene>) }, response: ok() };
+  };
+}
+
+async function typeIntoProse(text: string) {
+  const user = userEvent.setup({ pointerEventsCheck: 0 });
+  const box = await screen.findByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] });
+  await waitFor(() => expect(box.textContent).not.toBe(""));
+  box.focus();
+  await user.keyboard(text);
+}
+
+describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
+  const EXIT = de["writing.workspace.zen.exit"];
+  const PROSE = de["writing.workspace.editor.proseLabel"];
+
+  function stubStream(chunks: readonly string[]) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn(async () =>
+      new Response(stream, { status: 200, headers: { "Content-Type": "text/event-stream" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  async function enterZen() {
+    fireEvent.keyDown(document, { key: "F9" });
+    expect(await screen.findByRole("button", { name: EXIT })).toBeTruthy();
+  }
+
+  it("F9 opens zen over the workspace — the columns yield, the counters read the aggregate", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    // The workspace chrome's room is gone — the zen surface owns the desk.
+    expect(screen.queryByTestId("workspace-ribbon")).toBeNull();
+    expect(screen.queryByTestId("workspace-running-head")).toBeNull();
+    // The scene's own prose stands centered, the overline real.
+    const box = screen.getByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(box.textContent).toContain("Ich kalibrierte die Sensoren."));
+    expect(screen.getByText("Forschungsstation 7 · 27. Oktober 2094, 03:14 UTC")).toBeTruthy();
+    // Today's words are the aggregate's own (412), the session starts at 0.
+    expect(await screen.findByText(/Heute: \+412 W · Sitzung: 0 W/)).toBeTruthy();
+    // The pomodoro starts full — session-only, nothing stored.
+    expect(screen.getByText("25:00")).toBeTruthy();
+  });
+
+  it("F9 again returns the workspace — the chrome's room intact", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    fireEvent.keyDown(document, { key: "F9" });
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: EXIT })).toBeNull();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Das Signal im Permafrost" }),
+    ).toBeTruthy();
+  });
+
+  it("Esc exits zen — D19's second door, the desk's focus returned", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: de["writing.workspace.ribbon.focus"] }),
+      ),
+    );
+  });
+
+  it("the pending focus flag dies with the page — unmount, remount, no door focus absent a fresh exit", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    // The hazard the unmount cleanup owns (Task 21's review): an exit that
+    // navigates instead of remounting the columns leaves the flag pending
+    // with no door to take it. Set it as such an exit would — the room
+    // standing, the door gone — then leave the page without an exit.
+    requestDeskFocus();
+    cleanup();
+    await renderWorkspace();
+    const door = await screen.findByRole("button", { name: de["writing.workspace.ribbon.focus"] });
+    // The fresh mount's door ref fired in-commit: had the flag survived the
+    // unmount, the ref would have taken it and focused the door — unasked.
+    expect(document.activeElement).not.toBe(door);
+    // A fresh exit still returns the focus — the reset killed the stale
+    // flag, not the mechanism.
+    await enterZen();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: de["writing.workspace.ribbon.focus"] }),
+      ),
+    );
+  });
+
+  it("the ribbon's Fokus door opens zen — the interim ends (Task 18)", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    const door = screen.getByRole("button", { name: de["writing.workspace.ribbon.focus"] });
+    expect(door.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(door);
+    expect(await screen.findByRole("button", { name: EXIT })).toBeTruthy();
+  });
+
+  it("F9 without a scene does nothing — the empty book keeps its face", async () => {
+    chaptersAnswer = async () => ({ data: [], response: ok() });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: de["writing.workspace.emptyBook.editorTitle"] });
+    fireEvent.keyDown(document, { key: "F9" });
+    expect(screen.queryByRole("button", { name: EXIT })).toBeNull();
+    expect(
+      screen.getByRole("heading", { level: 1, name: de["writing.workspace.emptyBook.editorTitle"] }),
+    ).toBeTruthy();
+  });
+
+  it("the ghost owns Esc first inside zen — the room stays until the ghost is gone", async () => {
+    stubStream(['data: {"delta": "Der Nebel hob sich."}\n\n', "event: done\ndata: {}\n\n"]);
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
+    expect(await screen.findByTestId("ghost-preview")).toBeTruthy();
+    await enterZen();
+    // The proposal rode into the room — PR 4's seam is not stranded.
+    expect(screen.getByTestId("ghost-preview").textContent).toContain("Der Nebel hob sich.");
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByTestId("ghost-preview")).toBeNull());
+    // The first Esc belonged to the ghost — zen stands.
+    expect(screen.getByRole("button", { name: EXIT })).toBeTruthy();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+  });
+
+  it("Tab accepts the ghost inside zen — the acceptance rides the one write path", async () => {
+    liveBodyWorld();
+    stubStream(['data: {"delta": "Der Nebel hob sich."}\n\n', "event: done\ndata: {}\n\n"]);
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
+    expect(await screen.findByTestId("ghost-preview")).toBeTruthy();
+    await enterZen();
+    const box = screen.getByRole("textbox", { name: PROSE });
+    fireEvent.keyDown(box, { key: "Tab" });
+    await waitFor(() => expect(screen.queryByTestId("ghost-preview")).toBeNull());
+    expect(box.textContent).toContain("Der Nebel hob sich.");
+    // The acceptance is an edit: the autosave chain carries it to the PUT.
+    await waitFor(() =>
+      expect(api.PUT).toHaveBeenCalledWith(
+        "/api/writing/scenes/{scene_id}",
+        expect.objectContaining({
+          params: { path: { scene_id: "s12" } },
+          body: { body: expect.stringContaining("Der Nebel hob sich.") },
+        }),
+      ),
+    );
+  });
+
+  it("entry flushes the draft — zen opens on the saved words, never a stale body", async () => {
+    liveBodyWorld();
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await typeIntoProse(" Mehr Text.");
+    // F9 inside the debounce window: the flush lands the words first.
+    await enterZen();
+    expect(api.PUT).toHaveBeenCalledWith(
+      "/api/writing/scenes/{scene_id}",
+      expect.objectContaining({
+        params: { path: { scene_id: "s12" } },
+        body: { body: expect.stringContaining("Mehr Text.") },
+      }),
+    );
+    const box = screen.getByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(box.textContent).toContain("Mehr Text."));
+  });
+
+  it("exit flushes zen's draft — the workspace returns on the saved words", async () => {
+    liveBodyWorld();
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    await typeIntoProse(" Noch ein Satz.");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+    expect(api.PUT).toHaveBeenCalledWith(
+      "/api/writing/scenes/{scene_id}",
+      expect.objectContaining({
+        params: { path: { scene_id: "s12" } },
+        body: { body: expect.stringContaining("Noch ein Satz.") },
+      }),
+    );
+    const box = screen.getByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(box.textContent).toContain("Noch ein Satz."));
+  });
+
+  it("a failed exit flush raises the guard — Esc stays with it, Bleiben keeps zen, Verwerfen leaves", async () => {
+    liveBodyWorld();
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    await typeIntoProse(" Words.");
+    putSceneAnswer = async () => ({ data: undefined, response: new Response(null, { status: 503 }) });
+    fireEvent.keyDown(document, { key: "Escape" });
+    // The guard owns the room — the failed write asks before anything leaves.
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    // Esc belongs to the guard first (the page defers): stay, zen stands.
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(screen.getByRole("button", { name: EXIT })).toBeTruthy();
+    // The failed flush lifted the swap window — the room's prose edits
+    // again (the pin: a failed flush leaves editing ON).
+    const stayedBox = screen.getByRole("textbox", { name: PROSE });
+    expect(stayedBox.getAttribute("contenteditable")).toBe("true");
+    await typeIntoProse(" Bleibt.");
+    expect(stayedBox.textContent).toContain("Bleibt.");
+    // The next exit ask fails again — the draft is still unsaved.
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.guard.discard"] }));
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+    // The discarded words never reached the wire — the cache's truth stands.
+    const box = screen.getByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(box.textContent).toContain("Ich kalibrierte die Sensoren."));
+    expect(box.textContent).not.toContain("Words.");
+    // The discard exit returns the desk's focus (the healthy exit's own
+    // rule) — the guard's opener-restore no-ops on the detached zen node,
+    // so the exit carries it. The door's ref takes the pending flag exactly
+    // at remount (Task 21's deterministic return, no rAF race).
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: de["writing.workspace.ribbon.focus"] }),
+      ),
+    );
+  });
+
+  it("the session is the zen spell — re-entry starts a fresh timer and counter", async () => {
+    liveBodyWorld();
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    await typeIntoProse(" Eins zwei.");
+    expect(await screen.findByText(/Sitzung: 2 W/)).toBeTruthy();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+    await enterZen();
+    expect(screen.getByText("25:00")).toBeTruthy();
+    expect(await screen.findByText(/Sitzung: 0 W/)).toBeTruthy();
+  });
+
+  it("an unavailable aggregate keeps the neutral in the counter — never an invented today", async () => {
+    activityAnswer = async () => ({ data: undefined, response: new Response(null, { status: 503 }) });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    expect(await screen.findByText(/Heute: — · Sitzung: 0 W/)).toBeTruthy();
+  });
+});
+
+describe("the zen swap window (the Codacy fix) — the transition locks the live editor", () => {
+  const PROSE = de["writing.workspace.editor.proseLabel"];
+  const FOCUS = de["writing.workspace.ribbon.focus"];
+  const FOCUS_BUSY = de["writing.workspace.ribbon.focusBusy"];
+  const EXIT = de["writing.workspace.zen.exit"];
+  const EXIT_BUSY = de["writing.workspace.zen.exitBusy"];
+
+  /** Hold the scene refetch the swap awaits — the window stands open until
+   *  release. Armed AFTER the initial reads, so only the swap's own refetch
+   *  (the flush's invalidation family) waits on the gate. */
+  function refetchGate() {
+    const base = scenesAnswer;
+    let held = false;
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    scenesAnswer = async (chapterId) => {
+      if (held) await gate;
+      return base(chapterId);
+    };
+    return {
+      hold: () => {
+        held = true;
+      },
+      release: () => release?.(),
+    };
+  }
+
+  it("entry: the window locks the desk editor and busies the Fokus door — the swap lifts both", async () => {
+    liveBodyWorld();
+    const gate = refetchGate();
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await typeIntoProse(" Mehr Text.");
+    const box = screen.getByRole("textbox", { name: PROSE });
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    gate.hold();
+    fireEvent.keyDown(document, { key: "F9" });
+    // The flush lands; the refetch the swap awaits is held — the window stands.
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    await waitFor(() => expect(box.getAttribute("contenteditable")).toBe("false"));
+    const door = screen.getByRole("button", { name: FOCUS_BUSY });
+    expect(door.hasAttribute("disabled")).toBe(true);
+    // Keystrokes in the window are blocked — they would die with the unmount
+    // (the refetched body predates them). No second write owes itself.
+    await user.keyboard(" Fensterwort.");
+    expect(box.textContent).not.toContain("Fensterwort.");
+    expect(api.PUT).toHaveBeenCalledTimes(1);
+    // A second F9 in the window is ignored — one swap, not a toggle race.
+    fireEvent.keyDown(document, { key: "F9" });
+    gate.release();
+    // The swap lands: the room stands on the saved words, its editor live,
+    // the pending flag lifted (the exit chip wears its resting face).
+    expect(await screen.findByRole("button", { name: EXIT })).toBeTruthy();
+    const zenBox = screen.getByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(zenBox.getAttribute("contenteditable")).toBe("true"));
+    expect(zenBox.textContent).toContain("Mehr Text.");
+    expect(zenBox.textContent).not.toContain("Fensterwort.");
+    expect(screen.getByRole("button", { name: EXIT }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("exit: the window locks the room editor and busies the exit chip — the swap lifts both", async () => {
+    liveBodyWorld();
+    const gate = refetchGate();
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.keyDown(document, { key: "F9" });
+    expect(await screen.findByRole("button", { name: EXIT })).toBeTruthy();
+    await typeIntoProse(" Noch ein Satz.");
+    const box = screen.getByRole("textbox", { name: PROSE });
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    gate.hold();
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    await waitFor(() => expect(box.getAttribute("contenteditable")).toBe("false"));
+    const chip = screen.getByRole("button", { name: EXIT_BUSY });
+    expect(chip.hasAttribute("disabled")).toBe(true);
+    await user.keyboard(" Fensterwort.");
+    expect(box.textContent).not.toContain("Fensterwort.");
+    expect(api.PUT).toHaveBeenCalledTimes(1);
+    // A second Esc in the window is ignored — the guard owns no ask here.
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    gate.release();
+    // The desk returns on the saved words, its editor live, the door resting.
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+    const deskBox = screen.getByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(deskBox.getAttribute("contenteditable")).toBe("true"));
+    expect(deskBox.textContent).toContain("Noch ein Satz.");
+    expect(deskBox.textContent).not.toContain("Fensterwort.");
+    expect(screen.getByRole("button", { name: FOCUS }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("a failed entry flush keeps editing on — the window lifts, the room stays closed", async () => {
+    liveBodyWorld();
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await typeIntoProse(" Ungesichert.");
+    putSceneAnswer = async () => ({ data: undefined, response: new Response(null, { status: 503 }) });
+    fireEvent.keyDown(document, { key: "F9" });
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    // The failed flush keeps the room closed (the writer saves first) and
+    // lifts the window: the door rests, the prose edits again.
+    expect(screen.queryByRole("button", { name: EXIT })).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: FOCUS }).hasAttribute("disabled")).toBe(false),
+    );
+    const box = screen.getByRole("textbox", { name: PROSE });
+    expect(box.getAttribute("contenteditable")).toBe("true");
+    box.focus();
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await user.keyboard(" Weiter.");
+    expect(box.textContent).toContain("Weiter.");
+  });
+});
+
+describe("book settings and the goal setters (Task 19) — the page's doors", () => {
+  it("the identity card's door opens the book settings; Fertig returns the focus", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    const door = screen.getByRole("button", { name: de["writing.workspace.identity.settings"] });
+    fireEvent.click(door);
+    // The form mounts once the reads settle — the title field is its face.
+    const titleField = (await screen.findByLabelText(de["writing.settings.titleLabel"])) as HTMLInputElement;
+    expect(screen.getByRole("heading", { name: de["writing.settings.title"] })).toBeTruthy();
+    // The dialog reads the real novel — the title field opens on it.
+    expect(titleField.value).toBe("Dead Signal");
+    fireEvent.click(screen.getByRole("button", { name: `${de["writing.settings.close"]} (${de["writing.workspace.crud.close"]})` }));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: de["writing.settings.title"] })).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(door));
+  }, 15000);
+
+  it("a settings save rides the novel PATCH and the shelf family refetches", async () => {
+    api.PATCH.mockImplementation(async (path: string, init?: { body?: Record<string, unknown> }) => {
+      if (path === "/api/writing/novels/{novel_id}") {
+        novelAnswer = async () => ({ data: { ...NOVEL, ...(init?.body ?? {}) }, response: ok() });
+        return { data: { ...NOVEL, ...(init?.body ?? {}) }, response: ok() };
+      }
+      throw new Error(`unexpected PATCH: ${path}`);
+    });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.identity.settings"] }));
+    const title = await screen.findByLabelText(de["writing.settings.titleLabel"]);
+    fireEvent.change(title, { target: { value: "Dead Signal II" } });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.crud.save"] }));
+    await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
+    expect(api.PATCH.mock.calls[0][1].body).toEqual({ title: "Dead Signal II" });
+    // The dialog closes; the refetched row speaks the new title.
+    await waitFor(() => expect(screen.queryByRole("heading", { name: de["writing.settings.title"] })).toBeNull());
+    expect((await screen.findAllByText("Dead Signal II")).length).toBeGreaterThan(0);
+  }, 15000);
+
+  it("the ring's setter opens the daily goal dialog — the save rides the settings PATCH", async () => {
+    api.PATCH.mockResolvedValue({ data: {}, response: ok() });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    const ring = screen.getByTestId("explorer-ring");
+    fireEvent.click(within(ring).getByRole("button", { name: de["writing.workspace.ring.edit"] }));
+    const field = await screen.findByLabelText(de["writing.workspace.goal.dailyLabel"]);
+    expect((field as HTMLInputElement).value).toBe("500");
+    await waitFor(() => expect((screen.getByRole("button", { name: de["writing.workspace.crud.save"] }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.change(field, { target: { value: "750" } });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.crud.save"] }));
+    await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
+    expect(api.PATCH.mock.calls[0][0]).toBe("/api/settings");
+    expect(api.PATCH.mock.calls[0][1].body).toEqual({ locale: "de", daily_goal_words: 750 });
+  }, 15000);
+
+  it("the daily setter opens on the stored goal while the aggregate is pending", async () => {
+    // The aggregate never answers — the ring keeps its skeleton, but the
+    // setter's field reads the SETTINGS row (the save's own source).
+    activityAnswer = () => new Promise(() => {});
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    const ring = screen.getByTestId("explorer-ring");
+    fireEvent.click(within(ring).getByRole("button", { name: de["writing.workspace.ring.edit"] }));
+    const field = await screen.findByLabelText(de["writing.workspace.goal.dailyLabel"]);
+    expect((field as HTMLInputElement).value).toBe("500");
+  }, 15000);
+
+  it("the ribbon pill's setter opens the chapter goal dialog — the save rides the chapter PUT", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    const ribbon = screen.getByTestId("workspace-ribbon");
+    fireEvent.click(within(ribbon).getByRole("button", { name: de["writing.workspace.ribbon.targetEdit"] }));
+    const field = await screen.findByLabelText(de["writing.workspace.goal.chapterLabel"]);
+    fireEvent.change(field, { target: { value: "1000" } });
+    putChapterAnswer = async (chapterId, body) => ({
+      data: { ...(chapterId === "c1" ? CH1 : CH2), ...(body as { target_words?: number | null }) },
+      response: ok(),
+    });
+    // The structure refetch reads the changed row — the goal stands.
+    chaptersAnswer = async () => ({ data: [{ ...CH1, target_words: 1000 }, CH2], response: ok() });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.crud.save"] }));
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    const call = api.PUT.mock.calls.find((entry) => entry[0] === "/api/writing/chapters/{chapter_id}");
+    expect(call?.[1].body).toEqual({ target_words: 1000 });
+    // The pill reads the refetched row — the real pair stands.
+    expect(
+      await within(ribbon).findByText(
+        de["writing.workspace.ribbon.targetValue"].replace("{count, number}", "765").replace("{target, number}", "1.000"),
+      ),
+    ).toBeTruthy();
+  }, 15000);
 });

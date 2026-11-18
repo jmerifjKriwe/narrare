@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
 /**
- * The inspector dock (W4 Task 11): the scene-centric draft's round geometry
- * with honest neutrals — the finding card (INTERIM #866), the entity
- * spotlight (#867), the atmosphere grid (#868), the disabled ⌘J chip
- * (#869) and layout tune (#881) — and the ONE real card: the cover
+ * The inspector dock (W4 Tasks 11/20): the scene-centric draft's round
+ * geometry with honest neutrals — the finding card (INTERIM #866), the
+ * entity spotlight (#867), the atmosphere grid (#868), the disabled ⌘J
+ * chip (#869) and layout tune (#881) — and the ONE real card: the cover
  * miniature with the book's own target, count and derived progress.
  * The draft's mock figures (85.000 / 3.384 / 4 %) never ship as data.
+ *
+ * Task 20's pins: every interim's note speaks its child issue's own
+ * language (the literals below, not a catalog echo), the cover stands at
+ * the cover system's drafted miniature size (36×48, cover-system.html
+ * Sektion 04 — the workspace draft's 48×64 chip is a mock object, the
+ * cover system owns its sizes), and the dock speaks du-tone in all three
+ * catalogs, never a German fallback.
  */
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -103,6 +110,38 @@ describe("the dock's neutral geometry", () => {
   });
 });
 
+describe("the interim notes speak their child issue's own language", () => {
+  // The literals are the issues' own words (#866, #881) — a catalog echo
+  // would pass with any copy; these pin the note to the issue's language
+  // so a drift in either home fails here.
+  it("the finding card carries #866's neutral pair verbatim", () => {
+    render(<InspectorDock novel={novelRow()} />);
+    const card = screen.getByTestId("dock-finding");
+    expect(within(card).getByText("Keine offenen Brüche")).toBeTruthy();
+    expect(within(card).getByText("Wird mit der Wissens-Welle aktiv")).toBeTruthy();
+  });
+
+  it("the layout tune's tooltip is the draft's own parenthetical (#881)", () => {
+    // workspace-scene-centric.html, dock foot: title="Workspace-Layout
+    // (später verfügbar)" — the note rides lowercase inside the brackets,
+    // exactly as the light draft draws it (the dark face is enabled and
+    // loses per the archive convention).
+    render(<InspectorDock novel={novelRow()} />);
+    const layout = within(screen.getByTestId("dock-foot")).getByRole("button", {
+      name: "Workspace-Layout",
+    });
+    expect(layout.getAttribute("title")).toBe("Workspace-Layout (später verfügbar)");
+  });
+
+  it("the ⌘J chip carries the „bald“ mark the issue names (#869)", () => {
+    render(<InspectorDock novel={novelRow()} />);
+    const foot = screen.getByTestId("dock-foot");
+    expect(within(foot).getByText("bald")).toBeTruthy();
+    expect(within(foot).getByText("KI-Assistent")).toBeTruthy();
+    expect(within(foot).getByText("⌘J")).toBeTruthy();
+  });
+});
+
 describe("the cover miniature — the dock's one real card", () => {
   it("renders the cover system's miniature with the book's own figures", () => {
     render(<InspectorDock novel={novelRow()} />);
@@ -127,5 +166,85 @@ describe("the cover miniature — the dock's one real card", () => {
     render(<InspectorDock novel={novelRow({ word_count: 90000 })} />);
     const card = screen.getByTestId("dock-cover");
     expect(within(card).getByText("100 % Gesamt")).toBeTruthy();
+  });
+
+  it("stands at the cover system's drafted miniature size — 36×48, monogram alone", () => {
+    // cover-system.html Sektion 04 pins the miniature at 36 × 48 px with
+    // the monogram alone; the workspace draft's 48×64 chip is a mock
+    // object, the cover system owns its sizes (Task 11's recorded
+    // deviation). The procedural cover renders, never the draft's chip.
+    render(<InspectorDock novel={novelRow()} />);
+    const card = screen.getByTestId("dock-cover");
+    const cover = card.querySelector("[data-channel]");
+    expect(cover).not.toBeNull();
+    expect((cover as HTMLElement).style.width).toBe("36px");
+    expect((cover as HTMLElement).style.height).toBe("48px");
+    // The miniature keeps only the monogram — no eyebrow, no author line.
+    expect(within(cover as HTMLElement).getByText("DS")).toBeTruthy();
+    expect(within(cover as HTMLElement).queryByText("H. Calder")).toBeNull();
+    expect(within(cover as HTMLElement).queryByText(/Science Fiction/)).toBeNull();
+  });
+});
+
+describe("the dock speaks du-tone in every catalog — no German fallback", () => {
+  it("the English face speaks the English catalog's own copy", () => {
+    applyLocale("en");
+    const en = catalogs.en;
+    render(<InspectorDock novel={novelRow()} />);
+    expect(screen.getByRole("heading", { name: "Consistency Checker" })).toBeTruthy();
+    const finding = screen.getByTestId("dock-finding");
+    expect(within(finding).getByText("No open fractures")).toBeTruthy();
+    expect(within(finding).getByText("Activates with the knowledge wave")).toBeTruthy();
+    expect(within(screen.getByTestId("dock-entity")).getByRole("button", { name: "Open wiki" })).toBeTruthy();
+    const foot = screen.getByTestId("dock-foot");
+    expect(within(foot).getByText(en["writing.workspace.dock.soon"])).toBeTruthy();
+    expect(within(foot).getByRole("button", { name: "Workspace layout" }).getAttribute("title")).toBe(
+      "Workspace layout (available later)",
+    );
+    // The German copy is absent — the face is translated, not fallen back.
+    expect(screen.queryByText("Keine offenen Brüche")).toBeNull();
+    expect(screen.queryByText("Konsistenz-Prüfer")).toBeNull();
+  });
+
+  it("the French face speaks the French catalog's own copy", () => {
+    applyLocale("fr");
+    render(<InspectorDock novel={novelRow()} />);
+    expect(screen.getByRole("heading", { name: "Vérificateur de cohérence" })).toBeTruthy();
+    const finding = screen.getByTestId("dock-finding");
+    expect(within(finding).getByText("Aucune fracture ouverte")).toBeTruthy();
+    expect(within(finding).getByText("S'active avec la vague de connaissance")).toBeTruthy();
+    expect(
+      within(screen.getByTestId("dock-entity")).getByRole("button", { name: "Ouvrir le wiki" }),
+    ).toBeTruthy();
+    const foot = screen.getByTestId("dock-foot");
+    expect(within(foot).getByText("bientôt")).toBeTruthy();
+    expect(
+      within(foot).getByRole("button", { name: "Disposition de l'espace" }).getAttribute("title"),
+    ).toBe("Disposition de l'espace (disponible plus tard)");
+    expect(screen.queryByText("Keine offenen Brüche")).toBeNull();
+  });
+
+  it("the three catalogs carry the dock's keys in parity, each translated", () => {
+    // The global i18n gate pins whole-catalog parity; this pins the dock's
+    // family specifically — every key present in all three, and the note
+    // copy actually translated (a copied German string would pass parity).
+    const keys = Object.keys(catalogs.de).filter((key) => key.startsWith("writing.workspace.dock."));
+    expect(keys.length).toBeGreaterThan(0);
+    for (const key of keys) {
+      for (const locale of ["en", "fr"] as const) {
+        expect(catalogs[locale][key as keyof typeof catalogs.en], `${locale}/${key}`).toBeTruthy();
+      }
+    }
+    const translated = [
+      "writing.workspace.dock.findingEmpty",
+      "writing.workspace.dock.findingNote",
+      "writing.workspace.dock.layoutNote",
+      "writing.workspace.dock.title",
+      "writing.workspace.dock.wiki",
+    ] as const;
+    for (const key of translated) {
+      expect(catalogs.en[key], key).not.toBe(catalogs.de[key]);
+      expect(catalogs.fr[key], key).not.toBe(catalogs.de[key]);
+    }
   });
 });

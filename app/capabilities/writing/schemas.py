@@ -137,6 +137,22 @@ class NovelUpdate(BaseModel):
     canon_strictness: int | None = None
 
 
+class SeriesCreate(BaseModel):
+    """One new series: the name the shelf groups its volumes by. The width
+    is a novel title's own (the column's String(200)); the service trims
+    and refuses a whitespace-only name — a series is named like a book."""
+
+    title: str = Field(min_length=1, max_length=200)
+
+
+class SeriesRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    title: str
+    created_at: datetime
+
+
 class ChapterCreate(BaseModel):
     # Empty is the honest default: the database stores no locale, the chapter
     # list shows the localized placeholder for an untitled chapter.
@@ -144,12 +160,18 @@ class ChapterCreate(BaseModel):
 
 
 class ChapterUpdate(BaseModel):
-    # `None` means unchanged (`exclude_none` keeps that); `""` after the
+    # The title keeps its rule: `None` is unchanged, `""` after the
     # service's trim is the honest unnamed — the chapter list's placeholder
     # is a rendering, not a value. The length is the schema's one refusal.
     # The prose lives on scenes now (W4 D1/D2): a chapter is a grouping
     # shell, so its body is no longer a field this door carries.
     title: str | None = Field(default=None, max_length=200)
+    # The chapter's own word goal (W4 Task 19, D8/D20) — present-and-nullable
+    # through ``model_fields_set``, the novel update's rule: an absent field
+    # keeps the stored goal, a carried ``null`` clears it back to the honest
+    # unset. The bounds are the kernel contract's shared word-goal pair, the
+    # novel target's own; the service checks them at the boundary.
+    target_words: int | None = None
 
 
 class ChapterOrderUpdate(BaseModel):
@@ -181,6 +203,10 @@ class ChapterRead(BaseModel):
     # old clients reading the grown payload unbroken.
     word_count: int = 0
     scene_count: int = 0
+    # The chapter's own word goal (W4 Task 19, D8) — distinct from the
+    # book's ``target_words``, read straight off the row. None until the
+    # writer sets one; the ribbon's pill then keeps the honest neutral.
+    target_words: int | None = None
 
 
 class SceneCreate(BaseModel):

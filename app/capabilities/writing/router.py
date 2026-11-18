@@ -32,12 +32,15 @@ from app.capabilities.writing.schemas import (
     SceneOrderUpdate,
     SceneRead,
     SceneUpdate,
+    SeriesCreate,
+    SeriesRead,
     WritingErrorRead,
 )
 from app.capabilities.writing.service import (
     MAX_ARCHIVE_BYTES,
     ArchiveInvalidError,
     ArchiveTooLargeError,
+    DuplicateSeriesError,
     FieldRefusedError,
     NotFoundError,
     OrderMismatchError,
@@ -249,6 +252,45 @@ async def duplicate_novel(novel_id: UUID, service: ServiceDep) -> NovelRead:
         raise HTTPException(status_code=404, detail="novel not found") from None
     except SetupRequiredError:
         raise HTTPException(status_code=409, detail="setup required") from None
+
+
+@router.get("/series", response_model=list[SeriesRead])
+async def list_series(service: ServiceDep) -> list[SeriesRead]:
+    """The current user's series, alphabetical — the book-settings
+    select's list. Never another user's row (the scoped repository)."""
+    return [SeriesRead.model_validate(row) for row in await service.list_series()]
+
+
+@router.post(
+    "/series",
+    response_model=SeriesRead,
+    status_code=201,
+    responses={
+        409: {
+            "model": WritingErrorRead,
+            "description": "Setup required, or the user already owns a series with this name",
+        },
+        422: {
+            "model": FieldRefusalsRead,
+            "description": "A nameless series, named in `detail[].loc`",
+        },
+    },
+)
+async def create_series(payload: SeriesCreate, service: ServiceDep) -> SeriesRead:
+    """Create a series owned by the current user; the title is trimmed like
+    a book's. Respond with HTTP 409 if setup is required or the user already
+    owns a series with this name (one atelier, one series per name), or
+    HTTP 422 naming the field for a whitespace-only title (the schema
+    refuses an empty or over-long one)."""
+    try:
+        series = await service.create_series(payload.title)
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
+    except DuplicateSeriesError:
+        raise HTTPException(status_code=409, detail="series title already exists") from None
+    except FieldRefusedError as error:
+        raise _refusal(error) from None
+    return SeriesRead.model_validate(series)
 
 
 @router.get("/activity", response_model=ActivityRead)
@@ -480,17 +522,23 @@ async def get_chapter(chapter_id: UUID, service: ServiceDep) -> ChapterRead:
 @router.put(
     "/chapters/{chapter_id}",
     response_model=ChapterRead,
-    responses={404: {"model": WritingErrorRead, "description": "Chapter not found"}},
+    responses={
+        404: {"model": WritingErrorRead, "description": "Chapter not found"},
+        422: {"model": WritingErrorRead, "description": "A word goal outside the bounds, named"},
+    },
 )
 async def update_chapter(
     chapter_id: UUID, payload: ChapterUpdate, service: ServiceDep
 ) -> ChapterRead:
-    """Update an owned chapter's title (its prose lives on scenes now);
-    respond with HTTP 404 when it is not found."""
+    """Update an owned chapter's title and word goal (its prose lives on
+    scenes now); respond with HTTP 404 when it is not found, or HTTP 422
+    naming the field for a goal outside the shared word-goal bounds."""
     try:
         chapter = await service.update_chapter(chapter_id, payload)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="chapter not found") from None
+    except InvalidNovelUpdateError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
     return chapter
 
 
