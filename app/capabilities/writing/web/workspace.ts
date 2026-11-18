@@ -1024,6 +1024,11 @@ export function useSessionWords(initialBody: string): SessionWords {
 // fires, the focus strands on the body) and, retried, spins the event loop under
 // load. The flag is deterministic: no race, no overhead. The page sets it only
 // when the door is not already mounted; the door clears it by taking it.
+// The flag is module state, so it must not outlive the page that set it: both
+// exits today remount the door in the commit they leave, but an exit that
+// navigates instead would leave it pending — the next mount's door would take
+// it and focus itself once, unasked. WorkspacePage's unmount cleanup owns that
+// invariant (clearDeskFocus); a fresh page starts with no focus owed.
 let deskFocusPending = false;
 
 export function requestDeskFocus(): void {
@@ -1034,4 +1039,10 @@ export function takeDeskFocus(): boolean {
   const pending = deskFocusPending;
   deskFocusPending = false;
   return pending;
+}
+
+/** The page's unmount clears the pending return — the flag dies with the
+ *  page that asked it, never the next mount's door. */
+export function clearDeskFocus(): void {
+  deskFocusPending = false;
 }

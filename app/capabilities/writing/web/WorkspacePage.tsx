@@ -87,6 +87,7 @@ import { InspectorDock } from "./InspectorDock";
 import { DeleteTreeDialog, TreeEditDialog } from "./TreeDialogs";
 import { useAutosave } from "./useAutosave";
 import {
+  clearDeskFocus,
   lastEditedEntry,
   orderedSceneEntries,
   requestDeskFocus,
@@ -306,6 +307,14 @@ export function WorkspacePage() {
       returnFocusToDesk();
     });
   }, []);
+
+  // The focus-return flag is module state (workspace.ts), so it must die with
+  // the page that set it. Both exits today remount the door in the commit they
+  // leave and it takes the flag there — but an exit that navigates instead
+  // would leave it pending, and the NEXT mount's door would focus itself once,
+  // unasked. The unmount cleanup owns the invariant: a fresh page starts with
+  // no focus owed (Task 21's review pin).
+  useEffect(() => clearDeskFocus, []);
 
   // The room's keyboard contract, read through refs so the listener stays
   // stable. The order is the draft's and the ghost's own: the ghost's

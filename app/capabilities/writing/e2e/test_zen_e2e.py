@@ -259,10 +259,14 @@ def test_the_timer_and_session_counter_are_session_only(page: Page, installed: S
     expect(room.get_by_text("Sitzung: 4 W")).to_be_visible()
 
     # The room writes no storage of its own (the pomodoro is session-only,
-    # design §12). The shell's theme/locale hints are its own, not the room's —
-    # the pin names the room's state, never the whole storage.
+    # design §12) — the pin is defensive: were the room ever to persist, its
+    # keys would START with its own state's names (zen, the timer/pomodoro,
+    # the session counter, the focus mode). Anchored prefixes, never
+    # substrings: a shell key that merely contains one of the words (a future
+    # `lastFocus`, say) is not the room's and must not false-fail. The shell's
+    # own hints ride `narrare.*` (theme, locale, formality), never these.
     keys = page.evaluate("() => [...Object.keys(localStorage), ...Object.keys(sessionStorage)]")
-    room_keys = [k for k in keys if re.search(r"zen|timer|pomodoro|session|focus", k, re.I)]
+    room_keys = [k for k in keys if re.search(r"^(zen|timer|pomodoro|session|focus)", k, re.I)]
     assert room_keys == [], f"the zen room wrote to browser storage: {room_keys}"
 
     # A re-entry starts fresh — the timer full, the session zero again.

@@ -39,6 +39,8 @@ import { applyLocale } from "@shell/lib/locale";
 import { queryClient, takeNovelDeletedElsewhere } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
+import { requestDeskFocus } from "./workspace";
+
 const de = catalogs.de;
 const NOVEL_ID = "11111111-1111-1111-1111-111111111111";
 
@@ -1225,6 +1227,33 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
   it("Esc exits zen — D19's second door, the desk's focus returned", async () => {
     await renderWorkspace();
     await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: de["writing.workspace.ribbon.focus"] }),
+      ),
+    );
+  });
+
+  it("the pending focus flag dies with the page — unmount, remount, no door focus absent a fresh exit", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    // The hazard the unmount cleanup owns (Task 21's review): an exit that
+    // navigates instead of remounting the columns leaves the flag pending
+    // with no door to take it. Set it as such an exit would — the room
+    // standing, the door gone — then leave the page without an exit.
+    requestDeskFocus();
+    cleanup();
+    await renderWorkspace();
+    const door = await screen.findByRole("button", { name: de["writing.workspace.ribbon.focus"] });
+    // The fresh mount's door ref fired in-commit: had the flag survived the
+    // unmount, the ref would have taken it and focused the door — unasked.
+    expect(document.activeElement).not.toBe(door);
+    // A fresh exit still returns the focus — the reset killed the stale
+    // flag, not the mechanism.
     await enterZen();
     fireEvent.keyDown(document, { key: "Escape" });
     expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
