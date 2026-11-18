@@ -101,3 +101,30 @@ async def test_creating_a_series_before_setup_is_refused() -> None:
         refused = await client.post("/api/writing/series", json={"title": "Zu früh"})
         assert refused.status_code == 409
         assert refused.json()["detail"] == "setup required"
+
+
+async def test_a_duplicate_series_name_is_refused_per_user() -> None:
+    """The contract (review fix): one atelier, one series per name — the
+    settings select resolves the book's link by title, so a duplicate
+    would make that resolution ambiguous. The trimmed name is the name."""
+    async with _client() as client:
+        first = await client.post("/api/writing/series", json={"title": "Tiefsee-Chroniken"})
+        assert first.status_code == 201
+        again = await client.post("/api/writing/series", json={"title": "Tiefsee-Chroniken"})
+        assert again.status_code == 409
+        padded = await client.post("/api/writing/series", json={"title": "  Tiefsee-Chroniken  "})
+        assert padded.status_code == 409
+        listed = await client.get("/api/writing/series")
+        assert [row["title"] for row in listed.json()] == ["Tiefsee-Chroniken"]
+
+
+async def test_another_user_may_carry_the_same_series_name() -> None:
+    """The uniqueness is per user — two ateliers, two independent shelves."""
+    await seed_user(OTHER_USER)
+    async with Session() as session:
+        await SeriesRepository(session, OTHER_USER).create("Tiefsee-Chroniken")
+        await session.commit()
+
+    async with _client() as client:
+        created = await client.post("/api/writing/series", json={"title": "Tiefsee-Chroniken"})
+        assert created.status_code == 201

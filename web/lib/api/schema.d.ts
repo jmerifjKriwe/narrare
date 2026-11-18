@@ -1417,9 +1417,10 @@ export interface paths {
         /**
          * Create Series
          * @description Create a series owned by the current user; the title is trimmed like
-         *     a book's. Respond with HTTP 409 if setup is required, or HTTP 422 naming
-         *     the field for a whitespace-only title (the schema refuses an empty or
-         *     over-long one).
+         *     a book's. Respond with HTTP 409 if setup is required or the user already
+         *     owns a series with this name (one atelier, one series per name), or
+         *     HTTP 422 naming the field for a whitespace-only title (the schema
+         *     refuses an empty or over-long one).
          */
         post: operations["create_series_api_writing_series_post"];
         delete?: never;
@@ -6177,7 +6178,7 @@ export interface operations {
                     "application/json": components["schemas"]["SeriesRead"];
                 };
             };
-            /** @description Setup required */
+            /** @description Setup required, or the user already owns a series with this name */
             409: {
                 headers: {
                     [name: string]: unknown;

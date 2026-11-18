@@ -8278,7 +8278,7 @@
         ]
       },
       "post": {
-        "description": "Create a series owned by the current user; the title is trimmed like\na book's. Respond with HTTP 409 if setup is required, or HTTP 422 naming\nthe field for a whitespace-only title (the schema refuses an empty or\nover-long one).",
+        "description": "Create a series owned by the current user; the title is trimmed like\na book's. Respond with HTTP 409 if setup is required or the user already\nowns a series with this name (one atelier, one series per name), or\nHTTP 422 naming the field for a whitespace-only title (the schema\nrefuses an empty or over-long one).",
         "operationId": "create_series_api_writing_series_post",
         "requestBody": {
           "content": {
@@ -8309,7 +8309,7 @@
                 }
               }
             },
-            "description": "Setup required"
+            "description": "Setup required, or the user already owns a series with this name"
           },
           "422": {
             "content": {

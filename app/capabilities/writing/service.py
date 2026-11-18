@@ -97,6 +97,11 @@ class ArchiveInvalidError(Exception):
         self.reason = reason
 
 
+class DuplicateSeriesError(Exception):
+    """The user already owns a series with this name — one atelier, one
+    series per name (the settings select resolves links by title)."""
+
+
 class FieldRefusedError(ValueError):
     """The request breaks a field contract; `fields` names them.
 
@@ -272,8 +277,12 @@ class WritingService:
     async def create_series(self, title: str) -> Series:
         """Commit a new series for this user: the name trimmed like a
         book's, a whitespace-only one refused by field (the schema carries
-        the width). The book-settings surface creates inline and links the
-        book through the novel PATCH's own series check.
+        the width), a name the user already carries refused as a duplicate
+        (409) — the select resolves a book's link by title, so one atelier
+        holds one series per name. The check is the service's own: two
+        concurrent creates of one name remain a race window no constraint
+        closes (disclosed); the book-settings link rides the novel PATCH's
+        own series check.
 
         Raise SetupRequiredError if setup has not created the owning user.
         """
@@ -281,6 +290,8 @@ class WritingService:
         name = title.strip()
         if not name:
             raise FieldRefusedError(("title",), "a series needs a name")
+        if await self.series.find_by_title(name) is not None:
+            raise DuplicateSeriesError
         series = await self.series.create(name)
         await self.session.commit()
         return series

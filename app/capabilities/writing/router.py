@@ -40,6 +40,7 @@ from app.capabilities.writing.service import (
     MAX_ARCHIVE_BYTES,
     ArchiveInvalidError,
     ArchiveTooLargeError,
+    DuplicateSeriesError,
     FieldRefusedError,
     NotFoundError,
     OrderMismatchError,
@@ -265,7 +266,10 @@ async def list_series(service: ServiceDep) -> list[SeriesRead]:
     response_model=SeriesRead,
     status_code=201,
     responses={
-        409: {"model": WritingErrorRead, "description": "Setup required"},
+        409: {
+            "model": WritingErrorRead,
+            "description": "Setup required, or the user already owns a series with this name",
+        },
         422: {
             "model": FieldRefusalsRead,
             "description": "A nameless series, named in `detail[].loc`",
@@ -274,13 +278,16 @@ async def list_series(service: ServiceDep) -> list[SeriesRead]:
 )
 async def create_series(payload: SeriesCreate, service: ServiceDep) -> SeriesRead:
     """Create a series owned by the current user; the title is trimmed like
-    a book's. Respond with HTTP 409 if setup is required, or HTTP 422 naming
-    the field for a whitespace-only title (the schema refuses an empty or
-    over-long one)."""
+    a book's. Respond with HTTP 409 if setup is required or the user already
+    owns a series with this name (one atelier, one series per name), or
+    HTTP 422 naming the field for a whitespace-only title (the schema
+    refuses an empty or over-long one)."""
     try:
         series = await service.create_series(payload.title)
     except SetupRequiredError:
         raise HTTPException(status_code=409, detail="setup required") from None
+    except DuplicateSeriesError:
+        raise HTTPException(status_code=409, detail="series title already exists") from None
     except FieldRefusedError as error:
         raise _refusal(error) from None
     return SeriesRead.model_validate(series)

@@ -87,10 +87,15 @@ def test_series_id_passes_through_for_the_ownership_check() -> None:
     assert normalized_novel_updates(NovelUpdate(series_id=None)) == {"series_id": None}
 
 
-def test_series_volume_is_positive_or_absent() -> None:
+def test_series_volume_is_positive_bounded_or_clears() -> None:
     assert normalized_novel_updates(NovelUpdate(series_volume=3)) == {"series_volume": 3}
+    assert normalized_novel_updates(NovelUpdate(series_volume=2_147_483_647)) == {
+        "series_volume": 2_147_483_647
+    }
     assert normalized_novel_updates(NovelUpdate(series_volume=None)) == {"series_volume": None}
-    for value in (0, -1):
+    # The ceiling is the Integer column's own — the target's bound — so an
+    # over-long volume is a 422 here, not an overflow at the flush.
+    for value in (0, -1, 2_147_483_648):
         with pytest.raises(InvalidNovelUpdateError) as refused:
             normalized_novel_updates(NovelUpdate(series_volume=value))
         assert refused.value.field == "series_volume"
