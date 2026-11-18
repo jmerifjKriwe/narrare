@@ -21,6 +21,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from app.capabilities.writing.e2e.conftest import (
+    DATABASE,
     create_chapter,
     create_novel,
     patch_novel,
@@ -30,7 +31,9 @@ from app.capabilities.writing.e2e.conftest import (
     word_body,
     write_scene,
 )
+from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.db_rows import rows
 from app.kernel.testing.stack import WEB_URL
 
 if TYPE_CHECKING:
@@ -346,3 +349,81 @@ def test_the_dark_book_settings_clear_the_axe_floor(page: Page, installed: Stack
     dialog = page.get_by_role("dialog")
     expect(dialog.get_by_role("heading", name="Buch-Einstellungen")).to_be_visible()
     assert_accessible(page)
+
+
+def test_the_light_book_settings_clear_the_axe_floor(page: Page, installed: Stack) -> None:
+    """The dialog's light face with the form open — the same WCAG A/AA floor
+    the dark face rides (Task 21's fidelity gate, both themes)."""
+    novel = _seed_klang()
+    _goto_workspace(page, str(novel["id"]))
+    page.get_by_role("button", name="Buch-Einstellungen", exact=True).click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_role("heading", name="Buch-Einstellungen")).to_be_visible()
+    assert_accessible(page)
+
+
+def test_the_settings_save_lands_on_the_db_rows(page: Page, installed: Stack) -> None:
+    """Task 21's fidelity gate: the dialog's save is not a UI echo — it lands
+    on the real rows. The status, target and per-book author ride the novel
+    PATCH; the series create lands its own user-owned row and the link +
+    volume ride the novel; the atelier's author name and daily goal ride the
+    settings PATCH. Every field is read back from Postgres, not the form."""
+    novel = _seed_klang()
+    novel_id = str(novel["id"])
+    patch_novel(novel_id, status="draft")
+    _goto_workspace(page, novel_id)
+
+    page.get_by_role("button", name="Buch-Einstellungen", exact=True).click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_role("heading", name="Buch-Einstellungen")).to_be_visible()
+
+    # The novel's own fields: author, target, status.
+    dialog.get_by_label("Autor", exact=True).fill("M. Reyes")
+    dialog.get_by_label("Zielumfang (Wörter gesamt)", exact=True).fill("90000")
+    dialog.get_by_role("radio", name="Überarbeitung", exact=True).click()
+
+    # The series create lands inline, the link and volume ride the save.
+    dialog.get_by_role("button", name="Neue Reihe anlegen", exact=True).click()
+    dialog.get_by_label("Name der neuen Reihe", exact=True).fill("Tiefsee-Chroniken")
+    dialog.get_by_role("button", name="Anlegen", exact=True).click()
+    expect(
+        dialog.get_by_label("Zugehörige Buchreihe", exact=True).locator("option:checked")
+    ).to_have_text("Tiefsee-Chroniken")
+    dialog.get_by_label("Band", exact=True).fill("2")
+
+    # The atelier: the profile's author name and the daily goal (user scope).
+    dialog.get_by_label("Standard-Autorenname", exact=True).fill("M. Reyes Atelier")
+    dialog.get_by_label("Persönliches Tagesziel", exact=True).fill("2500")
+
+    dialog.get_by_role("button", name="Speichern", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+
+    # The novel row: the diff landed, the series link and volume with it.
+    novel_row = rows(
+        DATABASE,
+        "SELECT status, target_words, author, series_id, series_volume FROM novels WHERE id = :id",
+        {"id": novel_id},
+    )
+    assert len(novel_row) == 1
+    status, target_words, author, series_id, series_volume = novel_row[0]
+    assert status == "revision"
+    assert target_words == 90000
+    assert author == "M. Reyes"
+    assert series_id is not None
+    assert series_volume == 2
+
+    # The series row: created, user-owned (rule 4), named as the dialog asked.
+    series_row = rows(
+        DATABASE,
+        "SELECT title, user_id FROM series WHERE id = :id",
+        {"id": str(series_id)},
+    )
+    assert series_row == [("Tiefsee-Chroniken", LOCAL_USER_ID)]
+
+    # The atelier row: the profile's author name and the daily goal landed.
+    user_row = rows(
+        DATABASE,
+        "SELECT author_name, daily_goal_words FROM users WHERE id = :id",
+        {"id": LOCAL_USER_ID},
+    )
+    assert user_row == [("M. Reyes Atelier", 2500)]
