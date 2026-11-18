@@ -27,14 +27,18 @@ import { queryClient } from "@shell/lib/query";
 
 import type { FlushOutcome } from "./useAutosave";
 import {
+  activeSentence,
+  formatClock,
   invalidateSceneReads,
   invalidateStructureReads,
   lastEditedEntry,
   movedIds,
   orderedSceneEntries,
+  POMODORO_SECONDS,
   promptWithinBound,
   rowsInOrder,
   sceneCodeNumbers,
+  sentenceSpans,
   stageTitleKey,
   tensionCodes,
   useChapterScenes,
@@ -45,9 +49,11 @@ import {
   useDeleteScene,
   useReorderChapters,
   useReorderScenes,
+  useSessionWords,
   useStoryboardQuery,
   useUpdateChapter,
   useUpdateScene,
+  useZenTimer,
 } from "./workspace";
 
 const api = client as unknown as Record<
@@ -1000,5 +1006,180 @@ describe("useContinuation's save seam — flush before the wire", () => {
     await act(async () => settle("saved"));
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result.current.phase).toBe("idle");
+  });
+});
+
+// --- The zen seam (W4 Task 18) ---------------------------------------------
+//
+// The focus presets' sentence geometry, the session-only pomodoro and the
+// session word delta — the frontend-real pieces of the zen draft (D6). The
+// timer keeps nothing: no storage write is its contract (design §12), and
+// the counters' today half reads the activity aggregate at the page, not
+// here.
+
+describe("sentenceSpans — the sentence focus's geometry", () => {
+  it("splits on terminal punctuation, the whitespace between belongs to no sentence", () => {
+    expect(sentenceSpans("Eins zwei. Drei vier. Fünf.")).toEqual([
+      [0, 10],
+      [11, 21],
+      [22, 27],
+    ]);
+  });
+
+  it("keeps the closing quotes with the sentence they close — the German face", () => {
+    const text = "»Quelle triangulieren«, befahl ich. „Gut“, sagte sie.";
+    const spans = sentenceSpans(text);
+    expect(spans).toHaveLength(2);
+    expect(text.slice(spans[0][0], spans[0][1])).toBe("»Quelle triangulieren«, befahl ich.");
+    expect(text.slice(spans[1][0], spans[1][1])).toBe("„Gut“, sagte sie.");
+  });
+
+  it("a run of terminals and an ellipsis end one sentence, not several", () => {
+    expect(sentenceSpans("Wirklich?! Ja… Nein.")).toEqual([
+      [0, 10],
+      [11, 14],
+      [15, 20],
+    ]);
+  });
+
+  it("text without a terminal is one sentence — the whole span", () => {
+    expect(sentenceSpans("ein langer Satz ohne Punkt")).toEqual([[0, 26]]);
+  });
+
+  it("empty and whitespace-only text carry no sentence", () => {
+    expect(sentenceSpans("")).toEqual([]);
+    expect(sentenceSpans("   \n  ")).toEqual([]);
+  });
+
+  it("a hard break's newline is whitespace — the sentence reads across it", () => {
+    expect(sentenceSpans("Eins\nzwei. Drei.")).toEqual([
+      [0, 10],
+      [11, 16],
+    ]);
+  });
+});
+
+describe("activeSentence — the caret's sentence, honestly", () => {
+  const text = "Eins zwei. Drei vier. Fünf.";
+
+  it("an offset inside a sentence keeps that sentence", () => {
+    expect(activeSentence(text, 3)).toEqual([0, 10]);
+    expect(activeSentence(text, 15)).toEqual([11, 21]);
+  });
+
+  it("the boundary after the terminal keeps the sentence just ended", () => {
+    expect(activeSentence(text, 10)).toEqual([0, 10]);
+  });
+
+  it("the whitespace between sentences keeps the previous — the writer just finished it", () => {
+    expect(activeSentence(text, 10.5)).toEqual([0, 10]);
+  });
+
+  it("no text, no sentence — null, never an invented span", () => {
+    expect(activeSentence("", 0)).toBeNull();
+  });
+});
+
+describe("formatClock — the pomodoro's face", () => {
+  it("minutes and seconds, two digits each", () => {
+    expect(formatClock(POMODORO_SECONDS)).toBe("25:00");
+    expect(formatClock(1122)).toBe("18:42");
+    expect(formatClock(0)).toBe("00:00");
+    expect(formatClock(61)).toBe("01:01");
+  });
+});
+
+describe("useZenTimer — the session-only pomodoro", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("starts full and running — the draft's timer is already on", () => {
+    const { result } = renderHook(() => useZenTimer());
+    expect(result.current.remaining).toBe(POMODORO_SECONDS);
+    expect(result.current.running).toBe(true);
+    expect(result.current.done).toBe(false);
+  });
+
+  it("counts down one second at a time", () => {
+    const { result } = renderHook(() => useZenTimer());
+    act(() => vi.advanceTimersByTime(61_000));
+    expect(result.current.remaining).toBe(POMODORO_SECONDS - 61);
+  });
+
+  it("pause holds the clock, resume carries it on", () => {
+    const { result } = renderHook(() => useZenTimer());
+    act(() => vi.advanceTimersByTime(10_000));
+    act(() => result.current.toggle());
+    expect(result.current.running).toBe(false);
+    act(() => vi.advanceTimersByTime(30_000));
+    expect(result.current.remaining).toBe(POMODORO_SECONDS - 10);
+    act(() => result.current.toggle());
+    act(() => vi.advanceTimersByTime(5_000));
+    expect(result.current.remaining).toBe(POMODORO_SECONDS - 15);
+  });
+
+  it("reset returns the full span, running again", () => {
+    const { result } = renderHook(() => useZenTimer());
+    act(() => vi.advanceTimersByTime(60_000));
+    act(() => result.current.toggle());
+    act(() => result.current.reset());
+    expect(result.current.remaining).toBe(POMODORO_SECONDS);
+    expect(result.current.running).toBe(true);
+  });
+
+  it("stops at zero — done, never negative; the toggle starts a fresh span", () => {
+    const { result } = renderHook(() => useZenTimer());
+    act(() => vi.advanceTimersByTime(POMODORO_SECONDS * 1000 + 5_000));
+    expect(result.current.remaining).toBe(0);
+    expect(result.current.done).toBe(true);
+    expect(result.current.running).toBe(false);
+    act(() => result.current.toggle());
+    expect(result.current.remaining).toBe(POMODORO_SECONDS);
+    expect(result.current.running).toBe(true);
+  });
+
+  it("writes nothing to storage — the session is the whole lifetime (design §12)", () => {
+    const local = vi.spyOn(Storage.prototype, "setItem");
+    const session = vi.spyOn(window, "sessionStorage", "get");
+    const { result } = renderHook(() => useZenTimer());
+    act(() => vi.advanceTimersByTime(120_000));
+    act(() => result.current.toggle());
+    act(() => result.current.reset());
+    expect(local).not.toHaveBeenCalled();
+    expect(session).not.toHaveBeenCalled();
+    local.mockRestore();
+    session.mockRestore();
+  });
+});
+
+describe("useSessionWords — the live delta since zen entry", () => {
+  it("starts at zero — the entry body is the baseline, not a claim", () => {
+    const { result } = renderHook(() => useSessionWords("Eins zwei drei."));
+    expect(result.current.words).toBe(0);
+  });
+
+  it("counts the net words the session adds", () => {
+    const { result } = renderHook(() => useSessionWords("Eins zwei."));
+    act(() => result.current.track("Eins zwei. Drei vier."));
+    expect(result.current.words).toBe(2);
+    act(() => result.current.track("Eins zwei. Drei vier. Fünf."));
+    expect(result.current.words).toBe(3);
+  });
+
+  it("a removal is honest — the delta goes negative, never hidden", () => {
+    const { result } = renderHook(() => useSessionWords("Eins zwei drei."));
+    act(() => result.current.track("Eins."));
+    expect(result.current.words).toBe(-2);
+  });
+
+  it("the shared whitespace rule counts — the server's own figure", () => {
+    const { result } = renderHook(() => useSessionWords(""));
+    act(() => result.current.track("  eins\u00a0zwei  "));
+    expect(result.current.words).toBe(2);
   });
 });

@@ -1142,3 +1142,233 @@ describe("the continuation wiring (Task 16) — the page's own doors", () => {
     );
   });
 });
+
+describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
+  const EXIT = de["writing.workspace.zen.exit"];
+  const PROSE = de["writing.workspace.editor.proseLabel"];
+
+  function stubStream(chunks: readonly string[]) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn(async () =>
+      new Response(stream, { status: 200, headers: { "Content-Type": "text/event-stream" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  /** The world the refetch reads after a save — the typed body lands in the
+   *  cache the remounting editor initializes from (the flush-first rule). */
+  function liveBodyWorld() {
+    let s12Body = S12.body;
+    scenesAnswer = async (chapterId) => ({
+      data: chapterId === "c1" ? [S11, { ...S12, body: s12Body }] : chapterId === "c2" ? [S21] : [],
+      response: ok(),
+    });
+    putSceneAnswer = async (sceneId, body) => {
+      const carried = (body as { body?: string }).body;
+      if (sceneId === "s12" && typeof carried === "string") s12Body = carried;
+      return { data: { ...S12, id: sceneId, ...(body as Partial<Scene>) }, response: ok() };
+    };
+  }
+
+  async function typeIntoProse(text: string) {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    const box = await screen.findByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(box.textContent).not.toBe(""));
+    box.focus();
+    await user.keyboard(text);
+  }
+
+  async function enterZen() {
+    fireEvent.keyDown(document, { key: "F9" });
+    expect(await screen.findByRole("button", { name: EXIT })).toBeTruthy();
+  }
+
+  it("F9 opens zen over the workspace — the columns yield, the counters read the aggregate", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    // The workspace chrome's room is gone — the zen surface owns the desk.
+    expect(screen.queryByTestId("workspace-ribbon")).toBeNull();
+    expect(screen.queryByTestId("workspace-running-head")).toBeNull();
+    // The scene's own prose stands centered, the overline real.
+    const box = screen.getByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(box.textContent).toContain("Ich kalibrierte die Sensoren."));
+    expect(screen.getByText("Forschungsstation 7 · 27. Oktober 2094, 03:14 UTC")).toBeTruthy();
+    // Today's words are the aggregate's own (412), the session starts at 0.
+    expect(await screen.findByText(/Heute: \+412 W · Sitzung: 0 W/)).toBeTruthy();
+    // The pomodoro starts full — session-only, nothing stored.
+    expect(screen.getByText("25:00")).toBeTruthy();
+  });
+
+  it("F9 again returns the workspace — the chrome's room intact", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    fireEvent.keyDown(document, { key: "F9" });
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: EXIT })).toBeNull();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Das Signal im Permafrost" }),
+    ).toBeTruthy();
+  });
+
+  it("Esc exits zen — D19's second door", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+  });
+
+  it("the ribbon's Fokus door opens zen — the interim ends (Task 18)", async () => {
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    const door = screen.getByRole("button", { name: de["writing.workspace.ribbon.focus"] });
+    expect(door.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(door);
+    expect(await screen.findByRole("button", { name: EXIT })).toBeTruthy();
+  });
+
+  it("F9 without a scene does nothing — the empty book keeps its face", async () => {
+    chaptersAnswer = async () => ({ data: [], response: ok() });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: de["writing.workspace.emptyBook.editorTitle"] });
+    fireEvent.keyDown(document, { key: "F9" });
+    expect(screen.queryByRole("button", { name: EXIT })).toBeNull();
+    expect(
+      screen.getByRole("heading", { level: 1, name: de["writing.workspace.emptyBook.editorTitle"] }),
+    ).toBeTruthy();
+  });
+
+  it("the ghost owns Esc first inside zen — the room stays until the ghost is gone", async () => {
+    stubStream(['data: {"delta": "Der Nebel hob sich."}\n\n', "event: done\ndata: {}\n\n"]);
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
+    expect(await screen.findByTestId("ghost-preview")).toBeTruthy();
+    await enterZen();
+    // The proposal rode into the room — PR 4's seam is not stranded.
+    expect(screen.getByTestId("ghost-preview").textContent).toContain("Der Nebel hob sich.");
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByTestId("ghost-preview")).toBeNull());
+    // The first Esc belonged to the ghost — zen stands.
+    expect(screen.getByRole("button", { name: EXIT })).toBeTruthy();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+  });
+
+  it("Tab accepts the ghost inside zen — the acceptance rides the one write path", async () => {
+    liveBodyWorld();
+    stubStream(['data: {"delta": "Der Nebel hob sich."}\n\n', "event: done\ndata: {}\n\n"]);
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
+    expect(await screen.findByTestId("ghost-preview")).toBeTruthy();
+    await enterZen();
+    const box = screen.getByRole("textbox", { name: PROSE });
+    fireEvent.keyDown(box, { key: "Tab" });
+    await waitFor(() => expect(screen.queryByTestId("ghost-preview")).toBeNull());
+    expect(box.textContent).toContain("Der Nebel hob sich.");
+    // The acceptance is an edit: the autosave chain carries it to the PUT.
+    await waitFor(() =>
+      expect(api.PUT).toHaveBeenCalledWith(
+        "/api/writing/scenes/{scene_id}",
+        expect.objectContaining({
+          params: { path: { scene_id: "s12" } },
+          body: { body: expect.stringContaining("Der Nebel hob sich.") },
+        }),
+      ),
+    );
+  });
+
+  it("entry flushes the draft — zen opens on the saved words, never a stale body", async () => {
+    liveBodyWorld();
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await typeIntoProse(" Mehr Text.");
+    // F9 inside the debounce window: the flush lands the words first.
+    await enterZen();
+    expect(api.PUT).toHaveBeenCalledWith(
+      "/api/writing/scenes/{scene_id}",
+      expect.objectContaining({
+        params: { path: { scene_id: "s12" } },
+        body: { body: expect.stringContaining("Mehr Text.") },
+      }),
+    );
+    const box = screen.getByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(box.textContent).toContain("Mehr Text."));
+  });
+
+  it("exit flushes zen's draft — the workspace returns on the saved words", async () => {
+    liveBodyWorld();
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    await typeIntoProse(" Noch ein Satz.");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+    expect(api.PUT).toHaveBeenCalledWith(
+      "/api/writing/scenes/{scene_id}",
+      expect.objectContaining({
+        params: { path: { scene_id: "s12" } },
+        body: { body: expect.stringContaining("Noch ein Satz.") },
+      }),
+    );
+    const box = screen.getByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(box.textContent).toContain("Noch ein Satz."));
+  });
+
+  it("a failed exit flush raises the guard — Esc stays with it, Bleiben keeps zen, Verwerfen leaves", async () => {
+    liveBodyWorld();
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    await typeIntoProse(" Words.");
+    putSceneAnswer = async () => ({ data: undefined, response: new Response(null, { status: 503 }) });
+    fireEvent.keyDown(document, { key: "Escape" });
+    // The guard owns the room — the failed write asks before anything leaves.
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    // Esc belongs to the guard first (the page defers): stay, zen stands.
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(screen.getByRole("button", { name: EXIT })).toBeTruthy();
+    // The next exit ask fails again — the draft is still unsaved.
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.guard.discard"] }));
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+    // The discarded words never reached the wire — the cache's truth stands.
+    const box = screen.getByRole("textbox", { name: PROSE });
+    await waitFor(() => expect(box.textContent).toContain("Ich kalibrierte die Sensoren."));
+    expect(box.textContent).not.toContain("Words.");
+  });
+
+  it("the session is the zen spell — re-entry starts a fresh timer and counter", async () => {
+    liveBodyWorld();
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    await typeIntoProse(" Eins zwei.");
+    expect(await screen.findByText(/Sitzung: 2 W/)).toBeTruthy();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
+    await enterZen();
+    expect(screen.getByText("25:00")).toBeTruthy();
+    expect(await screen.findByText(/Sitzung: 0 W/)).toBeTruthy();
+  });
+
+  it("an unavailable aggregate keeps the neutral in the counter — never an invented today", async () => {
+    activityAnswer = async () => ({ data: undefined, response: new Response(null, { status: 503 }) });
+    await renderWorkspace();
+    await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
+    await enterZen();
+    expect(await screen.findByText(/Heute: — · Sitzung: 0 W/)).toBeTruthy();
+  });
+});

@@ -122,12 +122,14 @@ function renderColumn(
     onRetry?: () => void;
     onBodyChange?: (body: string) => void;
     onCreateScene?: () => void;
+    onEnterZen?: () => void;
     continuation?: Continuation;
   } = {},
 ) {
   const onRetry = props.onRetry ?? vi.fn();
   const onBodyChange = props.onBodyChange ?? vi.fn();
   const onCreateScene = props.onCreateScene ?? vi.fn();
+  const onEnterZen = props.onEnterZen ?? vi.fn();
   const utils = render(
     <EditorColumn
       novel={props.novel ?? novelRow()}
@@ -137,10 +139,11 @@ function renderColumn(
       onRetry={onRetry}
       onBodyChange={onBodyChange}
       onCreateScene={onCreateScene}
+      onEnterZen={onEnterZen}
       continuation={props.continuation ?? continuationOf()}
     />,
   );
-  return { ...utils, onRetry, onBodyChange, onCreateScene };
+  return { ...utils, onRetry, onBodyChange, onCreateScene, onEnterZen };
 }
 
 beforeEach(() => {
@@ -167,6 +170,7 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        onEnterZen={vi.fn()}
         continuation={continuationOf()}
       />,
     );
@@ -195,6 +199,7 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        onEnterZen={vi.fn()}
         continuation={continuationOf()}
       />,
     );
@@ -215,6 +220,7 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        onEnterZen={vi.fn()}
         continuation={continuationOf()}
       />,
     );
@@ -228,6 +234,7 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        onEnterZen={vi.fn()}
         continuation={continuationOf()}
       />,
     );
@@ -243,6 +250,7 @@ describe("the scene face", () => {
         onRetry={vi.fn()}
         onBodyChange={vi.fn()}
         onCreateScene={vi.fn()}
+        onEnterZen={vi.fn()}
         continuation={continuationOf()}
       />,
     );
@@ -326,6 +334,7 @@ describe("the ribbon", () => {
           onRetry={vi.fn()}
           onBodyChange={vi.fn()}
           onCreateScene={vi.fn()}
+          onEnterZen={vi.fn()}
           continuation={continuationOf()}
         />,
       );
@@ -344,11 +353,10 @@ describe("the ribbon", () => {
     expect(within(ribbon).getByRole("button", { name: de["writing.workspace.ribbon.targetEdit"] }).hasAttribute("disabled")).toBe(true);
   });
 
-  it("focus, history and export stay honestly disabled with their notes", () => {
+  it("history and export stay honestly disabled with their notes", () => {
     renderColumn();
     const ribbon = screen.getByTestId("workspace-ribbon");
     for (const [name, note] of [
-      [de["writing.workspace.ribbon.focus"], de["writing.workspace.ribbon.focusNote"]],
       [de["writing.workspace.ribbon.history"], de["writing.workspace.ribbon.historyNote"]],
       [de["writing.workspace.ribbon.export"], de["writing.workspace.ribbon.exportNote"]],
     ] as const) {
@@ -356,6 +364,16 @@ describe("the ribbon", () => {
       expect(button.hasAttribute("disabled")).toBe(true);
       expect(button.getAttribute("title")).toBe(note);
     }
+  });
+
+  it("the Fokus door is LIVE (Task 18) — it opens zen, the interim note is gone", () => {
+    const { onEnterZen } = renderColumn();
+    const ribbon = screen.getByTestId("workspace-ribbon");
+    const door = within(ribbon).getByRole("button", { name: de["writing.workspace.ribbon.focus"] });
+    expect(door.hasAttribute("disabled")).toBe(false);
+    expect(door.getAttribute("title")).toBeNull();
+    fireEvent.click(door);
+    expect(onEnterZen).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -26,7 +26,8 @@
  *   alone when no author stands. NO folio, NO page count (row 9).
  * - The chapter-target pill keeps the neutral „—": ChapterRead carries no
  *   target yet, and the setter is Task 19's (D20 places it inline here).
- *   Fokus waits for the zen wave (Task 18), Verlauf for the editing wave
+ *   Fokus is LIVE (Task 18) — the door opens the zen room, F9 the
+ *   keyboard's own way in (D19); Verlauf waits for the editing wave
  *   (INTERIM #875), Export for the production wave (INTERIM #876).
  * - The foot's autosave line carries no timestamp: the draft's „vor 1 Min."
  *   is a mock relative claim; the honest line names the state, not a clock.
@@ -96,7 +97,17 @@ function ChapterTargetPill() {
 /** The ribbon — the draft's 44px bar: breadcrumb + code badge left (with
  *  KACHEL 9's amber unsaved pill while words are unsaved), the chapter-target
  *  pill center, the tool doors right. */
-function Ribbon({ novel, entry, status }: { novel: Novel; entry: SceneEntry; status: SaveStatus }) {
+function Ribbon({
+  novel,
+  entry,
+  status,
+  onEnterZen,
+}: {
+  novel: Novel;
+  entry: SceneEntry;
+  status: SaveStatus;
+  onEnterZen: () => void;
+}) {
   const t = useTranslation();
   const code = sceneCodeNumbers(entry);
   return (
@@ -131,13 +142,14 @@ function Ribbon({ novel, entry, status }: { novel: Novel; entry: SceneEntry; sta
       </div>
       <ChapterTargetPill />
       <div className="flex shrink-0 items-center gap-1.5">
-        {/* Fokus: INTERIM Task 18 — the zen wave owns the mode (D19's F9
-            toggle lands with it); the door keeps its geometry and note. */}
+        {/* Fokus: LIVE (Task 18, D19) — the door opens the zen room; F9 is
+            the keyboard's own way in (the page owns the toggle). The exit
+            returns the focus here (the dialogs' focus-return discipline). */}
         <button
           type="button"
-          disabled
-          title={t("writing.workspace.ribbon.focusNote")}
-          className={DISABLED_DOOR}
+          id="workspace-focus-door"
+          onClick={onEnterZen}
+          className={`flex items-center gap-1 rounded border border-border/70 bg-surface-container-low/40 px-2.5 py-1 text-meta text-muted transition-colors hover:text-foreground ${FOCUS}`}
         >
           <Icon name="focus" size={12} />
           <span>{t("writing.workspace.ribbon.focus")}</span>
@@ -309,6 +321,7 @@ export function EditorColumn({
   onRetry,
   onBodyChange,
   onCreateScene,
+  onEnterZen,
   continuation,
 }: {
   novel: Novel;
@@ -325,6 +338,8 @@ export function EditorColumn({
   /** Kachel 4's first-scene door — the page creates under the empty
    *  chapter and selects the new scene (D16's canonical flow). */
   onCreateScene: () => void;
+  /** The ribbon's Fokus door (Task 18) — the page opens the zen room. */
+  onEnterZen: () => void;
   /** The continuation's state (the page's hook) — the ghost layer and the
    *  prompt bar ride it; the empty faces carry neither. */
   continuation: Continuation;
@@ -335,7 +350,7 @@ export function EditorColumn({
       aria-label={t("writing.workspace.editor.label")}
       className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-surface-container-low"
     >
-      {entry !== null && <Ribbon novel={novel} entry={entry} status={status} />}
+      {entry !== null && <Ribbon novel={novel} entry={entry} status={status} onEnterZen={onEnterZen} />}
       {/* The scrolling stage — tabIndex gives the scroll region keyboard
           access (axe scrollable-region-focusable); the prose itself is a
           focusable textbox now, the shell main's own pattern. The bottom

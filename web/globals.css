@@ -374,6 +374,79 @@ body {
   margin-top: 1.5rem;
 }
 
+/* The zen prose face (W4 Task 18, zen-focus-2): the draft's centered corpus
+ * wears no drop cap — the first letter reads at the paragraph's own scale —
+ * and the paragraphs carry the draft's 1.5em first-line indent. The active
+ * paragraph's card (Absatz-Fokus) resets the indent: the draft's focal card
+ * sets its prose flush. */
+.zen-prose .workspace-prose-live .ProseMirror p:first-of-type::first-letter {
+  float: none;
+  font-size: inherit;
+  line-height: inherit;
+  padding: 0;
+  color: inherit;
+  font-weight: inherit;
+}
+.zen-prose .workspace-prose-live .ProseMirror p {
+  text-indent: 1.5em;
+}
+/* The draft's zen measure is the article's own 36rem — the workspace's
+ * 34rem prose cap (the global .ProseMirror rule) would sit the corpus
+ * off-centre under the centred manuscript head. */
+.zen-prose .workspace-prose-live .ProseMirror {
+  max-width: none;
+}
+/* The room draws no column ring: the workspace wrapper's focus-within ring
+ * would frame the whole corpus like a second card around the draft's focal
+ * one. The focal card and the native caret carry the focus indication here
+ * (the draft draws no ring of its own). */
+.zen-prose .workspace-prose-live:focus-within {
+  box-shadow: none;
+}
+
+/* The focus dimming (D6, frontend-real): the decoration plugin's classes.
+ * The draft's opacity-30 dim with the hover lift to 50 on the paragraph
+ * blocks; the inline sentence spans keep the dim without the hover (a
+ * per-span lift would flicker as the pointer crosses the sentence). The
+ * dim is the feature itself — the draft's own geometry, never an ink the
+ * AA floor measures at full strength. */
+.zen-dim-block {
+  opacity: 0.3;
+  transition: opacity 300ms;
+}
+p.zen-dim-block:hover {
+  opacity: 0.5;
+}
+.zen-dim-inline {
+  opacity: 0.3;
+  transition: opacity 300ms;
+}
+
+/* The active paragraph's focal card — the draft's raised card with the
+ * terracotta bookmark notch (the Lesezeichen-Kerbe). The card spans the
+ * prose column; its padding insets the focal paragraph the way the draft
+ * draws it, the notch rides the left edge. */
+.zen-prose .workspace-prose-live .ProseMirror p.zen-active-block {
+  position: relative;
+  margin-top: 2rem;
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  border-radius: 0.5rem;
+  background: var(--card);
+  padding: 1.5rem 1.5rem 1.5rem 1.75rem;
+  text-indent: 0;
+  box-shadow: 0 2px 8px 0 light-dark(rgba(44, 24, 16, 0.04), rgba(0, 0, 0, 0.4));
+}
+.zen-prose .workspace-prose-live .ProseMirror p.zen-active-block::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.75rem;
+  bottom: 0.75rem;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--primary);
+}
+
 /*
  * The brand serif, subset for the prose surface: the face long-form text is
  * read in, in both voices it speaks — 400 is the reading word, 600 (the

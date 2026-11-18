@@ -575,3 +575,106 @@ describe("the autosave handoff — Tab inserts, the one write path saves", () =>
     }
   });
 });
+
+describe("the zen focus dimming (W4 Task 18) — the presets dim honestly", () => {
+  const PARAGRAPHS = "Erster Absatz.\n\nZweiter Absatz.\n\nDritter Absatz.";
+
+  async function mountWithFocus(focus: "paragraph" | "sentence" | "normal", body = PARAGRAPHS) {
+    let instance: Editor | null = null;
+    render(
+      <SceneEditor
+        body={body}
+        label="Szenenprosa"
+        focus={focus}
+        onChange={() => {}}
+        onReady={(editor) => {
+          instance = editor;
+        }}
+      />,
+    );
+    const box = await screen.findByRole("textbox");
+    const editor = await editorOf(() => instance);
+    // The DOM text carries no paragraph gaps or hard breaks — the body's
+    // own characters in order (the plain text minus every newline).
+    await waitFor(() => expect(box.textContent).toBe(body.split("\n").join("")));
+    return { box, editor };
+  }
+
+  it("paragraph focus: the caret's paragraph stands, the others dim — and it follows the caret", async () => {
+    const { box, editor } = await mountWithFocus("paragraph");
+    // The default selection sits at the document start — the first paragraph.
+    await waitFor(() => {
+      const paragraphs = box.querySelectorAll("p");
+      expect(paragraphs[0].className).toContain("zen-active-block");
+      expect(paragraphs[1].className).toContain("zen-dim-block");
+      expect(paragraphs[2].className).toContain("zen-dim-block");
+    });
+    // Move the caret into the second paragraph — the dimming follows.
+    act(() => {
+      const insideSecond = editor.state.doc.child(0).nodeSize + 2;
+      editor.commands.setTextSelection(insideSecond);
+    });
+    await waitFor(() => {
+      const paragraphs = box.querySelectorAll("p");
+      expect(paragraphs[0].className).toContain("zen-dim-block");
+      expect(paragraphs[1].className).toContain("zen-active-block");
+      expect(paragraphs[2].className).toContain("zen-dim-block");
+    });
+  });
+
+  it("sentence focus: only the caret's sentence stands, across paragraph borders", async () => {
+    const { box, editor } = await mountWithFocus("sentence", "Eins zwei. Drei vier.\n\nFünf sechs.");
+    // Caret into the first paragraph's second sentence.
+    act(() => {
+      editor.commands.setTextSelection(12); // "Eins zwei. D|" — inside "Drei vier."
+    });
+    await waitFor(() => {
+      const first = box.querySelectorAll("p")[0];
+      const dimmed = first.querySelectorAll(".zen-dim-inline");
+      expect(dimmed.length).toBeGreaterThan(0);
+      expect(dimmed[0].textContent).toBe("Eins zwei. ");
+    });
+    const second = box.querySelectorAll("p")[1];
+    expect(second.querySelector(".zen-dim-inline")?.textContent).toBe("Fünf sechs.");
+    expect(box.querySelector(".zen-active-block")).toBeNull();
+  });
+
+  it("sentence focus reads across a hard break — the positions stay the document's own", async () => {
+    const { box, editor } = await mountWithFocus("sentence", "Eins\nzwei. Drei vier.");
+    act(() => {
+      editor.commands.setTextSelection(13); // inside "Drei vier."
+    });
+    await waitFor(() => {
+      const dimmed = box.querySelectorAll(".zen-dim-inline");
+      expect(dimmed.length).toBeGreaterThan(0);
+      expect(dimmed[0].textContent).toBe("Eins");
+    });
+    // The hard break itself is not text — the second line's fragment dims
+    // as its own span, never swallowing the break.
+    const dimmedTexts = [...box.querySelectorAll(".zen-dim-inline")].map((node) => node.textContent);
+    expect(dimmedTexts).toContain("zwei. ");
+    expect(box.textContent).toBe("Einszwei. Drei vier.");
+  });
+
+  it("normal focus dims nothing — and a mode change leaves the document untouched", async () => {
+    const { box, editor } = await mountWithFocus("normal");
+    expect(box.querySelector(".zen-dim-block")).toBeNull();
+    expect(box.querySelector(".zen-dim-inline")).toBeNull();
+    expect(box.querySelector(".zen-active-block")).toBeNull();
+    expect(editor.getText()).toBe(PARAGRAPHS);
+  });
+
+  it("typing keeps the dimming live — the document change recomputes it", async () => {
+    const { box, editor } = await mountWithFocus("paragraph");
+    act(() => {
+      editor.commands.insertContentAt(editor.state.doc.content.size, "<p>Vierter Absatz.</p>");
+    });
+    await waitFor(() => {
+      const paragraphs = box.querySelectorAll("p");
+      expect(paragraphs).toHaveLength(4);
+      // The insertion leaves the caret in the new paragraph — it stands.
+      expect(paragraphs[3].className).toContain("zen-active-block");
+      expect(paragraphs[0].className).toContain("zen-dim-block");
+    });
+  });
+});

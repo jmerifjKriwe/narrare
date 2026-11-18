@@ -7,7 +7,10 @@
  * write moves, so the tree's counts go live without a reload. Task 16 adds
  * the continuation stream: the ghost text's lifecycle on the scene continue
  * endpoint's SSE door (the ask, the phase machine, the dismissal — the
- * editor owns the Tab insertion and the autosave handoff).
+ * editor owns the Tab insertion and the autosave handoff). Task 18 adds
+ * the zen seam: the Satz-Fokus's sentence geometry, the session-only
+ * pomodoro and the session word delta — the draft's frontend-real pieces
+ * (D6), pure and hook-shaped beside the reads.
  *
  * One rule owns the active scene: the last-edited one, by the server's
  * `updated_at` — the same rule the shelf hero's door resumes (gap row 3).
@@ -33,6 +36,7 @@ import { readSse } from "@shell/lib/api/sse";
 import { catalogs } from "@shell/lib/generated/catalogs";
 import type { MessageKey } from "@shell/lib/i18n";
 import { queryClient } from "@shell/lib/query";
+import { countWords } from "@shell/lib/words";
 
 // Type-only: the autosave's flush vocabulary, erased at runtime (the
 // autosave imports this seam's invalidation door — no runtime cycle).
@@ -763,4 +767,160 @@ export function useContinuation(
   );
 
   return { phase, text, errorCode, start, dismiss, retry };
+}
+
+// --- The zen seam (W4 Task 18) ----------------------------------------------
+//
+// The frontend-real pieces of the zen draft (D6): the sentence geometry the
+// Satz-Fokus dims by, the session-only pomodoro and the session word delta.
+// The timer keeps NOTHING — no storage write, no server row (design §12:
+// „Zen timer is session-only"); its whole lifetime is the zen spell, and a
+// re-entry starts fresh. The counters' today half reads the activity
+// aggregate at the page (the ring's own source); the session half is the
+// live net delta since entry — the shared whitespace rule counts, the same
+// figure the server derives. The dimming itself rides the editor's
+// decoration plugin (SceneEditor); the presets' geometry lives here, pure
+// and testable without ProseMirror.
+
+/** The three focus presets the draft's segment control draws. */
+export type ZenFocusMode = "paragraph" | "sentence" | "normal";
+
+/** The pomodoro's span — the classic 25 minutes. The draft's „18:42" is a
+ *  mock mid-count; the session starts full. */
+export const POMODORO_SECONDS = 25 * 60;
+
+/** The timer's face: minutes and seconds, two digits each. */
+export function formatClock(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+/**
+ * The text's sentences as half-open spans — the Satz-Fokus's geometry. A
+ * sentence ends at a run of terminal punctuation (. ! ? …) followed by the
+ * closing quotes that belong to it (the German „…" face included) and then
+ * whitespace or the end; the whitespace BETWEEN sentences belongs to no
+ * span. Text without a terminal is one sentence — the whole span. Empty or
+ * whitespace-only text carries none. A simple honest splitter: no
+ * abbreviation dictionary (a „z. B." reads as a boundary — the draft draws
+ * no abbreviation rule, and a guessed one would dim the wrong words).
+ */
+export function sentenceSpans(text: string): Array<readonly [number, number]> {
+  const spans: Array<readonly [number, number]> = [];
+  const terminal = /[.!?…]+[»"“”'’)\]]*(?=\s|$)/g;
+  let start = 0;
+  let match: RegExpExecArray | null;
+  while ((match = terminal.exec(text)) !== null) {
+    const end = match.index + match[0].length;
+    if (text.slice(start, end).trim() !== "") spans.push([start, end]);
+    start = end;
+    while (start < text.length && /\s/.test(text[start])) start += 1;
+    terminal.lastIndex = start;
+  }
+  if (start < text.length && text.slice(start).trim() !== "") spans.push([start, text.length]);
+  return spans;
+}
+
+/**
+ * The sentence the caret sits in — end-inclusive (the boundary right after
+ * the terminal keeps the sentence just ended). An offset in the whitespace
+ * between sentences keeps the PREVIOUS one: the writer just finished it.
+ * No text, no sentence — null, never an invented span.
+ */
+export function activeSentence(text: string, offset: number): readonly [number, number] | null {
+  const spans = sentenceSpans(text);
+  if (spans.length === 0) return null;
+  for (const span of spans) {
+    if (offset >= span[0] && offset <= span[1]) return span;
+  }
+  let best = spans[0];
+  for (const span of spans) {
+    if (span[1] <= offset) best = span;
+  }
+  return best;
+}
+
+/** The pomodoro's state — the session's own, never stored. */
+export interface ZenTimer {
+  /** The seconds left on the clock. */
+  remaining: number;
+  /** Whether the clock is running. */
+  running: boolean;
+  /** The span is spent — the clock rests at zero. */
+  done: boolean;
+  /** Pause a running clock, resume a held one; a spent span starts fresh. */
+  toggle: () => void;
+  /** The full span again, running — the draft's start affordance. */
+  reset: () => void;
+}
+
+/**
+ * The session-only pomodoro (D6, design §12): starts full and running —
+ * the draft's timer is already on when the room opens — counts down one
+ * second at a time, rests at zero (never negative), and keeps nothing:
+ * no localStorage, no sessionStorage, no server row. The hook's lifetime
+ * IS the session; the zen surface mounts it on entry and unmounts it on
+ * exit, so a re-entry starts a fresh span by construction.
+ */
+export function useZenTimer(): ZenTimer {
+  const [remaining, setRemaining] = useState(POMODORO_SECONDS);
+  const [running, setRunning] = useState(true);
+  const done = remaining === 0;
+
+  useEffect(() => {
+    if (!running || done) return;
+    const id = window.setInterval(() => setRemaining((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearInterval(id);
+  }, [running, done]);
+
+  // The spent span rests the clock — the toggle's fresh start is the
+  // writer's own choice, never an automatic restart.
+  useEffect(() => {
+    if (done) setRunning(false);
+  }, [done]);
+
+  const toggle = useCallback(() => {
+    if (done) {
+      setRemaining(POMODORO_SECONDS);
+      setRunning(true);
+      return;
+    }
+    setRunning((value) => !value);
+  }, [done]);
+
+  const reset = useCallback(() => {
+    setRemaining(POMODORO_SECONDS);
+    setRunning(true);
+  }, []);
+
+  return { remaining, running, done, toggle, reset };
+}
+
+/** The session word counter's state — the net delta since zen entry. */
+export interface SessionWords {
+  /** The net words the session added (a removal is honest — negative). */
+  words: number;
+  /** Feed every edit's whole body; the delta against the last figure rides
+   *  the shared whitespace rule (the server's own count). */
+  track: (body: string) => void;
+}
+
+/**
+ * The live session delta: the entry body is the baseline (zero, never a
+ * claim), every edit moves the counter by the net words it changed. The
+ * hook lives in the zen surface — its lifetime is the spell, so the
+ * counter resets on re-entry by construction. The today half of the
+ * draft's chip is NOT here: it reads the activity aggregate at the page.
+ */
+export function useSessionWords(initialBody: string): SessionWords {
+  const [words, setWords] = useState(0);
+  const previous = useRef(countWords(initialBody));
+  const track = useCallback((body: string) => {
+    const next = countWords(body);
+    const delta = next - previous.current;
+    previous.current = next;
+    if (delta !== 0) setWords((value) => value + delta);
+  }, []);
+  return { words, track };
 }

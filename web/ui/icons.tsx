@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The icon set: sixty-one line glyphs on one 16×16 grid, drawn for the
+ * The icon set: sixty-seven line glyphs on one 16×16 grid, drawn for the
  * stroke they run on — `currentColor` at 1.5, round caps and joins, no
  * fills — so a glyph wears the ink of whatever it sits beside and carries
  * no color of its own. The whole presentation contract lives on the
@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
  */
 
 /**
- * The sixty-one drawings. Each stays inside the 2.35–13.65 envelope —
+ * The sixty-seven drawings. Each stays inside the 2.35–13.65 envelope —
  * knowledge's stack sets both extremes; on the x axis the ink never leaves
  * 2.5–13.5 — so the 1.5 stroke, reaching half its width past the ink, never
  * clips the viewBox. Each is a single-stroke metaphor: detail that
@@ -447,6 +447,28 @@ export const icons = {
       <path d="M6.25 6.25H9.75V9.75H6.25Z" />
     </>
   ),
+  /** The drafts' `arrow_back`: the zen exit chip's way home — the welcome
+   *  screen's arrowRight, mirrored (W4 Task 18, zen-focus-2). */
+  arrowLeft: <path d="M13.25 8H2.75M6.5 4.25L2.75 8L6.5 11.75" />,
+  /** The drafts' `pause`: the pomodoro's held clock — two bars, no fill. */
+  pause: <path d="M5.75 3.5V12.5M10.25 3.5V12.5" />,
+  /** The drafts' `play_arrow`: the pomodoro's running clock — the triangle
+   *  points the way the time flows. */
+  play: <path d="M5.25 3.25L12 8L5.25 12.75Z" />,
+  /** The drafts' `volume_off`: the muted soundscape — the speaker and the
+   *  ✕ that silences it (the lock beside it is the set's own `lock`). */
+  soundOff: (
+    <>
+      <path d="M2.5 6.25H4.75L8 3.5V12.5L4.75 9.75H2.5Z" />
+      <path d="M10.5 6.25L13.5 9.75M13.5 6.25L10.5 9.75" />
+    </>
+  ),
+  /** The drafts' `fullscreen`: the four corners pushed outward — the room
+   *  grows to the screen's edge. */
+  fullscreen: <path d="M2.75 5.5V2.75H5.5M10.5 2.75H13.25V5.5M13.25 10.5V13.25H10.5M5.5 13.25H2.75V10.5" />,
+  /** The drafts' `fullscreen_exit`: the corners drawn back in — the screen
+   *  returns to the window. */
+  fullscreenExit: <path d="M5.5 2.75V5.5H2.75M10.5 2.75V5.5H13.25M13.25 10.5H10.5V13.25M2.75 10.5H5.5V13.25" />,
 } satisfies Record<string, ReactNode>;
 
 /** A name in the icon set — the wave's whole glyph vocabulary. */
