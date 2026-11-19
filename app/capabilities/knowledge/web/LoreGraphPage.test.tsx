@@ -36,7 +36,7 @@ import { queryClient } from "@shell/lib/query";
 import { LoreGraphPage } from "./LoreGraphPage";
 
 const de = catalogs.de;
-const api = client as unknown as Record<"GET" | "POST", ReturnType<typeof vi.fn>>;
+const api = client as unknown as Record<"GET" | "POST" | "DELETE", ReturnType<typeof vi.fn>>;
 
 configure({ asyncUtilTimeout: 5000 });
 
@@ -582,5 +582,23 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(document.activeElement).toBe(trigger);
+  });
+
+  it("an entity delete folds the dossier and lands focus on the graph page (review fix)", async () => {
+    api.DELETE.mockResolvedValue({ data: undefined, response: new Response(null, { status: 204 }) });
+    await renderGraph();
+    const nodes = await screen.findAllByTestId("graph-node");
+    fireEvent.click(within(nodes[0]).getByRole("button"));
+    await screen.findByTestId("entity-dossier");
+    fireEvent.click(document.getElementById("dossier-delete") as HTMLElement);
+    const confirm = await screen.findByRole("alertdialog");
+    fireEvent.click(within(confirm).getByRole("button", { name: de["knowledge.crud.deleteConfirm"] }));
+    // The dossier folds (the selection clears); focus lands on the surviving
+    // page container, never the body. The focus return rides the unmount's
+    // passive cleanup, so it is awaited alongside the fold.
+    await waitFor(() => {
+      expect(screen.queryByTestId("entity-dossier")).toBeNull();
+      expect(document.activeElement).toBe(document.getElementById("graph-page"));
+    });
   });
 });

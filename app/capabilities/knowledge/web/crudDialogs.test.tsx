@@ -428,6 +428,24 @@ describe("EditRelationDialog", () => {
     const alert = await screen.findByRole("alert");
     expect(within(alert).getByText(de["knowledge.crud.relationExists"])).toBeTruthy();
   });
+
+  it("a label-colliding free-text type saves UNCHANGED on an untouched save (review fix)", async () => {
+    // The stored type is free text that happens to spell the de label of ally_of.
+    const colliding = de["knowledge.relation.ally_of"];
+    const freeTextRelation = relationRow({ id: "r9", relation_type: colliding, note: null });
+    api.PATCH.mockResolvedValue({ data: freeTextRelation, response: ok() });
+    const Harness = harness((close) => (
+      <EditRelationDialog relation={freeTextRelation} entities={ENTITIES} openerId="opener" onClose={close} />
+    ));
+    mount(Harness);
+    openDialog();
+    // The box opens on the free text itself; save without touching it.
+    expect((screen.getByLabelText(de["knowledge.crud.relationTypeLabel"]) as HTMLInputElement).value).toBe(colliding);
+    fireEvent.click(screen.getByRole("button", { name: de["knowledge.crud.save"] }));
+    await waitFor(() => expect(api.PATCH).toHaveBeenCalled());
+    expect(api.PATCH.mock.calls[0][1].body.relation_type).toBe(colliding);
+    expect(api.PATCH.mock.calls[0][1].body.relation_type).not.toBe("ally_of");
+  });
 });
 
 describe("DeleteRelationDialog — the destructive confirm family", () => {
@@ -515,6 +533,24 @@ describe("MergeDialog — source → target, the confirm family", () => {
     expect(values).toContain("e1");
   });
 
+  it("the prompt names the missing SOURCE when a target stands but no source (review fix)", () => {
+    const Harness = harness((close) => (
+      <MergeDialog novelId={NOVEL_ID} entities={ENTITIES} source={null} openerId="opener" onClose={close} />
+    ));
+    mount(Harness);
+    openDialog();
+    // Pick a target while the source is still empty — the corner the old
+    // prompt mislabeled as „choose the target".
+    fireEvent.change(screen.getByLabelText(de["knowledge.crud.mergeTargetLabel"]), { target: { value: "e2" } });
+    const body = screen.getByRole("alertdialog");
+    const para = document.getElementById(body.getAttribute("aria-describedby") ?? "");
+    expect(para?.textContent).toBe(de["knowledge.crud.mergeSourceRequired"]);
+    expect(para?.textContent).not.toBe(de["knowledge.crud.mergeTargetRequired"]);
+    // Once the source stands too, the body names the fold.
+    fireEvent.change(screen.getByLabelText(de["knowledge.crud.mergeSourceLabel"]), { target: { value: "e1" } });
+    expect(para?.textContent).toContain("Dr. Maya Chen");
+  });
+
   it("a refusal names the merge error and keeps the question", async () => {
     api.POST.mockResolvedValue({ data: undefined, response: ok(500) });
     mount(harnessMerge);
@@ -538,6 +574,73 @@ describe("MergeDialog — source → target, the confirm family", () => {
     expect(screen.getByRole("alertdialog")).toBeTruthy();
     resolve({ data: ARIA, response: ok() });
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  });
+});
+
+describe("the focus survivor contract — a write that retires its opener (review fix)", () => {
+  function survivorHarness(dialog: (close: () => void) => ReactNode, survivorId: string) {
+    return function Harness() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button id="opener" type="button" onClick={() => setOpen(true)}>
+            opener
+          </button>
+          <div id={survivorId} tabIndex={-1}>
+            survivor
+          </div>
+          {open && dialog(() => setOpen(false))}
+        </>
+      );
+    };
+  }
+
+  it("a relation delete lands focus on the surviving list, not the body", async () => {
+    api.DELETE.mockResolvedValue({ data: undefined, response: ok(204) });
+    const Harness = survivorHarness(
+      (close) => (
+        <DeleteRelationDialog relation={R1} entities={ENTITIES} openerId="opener" onClose={close} fallbackFocusId="survivor-list" />
+      ),
+      "survivor-list",
+    );
+    mount(Harness);
+    openDialog();
+    fireEvent.click(screen.getByRole("button", { name: de["knowledge.crud.deleteConfirm"] }));
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      expect(document.activeElement).toBe(document.getElementById("survivor-list"));
+    });
+  });
+
+  it("an entity delete lands focus on the surviving container, not the body", async () => {
+    api.DELETE.mockResolvedValue({ data: undefined, response: ok(204) });
+    const Harness = survivorHarness(
+      (close) => (
+        <DeleteEntityDialog entity={MAYA} relationCount={2} openerId="opener" onClose={close} fallbackFocusId="survivor-dossier" />
+      ),
+      "survivor-dossier",
+    );
+    mount(Harness);
+    openDialog();
+    fireEvent.click(screen.getByRole("button", { name: de["knowledge.crud.deleteConfirm"] }));
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      expect(document.activeElement).toBe(document.getElementById("survivor-dossier"));
+    });
+  });
+
+  it("a CANCEL still returns focus to the opener — the survivor is the write's path only", () => {
+    const Harness = survivorHarness(
+      (close) => (
+        <DeleteRelationDialog relation={R1} entities={ENTITIES} openerId="opener" onClose={close} fallbackFocusId="survivor-list" />
+      ),
+      "survivor-list",
+    );
+    mount(Harness);
+    openDialog();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(document.activeElement).toBe(screen.getByText("opener"));
   });
 });
 

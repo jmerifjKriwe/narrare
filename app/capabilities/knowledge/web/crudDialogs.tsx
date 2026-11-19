@@ -101,7 +101,10 @@ function ErrorLine({ message, onRetry }: { message: string; onRetry: () => void 
 /** The modal frame: the scrim, the panel, the shared keyboard discipline and
  *  the focus contract. `onDismiss` is the dialog's own guarded close (Escape
  *  and, when `scrimDismiss`, a press outside); focus lands on `focusRef` and
- *  returns to the opener on unmount. */
+ *  returns to the opener on unmount. A destructive write that RETIRES its
+ *  opener (a deleted row, a folded dossier) sets `retiredRef`; the return then
+ *  lands on `survivorFocusId` — the container that survives the write — instead
+ *  of an opener that is gone, so focus never falls to the body. */
 function Modal({
   openerId,
   role,
@@ -111,6 +114,8 @@ function Modal({
   scrimDismiss,
   focusRef,
   panelClassName,
+  survivorFocusId,
+  retiredRef,
   children,
 }: {
   openerId: string;
@@ -121,6 +126,8 @@ function Modal({
   scrimDismiss: boolean;
   focusRef: RefObject<HTMLElement | null>;
   panelClassName: string;
+  survivorFocusId?: string;
+  retiredRef?: RefObject<boolean>;
   children: ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -128,9 +135,11 @@ function Modal({
   useEffect(() => {
     focusRef.current?.focus();
     return () => {
-      document.getElementById(openerId)?.focus();
+      const retired = retiredRef?.current === true;
+      const id = retired && survivorFocusId !== undefined ? survivorFocusId : openerId;
+      document.getElementById(id)?.focus();
     };
-  }, [openerId, focusRef]);
+  }, [openerId, focusRef, survivorFocusId, retiredRef]);
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4 backdrop-blur-[1px]"
@@ -470,6 +479,7 @@ export function DeleteEntityDialog({
   openerId,
   onClose,
   onDeleted,
+  fallbackFocusId = "entity-dossier",
 }: {
   entity: Entity;
   relationCount: number;
@@ -477,6 +487,8 @@ export function DeleteEntityDialog({
   onClose: () => void;
   /** The write landed: the home folds the dossier before the dialog closes. */
   onDeleted?: () => void;
+  /** The container that survives the delete, for focus when the opener goes. */
+  fallbackFocusId?: string;
 }) {
   const t = useTranslation();
   const [error, setError] = useState(false);
@@ -484,6 +496,7 @@ export function DeleteEntityDialog({
   const busy = remove.isPending;
 
   const cancelRef = useRef<HTMLButtonElement | null>(null);
+  const retiredRef = useRef(false);
   const headingId = useId();
   const bodyId = useId();
 
@@ -491,6 +504,7 @@ export function DeleteEntityDialog({
     setError(false);
     remove.mutate(entity.id, {
       onSuccess: () => {
+        retiredRef.current = true;
         onDeleted?.();
         onClose();
       },
@@ -510,6 +524,8 @@ export function DeleteEntityDialog({
       scrimDismiss={false}
       focusRef={cancelRef}
       panelClassName={CONFIRM_PANEL}
+      survivorFocusId={fallbackFocusId}
+      retiredRef={retiredRef}
     >
       <ConfirmBadge icon="trash" />
       <div>
@@ -673,7 +689,7 @@ export function EditRelationDialog({
   const typeRef = useRef<HTMLInputElement | null>(null);
   const headingId = useId();
   const listId = useId();
-  const resolvedType = resolveRelationType(t, typeInput);
+  const resolvedType = resolveRelationType(t, typeInput, relation.relation_type);
 
   function save() {
     setError(false);
@@ -743,11 +759,14 @@ export function DeleteRelationDialog({
   entities,
   openerId,
   onClose,
+  fallbackFocusId = "dossier-relations",
 }: {
   relation: Relation;
   entities: readonly Entity[];
   openerId: string;
   onClose: () => void;
+  /** The relations list that survives the edge's removal, for focus. */
+  fallbackFocusId?: string;
 }) {
   const t = useTranslation();
   const nameById = new Map(entities.map((row) => [row.id, row.name]));
@@ -758,6 +777,7 @@ export function DeleteRelationDialog({
   const busy = remove.isPending;
 
   const cancelRef = useRef<HTMLButtonElement | null>(null);
+  const retiredRef = useRef(false);
   const headingId = useId();
   const bodyId = useId();
 
@@ -765,7 +785,13 @@ export function DeleteRelationDialog({
     setError(false);
     remove.mutate(
       { relationId: relation.id },
-      { onSuccess: onClose, onError: () => setError(true) },
+      {
+        onSuccess: () => {
+          retiredRef.current = true;
+          onClose();
+        },
+        onError: () => setError(true),
+      },
     );
   }
 
@@ -781,6 +807,8 @@ export function DeleteRelationDialog({
       scrimDismiss={false}
       focusRef={cancelRef}
       panelClassName={CONFIRM_PANEL}
+      survivorFocusId={fallbackFocusId}
+      retiredRef={retiredRef}
     >
       <ConfirmBadge icon="trash" />
       <div>
@@ -879,7 +907,9 @@ export function MergeDialog({
         <p id={bodyId} className="mt-0.5 text-meta leading-snug text-muted">
           {ready
             ? t("knowledge.crud.mergeBody", { source: sourceName, target: targetName })
-            : t("knowledge.crud.mergeTargetRequired")}
+            : sourceId === ""
+              ? t("knowledge.crud.mergeSourceRequired")
+              : t("knowledge.crud.mergeTargetRequired")}
         </p>
       </div>
       {source === null ? (

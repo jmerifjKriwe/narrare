@@ -90,12 +90,16 @@ export function EntityDossier({
   entities,
   onClose,
   onSelectEntity,
+  focusFallbackId,
 }: {
   entity: Entity;
   relations: readonly Relation[];
   entities: readonly Entity[];
   onClose: () => void;
   onSelectEntity: (id: string) => void;
+  /** The home's surviving container, for focus when a delete folds this
+   *  dossier (the graph passes its page; the dossiers page its grid). */
+  focusFallbackId?: string;
 }) {
   const t = useTranslation();
   const theme = typeTheme(entity.type);
@@ -106,9 +110,11 @@ export function EntityDossier({
   return (
     <>
     <aside
+      id="entity-dossier"
       data-testid="entity-dossier"
+      tabIndex={-1}
       aria-label={t("knowledge.dossier.title")}
-      className="flex h-full w-full flex-col overflow-y-auto border-l border-border bg-panel"
+      className="flex h-full w-full flex-col overflow-y-auto border-l border-border bg-panel focus:outline-none"
     >
       <div className="flex flex-col gap-5 p-5">
         {/* The panel header — the eyebrow left, the invented bookmark/export
@@ -229,7 +235,12 @@ export function EntityDossier({
           {relations.length === 0 ? (
             <p className="text-meta italic text-muted">{t("knowledge.dossier.noRelations")}</p>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul
+              id="dossier-relations"
+              tabIndex={-1}
+              aria-label={t("knowledge.dossier.relations")}
+              className="flex flex-col gap-2 focus:outline-none"
+            >
               {relations.map((relation) => {
                 const outgoing = relation.from_entity_id === entity.id;
                 const otherId = outgoing ? relation.to_entity_id : relation.from_entity_id;
@@ -271,8 +282,8 @@ export function EntityDossier({
                           type="button"
                           id={`dossier-relation-edit-${relation.id}`}
                           onClick={() => setDialog({ kind: "editRelation", relation })}
-                          aria-label={t("knowledge.crud.editRelationTitle")}
-                          title={t("knowledge.crud.editRelationTitle")}
+                          aria-label={`${t("knowledge.crud.editRelationTitle")}: ${other?.name ?? otherId}`}
+                          title={`${t("knowledge.crud.editRelationTitle")}: ${other?.name ?? otherId}`}
                           className={`flex h-6 w-6 items-center justify-center rounded text-muted transition-colors hover:bg-surface-container-high hover:text-foreground ${FOCUS}`}
                         >
                           <Icon name="editNote" size={13} />
@@ -281,8 +292,8 @@ export function EntityDossier({
                           type="button"
                           id={`dossier-relation-delete-${relation.id}`}
                           onClick={() => setDialog({ kind: "deleteRelation", relation })}
-                          aria-label={t("knowledge.crud.deleteRelationTitle")}
-                          title={t("knowledge.crud.deleteRelationTitle")}
+                          aria-label={`${t("knowledge.crud.deleteRelationTitle")}: ${other?.name ?? otherId}`}
+                          title={`${t("knowledge.crud.deleteRelationTitle")}: ${other?.name ?? otherId}`}
                           className={`flex h-6 w-6 items-center justify-center rounded text-muted transition-colors hover:bg-danger/10 hover:text-danger ${FOCUS}`}
                         >
                           <Icon name="trash" size={13} />
@@ -347,6 +358,7 @@ export function EntityDossier({
         openerId="dossier-delete"
         onClose={closeDialog}
         onDeleted={onClose}
+        fallbackFocusId={focusFallbackId ?? "entity-dossier"}
       />
     )}
     {dialog?.kind === "addRelation" && (

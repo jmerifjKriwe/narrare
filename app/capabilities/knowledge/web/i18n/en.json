@@ -27,6 +27,7 @@
   "knowledge.crud.mergeNeedsTwo": "Merge needs at least two entities.",
   "knowledge.crud.mergeNote": "The source is deleted; the target survives.",
   "knowledge.crud.mergeSourceLabel": "Source (disappears)",
+  "knowledge.crud.mergeSourceRequired": "Choose the entity that disappears.",
   "knowledge.crud.mergeTargetLabel": "Target (survives)",
   "knowledge.crud.mergeTargetRequired": "Choose the entity that survives.",
   "knowledge.crud.mergeTitle": "Merge entities",

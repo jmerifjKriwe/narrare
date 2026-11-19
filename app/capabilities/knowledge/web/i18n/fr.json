@@ -27,6 +27,7 @@
   "knowledge.crud.mergeNeedsTwo": "La fusion nécessite au moins deux entités.",
   "knowledge.crud.mergeNote": "La source est supprimée ; la cible survit.",
   "knowledge.crud.mergeSourceLabel": "Source (disparaît)",
+  "knowledge.crud.mergeSourceRequired": "Choisis l'entité qui disparaît.",
   "knowledge.crud.mergeTargetLabel": "Cible (survit)",
   "knowledge.crud.mergeTargetRequired": "Choisis l'entité qui survit.",
   "knowledge.crud.mergeTitle": "Fusionner les entités",

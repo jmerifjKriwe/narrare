@@ -86,12 +86,26 @@ export function relationTypeOptions(
  *  to the vocabulary key (so the graph re-localizes it), any other trimmed
  *  input rides as the free text it is (D7). The round trip is the label
  *  helper's inverse — `relationTypeLabel` then `resolveRelationType` returns
- *  the key; an unknown string returns itself. */
+ *  the key; an unknown string returns itself.
+ *
+ *  `storedType` is the edit box's stored value: the label-equality path only
+ *  canonicalizes when that value IS a vocabulary key (or there is none — a
+ *  fresh create picking a suggestion). A stored FREE TEXT that happens to
+ *  spell a locale's label must round-trip as itself on an untouched save,
+ *  never silently become the key whose label it collides with. */
 export function resolveRelationType(
   t: (key: MessageKey) => string,
   value: string,
+  storedType?: string,
 ): string {
   const trimmed = value.trim();
+  if (
+    storedType !== undefined &&
+    !Object.hasOwn(RELATION_KEYS, storedType) &&
+    trimmed === relationTypeLabel(t, storedType)
+  ) {
+    return storedType;
+  }
   for (const key of RELATION_TYPES) {
     if (t(RELATION_KEYS[key]) === trimmed) return key;
   }

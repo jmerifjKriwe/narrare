@@ -27,6 +27,7 @@
   "knowledge.crud.mergeNeedsTwo": "Zum Zusammenführen braucht es mindestens zwei Entitäten.",
   "knowledge.crud.mergeNote": "Die Quelle wird gelöscht; das Ziel bleibt.",
   "knowledge.crud.mergeSourceLabel": "Quelle (verschwindet)",
+  "knowledge.crud.mergeSourceRequired": "Wähle die Entität, die verschwindet.",
   "knowledge.crud.mergeTargetLabel": "Ziel (bleibt)",
   "knowledge.crud.mergeTargetRequired": "Wähle die Entität, die bleibt.",
   "knowledge.crud.mergeTitle": "Entitäten zusammenführen",

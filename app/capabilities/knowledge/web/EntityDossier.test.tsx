@@ -134,6 +134,20 @@ describe("the footer's edit and delete doors are live", () => {
     const jump = screen.getByRole("button", { name: new RegExp(de["knowledge.dossier.jump"]) });
     expect((jump as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it("an entity delete lands focus on the dossier container, not the body (review fix)", async () => {
+    api.DELETE.mockResolvedValue({ data: undefined, response: ok(204) });
+    // onClose is a spy here, so the dossier survives the fold — its container
+    // is the focus survivor (the graph passes its own page when it folds).
+    mountDossier();
+    fireEvent.click(document.getElementById("dossier-delete") as HTMLElement);
+    const confirm = await screen.findByRole("alertdialog");
+    fireEvent.click(within(confirm).getByRole("button", { name: de["knowledge.crud.deleteConfirm"] }));
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      expect(document.activeElement).toBe(document.getElementById("entity-dossier"));
+    });
+  });
 });
 
 describe("the quick-add relation door is live", () => {
@@ -193,6 +207,29 @@ describe("each relation card carries edit and delete beside the select door", ()
     const edit = document.getElementById("dossier-relation-edit-r1") as HTMLElement;
     // The affordance is a button itself; it must not sit INSIDE another button.
     expect(edit.parentElement?.closest("button")).toBeNull();
+  });
+
+  it("the edit/delete affordances name the other end — distinguishable per card (review fix)", () => {
+    mountDossier();
+    const editR1 = document.getElementById("dossier-relation-edit-r1");
+    const editR2 = document.getElementById("dossier-relation-edit-r2");
+    expect(editR1?.getAttribute("aria-label")).toContain("ARIA");
+    expect(editR2?.getAttribute("aria-label")).toContain("Station 7");
+    expect(editR1?.getAttribute("aria-label")).not.toBe(editR2?.getAttribute("aria-label"));
+    expect(document.getElementById("dossier-relation-delete-r1")?.getAttribute("aria-label")).toContain("ARIA");
+    expect(document.getElementById("dossier-relation-delete-r2")?.getAttribute("aria-label")).toContain("Station 7");
+  });
+
+  it("a relation delete lands focus on the relations list, not the body (review fix)", async () => {
+    api.DELETE.mockResolvedValue({ data: undefined, response: ok(204) });
+    mountDossier();
+    fireEvent.click(document.getElementById("dossier-relation-delete-r2") as HTMLElement);
+    const confirm = await screen.findByRole("alertdialog");
+    fireEvent.click(within(confirm).getByRole("button", { name: de["knowledge.crud.deleteConfirm"] }));
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      expect(document.activeElement).toBe(document.getElementById("dossier-relations"));
+    });
   });
 });
 

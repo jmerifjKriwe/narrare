@@ -354,7 +354,7 @@ export function LoreGraphPage() {
       : null;
 
   return (
-    <div data-testid="graph-page" className="flex h-full flex-col overflow-hidden">
+    <div id="graph-page" data-testid="graph-page" tabIndex={-1} className="flex h-full flex-col overflow-hidden focus:outline-none">
       {/* The subbar — the view label, the type filter chips, the search and
           the draft's CRUD doors (Task 4: relation/merge live, new-entity gap). */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-container-low px-4 py-2">
@@ -705,6 +705,7 @@ export function LoreGraphPage() {
               entities={entityList}
               onClose={() => select(null)}
               onSelectEntity={(id) => select(id)}
+              focusFallbackId="graph-page"
             />
           </div>
         )}
