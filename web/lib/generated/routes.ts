@@ -13,10 +13,19 @@
 // passes the workspace route into every factory: capabilities never
 // import each other; this generated table is the one composition
 // point.
+import { routes as knowledge, dockRoutes as knowledgeDocks } from "../../../app/capabilities/knowledge/web/routes";
 import { routes as setup } from "../../../app/capabilities/setup/web/routes";
-import { routes as writing } from "../../../app/capabilities/writing/web/routes";
+import { routes as writing, workspaceRoute } from "../../../app/capabilities/writing/web/routes";
+
+const knowledgeDockRoutes = knowledgeDocks.map((dock) => dock(workspaceRoute));
 
 export const capabilityRoutes = [
+  ...knowledge,
   ...setup,
   ...writing,
+  //
+  // Dock children come after every capability's own routes: the router
+  // initializes a route from its parent, so the workspace route must be
+  // in the table before the dock routes parented at it.
+  ...knowledgeDockRoutes,
 ] as const;

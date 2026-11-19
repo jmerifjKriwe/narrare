@@ -220,6 +220,9 @@ function scriptApi() {
     }
     if (path === "/api/writing/activity") return activityAnswer();
     if (path === "/api/planning/novels/{novel_id}/storyboard") return storyboardAnswer();
+    // The dock header badge's findings read (W5 Task 2) — the shell's
+    // seam, answered quiet so the workspace pins stay about the workspace.
+    if (path === "/api/knowledge/novels/{novel_id}/findings") return { data: [], response: ok() };
     throw new Error(`unexpected request: ${path}`);
   });
   api.POST.mockImplementation(async (path: string, init?: { params?: { path?: Record<string, string> } }) => {
