@@ -71,10 +71,10 @@ the wave that owns the trigger and the row's child under index #907.
   chrome E2E (a77386ac) pins it live.
 - **The dock's #866/#867 interims** (the W4 ledger's rows 1/2): retired by
   Tasks 1/2 — the findings face and the entity chips are real; both issues
-  are wired to close from `112fd9be` (rides #913, closes on merge — the
-  #895 annotation precedent; the chain's first PR #909 was closed unmerged
-  once already). The W4 rows are marked resolved in the same
-  commit that opens this ledger.
+  closed with #913 (`e9ff009c` — the `Closes` keywords wired in `112fd9be`
+  fired at merge; the #895 annotation precedent; the chain's first PR #909
+  was closed unmerged once already). The W4 rows are marked resolved in the
+  same commit that opens this ledger.
 
 ## Known-pattern notes (no row owed — the pattern is the record)
 
@@ -93,6 +93,13 @@ the wave that owns the trigger and the row's child under index #907.
   E2E's keyboard leg pins them; a corrected behavior would fold the popover
   when its edge leaves the visible set. Recorded as the note it is: nothing
   lies, nothing is stranded from the keyboard.
+- **The relations family's two key shapes** (the whole-branch review's
+  note): the per-entity read caches under `["knowledge", "relations",
+  entityId]` and the novel-wide canvas read under `["knowledge",
+  "relations", "novel", novelId]` — collision-free (an id is never the
+  literal `"novel"`), but heterogeneous. The rule the pair sets: the next
+  read added to this family must reuse one of these two shapes, not invent
+  a third.
 
 ## Handovers
 
