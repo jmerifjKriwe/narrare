@@ -14,9 +14,10 @@
  *   link and the back button both work. An edge click opens its note popover.
  * - Type filter chips and a name search narrow the canvas client-side over
  *   the loaded web; the layout stays put (filtering hides, never re-seats).
- * - The draft's CRUD actions (new entity, draw relation, merge) are Task 4's
- *   dialogs and the new-entity door has no endpoint at all (entities are born
- *   through review) — they stand disabled with their honest gap notes.
+ * - The draft's CRUD doors (W5 Task 4): draw relation and merge open the
+ *   shared dialogs (`crudDialogs.tsx`); the new-entity door has no endpoint
+ *   at all (entities are born through review) and stands an honest disabled
+ *   gap with its note.
  *
  * The page reads the real API through the shell's query seam and imports no
  * other capability (rule 1). Loading, outage and the empty canon each answer
@@ -41,6 +42,7 @@ import { CARD_EYEBROW, FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 
 import { EntityDossier } from "./EntityDossier";
+import { CreateRelationDialog, MergeDialog } from "./crudDialogs";
 import { entityTypeIcon, entityTypeLabel, typeTheme } from "./entityTypes";
 import { fitTransform, graphBounds, graphSignature, layoutGraph, type Transform } from "./graphLayout";
 import { relationTypeLabel } from "./relations";
@@ -76,6 +78,8 @@ export function LoreGraphPage() {
   const [activeType, setActiveType] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [edgeId, setEdgeId] = useState<string | null>(null);
+  // Which subbar CRUD dialog stands open (Task 4); the dossier owns its own.
+  const [crud, setCrud] = useState<null | "addRelation" | "merge">(null);
 
   const entityList = useMemo(() => entities.data ?? [], [entities.data]);
   const relationList = useMemo(() => relations.data ?? [], [relations.data]);
@@ -352,7 +356,7 @@ export function LoreGraphPage() {
   return (
     <div data-testid="graph-page" className="flex h-full flex-col overflow-hidden">
       {/* The subbar — the view label, the type filter chips, the search and
-          the draft's CRUD doors (Task 4's, disabled with their notes). */}
+          the draft's CRUD doors (Task 4: relation/merge live, new-entity gap). */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-container-low px-4 py-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="flex items-center gap-1.5 rounded-full border border-rule bg-card px-3 py-1 text-meta font-semibold text-foreground shadow-card">
@@ -418,17 +422,25 @@ export function LoreGraphPage() {
           </label>
           <button
             type="button"
-            disabled
-            title={`${t("knowledge.graph.merge")} (${t("knowledge.graph.mergeNote")})`}
-            className="flex cursor-not-allowed items-center gap-1.5 rounded-[var(--radius-control)] bg-surface-container-high px-3 py-1 text-meta text-foreground opacity-60"
+            id="graph-merge"
+            disabled={entityList.length < 2}
+            onClick={() => setCrud("merge")}
+            title={
+              entityList.length < 2
+                ? `${t("knowledge.graph.merge")} (${t("knowledge.crud.mergeNeedsTwo")})`
+                : t("knowledge.graph.merge")
+            }
+            className={`flex items-center gap-1.5 rounded-[var(--radius-control)] bg-surface-container-high px-3 py-1 text-meta text-foreground transition-colors ${FOCUS} ${
+              entityList.length < 2 ? "cursor-not-allowed opacity-60" : "hover:bg-surface-container"
+            }`}
           >
             <Icon name="copy" size={14} /> {t("knowledge.graph.merge")}
           </button>
           <button
             type="button"
-            disabled
-            title={`${t("knowledge.graph.addEdge")} (${t("knowledge.graph.addEdgeNote")})`}
-            className="flex cursor-not-allowed items-center gap-1.5 rounded-[var(--radius-control)] bg-surface-container-high px-3 py-1 text-meta text-foreground opacity-60"
+            id="graph-add-edge"
+            onClick={() => setCrud("addRelation")}
+            className={`flex items-center gap-1.5 rounded-[var(--radius-control)] bg-surface-container-high px-3 py-1 text-meta text-foreground transition-colors hover:bg-surface-container ${FOCUS}`}
           >
             <Icon name="hub" size={14} /> {t("knowledge.graph.addEdge")}
           </button>
@@ -697,6 +709,29 @@ export function LoreGraphPage() {
           </div>
         )}
       </div>
+
+      {/* The subbar's CRUD dialogs (Task 4). The selected entity is the fixed
+          end when one stands; the merge moves the selection to the survivor.
+          Each mutation refetches the server's truth — no optimistic graph. */}
+      {crud === "addRelation" && (
+        <CreateRelationDialog
+          novelId={novelId}
+          entities={entityList}
+          from={selected}
+          openerId="graph-add-edge"
+          onClose={() => setCrud(null)}
+        />
+      )}
+      {crud === "merge" && (
+        <MergeDialog
+          novelId={novelId}
+          entities={entityList}
+          source={selected}
+          openerId="graph-merge"
+          onClose={() => setCrud(null)}
+          onMerged={(id) => select(id)}
+        />
+      )}
     </div>
   );
 }

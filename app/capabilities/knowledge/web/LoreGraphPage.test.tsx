@@ -36,7 +36,7 @@ import { queryClient } from "@shell/lib/query";
 import { LoreGraphPage } from "./LoreGraphPage";
 
 const de = catalogs.de;
-const api = client as unknown as Record<"GET", ReturnType<typeof vi.fn>>;
+const api = client as unknown as Record<"GET" | "POST", ReturnType<typeof vi.fn>>;
 
 configure({ asyncUtilTimeout: 5000 });
 
@@ -191,9 +191,9 @@ describe("a node click opens the dossier with the real fields", () => {
     expect(within(dossier).getByText(de["knowledge.dossier.excerptsGap"])).toBeTruthy();
     // The status gap row (no model carries a status).
     expect(within(dossier).getByText(de["knowledge.dossier.status"])).toBeTruthy();
-    // Edit / jump / bookmark / export are disabled doors with their notes.
+    // Edit is live now (Task 4's dialog); jump stays a disabled gap.
     const edit = within(dossier).getByRole("button", { name: new RegExp(de["knowledge.dossier.edit"]) });
-    expect((edit as HTMLButtonElement).disabled).toBe(true);
+    expect((edit as HTMLButtonElement).disabled).toBe(false);
     const jump = within(dossier).getByRole("button", { name: new RegExp(de["knowledge.dossier.jump"]) });
     expect((jump as HTMLButtonElement).disabled).toBe(true);
   });
@@ -498,5 +498,89 @@ describe("an unchanged graph keeps your zoom (review fix)", () => {
     // The refetch landed and re-rendered; the zoom is the user's still.
     await waitFor(() => expect(screen.getByTestId("graph-world").style.transform).toBe(zoomed));
     expect(worldScale()).toBeGreaterThan(fit);
+  });
+});
+
+describe("the subbar's CRUD doors (Task 4)", () => {
+  function countGets(path: string): number {
+    return api.GET.mock.calls.filter(([p]) => p === path).length;
+  }
+
+  it("addEdge and merge are live; newEntity stays an honest disabled gap", async () => {
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const add = screen.getByRole("button", { name: de["knowledge.graph.addEdge"] });
+    expect((add as HTMLButtonElement).disabled).toBe(false);
+    const merge = screen.getByRole("button", { name: de["knowledge.graph.merge"] });
+    expect((merge as HTMLButtonElement).disabled).toBe(false);
+    const newEntity = screen.getByRole("button", { name: new RegExp(de["knowledge.graph.newEntity"]) });
+    expect((newEntity as HTMLButtonElement).disabled).toBe(true);
+    // The gap note tells the truth — no dead „arrives with the dialogs" promise.
+    expect(newEntity.getAttribute("title")).toContain(de["knowledge.graph.newEntityNote"]);
+    expect(de["knowledge.graph.newEntityNote"]).not.toContain("CRUD");
+  });
+
+  it("the addEdge door opens the create dialog; a save refetches the edges", async () => {
+    api.POST.mockResolvedValue({ data: R1, response: new Response(null, { status: 201 }) });
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const before = countGets("/api/knowledge/novels/{novel_id}/relations");
+    fireEvent.click(document.getElementById("graph-add-edge") as HTMLElement);
+    const dialog = await screen.findByRole("dialog");
+    // No selection stands, so the from end is selectable too.
+    fireEvent.change(within(dialog).getByLabelText(de["knowledge.crud.fromLabel"]), { target: { value: "e1" } });
+    fireEvent.change(within(dialog).getByLabelText(de["knowledge.crud.toLabel"]), { target: { value: "e2" } });
+    fireEvent.change(within(dialog).getByLabelText(de["knowledge.crud.relationTypeLabel"]), { target: { value: "ally_of" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["knowledge.crud.save"] }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(api.POST).toHaveBeenCalledWith("/api/knowledge/entities/{entity_id}/relations", {
+      params: { path: { entity_id: "e1" } },
+      body: { to_entity_id: "e2", relation_type: "ally_of", note: undefined },
+    });
+    // The settled mutation invalidates the edges — the canvas refetches truth.
+    await waitFor(() => expect(countGets("/api/knowledge/novels/{novel_id}/relations")).toBeGreaterThan(before));
+  });
+
+  it("the merge door opens the merge dialog; a merge refetches the canon and selects the survivor", async () => {
+    api.POST.mockResolvedValue({ data: ARIA, response: new Response(null, { status: 200 }) });
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const before = countGets("/api/knowledge/novels/{novel_id}/entities");
+    fireEvent.click(document.getElementById("graph-merge") as HTMLElement);
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.change(within(dialog).getByLabelText(de["knowledge.crud.mergeSourceLabel"]), { target: { value: "e1" } });
+    fireEvent.change(within(dialog).getByLabelText(de["knowledge.crud.mergeTargetLabel"]), { target: { value: "e2" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["knowledge.crud.mergeConfirm"] }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(api.POST).toHaveBeenCalledWith("/api/knowledge/entities/{entity_id}/merge", {
+      params: { path: { entity_id: "e1" } },
+      body: { target_id: "e2" },
+    });
+    await waitFor(() => expect(countGets("/api/knowledge/novels/{novel_id}/entities")).toBeGreaterThan(before));
+    // The survivor is selected — the dossier follows the merge's truth.
+    expect(await screen.findByTestId("entity-dossier")).toBeTruthy();
+    expect(within(screen.getByTestId("entity-dossier")).getByText("ARIA")).toBeTruthy();
+  });
+
+  it("the merge door is disabled with its note when fewer than two entities stand", async () => {
+    entities = [MAYA];
+    relations = [];
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const merge = screen.getByRole("button", { name: new RegExp(de["knowledge.graph.merge"]) });
+    expect((merge as HTMLButtonElement).disabled).toBe(true);
+    expect(merge.getAttribute("title")).toContain(de["knowledge.crud.mergeNeedsTwo"]);
+  });
+
+  it("a door returns focus to its trigger on a pristine Escape", async () => {
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const trigger = document.getElementById("graph-add-edge") as HTMLElement;
+    trigger.focus();
+    fireEvent.click(trigger);
+    await screen.findByRole("dialog");
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(document.activeElement).toBe(trigger);
   });
 });

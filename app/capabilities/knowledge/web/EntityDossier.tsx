@@ -11,20 +11,39 @@
  * - Manuscript excerpts: no mention tracking exists — a disabled area with
  *   its gap note, never an invented quotation.
  * - Bookmark / export: no endpoint serves them — disabled with their notes.
- * - Edit / quick-add relation: the API carries them, but the dialogs are
- *   Task 4's — disabled placeholders naming that, no dead promise.
+ * - Edit / delete / quick-add relation and each relation card's edit/delete
+ *   (W5 Task 4): the real CRUD dialogs (`crudDialogs.tsx`) — the disabled
+ *   placeholders retired. The mutations refetch the server's truth.
  * - Jump to manuscript: no mention tracking — disabled with its gap note.
  *
  * The panel imports no other capability (rule 1); it speaks through the
  * shell's tokens and the capability's own type/relation vocabulary.
  */
+import { useState } from "react";
+
 import type { Entity, Relation } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { CARD_EYEBROW, FOCUS, NeutralRow } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 
+import {
+  CreateRelationDialog,
+  DeleteEntityDialog,
+  DeleteRelationDialog,
+  EditEntityDialog,
+  EditRelationDialog,
+} from "./crudDialogs";
 import { entityTypeLabel, typeTheme } from "./entityTypes";
 import { relationTypeLabel } from "./relations";
+
+/** Which CRUD dialog the dossier has open — one at a time, the relation
+ *  kinds carrying the edge they act on. */
+type DossierDialog =
+  | { kind: "edit" }
+  | { kind: "delete" }
+  | { kind: "addRelation" }
+  | { kind: "editRelation"; relation: Relation }
+  | { kind: "deleteRelation"; relation: Relation };
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
 const SERIF = "[font-family:var(--font-serif)]";
@@ -81,8 +100,11 @@ export function EntityDossier({
   const t = useTranslation();
   const theme = typeTheme(entity.type);
   const nameById = new Map(entities.map((row) => [row.id, row]));
+  const [dialog, setDialog] = useState<DossierDialog | null>(null);
+  const closeDialog = () => setDialog(null);
 
   return (
+    <>
     <aside
       data-testid="entity-dossier"
       aria-label={t("knowledge.dossier.title")}
@@ -197,10 +219,9 @@ export function EntityDossier({
             </h3>
             <button
               type="button"
-              disabled
-              title={`${t("knowledge.dossier.addRelation")} (${t("knowledge.dossier.addRelationNote")})`}
-              aria-label={`${t("knowledge.dossier.addRelation")} (${t("knowledge.dossier.addRelationNote")})`}
-              className="flex cursor-not-allowed items-center gap-0.5 text-meta text-primary opacity-60"
+              id="dossier-add-relation"
+              onClick={() => setDialog({ kind: "addRelation" })}
+              className={`flex items-center gap-0.5 rounded text-meta text-primary transition-colors hover:text-foreground ${FOCUS}`}
             >
               <Icon name="plus" size={13} /> {t("knowledge.dossier.addRelation")}
             </button>
@@ -215,30 +236,59 @@ export function EntityDossier({
                 const other = nameById.get(otherId);
                 const otherTheme = typeTheme(other?.type ?? "generic");
                 return (
-                  <li key={relation.id}>
-                    <button
-                      type="button"
-                      onClick={() => onSelectEntity(otherId)}
-                      className={`w-full rounded-[var(--radius-control)] border border-rule bg-surface-container-low p-2.5 text-left transition-colors hover:bg-surface-container ${FOCUS}`}
-                    >
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${otherTheme.dot}`} />
-                          <span className="truncate text-meta font-semibold text-foreground">
-                            {other?.name ?? otherId}
+                  <li
+                    key={relation.id}
+                    className="rounded-[var(--radius-control)] border border-rule bg-surface-container-low transition-colors hover:bg-surface-container"
+                  >
+                    <div className="flex items-start gap-1 p-2.5">
+                      <button
+                        type="button"
+                        onClick={() => onSelectEntity(otherId)}
+                        className={`min-w-0 flex-1 rounded text-left ${FOCUS}`}
+                      >
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${otherTheme.dot}`} />
+                            <span className="truncate text-meta font-semibold text-foreground">
+                              {other?.name ?? otherId}
+                            </span>
+                            <span aria-hidden="true" className="shrink-0 text-muted">
+                              {outgoing ? "→" : "←"}
+                            </span>
                           </span>
-                          <span aria-hidden="true" className="shrink-0 text-muted">
-                            {outgoing ? "→" : "←"}
+                          <span className="shrink-0 text-[11px] text-primary">
+                            {relationTypeLabel(t, relation.relation_type)}
                           </span>
                         </span>
-                        <span className="shrink-0 text-[11px] text-primary">
-                          {relationTypeLabel(t, relation.relation_type)}
-                        </span>
+                        {relation.note !== null && relation.note.trim() !== "" && (
+                          <span className="mt-1 block text-meta leading-relaxed text-muted">{relation.note}</span>
+                        )}
+                      </button>
+                      {/* The edge's own edit/delete doors — beside the select
+                          door, never nested in it (valid HTML). */}
+                      <span className="flex shrink-0 items-center gap-0.5">
+                        <button
+                          type="button"
+                          id={`dossier-relation-edit-${relation.id}`}
+                          onClick={() => setDialog({ kind: "editRelation", relation })}
+                          aria-label={t("knowledge.crud.editRelationTitle")}
+                          title={t("knowledge.crud.editRelationTitle")}
+                          className={`flex h-6 w-6 items-center justify-center rounded text-muted transition-colors hover:bg-surface-container-high hover:text-foreground ${FOCUS}`}
+                        >
+                          <Icon name="editNote" size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          id={`dossier-relation-delete-${relation.id}`}
+                          onClick={() => setDialog({ kind: "deleteRelation", relation })}
+                          aria-label={t("knowledge.crud.deleteRelationTitle")}
+                          title={t("knowledge.crud.deleteRelationTitle")}
+                          className={`flex h-6 w-6 items-center justify-center rounded text-muted transition-colors hover:bg-danger/10 hover:text-danger ${FOCUS}`}
+                        >
+                          <Icon name="trash" size={13} />
+                        </button>
                       </span>
-                      {relation.note !== null && relation.note.trim() !== "" && (
-                        <span className="mt-1 block text-meta leading-relaxed text-muted">{relation.note}</span>
-                      )}
-                    </button>
+                    </div>
                   </li>
                 );
               })}
@@ -259,12 +309,71 @@ export function EntityDossier({
         </div>
       </div>
 
-      {/* The action footer — edit is Task 4's dialog, jump needs mention
-          tracking; both stand disabled with their honest notes. */}
+      {/* The action footer — edit and delete open the real CRUD dialogs
+          (Task 4); jump needs mention tracking and stays an honest gap. */}
       <div className="mt-auto flex flex-col gap-2 border-t border-rule bg-surface-container-low p-5">
-        <GapButton label={t("knowledge.dossier.edit")} note={t("knowledge.dossier.editNote")} icon="editNote" primary />
+        <button
+          type="button"
+          id="dossier-edit"
+          onClick={() => setDialog({ kind: "edit" })}
+          className={`flex w-full items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-primary px-3 py-1.5 text-meta font-medium text-primary-foreground shadow-sm transition-all hover:opacity-95 ${FOCUS}`}
+        >
+          <Icon name="editNote" size={14} />
+          <span>{t("knowledge.dossier.edit")}</span>
+        </button>
+        <button
+          type="button"
+          id="dossier-delete"
+          onClick={() => setDialog({ kind: "delete" })}
+          className={`flex w-full items-center justify-center gap-1.5 rounded-[var(--radius-control)] border border-danger/40 px-3 py-1.5 text-meta font-medium text-danger transition-colors hover:bg-danger/10 ${FOCUS}`}
+        >
+          <Icon name="trash" size={14} />
+          <span>{t("knowledge.dossier.delete")}</span>
+        </button>
         <GapButton label={t("knowledge.dossier.jump")} note={t("knowledge.dossier.jumpNote")} icon="menuBook" />
       </div>
     </aside>
+
+    {/* The CRUD dialogs — one at a time, each returning focus to its opener.
+        A delete folds the dossier (onClose) once the write lands; the graph
+        and the dossiers refetch the server's truth through the mutations. */}
+    {dialog?.kind === "edit" && (
+      <EditEntityDialog entity={entity} openerId="dossier-edit" onClose={closeDialog} />
+    )}
+    {dialog?.kind === "delete" && (
+      <DeleteEntityDialog
+        entity={entity}
+        relationCount={relations.length}
+        openerId="dossier-delete"
+        onClose={closeDialog}
+        onDeleted={onClose}
+      />
+    )}
+    {dialog?.kind === "addRelation" && (
+      <CreateRelationDialog
+        novelId={entity.novel_id}
+        entities={entities}
+        from={entity}
+        openerId="dossier-add-relation"
+        onClose={closeDialog}
+      />
+    )}
+    {dialog?.kind === "editRelation" && (
+      <EditRelationDialog
+        relation={dialog.relation}
+        entities={entities}
+        openerId={`dossier-relation-edit-${dialog.relation.id}`}
+        onClose={closeDialog}
+      />
+    )}
+    {dialog?.kind === "deleteRelation" && (
+      <DeleteRelationDialog
+        relation={dialog.relation}
+        entities={entities}
+        openerId={`dossier-relation-delete-${dialog.relation.id}`}
+        onClose={closeDialog}
+      />
+    )}
+    </>
   );
 }

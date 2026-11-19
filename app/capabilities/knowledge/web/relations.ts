@@ -5,8 +5,9 @@ import type { MessageKey } from "@shell/lib/i18n";
  * suggestion, not an API constraint (D7): the stored `relation_type` is
  * free text, and whatever the extraction proposed is stored as its raw
  * string. Restored from the pre-W0 archive (W5 Task 2) — the suggestion
- * cards speak the vocabulary's wording; the CRUD boxes (Task 4) add the
- * autocomplete and the label-to-type resolver on top.
+ * cards speak the vocabulary's wording; the CRUD boxes (Task 4) ride the
+ * autocomplete (`relationTypeOptions`) and the label-to-type resolver
+ * (`resolveRelationType`) below.
  */
 export const RELATION_TYPES = [
   "ally_of",
@@ -70,4 +71,29 @@ export function relationTypeLabel(
 ): string {
   if (!Object.hasOwn(RELATION_KEYS, relationType)) return relationType;
   return t(RELATION_KEYS[relationType as (typeof RELATION_TYPES)[number]]);
+}
+
+/** The vocabulary as the CRUD type box's autocomplete suggestions: each
+ *  entry's stored key beside its wording in the reader's language (D7 — a
+ *  suggestion, not a constraint; the box also takes free text). */
+export function relationTypeOptions(
+  t: (key: MessageKey) => string,
+): { key: (typeof RELATION_TYPES)[number]; label: string }[] {
+  return RELATION_TYPES.map((key) => ({ key, label: t(RELATION_KEYS[key]) }));
+}
+
+/** The type the box stores: a suggestion picked by its wording resolves back
+ *  to the vocabulary key (so the graph re-localizes it), any other trimmed
+ *  input rides as the free text it is (D7). The round trip is the label
+ *  helper's inverse — `relationTypeLabel` then `resolveRelationType` returns
+ *  the key; an unknown string returns itself. */
+export function resolveRelationType(
+  t: (key: MessageKey) => string,
+  value: string,
+): string {
+  const trimmed = value.trim();
+  for (const key of RELATION_TYPES) {
+    if (t(RELATION_KEYS[key]) === trimmed) return key;
+  }
+  return trimmed;
 }
