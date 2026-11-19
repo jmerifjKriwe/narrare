@@ -50,6 +50,7 @@ import { TYPE_KEYS, entityTypeIcon, entityTypeLabel, typeTheme } from "./entityT
 
 const DOSSIERS_PATH = "/novels/$novelId/knowledge/dossiers";
 const GRAPH_PATH = "/novels/$novelId/knowledge/graph";
+const SOURCES_PATH = "/novels/$novelId/knowledge/sources";
 
 /** The draft's tab geometry on the shell's tokens: the active tab lifts onto
  *  the card surface with the brand ink; the rest wait in the muted register. */
@@ -214,6 +215,18 @@ export function DossiersPage() {
             className={`flex items-center gap-1.5 rounded-full border border-rule bg-card px-3 py-1 text-meta text-foreground shadow-card transition-colors hover:bg-surface-container ${FOCUS}`}
           >
             <Icon name="hub" size={14} /> {t("knowledge.graph.title")}
+          </button>
+          {/* The third sibling door (W5 Task 6): the sources archive keeps
+              the library's documents — no entity selection travels there. */}
+          <button
+            type="button"
+            data-testid="dossiers-sources-door"
+            onClick={() => {
+              void navigate({ to: SOURCES_PATH, params: { novelId }, search: {} });
+            }}
+            className={`flex items-center gap-1.5 rounded-full border border-rule bg-card px-3 py-1 text-meta text-foreground shadow-card transition-colors hover:bg-surface-container ${FOCUS}`}
+          >
+            <Icon name="autoStories" size={14} /> {t("knowledge.sources.title")}
           </button>
           <span aria-hidden="true" className="mx-1 h-4 w-px bg-rule" />
           <div role="group" aria-label={t("knowledge.graph.allTypes")} className="flex flex-wrap items-center gap-1.5">

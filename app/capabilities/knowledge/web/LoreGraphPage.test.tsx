@@ -114,8 +114,15 @@ async function renderGraph(entry = `/novels/${NOVEL_ID}/knowledge/graph`) {
       typeof search.entity === "string" && search.entity !== "" ? { entity: search.entity } : {},
     component: () => <p>dossiers face</p>,
   });
+  // The sources stub the third sibling door navigates to (W5 Task 6); the
+  // archive carries no entity selection, so the route takes no search param.
+  const sources = createRoute({
+    getParentRoute: () => harnessRoot,
+    path: "/novels/$novelId/knowledge/sources",
+    component: () => <p>sources face</p>,
+  });
   const router = createRouter({
-    routeTree: harnessRoot.addChildren([graph, dossiers]),
+    routeTree: harnessRoot.addChildren([graph, dossiers, sources]),
     history: createMemoryHistory({ initialEntries: [entry] }),
   });
   await router.load();
@@ -640,6 +647,16 @@ describe("the subbar's sibling door (W5 Task 5 — the two surfaces connect)", (
     expect(screen.queryByTestId("entity-dossier")).toBeNull();
     fireEvent.click(screen.getByTestId("graph-dossiers-door"));
     await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/knowledge/dossiers`));
+    expect(router.state.location.search).toEqual({});
+  });
+
+  it("the sources door opens the archive unscoped — documents are the library's, not an entity's (Task 6)", async () => {
+    const router = await renderGraph();
+    const nodes = await screen.findAllByTestId("graph-node");
+    fireEvent.click(within(nodes[0]).getByRole("button"));
+    await screen.findByTestId("entity-dossier");
+    fireEvent.click(screen.getByTestId("graph-sources-door"));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/knowledge/sources`));
     expect(router.state.location.search).toEqual({});
   });
 });

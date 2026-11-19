@@ -10,6 +10,10 @@
  * keyboard discipline rides the shell's one home (`@shell/ui/modalKeys`):
  * the trap and the wrap shared, the Escape answer each dialog's own.
  *
+ * The sources archive (W5 Task 6) mounts the same destructive family for
+ * its document delete — one home for the discipline, the document's own
+ * words (the chunk consequence) in the knowledge catalog.
+ *
  * The DIRTY-STATE RULE the edits carry: pristine keeps the scrim/Escape close;
  * any typed change refuses both silent paths and holds the cross unavailable,
  * so only Abbrechen and Speichern answer while edits stand. The confirms carry
@@ -35,10 +39,11 @@
  */
 import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
-import type { Entity, Relation } from "@shell/lib/api/client";
+import type { Entity, KnowledgeDocument, Relation } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import {
   useAddRelation,
+  useDeleteDocument,
   useDeleteEntity,
   useDeleteRelation,
   useMergeEntities,
@@ -933,6 +938,87 @@ export function MergeDialog({
         confirmTitle={t("knowledge.crud.mergeNote")}
         busyLabel={t("knowledge.crud.mergeBusy")}
         confirmLabel={t("knowledge.crud.mergeConfirm")}
+        onCancel={onClose}
+        onConfirm={confirm}
+        cancelRef={cancelRef}
+      />
+    </Modal>
+  );
+}
+
+// --- The document delete (W5 Task 6 — the sources archive) ------------------
+
+/**
+ * The sources archive's destructive confirm: the document and its chunks
+ * go together (the foreign key cascades — search cannot find the text
+ * again), and the body names that consequence before it happens. The
+ * write rides `useDeleteDocument`, whose invalidation refetches the
+ * archive's list; the deleted row retires its opener, so focus lands on
+ * the page root that survives (the entity delete's own rule).
+ */
+export function DeleteDocumentDialog({
+  document,
+  openerId,
+  onClose,
+  fallbackFocusId = "sources-page",
+}: {
+  document: KnowledgeDocument;
+  openerId: string;
+  onClose: () => void;
+  /** The container that survives the delete, for focus when the opener goes. */
+  fallbackFocusId?: string;
+}) {
+  const t = useTranslation();
+  const [error, setError] = useState(false);
+  const remove = useDeleteDocument();
+  const busy = remove.isPending;
+
+  const cancelRef = useRef<HTMLButtonElement | null>(null);
+  const retiredRef = useRef(false);
+  const headingId = useId();
+  const bodyId = useId();
+
+  function confirm() {
+    setError(false);
+    remove.mutate(document.id, {
+      onSuccess: () => {
+        retiredRef.current = true;
+        onClose();
+      },
+      onError: () => setError(true),
+    });
+  }
+
+  return (
+    <Modal
+      openerId={openerId}
+      role="alertdialog"
+      headingId={headingId}
+      bodyId={bodyId}
+      onDismiss={() => {
+        if (!busy) onClose();
+      }}
+      scrimDismiss={false}
+      focusRef={cancelRef}
+      panelClassName={CONFIRM_PANEL}
+      survivorFocusId={fallbackFocusId}
+      retiredRef={retiredRef}
+    >
+      <ConfirmBadge icon="trash" />
+      <div>
+        <h2 id={headingId} className={`${SERIF} text-body font-semibold text-foreground`}>
+          {t("knowledge.sources.deleteTitle")}
+        </h2>
+        <p id={bodyId} className="mt-0.5 text-meta leading-snug text-muted">
+          {t("knowledge.sources.deleteBody", { title: document.title, count: document.chunk_count })}
+        </p>
+      </div>
+      {error && <ErrorLine message={t("knowledge.crud.deleteError")} onRetry={confirm} />}
+      <ConfirmFooter
+        busy={busy}
+        confirmTitle={t("knowledge.sources.deleteNote")}
+        busyLabel={t("knowledge.crud.deleteBusy")}
+        confirmLabel={t("knowledge.crud.deleteConfirm")}
         onCancel={onClose}
         onConfirm={confirm}
         cancelRef={cancelRef}

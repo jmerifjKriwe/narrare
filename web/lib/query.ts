@@ -17,6 +17,7 @@ import {
   type Finding,
   type Hit,
   type Job,
+  type KnowledgeDocument,
   type Novel,
   type NovelCreate,
   type Relation,
@@ -715,12 +716,94 @@ export function usePassageSearch(query: string): UseQueryResult<Hit[]> {
 }
 
 /**
+ * The sources archive's explicit search (W5 Task 6): the box's text asked
+ * of the semantic search when the writer SUBMITS — the draft's button is
+ * the pause, so no debounce sits between the click and the ask (the dock's
+ * `usePassageSearch` debounces its live box instead). The key is the same
+ * `["knowledge", "passages", text]` family: the same question is the same
+ * cache entry, whichever surface asked it. An empty query asks nothing
+ * (`enabled`). The refusal carries its status and detail — the 409
+ * embedding-mismatch is a named condition with a fix, not an outage.
+ */
+export function useSourceSearch(query: string): UseQueryResult<Hit[]> {
+  return useQuery({
+    queryKey: ["knowledge", "passages", query],
+    enabled: query.trim() !== "",
+    queryFn: async () => {
+      const limit = 5; // the server's own default, pinned here by the request type
+      const { data, error, response } = await client.POST("/api/knowledge/search", {
+        body: { query, limit },
+      });
+      if (!response.ok) {
+        throw Object.assign(new Error(`search unavailable: ${response.status}`), {
+          status: response.status,
+          detail: (error as { detail?: unknown } | null | undefined)?.detail,
+        });
+      }
+      return data ?? [];
+    },
+  });
+}
+
+/**
+ * The library's documents (W5 Task 6), cached under `["knowledge",
+ * "documents"]` — the key the delete mutation below invalidates, so the
+ * sources archive's list refetches the server's truth after a delete.
+ * Documents are the library's, never canon (D8): no novel id rides the
+ * key, and no novel key goes stale on their account. An answer that is
+ * not ok throws, so the cache holds either the list or the failure —
+ * never a half-current archive.
+ */
+export function useDocumentsQuery(): UseQueryResult<KnowledgeDocument[]> {
+  return useQuery({
+    queryKey: ["knowledge", "documents"],
+    queryFn: async () => {
+      const { data, response } = await client.GET("/api/knowledge/documents");
+      if (!response.ok) throw new Error(`documents unavailable: ${response.status}`);
+      return data ?? [];
+    },
+  });
+}
+
+/**
+ * Uploading a document (W5 Task 6): the real multipart endpoint, the file
+ * in the API's own `file` field. The schema types the multipart body's
+ * file as a string; the wire carries FormData — one cast at the boundary
+ * (the export blob's precedent). openapi-fetch passes FormData through
+ * untouched and lets the browser set the multipart boundary. The title is
+ * the file's own name (the server resolves it when no form title rides
+ * along). Success invalidates the documents list; a refusal carries its
+ * status and detail — 413 the size bound, 422 the empty document, 409 the
+ * embedding mismatch — so the page names each refusal in its own words.
+ */
+export function useUploadDocument(): UseMutationResult<KnowledgeDocument, Error, File> {
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      const { data, error, response } = await client.POST("/api/knowledge/documents", {
+        body: form as unknown as { file: string },
+      });
+      if (!response.ok || !data) {
+        throw Object.assign(new Error(`upload refused: ${response.status}`), {
+          status: response.status,
+          detail: (error as { detail?: unknown } | null | undefined)?.detail,
+        });
+      }
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "documents"] });
+    },
+  });
+}
+
+/**
  * Deleting a document: its chunks' foreign key cascades, so the passages
  * leave the corpus with the row. Success invalidates the documents list
- * key and nothing else — documents are the library's, never canon (D8),
- * so no novel key may go stale on their account. The knowledge page's
- * own list reads through its own seam, not this cache; its delete dialog
- * refreshes that read itself, the upload's precedent.
+ * key — the sources archive's `useDocumentsQuery` reads that same key, so
+ * the invalidation IS the list's refetch. Documents are the library's,
+ * never canon (D8), so no novel key may go stale on their account.
  */
 export function useDeleteDocument(): UseMutationResult<void, Error, string> {
   return useMutation({

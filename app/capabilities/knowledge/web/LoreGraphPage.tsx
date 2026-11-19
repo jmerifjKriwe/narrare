@@ -49,6 +49,7 @@ import { relationTypeLabel } from "./relations";
 
 const GRAPH_PATH = "/novels/$novelId/knowledge/graph";
 const DOSSIERS_PATH = "/novels/$novelId/knowledge/dossiers";
+const SOURCES_PATH = "/novels/$novelId/knowledge/sources";
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 4;
 const FIT_PADDING = 72;
@@ -382,6 +383,18 @@ export function LoreGraphPage() {
             className={`flex items-center gap-1.5 rounded-full border border-rule bg-card px-3 py-1 text-meta text-foreground shadow-card transition-colors hover:bg-surface-container ${FOCUS}`}
           >
             <Icon name="viewList" size={14} /> {t("knowledge.dossiers.title")}
+          </button>
+          {/* The third sibling door (W5 Task 6): the sources archive keeps
+              the library's documents — no entity selection travels there. */}
+          <button
+            type="button"
+            data-testid="graph-sources-door"
+            onClick={() => {
+              void navigate({ to: SOURCES_PATH, params: { novelId }, search: {} });
+            }}
+            className={`flex items-center gap-1.5 rounded-full border border-rule bg-card px-3 py-1 text-meta text-foreground shadow-card transition-colors hover:bg-surface-container ${FOCUS}`}
+          >
+            <Icon name="autoStories" size={14} /> {t("knowledge.sources.title")}
           </button>
           <span aria-hidden="true" className="mx-1 h-4 w-px bg-rule" />
           <div role="group" aria-label={t("knowledge.graph.allTypes")} className="flex flex-wrap items-center gap-1.5">
