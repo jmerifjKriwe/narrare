@@ -701,14 +701,14 @@ export function usePendingSuggestionsQuery(novelId: string): UseQueryResult<Sugg
 }
 
 /**
- * The corpus's semantic search, one ask both doors share: the dock's
- * debounced box and the sources archive's submitted box POST the same
- * endpoint the same way, so the ask lives in one place. A refusal throws
- * the ENRICHED shape — status and detail ride the throw — because the two
- * doors share one cache family (`["knowledge", "passages", …]`): an error
- * the dock cached replays on the sources page, and the 409
- * embedding-mismatch must name itself there too, not wear the generic
- * outage face.
+ * The corpus's semantic search, one ask both doors share — today only the
+ * sources archive's submitted box is wired (the dock's live box is still
+ * undrawn); when it lands it will POST the same endpoint the same way, so
+ * the ask already lives in one place. A refusal throws the ENRICHED shape —
+ * status and detail ride the throw — because the doors share one cache
+ * family (`["knowledge", "passages", …]`): an error one surface cached
+ * replays on the other, and the 409 embedding-mismatch must name itself
+ * there too, not wear the generic outage face.
  */
 async function searchCorpus(query: string): Promise<Hit[]> {
   const limit = 5; // the server's own default, pinned here by the request type
