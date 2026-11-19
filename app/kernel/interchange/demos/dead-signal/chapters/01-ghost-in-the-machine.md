@@ -3,6 +3,8 @@ title: Ghost in the Machine
 position: 1
 ---
 
+## Scene 1: The Signal
+
 I was in the middle of recalibrating the quantum sensors—again—when ARIA's voice cut through the hum of the engineering deck.
 
 "Maya. Incoming transmission on the emergency frequency."
@@ -29,6 +31,8 @@ The main display flickered with a waveform—beautiful, clean, and impossible. W
 
 "Earth coordinates. Specifically..." ARIA hesitated again. "Nevada. Research Facility 7."
 
+## Scene 2: The Voice
+
 My stomach dropped. "That facility was destroyed three years ago."
 
 "Officially, yes. But the signal is coming from there. And Maya—there's a voice pattern embedded in the carrier wave. It's a match for Dr. Lila Chen. Probability of false positive: zero point zero zero one percent."
@@ -53,7 +57,9 @@ Silence filled the engineering deck. I gripped the console until my knuckles tur
 
 I sank into the nearest chair. Lila was alive. Somewhere. In a way that defied physics, but alive.
 
-"ARIA, can we send a reply?"
+"## Scene 3: The Reply
+
+ARIA, can we send a reply?"
 
 The AI was quiet for a moment. "Theoretically, yes. If we reverse the carrier frequency and boost the quantum sensors, we could establish a two-way link. But Maya—there are implications. If this signal is real, then our understanding of quantum mechanics is incomplete. If we open this link, we don't know what might come through."
 

@@ -391,7 +391,7 @@ describe("the basis step — the demo path", () => {
     }
     // No stat chips, no entity counts — the archive's facts only.
     expect(screen.queryByText(/Entitäten/)).toBeNull();
-    expect(screen.queryByText(/8 Entitäten|16 Entitäten|6 Entitäten/)).toBeNull();
+    expect(screen.queryByText(/8 Entitäten|16 Entitäten|6 Entitäten|18 Entitäten/)).toBeNull();
   });
 });
 

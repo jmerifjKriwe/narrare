@@ -16,7 +16,7 @@ from app.kernel.interchange.demos import DEMOS, demo_tree
 # bundled metadata.json, and the counts are the ported v1 stats.
 EXPECTED = {
     "im-stillen-wald": {"title": "Im Stillen Wald", "language": "de", "chapters": 2, "entities": 6},
-    "dead-signal": {"title": "Dead Signal", "language": "en", "chapters": 3, "entities": 8},
+    "dead-signal": {"title": "Dead Signal", "language": "en", "chapters": 7, "entities": 18},
     "echoes-of-the-thornwall": {
         "title": "Echoes of the Thornwall",
         "language": "en",

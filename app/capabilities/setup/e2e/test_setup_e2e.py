@@ -75,7 +75,7 @@ def test_welcome_offers_the_three_real_demos_and_an_honest_import(page: Page, st
     # Each demo is the archive's own title and facts, and a door into the
     # wizard with its world preselected.
     for slug, title, genre, chapters in (
-        ("dead-signal", "Dead Signal", "Science Fiction", 3),
+        ("dead-signal", "Dead Signal", "Science Fiction", 7),
         ("echoes-of-the-thornwall", "Echoes of the Thornwall", "Fantasy", 4),
         ("im-stillen-wald", "Im Stillen Wald", "Literary", 2),
     ):

@@ -3,6 +3,8 @@ title: Signal Lost
 position: 3
 ---
 
+## Scene 1: Kavic's Arrival
+
 Director Kavic's shuttle docked with Horizon Station at 0300 station time. I met him at the airlock, trying to look more confident than I felt.
 
 "Dr. Chen." He offered his hand, and I shook it automatically. "Thank you for agreeing to this meeting."
@@ -24,6 +26,8 @@ He sat, and I sat opposite him. ARIA materialized on the console, watching.
 "You're lying."
 
 Kavic sighed. "Dr. Chen, I know you want to believe. But Lila Chen is gone. The experiment killed her and three others. I was there. I saw it happen. What you received is a sophisticated illusion—nothing more."
+
+## Scene 2: The Confrontation
 
 I stared at him. He sounded so reasonable. So convincing. But I remembered Lila's voice, the things she'd said. Things Kavic couldn't know.
 
@@ -106,6 +110,8 @@ Kavic's eyes widened. The entity spoke through him: *"Understand. Must understan
 The entity considered this. The room felt heavy, charged with quantum potential. And then—
 
 Kavic collapsed.
+
+## Scene 3: The Decision
 
 The guards rushed to him. ARIA checked the sensors.
 

@@ -57,7 +57,7 @@ const RESULT = {
   dramatic_form: "three-act",
   ai_role: "lektor",
   canon_strictness: 3,
-  chapters: 3,
+  chapters: 7,
 };
 
 /** The novel row the novels endpoint answers after a 409 routes home — the
@@ -248,7 +248,7 @@ describe("the provisioning step — the checklist renders the response's facts",
       screen.getByText(`${RESULT.genre} • ${de["setup.structure.form.threeAct.label"]}`),
     ).toBeTruthy();
     // Item 2: the response's chapter count, nothing invented.
-    expect(screen.getByText(t("setup.provisioning.bound.item2Status", { count: 3 }))).toBeTruthy();
+    expect(screen.getByText(t("setup.provisioning.bound.item2Status", { count: 7 }))).toBeTruthy();
     // Item 3: the role label, localized from the response's id.
     expect(screen.getByText(de["setup.aiRules.role.lektor.label"])).toBeTruthy();
     // Item 4: the drafted typography constants — the prose surface's own.
@@ -328,7 +328,7 @@ describe("the provisioning step — the loading state (states-reference panel 3)
     expect(screen.getByText(de["setup.provisioning.loading.item5"])).toBeTruthy();
     expect(screen.getAllByText(de["setup.provisioning.loading.pending"])).toHaveLength(2);
     // The chapter count pre-response comes from the demo manifest only.
-    expect(screen.getByText(t("setup.basis.demoChapters", { count: 3 }))).toBeTruthy();
+    expect(screen.getByText(t("setup.basis.demoChapters", { count: 7 }))).toBeTruthy();
     // Honest progress: no percentage anywhere while the work is outstanding.
     expect(screen.queryByText(/%/)).toBeNull();
     expect(screen.getByText(de["setup.provisioning.loading.sync"])).toBeTruthy();

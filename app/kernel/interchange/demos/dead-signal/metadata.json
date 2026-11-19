@@ -16,6 +16,22 @@
     {
       "file": "chapters/03-signal-lost.md",
       "position": 3
+    },
+    {
+      "file": "chapters/04-nevada-echoes.md",
+      "position": 4
+    },
+    {
+      "file": "chapters/05-the-observatorium.md",
+      "position": 5
+    },
+    {
+      "file": "chapters/06-permafrost.md",
+      "position": 6
+    },
+    {
+      "file": "chapters/07-katharsis.md",
+      "position": 7
     }
   ],
   "relations": [
@@ -36,6 +52,36 @@
       "type": "related_to",
       "to": "ARIA (Autonomous Response and Intelligence Algorithm)",
       "note": "Complex partnership with ARIA — treats the AI like a person. Takes responsibility for twelve crew members as family. Left behind family on Earth and a reason she doesn't discuss. Officially her sister's death was an accident; Maya never believed it."
+    },
+    {
+      "from": "Dr. Lila Chen",
+      "type": "related_to",
+      "to": "Director Kavic",
+      "note": "Kavic supervised the experiment that trapped Lila. He knows what happened but withholds the truth. Lila was a scientist who advocated for communication rather than containment, and Kavic had her removed from the project when she opposed his plans."
+    },
+    {
+      "from": "Dr. Lila Chen",
+      "type": "related_to",
+      "to": "ARIA (Autonomous Response and Intelligence Algorithm)",
+      "note": "ARIA detected Lila's signal pattern. The AI's ethical protocols evolved partly in response to this discovery. ARIA's authorization to use lethal force against existential threats was triggered by Lila's signal."
+    },
+    {
+      "from": "Dr. Maya Chen",
+      "type": "related_to",
+      "to": "Dr. Lila Chen",
+      "note": "Sisters. Maya's guilt and grief drive her actions. She chose isolation after Lila's disappearance. Officially Lila's death was an accident; Maya never believed it. The signal from Lila forces Maya to confront both the impossibility of what she's receiving and the memories she's been running from."
+    },
+    {
+      "from": "Director Kavic",
+      "type": "related_to",
+      "to": "Xenex Corporation",
+      "note": "Kavic is a high-ranking director at Xenex. His corporate ambitions drive his pursuit of quantum resonance technology. He values progress over ethics and believes that knowledge belongs to those who can use it."
+    },
+    {
+      "from": "Dr. Maya Chen",
+      "type": "related_to",
+      "to": "Nevada Tiefraumarray",
+      "note": "Maya's investigation leads her to the Nevada facility. She must decide whether to destroy the quantum device there or find another way to close the thin spot. Her journey to the facility is the climax of her arc."
     }
   ]
 }

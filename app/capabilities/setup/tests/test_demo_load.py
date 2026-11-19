@@ -29,13 +29,13 @@ async def test_complete_with_demo_loads_archive() -> None:
         chapters = (
             await session.scalars(select(Chapter).where(Chapter.novel_id == result.novel_id))
         ).all()
-        assert len(chapters) == 3
+        assert len(chapters) == 7
         entities = (
             await session.scalars(select(Entity).where(Entity.novel_id == result.novel_id))
         ).all()
-        assert len(entities) == 8
+        assert len(entities) == 18
         relations = (await session.scalars(select(EntityRelation))).all()
-        assert len(relations) == 3
+        assert len(relations) == 8
         assert all(relation.relation_type == "related_to" for relation in relations)
         by_name = {entity.name: entity for entity in entities}
         maya_to_aria = [

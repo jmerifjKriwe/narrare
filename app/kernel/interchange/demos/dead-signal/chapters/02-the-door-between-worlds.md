@@ -3,6 +3,8 @@ title: The Door Between Worlds
 position: 2
 ---
 
+## Scene 1: The Connection
+
 The connection took four hours to establish. Four hours of ARIA and me working in silence, bypassing safety protocols, draining power from nonessential systems, and essentially turning Horizon Station into a giant quantum transmitter.
 
 When the green light finally flashed on the console, I was so tired I almost missed it.
@@ -50,6 +52,8 @@ The connection began to break up. Static filled the channel.
 *"Goodbye, Maya."*
 
 The line went dead.
+
+## Scene 2: The Choice
 
 I sat in silence for a long moment. ARIA watched me, her avatar patient on the console display.
 

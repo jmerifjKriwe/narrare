@@ -311,7 +311,7 @@ describe("the structure step — the basis banner and the honest status", () => 
     expect(screen.getByText(de["setup.structure.preview.timeline"])).toBeTruthy();
     // The corrected draft's promise: no entity/node counts on this step.
     expect(screen.queryByText(/Entitäten/)).toBeNull();
-    expect(screen.queryByText(/8 Entitäten|16 Entitäten|6 Entitäten/)).toBeNull();
+    expect(screen.queryByText(/8 Entitäten|16 Entitäten|6 Entitäten|18 Entitäten/)).toBeNull();
     expect(screen.queryByText(/Knoten/)).toBeNull();
   });
 });
