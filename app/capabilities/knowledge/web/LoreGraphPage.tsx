@@ -21,7 +21,11 @@
  *
  * The page reads the real API through the shell's query seam and imports no
  * other capability (rule 1). Loading, outage and the empty canon each answer
- * with their own honest face.
+ * with their own honest face — and the viewport's setup rides the canvas
+ * element itself, so it wakes however late the canvas mounts (an uncached
+ * load): the framing measures the real container and the wheel zoom installs.
+ * Parallel edges between the same pair bow apart, each with its note still
+ * reachable; a self-loop arcs clear of its node card instead of under it.
  */
 import { useParams, useNavigate, useSearch } from "@tanstack/react-router";
 import {
@@ -54,6 +58,12 @@ const MAX_ZOOM = 4;
 const FIT_PADDING = 72;
 /** How far the arrow tip stands off the target's centre, near its card edge. */
 const ARROW_OFFSET = 78;
+/** The node card's width — the render's own truth (the card's style carries
+ *  it), so the self-loop's geometry derives from the card the node really
+ *  draws, never a second guess beside its class. */
+const NODE_CARD_WIDTH = 240;
+/** How far the k-th of n parallel edges bows off the pair's centre line. */
+const EDGE_SPACING = 36;
 
 function clamp(value: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, value));
@@ -94,22 +104,62 @@ export function LoreGraphPage() {
   // different web (a node or edge added or gone) reframes.
   const signature = useMemo(() => graphSignature(entityList, relationList), [entityList, relationList]);
 
+  // Parallel edges: relations that share an unordered pair of ends would
+  // otherwise draw the identical centre line — the earlier edge and its
+  // note unreachable under the later. Each takes a bow of its own, indexed
+  // in the canonical id order (the layout's own edge-sort convention), so
+  // the same set always draws the same picture whatever the rows' arrival
+  // order. Self-loops are another shape entirely and never bow.
+  const parallelSlot = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    for (const relation of relationList) {
+      if (relation.from_entity_id === relation.to_entity_id) continue;
+      const key = [relation.from_entity_id, relation.to_entity_id].sort().join("\u0000");
+      const group = groups.get(key);
+      if (group === undefined) groups.set(key, [relation.id]);
+      else group.push(relation.id);
+    }
+    const slots = new Map<string, { index: number; count: number }>();
+    for (const group of groups.values()) {
+      group.sort();
+      group.forEach((id, index) => slots.set(id, { index, count: group.length }));
+    }
+    return slots;
+  }, [relationList]);
+
   // --- The viewport -------------------------------------------------------
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  // The canvas element is state, not a bare ref: on an uncached load the
+  // pending and failed faces render no container at all, and a bare ref
+  // never tells the setup effects below that one appeared — the measure
+  // never ran and the wheel listener never installed, so the graph framed
+  // for the 800×600 default with a dead wheel. Carrying the element in
+  // state re-runs the setup when the container mounts (an uncached load,
+  // a retry landing) and cleans it up when it goes.
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [size, setSize] = useState({ width: 800, height: 600 });
+  // Whether a real container has ever been measured. The passive reframe
+  // (the signature effect below) can run before the late-mounting
+  // container's first measure lands — React flushes it ahead of the render
+  // that carries the element — so that first measure reframes once itself;
+  // every later measure (a resize) leaves the view alone, as designed.
+  const measuredRef = useRef(false);
   useLayoutEffect(() => {
-    const el = containerRef.current;
-    if (el === null) return;
+    if (container === null) return;
     const measure = () => {
-      const rect = el.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) setSize({ width: rect.width, height: rect.height });
+      const rect = container.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        const first = !measuredRef.current;
+        measuredRef.current = true;
+        setSize({ width: rect.width, height: rect.height });
+        if (first) setView(fitTransform(boundsRef.current, rect.width, rect.height, FIT_PADDING));
+      }
     };
     measure();
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);
-    observer.observe(el);
+    observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+  }, [container]);
 
   const fit = useMemo(
     () => fitTransform(bounds, size.width, size.height, FIT_PADDING),
@@ -142,19 +192,20 @@ export function LoreGraphPage() {
   }, []);
 
   // The wheel zooms about the cursor; a native non-passive listener so the
-  // page does not scroll under the graph.
+  // page does not scroll under the graph. Like the measure above it rides
+  // the container state, so it installs however late the canvas appears.
   useEffect(() => {
-    const el = containerRef.current;
-    if (el === null) return;
+    if (container === null) return;
+    const el = container;
     function onWheel(event: WheelEvent) {
       event.preventDefault();
-      const rect = el!.getBoundingClientRect();
+      const rect = el.getBoundingClientRect();
       const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15;
       zoomAt(event.clientX - rect.left, event.clientY - rect.top, factor);
     }
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [zoomAt]);
+    container.addEventListener("wheel", onWheel, { passive: false });
+    return () => container.removeEventListener("wheel", onWheel);
+  }, [zoomAt, container]);
 
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
@@ -323,9 +374,16 @@ export function LoreGraphPage() {
     const to = layout.get(relation.to_entity_id);
     if (from === undefined || to === undefined) return null;
     if (relation.from_entity_id === relation.to_entity_id) {
-      // A self-loop arcs off the node's right side and back.
-      const d = `M ${from.x + 34} ${from.y - 26} C ${from.x + 130} ${from.y - 80}, ${from.x + 130} ${from.y + 80}, ${from.x + 34} ${from.y + 26}`;
-      return { d, midX: from.x + 96, midY: from.y, tipX: from.x + 34, tipY: from.y + 26, ux: -1, uy: 0 };
+      // A self-loop arcs off the node's right side and back, standing clear
+      // of the card's real bounds — the card draws OVER the svg, so a loop
+      // inside them would hide with its arrow and its label, and its wide
+      // hover stroke would sit under the card, unreachable.
+      const standX = from.x + NODE_CARD_WIDTH / 2 + 10;
+      const bowX = from.x + NODE_CARD_WIDTH / 2 + 84;
+      const d = `M ${standX} ${from.y - 30} C ${bowX} ${from.y - 88}, ${bowX} ${from.y + 88}, ${standX} ${from.y + 30}`;
+      // The cubic's true midpoint, t=0.5: (P0 + 3·C1 + 3·C2 + P3) / 8 — the
+      // symmetric spread keeps it level with the node, one quarter out.
+      return { d, midX: (standX + 3 * bowX) / 4, midY: from.y, tipX: standX, tipY: from.y + 30, ux: -1, uy: 0 };
     }
     const dx = to.x - from.x;
     const dy = to.y - from.y;
@@ -334,10 +392,25 @@ export function LoreGraphPage() {
     const uy = dy / distance;
     const tipX = to.x - ux * ARROW_OFFSET;
     const tipY = to.y - uy * ARROW_OFFSET;
+    const slot = parallelSlot.get(relation.id);
+    if (slot === undefined || slot.count === 1) {
+      // The pair's only edge: the straight centre line, the label between
+      // the two centres — the common case, drawn exactly as before.
+      return { d: `M ${from.x} ${from.y} L ${tipX} ${tipY}`, midX: (from.x + to.x) / 2, midY: (from.y + to.y) / 2, tipX, tipY, ux, uy };
+    }
+    // Parallel edges bow apart. The bow rides the pair's canonical
+    // perpendicular — first id to second, whatever this edge's direction —
+    // so A→B and B→A separate too instead of collapsing onto one side. The
+    // quadratic's control point carries twice the bow, which puts B(0.5),
+    // the label's anchor and the popover's, exactly one bow off the chord.
+    const flipped = relation.to_entity_id < relation.from_entity_id;
+    const px = flipped ? uy : -uy;
+    const py = flipped ? -ux : ux;
+    const bow = (slot.index - (slot.count - 1) / 2) * EDGE_SPACING;
     return {
-      d: `M ${from.x} ${from.y} L ${tipX} ${tipY}`,
-      midX: (from.x + to.x) / 2,
-      midY: (from.y + to.y) / 2,
+      d: `M ${from.x} ${from.y} Q ${(from.x + tipX) / 2 + px * bow * 2} ${(from.y + tipY) / 2 + py * bow * 2} ${tipX} ${tipY}`,
+      midX: (from.x + tipX) / 2 + px * bow,
+      midY: (from.y + tipY) / 2 + py * bow,
       tipX,
       tipY,
       ux,
@@ -476,7 +549,7 @@ export function LoreGraphPage() {
       {/* The canvas + the dossier dock. */}
       <div className="relative flex min-h-0 flex-1">
         <div
-          ref={containerRef}
+          ref={setContainer}
           data-testid="graph-canvas"
           className="relative min-w-0 flex-1 cursor-grab overflow-hidden bg-surface-container-lowest active:cursor-grabbing"
           onPointerDown={onPointerDown}
@@ -598,7 +671,8 @@ export function LoreGraphPage() {
                         select(entity.id);
                       }}
                       aria-pressed={isSelected}
-                      className={`flex w-60 items-center gap-2.5 rounded-[var(--radius-surface)] border bg-card px-3.5 py-2.5 text-left shadow-card transition-all hover:shadow-overlay ${FOCUS} ${
+                      style={{ width: NODE_CARD_WIDTH }}
+                      className={`flex items-center gap-2.5 rounded-[var(--radius-surface)] border bg-card px-3.5 py-2.5 text-left shadow-card transition-all hover:shadow-overlay ${FOCUS} ${
                         isSelected ? "border-primary ring-2 ring-primary/30" : "border-rule hover:border-outline"
                       }`}
                     >

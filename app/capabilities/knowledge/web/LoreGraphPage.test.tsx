@@ -33,6 +33,7 @@ import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 
+import { fitTransform, graphBounds, layoutGraph } from "./graphLayout";
 import { LoreGraphPage } from "./LoreGraphPage";
 
 const de = catalogs.de;
@@ -132,6 +133,54 @@ function worldScale(): number {
   const world = screen.getByTestId("graph-world");
   const match = /scale\(([^)]+)\)/.exec(world.style.transform);
   return match === null ? NaN : Number(match[1]);
+}
+
+/** An edge's drawn curve — the first path inside its button group. */
+function edgePath(edge: Element): string {
+  return edge.querySelector("path")?.getAttribute("d") ?? "";
+}
+
+/** An edge's label position — the translate of its label group. */
+function edgeLabel(edge: Element): string {
+  return edge.querySelector("g[transform]")?.getAttribute("transform") ?? "";
+}
+
+/** Every x coordinate a geometry attribute carries (paths alternate x, y). */
+function xValues(geometry: string): number[] {
+  const numbers = (geometry.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+  return numbers.filter((_, at) => at % 2 === 0);
+}
+
+/** The canvas element reports a real viewport — jsdom's rects are all zero,
+ *  so unstubbed the measure guard keeps the 800×600 default. */
+function stubCanvasRect(width: number, height: number) {
+  return vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+    x: 0,
+    y: 0,
+    top: 0,
+    left: 0,
+    right: width,
+    bottom: height,
+    width,
+    height,
+    toJSON: () => ({}),
+  } as DOMRect);
+}
+
+/** An uncached load: the entities ask stays pending until the harness
+ *  resolves it, so the page mounts its loading face first and the canvas
+ *  appears only when the data lands. */
+function deferredEntities(): (rows: Entity[]) => void {
+  let resolveEntities: (value: { data: Entity[]; response: Response }) => void = () => {};
+  api.GET.mockImplementation((path: string) => {
+    if (path === "/api/knowledge/novels/{novel_id}/entities") {
+      return new Promise((resolve) => {
+        resolveEntities = resolve;
+      });
+    }
+    return baseGet(path);
+  });
+  return (rows: Entity[]) => resolveEntities({ data: rows, response: ok() });
 }
 
 beforeEach(() => {
@@ -641,5 +690,136 @@ describe("the subbar's sibling door (W5 Task 5 — the two surfaces connect)", (
     fireEvent.click(screen.getByTestId("graph-dossiers-door"));
     await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/knowledge/dossiers`));
     expect(router.state.location.search).toEqual({});
+  });
+});
+
+describe("the viewport wakes on an uncached load (Codacy fix — PR #912)", () => {
+  it("frames the late-mounting canvas by its measured size, not the 800×600 default", async () => {
+    const rect = stubCanvasRect(1200, 900);
+    const resolve = deferredEntities();
+    await renderGraph();
+    expect(await screen.findByTestId("graph-loading")).toBeTruthy();
+    resolve([MAYA, ARIA, STATION, RELIKT]);
+    expect(await screen.findAllByTestId("graph-node")).toHaveLength(4);
+    // The framing must be the pure fit of the same web in the MEASURED
+    // viewport — the bug framed for the 800×600 default because the
+    // measure pass ran while the container did not exist yet, then never
+    // again. 72 is the page's fit padding; 1200×900 the stubbed canvas.
+    const layout = layoutGraph([MAYA, ARIA, STATION, RELIKT], relations);
+    const expected = fitTransform(graphBounds(layout.values()), 1200, 900, 72);
+    expect(screen.getByTestId("graph-world").style.transform).toBe(
+      `translate(${expected.x}px, ${expected.y}px) scale(${expected.k})`,
+    );
+    rect.mockRestore();
+  });
+
+  it("the wheel listener installs on the late-mounting canvas — the wheel zooms", async () => {
+    const rect = stubCanvasRect(1200, 900);
+    const resolve = deferredEntities();
+    await renderGraph();
+    expect(await screen.findByTestId("graph-loading")).toBeTruthy();
+    resolve([MAYA, ARIA, STATION, RELIKT]);
+    expect(await screen.findAllByTestId("graph-node")).toHaveLength(4);
+    const before = worldScale();
+    fireEvent.wheel(screen.getByTestId("graph-canvas"), { deltaY: -240, clientX: 500, clientY: 400 });
+    await waitFor(() => expect(worldScale()).toBeGreaterThan(before));
+    rect.mockRestore();
+  });
+});
+
+describe("parallel edges between the same pair separate (Codacy fix — PR #912)", () => {
+  it("two relations on one pair bow apart — distinct curves, distinct labels, both notes reachable", async () => {
+    relations = [
+      R1,
+      relationRow({ id: "r4", from_entity_id: "e1", to_entity_id: "e2", relation_type: "related_to", note: "Zweite Sicht." }),
+    ];
+    await renderGraph();
+    const edges = await screen.findAllByTestId("graph-edge");
+    expect(edges).toHaveLength(2);
+    expect(edgePath(edges[0])).not.toBe(edgePath(edges[1]));
+    expect(edgeLabel(edges[0])).not.toBe(edgeLabel(edges[1]));
+    // Each curve still opens its own popover — the anchor follows each
+    // curve's own midpoint, so the earlier note is reachable again.
+    fireEvent.click(edges[0]);
+    expect(await screen.findByTestId("edge-popover")).toBeTruthy();
+    fireEvent.click(within(screen.getByTestId("edge-popover")).getByRole("button", { name: de["knowledge.graph.closeNote"] }));
+    await waitFor(() => expect(screen.queryByTestId("edge-popover")).toBeNull());
+    fireEvent.click(edges[1]);
+    const popover = await screen.findByTestId("edge-popover");
+    expect(within(popover).getByText("Zweite Sicht.")).toBeTruthy();
+  });
+
+  it("a single edge on a pair keeps the straight centre line", async () => {
+    await renderGraph();
+    for (const edge of await screen.findAllByTestId("graph-edge")) {
+      expect(edgePath(edge)).toMatch(/^M -?\d+(?:\.\d+)? -?\d+(?:\.\d+)? L /);
+      expect(edgePath(edge)).not.toContain(" Q ");
+    }
+  });
+
+  it("reciprocal pairs — A→B and B→A — separate too", async () => {
+    relations = [
+      R1,
+      relationRow({ id: "r4", from_entity_id: "e2", to_entity_id: "e1", relation_type: "related_to", note: null }),
+    ];
+    await renderGraph();
+    const edges = await screen.findAllByTestId("graph-edge");
+    expect(edges).toHaveLength(2);
+    expect(edgePath(edges[0])).not.toBe(edgePath(edges[1]));
+    expect(edgeLabel(edges[0])).not.toBe(edgeLabel(edges[1]));
+  });
+});
+
+describe("a self-loop clears its node card (Codacy fix — PR #912)", () => {
+  // The card's render carries w-60 — 240px, half-width 120. The test pins
+  // the literal on purpose: it is the drift guard that keeps whatever the
+  // geometry derives from honest against the render's real width.
+  const CARD_HALF = 120;
+
+  function selfLoopEdge(): Element {
+    const loop = screen
+      .getAllByTestId("graph-edge")
+      .find((edge) => edge.getAttribute("data-edge-id") === "r9");
+    expect(loop).toBeTruthy();
+    return loop as Element;
+  }
+
+  it("the loop's arc, arrow and label stand outside the card's real bounds", async () => {
+    entities = [MAYA, ARIA];
+    relations = [
+      R1,
+      relationRow({ id: "r9", from_entity_id: "e1", to_entity_id: "e1", relation_type: "related_to", note: "Selbstbezug." }),
+    ];
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const loop = selfLoopEdge();
+    const home = layoutGraph(entities, relations).get("e1");
+    expect(home).toBeTruthy();
+    // Every x of the drawn arc clears the card's half-width — the card
+    // renders OVER the svg, so anything inside its bounds is unreachable.
+    for (const x of xValues(edgePath(loop))) expect(x).toBeGreaterThan((home as { x: number }).x + CARD_HALF);
+    for (const x of xValues(loop.querySelector("polygon")?.getAttribute("points") ?? "")) {
+      expect(x).toBeGreaterThan((home as { x: number }).x + CARD_HALF);
+    }
+    const translate = /translate\(([-\d.]+), ([-\d.]+)\)/.exec(edgeLabel(loop));
+    expect(translate).toBeTruthy();
+    expect(Number(translate?.[1])).toBeGreaterThan((home as { x: number }).x + CARD_HALF);
+  });
+
+  it("the looped edge stays a reachable button that opens its note", async () => {
+    entities = [MAYA, ARIA];
+    relations = [
+      R1,
+      relationRow({ id: "r9", from_entity_id: "e1", to_entity_id: "e1", relation_type: "related_to", note: "Selbstbezug." }),
+    ];
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const loop = selfLoopEdge();
+    expect(loop.getAttribute("role")).toBe("button");
+    expect(loop.getAttribute("tabindex")).toBe("0");
+    expect(loop.getAttribute("aria-label")).toContain("Dr. Maya Chen → Dr. Maya Chen");
+    fireEvent.click(loop);
+    const popover = await screen.findByTestId("edge-popover");
+    expect(within(popover).getByText("Selbstbezug.")).toBeTruthy();
   });
 });
