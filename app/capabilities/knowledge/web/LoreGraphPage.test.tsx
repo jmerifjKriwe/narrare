@@ -21,8 +21,8 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 
 vi.mock("@shell/lib/api/client", () => ({
   client: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() },
@@ -151,10 +151,16 @@ function xValues(geometry: string): number[] {
   return numbers.filter((_, at) => at % 2 === 0);
 }
 
+let canvasRect: MockInstance | null = null;
+
 /** The canvas element reports a real viewport — jsdom's rects are all zero,
- *  so unstubbed the measure guard keeps the 800×600 default. */
+ *  so unstubbed the measure guard keeps the 800×600 default. Restored in
+ *  afterEach, never at the test's end: a failing (RED) assertion must not
+ *  leak the stub rect into the rest of the file (clearAllMocks clears
+ *  calls, not spies). A second call re-points the same spy. */
 function stubCanvasRect(width: number, height: number) {
-  return vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+  canvasRect ??= vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+  canvasRect.mockReturnValue({
     x: 0,
     y: 0,
     top: 0,
@@ -166,6 +172,22 @@ function stubCanvasRect(width: number, height: number) {
     toJSON: () => ({}),
   } as DOMRect);
 }
+
+/** A ResizeObserver stand-in: jsdom ships none, and the page's typeof guard
+ *  would skip the observer entirely. Each instance captures the callback it
+ *  was given, so a test can drive a resize by hand. */
+class ResizeObserverStub {
+  callback: ResizeObserverCallback;
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback;
+    resizeObservers.push(this);
+  }
+}
+let resizeObservers: ResizeObserverStub[] = [];
 
 /** An uncached load: the entities ask stays pending until the harness
  *  resolves it, so the page mounts its loading face first and the canvas
@@ -195,6 +217,8 @@ afterEach(() => {
   cleanup();
   queryClient.clear();
   vi.clearAllMocks();
+  canvasRect?.mockRestore();
+  canvasRect = null;
   vi.unstubAllGlobals();
 });
 
@@ -695,7 +719,7 @@ describe("the subbar's sibling door (W5 Task 5 — the two surfaces connect)", (
 
 describe("the viewport wakes on an uncached load (Codacy fix — PR #912)", () => {
   it("frames the late-mounting canvas by its measured size, not the 800×600 default", async () => {
-    const rect = stubCanvasRect(1200, 900);
+    stubCanvasRect(1200, 900);
     const resolve = deferredEntities();
     await renderGraph();
     expect(await screen.findByTestId("graph-loading")).toBeTruthy();
@@ -710,11 +734,10 @@ describe("the viewport wakes on an uncached load (Codacy fix — PR #912)", () =
     expect(screen.getByTestId("graph-world").style.transform).toBe(
       `translate(${expected.x}px, ${expected.y}px) scale(${expected.k})`,
     );
-    rect.mockRestore();
   });
 
   it("the wheel listener installs on the late-mounting canvas — the wheel zooms", async () => {
-    const rect = stubCanvasRect(1200, 900);
+    stubCanvasRect(1200, 900);
     const resolve = deferredEntities();
     await renderGraph();
     expect(await screen.findByTestId("graph-loading")).toBeTruthy();
@@ -723,7 +746,38 @@ describe("the viewport wakes on an uncached load (Codacy fix — PR #912)", () =
     const before = worldScale();
     fireEvent.wheel(screen.getByTestId("graph-canvas"), { deltaY: -240, clientX: 500, clientY: 400 });
     await waitFor(() => expect(worldScale()).toBeGreaterThan(before));
-    rect.mockRestore();
+  });
+});
+
+describe("a resize keeps your zoom (review fix — round 2)", () => {
+  it("the observer's new size updates the measure and the honest reset, never the user's view", async () => {
+    resizeObservers = [];
+    vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+    stubCanvasRect(1200, 900);
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    // Exactly one observer watches the canvas.
+    expect(resizeObservers).toHaveLength(1);
+    const fit = worldScale();
+    fireEvent.click(screen.getByTestId("zoom-in"));
+    await waitFor(() => expect(worldScale()).toBeGreaterThan(fit));
+    const zoomed = screen.getByTestId("graph-world").style.transform;
+    // A resize arrives: the new rect reaches the measure, and the view
+    // keeps the user's zoom — only the first-ever measure reframes.
+    stubCanvasRect(900, 700);
+    act(() => {
+      resizeObservers[0].callback([], resizeObservers[0] as unknown as ResizeObserver);
+    });
+    expect(screen.getByTestId("graph-world").style.transform).toBe(zoomed);
+    // The honest reset frames with the MEASURED new size, not the stale one.
+    fireEvent.click(screen.getByTestId("reset-view"));
+    const layout = layoutGraph(entities, relations);
+    const expected = fitTransform(graphBounds(layout.values()), 900, 700, 72);
+    await waitFor(() =>
+      expect(screen.getByTestId("graph-world").style.transform).toBe(
+        `translate(${expected.x}px, ${expected.y}px) scale(${expected.k})`,
+      ),
+    );
   });
 });
 
@@ -771,9 +825,10 @@ describe("parallel edges between the same pair separate (Codacy fix — PR #912)
 });
 
 describe("a self-loop clears its node card (Codacy fix — PR #912)", () => {
-  // The card's render carries w-60 — 240px, half-width 120. The test pins
-  // the literal on purpose: it is the drift guard that keeps whatever the
-  // geometry derives from honest against the render's real width.
+  // The card's render carries its width from NODE_CARD_WIDTH — 240px,
+  // half-width 120. The test pins the literal on purpose: it is the drift
+  // guard that keeps whatever the geometry derives from honest against the
+  // render's real width.
   const CARD_HALF = 120;
 
   function selfLoopEdge(): Element {
