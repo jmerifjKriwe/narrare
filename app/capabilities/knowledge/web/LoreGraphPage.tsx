@@ -48,6 +48,7 @@ import { fitTransform, graphBounds, graphSignature, layoutGraph, type Transform 
 import { relationTypeLabel } from "./relations";
 
 const GRAPH_PATH = "/novels/$novelId/knowledge/graph";
+const DOSSIERS_PATH = "/novels/$novelId/knowledge/dossiers";
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 4;
 const FIT_PADDING = 72;
@@ -365,6 +366,22 @@ export function LoreGraphPage() {
             </span>
             {t("knowledge.graph.title")}
           </span>
+          {/* The sibling door (W5 Task 5): the dossiers browse the same cast;
+              the selection travels, so both surfaces open the same entity. */}
+          <button
+            type="button"
+            data-testid="graph-dossiers-door"
+            onClick={() => {
+              void navigate({
+                to: DOSSIERS_PATH,
+                params: { novelId },
+                search: selectedId !== undefined ? { entity: selectedId } : {},
+              });
+            }}
+            className={`flex items-center gap-1.5 rounded-full border border-rule bg-card px-3 py-1 text-meta text-foreground shadow-card transition-colors hover:bg-surface-container ${FOCUS}`}
+          >
+            <Icon name="viewList" size={14} /> {t("knowledge.dossiers.title")}
+          </button>
           <span aria-hidden="true" className="mx-1 h-4 w-px bg-rule" />
           <div role="group" aria-label={t("knowledge.graph.allTypes")} className="flex flex-wrap items-center gap-1.5">
             <button

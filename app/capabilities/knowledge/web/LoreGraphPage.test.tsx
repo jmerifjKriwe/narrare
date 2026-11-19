@@ -105,8 +105,17 @@ async function renderGraph(entry = `/novels/${NOVEL_ID}/knowledge/graph`) {
       typeof search.entity === "string" && search.entity !== "" ? { entity: search.entity } : {},
     component: LoreGraphPage,
   });
+  // The dossiers stub the subbar's sibling door navigates to (W5 Task 5);
+  // the dossiers page itself is pinned in its own file.
+  const dossiers = createRoute({
+    getParentRoute: () => harnessRoot,
+    path: "/novels/$novelId/knowledge/dossiers",
+    validateSearch: (search: Record<string, unknown>): { entity?: string } =>
+      typeof search.entity === "string" && search.entity !== "" ? { entity: search.entity } : {},
+    component: () => <p>dossiers face</p>,
+  });
   const router = createRouter({
-    routeTree: harnessRoot.addChildren([graph]),
+    routeTree: harnessRoot.addChildren([graph, dossiers]),
     history: createMemoryHistory({ initialEntries: [entry] }),
   });
   await router.load();
@@ -115,6 +124,7 @@ async function renderGraph(entry = `/novels/${NOVEL_ID}/knowledge/graph`) {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  return router;
 }
 
 /** The world layer's current scale, read off its transform. */
@@ -600,5 +610,25 @@ describe("the subbar's CRUD doors (Task 4)", () => {
       expect(screen.queryByTestId("entity-dossier")).toBeNull();
       expect(document.activeElement).toBe(document.getElementById("graph-page"));
     });
+  });
+});
+
+describe("the subbar's sibling door (W5 Task 5 — the two surfaces connect)", () => {
+  it("the dossiers door opens the dossiers page, carrying the selection across", async () => {
+    const router = await renderGraph();
+    const nodes = await screen.findAllByTestId("graph-node");
+    fireEvent.click(within(nodes[0]).getByRole("button"));
+    await screen.findByTestId("entity-dossier");
+    fireEvent.click(screen.getByTestId("graph-dossiers-door"));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/knowledge/dossiers`));
+    expect(router.state.location.search).toEqual({ entity: "e1" });
+  });
+
+  it("with no selection the door opens the dossiers unscoped", async () => {
+    const router = await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    fireEvent.click(screen.getByTestId("graph-dossiers-door"));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/knowledge/dossiers`));
+    expect(router.state.location.search).toEqual({});
   });
 });

@@ -1,6 +1,6 @@
 /**
- * The entity dossier (W5 Task 3) — the graph's inline panel and the first
- * home of the shared detail component the dossiers page (Task 5) formalizes.
+ * The entity dossier (W5 Tasks 3/5) — the shared detail component with two
+ * homes: the graph's inline panel and the dossiers page's detail column.
  * One component, two homes: it reads the REAL EntityRead fields (name, type,
  * the Markdown body as the description, aliases, tags) and the entity's real
  * relations, and renders the draft's invented fields as honest disabled
@@ -18,8 +18,13 @@
  *
  * The panel imports no other capability (rule 1); it speaks through the
  * shell's tokens and the capability's own type/relation vocabulary.
+ *
+ * The optional `children` slot (Task 5) is the home's own addition to the
+ * detail's flow — the dossiers page injects the draft's two profile gap
+ * areas (psychological, linguistic) between the excerpts gap and the action
+ * footer. The graph passes nothing: its render is unchanged.
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import type { Entity, Relation } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
@@ -91,6 +96,7 @@ export function EntityDossier({
   onClose,
   onSelectEntity,
   focusFallbackId,
+  children,
 }: {
   entity: Entity;
   relations: readonly Relation[];
@@ -100,6 +106,9 @@ export function EntityDossier({
   /** The home's surviving container, for focus when a delete folds this
    *  dossier (the graph passes its page; the dossiers page its grid). */
   focusFallbackId?: string;
+  /** The home's own gap areas, rendered in the detail's flow after the
+   *  excerpts gap (the dossiers page's profile areas; the graph passes none). */
+  children?: ReactNode;
 }) {
   const t = useTranslation();
   const theme = typeTheme(entity.type);
@@ -318,6 +327,9 @@ export function EntityDossier({
             <p className="text-meta italic text-muted">{t("knowledge.dossier.excerptsGap")}</p>
           </div>
         </div>
+
+        {/* The home's own gap areas (the dossiers page's profile areas). */}
+        {children}
       </div>
 
       {/* The action footer — edit and delete open the real CRUD dialogs

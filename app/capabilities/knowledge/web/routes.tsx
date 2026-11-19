@@ -17,6 +17,10 @@ const LoreGraphPage = lazy(async () => {
   const page = await import("./LoreGraphPage");
   return { default: page.LoreGraphPage };
 });
+const DossiersPage = lazy(async () => {
+  const page = await import("./DossiersPage");
+  return { default: page.DossiersPage };
+});
 
 /**
  * The setup gate the graph shares with the shelf and the workspace: an
@@ -85,12 +89,34 @@ const graphRoute = createRoute({
   component: LoreGraphPage,
 });
 
+/**
+ * The dossiers page (W5 Task 5) — the graph's sibling browsing surface, the
+ * same mount shape: a book-scoped page parented at the shell root (the dock
+ * owns the bare `/novels/$novelId/knowledge` path), the same setup gate, and
+ * the same `entity` search param so the two surfaces hand the selection to
+ * each other through their subbar doors.
+ */
+const dossiersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/novels/$novelId/knowledge/dossiers",
+  beforeLoad: async () => {
+    const complete = await queryClient.ensureQueryData(setupStatusQueryOptions);
+    if (!complete) throw redirect({ to: "/setup" });
+  },
+  validateSearch: (search: Record<string, unknown>): { entity?: string } => {
+    const entity = search.entity;
+    return typeof entity === "string" && entity !== "" ? { entity } : {};
+  },
+  component: DossiersPage,
+});
+
 // The capability route contract: every route this capability mounts
-// under the shell root, as a const tuple. The standalone surfaces (the
-// dossiers, the sources archive) land with W5 Tasks 5/6; the graph is the
-// first.
+// under the shell root, as a const tuple. The dossiers (W5 Task 5) are the
+// graph's sibling surface — the same book-scoped, root-parented shape, the
+// same setup gate and `entity` deep-link param; the sources archive lands
+// with W5 Task 6.
 //
 // The route consts stand on their own on purpose: a contextual type here
 // degrades createRoute's inference to `any` paths, and with it the
 // router's checked `to=` props.
-export const routes = [graphRoute] as const;
+export const routes = [graphRoute, dossiersRoute] as const;

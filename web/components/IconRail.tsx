@@ -29,7 +29,8 @@
  * the active book's workspace and wears the active face on a workspace
  * route; with no book standing it waits honestly disabled. The Wissen door
  * is live with the lore graph (W5 Task 3): it opens the active book's graph
- * and wears the active face on the graph route. Planung and Einstellungen
+ * and wears the active face on either knowledge surface — the graph or the
+ * dossiers (W5 Task 5), one area with two surfaces. Planung and Einstellungen
  * keep their later-wave notes.
  *
  * The user menu the draft's tile 4 draws (Autorenname bearbeiten,
@@ -157,10 +158,16 @@ export function IconRail() {
   const saveFace = SAVE_FACES[saveStatus];
   const saveTone = SAVE_TONE_CLASS[saveFace.tone];
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  // The Wissen door's active face: the lore graph route is matched (the
-  // route id, never a parsed pathname — the chrome's own discipline).
+  // The Wissen door's active face: the knowledge area is matched — the
+  // graph or the dossiers route (the route ids, never a parsed pathname —
+  // the chrome's own discipline). One area, two surfaces (W5 Tasks 3/5).
   const knowledgeActive = useRouterState({
-    select: (state) => state.matches.some((match) => match.routeId === "/novels/$novelId/knowledge/graph"),
+    select: (state) =>
+      state.matches.some(
+        (match) =>
+          match.routeId === "/novels/$novelId/knowledge/graph" ||
+          match.routeId === "/novels/$novelId/knowledge/dossiers",
+      ),
   });
 
   const [menuOpen, setMenuOpen] = useState(false);
