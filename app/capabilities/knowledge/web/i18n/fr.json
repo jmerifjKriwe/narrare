@@ -35,6 +35,7 @@
   "knowledge.crud.nameRequired": "L'entité a besoin d'un nom.",
   "knowledge.crud.noteLabel": "Note (facultatif)",
   "knowledge.crud.relationExists": "Cette relation existe déjà.",
+  "knowledge.crud.relationNeedsTwo": "Une relation nécessite deux entités.",
   "knowledge.crud.relationTypeHint": "Choisis une suggestion ou écris ton propre type.",
   "knowledge.crud.relationTypeLabel": "Type de relation",
   "knowledge.crud.relationTypeRequired": "La relation a besoin d'un type.",

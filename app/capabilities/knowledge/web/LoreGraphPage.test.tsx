@@ -727,6 +727,37 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     expect(merge.getAttribute("title")).toContain(de["knowledge.crud.mergeNeedsTwo"]);
   });
 
+  it("the addEdge door is disabled with its note on the empty canon — no dead-end dialog (PR #923 follow-up)", async () => {
+    entities = [];
+    relations = [];
+    await renderGraph();
+    expect(await screen.findByTestId("graph-empty")).toBeTruthy();
+    const door = document.getElementById("graph-add-edge") as HTMLButtonElement;
+    expect(door.disabled).toBe(true);
+    expect(door.getAttribute("title")).toContain(de["knowledge.crud.relationNeedsTwo"]);
+  });
+
+  it("the addEdge door stays disabled with its note at one entity", async () => {
+    entities = [MAYA];
+    relations = [];
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const door = document.getElementById("graph-add-edge") as HTMLButtonElement;
+    expect(door.disabled).toBe(true);
+    expect(door.getAttribute("title")).toContain(de["knowledge.crud.relationNeedsTwo"]);
+  });
+
+  it("the addEdge door opens the create dialog once two entities stand", async () => {
+    entities = [MAYA, ARIA];
+    relations = [];
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const door = document.getElementById("graph-add-edge") as HTMLButtonElement;
+    expect(door.disabled).toBe(false);
+    fireEvent.click(door);
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+  });
+
   it("a door returns focus to its trigger on a pristine Escape", async () => {
     await renderGraph();
     await screen.findAllByTestId("graph-node");

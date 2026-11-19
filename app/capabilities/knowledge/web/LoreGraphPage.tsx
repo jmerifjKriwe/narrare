@@ -15,9 +15,11 @@
  * - Type filter chips and a name search narrow the canvas client-side over
  *   the loaded web; the layout stays put (filtering hides, never re-seats).
  * - The draft's CRUD doors (W5 Task 4): draw relation and merge open the
- *   shared dialogs (`crudDialogs.tsx`); the new-entity door has no endpoint
- *   at all (entities are born through review) and stands an honest disabled
- *   gap with its note.
+ *   shared dialogs (`crudDialogs.tsx`), and both wait disabled with their
+ *   note until two entities stand — a relation and a merge each need two
+ *   ends, so a sparse canon offers no dead-end dialog; the new-entity door
+ *   has no endpoint at all (entities are born through review) and stands an
+ *   honest disabled gap with its note.
  *
  * The page reads the real API through the shell's query seam and imports no
  * other capability (rule 1). Loading, outage and the empty canon each answer
@@ -523,8 +525,16 @@ export function LoreGraphPage() {
           <button
             type="button"
             id="graph-add-edge"
+            disabled={entityList.length < 2}
             onClick={() => setCrud("addRelation")}
-            className={`flex items-center gap-1.5 rounded-[var(--radius-control)] bg-surface-container-high px-3 py-1 text-meta text-foreground transition-colors hover:bg-surface-container ${FOCUS}`}
+            title={
+              entityList.length < 2
+                ? `${t("knowledge.graph.addEdge")} (${t("knowledge.crud.relationNeedsTwo")})`
+                : t("knowledge.graph.addEdge")
+            }
+            className={`flex items-center gap-1.5 rounded-[var(--radius-control)] bg-surface-container-high px-3 py-1 text-meta text-foreground transition-colors ${FOCUS} ${
+              entityList.length < 2 ? "cursor-not-allowed opacity-60" : "hover:bg-surface-container"
+            }`}
           >
             <Icon name="hub" size={14} /> {t("knowledge.graph.addEdge")}
           </button>
