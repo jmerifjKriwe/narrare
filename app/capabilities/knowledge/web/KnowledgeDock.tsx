@@ -35,12 +35,12 @@
  *   the job row itself destroyed under the session, where no resume
  *   could ever answer — clears the lane; the next click after either
  *   is a fresh enqueue, as it should be.
- * - The entity chips (W5 Task 2 — #867 retired): the novel's real rows,
- *   typed by the extraction contract's vocabulary — the type is the
- *   chip's honest label, the glyph the app's own face for the concept.
- *   The chip is a label, not a door: its click target (the dossier panel)
- *   is Task 3/5's surface, so no affordance is offered until the route
- *   exists — no disabled promise.
+ * - The entity chips (W5 Task 2 — #867 retired; Task 3 wires the door): the
+ *   novel's real rows, typed by the extraction contract's vocabulary — the
+ *   type is the chip's honest label, the glyph the app's own face for the
+ *   concept. The chip is a door now: its click opens the lore graph with the
+ *   row selected (the `entity` search param), the dossier the graph panel
+ *   shows. The inert-chip interim is retired.
  * - The extraction trigger and its review (W5 Task 2 — #866's family):
  *   POST enqueues the last-written chapter's extraction (202, its own job
  *   lane under the check's session discipline — the shell's dock fallback
@@ -58,7 +58,7 @@
  * consistency status exists on any model) — the chips carry the row's
  * own name and type, never an invented verified state.
  */
-import { useParams } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import type { Accept, Finding, Suggestion } from "@shell/lib/api/client";
@@ -360,6 +360,7 @@ export function KnowledgeDock() {
   // The novel is the workspace route's own param — the dock reads the
   // book it stands beside, never a parsed pathname.
   const { novelId } = useParams({ from: "/novels/$novelId" });
+  const navigate = useNavigate();
   const findings = useFindingsQuery(novelId);
   const enqueue = useEnqueueCheck(novelId);
   const acknowledge = useAcknowledgeFinding(novelId);
@@ -695,20 +696,28 @@ export function KnowledgeDock() {
         ) : (
           <ul className="flex flex-wrap gap-1.5">
             {entities.data.map((entity) => (
-              // The chip is a label, not a door: its click target — the
-              // dossier panel — is Task 3/5's surface. Until that route
-              // exists the chip offers no affordance (no disabled
-              // promise); Task 3/5 wires the chip to the dossier.
-              <li
-                key={entity.id}
-                data-testid="knowledge-entity-chip"
-                className="inline-flex items-center gap-1 rounded-full bg-surface-container-high px-2 py-0.5 text-[11px]"
-              >
-                <span className="text-muted">
-                  <Icon name={entityTypeIcon(entity.type)} size={12} />
-                </span>
-                <span className="font-medium text-foreground">{entity.name}</span>
-                <span className="text-[10px] text-muted">{entityTypeLabel(t, entity.type)}</span>
+              // The chip is a door (W5 Task 3 — the inert interim retired):
+              // its click opens the lore graph with this row selected, the
+              // `entity` search param the graph's dossier reads on arrival.
+              <li key={entity.id}>
+                <button
+                  type="button"
+                  data-testid="knowledge-entity-chip"
+                  onClick={() =>
+                    void navigate({
+                      to: "/novels/$novelId/knowledge/graph",
+                      params: { novelId },
+                      search: { entity: entity.id },
+                    })
+                  }
+                  className={`inline-flex items-center gap-1 rounded-full bg-surface-container-high px-2 py-0.5 text-[11px] transition-colors hover:bg-surface-container-highest ${FOCUS}`}
+                >
+                  <span className="text-muted">
+                    <Icon name={entityTypeIcon(entity.type)} size={12} />
+                  </span>
+                  <span className="font-medium text-foreground">{entity.name}</span>
+                  <span className="text-[10px] text-muted">{entityTypeLabel(t, entity.type)}</span>
+                </button>
               </li>
             ))}
           </ul>

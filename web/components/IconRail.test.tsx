@@ -153,10 +153,35 @@ const novelRoute = createRoute({
     </>
   ),
 });
+/** The lore graph's harness face (W5 Task 3): the rail's Wissen door
+ *  navigates here and wears its active face on this route. */
+const graphRoute = createRoute({
+  getParentRoute: () => testRoot,
+  path: "/novels/$novelId/knowledge/graph",
+  component: () => (
+    <>
+      <p>graph</p>
+      <IconRail />
+    </>
+  ),
+});
+/** The dossiers' harness face (W5 Task 5): the Wissen area's second
+ *  surface — the door keeps opening the graph, but wears its active face
+ *  here too. */
+const dossiersRoute = createRoute({
+  getParentRoute: () => testRoot,
+  path: "/novels/$novelId/knowledge/dossiers",
+  component: () => (
+    <>
+      <p>dossiers</p>
+      <IconRail />
+    </>
+  ),
+});
 
 function renderRail(path = "/rail-test") {
   const router = createRouter({
-    routeTree: testRoot.addChildren([homeRoute, railRoute, novelRoute]),
+    routeTree: testRoot.addChildren([homeRoute, railRoute, novelRoute, graphRoute, dossiersRoute]),
     history: createMemoryHistory({ initialEntries: [path] }),
   });
   render(
@@ -338,14 +363,39 @@ describe("the rail — nav", () => {
     }
   });
 
-  it("the three later-wave doors stay honestly disabled with their notes while books stand", async () => {
+  it("the Wissen door opens the active book's lore graph — current on the graph route (Task 3)", async () => {
     renderRail();
+    // Once the books stand, Wissen is a live door to the active book's graph.
+    const wissen = await screen.findByRole("link", { name: de["shell.nav.knowledge"] });
+    expect(wissen.getAttribute("href")).toBe(`/novels/${DEAD_SIGNAL.id}/knowledge/graph`);
+    expect(wissen.getAttribute("aria-current")).toBeNull();
+    cleanup();
+    renderRail(`/novels/${WINTERHAUS.id}/knowledge/graph`);
+    const current = await screen.findByRole("link", { name: de["shell.nav.knowledge"] });
+    expect(current.getAttribute("aria-current")).toBe("page");
+    expect(current.getAttribute("href")).toBe(`/novels/${WINTERHAUS.id}/knowledge/graph`);
+  });
+
+  it("the Wissen door wears its active face on the dossiers route too — one area, two surfaces (Task 5)", async () => {
+    // The door keeps opening the graph (the area's first surface); the
+    // dossiers are reached through the surfaces' own sibling doors. The
+    // active face marks the AREA, so it stands on both routes.
+    renderRail(`/novels/${WINTERHAUS.id}/knowledge/dossiers`);
+    const current = await screen.findByRole("link", { name: de["shell.nav.knowledge"] });
+    expect(current.getAttribute("aria-current")).toBe("page");
+    expect(current.getAttribute("href")).toBe(`/novels/${WINTERHAUS.id}/knowledge/graph`);
+  });
+
+  it("the two remaining later-wave doors stay honestly disabled with their notes while books stand", async () => {
+    renderRail();
+    // Wait for the books so the active-book doors have settled to their live
+    // faces — Wissen is a link now; Planung and Einstellungen still wait.
+    await screen.findByRole("link", { name: de["shell.nav.knowledge"] });
     for (const [label, note] of [
-      [de["shell.nav.knowledge"], de["shell.nav.knowledge.note"]],
       [de["shell.nav.planning"], de["shell.nav.planning.note"]],
       [de["shell.nav.settings"], de["shell.nav.settings.note"]],
     ] as const) {
-      const button = await screen.findByRole("button", { name: label });
+      const button = screen.getByRole("button", { name: label });
       expect(button.hasAttribute("disabled")).toBe(true);
       expect(button.getAttribute("title")).toBe(note);
     }

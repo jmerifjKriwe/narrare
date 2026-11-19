@@ -898,8 +898,12 @@ export function useDiscardSuggestion(
   });
 }
 
-/** The fields a correction may carry: only these reach the PATCH body. */
-export type EntityChanges = Partial<Pick<Entity, "name" | "type" | "aliases" | "tags" | "content">>;
+/** The fields a correction may carry: only these reach the PATCH body.
+ *  Content is present-and-nullable — a carried `null` clears the body, the
+ *  EntityUpdate contract's own distinction (an absent field leaves it). */
+export type EntityChanges = Partial<Pick<Entity, "name" | "type" | "aliases" | "tags">> & {
+  content?: string | null;
+};
 
 /**
  * The corrections of the detail view. Each invalidates the entity list
