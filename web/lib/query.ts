@@ -701,27 +701,45 @@ export function usePendingSuggestionsQuery(novelId: string): UseQueryResult<Sugg
 }
 
 /**
+ * The corpus's semantic search, one ask both doors share: the dock's
+ * debounced box and the sources archive's submitted box POST the same
+ * endpoint the same way, so the ask lives in one place. A refusal throws
+ * the ENRICHED shape — status and detail ride the throw — because the two
+ * doors share one cache family (`["knowledge", "passages", …]`): an error
+ * the dock cached replays on the sources page, and the 409
+ * embedding-mismatch must name itself there too, not wear the generic
+ * outage face.
+ */
+async function searchCorpus(query: string): Promise<Hit[]> {
+  const limit = 5; // the server's own default, pinned here by the request type
+  const { data, error, response } = await client.POST("/api/knowledge/search", {
+    body: { query, limit },
+  });
+  if (!response.ok) {
+    throw Object.assign(new Error(`search unavailable: ${response.status}`), {
+      status: response.status,
+      detail: (error as { detail?: unknown } | null | undefined)?.detail,
+    });
+  }
+  return data ?? [];
+}
+
+/**
  * The dock search's second tier: the box's text asked of the semantic
  * search. The ask is debounced — the box's entity list narrows the same
  * words against the server (see `useEntitiesQuery`), and the corpus's
  * passages are owed only once the typing pauses, so a word typed a letter
  * at a time is one request, not one per keystroke. The key carries the
  * debounced text, so every answer is cached under the words that produced
- * it, and an empty query asks nothing (`enabled`).
+ * it, and an empty query asks nothing (`enabled`). The refusal is the
+ * shared enriched shape (`searchCorpus` above).
  */
 export function usePassageSearch(query: string): UseQueryResult<Hit[]> {
   const debounced = useDebouncedValue(query, 300);
   return useQuery({
     queryKey: ["knowledge", "passages", debounced],
     enabled: debounced.trim() !== "",
-    queryFn: async () => {
-      const limit = 5; // the server's own default, pinned here by the request type
-      const { data, response } = await client.POST("/api/knowledge/search", {
-        body: { query: debounced, limit },
-      });
-      if (!response.ok) throw new Error(`search unavailable: ${response.status}`);
-      return data ?? [];
-    },
+    queryFn: () => searchCorpus(debounced),
   });
 }
 
@@ -739,19 +757,7 @@ export function useSourceSearch(query: string): UseQueryResult<Hit[]> {
   return useQuery({
     queryKey: ["knowledge", "passages", query],
     enabled: query.trim() !== "",
-    queryFn: async () => {
-      const limit = 5; // the server's own default, pinned here by the request type
-      const { data, error, response } = await client.POST("/api/knowledge/search", {
-        body: { query, limit },
-      });
-      if (!response.ok) {
-        throw Object.assign(new Error(`search unavailable: ${response.status}`), {
-          status: response.status,
-          detail: (error as { detail?: unknown } | null | undefined)?.detail,
-        });
-      }
-      return data ?? [];
-    },
+    queryFn: () => searchCorpus(query),
   });
 }
 
@@ -785,10 +791,11 @@ export function useDocumentsQuery(): UseQueryResult<KnowledgeDocument[]> {
  * along). The write invalidates the documents list on SETTLING — not only
  * on success, the delete family's discipline: a refusal may mean the
  * server changed underneath (another tab's write won the race), and the
- * refetch is what makes the list follow the rows that stand. A refusal
- * carries its status and detail — 413 the size bound, 422 the empty
- * document, 409 the embedding mismatch — so the page names each refusal
- * in its own words.
+ * refetch is what makes the list follow the rows that stand. The passages
+ * family is invalidated on the same settle — the upload changes the corpus
+ * every cached search answer was drawn from. A refusal carries its status
+ * and detail — 413 the size bound, 422 the empty document, 409 the
+ * embedding mismatch — so the page names each refusal in its own words.
  */
 export function useUploadDocument(): UseMutationResult<KnowledgeDocument, Error, File> {
   return useMutation({
@@ -808,6 +815,7 @@ export function useUploadDocument(): UseMutationResult<KnowledgeDocument, Error,
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "documents"] });
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "passages"] });
     },
   });
 }
@@ -817,10 +825,12 @@ export function useUploadDocument(): UseMutationResult<KnowledgeDocument, Error,
  * leave the corpus with the row. The write invalidates the documents list
  * key on SETTLING — not only on success: a 404 means the document is
  * already gone (another tab's delete won the race), and the refetch is
- * what removes the row a second delete would have acted on. The sources
- * archive's `useDocumentsQuery` reads that same key, so the invalidation
- * IS the list's refetch. Documents are the library's, never canon (D8),
- * so no novel key may go stale on their account.
+ * what removes the row a second delete would have acted on. The passages
+ * family rides the same settle — a just-deleted document's chunks must
+ * not survive in a same-string resubmitted search. The sources archive's
+ * `useDocumentsQuery` reads that same key, so the invalidation IS the
+ * list's refetch. Documents are the library's, never canon (D8), so no
+ * novel key may go stale on their account.
  */
 export function useDeleteDocument(): UseMutationResult<void, Error, string> {
   return useMutation({
@@ -832,6 +842,7 @@ export function useDeleteDocument(): UseMutationResult<void, Error, string> {
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "documents"] });
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "passages"] });
     },
   });
 }
