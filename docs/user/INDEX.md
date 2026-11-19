@@ -10,7 +10,7 @@ documentation grows around this index, never inside it.
 
 | Capability | Path | Navigation | Needs |
 | --- | --- | --- | --- |
-| Knowledge | /knowledge | ✓ | an embedding model |
+| Knowledge | /knowledge | — | an embedding model |
 | Welcome to the Atelier | /setup | — | — |
 | Novels | / | — | a text model |
 
@@ -18,7 +18,7 @@ documentation grows around this index, never inside it.
 
 | Funktion | Pfad | Navigation | Benötigt |
 | --- | --- | --- | --- |
-| Wissen | /knowledge | ✓ | ein Embedding-Modell |
+| Wissen | /knowledge | — | ein Embedding-Modell |
 | Willkommen im Atelier | /setup | — | — |
 | Romane | / | — | ein Textmodell |
 
@@ -26,6 +26,6 @@ documentation grows around this index, never inside it.
 
 | Fonction | Chemin | Navigation | Nécessite |
 | --- | --- | --- | --- |
-| Savoir | /knowledge | ✓ | un modèle d'embeddings |
+| Savoir | /knowledge | — | un modèle d'embeddings |
 | Bienvenue dans l'Atelier | /setup | — | — |
 | Romans | / | — | un modèle de texte |
