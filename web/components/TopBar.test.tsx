@@ -249,8 +249,10 @@ describe("the topbar — save, search, language", () => {
     const chip = search.closest("div") as HTMLElement;
     expect(chip.classList.contains("hidden")).toBe(true);
     expect(chip.classList.contains("sm:block")).toBe(true);
-    // The real controls never fold: the language switcher stays mounted at
-    // every width (so does the word chip beside it).
+    // The real controls never fold: the word chip and the language switcher
+    // stay mounted at every width.
+    const words = await screen.findByText(t("shell.topbar.wordsTotal", { count: 4584 }));
+    expect((words.closest("div") as HTMLElement).classList.contains("hidden")).toBe(false);
     const language = await screen.findByRole("button", { name: /Sprache/ });
     expect(language.classList.contains("hidden")).toBe(false);
   });
