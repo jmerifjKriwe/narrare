@@ -525,7 +525,17 @@ export function KnowledgeDock() {
                     <Icon name={entityTypeIcon(entity.type)} size={12} />
                   </span>
                   <span className="font-medium text-foreground">{entity.name}</span>
-                  <span className="text-[10px] text-muted">{entityTypeLabel(t, entity.type)}</span>
+                  {/* The type label rides foreground/80, not muted: the
+                      chip's container-high ground leaves muted below the
+                      AA floor on both faces (4.33 light / 4.25 dark — the
+                      E2E's axe gate caught what jsdom cannot lay out); the
+                      blend keeps the label one step under the name and
+                      clears 4.5:1 on both halves, the zen idle-preset
+                      precedent. The icon stays muted — decoration, not
+                      text, and beside the name it names. */}
+                  <span className="text-[10px] text-foreground/80">
+                    {entityTypeLabel(t, entity.type)}
+                  </span>
                 </button>
               </li>
             ))}
