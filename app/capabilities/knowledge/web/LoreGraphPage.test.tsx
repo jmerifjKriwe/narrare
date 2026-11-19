@@ -631,4 +631,15 @@ describe("the subbar's sibling door (W5 Task 5 — the two surfaces connect)", (
     await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/knowledge/dossiers`));
     expect(router.state.location.search).toEqual({});
   });
+
+  it("a dead id on the URL never travels — the door carries only a living selection", async () => {
+    const router = await renderGraph(`/novels/${NOVEL_ID}/knowledge/graph?entity=ghost`);
+    await screen.findAllByTestId("graph-node");
+    // The unresolvable param opens no dossier; the door must not hand the
+    // ghost to the sibling surface.
+    expect(screen.queryByTestId("entity-dossier")).toBeNull();
+    fireEvent.click(screen.getByTestId("graph-dossiers-door"));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/knowledge/dossiers`));
+    expect(router.state.location.search).toEqual({});
+  });
 });

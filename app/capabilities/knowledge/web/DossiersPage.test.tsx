@@ -218,6 +218,15 @@ describe("the grid browses the novel's real cast", () => {
     expect(screen.getByText("Station 7")).toBeTruthy();
   });
 
+  it("the search box is named once — the label, not a doubled mechanism", async () => {
+    await renderDossiers();
+    await screen.findAllByTestId("dossier-card");
+    const box = screen.getByRole("searchbox", { name: de["knowledge.dossiers.searchLabel"] });
+    // One naming mechanism: the wrapping label's text, no redundant aria-label.
+    expect(box.getAttribute("aria-label")).toBeNull();
+    expect(screen.getByLabelText(de["knowledge.dossiers.searchLabel"])).toBe(box);
+  });
+
   it("a self-loop counts once on the card — the same single edge the dossier lists", async () => {
     relations = [relationRow({ id: "r4", from_entity_id: "e1", to_entity_id: "e1", relation_type: "related_to", note: null })];
     await renderDossiers();
@@ -409,6 +418,17 @@ describe("the subbar's sibling door connects the two surfaces", () => {
   it("with no selection the door opens the graph unscoped", async () => {
     const router = await renderDossiers();
     await screen.findAllByTestId("dossier-card");
+    fireEvent.click(screen.getByTestId("dossiers-graph-door"));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/knowledge/graph`));
+    expect(router.state.location.search).toEqual({});
+  });
+
+  it("a dead id on the URL never travels — the door carries only a living selection", async () => {
+    const router = await renderDossiers(`/novels/${NOVEL_ID}/knowledge/dossiers?entity=ghost`);
+    await screen.findAllByTestId("dossier-card");
+    // The unresolvable param opens no dossier; the door must not hand the
+    // ghost to the sibling surface.
+    expect(screen.queryByTestId("entity-dossier")).toBeNull();
     fireEvent.click(screen.getByTestId("dossiers-graph-door"));
     await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/knowledge/graph`));
     expect(router.state.location.search).toEqual({});

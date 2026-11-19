@@ -104,7 +104,8 @@ export function EntityDossier({
   onClose: () => void;
   onSelectEntity: (id: string) => void;
   /** The home's surviving container, for focus when a delete folds this
-   *  dossier (the graph passes its page; the dossiers page its grid). */
+   *  dossier — each home passes its focusable page root (the graph
+   *  `graph-page`, the dossiers page `dossiers-page`). */
   focusFallbackId?: string;
   /** The home's own gap areas, rendered in the detail's flow after the
    *  excerpts gap (the dossiers page's profile areas; the graph passes none). */

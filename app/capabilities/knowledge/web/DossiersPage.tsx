@@ -122,17 +122,19 @@ export function DossiersPage() {
     [navigate, novelId],
   );
 
-  // The sibling door and the rail's graph area share one crossing: the
-  // selection travels, so the graph opens on the same entity.
+  const selected = selectedId !== undefined ? (entityList.find((entity) => entity.id === selectedId) ?? null) : null;
+
+  // The sibling door and the rail's graph area share one crossing: only a
+  // LIVING selection travels — a dead id on the URL resolves to no entity
+  // and is never handed to the graph (the review's stale-param finding).
   const goGraph = useCallback(() => {
     void navigate({
       to: GRAPH_PATH,
       params: { novelId },
-      search: selectedId !== undefined ? { entity: selectedId } : {},
+      search: selected !== null ? { entity: selected.id } : {},
     });
-  }, [navigate, novelId, selectedId]);
+  }, [navigate, novelId, selected]);
 
-  const selected = selectedId !== undefined ? (entityList.find((entity) => entity.id === selectedId) ?? null) : null;
   const selectedRelations = useMemo(
     () =>
       selected === null
@@ -280,7 +282,6 @@ export function DossiersPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={t("knowledge.dossiers.search")}
-                aria-label={t("knowledge.dossiers.searchLabel")}
                 className={`w-full rounded-[var(--radius-control)] border border-rule bg-card py-1.5 pl-8 pr-3 text-body text-foreground shadow-card placeholder:text-muted focus:outline-none ${FOCUS}`}
               />
             </label>

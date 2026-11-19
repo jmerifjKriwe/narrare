@@ -367,7 +367,8 @@ export function LoreGraphPage() {
             {t("knowledge.graph.title")}
           </span>
           {/* The sibling door (W5 Task 5): the dossiers browse the same cast;
-              the selection travels, so both surfaces open the same entity. */}
+              only a living selection travels — a dead id on the URL resolves
+              to no entity and never crosses (the review's stale-param finding). */}
           <button
             type="button"
             data-testid="graph-dossiers-door"
@@ -375,7 +376,7 @@ export function LoreGraphPage() {
               void navigate({
                 to: DOSSIERS_PATH,
                 params: { novelId },
-                search: selectedId !== undefined ? { entity: selectedId } : {},
+                search: selected !== null ? { entity: selected.id } : {},
               });
             }}
             className={`flex items-center gap-1.5 rounded-full border border-rule bg-card px-3 py-1 text-meta text-foreground shadow-card transition-colors hover:bg-surface-container ${FOCUS}`}
