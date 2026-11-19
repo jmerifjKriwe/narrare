@@ -70,18 +70,26 @@ const R2: Relation = {
   created_at: "2026-11-18T10:00:00Z",
 };
 
-function mountDossier(onClose = vi.fn(), onSelectEntity = vi.fn()) {
-  render(
+function dossierUi(
+  relations: readonly Relation[],
+  onClose: () => void = vi.fn(),
+  onSelectEntity: (id: string) => void = vi.fn(),
+) {
+  return (
     <QueryClientProvider client={queryClient}>
       <EntityDossier
         entity={MAYA}
-        relations={[R1, R2]}
+        relations={relations}
         entities={ENTITIES}
         onClose={onClose}
         onSelectEntity={onSelectEntity}
       />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
+}
+
+function mountDossier(onClose = vi.fn(), onSelectEntity = vi.fn()) {
+  render(dossierUi([R1, R2], onClose, onSelectEntity));
   return { onClose, onSelectEntity };
 }
 
@@ -230,6 +238,27 @@ describe("each relation card carries edit and delete beside the select door", ()
       expect(screen.queryByRole("alertdialog")).toBeNull();
       expect(document.activeElement).toBe(document.getElementById("dossier-relations"));
     });
+  });
+
+  it("deleting the LAST relation keeps focus off the body — the dossier aside survives the emptied list (#910)", async () => {
+    api.DELETE.mockResolvedValue({ data: undefined, response: ok(204) });
+    // One edge: deleting it empties the list, whose unmount would otherwise
+    // drop activeElement to the body once the invalidation settles.
+    const view = render(dossierUi([R1]));
+    fireEvent.click(document.getElementById("dossier-relation-delete-r1") as HTMLElement);
+    const confirm = await screen.findByRole("alertdialog");
+    fireEvent.click(within(confirm).getByRole("button", { name: de["knowledge.crud.deleteConfirm"] }));
+    // The write landed: focus sits on the surviving container, not on the
+    // list the refetch is about to retire.
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      expect(document.activeElement).toBe(document.getElementById("entity-dossier"));
+    });
+    // The invalidation settles: the emptied list unmounts (the empty-state
+    // paragraph replaces it) — the survivor must be one that survives THIS.
+    view.rerender(dossierUi([]));
+    expect(document.getElementById("dossier-relations")).toBeNull();
+    expect(document.activeElement).toBe(document.getElementById("entity-dossier"));
   });
 });
 

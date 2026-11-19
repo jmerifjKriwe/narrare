@@ -397,6 +397,11 @@ export function EntityDossier({
         entities={entities}
         openerId={`dossier-relation-delete-${dialog.relation.id}`}
         onClose={closeDialog}
+        // The survivor chain (#910): the relations list while other edges
+        // keep it mounted; the dossier aside when this delete empties the
+        // list — the invalidation unmounts the focused <ul> otherwise, and
+        // removing the active element drops focus to the body.
+        fallbackFocusId={relations.length <= 1 ? "entity-dossier" : "dossier-relations"}
       />
     )}
     </>
