@@ -66,4 +66,11 @@ describe("the extension summary comes from the real titles", () => {
     expect(titleExtensions(["Band 1. Die lange Reise", "Notizen", "leer."])).toEqual([]);
     expect(titleExtensions([])).toEqual([]);
   });
+
+  it("a digit-only suffix is a volume number, not an extension — „Kapitel.12“ contributes nothing", () => {
+    expect(titleExtensions(["Kapitel.12", "Band.3"])).toEqual([]);
+    expect(titleExtensions(["Kapitel.12", "Notizen.txt"])).toEqual(["txt"]);
+    // A suffix that merely CONTAINS digits still reads as one (mp3, 7z).
+    expect(titleExtensions(["aufnahme.mp3", "archiv.7z"])).toEqual(["7z", "mp3"]);
+  });
 });

@@ -44,14 +44,18 @@ export function formatBytes(bytes: number): string {
  *  the list meta's „(.pdf, .txt, .md)" derived, never invented. A suffix
  *  only counts when it reads as one: short, alphanumeric, after a dot that
  *  is neither leading nor trailing („Band 1. Die lange Reise" carries
- *  none). */
+ *  none), and not digit-only — „Kapitel.12" is a volume number, not a
+ *  file kind (a suffix that merely contains digits, like mp3, still reads
+ *  as one). */
 export function titleExtensions(titles: readonly string[]): string[] {
   const extensions = new Set<string>();
   for (const title of titles) {
     const dot = title.lastIndexOf(".");
     if (dot <= 0 || dot === title.length - 1) continue;
     const extension = title.slice(dot + 1).toLowerCase();
-    if (extension.length <= 5 && /^[a-z0-9]+$/.test(extension)) extensions.add(extension);
+    if (extension.length <= 5 && /^[a-z0-9]+$/.test(extension) && !/^\d+$/.test(extension)) {
+      extensions.add(extension);
+    }
   }
   return [...extensions].sort();
 }

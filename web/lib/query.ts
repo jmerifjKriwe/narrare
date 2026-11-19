@@ -772,9 +772,13 @@ export function useDocumentsQuery(): UseQueryResult<KnowledgeDocument[]> {
  * (the export blob's precedent). openapi-fetch passes FormData through
  * untouched and lets the browser set the multipart boundary. The title is
  * the file's own name (the server resolves it when no form title rides
- * along). Success invalidates the documents list; a refusal carries its
- * status and detail — 413 the size bound, 422 the empty document, 409 the
- * embedding mismatch — so the page names each refusal in its own words.
+ * along). The write invalidates the documents list on SETTLING — not only
+ * on success, the delete family's discipline: a refusal may mean the
+ * server changed underneath (another tab's write won the race), and the
+ * refetch is what makes the list follow the rows that stand. A refusal
+ * carries its status and detail — 413 the size bound, 422 the empty
+ * document, 409 the embedding mismatch — so the page names each refusal
+ * in its own words.
  */
 export function useUploadDocument(): UseMutationResult<KnowledgeDocument, Error, File> {
   return useMutation({
@@ -792,7 +796,7 @@ export function useUploadDocument(): UseMutationResult<KnowledgeDocument, Error,
       }
       return data;
     },
-    onSuccess: () => {
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "documents"] });
     },
   });
@@ -800,10 +804,13 @@ export function useUploadDocument(): UseMutationResult<KnowledgeDocument, Error,
 
 /**
  * Deleting a document: its chunks' foreign key cascades, so the passages
- * leave the corpus with the row. Success invalidates the documents list
- * key — the sources archive's `useDocumentsQuery` reads that same key, so
- * the invalidation IS the list's refetch. Documents are the library's,
- * never canon (D8), so no novel key may go stale on their account.
+ * leave the corpus with the row. The write invalidates the documents list
+ * key on SETTLING — not only on success: a 404 means the document is
+ * already gone (another tab's delete won the race), and the refetch is
+ * what removes the row a second delete would have acted on. The sources
+ * archive's `useDocumentsQuery` reads that same key, so the invalidation
+ * IS the list's refetch. Documents are the library's, never canon (D8),
+ * so no novel key may go stale on their account.
  */
 export function useDeleteDocument(): UseMutationResult<void, Error, string> {
   return useMutation({
@@ -813,7 +820,7 @@ export function useDeleteDocument(): UseMutationResult<void, Error, string> {
       });
       if (!response.ok) throw new Error(`document delete refused: ${response.status}`);
     },
-    onSuccess: () => {
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "documents"] });
     },
   });

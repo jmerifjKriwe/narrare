@@ -359,6 +359,11 @@ describe("the upload fires the real multipart", () => {
     pickFile(textFile());
     const alert = await screen.findByTestId("sources-upload-error");
     expect(within(alert).getByText(de["knowledge.sources.uploadFailed"])).toBeTruthy();
+    // The failed write settles first: the archive refetches even on the
+    // refusal (the delete family's discipline, both document mutations).
+    await waitFor(() =>
+      expect(api.GET.mock.calls.filter(([p]) => p === "/api/knowledge/documents").length).toBeGreaterThanOrEqual(2),
+    );
     fireEvent.click(within(alert).getByRole("button", { name: de["knowledge.graph.retry"] }));
     expect(await screen.findByText("Neue Quelle.txt")).toBeTruthy();
     expect(uploads).toBe(2);
@@ -423,6 +428,23 @@ describe("the delete confirms in the destructive family and refetches", () => {
     expect(within(alert).getByText(de["knowledge.crud.deleteError"])).toBeTruthy();
     expect(screen.getByRole("alertdialog")).toBeTruthy();
     expect(screen.getAllByTestId("sources-document")).toHaveLength(3);
+  });
+
+  it("a FAILED delete still refetches the archive — the family settles first, a 404 means the row is already gone", async () => {
+    api.DELETE.mockImplementation(() => Promise.resolve({ response: ok(500) }));
+    await renderSources();
+    const rows = await screen.findAllByTestId("sources-document");
+    const readsBefore = api.GET.mock.calls.filter(([p]) => p === "/api/knowledge/documents").length;
+    fireEvent.click(within(rows[0]).getByTestId("sources-delete"));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: de["knowledge.crud.deleteConfirm"] }));
+    await within(dialog).findByRole("alert");
+    // The settle invalidates the list even though the write failed — the
+    // refetch is what makes the rows follow a server that may have changed
+    // underneath (another tab's delete won the race).
+    await waitFor(() =>
+      expect(api.GET.mock.calls.filter(([p]) => p === "/api/knowledge/documents").length).toBeGreaterThan(readsBefore),
+    );
   });
 });
 
@@ -524,6 +546,24 @@ describe("the semantic search round-trips the real query", () => {
     expect(await screen.findByTestId("sources-search-busy")).toBeTruthy();
     resolveSearch({ data: hits, response: ok() });
     expect(await screen.findAllByTestId("sources-hit")).toHaveLength(2);
+  });
+
+  it("the search stands independent of the archive read — a dead list does not silence the corpus", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/documents") {
+        return Promise.resolve({ data: undefined, response: ok(500) });
+      }
+      return baseGet(path);
+    });
+    await renderSources();
+    // The archive's outage face stands…
+    expect(await screen.findByTestId("sources-load-error")).toBeTruthy();
+    expect(screen.queryByTestId("sources-document")).toBeNull();
+    // …and the search still round-trips: the two reads are independent.
+    fireEvent.change(screen.getByTestId("sources-search"), { target: { value: "Echo" } });
+    fireEvent.click(screen.getByTestId("sources-search-button"));
+    expect(await screen.findAllByTestId("sources-hit")).toHaveLength(2);
+    expect(screen.getByTestId("sources-load-error")).toBeTruthy();
   });
 });
 
