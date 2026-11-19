@@ -109,11 +109,11 @@ export function LoreGraphPage() {
   // note unreachable under the later. Each takes a bow of its own, indexed
   // in the canonical id order (the layout's own edge-sort convention), so
   // the same set always draws the same picture whatever the rows' arrival
-  // order. Self-loops are another shape entirely and never bow.
+  // order. A self-loop keys on its node alone: its slot fans successive
+  // loops off the same node apart.
   const parallelSlot = useMemo(() => {
     const groups = new Map<string, string[]>();
     for (const relation of relationList) {
-      if (relation.from_entity_id === relation.to_entity_id) continue;
       const key = [relation.from_entity_id, relation.to_entity_id].sort().join("\u0000");
       const group = groups.get(key);
       if (group === undefined) groups.set(key, [relation.id]);
@@ -377,13 +377,19 @@ export function LoreGraphPage() {
       // A self-loop arcs off the node's right side and back, standing clear
       // of the card's real bounds — the card draws OVER the svg, so a loop
       // inside them would hide with its arrow and its label, and its wide
-      // hover stroke would sit under the card, unreachable.
+      // hover stroke would sit under the card, unreachable. Successive
+      // loops on one node fan apart vertically around the node's level
+      // (nested bows at one height would stack their labels); the lone
+      // loop — index 0 of 1 — keeps the shape unchanged.
+      const slot = parallelSlot.get(relation.id) ?? { index: 0, count: 1 };
+      const fan = (slot.index - (slot.count - 1) / 2) * EDGE_SPACING;
       const standX = from.x + NODE_CARD_WIDTH / 2 + 10;
       const bowX = from.x + NODE_CARD_WIDTH / 2 + 84;
-      const d = `M ${standX} ${from.y - 30} C ${bowX} ${from.y - 88}, ${bowX} ${from.y + 88}, ${standX} ${from.y + 30}`;
+      const y = from.y + fan;
+      const d = `M ${standX} ${y - 30} C ${bowX} ${y - 88}, ${bowX} ${y + 88}, ${standX} ${y + 30}`;
       // The cubic's true midpoint, t=0.5: (P0 + 3·C1 + 3·C2 + P3) / 8 — the
-      // symmetric spread keeps it level with the node, one quarter out.
-      return { d, midX: (standX + 3 * bowX) / 4, midY: from.y, tipX: standX, tipY: from.y + 30, ux: -1, uy: 0 };
+      // symmetric spread keeps it level with the loop's own centre.
+      return { d, midX: (standX + 3 * bowX) / 4, midY: y, tipX: standX, tipY: y + 30, ux: -1, uy: 0 };
     }
     const dx = to.x - from.x;
     const dy = to.y - from.y;
@@ -403,16 +409,22 @@ export function LoreGraphPage() {
     // so A→B and B→A separate too instead of collapsing onto one side. The
     // quadratic's control point carries twice the bow, which puts B(0.5),
     // the label's anchor and the popover's, exactly one bow off the chord.
+    // The tip itself staggers half the bow along the same perpendicular,
+    // so two same-direction parallels end in two visible arrowheads
+    // instead of one drawn twice; a pair's only edge bows nothing and its
+    // tip stands exactly where the straight line's did.
     const flipped = relation.to_entity_id < relation.from_entity_id;
     const px = flipped ? uy : -uy;
     const py = flipped ? -ux : ux;
     const bow = (slot.index - (slot.count - 1) / 2) * EDGE_SPACING;
+    const tip2X = tipX + px * (bow / 2);
+    const tip2Y = tipY + py * (bow / 2);
     return {
-      d: `M ${from.x} ${from.y} Q ${(from.x + tipX) / 2 + px * bow * 2} ${(from.y + tipY) / 2 + py * bow * 2} ${tipX} ${tipY}`,
-      midX: (from.x + tipX) / 2 + px * bow,
-      midY: (from.y + tipY) / 2 + py * bow,
-      tipX,
-      tipY,
+      d: `M ${from.x} ${from.y} Q ${(from.x + tip2X) / 2 + px * bow * 2} ${(from.y + tip2Y) / 2 + py * bow * 2} ${tip2X} ${tip2Y}`,
+      midX: (from.x + tip2X) / 2 + px * bow,
+      midY: (from.y + tip2Y) / 2 + py * bow,
+      tipX: tip2X,
+      tipY: tip2Y,
       ux,
       uy,
     };

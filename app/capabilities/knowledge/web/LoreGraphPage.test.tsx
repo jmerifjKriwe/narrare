@@ -822,6 +822,18 @@ describe("parallel edges between the same pair separate (Codacy fix — PR #912)
     expect(edgePath(edges[0])).not.toBe(edgePath(edges[1]));
     expect(edgeLabel(edges[0])).not.toBe(edgeLabel(edges[1]));
   });
+
+  it("two same-direction parallels end in distinct arrowheads (review fix — round 2)", async () => {
+    relations = [
+      R1,
+      relationRow({ id: "r4", from_entity_id: "e1", to_entity_id: "e2", relation_type: "related_to", note: null }),
+    ];
+    await renderGraph();
+    const edges = await screen.findAllByTestId("graph-edge");
+    expect(edges).toHaveLength(2);
+    const arrows = edges.map((edge) => edge.querySelector("polygon")?.getAttribute("points") ?? "");
+    expect(arrows[0]).not.toBe(arrows[1]);
+  });
 });
 
 describe("a self-loop clears its node card (Codacy fix — PR #912)", () => {
@@ -876,5 +888,55 @@ describe("a self-loop clears its node card (Codacy fix — PR #912)", () => {
     fireEvent.click(loop);
     const popover = await screen.findByTestId("edge-popover");
     expect(within(popover).getByText("Selbstbezug.")).toBeTruthy();
+  });
+
+  it("a lone self-loop keeps the round's exact pinned shape", async () => {
+    entities = [MAYA, ARIA];
+    relations = [
+      R1,
+      relationRow({ id: "r9", from_entity_id: "e1", to_entity_id: "e1", relation_type: "related_to", note: "Selbstbezug." }),
+    ];
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const home = layoutGraph(entities, relations).get("e1") as { x: number; y: number };
+    const standX = home.x + CARD_HALF + 10;
+    const bowX = home.x + CARD_HALF + 84;
+    // The fan must not move the lone loop: standX, bowX and the cubic's
+    // true t=0.5 midpoint stay exactly the round's constants.
+    expect(edgePath(selfLoopEdge())).toBe(
+      `M ${standX} ${home.y - 30} C ${bowX} ${home.y - 88}, ${bowX} ${home.y + 88}, ${standX} ${home.y + 30}`,
+    );
+    expect(edgeLabel(selfLoopEdge())).toBe(`translate(${(standX + 3 * bowX) / 4}, ${home.y})`);
+  });
+});
+
+describe("multiple self-loops on one node fan apart (review fix — round 2)", () => {
+  const CARD_HALF = 120;
+
+  function edgeById(id: string): Element {
+    const edge = screen.getAllByTestId("graph-edge").find((candidate) => candidate.getAttribute("data-edge-id") === id);
+    expect(edge).toBeTruthy();
+    return edge as Element;
+  }
+
+  it("two loops on one node draw distinct arcs and distinct labels, both clear of the card", async () => {
+    entities = [MAYA, ARIA];
+    relations = [
+      R1,
+      relationRow({ id: "r9", from_entity_id: "e1", to_entity_id: "e1", relation_type: "related_to", note: "Selbstbezug." }),
+      relationRow({ id: "r10", from_entity_id: "e1", to_entity_id: "e1", relation_type: "ally_of", note: null }),
+    ];
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const first = edgeById("r9");
+    const second = edgeById("r10");
+    expect(edgePath(first)).not.toBe(edgePath(second));
+    expect(edgeLabel(first)).not.toBe(edgeLabel(second));
+    // Both arcs stay outside the card's real half-width — the fan moves
+    // them apart, never back under the card.
+    const home = layoutGraph(entities, relations).get("e1") as { x: number };
+    for (const x of [...xValues(edgePath(first)), ...xValues(edgePath(second))]) {
+      expect(x).toBeGreaterThan(home.x + CARD_HALF);
+    }
   });
 });
