@@ -125,10 +125,15 @@ export function TopBar() {
 
       <div className="flex shrink-0 items-center gap-3">
         {/* The ⌘K search chip: INTERIM #882 — honestly disabled until the
-            shell palette wave ships the command palette. The drafted
-            tooltip names the reason; aria-describedby carries it to
-            assistive tech even while it waits for hover. */}
-        <div className="group relative cursor-not-allowed">
+            * shell palette wave ships the command palette. The drafted
+            * tooltip names the reason; aria-describedby carries it to
+            * assistive tech even while it waits for hover. Below the sm
+            * breakpoint the chip folds away (#911): it is the one interim
+            * control in the cluster, and the right cluster is otherwise
+            * rigid (shrink-0) — at phone widths it alone pushed the
+            * document past the viewport. The word chip and the language
+            * switcher, the real controls, stay at every width. */}
+        <div className="group relative hidden cursor-not-allowed sm:block">
           <button
             type="button"
             disabled
