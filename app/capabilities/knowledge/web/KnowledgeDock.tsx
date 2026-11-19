@@ -31,8 +31,10 @@
  *   itself — and while the lane still holds that job, the trigger RESUMES
  *   the poll instead of enqueueing again: a fresh check would pile onto
  *   work the server may already be running, and nothing refuses it
- *   server-side. Only a settled failure clears the lane; the next click
- *   after that is a fresh enqueue, as it should be.
+ *   server-side. Only a settled failure — or a poll that answered 404,
+ *   the job row itself destroyed under the session, where no resume
+ *   could ever answer — clears the lane; the next click after either
+ *   is a fresh enqueue, as it should be.
  * - The entity chips (W5 Task 2 — #867 retired): the novel's real rows,
  *   typed by the extraction contract's vocabulary — the type is the
  *   chip's honest label, the glyph the app's own face for the concept.
@@ -102,6 +104,19 @@ function laneJob(novelId: string, lane: "check" | "extract"): string | null {
 function setLaneJob(novelId: string, lane: "check" | "extract", jobId: string | null): void {
   const lanes = sessionLanes.get(novelId) ?? { check: null, extract: null };
   sessionLanes.set(novelId, { ...lanes, [lane]: jobId });
+}
+
+/** The poll's one unrecoverable failure: the job row itself is gone.
+ *  The server answers a dead id with a 404 — destroyed under the
+ *  session, or another user's — and no resume can ever settle such a
+ *  lane; every click would re-ask a door that cannot answer, so the
+ *  lane clears instead and the next click enqueues fresh. 5xx and
+ *  network failures keep the resume contract: the job may still live
+ *  server-side. The status rides the query's throw (the novel read's
+ *  own carry); a network failure throws before any status exists and
+ *  carries none. */
+function jobGone(error: unknown): boolean {
+  return (error as { status?: number } | null | undefined)?.status === 404;
 }
 
 /** The per-row faces of one shared decision. TanStack's mutation observer
@@ -424,14 +439,20 @@ export function KnowledgeDock() {
   /** The trigger's one contract: while the lane holds a job whose poll
    *  failed, the click RESUMES the poll — the job may still be running
    *  server-side, and a fresh enqueue would pile a second check onto it
-   *  (nothing refuses it there). A fresh enqueue only when the lane is
-   *  idle or the job settled failed; a refused enqueue keeps the trigger
-   *  live (the lane never heard of it — the retry is the same button
-   *  again). */
+   *  (nothing refuses it there) — unless the poll answered 404: the row
+   *  itself is gone, no resume could ever answer, and the click clears
+   *  the lane and enqueues fresh. A fresh enqueue also when the lane is
+   *  idle or the job settled failed; a refused enqueue keeps the
+   *  trigger live (the lane never heard of it — the retry is the same
+   *  button again). */
   async function check(): Promise<void> {
     if (checkJobId !== null && checkJob.isError) {
-      void checkJob.refetch();
-      return;
+      if (!jobGone(checkJob.error)) {
+        void checkJob.refetch();
+        return;
+      }
+      setLaneJob(novelId, "check", null);
+      setCheckJobId(null);
     }
     setCheckJobFailed(false);
     try {
@@ -524,13 +545,19 @@ export function KnowledgeDock() {
 
   /** The extraction trigger's contract, the check's own: while the lane
    *  holds a job whose poll failed, the click resumes the poll — never a
-   *  second enqueue over work the server may still be running. No
+   *  second enqueue over work the server may still be running — unless
+   *  the poll answered 404 (the row itself is gone; the click clears the
+   *  lane and enqueues fresh, the check's own 404 discipline). No
    *  chapter is a no-op (the trigger is not offered); a refused enqueue
    *  keeps the trigger live. */
   async function extract(): Promise<void> {
     if (extractJobId !== null && extractJob.isError) {
-      void extractJob.refetch();
-      return;
+      if (!jobGone(extractJob.error)) {
+        void extractJob.refetch();
+        return;
+      }
+      setLaneJob(novelId, "extract", null);
+      setExtractJobId(null);
     }
     if (chapterId === null) return;
     setExtractJobFailed(false);

@@ -18,7 +18,10 @@
  * keyed by novel: a dock closed mid-job resumes its busy face on reopen,
  * and a dead poll's click RESUMES the poll instead of enqueueing a second
  * job over work the server may still be running (a settled failure clears
- * the lane — only then is the next click a fresh enqueue). Every test
+ * the lane — only then is the next click a fresh enqueue — and so does a
+ * poll that answered 404: the job row itself is gone, destroyed under the
+ * session, and no resume can ever answer a dead id; 5xx and a dead wire
+ * keep the resume, for the job may still live). Every test
  * that starts a job therefore settles its lane before ending, so the
  * module map hands the next test a clean novel.
  *
@@ -642,6 +645,71 @@ describe("the consistency trigger rides the job lane honestly", () => {
     expect(await screen.findByText("1 offener Befund")).toBeTruthy();
   });
 
+  it("a poll that answers 404 clears the lane — the click enqueues fresh, never resumes a dead row", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/jobs/{job_id}") {
+        return Promise.resolve({ data: undefined, response: new Response(null, { status: 404 }) });
+      }
+      return baseGet(path);
+    });
+    await renderDock();
+    const trigger = await screen.findByRole("button", { name: de["knowledge.dock.check"] });
+    fireEvent.click(trigger);
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByText(de["knowledge.dock.pollFailed"])).toBeTruthy();
+    await waitFor(() => expect((trigger as HTMLButtonElement).disabled).toBe(false));
+    // The job row is gone — destroyed under the session, the server's
+    // own answer for a dead id — so a resume would re-ask a door that
+    // can never answer and only a reload could recover. The click must
+    // enqueue FRESH over the cleared lane instead.
+    api.GET.mockImplementation(baseGet);
+    queue = [findingRow()];
+    fireEvent.click(trigger);
+    await waitFor(() =>
+      expect(
+        api.POST.mock.calls.filter(([path]) => path === "/api/knowledge/consistency/{novel_id}"),
+      ).toHaveLength(2),
+    );
+    // The fresh job is a new row the poll asks for; the settle lands and
+    // the lane clears behind it.
+    await waitFor(() => expect(screen.queryByText(de["knowledge.dock.checkBusy"])).toBeNull(), {
+      timeout: 5000,
+    });
+    expect(await screen.findByText("1 offener Befund")).toBeTruthy();
+  });
+
+  it("a network-dead poll keeps the resume contract — the job may still live server-side", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/jobs/{job_id}") {
+        return Promise.reject(new TypeError("Failed to fetch"));
+      }
+      return baseGet(path);
+    });
+    await renderDock();
+    const trigger = await screen.findByRole("button", { name: de["knowledge.dock.check"] });
+    fireEvent.click(trigger);
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByText(de["knowledge.dock.pollFailed"])).toBeTruthy();
+    await waitFor(() => expect((trigger as HTMLButtonElement).disabled).toBe(false));
+    // The wire died, not the row: a network failure carries no status,
+    // and the click must still RESUME the poll — the job may still be
+    // running server-side, and a fresh enqueue would pile onto it.
+    api.GET.mockImplementation(baseGet);
+    queue = [findingRow()];
+    const polls = () =>
+      api.GET.mock.calls.filter(([path]) => path === "/api/jobs/{job_id}").length;
+    const before = polls();
+    fireEvent.click(trigger);
+    await waitFor(() => expect(polls()).toBeGreaterThan(before), { timeout: 5000 });
+    await waitFor(() => expect(screen.queryByText(de["knowledge.dock.checkBusy"])).toBeNull(), {
+      timeout: 5000,
+    });
+    expect(
+      api.POST.mock.calls.filter(([path]) => path === "/api/knowledge/consistency/{novel_id}"),
+    ).toHaveLength(1);
+    expect(await screen.findByText("1 offener Befund")).toBeTruthy();
+  });
+
   it("closing the dock mid-job does not lose the lane — a reopened dock resumes and lands the settle", async () => {
     jobStatus = "running";
     const first = await renderDock();
@@ -841,6 +909,25 @@ describe("the extraction trigger rides the job lane honestly", () => {
     expect(within(alert).getByText(de["knowledge.dock.extractFailed"])).toBeTruthy();
     await waitFor(() => expect((trigger as HTMLButtonElement).disabled).toBe(false));
     expect(screen.queryByText(de["knowledge.dock.extractBusy"])).toBeNull();
+    // The settled failure cleared the lane — the next click is a fresh
+    // enqueue, the retry contract's other half (only a live lane
+    // resumes), and the fresh job is a new row the poll asks for and
+    // settles. The check lane's own pin's twin: the lanes share the
+    // code shape, so they share the pin.
+    jobStatus = "done";
+    const suggestionsReads = () =>
+      api.GET.mock.calls.filter(([path]) => path === "/api/knowledge/novels/{novel_id}/suggestions")
+        .length;
+    const before = suggestionsReads();
+    fireEvent.click(trigger);
+    await waitFor(() =>
+      expect(
+        api.POST.mock.calls.filter(([path]) => path === "/api/knowledge/extraction/{novel_id}"),
+      ).toHaveLength(2),
+    );
+    // The second job's settle lands: the suggestions read again (the
+    // settle beat's own refetch) and the lane clears behind it.
+    await waitFor(() => expect(suggestionsReads()).toBeGreaterThan(before), { timeout: 5000 });
   });
 
   it("a dead poll unlocks the trigger and names itself apart — and the click resumes the lane", async () => {
@@ -873,6 +960,38 @@ describe("the extraction trigger rides the job lane honestly", () => {
     expect(
       api.POST.mock.calls.filter(([path]) => path === "/api/knowledge/extraction/{novel_id}"),
     ).toHaveLength(1);
+    expect(await screen.findByTestId("knowledge-suggestion")).toBeTruthy();
+  });
+
+  it("a poll that answers 404 clears the lane — the click enqueues fresh, never resumes a dead row", async () => {
+    jobKind = "extraction";
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/jobs/{job_id}") {
+        return Promise.resolve({ data: undefined, response: new Response(null, { status: 404 }) });
+      }
+      return baseGet(path);
+    });
+    await renderDock();
+    const trigger = await screen.findByRole("button", { name: de["knowledge.dock.extract"] });
+    fireEvent.click(trigger);
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByText(de["knowledge.dock.extractPollFailed"])).toBeTruthy();
+    await waitFor(() => expect((trigger as HTMLButtonElement).disabled).toBe(false));
+    // The check lane's own pin's twin: the job row is gone (404 — the
+    // server's answer for a destroyed id), and a resume would re-ask a
+    // door that can never answer. The click enqueues FRESH over the
+    // cleared lane; the fresh job is a new row that settles.
+    api.GET.mockImplementation(baseGet);
+    suggestions = [suggestionRow()];
+    fireEvent.click(trigger);
+    await waitFor(() =>
+      expect(
+        api.POST.mock.calls.filter(([path]) => path === "/api/knowledge/extraction/{novel_id}"),
+      ).toHaveLength(2),
+    );
+    await waitFor(() => expect(screen.queryByText(de["knowledge.dock.extractBusy"])).toBeNull(), {
+      timeout: 5000,
+    });
     expect(await screen.findByTestId("knowledge-suggestion")).toBeTruthy();
   });
 
