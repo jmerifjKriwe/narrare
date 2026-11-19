@@ -5,4 +5,4 @@ id: knowledge
 title: knowledge.heading # i18n key; must exist in en, de and fr
 path: /knowledge
 needs: [embeddings]
-nav: true # listed in the home page navigation
+nav: false # the surfaces are per-novel (the workspace dock), not home destinations
