@@ -115,8 +115,15 @@ async function renderGraph(entry = `/novels/${NOVEL_ID}/knowledge/graph`) {
       typeof search.entity === "string" && search.entity !== "" ? { entity: search.entity } : {},
     component: () => <p>dossiers face</p>,
   });
+  // The sources stub the third sibling door navigates to (W5 Task 6); the
+  // archive carries no entity selection, so the route takes no search param.
+  const sources = createRoute({
+    getParentRoute: () => harnessRoot,
+    path: "/novels/$novelId/knowledge/sources",
+    component: () => <p>sources face</p>,
+  });
   const router = createRouter({
-    routeTree: harnessRoot.addChildren([graph, dossiers]),
+    routeTree: harnessRoot.addChildren([graph, dossiers, sources]),
     history: createMemoryHistory({ initialEntries: [entry] }),
   });
   await router.load();
@@ -238,7 +245,10 @@ describe("the graph draws the novel's real web", () => {
 
   it("the type chips name the types the canon carries, with their counts", async () => {
     await renderGraph();
-    const chips = await screen.findAllByTestId("type-chip");
+    // The subbar stands in every state now, so its All chip exists before
+    // the web lands — the counts are owed the populated body, awaited first.
+    await screen.findAllByTestId("graph-node");
+    const chips = screen.getAllByTestId("type-chip");
     // All + character + location + object.
     expect(chips).toHaveLength(4);
     expect(within(chips[0]).getByText(de["knowledge.graph.allTypes"])).toBeTruthy();
@@ -447,6 +457,47 @@ describe("the honest states", () => {
   });
 });
 
+describe("the subbar stands in every state — the sibling doors never vanish (PR #923 fix)", () => {
+  it("the pending face keeps the doors — the loading answer still navigates", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/novels/{novel_id}/entities") {
+        return new Promise(() => {});
+      }
+      return baseGet(path);
+    });
+    await renderGraph();
+    expect(await screen.findByTestId("graph-loading")).toBeTruthy();
+    expect(screen.getByTestId("graph-dossiers-door")).toBeTruthy();
+    expect(screen.getByTestId("graph-sources-door")).toBeTruthy();
+    expect(screen.getByText(de["knowledge.graph.title"])).toBeTruthy();
+  });
+
+  it("the failed face keeps the doors — the outage answer still navigates", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/novels/{novel_id}/entities") {
+        return Promise.resolve({ data: undefined, response: new Response(null, { status: 500 }) });
+      }
+      return baseGet(path);
+    });
+    await renderGraph();
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByText(de["knowledge.graph.loadFailed"])).toBeTruthy();
+    expect(screen.getByTestId("graph-dossiers-door")).toBeTruthy();
+    expect(screen.getByTestId("graph-sources-door")).toBeTruthy();
+    expect(screen.getByText(de["knowledge.graph.title"])).toBeTruthy();
+  });
+
+  it("the empty canon keeps the doors beside the empty face", async () => {
+    entities = [];
+    relations = [];
+    await renderGraph();
+    expect(await screen.findByTestId("graph-empty")).toBeTruthy();
+    expect(screen.getByTestId("graph-dossiers-door")).toBeTruthy();
+    expect(screen.getByTestId("graph-sources-door")).toBeTruthy();
+    expect(screen.getByText(de["knowledge.graph.title"])).toBeTruthy();
+  });
+});
+
 describe("the face speaks du-tone in every catalog — no German fallback", () => {
   it("the English face speaks the English catalog's own copy", async () => {
     applyLocale("en");
@@ -548,6 +599,27 @@ describe("the HUD and legend never seize a pan (review fix)", () => {
     fireEvent.pointerMove(canvas, { clientX: 560, clientY: 520 });
     fireEvent.pointerUp(canvas);
     expect(screen.getByTestId("graph-world").style.transform).not.toBe(before);
+  });
+
+  it("a press on the no-results face never starts a pan — the clear button's click is its own", async () => {
+    // The live defect this pins: the canvas captures the pointer on any
+    // unguarded press, and the captured click never reaches the clear
+    // button (the E2E's clear-filters leg owns the browser proof; jsdom
+    // has no pointer capture, so this pin reads the pan state through the
+    // transform a drag would have moved — a panned view is what the
+    // remounted world would inherit after the filters clear).
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const canvas = screen.getByTestId("graph-canvas");
+    const fit = screen.getByTestId("graph-world").style.transform;
+    fireEvent.change(screen.getByTestId("graph-search"), { target: { value: "zzz" } });
+    const empty = await screen.findByTestId("graph-no-results");
+    fireEvent.pointerDown(empty, { clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(canvas, { clientX: 400, clientY: 400 });
+    fireEvent.pointerUp(canvas);
+    fireEvent.click(within(empty).getByRole("button", { name: de["knowledge.graph.clearFilters"] }));
+    await screen.findAllByTestId("graph-node");
+    expect(screen.getByTestId("graph-world").style.transform).toBe(fit);
   });
 });
 
@@ -655,6 +727,37 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     expect(merge.getAttribute("title")).toContain(de["knowledge.crud.mergeNeedsTwo"]);
   });
 
+  it("the addEdge door is disabled with its note on the empty canon — no dead-end dialog (PR #923 follow-up)", async () => {
+    entities = [];
+    relations = [];
+    await renderGraph();
+    expect(await screen.findByTestId("graph-empty")).toBeTruthy();
+    const door = document.getElementById("graph-add-edge") as HTMLButtonElement;
+    expect(door.disabled).toBe(true);
+    expect(door.getAttribute("title")).toContain(de["knowledge.crud.relationNeedsTwo"]);
+  });
+
+  it("the addEdge door stays disabled with its note at one entity", async () => {
+    entities = [MAYA];
+    relations = [];
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const door = document.getElementById("graph-add-edge") as HTMLButtonElement;
+    expect(door.disabled).toBe(true);
+    expect(door.getAttribute("title")).toContain(de["knowledge.crud.relationNeedsTwo"]);
+  });
+
+  it("the addEdge door opens the create dialog once two entities stand", async () => {
+    entities = [MAYA, ARIA];
+    relations = [];
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const door = document.getElementById("graph-add-edge") as HTMLButtonElement;
+    expect(door.disabled).toBe(false);
+    fireEvent.click(door);
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+  });
+
   it("a door returns focus to its trigger on a pristine Escape", async () => {
     await renderGraph();
     await screen.findAllByTestId("graph-node");
@@ -713,6 +816,16 @@ describe("the subbar's sibling door (W5 Task 5 — the two surfaces connect)", (
     expect(screen.queryByTestId("entity-dossier")).toBeNull();
     fireEvent.click(screen.getByTestId("graph-dossiers-door"));
     await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/knowledge/dossiers`));
+    expect(router.state.location.search).toEqual({});
+  });
+
+  it("the sources door opens the archive unscoped — documents are the library's, not an entity's (Task 6)", async () => {
+    const router = await renderGraph();
+    const nodes = await screen.findAllByTestId("graph-node");
+    fireEvent.click(within(nodes[0]).getByRole("button"));
+    await screen.findByTestId("entity-dossier");
+    fireEvent.click(screen.getByTestId("graph-sources-door"));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/knowledge/sources`));
     expect(router.state.location.search).toEqual({});
   });
 });

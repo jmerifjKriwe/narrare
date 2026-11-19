@@ -12,25 +12,34 @@ import { createElement, type ReactNode } from "react";
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./api/client", () => ({
-  client: {
-    GET: vi.fn(),
-    POST: vi.fn(),
-    PATCH: vi.fn(),
-    PUT: vi.fn(),
-    DELETE: vi.fn(),
-  },
-}));
+vi.mock("./api/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./api/client")>();
+  return {
+    ...actual,
+    client: {
+      GET: vi.fn(),
+      POST: vi.fn(),
+      PATCH: vi.fn(),
+      PUT: vi.fn(),
+      DELETE: vi.fn(),
+    },
+  };
+});
 
-import { client } from "./api/client";
+import { client, isModelChange } from "./api/client";
 import {
   queryClient,
   sameNovelPlaceholder,
   useActivityQuery,
   useArchiveNovel,
   useChaptersQuery,
+  useDeleteDocument,
+  useDocumentsQuery,
   useNovelQuery,
   useNovelsQuery,
+  usePassageSearch,
+  useSourceSearch,
+  useUploadDocument,
 } from "./query";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
@@ -282,6 +291,78 @@ describe("the shelf's invalidation family — the list and the aggregate move to
     // same way, through the same door (the workspace wave's save hook).
     expect(queryClient.getQueryState(["activity", { days: 30 }])?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(["novels", { include_archived: false }])?.isInvalidated).toBe(true);
+  });
+});
+
+describe("the shared [\"knowledge\", \"passages\"] family — one cache, one refusal shape", () => {
+  /** The 409 the corpus answers when its embeddings are another model's. */
+  function mismatch(): { data: undefined; error: { detail: unknown }; response: Response } {
+    return {
+      data: undefined,
+      error: { detail: { code: "embedding-mismatch", stored: "a", found: "b" } },
+      response: new Response(null, { status: 409 }),
+    };
+  }
+
+  it("the dock's door throws the enriched refusal — a cached 409 is the mismatch, never an outage", async () => {
+    api.POST.mockResolvedValue(mismatch());
+    const dock = renderHook(() => usePassageSearch("Echo"), { wrapper });
+
+    await waitFor(() => expect(dock.result.current.isError).toBe(true));
+    // The refusal carries its status and detail — `isModelChange` is the
+    // very predicate the sources face keys its mismatch face on.
+    expect(isModelChange(dock.result.current.error)).toBe(true);
+    expect((dock.result.current.error as { status?: number }).status).toBe(409);
+    // The failure is cached under the family key both doors read.
+    expect(queryClient.getQueryState(["knowledge", "passages", "Echo"])?.status).toBe("error");
+
+    // The sources door, mounted on the same cached entry, meets the same
+    // enriched refusal — whichever door asked, the face names the mismatch.
+    dock.unmount();
+    const sources = renderHook(() => useSourceSearch("Echo"), { wrapper });
+    await waitFor(() => expect(sources.result.current.isError).toBe(true));
+    expect(isModelChange(sources.result.current.error)).toBe(true);
+  });
+});
+
+describe("the document mutations' invalidation family — the archive and the corpus move together", () => {
+  it("a settled delete refetches a standing passage query — a deleted document must not survive a same-string resubmit", async () => {
+    api.POST.mockResolvedValue({ data: [], response: ok() });
+    api.GET.mockResolvedValue({ data: [], response: ok() });
+    api.DELETE.mockResolvedValue({ response: new Response(null, { status: 204 }) });
+    const passages = renderHook(() => useSourceSearch("Echo"), { wrapper });
+    await waitFor(() => expect(passages.result.current.isSuccess).toBe(true));
+    const asks = () => api.POST.mock.calls.filter(([path]) => path === "/api/knowledge/search").length;
+    expect(asks()).toBe(1);
+
+    const del = renderHook(() => useDeleteDocument(), { wrapper });
+    await del.result.current.mutateAsync("d1");
+    // The settle invalidates the passages family: the standing same-string
+    // query asks the corpus again, so a just-deleted document's chunks are
+    // not replayed from the cache.
+    await waitFor(() => expect(asks()).toBeGreaterThan(1));
+  });
+
+  it("a settled upload invalidates the passages family beside the documents list", async () => {
+    api.POST.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/documents") {
+        return Promise.resolve({ data: [], response: new Response(null, { status: 201 }) });
+      }
+      return Promise.resolve({ data: [], response: ok() });
+    });
+    api.GET.mockResolvedValue({ data: [], response: ok() });
+    const passages = renderHook(() => useSourceSearch("Echo"), { wrapper });
+    const documents = renderHook(() => useDocumentsQuery(), { wrapper });
+    await waitFor(() => expect(passages.result.current.isSuccess).toBe(true));
+    // Unmounted, the entries hold the invalidated state instead of
+    // refetching it away — the prefix-reach pin's shape.
+    passages.unmount();
+    documents.unmount();
+
+    const upload = renderHook(() => useUploadDocument(), { wrapper });
+    await upload.result.current.mutateAsync(new File(["x"], "Neue Quelle.txt", { type: "text/plain" }));
+    expect(queryClient.getQueryState(["knowledge", "passages", "Echo"])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(["knowledge", "documents"])?.isInvalidated).toBe(true);
   });
 });
 

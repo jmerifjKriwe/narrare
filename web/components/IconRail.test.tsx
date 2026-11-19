@@ -178,10 +178,22 @@ const dossiersRoute = createRoute({
     </>
   ),
 });
+/** The sources archive's harness face (W5 Task 6): the Wissen area's third
+ *  surface — the same active-face rule, one area with three doors. */
+const sourcesRoute = createRoute({
+  getParentRoute: () => testRoot,
+  path: "/novels/$novelId/knowledge/sources",
+  component: () => (
+    <>
+      <p>sources</p>
+      <IconRail />
+    </>
+  ),
+});
 
 function renderRail(path = "/rail-test") {
   const router = createRouter({
-    routeTree: testRoot.addChildren([homeRoute, railRoute, novelRoute, graphRoute, dossiersRoute]),
+    routeTree: testRoot.addChildren([homeRoute, railRoute, novelRoute, graphRoute, dossiersRoute, sourcesRoute]),
     history: createMemoryHistory({ initialEntries: [path] }),
   });
   render(
@@ -381,6 +393,13 @@ describe("the rail — nav", () => {
     // dossiers are reached through the surfaces' own sibling doors. The
     // active face marks the AREA, so it stands on both routes.
     renderRail(`/novels/${WINTERHAUS.id}/knowledge/dossiers`);
+    const current = await screen.findByRole("link", { name: de["shell.nav.knowledge"] });
+    expect(current.getAttribute("aria-current")).toBe("page");
+    expect(current.getAttribute("href")).toBe(`/novels/${WINTERHAUS.id}/knowledge/graph`);
+  });
+
+  it("the Wissen door wears its active face on the sources route too — one area, three surfaces (Task 6)", async () => {
+    renderRail(`/novels/${WINTERHAUS.id}/knowledge/sources`);
     const current = await screen.findByRole("link", { name: de["shell.nav.knowledge"] });
     expect(current.getAttribute("aria-current")).toBe("page");
     expect(current.getAttribute("href")).toBe(`/novels/${WINTERHAUS.id}/knowledge/graph`);

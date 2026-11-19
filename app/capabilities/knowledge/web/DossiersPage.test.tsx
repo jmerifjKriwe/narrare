@@ -116,8 +116,15 @@ async function renderDossiers(entry = `/novels/${NOVEL_ID}/knowledge/dossiers`) 
     validateSearch: validateEntitySearch,
     component: () => <p>graph face</p>,
   });
+  // The sources stub the third sibling door navigates to (W5 Task 6); the
+  // archive carries no entity selection, so the route takes no search param.
+  const sources = createRoute({
+    getParentRoute: () => harnessRoot,
+    path: "/novels/$novelId/knowledge/sources",
+    component: () => <p>sources face</p>,
+  });
   const router = createRouter({
-    routeTree: harnessRoot.addChildren([dossiers, graph]),
+    routeTree: harnessRoot.addChildren([dossiers, graph, sources]),
     history: createMemoryHistory({ initialEntries: [entry] }),
   });
   await router.load();
@@ -176,7 +183,10 @@ describe("the grid browses the novel's real cast", () => {
 
   it("the type tabs name the contract's eight types with their real counts", async () => {
     await renderDossiers();
-    const tabs = await screen.findAllByTestId("dossier-type-tab");
+    // The subbar stands in every state now, so its tabs exist before the
+    // cast lands — the counts are owed the populated body, awaited first.
+    await screen.findAllByTestId("dossier-card");
+    const tabs = screen.getAllByTestId("dossier-type-tab");
     // All + the contract's eight (character, location, faction, object,
     // system, timeline, event, generic) — the real set, not the draft's four.
     expect(tabs).toHaveLength(9);
@@ -433,6 +443,16 @@ describe("the subbar's sibling door connects the two surfaces", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/knowledge/graph`));
     expect(router.state.location.search).toEqual({});
   });
+
+  it("the sources door opens the archive unscoped — documents are the library's, not an entity's (Task 6)", async () => {
+    const router = await renderDossiers();
+    const cards = await screen.findAllByTestId("dossier-card");
+    fireEvent.click(cards[0]);
+    await screen.findByTestId("entity-dossier");
+    fireEvent.click(screen.getByTestId("dossiers-sources-door"));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/knowledge/sources`));
+    expect(router.state.location.search).toEqual({});
+  });
 });
 
 describe("the honest states", () => {
@@ -476,6 +496,48 @@ describe("the honest states", () => {
     api.GET.mockImplementation(baseGet);
     fireEvent.click(within(alert).getByRole("button", { name: de["knowledge.graph.retry"] }));
     expect(await screen.findAllByTestId("dossier-card")).toHaveLength(4);
+  });
+});
+
+describe("the subbar stands in every state — the sibling doors never vanish (PR #923 fix)", () => {
+  it("the empty canon still offers both sibling doors beside the empty face", async () => {
+    entities = [];
+    relations = [];
+    await renderDossiers();
+    expect(await screen.findByTestId("dossiers-empty")).toBeTruthy();
+    expect(screen.getByTestId("dossiers-graph-door")).toBeTruthy();
+    expect(screen.getByTestId("dossiers-sources-door")).toBeTruthy();
+    // The view label stands too — the bar names the surface it is on.
+    expect(screen.getByText(de["knowledge.dossiers.title"])).toBeTruthy();
+  });
+
+  it("the pending face keeps the doors — the loading answer still navigates", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/novels/{novel_id}/entities") {
+        return new Promise(() => {});
+      }
+      return baseGet(path);
+    });
+    await renderDossiers();
+    expect(await screen.findByTestId("dossiers-loading")).toBeTruthy();
+    expect(screen.getByTestId("dossiers-graph-door")).toBeTruthy();
+    expect(screen.getByTestId("dossiers-sources-door")).toBeTruthy();
+    expect(screen.getByText(de["knowledge.dossiers.title"])).toBeTruthy();
+  });
+
+  it("the failed face keeps the doors — the outage answer still navigates", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/novels/{novel_id}/entities") {
+        return Promise.resolve({ data: undefined, response: new Response(null, { status: 500 }) });
+      }
+      return baseGet(path);
+    });
+    await renderDossiers();
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByText(de["knowledge.dossiers.loadFailed"])).toBeTruthy();
+    expect(screen.getByTestId("dossiers-graph-door")).toBeTruthy();
+    expect(screen.getByTestId("dossiers-sources-door")).toBeTruthy();
+    expect(screen.getByText(de["knowledge.dossiers.title"])).toBeTruthy();
   });
 });
 
