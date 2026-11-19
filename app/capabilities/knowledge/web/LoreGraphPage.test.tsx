@@ -245,7 +245,10 @@ describe("the graph draws the novel's real web", () => {
 
   it("the type chips name the types the canon carries, with their counts", async () => {
     await renderGraph();
-    const chips = await screen.findAllByTestId("type-chip");
+    // The subbar stands in every state now, so its All chip exists before
+    // the web lands — the counts are owed the populated body, awaited first.
+    await screen.findAllByTestId("graph-node");
+    const chips = screen.getAllByTestId("type-chip");
     // All + character + location + object.
     expect(chips).toHaveLength(4);
     expect(within(chips[0]).getByText(de["knowledge.graph.allTypes"])).toBeTruthy();
@@ -451,6 +454,47 @@ describe("the honest states", () => {
     api.GET.mockImplementation(baseGet);
     fireEvent.click(within(alert).getByRole("button", { name: de["knowledge.graph.retry"] }));
     expect(await screen.findAllByTestId("graph-node")).toHaveLength(4);
+  });
+});
+
+describe("the subbar stands in every state — the sibling doors never vanish (PR #923 fix)", () => {
+  it("the pending face keeps the doors — the loading answer still navigates", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/novels/{novel_id}/entities") {
+        return new Promise(() => {});
+      }
+      return baseGet(path);
+    });
+    await renderGraph();
+    expect(await screen.findByTestId("graph-loading")).toBeTruthy();
+    expect(screen.getByTestId("graph-dossiers-door")).toBeTruthy();
+    expect(screen.getByTestId("graph-sources-door")).toBeTruthy();
+    expect(screen.getByText(de["knowledge.graph.title"])).toBeTruthy();
+  });
+
+  it("the failed face keeps the doors — the outage answer still navigates", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/novels/{novel_id}/entities") {
+        return Promise.resolve({ data: undefined, response: new Response(null, { status: 500 }) });
+      }
+      return baseGet(path);
+    });
+    await renderGraph();
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByText(de["knowledge.graph.loadFailed"])).toBeTruthy();
+    expect(screen.getByTestId("graph-dossiers-door")).toBeTruthy();
+    expect(screen.getByTestId("graph-sources-door")).toBeTruthy();
+    expect(screen.getByText(de["knowledge.graph.title"])).toBeTruthy();
+  });
+
+  it("the empty canon keeps the doors beside the empty face", async () => {
+    entities = [];
+    relations = [];
+    await renderGraph();
+    expect(await screen.findByTestId("graph-empty")).toBeTruthy();
+    expect(screen.getByTestId("graph-dossiers-door")).toBeTruthy();
+    expect(screen.getByTestId("graph-sources-door")).toBeTruthy();
+    expect(screen.getByText(de["knowledge.graph.title"])).toBeTruthy();
   });
 });
 

@@ -208,6 +208,28 @@ def test_the_sibling_doors_carry_living_selections(page: Page, installed: Stack)
     expect(page.get_by_test_id("entity-dossier")).to_have_count(0)
 
 
+def test_the_empty_canon_keeps_the_sibling_doors(page: Page, installed: Stack) -> None:
+    """PR #923's review fix: the subbar stands in every honest state. An
+    empty canon still offers the sibling doors beside its empty face — and
+    each crossed surface answers with its own empty face and its doors
+    back, the one mechanism across all three pages."""
+    novel = create_novel("Das leere Buch")
+    novel_id = str(novel["id"])
+    _goto_dossiers(page, novel_id)
+    expect(page.get_by_test_id("dossiers-empty")).to_be_visible()
+
+    # The doors stand beside the honest face and carry no selection.
+    page.get_by_test_id("dossiers-graph-door").click()
+    expect(page).to_have_url(f"{BASE}/novels/{novel_id}/knowledge/graph")
+    expect(page.get_by_test_id("graph-empty")).to_be_visible()
+    page.get_by_test_id("graph-sources-door").click()
+    expect(page).to_have_url(f"{BASE}/novels/{novel_id}/knowledge/sources")
+    expect(page.get_by_test_id("sources-empty")).to_be_visible()
+    page.get_by_test_id("sources-dossiers-door").click()
+    expect(page).to_have_url(f"{BASE}/novels/{novel_id}/knowledge/dossiers")
+    expect(page.get_by_test_id("dossiers-empty")).to_be_visible()
+
+
 def test_the_dark_dossiers_face_clears_the_axe_floor(page: Page, installed: Stack) -> None:
     """The grid and the open dossier on the tokens' dark halves — the same
     WCAG A/AA floor the light face clears."""

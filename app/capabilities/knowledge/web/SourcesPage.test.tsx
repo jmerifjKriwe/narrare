@@ -548,6 +548,20 @@ describe("the semantic search round-trips the real query", () => {
     expect(await screen.findAllByTestId("sources-hit")).toHaveLength(2);
   });
 
+  it("resubmitting the same words asks again — an explicit submit is an explicit re-ask (PR #923 fix)", async () => {
+    await renderSources();
+    await screen.findAllByTestId("sources-document");
+    fireEvent.change(screen.getByTestId("sources-search"), { target: { value: "Echo" } });
+    fireEvent.click(screen.getByTestId("sources-search-button"));
+    expect(await screen.findAllByTestId("sources-hit")).toHaveLength(2);
+    const asks = () => api.POST.mock.calls.filter(([p]) => p === "/api/knowledge/search").length;
+    expect(asks()).toBe(1);
+    // The same string, submitted again: the POST count must grow — within
+    // staleTime the cached answer would otherwise replay the old result.
+    fireEvent.click(screen.getByTestId("sources-search-button"));
+    await waitFor(() => expect(asks()).toBe(2));
+  });
+
   it("the search stands independent of the archive read — a dead list does not silence the corpus", async () => {
     api.GET.mockImplementation((path: string) => {
       if (path === "/api/knowledge/documents") {
@@ -641,6 +655,51 @@ describe("the honest states", () => {
     api.GET.mockImplementation(baseGet);
     fireEvent.click(within(alert).getByRole("button", { name: de["knowledge.graph.retry"] }));
     expect(await screen.findAllByTestId("sources-document")).toHaveLength(3);
+  });
+});
+
+describe("the subbar stands in every state — the sibling doors never vanish (PR #923 pin)", () => {
+  /** The view label stands beside the page's own h1 — the bar's pill and
+   *  the heading speak the title, so both faces count it. */
+  function expectViewLabel() {
+    expect(screen.getAllByText(de["knowledge.sources.title"]).length).toBeGreaterThanOrEqual(2);
+  }
+
+  it("the pending archive keeps both sibling doors", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/documents") {
+        return new Promise(() => {});
+      }
+      return baseGet(path);
+    });
+    await renderSources();
+    expect(await screen.findByTestId("sources-loading")).toBeTruthy();
+    expect(screen.getByTestId("sources-graph-door")).toBeTruthy();
+    expect(screen.getByTestId("sources-dossiers-door")).toBeTruthy();
+    expectViewLabel();
+  });
+
+  it("the failed archive keeps both sibling doors", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/documents") {
+        return Promise.resolve({ data: undefined, response: ok(500) });
+      }
+      return baseGet(path);
+    });
+    await renderSources();
+    expect(await screen.findByTestId("sources-load-error")).toBeTruthy();
+    expect(screen.getByTestId("sources-graph-door")).toBeTruthy();
+    expect(screen.getByTestId("sources-dossiers-door")).toBeTruthy();
+    expectViewLabel();
+  });
+
+  it("the empty archive keeps both sibling doors beside the upload invitation", async () => {
+    documents = [];
+    await renderSources();
+    expect(await screen.findByTestId("sources-empty")).toBeTruthy();
+    expect(screen.getByTestId("sources-graph-door")).toBeTruthy();
+    expect(screen.getByTestId("sources-dossiers-door")).toBeTruthy();
+    expectViewLabel();
   });
 });
 

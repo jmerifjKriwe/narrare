@@ -22,7 +22,9 @@
  *   the document title and the chunk excerpt. SearchHit carries no chunk
  *   index or page, so the draft's „Chunk 14 · Seite 14" meta is not drawn.
  *   The no-hit face names the query; the outage and the embedding
- *   mismatch each name themselves apart.
+ *   mismatch each name themselves apart. An explicit submit is an
+ *   explicit re-ask: resubmitting the same words retires their cached
+ *   answer first, so the POST goes out again within the staleTime.
  * - The footnote and fact-check areas stand as the draft's honest disabled
  *   gaps („Kommt mit dem weiteren Aufbau") — no endpoint serves them, no
  *   fake content rides them. The view doors (Ansehen / Im Originaldokument
@@ -45,7 +47,7 @@ import { isModelChange, type KnowledgeDocument } from "@shell/lib/api/client";
 import { formatDate } from "@shell/lib/format";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
-import { useDocumentsQuery, useNovelQuery, useSourceSearch, useUploadDocument } from "@shell/lib/query";
+import { useDocumentsQuery, useNovelQuery, useSourceSearch, invalidateSourceSearch, useUploadDocument } from "@shell/lib/query";
 import { CARD_EYEBROW, FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 
@@ -280,7 +282,13 @@ export function SourcesPage() {
                 onSubmit={(event) => {
                   event.preventDefault();
                   const query = draft.trim();
-                  if (query !== "") setSubmitted(query);
+                  if (query !== "") {
+                    // The explicit re-ask (PR #923): the same words retire
+                    // their cached answer first, so a resubmit re-POSTs
+                    // instead of replaying the staleTime's first answer.
+                    invalidateSourceSearch(query);
+                    setSubmitted(query);
+                  }
                 }}
                 className="flex flex-col gap-2 sm:flex-row"
               >

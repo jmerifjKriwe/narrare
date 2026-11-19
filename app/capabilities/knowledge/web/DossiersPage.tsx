@@ -34,7 +34,9 @@
  *
  * The page reads the real API through the shell's query seam and imports no
  * other capability (rule 1). Loading, outage and the empty canon each answer
- * with their own honest face.
+ * with their own honest face — and each answer stands BELOW the subbar,
+ * which never leaves: one consistent mechanism with the graph and the
+ * sources archive, the sibling doors stay reachable in every state.
  */
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
@@ -154,52 +156,17 @@ export function DossiersPage() {
     void relations.refetch();
   }
 
-  if (pending) {
-    return (
-      <div data-testid="dossiers-loading" className="flex h-full items-center justify-center">
-        <p role="status" className="text-body text-muted">
-          {t("knowledge.graph.loading")}
-        </p>
-      </div>
-    );
-  }
-  if (failed) {
-    return (
-      <div className="flex h-full items-center justify-center p-6">
-        <div role="alert" className="space-y-2 rounded-[var(--radius-surface)] border border-danger/40 bg-panel p-5 text-center">
-          <p className="text-body text-danger">{t("knowledge.dossiers.loadFailed")}</p>
-          <button
-            type="button"
-            onClick={retry}
-            className={`rounded border border-border bg-surface-container-low px-3 py-1.5 text-meta font-medium text-foreground transition-colors hover:bg-surface-container ${FOCUS}`}
-          >
-            {t("knowledge.graph.retry")}
-          </button>
-        </div>
-      </div>
-    );
-  }
-  if (entityList.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center p-6">
-        <div data-testid="dossiers-empty" className="max-w-sm space-y-2 rounded-[var(--radius-surface)] border border-border bg-panel p-8 text-center">
-          <span className="inline-block text-muted">
-            <Icon name="viewList" size={28} />
-          </span>
-          <p className="text-body font-semibold text-foreground">{t("knowledge.graph.empty")}</p>
-          <p className="text-meta text-muted">{t("knowledge.graph.emptyNote")}</p>
-        </div>
-      </div>
-    );
-  }
-
   const selectedTheme = selected !== null ? typeTheme(selected.type) : null;
 
   return (
     <div id="dossiers-page" data-testid="dossiers-page" tabIndex={-1} className="flex h-full flex-col overflow-hidden focus:outline-none">
       {/* The subbar — the view label, the sibling door to the graph, the
           contract's type tabs and the draft's new-dossier door (an honest
-          disabled gap: no create endpoint exists). */}
+          disabled gap: no create endpoint exists). One consistent
+          mechanism with the graph and the sources archive: the bar stands
+          in EVERY state — pending, failed, empty, populated — so the
+          sibling doors never vanish behind an honest face; only the body
+          below it varies. */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-container-low px-4 py-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="flex items-center gap-1.5 rounded-full border border-rule bg-card px-3 py-1 text-meta font-semibold text-foreground shadow-card">
@@ -278,190 +245,222 @@ export function DossiersPage() {
         </button>
       </div>
 
-      {/* The draft's three columns: the list, the dossier detail, the model
-          overview. Below lg they stack and the whole body scrolls. */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-12 lg:overflow-hidden">
-        {/* The list — the search over name and body, the hint, the cards. */}
-        <aside className="flex flex-col gap-3 bg-surface-container-low/40 p-4 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
-          <div className="flex flex-col gap-2">
-            <label className="relative block">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted">
-                <Icon name="search" size={14} />
-              </span>
-              <span className="sr-only">{t("knowledge.dossiers.searchLabel")}</span>
-              <input
-                data-testid="dossier-search"
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("knowledge.dossiers.search")}
-                className={`w-full rounded-[var(--radius-control)] border border-rule bg-card py-1.5 pl-8 pr-3 text-body text-foreground shadow-card placeholder:text-muted focus:outline-none ${FOCUS}`}
-              />
-            </label>
-            <p className="px-0.5 text-meta text-muted">{t("knowledge.dossiers.listHint")}</p>
-          </div>
-          {visible.length === 0 ? (
-            <div data-testid="dossiers-no-results" className="space-y-2 rounded-[var(--radius-surface)] border border-border bg-panel p-4 text-center">
-              <p className="text-meta text-muted">{t("knowledge.graph.noResults")}</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveType(null);
-                  setQuery("");
-                }}
-                className={`rounded border border-border bg-surface-container-low px-3 py-1.5 text-meta font-medium text-foreground transition-colors hover:bg-surface-container ${FOCUS}`}
-              >
-                {t("knowledge.graph.clearFilters")}
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {visible.map((entity) => {
-                const theme = typeTheme(entity.type);
-                const isSelected = selected?.id === entity.id;
-                const excerpt = entity.content.trim();
-                const count = relationCounts.get(entity.id) ?? 0;
-                return (
-                  <button
-                    key={entity.id}
-                    type="button"
-                    data-testid="dossier-card"
-                    aria-pressed={isSelected}
-                    onClick={() => select(entity.id)}
-                    className={`relative overflow-hidden rounded-[var(--radius-surface)] p-3 text-left transition-all ${FOCUS} ${
-                      isSelected ? "bg-card shadow-overlay" : "bg-card/70 shadow-card hover:bg-card"
-                    }`}
-                  >
-                    {/* The draft's selected accent bar — the brand ink. */}
-                    {isSelected && <span aria-hidden="true" className="absolute bottom-0 left-0 top-0 w-1 bg-primary" />}
-                    <span className={`flex items-center gap-2 ${isSelected ? "pl-1" : ""}`}>
-                      <span
-                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-control)] ${theme.tint}`}
-                        style={{ color: theme.var }}
-                      >
-                        <Icon name={entityTypeIcon(entity.type)} size={13} />
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-label font-semibold text-foreground">{entity.name}</span>
-                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-foreground ${theme.tint}`}>
-                        {entityTypeLabel(t, entity.type)}
-                      </span>
-                    </span>
-                    {excerpt !== "" && (
-                      <span className={`mt-1 line-clamp-2 text-meta leading-tight text-muted ${isSelected ? "pl-1" : ""}`}>
-                        {excerpt}
-                      </span>
-                    )}
-                    {/* The honest count — never the draft's invented status. */}
-                    <span className={`mt-2 block border-t border-rule pt-2 text-meta text-muted ${isSelected ? "pl-1" : ""}`}>
-                      {t("knowledge.dossiers.relationCount", { count })}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </aside>
-
-        {/* The detail — the shared dossier, one component two homes. The
-            page's own profile gap areas ride its children slot. */}
-        <section className="lg:col-span-6 lg:min-h-0 lg:overflow-y-auto">
-          {selected !== null ? (
-            <EntityDossier
-              entity={selected}
-              relations={selectedRelations}
-              entities={entityList}
-              onClose={() => select(null)}
-              onSelectEntity={(id) => select(id)}
-              focusFallbackId="dossiers-page"
+      {/* The body — the honest state's own face; the bar above stays. */}
+      {pending ? (
+        <div data-testid="dossiers-loading" className="flex min-h-0 flex-1 items-center justify-center">
+          <p role="status" className="text-body text-muted">
+            {t("knowledge.graph.loading")}
+          </p>
+        </div>
+      ) : failed ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+          <div role="alert" className="space-y-2 rounded-[var(--radius-surface)] border border-danger/40 bg-panel p-5 text-center">
+            <p className="text-body text-danger">{t("knowledge.dossiers.loadFailed")}</p>
+            <button
+              type="button"
+              onClick={retry}
+              className={`rounded border border-border bg-surface-container-low px-3 py-1.5 text-meta font-medium text-foreground transition-colors hover:bg-surface-container ${FOCUS}`}
             >
-              <div data-testid="dossier-psych-gap" aria-disabled="true" className="flex flex-col gap-2">
-                <h3 className={`${CARD_EYEBROW} flex items-center gap-1.5`}>
-                  <Icon name="person" size={13} /> {t("knowledge.dossiers.psychProfile")}
-                </h3>
-                <div className="rounded-[var(--radius-control)] border border-dashed border-border bg-surface-container-low/50 p-3 opacity-70">
-                  <p className="text-meta italic text-muted">{t("knowledge.dossiers.laterWaveNote")}</p>
-                </div>
-              </div>
-              <div data-testid="dossier-linguistic-gap" aria-disabled="true" className="flex flex-col gap-2">
-                <h3 className={`${CARD_EYEBROW} flex items-center gap-1.5`}>
-                  <Icon name="chat" size={13} /> {t("knowledge.dossiers.linguisticProfile")}
-                </h3>
-                <div className="rounded-[var(--radius-control)] border border-dashed border-border bg-surface-container-low/50 p-3 opacity-70">
-                  <p className="text-meta italic text-muted">{t("knowledge.dossiers.laterWaveNote")}</p>
-                </div>
-              </div>
-            </EntityDossier>
-          ) : (
-            <div data-testid="dossiers-no-selection" className="flex h-full items-center justify-center p-6 lg:border-l lg:border-border">
-              <div className="max-w-sm space-y-2 rounded-[var(--radius-surface)] border border-border bg-panel p-8 text-center">
-                <span className="inline-block text-muted">
-                  <Icon name="viewList" size={28} />
+              {t("knowledge.graph.retry")}
+            </button>
+          </div>
+        </div>
+      ) : entityList.length === 0 ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+          <div data-testid="dossiers-empty" className="max-w-sm space-y-2 rounded-[var(--radius-surface)] border border-border bg-panel p-8 text-center">
+            <span className="inline-block text-muted">
+              <Icon name="viewList" size={28} />
+            </span>
+            <p className="text-body font-semibold text-foreground">{t("knowledge.graph.empty")}</p>
+            <p className="text-meta text-muted">{t("knowledge.graph.emptyNote")}</p>
+          </div>
+        </div>
+      ) : (
+        /* The draft's three columns: the list, the dossier detail, the model
+           overview. Below lg they stack and the whole body scrolls. */
+        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-12 lg:overflow-hidden">
+          {/* The list — the search over name and body, the hint, the cards. */}
+          <aside className="flex flex-col gap-3 bg-surface-container-low/40 p-4 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto">
+            <div className="flex flex-col gap-2">
+              <label className="relative block">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted">
+                  <Icon name="search" size={14} />
                 </span>
-                <p className="text-body text-muted">{t("knowledge.dossiers.noSelection")}</p>
-              </div>
+                <span className="sr-only">{t("knowledge.dossiers.searchLabel")}</span>
+                <input
+                  data-testid="dossier-search"
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={t("knowledge.dossiers.search")}
+                  className={`w-full rounded-[var(--radius-control)] border border-rule bg-card py-1.5 pl-8 pr-3 text-body text-foreground shadow-card placeholder:text-muted focus:outline-none ${FOCUS}`}
+                />
+              </label>
+              <p className="px-0.5 text-meta text-muted">{t("knowledge.dossiers.listHint")}</p>
             </div>
-          )}
-        </section>
-
-        {/* The overview rail — the selection's real model fields, the live
-            graph door and the AI-sparring gap. With no selection there is
-            nothing to summarize, so the rail stands empty. */}
-        <aside className="bg-surface-container-low/30 p-4 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto lg:border-l lg:border-border">
-          {selected !== null && selectedTheme !== null && (
-            <div className="flex flex-col gap-4">
-              <div data-testid="dossier-overview" className="flex flex-col gap-2 rounded-[var(--radius-surface)] border border-rule bg-card p-3.5 shadow-card">
-                <div className="flex items-center justify-between gap-2">
-                  <h4 className="text-label font-semibold text-foreground">{t("knowledge.dossiers.overview")}</h4>
-                  <span className="shrink-0 rounded bg-secondary/15 px-1.5 py-0.5 text-[10px] font-semibold text-foreground">
-                    {t("knowledge.dossiers.overviewBadge")}
-                  </span>
-                </div>
-                <div className="flex flex-col text-meta">
-                  <div className="flex items-center justify-between gap-2 border-b border-rule py-1">
-                    <span className="shrink-0 text-muted">{t("knowledge.crud.nameLabel")}</span>
-                    <span className="truncate font-semibold text-foreground">{selected.name}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 border-b border-rule py-1">
-                    <span className="shrink-0 text-muted">{t("knowledge.crud.typeLabel")}</span>
-                    <span className="font-semibold text-primary">{entityTypeLabel(t, selected.type)}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 py-1">
-                    <span className="shrink-0 text-muted">{t("knowledge.dossiers.overviewRelations")}</span>
-                    <span className="font-semibold text-foreground">
-                      {t("knowledge.dossiers.overviewLinked", { count: selectedRelations.length })}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* The draft drew this area disabled; the graph went live this
-                  wave, so the honest port is a door to the real thing. */}
-              <div className="flex flex-col gap-2 rounded-[var(--radius-surface)] border border-rule bg-card p-3.5 shadow-card">
-                <h4 className={`${CARD_EYEBROW} flex items-center gap-1.5`}>
-                  <Icon name="hub" size={13} /> {t("knowledge.dossiers.graphArea")}
-                </h4>
+            {visible.length === 0 ? (
+              <div data-testid="dossiers-no-results" className="space-y-2 rounded-[var(--radius-surface)] border border-border bg-panel p-4 text-center">
+                <p className="text-meta text-muted">{t("knowledge.graph.noResults")}</p>
                 <button
                   type="button"
-                  data-testid="dossier-open-graph"
-                  onClick={goGraph}
-                  className={`flex items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-surface-container-high px-3 py-1.5 text-meta font-medium text-foreground transition-colors hover:bg-surface-container ${FOCUS}`}
+                  onClick={() => {
+                    setActiveType(null);
+                    setQuery("");
+                  }}
+                  className={`rounded border border-border bg-surface-container-low px-3 py-1.5 text-meta font-medium text-foreground transition-colors hover:bg-surface-container ${FOCUS}`}
                 >
-                  <Icon name="openInNew" size={13} /> {t("knowledge.dossiers.openGraph")}
+                  {t("knowledge.graph.clearFilters")}
                 </button>
               </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {visible.map((entity) => {
+                  const theme = typeTheme(entity.type);
+                  const isSelected = selected?.id === entity.id;
+                  const excerpt = entity.content.trim();
+                  const count = relationCounts.get(entity.id) ?? 0;
+                  return (
+                    <button
+                      key={entity.id}
+                      type="button"
+                      data-testid="dossier-card"
+                      aria-pressed={isSelected}
+                      onClick={() => select(entity.id)}
+                      className={`relative overflow-hidden rounded-[var(--radius-surface)] p-3 text-left transition-all ${FOCUS} ${
+                        isSelected ? "bg-card shadow-overlay" : "bg-card/70 shadow-card hover:bg-card"
+                      }`}
+                    >
+                      {/* The draft's selected accent bar — the brand ink. */}
+                      {isSelected && <span aria-hidden="true" className="absolute bottom-0 left-0 top-0 w-1 bg-primary" />}
+                      <span className={`flex items-center gap-2 ${isSelected ? "pl-1" : ""}`}>
+                        <span
+                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-control)] ${theme.tint}`}
+                          style={{ color: theme.var }}
+                        >
+                          <Icon name={entityTypeIcon(entity.type)} size={13} />
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-label font-semibold text-foreground">{entity.name}</span>
+                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-foreground ${theme.tint}`}>
+                          {entityTypeLabel(t, entity.type)}
+                        </span>
+                      </span>
+                      {excerpt !== "" && (
+                        <span className={`mt-1 line-clamp-2 text-meta leading-tight text-muted ${isSelected ? "pl-1" : ""}`}>
+                          {excerpt}
+                        </span>
+                      )}
+                      {/* The honest count — never the draft's invented status. */}
+                      <span className={`mt-2 block border-t border-rule pt-2 text-meta text-muted ${isSelected ? "pl-1" : ""}`}>
+                        {t("knowledge.dossiers.relationCount", { count })}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </aside>
 
-              <div data-testid="dossier-ai-gap" aria-disabled="true" className="flex flex-col gap-2 rounded-[var(--radius-surface)] border border-border bg-surface-container-low/30 p-3.5 opacity-75">
-                <h4 className={`${CARD_EYEBROW} flex items-center gap-1.5`}>
-                  <Icon name="spark" size={13} /> {t("knowledge.dossiers.aiSparring")}
-                </h4>
-                <div className="rounded-[var(--radius-control)] border border-dashed border-border bg-card p-3">
-                  <p className="text-center text-meta italic text-muted">{t("knowledge.dossiers.laterWaveNote")}</p>
+          {/* The detail — the shared dossier, one component two homes. The
+              page's own profile gap areas ride its children slot. */}
+          <section className="lg:col-span-6 lg:min-h-0 lg:overflow-y-auto">
+            {selected !== null ? (
+              <EntityDossier
+                entity={selected}
+                relations={selectedRelations}
+                entities={entityList}
+                onClose={() => select(null)}
+                onSelectEntity={(id) => select(id)}
+                focusFallbackId="dossiers-page"
+              >
+                <div data-testid="dossier-psych-gap" aria-disabled="true" className="flex flex-col gap-2">
+                  <h3 className={`${CARD_EYEBROW} flex items-center gap-1.5`}>
+                    <Icon name="person" size={13} /> {t("knowledge.dossiers.psychProfile")}
+                  </h3>
+                  <div className="rounded-[var(--radius-control)] border border-dashed border-border bg-surface-container-low/50 p-3 opacity-70">
+                    <p className="text-meta italic text-muted">{t("knowledge.dossiers.laterWaveNote")}</p>
+                  </div>
+                </div>
+                <div data-testid="dossier-linguistic-gap" aria-disabled="true" className="flex flex-col gap-2">
+                  <h3 className={`${CARD_EYEBROW} flex items-center gap-1.5`}>
+                    <Icon name="chat" size={13} /> {t("knowledge.dossiers.linguisticProfile")}
+                  </h3>
+                  <div className="rounded-[var(--radius-control)] border border-dashed border-border bg-surface-container-low/50 p-3 opacity-70">
+                    <p className="text-meta italic text-muted">{t("knowledge.dossiers.laterWaveNote")}</p>
+                  </div>
+                </div>
+              </EntityDossier>
+            ) : (
+              <div data-testid="dossiers-no-selection" className="flex h-full items-center justify-center p-6 lg:border-l lg:border-border">
+                <div className="max-w-sm space-y-2 rounded-[var(--radius-surface)] border border-border bg-panel p-8 text-center">
+                  <span className="inline-block text-muted">
+                    <Icon name="viewList" size={28} />
+                  </span>
+                  <p className="text-body text-muted">{t("knowledge.dossiers.noSelection")}</p>
                 </div>
               </div>
-            </div>
-          )}
-        </aside>
-      </div>
+            )}
+          </section>
+
+          {/* The overview rail — the selection's real model fields, the live
+              graph door and the AI-sparring gap. With no selection there is
+              nothing to summarize, so the rail stands empty. */}
+          <aside className="bg-surface-container-low/30 p-4 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto lg:border-l lg:border-border">
+            {selected !== null && selectedTheme !== null && (
+              <div className="flex flex-col gap-4">
+                <div data-testid="dossier-overview" className="flex flex-col gap-2 rounded-[var(--radius-surface)] border border-rule bg-card p-3.5 shadow-card">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-label font-semibold text-foreground">{t("knowledge.dossiers.overview")}</h4>
+                    <span className="shrink-0 rounded bg-secondary/15 px-1.5 py-0.5 text-[10px] font-semibold text-foreground">
+                      {t("knowledge.dossiers.overviewBadge")}
+                    </span>
+                  </div>
+                  <div className="flex flex-col text-meta">
+                    <div className="flex items-center justify-between gap-2 border-b border-rule py-1">
+                      <span className="shrink-0 text-muted">{t("knowledge.crud.nameLabel")}</span>
+                      <span className="truncate font-semibold text-foreground">{selected.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 border-b border-rule py-1">
+                      <span className="shrink-0 text-muted">{t("knowledge.crud.typeLabel")}</span>
+                      <span className="font-semibold text-primary">{entityTypeLabel(t, selected.type)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 py-1">
+                      <span className="shrink-0 text-muted">{t("knowledge.dossiers.overviewRelations")}</span>
+                      <span className="font-semibold text-foreground">
+                        {t("knowledge.dossiers.overviewLinked", { count: selectedRelations.length })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* The draft drew this area disabled; the graph went live this
+                    wave, so the honest port is a door to the real thing. */}
+                <div className="flex flex-col gap-2 rounded-[var(--radius-surface)] border border-rule bg-card p-3.5 shadow-card">
+                  <h4 className={`${CARD_EYEBROW} flex items-center gap-1.5`}>
+                    <Icon name="hub" size={13} /> {t("knowledge.dossiers.graphArea")}
+                  </h4>
+                  <button
+                    type="button"
+                    data-testid="dossier-open-graph"
+                    onClick={goGraph}
+                    className={`flex items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-surface-container-high px-3 py-1.5 text-meta font-medium text-foreground transition-colors hover:bg-surface-container ${FOCUS}`}
+                  >
+                    <Icon name="openInNew" size={13} /> {t("knowledge.dossiers.openGraph")}
+                  </button>
+                </div>
+
+                <div data-testid="dossier-ai-gap" aria-disabled="true" className="flex flex-col gap-2 rounded-[var(--radius-surface)] border border-border bg-surface-container-low/30 p-3.5 opacity-75">
+                  <h4 className={`${CARD_EYEBROW} flex items-center gap-1.5`}>
+                    <Icon name="spark" size={13} /> {t("knowledge.dossiers.aiSparring")}
+                  </h4>
+                  <div className="rounded-[var(--radius-control)] border border-dashed border-border bg-card p-3">
+                    <p className="text-center text-meta italic text-muted">{t("knowledge.dossiers.laterWaveNote")}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

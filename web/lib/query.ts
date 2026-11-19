@@ -762,6 +762,20 @@ export function useSourceSearch(query: string): UseQueryResult<Hit[]> {
 }
 
 /**
+ * An explicit submit is an explicit re-ask: the sources archive's submit
+ * retires the submitted words' cached answer before it stands submitted
+ * again, so the POST goes out even within the `staleTime` that would
+ * otherwise replay the first answer (the same string is the same key, so
+ * nothing else fires). A changed string is a fresh key that fetches on
+ * its own; invalidating an entry that never stood is a no-op. The dock's
+ * debounced `usePassageSearch` is untouched — its asks are implicit, so
+ * the cache serves them exactly as designed.
+ */
+export function invalidateSourceSearch(query: string): void {
+  void queryClient.invalidateQueries({ queryKey: ["knowledge", "passages", query] });
+}
+
+/**
  * The library's documents (W5 Task 6), cached under `["knowledge",
  * "documents"]` — the key the delete mutation below invalidates, so the
  * sources archive's list refetches the server's truth after a delete.
