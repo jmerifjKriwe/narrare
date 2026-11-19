@@ -71,7 +71,9 @@ the wave that owns the trigger and the row's child under index #907.
   chrome E2E (a77386ac) pins it live.
 - **The dock's #866/#867 interims** (the W4 ledger's rows 1/2): retired by
   Tasks 1/2 — the findings face and the entity chips are real; both issues
-  closed from `112fd9be`. The W4 rows are marked resolved in the same
+  are wired to close from `112fd9be` (rides #913, closes on merge — the
+  #895 annotation precedent; the chain's first PR #909 was closed unmerged
+  once already). The W4 rows are marked resolved in the same
   commit that opens this ledger.
 
 ## Known-pattern notes (no row owed — the pattern is the record)
