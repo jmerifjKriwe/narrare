@@ -454,7 +454,17 @@ export function useJobQuery(jobId: string | null): UseQueryResult<Job> {
       const { data, response } = await client.GET("/api/jobs/{job_id}", {
         params: { path: { job_id: jobId } },
       });
-      if (!response.ok || !data) throw new Error(`job unavailable: ${response.status}`);
+      if (!response.ok || !data) {
+        // The status rides the throw (the novel read's precedent): a
+        // 404 is the one poll failure a lane answers by clearing itself
+        // — the job row was destroyed elsewhere — so the
+        // machine-readable fact must survive the query boundary. A
+        // network failure throws before this line and carries no
+        // status, which is its own honest answer.
+        throw Object.assign(new Error(`job unavailable: ${response.status}`), {
+          status: response.status,
+        });
+      }
       return data;
     },
   });
