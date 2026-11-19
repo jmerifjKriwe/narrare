@@ -505,7 +505,15 @@ export function LoreGraphPage() {
           />
 
           {visibleEntities.length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              // A press on the no-results face is its own, never a pan: the
+              // canvas captures the pointer otherwise, and the captured
+              // click never reaches the clear button (the HUD/legend guard's
+              // sibling — invisible to jsdom, which has no pointer capture;
+              // the E2E's clear-filters leg pins it live).
+              onPointerDown={(event) => event.stopPropagation()}
+            >
               <div data-testid="graph-no-results" className="space-y-2 rounded-[var(--radius-surface)] border border-border bg-panel p-6 text-center">
                 <p className="text-body text-muted">{t("knowledge.graph.noResults")}</p>
                 <button

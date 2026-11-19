@@ -483,6 +483,27 @@ describe("the HUD and legend never seize a pan (review fix)", () => {
     fireEvent.pointerUp(canvas);
     expect(screen.getByTestId("graph-world").style.transform).not.toBe(before);
   });
+
+  it("a press on the no-results face never starts a pan — the clear button's click is its own", async () => {
+    // The live defect this pins: the canvas captures the pointer on any
+    // unguarded press, and the captured click never reaches the clear
+    // button (the E2E's clear-filters leg owns the browser proof; jsdom
+    // has no pointer capture, so this pin reads the pan state through the
+    // transform a drag would have moved — a panned view is what the
+    // remounted world would inherit after the filters clear).
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const canvas = screen.getByTestId("graph-canvas");
+    const fit = screen.getByTestId("graph-world").style.transform;
+    fireEvent.change(screen.getByTestId("graph-search"), { target: { value: "zzz" } });
+    const empty = await screen.findByTestId("graph-no-results");
+    fireEvent.pointerDown(empty, { clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(canvas, { clientX: 400, clientY: 400 });
+    fireEvent.pointerUp(canvas);
+    fireEvent.click(within(empty).getByRole("button", { name: de["knowledge.graph.clearFilters"] }));
+    await screen.findAllByTestId("graph-node");
+    expect(screen.getByTestId("graph-world").style.transform).toBe(fit);
+  });
 });
 
 describe("an unchanged graph keeps your zoom (review fix)", () => {
