@@ -10,8 +10,9 @@
  * user's real novels (the cover system's pigment at chip size, the row's
  * own genre/progress/chapter facts, never the draft's mock figures) — the
  * nav (Bücherregal live with its per-route active face; Editor and Wissen
- * live with the workspace and the lore graph; Planung and Einstellungen
- * honestly disabled with their later-wave notes), and the foot: the sync dot (the LIVE autosave
+ * live with the workspace and the lore graph; Planung live with the
+ * planning wave's chronology — W6 Task 3, the Wissen ruling; Einstellungen
+ * honestly disabled with its later-wave note), and the foot: the sync dot (the LIVE autosave
  * owner's face, `saveStatus.ts` — Task 12 wired it; tile 3's three states), the
  * real tri-state theme toggle (system → light → dark, the settings theme
  * PATCH, a refusal restores), and the user block (author_name → email
@@ -31,8 +32,11 @@
  * is live with the lore graph (W5 Task 3): it opens the active book's graph
  * and wears the active face on any knowledge surface — the graph, the
  * dossiers (W5 Task 5) or the sources archive (W5 Task 6), one area with
- * three surfaces. Planung and Einstellungen
- * keep their later-wave notes.
+ * three surfaces. The Planung door is live with the chronology (W6 Task 3,
+ * the same ruling): it opens the active book's timeline and wears the
+ * active face on any planning surface — the timeline today, the storyboard
+ * and the causality strip as their tasks land. Einstellungen keeps its
+ * later-wave note.
  *
  * The user menu the draft's tile 4 draws (Autorenname bearbeiten,
  * Tagesziel festlegen, Einstellungen, Abmelden) rides the settings wave
@@ -83,9 +87,10 @@ const FOCUS =
 const LABEL =
   "w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[width] duration-200 group-hover/rail:w-auto group-hover/rail:opacity-100 group-focus-within/rail:w-auto group-focus-within/rail:opacity-100 pointer-coarse:w-auto pointer-coarse:opacity-100";
 
-/** The nav's five entries in the draft's order. The shelf and the editor
- *  have routes (the editor's is the active book's workspace, resolved at
- *  render); the rest wait honestly disabled, each with its later-wave note. */
+/** The nav's five entries in the draft's order. The shelf has its route;
+ *  the editor, Wissen and Planung doors resolve the active book's surface
+ *  at render (workspace, lore graph, chronology); Einstellungen waits
+ *  honestly disabled with its later-wave note. */
 const NAV: readonly {
   label: MessageKey;
   icon: IconName;
@@ -170,6 +175,18 @@ export function IconRail() {
           match.routeId === "/novels/$novelId/knowledge/graph" ||
           match.routeId === "/novels/$novelId/knowledge/dossiers" ||
           match.routeId === "/novels/$novelId/knowledge/sources",
+      ),
+  });
+  // The Planung door's active face: the planning area is matched the same
+  // way — the chronology today, the storyboard and the causality strip as
+  // their tasks land (W6). One area, three surfaces, the Wissen pattern.
+  const planningActive = useRouterState({
+    select: (state) =>
+      state.matches.some(
+        (match) =>
+          match.routeId === "/novels/$novelId/planning/timeline" ||
+          match.routeId === "/novels/$novelId/planning/storyboard" ||
+          match.routeId === "/novels/$novelId/planning/causality",
       ),
   });
 
@@ -542,6 +559,37 @@ export function IconRail() {
                   title={t(entry.label)}
                   aria-current={knowledgeActive ? "page" : undefined}
                   className={face(knowledgeActive)}
+                >
+                  {children}
+                </Link>
+              ) : (
+                <button
+                  key={entry.label}
+                  type="button"
+                  disabled
+                  aria-label={t(entry.label)}
+                  title={entry.note !== undefined ? t(entry.note) : undefined}
+                  className="flex w-full cursor-not-allowed items-center justify-center gap-0 rounded-lg border border-transparent px-2 py-1.5 text-muted opacity-50 group-hover/rail:justify-start group-hover/rail:gap-2.5 pointer-coarse:justify-start pointer-coarse:gap-2.5"
+                >
+                  {children}
+                </button>
+              );
+            }
+            // The Planung door is the active book's chronology (W6 Task 3 —
+            // the planning capability's first surface, the Wissen ruling):
+            // with a book standing it opens the timeline and wears the
+            // active face on every planning route; with no book it waits
+            // honestly disabled, the note saying so.
+            if (entry.label === "shell.nav.planning") {
+              return active !== null ? (
+                <Link
+                  key={entry.label}
+                  to="/novels/$novelId/planning/timeline"
+                  params={{ novelId: active.id }}
+                  aria-label={t(entry.label)}
+                  title={t(entry.label)}
+                  aria-current={planningActive ? "page" : undefined}
+                  className={face(planningActive)}
                 >
                   {children}
                 </Link>

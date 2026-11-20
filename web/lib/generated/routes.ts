@@ -14,6 +14,7 @@
 // import each other; this generated table is the one composition
 // point.
 import { routes as knowledge, dockRoutes as knowledgeDocks } from "../../../app/capabilities/knowledge/web/routes";
+import { routes as planning } from "../../../app/capabilities/planning/web/routes";
 import { routes as setup } from "../../../app/capabilities/setup/web/routes";
 import { routes as writing, workspaceRoute } from "../../../app/capabilities/writing/web/routes";
 
@@ -21,6 +22,7 @@ const knowledgeDockRoutes = knowledgeDocks.map((dock) => dock(workspaceRoute));
 
 export const capabilityRoutes = [
   ...knowledge,
+  ...planning,
   ...setup,
   ...writing,
   //

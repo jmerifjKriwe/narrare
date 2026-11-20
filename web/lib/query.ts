@@ -2,6 +2,7 @@ import {
   keepPreviousData,
   QueryClient,
   useMutation,
+  useQueries,
   useQuery,
   type UseMutationResult,
   type UseQueryResult,
@@ -21,7 +22,11 @@ import {
   type Novel,
   type NovelCreate,
   type Relation,
+  type SceneAggregate,
   type Suggestion,
+  type TimelineEvent,
+  type TimelineEventCreate,
+  type TimelineEventUpdate,
 } from "./api/client";
 
 /**
@@ -1101,6 +1106,203 @@ function invalidateKnowledge(novelId: string): void {
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "entities", novelId] });
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "suggestions", novelId] });
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+}
+
+// --- The planning reads and writes (W6 Task 3) -----------------------------
+
+/**
+ * The novel's timeline events in the server's manual order — positioned
+ * rows first, unordered (null position) last, creation order breaking
+ * ties — cached under the planning capability's own key. The chronology
+ * page is the reader; the write family below invalidates the key on
+ * settling, so the page refetches the server's truth after every write.
+ * An answer that is not ok throws, so the cache holds either the list or
+ * the failure — never an invented empty timeline.
+ */
+export function useTimelineEvents(novelId: string): UseQueryResult<TimelineEvent[]> {
+  return useQuery({
+    queryKey: ["planning", "timeline", novelId],
+    queryFn: async () => {
+      const { data, response } = await client.GET(
+        "/api/planning/novels/{novel_id}/timeline-events",
+        { params: { path: { novel_id: novelId } } },
+      );
+      if (!response.ok) throw new Error(`timeline events unavailable: ${response.status}`);
+      return data ?? [];
+    },
+  });
+}
+
+/** The fields an event edit may carry: only these reach the PUT body, and
+ *  only the ones the writer dirtied — the client's mirror of the server's
+ *  `model_fields_set` contract. `chapter_id` and `position` are
+ *  present-and-nullable: a carried `null` clears the link or the order,
+ *  an absent field leaves the stored row alone. */
+export type TimelineEventChanges = {
+  title?: string;
+  description?: string;
+  date_label?: string;
+  character_names?: string[];
+  chapter_id?: string | null;
+  position?: number | null;
+};
+
+/** Invalidate the novel's timeline list — the three writes' shared settle. */
+function invalidateTimeline(novelId: string): void {
+  void queryClient.invalidateQueries({ queryKey: ["planning", "timeline", novelId] });
+}
+
+/**
+ * Creating an event: the POST body carries the whole row's writer fields,
+ * no timestamps (those are the server's own). A refusal carries status
+ * and detail — a 422 names the blank title or the chapter link the novel
+ * does not hold, and the dialog shows those words on the field it owns.
+ * Settling (not only success) invalidates the list key: a refused write
+ * leaves the page holding the server's truth, whatever raced it.
+ */
+export function useCreateTimelineEvent(
+  novelId: string,
+): UseMutationResult<TimelineEvent, Error, TimelineEventCreate> {
+  return useMutation({
+    mutationFn: async (input: TimelineEventCreate) => {
+      const { data, error, response } = await client.POST(
+        "/api/planning/novels/{novel_id}/timeline-events",
+        { params: { path: { novel_id: novelId } }, body: input },
+      );
+      if (!response.ok || !data) {
+        throw Object.assign(new Error(`event create refused: ${response.status}`), {
+          status: response.status,
+          detail: (error as { detail?: unknown } | null | undefined)?.detail,
+        });
+      }
+      return data;
+    },
+    onSettled: () => {
+      invalidateTimeline(novelId);
+    },
+  });
+}
+
+/**
+ * Editing an event: only the carried fields are the change (the partial-
+ * update contract — see `TimelineEventChanges`), so the caller sends only
+ * what the writer dirtied. The body crosses the generated type's boundary
+ * with one cast: openapi-typescript types the schema's defaulted fields
+ * (description, date_label, character_names) as required, while the
+ * server's `exclude_unset` honors their absence — the same one-cast rule
+ * the export blob and the upload form carry. A refusal carries status
+ * and detail (the blank title, the unknown chapter link).
+ */
+export function useUpdateTimelineEvent(
+  novelId: string,
+): UseMutationResult<TimelineEvent, Error, { eventId: string; changes: TimelineEventChanges }> {
+  return useMutation({
+    mutationFn: async (input: { eventId: string; changes: TimelineEventChanges }) => {
+      const { data, error, response } = await client.PUT(
+        "/api/planning/novels/{novel_id}/timeline-events/{event_id}",
+        {
+          params: { path: { novel_id: novelId, event_id: input.eventId } },
+          body: input.changes as TimelineEventUpdate,
+        },
+      );
+      if (!response.ok || !data) {
+        throw Object.assign(new Error(`event update refused: ${response.status}`), {
+          status: response.status,
+          detail: (error as { detail?: unknown } | null | undefined)?.detail,
+        });
+      }
+      return data;
+    },
+    onSettled: () => {
+      invalidateTimeline(novelId);
+    },
+  });
+}
+
+/**
+ * Deleting an event: the 204 route, nothing to return. Settling (not only
+ * success) invalidates the list key — a 404 means the row is already gone
+ * (another tab's delete won the race), and the refetch is what removes the
+ * card a second delete would have acted on.
+ */
+export function useDeleteTimelineEvent(
+  novelId: string,
+): UseMutationResult<void, Error, string> {
+  return useMutation({
+    mutationFn: async (eventId: string) => {
+      const { response } = await client.DELETE(
+        "/api/planning/novels/{novel_id}/timeline-events/{event_id}",
+        { params: { path: { novel_id: novelId, event_id: eventId } } },
+      );
+      if (!response.ok) throw new Error(`event delete refused: ${response.status}`);
+    },
+    onSettled: () => {
+      invalidateTimeline(novelId);
+    },
+  });
+}
+
+/** The chapter-scene key the fan-out caches under and the save invalidates. */
+function chapterScenesKey(chapterId: string): readonly unknown[] {
+  return ["planning", "scenes", chapterId];
+}
+
+/**
+ * Invalidate one chapter's scene aggregate — the seam the aggregate save
+ * writes through (W6 Task 4's drill-in): a saved aggregate settles and
+ * the chapter's own key goes stale, exactly the chapter the write touched
+ * and none of its siblings. The timeline's counters and the causality
+ * strip refetch through their own standing queries.
+ */
+export function invalidateChapterScenes(chapterId: string): void {
+  void queryClient.invalidateQueries({ queryKey: chapterScenesKey(chapterId) });
+}
+
+/**
+ * The novel's scenes, one chapter at a time (W6's fan-out ruling): there
+ * is no bulk endpoint and none is built, so the hook reads each chapter's
+ * aggregate through the query seam — parallel `useQueries`, each cached
+ * under its own per-chapter key so the aggregate save's invalidation
+ * reaches exactly the chapter it touched. A novel's chapter count
+ * (dozens, local-first single user) makes this honest. The combined
+ * answer is the whole fan or nothing: `data` stands only when every
+ * chapter answered, `isError` when any one failed — the timeline's
+ * status counters never sum a half-current novel. The combined shape is
+ * the plan-pinned `UseQueryResult<SceneAggregate[]>` (one documented
+ * boundary cast — `combine` returns the caller's own fields, not
+ * TanStack's per-query object).
+ */
+export function useNovelScenes(
+  chapters: readonly Chapter[],
+): UseQueryResult<SceneAggregate[]> {
+  return useQueries({
+    queries: chapters.map((chapter) => ({
+      queryKey: chapterScenesKey(chapter.id),
+      queryFn: async () => {
+        const { data, response } = await client.GET(
+          "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes",
+          {
+            params: { path: { novel_id: chapter.novel_id, chapter_id: chapter.id } },
+          },
+        );
+        if (!response.ok || !data) {
+          throw new Error(`scenes unavailable: ${response.status}`);
+        }
+        return data;
+      },
+    })),
+    combine: (results) =>
+      ({
+        data: results.every((result) => result.data !== undefined)
+          ? results.map((result) => result.data)
+          : undefined,
+        error: results.find((result) => result.isError)?.error ?? null,
+        isError: results.some((result) => result.isError),
+        isPending: results.some((result) => result.isPending),
+        isSuccess: results.every((result) => result.isSuccess),
+        refetch: () => Promise.all(results.map((result) => result.refetch())),
+      }) as unknown as UseQueryResult<SceneAggregate[]>,
+  });
 }
 
 /** D8's canon rule, seen from the shelf: every knowledge write that

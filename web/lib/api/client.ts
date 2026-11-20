@@ -32,6 +32,19 @@ export type Suggestion = components["schemas"]["SuggestionRead"];
 export type Relation = components["schemas"]["RelationRead"];
 export type Accept = components["schemas"]["AcceptRead"];
 export type Finding = components["schemas"]["FindingRead"];
+/** Planning's timeline event row (W6): the free-text date, the manual
+ *  position (null = unordered, listed last) and the free-text character
+ *  names — no KB linkage in this slice. */
+export type TimelineEvent = components["schemas"]["TimelineEventRead"];
+export type TimelineEventCreate = components["schemas"]["TimelineEventCreate"];
+/** The PUT body's generated shape: the server honors sent-vs-absent
+ *  (`model_fields_set`), but the serialized schema types the defaulted
+ *  fields as required — the client's all-optional mirror
+ *  (`TimelineEventChanges` in query.ts) is the honest edit surface. */
+export type TimelineEventUpdate = components["schemas"]["TimelineEventUpdate"];
+/** Planning's scene aggregate (W6): one chapter's scenes in position
+ *  order, with the chapter's stamp as the version a drill-in compares. */
+export type SceneAggregate = components["schemas"]["SceneAggregateRead"];
 
 /**
  * The one failure the UI can name a fix for: the corpus was embedded by a
