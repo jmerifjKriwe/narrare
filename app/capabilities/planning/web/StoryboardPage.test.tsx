@@ -258,6 +258,8 @@ let scenesFail: boolean;
 let sceneVersion: string;
 let remapStatus: number;
 let remapDetail: unknown;
+let remapForeignEntry: boolean;
+let scenesPutFail: boolean;
 
 function baseGet(path: string, init?: { params?: { path?: { chapter_id?: string } } }): Promise<{ data: unknown; response: Response }> {
   if (storyboardFail && path === "/api/planning/novels/{novel_id}/storyboard") {
@@ -294,15 +296,21 @@ function baseGet(path: string, init?: { params?: { path?: { chapter_id?: string 
 function remapAnswer(target: string, confirm: boolean) {
   const keys = STAGE_KEYS[target as (typeof STRUCTURE_IDS)[number]];
   const chapters = Object.values(BOARD_CHAPTERS);
+  const mapping = chapters.map((chapter) => ({
+    chapter_id: chapter.chapter_id,
+    from_stage: chapter.stage_key,
+    to_stage: keys[Math.min(keys.length - 1, Math.floor((chapter.position / 2) * keys.length))],
+  }));
+  if (remapForeignEntry) {
+    // A row whose chapter no board list resolves — the dialog must omit
+    // its number, never invent one.
+    mapping.push({ chapter_id: "c-gone", from_stage: "setup", to_stage: "finale" });
+  }
   return {
     novel_id: NOVEL_ID,
     structure_id: target,
     confirmed: confirm,
-    mapping: chapters.map((chapter) => ({
-      chapter_id: chapter.chapter_id,
-      from_stage: chapter.stage_key,
-      to_stage: keys[Math.min(keys.length - 1, Math.floor((chapter.position / 2) * keys.length))],
-    })),
+    mapping,
   };
 }
 
@@ -363,6 +371,8 @@ beforeEach(() => {
   sceneVersion = "2026-11-19T10:00:00Z";
   remapStatus = 0;
   remapDetail = undefined;
+  remapForeignEntry = false;
+  scenesPutFail = false;
   BOARD_CHAPTERS = freshBoardChapters();
   api.GET.mockImplementation(baseGet);
   api.POST.mockImplementation((_path: string, init?: { body?: { structure_id?: string; confirm?: boolean } }) => {
@@ -385,6 +395,7 @@ beforeEach(() => {
       return Promise.resolve({ data: BOARD_CHAPTERS[chapterId], response: ok() });
     }
     if (_path === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes") {
+      if (scenesPutFail) return Promise.resolve({ data: { detail: "outage" }, response: ok(503) });
       sceneVersion = "2026-11-19T11:00:00Z";
       const chapterId = init?.params?.path?.chapter_id ?? "";
       const body = init?.body as { scenes: { id: string; title: string; purpose: string; conflict: string; resolution: string; beats: string[]; status: string }[] };
@@ -590,6 +601,21 @@ describe("the structure switcher and the remap", () => {
     expect(
       screen.getByRole("button", { name: literal(de["storyboard.structure.five-act"]) }).getAttribute("aria-pressed"),
     ).toBe("true");
+  });
+
+  it("a mapping row the board cannot name omits the number — never a wrong one", async () => {
+    remapForeignEntry = true;
+    await renderStoryboard();
+    await screen.findAllByTestId("storyboard-card");
+    fireEvent.click(screen.getByRole("button", { name: literal(de["storyboard.structure.save-the-cat"]) }));
+    fireEvent.click(within(screen.getByTestId("storyboard-remap-notice")).getByRole("button", { name: de["planning.storyboard.remapApply"] }));
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findAllByRole("listitem");
+    const rows = within(dialog).getAllByRole("listitem");
+    // The foreign chapter's move carries the stages without a number.
+    expect(rows.some((row) => !/Kapitel \d/.test(row.textContent ?? ""))).toBe(true);
+    // The board's own chapters keep their numbered moves.
+    expect(rows.some((row) => /Kapitel 1:/.test(row.textContent ?? ""))).toBe(true);
   });
 
   it("an unknown structure id surfaces the API's refusal — the switcher never bricks", async () => {
@@ -841,6 +867,112 @@ describe("the sub-nav doors", () => {
   });
 });
 
+describe("the review fixes", () => {
+  /** Chapter 2's copy, dirtied through the edit dialog — the shared
+   *  preamble of the guard pins. */
+  async function dirtySignalCopy() {
+    const cards = await screen.findAllByTestId("storyboard-card");
+    fireEvent.click(within(cards[1]).getByText("Das Signal im Permafrost"));
+    const dock = await screen.findByTestId("drill-in");
+    const scenes = await within(dock).findAllByTestId("drill-in-scene");
+    fireEvent.click(within(scenes[0]).getByRole("button", { name: de["planning.storyboard.editScene"] }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(de["planning.storyboard.purpose"]), {
+      target: { value: "Wähle mich." },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["planning.crud.saveChanges"] }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    return { cards, dock };
+  }
+
+  it("a dirty copy survives a guarded switch — cancel keeps it, confirm folds it", async () => {
+    await renderStoryboard();
+    const { dock } = await dirtySignalCopy();
+    expect(within(dock).getByText(/Wähle mich\./)).toBeTruthy();
+
+    // Switching while dirty asks first; the cancel keeps the copy.
+    const ankunft = screen.getAllByTestId("storyboard-card").find((card) =>
+      within(card).queryByText("Ankunft auf Horizon Station") !== null,
+    ) as HTMLElement;
+    fireEvent.click(within(ankunft).getByText("Ankunft auf Horizon Station"));
+    const guard = await screen.findByRole("alertdialog");
+    expect(within(guard).getByText(/Das Signal im Permafrost/)).toBeTruthy();
+    fireEvent.click(within(guard).getByRole("button", { name: de["planning.crud.cancel"] }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(within(screen.getByTestId("drill-in")).getByText(/Wähle mich\./)).toBeTruthy();
+    expect(within(screen.getByTestId("drill-in")).getByText(/KAPITEL 2/)).toBeTruthy();
+
+    // The confirmed switch folds the copy — the new chapter stands clean.
+    fireEvent.click(within(ankunft).getByText("Ankunft auf Horizon Station"));
+    const second = await screen.findByRole("alertdialog");
+    fireEvent.click(within(second).getByRole("button", { name: de["planning.storyboard.discardDraftConfirm"] }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() =>
+      expect(within(screen.getByTestId("drill-in")).getByText(/KAPITEL 1/)).toBeTruthy(),
+    );
+    expect(screen.queryByText(/Wähle mich\./)).toBeNull();
+    expect(api.PUT.mock.calls.some(([p]) => p === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes")).toBe(false);
+  });
+
+  it("an immediate second save does not conflict — the PUT's answer seeds the stamp", async () => {
+    await renderStoryboard();
+    await dirtySignalCopy();
+    const dock = screen.getByTestId("drill-in");
+    fireEvent.click(within(dock).getByRole("button", { name: de["planning.storyboard.saveAggregate"] }));
+    await waitFor(() =>
+      expect(api.PUT.mock.calls.some(([p]) => p === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes")).toBe(true),
+    );
+    await waitFor(() => expect(screen.queryByText(/Wähle mich\./)).toBeNull());
+
+    // The second edit rides the seeded stamp: no conflict face, a second PUT.
+    const scenes = await within(dock).findAllByTestId("drill-in-scene");
+    fireEvent.click(within(scenes[0]).getByRole("button", { name: de["planning.storyboard.editScene"] }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(de["planning.storyboard.purpose"]), {
+      target: { value: "Zweite Antwort." },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["planning.crud.saveChanges"] }));
+    fireEvent.click(within(dock).getByRole("button", { name: de["planning.storyboard.saveAggregate"] }));
+    await waitFor(() =>
+      expect(
+        api.PUT.mock.calls.filter(([p]) => p === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes"),
+      ).toHaveLength(2),
+    );
+    expect(screen.queryByTestId("drill-in-conflict")).toBeNull();
+  });
+
+  it("a failed overwrite retries as the overwrite — not back into the conflict face", async () => {
+    await renderStoryboard();
+    await dirtySignalCopy();
+    const dock = screen.getByTestId("drill-in");
+
+    // The stamp moves: the first save refuses as the conflict face.
+    sceneVersion = "2026-11-19T12:00:00Z";
+    fireEvent.click(within(dock).getByRole("button", { name: de["planning.storyboard.saveAggregate"] }));
+    expect(await within(dock).findByTestId("drill-in-conflict")).toBeTruthy();
+
+    // The overwrite leaves, and its PUT fails — the failed face stands and
+    // the conflict face folds.
+    scenesPutFail = true;
+    fireEvent.click(within(screen.getByTestId("drill-in-conflict")).getByRole("button", { name: de["planning.storyboard.conflictOverwrite"] }));
+    const failedText = await within(dock).findByText(de["planning.crud.error"]);
+    const failedFace = failedText.closest('[role="alert"]') as HTMLElement;
+    expect(screen.queryByTestId("drill-in-conflict")).toBeNull();
+
+    // The retry re-sends the overwrite: no fresh version check, no bounce
+    // back into the conflict face, the PUT crosses again.
+    scenesPutFail = false;
+    fireEvent.click(within(failedFace).getByRole("button", { name: de["planning.storyboard.retry"] }));
+    await waitFor(() =>
+      expect(
+        api.PUT.mock.calls.filter(([p]) => p === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes"),
+      ).toHaveLength(1),
+    );
+    expect(screen.queryByTestId("drill-in-conflict")).toBeNull();
+    await waitFor(() => expect(screen.queryByText(/Wähle mich\./)).toBeNull());
+  });
+});
+
 describe("the catalogs", () => {
   it("carry the storyboard's keys in parity, sorted, in the du register", () => {
     const deKeys = Object.keys(de).filter((key) => key.startsWith("planning.storyboard") || key.startsWith("planning.sync") || key.startsWith("planning.sceneStatus") || key.startsWith("storyboard."));
@@ -853,5 +985,9 @@ describe("the catalogs", () => {
     // The du register: the conflict's own words speak to the writer.
     expect(de["planning.storyboard.conflictBody"]).toMatch(/Deine\b/);
     expect(de["planning.storyboard.emptyNote"]).toMatch(/deine\b/);
+    // The English stage chip carries its own unit — no German „W." leak.
+    expect(catalogs.en["planning.storyboard.stageShare"]).toContain("words");
+    expect(catalogs.en["planning.storyboard.stageShare"]).not.toContain("W.");
+    expect(catalogs.fr["planning.storyboard.stageShare"]).toContain("mots");
   });
 });

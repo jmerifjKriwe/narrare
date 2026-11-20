@@ -1480,6 +1480,13 @@ export function useSaveChapterScenes(
       }
       return data;
     },
+    onSuccess: (answer, input) => {
+      // The PUT's own answer seeds the fan's entry at once: without it the
+      // snapshot could re-pin the pre-save stamp in the window before the
+      // settle's refetch lands, and an immediate second save would refuse
+      // as a conflict the write itself caused.
+      queryClient.setQueryData(chapterScenesKey(input.chapterId), answer);
+    },
     onSettled: (_data, _error, input) => {
       invalidateChapterScenes(input.chapterId);
       invalidateStoryboard(novelId);

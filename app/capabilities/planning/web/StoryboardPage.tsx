@@ -33,7 +33,7 @@
  * no other capability (rule 1).
  */
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
@@ -50,7 +50,7 @@ import { Icon } from "@shell/ui/icons";
 
 import type { StoryboardChapter, StoryboardStage } from "@shell/lib/api/client";
 import { SceneDrillIn } from "./sceneDrillIn";
-import { RemapDialog, stageLabel } from "./storyboardDialogs";
+import { DiscardDraftDialog, RemapDialog, stageLabel } from "./storyboardDialogs";
 
 const TIMELINE_PATH = "/novels/$novelId/planning/timeline";
 const CAUSALITY_PATH = "/novels/$novelId/planning/causality";
@@ -124,6 +124,28 @@ export function StoryboardPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pendingStructure, setPendingStructure] = useState<string | null>(null);
   const [remapOpen, setRemapOpen] = useState(false);
+  // The dock's unsaved working copy, reported upward: a chapter switch
+  // while it stands asks first — the copy never folds behind a silent
+  // card click (the review's Important fix).
+  const [dockDirty, setDockDirty] = useState(false);
+  const [switchGuardId, setSwitchGuardId] = useState<string | null>(null);
+  const handleDirtyChange = useCallback((dirty: boolean) => setDockDirty(dirty), []);
+
+  /** The drill-in's selection door: a clean switch walks straight, a
+   *  dirty one hands the click to the discard confirm. */
+  const selectChapter = useCallback(
+    (chapterId: string) => {
+      setSelectedId((current) => {
+        if (chapterId === current) return current;
+        if (dockDirty) {
+          setSwitchGuardId(chapterId);
+          return current;
+        }
+        return chapterId;
+      });
+    },
+    [dockDirty],
+  );
 
   const data = board.data;
   const stageList = useMemo(() => data?.stages ?? [], [data]);
@@ -174,7 +196,8 @@ export function StoryboardPage() {
         )}
         <button
           type="button"
-          onClick={() => setSelectedId(chapter.chapter_id)}
+          id={`storyboard-select-${chapter.chapter_id}`}
+          onClick={() => selectChapter(chapter.chapter_id)}
           className={`flex flex-col text-left ${FOCUS}`}
         >
           <span className="mb-1 flex items-start justify-between gap-1">
@@ -474,9 +497,28 @@ export function StoryboardPage() {
               onRetryScenes={() => {
                 void scenes.refetch();
               }}
+              onDirtyChange={handleDirtyChange}
             />
           </div>
         </div>
+      )}
+
+      {/* The dirty-copy guard — a confirmed switch folds the copy into
+          the new chapter's clean rows; a cancel keeps both standing. */}
+      {switchGuardId !== null && selectedId !== null && (
+        <DiscardDraftDialog
+          chapterTitle={
+            boardChapters.find((chapter) => chapter.chapter_id === selectedId)?.title.trim() === ""
+              ? t("planning.crud.untitledChapter")
+              : (boardChapters.find((chapter) => chapter.chapter_id === selectedId)?.title ?? "")
+          }
+          openerId={`storyboard-select-${switchGuardId}`}
+          onCancel={() => setSwitchGuardId(null)}
+          onDiscard={() => {
+            setSelectedId(switchGuardId);
+            setSwitchGuardId(null);
+          }}
+        />
       )}
 
       {/* The remap dialog — the preview, then the confirm. */}

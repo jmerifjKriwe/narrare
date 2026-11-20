@@ -22,7 +22,7 @@
  * the workspace door is the shell's own route.
  */
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { SceneAggregate, StoryboardChapter } from "@shell/lib/api/client";
 import { formatNumber } from "@shell/lib/format";
@@ -79,6 +79,7 @@ export function SceneDrillIn({
   aggregate,
   scenesFailed,
   onRetryScenes,
+  onDirtyChange,
 }: {
   novelId: string;
   chapter: StoryboardChapter | null;
@@ -86,6 +87,9 @@ export function SceneDrillIn({
   aggregate: SceneAggregate | undefined;
   scenesFailed: boolean;
   onRetryScenes: () => void;
+  /** The dock's dirtiness, reported upward: the page guards the chapter
+   *  switch behind its own confirm while a copy stands unsaved. */
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const t = useTranslation();
   const saveScenes = useSaveChapterScenes(novelId);
@@ -96,6 +100,11 @@ export function SceneDrillIn({
   const [snapshot, setSnapshot] = useState<string | null>(null);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [removeIndex, setRemoveIndex] = useState<number | null>(null);
+  // The mode of the attempt the failed face would retry: a conflict's
+  // overwrite must retry AS the overwrite — a bare retry would re-run the
+  // version check against the stamp that already moved and bounce straight
+  // back into the conflict face.
+  const lastOverwrite = useRef(false);
 
   const chapterId = chapter?.chapter_id ?? null;
 
@@ -134,6 +143,12 @@ export function SceneDrillIn({
   const busy = saveScenes.isPending;
   const failed = saveScenes.error !== null && !conflict;
 
+  // The dirtiness rides upward as it changes: the page's chapter-switch
+  // guard reads it, so an unsaved copy never folds behind a silent card.
+  useEffect(() => {
+    onDirtyChange(dirty);
+  }, [dirty, onDirtyChange]);
+
   function beginDraft(): SceneDraft[] {
     const standing = draft ?? serverRows;
     return standing;
@@ -141,6 +156,7 @@ export function SceneDrillIn({
 
   function save(overwrite = false) {
     if (draft === null || snapshot === null || chapter === null) return;
+    lastOverwrite.current = overwrite;
     saveScenes.mutate(
       { chapterId: chapter.chapter_id, scenes: draft, expectedVersion: snapshot, overwrite },
       { onSuccess: () => setDraft(null) },
@@ -370,7 +386,7 @@ export function SceneDrillIn({
               <p className="text-meta leading-tight text-foreground">{t("planning.crud.error")}</p>
               <button
                 type="button"
-                onClick={() => save()}
+                onClick={() => save(lastOverwrite.current)}
                 className={`mt-1 inline-flex items-center gap-1 text-meta font-medium text-primary underline underline-offset-2 transition-colors hover:text-foreground ${FOCUS}`}
               >
                 {t("planning.storyboard.retry")}

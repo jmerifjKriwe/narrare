@@ -288,18 +288,30 @@ export function RemapDialog({
       )}
       {preview !== null && (
         <ul className="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-rule bg-surface-container-low p-2.5">
-          {preview.mapping.map((entry) => (
-            <li key={entry.chapter_id} className="flex items-center gap-1.5 text-meta text-foreground">
-              <span className="shrink-0 text-muted">
-                <Icon name="arrowRight" size={12} />
-              </span>
-              {t("planning.storyboard.remapMove", {
-                position: (positionById.get(entry.chapter_id) ?? 0) + 1,
-                from: stageLabel(t, entry.from_stage),
-                to: stageLabel(t, entry.to_stage),
-              })}
-            </li>
-          ))}
+          {preview.mapping.map((entry) => {
+            // A chapter the board cannot name (its row raced away between
+            // the read and the preview) keeps its move — the stages are
+            // the mapping's own fact — without a number that would name
+            // the wrong chapter.
+            const position = positionById.get(entry.chapter_id);
+            return (
+              <li key={entry.chapter_id} className="flex items-center gap-1.5 text-meta text-foreground">
+                <span className="shrink-0 text-muted">
+                  <Icon name="arrowRight" size={12} />
+                </span>
+                {position === undefined
+                  ? t("planning.storyboard.remapMoveUnnumbered", {
+                      from: stageLabel(t, entry.from_stage),
+                      to: stageLabel(t, entry.to_stage),
+                    })
+                  : t("planning.storyboard.remapMove", {
+                      position: position + 1,
+                      from: stageLabel(t, entry.from_stage),
+                      to: stageLabel(t, entry.to_stage),
+                    })}
+              </li>
+            );
+          })}
         </ul>
       )}
       {unknownStructure && (
@@ -561,6 +573,78 @@ export function SceneEditDialog({
           className={`inline-flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-meta font-medium text-primary-foreground shadow-sm transition-all hover:opacity-95 ${FOCUS}`}
         >
           {t("planning.crud.saveChanges")}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+// --- The dirty-copy discard guard -------------------------------------------
+
+/**
+ * The chapter-switch guard over a dirty working copy (the review's
+ * Important fix): leaving the chapter through a card asks before the copy
+ * folds — the same destructive calm the scene remove speaks. Confirming
+ * folds the copy into the new chapter's clean rows; cancelling keeps the
+ * copy and the chapter it belongs to. The scrim does not dismiss; focus
+ * lands on the safe answer.
+ */
+export function DiscardDraftDialog({
+  chapterTitle,
+  openerId,
+  onCancel,
+  onDiscard,
+}: {
+  chapterTitle: string;
+  openerId: string;
+  /** The safe answer: the guard stands down, the copy keeps standing. */
+  onCancel: () => void;
+  /** The writer named the loss: the switch proceeds and the copy folds. */
+  onDiscard: () => void;
+}) {
+  const t = useTranslation();
+  const cancelRef = useRef<HTMLButtonElement | null>(null);
+  const headingId = useId();
+  const bodyId = useId();
+
+  return (
+    <Modal
+      openerId={openerId}
+      role="alertdialog"
+      headingId={headingId}
+      bodyId={bodyId}
+      onDismiss={onCancel}
+      scrimDismiss={false}
+      focusRef={cancelRef}
+      panelClassName={CONFIRM_PANEL}
+    >
+      <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full border border-warning/40 bg-warning/10 text-warning">
+        <Icon name="warning" size={17} />
+      </div>
+      <div>
+        <h2 id={headingId} className={`${SERIF} text-body font-semibold text-foreground`}>
+          {t("planning.storyboard.discardDraftTitle")}
+        </h2>
+        <p id={bodyId} className="mt-0.5 text-meta leading-snug text-muted">
+          {t("planning.storyboard.discardDraftBody", { title: chapterTitle })}
+        </p>
+      </div>
+      <div className="flex items-center justify-center gap-2 pt-1">
+        <button
+          type="button"
+          ref={cancelRef}
+          onClick={onCancel}
+          className={`rounded bg-primary px-3 py-1.5 text-meta font-medium text-primary-foreground shadow-sm transition-all hover:opacity-95 ${FOCUS}`}
+        >
+          {t("planning.crud.cancel")}
+        </button>
+        <button
+          type="button"
+          onClick={onDiscard}
+          title={t("planning.storyboard.discardDraftTitle")}
+          className={`rounded border border-danger/40 px-2.5 py-1.5 text-meta font-medium text-danger transition-colors hover:bg-danger/10 ${FOCUS}`}
+        >
+          {t("planning.storyboard.discardDraftConfirm")}
         </button>
       </div>
     </Modal>
