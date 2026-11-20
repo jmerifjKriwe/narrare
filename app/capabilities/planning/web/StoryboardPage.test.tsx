@@ -993,6 +993,49 @@ describe("the review fixes", () => {
     expect(screen.queryByTestId("drill-in-conflict")).toBeNull();
     await waitFor(() => expect(screen.queryByText(/Wähle mich\./)).toBeNull());
   });
+
+  it("a chapter switch retires the stale failed face — no unversioned PUT can leave for the next chapter", async () => {
+    await renderStoryboard();
+    await dirtySignalCopy();
+    const dock = screen.getByTestId("drill-in");
+
+    // Chapter A refuses as a conflict; its overwrite leaves and fails.
+    sceneVersion = "2026-11-19T12:00:00Z";
+    fireEvent.click(within(dock).getByRole("button", { name: de["planning.storyboard.saveAggregate"] }));
+    expect(await within(dock).findByTestId("drill-in-conflict")).toBeTruthy();
+    scenesPutFail = true;
+    fireEvent.click(within(screen.getByTestId("drill-in-conflict")).getByRole("button", { name: de["planning.storyboard.conflictOverwrite"] }));
+    await within(dock).findByText(de["planning.crud.error"]);
+
+    // The guarded switch folds chapter A's copy into chapter B (c1).
+    const ankunft = screen.getAllByTestId("storyboard-card").find((card) =>
+      within(card).queryByText("Ankunft auf Horizon Station") !== null,
+    ) as HTMLElement;
+    fireEvent.click(within(ankunft).getByText("Ankunft auf Horizon Station"));
+    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: de["planning.storyboard.discardDraftConfirm"] }));
+    await waitFor(() => expect(within(screen.getByTestId("drill-in")).getByText(/KAPITEL 1/)).toBeTruthy());
+
+    // Chapter B's own answers: once its copy stands, the stale failed face
+    // (and the unversioned overwrite its retry would re-send) must have
+    // retired with the chapter it belonged to.
+    const scenes = await within(screen.getByTestId("drill-in")).findAllByTestId("drill-in-scene");
+    fireEvent.click(within(scenes[0]).getByRole("button", { name: de["planning.storyboard.editScene"] }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(de["planning.storyboard.purpose"]), {
+      target: { value: "Antwort des nächsten Kapitels." },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["planning.crud.saveChanges"] }));
+    expect(within(screen.getByTestId("drill-in")).queryByText(de["planning.crud.error"])).toBeNull();
+
+    // And chapter B's save is a CHECKED one: its stamp moved too, so the
+    // honest answer is the conflict face — never an unversioned PUT.
+    scenesPutFail = false;
+    fireEvent.click(within(screen.getByTestId("drill-in")).getByRole("button", { name: de["planning.storyboard.saveAggregate"] }));
+    expect(await within(screen.getByTestId("drill-in")).findByTestId("drill-in-conflict")).toBeTruthy();
+    expect(
+      api.PUT.mock.calls.some(([, init]) => (init as { params?: { path?: { chapter_id?: string } } })?.params?.path?.chapter_id === "c1"),
+    ).toBe(false);
+  });
 });
 
 describe("the catalogs", () => {

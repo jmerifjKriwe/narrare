@@ -110,13 +110,18 @@ export function SceneDrillIn({
 
   // A chapter switch (and the first mount) folds the copy: the editor
   // edits one chapter at a time, and a stale copy must not leak across
-  // the boundary.
+  // the boundary. The failed attempt retires with it — its error face and
+  // its overwrite mode belong to the chapter that earned them, and a
+  // retry standing into the next chapter's save would leave as an
+  // unversioned PUT.
   // biome-ignore lint/correctness/useExhaustiveDependencies: chapterId is the deliberate re-run key, not a value the body reads — a chapter switch must reset the editor (the WorkspacePage novelId reset's own pattern).
   useEffect(() => {
     setDraft(null);
     setSnapshot(null);
     setEditIndex(null);
     setRemoveIndex(null);
+    saveScenes.reset();
+    lastOverwrite.current = false;
   }, [chapterId]);
 
   // The snapshot follows the server's rows while the copy is clean — the
