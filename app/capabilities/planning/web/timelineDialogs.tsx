@@ -105,6 +105,7 @@ function Modal({
   panelClassName,
   survivorFocusId,
   retiredRef,
+  suspended = false,
   children,
 }: {
   openerId: string;
@@ -117,21 +118,32 @@ function Modal({
   panelClassName: string;
   survivorFocusId?: string;
   retiredRef?: RefObject<boolean>;
+  /** A confirm stands over this dialog: keep its state, stand its trap
+   *  down, hide it from the pointer and the reader until it leads again. */
+  suspended?: boolean;
   children: ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement | null>(null);
-  useModalKeys(panelRef, onDismiss);
+  useModalKeys(panelRef, onDismiss, { enabled: !suspended });
+  // The landing: focus on mount, and again whenever a standing confirm
+  // hands the keyboard back.
   useEffect(() => {
+    if (suspended) return;
     focusRef.current?.focus();
+  }, [suspended, focusRef]);
+  // The return: focus goes back to the opener when the dialog unmounts —
+  // to the survivor instead when the write retired the opener.
+  useEffect(() => {
     return () => {
       const retired = retiredRef?.current === true;
       const id = retired && survivorFocusId !== undefined ? survivorFocusId : openerId;
       document.getElementById(id)?.focus();
     };
-  }, [openerId, focusRef, survivorFocusId, retiredRef]);
+  }, [openerId, survivorFocusId, retiredRef]);
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4 backdrop-blur-[1px]"
+      aria-hidden={suspended || undefined}
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4 backdrop-blur-[1px] ${suspended ? "pointer-events-none" : ""}`}
       onMouseDown={(event) => {
         if (scrimDismiss && event.target === event.currentTarget) onDismiss();
       }}
@@ -142,6 +154,7 @@ function Modal({
         aria-modal="true"
         aria-labelledby={headingId}
         aria-describedby={bodyId}
+        inert={suspended || undefined}
         className={panelClassName}
       >
         {children}
@@ -185,8 +198,19 @@ function FormHeader({
   );
 }
 
-/** The form panel's footer: Abbrechen and the busy Speichern. */
-function FormFooter({ busy, onClose, onSave }: { busy: boolean; onClose: () => void; onSave: () => void }) {
+/** The form panel's footer: Abbrechen and the busy save — the edit
+ *  speaks the draft's „Änderungen speichern", the create its plain word. */
+function FormFooter({
+  busy,
+  saveLabel,
+  onClose,
+  onSave,
+}: {
+  busy: boolean;
+  saveLabel: string;
+  onClose: () => void;
+  onSave: () => void;
+}) {
   const t = useTranslation();
   return (
     <div className="flex items-center justify-end gap-2 border-t border-rule pt-3">
@@ -205,7 +229,7 @@ function FormFooter({ busy, onClose, onSave }: { busy: boolean; onClose: () => v
         className={`inline-flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-meta font-medium text-primary-foreground shadow-sm transition-all hover:opacity-95 ${FOCUS} ${busy ? "cursor-not-allowed opacity-60" : ""}`}
       >
         {busy && <Spinner />}
-        {busy ? t("planning.crud.busy") : t("planning.crud.save")}
+        {busy ? t("planning.crud.busy") : saveLabel}
       </button>
     </div>
   );
@@ -381,6 +405,17 @@ function eventFormState(event: TimelineEvent | null): EventFormState {
   };
 }
 
+/** The position input's honest answer: null for the empty box (unordered,
+ *  listed last), the whole number the writer typed, or null when the text
+ *  names none — the dialogs' guard shows its own words before the wire
+ *  would answer a 422 for a fraction. */
+function parsePosition(input: string): number | null {
+  const text = input.trim();
+  if (text === "") return null;
+  const value = Number(text);
+  return Number.isInteger(value) ? value : null;
+}
+
 /** The dirtied fields of an edit, as the PUT's partial body: only what the
  *  writer changed crosses the wire, and a cleared chapter link or position
  *  rides as the carried null that clears it (the server's contract). */
@@ -397,7 +432,7 @@ function eventChanges(event: TimelineEvent, form: EventFormState): TimelineEvent
   }
   const originalPosition = event.position == null ? "" : String(event.position);
   if (form.positionInput.trim() !== originalPosition) {
-    changes.position = form.positionInput.trim() === "" ? null : Number(form.positionInput);
+    changes.position = parsePosition(form.positionInput);
   }
   return changes;
 }
@@ -428,10 +463,13 @@ export function CreateEventDialog({
   const titleRef = useRef<HTMLInputElement | null>(null);
   const headingId = useId();
 
+  const positionText = form.positionInput.trim();
+  const positionInvalid = positionText !== "" && parsePosition(positionText) === null;
+
   function save() {
     setError(false);
     setAttempted(true);
-    if (form.title.trim() === "") return;
+    if (form.title.trim() === "" || positionInvalid) return;
     create.mutate(
       {
         title: form.title.trim(),
@@ -439,7 +477,7 @@ export function CreateEventDialog({
         date_label: form.dateLabel,
         character_names: form.names,
         chapter_id: form.chapterId === "" ? null : form.chapterId,
-        position: form.positionInput.trim() === "" ? null : Number(form.positionInput),
+        position: parsePosition(positionText),
       },
       { onSuccess: onClose, onError: () => setError(true) },
     );
@@ -460,8 +498,9 @@ export function CreateEventDialog({
       <FormHeader headingId={headingId} title={t("planning.crud.createTitle")} busy={busy} dirty={dirty} onClose={onClose} />
       <EventFields form={form} onChange={(patch) => setForm((previous) => ({ ...previous, ...patch }))} chapters={chapters} titleRef={titleRef} />
       {attempted && form.title.trim() === "" && <ValidationLine message={t("planning.crud.titleRequired")} />}
+      {attempted && positionInvalid && <ValidationLine message={t("planning.crud.positionInteger")} />}
       {error && <ErrorLine message={t("planning.crud.error")} onRetry={save} />}
-      <FormFooter busy={busy} onClose={onClose} onSave={save} />
+      <FormFooter busy={busy} saveLabel={t("planning.crud.save")} onClose={onClose} onSave={save} />
     </Modal>
   );
 }
@@ -474,6 +513,7 @@ export function EditEventDialog({
   openerId,
   onClose,
   onRemove,
+  suspended = false,
 }: {
   event: TimelineEvent;
   chapters: readonly Chapter[];
@@ -481,6 +521,8 @@ export function EditEventDialog({
   onClose: () => void;
   /** The destructive hand-off: the page opens the confirm. */
   onRemove: (event: TimelineEvent) => void;
+  /** The confirm stands over this form: it keeps its state and waits. */
+  suspended?: boolean;
 }) {
   const t = useTranslation();
   const [form, setForm] = useState<EventFormState>(() => eventFormState(event));
@@ -493,10 +535,13 @@ export function EditEventDialog({
   const titleRef = useRef<HTMLInputElement | null>(null);
   const headingId = useId();
 
+  const positionText = form.positionInput.trim();
+  const positionInvalid = positionText !== "" && parsePosition(positionText) === null;
+
   function save() {
     setError(false);
     setAttempted(true);
-    if (form.title.trim() === "") return;
+    if (form.title.trim() === "" || positionInvalid) return;
     update.mutate(
       { eventId: event.id, changes: eventChanges(event, form) },
       { onSuccess: onClose, onError: () => setError(true) },
@@ -509,17 +554,19 @@ export function EditEventDialog({
       role="dialog"
       headingId={headingId}
       onDismiss={() => {
-        if (!busy && !dirty) onClose();
+        if (!busy && !dirty && !suspended) onClose();
       }}
       scrimDismiss
       focusRef={titleRef}
       panelClassName={FORM_PANEL}
+      suspended={suspended}
     >
       <FormHeader headingId={headingId} title={t("planning.crud.editTitle")} busy={busy} dirty={dirty} onClose={onClose} />
       <EventFields form={form} onChange={(patch) => setForm((previous) => ({ ...previous, ...patch }))} chapters={chapters} titleRef={titleRef} />
       {attempted && form.title.trim() === "" && <ValidationLine message={t("planning.crud.titleRequired")} />}
+      {attempted && positionInvalid && <ValidationLine message={t("planning.crud.positionInteger")} />}
       {error && <ErrorLine message={t("planning.crud.error")} onRetry={save} />}
-      <FormFooter busy={busy} onClose={onClose} onSave={save} />
+      <FormFooter busy={busy} saveLabel={t("planning.crud.saveChanges")} onClose={onClose} onSave={save} />
       {/* The draft's inspector carries the destructive remove at the form's
           foot; it hands the row to the page, which opens the confirm. Busy
           holds it — a write and a delete must not race. */}
@@ -618,6 +665,7 @@ function EventFields({
         <input
           id="event-position"
           type="number"
+          step={1}
           value={form.positionInput}
           onChange={(event) => onChange({ positionInput: event.target.value })}
           className={`${INPUT} font-mono text-meta ${FOCUS}`}

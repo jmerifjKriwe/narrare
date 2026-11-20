@@ -330,6 +330,38 @@ describe("the filters", () => {
   });
 });
 
+describe("the chapters outage on the card chips", () => {
+  it("a linked event says the chapter is unknown — never that it has none", async () => {
+    chaptersFail = true;
+    events = [UNGLUECK];
+    await renderTimeline();
+    const card = (await screen.findAllByTestId("timeline-card"))[0];
+    expect(within(card).getByText(de["planning.timeline.chapterUnknown"])).toBeTruthy();
+    expect(within(card).queryByText(de["planning.timeline.noChapter"])).toBeNull();
+    expect(within(card).queryByRole("link")).toBeNull();
+  });
+});
+
+describe("the unordered chapter chip", () => {
+  it("the unordered chapter chip carries the draft's Geplant prefix — the plan is real, the order is not", async () => {
+    events = [
+      eventRow({
+        id: "ev-planned",
+        position: null,
+        chapter_id: "c2",
+        title: "Öffnung von Sektor D-4",
+        date_label: "",
+        character_names: ["Maya Chen"],
+      }),
+    ];
+    await renderTimeline();
+    const chip = await screen.findByRole("link", { name: de["planning.timeline.plannedChapterChip"].replace("{position}", "2") });
+    expect(chip.getAttribute("href")).toBe(`/novels/${NOVEL_ID}`);
+    // The ordered section stays prefix-free (pinned by the Kapitel-2 door
+    // test above).
+  });
+});
+
 describe("the scene-status counters", () => {
   it("derive from the per-chapter fan-out, every real status counted", async () => {
     await renderTimeline();
@@ -348,11 +380,44 @@ describe("the scene-status counters", () => {
     expect(within(counters).getByText("1 Ereignis ohne Datum")).toBeTruthy();
   });
 
-  it("a failed fan-out invents no numbers — the counters wait without them", async () => {
+  it("a failed fan-out invents no numbers — the outage says so and recovers in place", async () => {
     scenesFail = true;
     await renderTimeline();
     await screen.findAllByTestId("timeline-card");
     expect(screen.queryByTestId("timeline-counters")).toBeNull();
+    // The muted outage note stands where the counters stand, named by the
+    // region's own label, with its retry.
+    const note = screen.getByTestId("timeline-counters-outage");
+    expect(note.textContent).toContain(de["planning.timeline.scenesLabel"]);
+    expect(note.textContent).toContain(de["planning.timeline.scenesOutage"]);
+
+    // The in-place retry re-asks the fan: the scene-aggregate GETs grow.
+    const asks = () =>
+      api.GET.mock.calls.filter(
+        ([path]) => path === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes",
+      ).length;
+    const before = asks();
+    fireEvent.click(within(note).getByRole("button", { name: de["planning.timeline.retry"] }));
+    await waitFor(() => expect(asks()).toBeGreaterThan(before));
+  });
+
+  it("the events-failure retry carries the scene fan along", async () => {
+    eventsFail = true;
+    scenesFail = true;
+    await renderTimeline();
+    await screen.findByRole("alert");
+    const asks = () =>
+      api.GET.mock.calls.filter(
+        ([path]) => path === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes",
+      ).length;
+    const before = asks();
+    // The chapters need a beat to land before the fan asks at all.
+    await waitFor(() => expect(asks()).toBeGreaterThan(0));
+    const standing = asks();
+
+    eventsFail = false;
+    fireEvent.click(screen.getByRole("button", { name: de["planning.timeline.retry"] }));
+    await waitFor(() => expect(asks()).toBeGreaterThan(Math.max(before, standing)));
   });
 });
 
@@ -462,6 +527,37 @@ describe("the CRUD round-trips through the page", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
+  it("the destructive hand-off keeps the edit's answers — cancel restores them", async () => {
+    await renderTimeline();
+    const cards = await screen.findAllByTestId("timeline-card");
+    fireEvent.click(within(cards[0]).getByText("Der Große Bruch"));
+    const edit = await screen.findByRole("dialog");
+    fireEvent.change(within(edit).getByLabelText(de["planning.crud.titleLabel"]), {
+      target: { value: "Der Große Bruch (überarbeitet)" },
+    });
+
+    // The confirm stands OVER the suspended edit — the form keeps its
+    // state and stands down its trap while the confirm owns the keyboard.
+    fireEvent.click(within(edit).getByRole("button", { name: de["planning.crud.remove"] }));
+    const confirm = await screen.findByRole("alertdialog");
+    // The edit waits beneath the confirm — hidden from the reader (the
+    // role queries cannot see it) and inert to the keyboard.
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(edit.getAttribute("inert")).not.toBeNull();
+    expect(edit.parentElement?.getAttribute("aria-hidden")).not.toBeNull();
+
+    fireEvent.click(within(confirm).getByRole("button", { name: de["planning.crud.cancel"] }));
+    const restored = await screen.findByRole("dialog");
+    expect(
+      (within(restored).getByLabelText(de["planning.crud.titleLabel"]) as HTMLInputElement).value,
+    ).toBe("Der Große Bruch (überarbeitet)");
+    // Un-suspending lands focus back on the edit's first answer.
+    expect(document.activeElement).toBe(
+      within(restored).getByLabelText(de["planning.crud.titleLabel"]),
+    );
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
   it("an edit saves the dirtied fields through the page's card", async () => {
     await renderTimeline();
     const cards = await screen.findAllByTestId("timeline-card");
@@ -470,7 +566,7 @@ describe("the CRUD round-trips through the page", () => {
     fireEvent.change(within(edit).getByLabelText(de["planning.crud.dateLabel"]), {
       target: { value: "2279" },
     });
-    fireEvent.click(within(edit).getByRole("button", { name: de["planning.crud.save"] }));
+    fireEvent.click(within(edit).getByRole("button", { name: de["planning.crud.saveChanges"] }));
     await waitFor(() => expect(api.PUT).toHaveBeenCalledWith(
       "/api/planning/novels/{novel_id}/timeline-events/{event_id}",
       {

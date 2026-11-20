@@ -159,6 +159,16 @@ export function TimelinePage() {
     );
   }
 
+  /** The chapter chip's words: the plain number on an ordered row, the
+   *  draft's „Geplant Kapitel N" on an unordered one — the plan is a real
+   *  field even where the order is not yet. */
+  function chapterChipWords(position: number, unorderedCard: boolean): string {
+    return t(
+      unorderedCard ? "planning.timeline.plannedChapterChip" : "planning.timeline.chapterChip",
+      { position: position + 1 },
+    );
+  }
+
   /** One event card — the draft's geometry: the mono date over the serif
    *  title and the clamped excerpt, the names and the chapter door in the
    *  foot. The card's body is the edit affordance; the door stands outside
@@ -208,11 +218,17 @@ export function TimelinePage() {
             <Link
               to="/novels/$novelId"
               params={{ novelId }}
-              title={t("planning.timeline.chapterChip", { position: chapter.position + 1 })}
+              title={chapterChipWords(chapter.position, unorderedCard)}
               className={`rounded-[var(--radius-control)] bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/20 ${FOCUS}`}
             >
-              {t("planning.timeline.chapterChip", { position: chapter.position + 1 })}
+              {chapterChipWords(chapter.position, unorderedCard)}
             </Link>
+          ) : event.chapter_id !== null && chapters.isError ? (
+            // The row carries a link the unreadable list cannot name —
+            // that is unknown, not absent, and never a dead door.
+            <span className="rounded-[var(--radius-control)] bg-surface-container px-1.5 py-0.5 text-muted">
+              {t("planning.timeline.chapterUnknown")}
+            </span>
           ) : (
             <span className="rounded-[var(--radius-control)] bg-surface-container px-1.5 py-0.5 text-muted">
               {t("planning.timeline.noChapter")}
@@ -359,6 +375,7 @@ export function TimelinePage() {
               onClick={() => {
                 void events.refetch();
                 void chapters.refetch();
+                void scenes.refetch();
               }}
               className={`rounded border border-border bg-surface-container-low px-3 py-1.5 text-meta font-medium text-foreground transition-colors hover:bg-surface-container ${FOCUS}`}
             >
@@ -401,9 +418,10 @@ export function TimelinePage() {
                 <span aria-hidden="true" className="h-3 w-3 rounded-full bg-primary" />
                 <span className="text-label font-semibold text-foreground">{t("planning.timeline.subtitle")}</span>
               </div>
-              {counters !== null && (
+              {counters !== null ? (
                 <div
                   data-testid="timeline-counters"
+                  aria-label={t("planning.timeline.scenesLabel")}
                   className="flex flex-wrap items-center gap-3 text-meta text-muted"
                 >
                   <span className="flex items-center gap-1">
@@ -423,6 +441,33 @@ export function TimelinePage() {
                     {t("planning.timeline.eventsWithoutDate", { count: counters.withoutDate })}
                   </span>
                 </div>
+              ) : (
+                scenes.isError && (
+                  // A failed fan-out invents no numbers: the muted outage
+                  // note stands where the counters stand, named by the
+                  // region's own label, and its retry re-asks the fan in
+                  // place — no remount needed.
+                  <div
+                    data-testid="timeline-counters-outage"
+                    className="flex items-center gap-2 text-meta text-muted"
+                  >
+                    <span aria-hidden="true" className="text-warning">
+                      <Icon name="warning" size={13} />
+                    </span>
+                    <span>
+                      {t("planning.timeline.scenesLabel")}: {t("planning.timeline.scenesOutage")}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void scenes.refetch();
+                      }}
+                      className={`font-medium text-primary underline underline-offset-2 transition-colors hover:text-foreground ${FOCUS}`}
+                    >
+                      {t("planning.timeline.retry")}
+                    </button>
+                  </div>
+                )
               )}
             </div>
 
@@ -489,8 +534,9 @@ export function TimelinePage() {
         </div>
       )}
 
-      {/* The dialogs — one at a time; the edit's foot hands the row to the
-          confirm, and the confirm's cancel returns to the edit. */}
+      {/* The dialogs — one lead at a time; the edit's foot hands the row to
+          the confirm, and the edit WAITS beneath it (suspended, its state
+          kept) so the confirm's cancel restores the form with its answers. */}
       {dialog?.kind === "create" && (
         <CreateEventDialog
           novelId={novelId}
@@ -499,13 +545,14 @@ export function TimelinePage() {
           onClose={() => setDialog(null)}
         />
       )}
-      {dialog?.kind === "edit" && (
+      {(dialog?.kind === "edit" || dialog?.kind === "delete") && (
         <EditEventDialog
           event={dialog.event}
           chapters={chapterList}
           openerId={dialog.openerId}
           onClose={() => setDialog(null)}
           onRemove={(event) => setDialog({ kind: "delete", event, openerId: dialog.openerId })}
+          suspended={dialog.kind === "delete"}
         />
       )}
       {dialog?.kind === "delete" && (

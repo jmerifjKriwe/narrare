@@ -185,6 +185,25 @@ describe("CreateEventDialog", () => {
     });
   });
 
+  it("a fractional position is refused with its own words — the wire never sees it", async () => {
+    mount(harness((onClose) => (
+      <CreateEventDialog novelId={NOVEL_ID} chapters={CHAPTERS} openerId="opener" onClose={onClose} />
+    )));
+    openDialog();
+    fireEvent.change(field(de["planning.crud.titleLabel"]), { target: { value: "Verlegung Transmitter L2" } });
+    fireEvent.change(field(de["planning.crud.positionLabel"]), { target: { value: "2.5" } });
+    fireEvent.click(screen.getByRole("button", { name: de["planning.crud.save"] }));
+    const guard = await screen.findByRole("alert");
+    expect(within(guard).getByText(de["planning.crud.positionInteger"])).toBeTruthy();
+    expect(api.POST).not.toHaveBeenCalled();
+
+    // A whole number passes the guard and crosses the wire.
+    fireEvent.change(field(de["planning.crud.positionLabel"]), { target: { value: "3" } });
+    fireEvent.click(screen.getByRole("button", { name: de["planning.crud.save"] }));
+    await waitFor(() => expect(api.POST).toHaveBeenCalled());
+    expect(api.POST.mock.calls[0][1].body).toMatchObject({ position: 3 });
+  });
+
   it("an empty position and chapter POST as the honest nulls", async () => {
     mount(harness((onClose) => (
       <CreateEventDialog novelId={NOVEL_ID} chapters={CHAPTERS} openerId="opener" onClose={onClose} />
@@ -288,7 +307,7 @@ describe("EditEventDialog", () => {
     expect(screen.getByText("Maya Chen")).toBeTruthy();
     expect(screen.getByText("Lin Chen")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: de["planning.crud.save"] }));
+    fireEvent.click(screen.getByRole("button", { name: de["planning.crud.saveChanges"] }));
     await waitFor(() => expect(api.PUT).toHaveBeenCalled());
     // Pristine in every field: the PUT carries an empty change set — the
     // server's exclude_unset leaves the row exactly as it stands.
@@ -312,7 +331,7 @@ describe("EditEventDialog", () => {
     // Clearing the position: the empty input is the carried null.
     fireEvent.change(field(de["planning.crud.positionLabel"]), { target: { value: "" } });
 
-    fireEvent.click(screen.getByRole("button", { name: de["planning.crud.save"] }));
+    fireEvent.click(screen.getByRole("button", { name: de["planning.crud.saveChanges"] }));
     await waitFor(() => expect(api.PUT).toHaveBeenCalled());
     expect(api.PUT).toHaveBeenCalledWith(
       "/api/planning/novels/{novel_id}/timeline-events/{event_id}",
@@ -339,7 +358,7 @@ describe("EditEventDialog", () => {
     )));
     openDialog();
     fireEvent.click(screen.getByRole("button", { name: de["planning.crud.removeName"].replace("{name}", "Lin Chen") }));
-    fireEvent.click(screen.getByRole("button", { name: de["planning.crud.save"] }));
+    fireEvent.click(screen.getByRole("button", { name: de["planning.crud.saveChanges"] }));
     await waitFor(() => expect(api.PUT).toHaveBeenCalled());
     expect(api.PUT.mock.calls[0][1].body).toEqual({ character_names: ["Maya Chen"] });
   });
@@ -360,7 +379,7 @@ describe("EditEventDialog", () => {
     const remove = screen.getByRole("button", { name: de["planning.crud.remove"] });
     expect(remove).toBeTruthy();
     fireEvent.change(field(de["planning.crud.titleLabel"]), { target: { value: "Geändert" } });
-    fireEvent.click(screen.getByRole("button", { name: de["planning.crud.save"] }));
+    fireEvent.click(screen.getByRole("button", { name: de["planning.crud.saveChanges"] }));
     await waitFor(() => expect(screen.getByRole("button", { name: de["planning.crud.busy"] })).toBeTruthy());
     expect((remove as HTMLButtonElement).disabled).toBe(true);
 
