@@ -41,12 +41,16 @@ const STATUS_CHIP: Record<string, string> = {
 };
 
 /** A client-minted id for a scene the draft adds: the diff treats an id
- *  no row owns as a creation, so the mint IS the create — no claim step. */
+ *  no row owns as a creation, so the mint IS the create — no claim step.
+ *  randomUUID preferred; a runtime without it gets the older, universal
+ *  getRandomValues — 16 crypto-random bytes in hex, the same width a
+ *  UUID carries. */
 function mintSceneId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
-  return `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return `scene-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
 /** The whole list as one comparable line: the dirty check and the PUT's
@@ -279,12 +283,14 @@ export function SceneDrillIn({
                   ))}
                 </ul>
               </div>
-              {/* The row's controls: order, edit, remove. */}
+              {/* The row's controls: order, edit, remove — all held while
+                  the save is in flight, so no edit can slip into a copy
+                  the PUT's success would fold away. */}
               <div className="flex items-center justify-between gap-1 border-t border-rule/60 pt-1.5">
                 <div className="flex items-center gap-0.5">
                   <button
                     type="button"
-                    disabled={index === 0}
+                    disabled={index === 0 || busy}
                     aria-label={t("planning.storyboard.moveUp")}
                     onClick={() => {
                       const standing = beginDraft();
@@ -293,13 +299,13 @@ export function SceneDrillIn({
                       [moved[index - 1], moved[index]] = [moved[index], moved[index - 1]];
                       setDraft(moved);
                     }}
-                    className={`rounded p-1 text-muted transition-colors hover:text-foreground ${FOCUS} ${index === 0 ? "cursor-not-allowed opacity-40" : ""}`}
+                    className={`rounded p-1 text-muted transition-colors hover:text-foreground ${FOCUS} ${index === 0 || busy ? "cursor-not-allowed opacity-40" : ""}`}
                   >
                     <Icon name="expandLess" size={14} />
                   </button>
                   <button
                     type="button"
-                    disabled={index === rows.length - 1}
+                    disabled={index === rows.length - 1 || busy}
                     aria-label={t("planning.storyboard.moveDown")}
                     onClick={() => {
                       const standing = beginDraft();
@@ -308,7 +314,7 @@ export function SceneDrillIn({
                       [moved[index], moved[index + 1]] = [moved[index + 1], moved[index]];
                       setDraft(moved);
                     }}
-                    className={`rounded p-1 text-muted transition-colors hover:text-foreground ${FOCUS} ${index === rows.length - 1 ? "cursor-not-allowed opacity-40" : ""}`}
+                    className={`rounded p-1 text-muted transition-colors hover:text-foreground ${FOCUS} ${index === rows.length - 1 || busy ? "cursor-not-allowed opacity-40" : ""}`}
                   >
                     <Icon name="chevronDown" size={14} />
                   </button>
@@ -317,17 +323,19 @@ export function SceneDrillIn({
                   <button
                     type="button"
                     id={`drill-scene-${scene.id}-edit`}
+                    disabled={busy}
                     onClick={() => setEditIndex(index)}
-                    className={`inline-flex items-center gap-1 rounded-[var(--radius-control)] border border-rule px-2 py-0.5 text-meta font-medium text-primary transition-colors hover:bg-surface-container ${FOCUS}`}
+                    className={`inline-flex items-center gap-1 rounded-[var(--radius-control)] border border-rule px-2 py-0.5 text-meta font-medium text-primary transition-colors hover:bg-surface-container ${FOCUS} ${busy ? "cursor-not-allowed opacity-60" : ""}`}
                   >
                     <Icon name="editNote" size={13} /> {t("planning.storyboard.editScene")}
                   </button>
                   <button
                     type="button"
                     id={`drill-scene-${scene.id}-remove`}
+                    disabled={busy}
                     aria-label={t("planning.storyboard.removeScene")}
                     onClick={() => setRemoveIndex(index)}
-                    className={`rounded p-1 text-muted transition-colors hover:text-danger ${FOCUS}`}
+                    className={`rounded p-1 text-muted transition-colors hover:text-danger ${FOCUS} ${busy ? "cursor-not-allowed opacity-40" : ""}`}
                   >
                     <Icon name="trash" size={13} />
                   </button>
@@ -337,9 +345,11 @@ export function SceneDrillIn({
           ))}
 
           {/* The add door — a scene is born in the copy, minted and
-              untitled; the PUT is its create. */}
+              untitled; the PUT is its create. Held while a save is in
+              flight, like every other edit into the copy. */}
           <button
             type="button"
+            disabled={busy}
             onClick={() => {
               const standing = beginDraft();
               setDraft([
@@ -347,7 +357,7 @@ export function SceneDrillIn({
                 { id: mintSceneId(), title: "", purpose: "", conflict: "", resolution: "", beats: [], status: "planned" },
               ]);
             }}
-            className={`flex w-full items-center justify-center gap-1.5 rounded-[var(--radius-control)] border border-rule bg-card py-2 text-label text-primary shadow-sm transition-colors hover:bg-surface-container ${FOCUS}`}
+            className={`flex w-full items-center justify-center gap-1.5 rounded-[var(--radius-control)] border border-rule bg-card py-2 text-label text-primary shadow-sm transition-colors hover:bg-surface-container ${FOCUS} ${busy ? "cursor-not-allowed opacity-60" : ""}`}
           >
             <Icon name="plus" size={15} />
             {t("planning.storyboard.addScene", { position: chapterNumber })}

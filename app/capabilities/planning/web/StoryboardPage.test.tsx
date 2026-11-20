@@ -260,6 +260,13 @@ let remapStatus: number;
 let remapDetail: unknown;
 let remapForeignEntry: boolean;
 let scenesPutFail: boolean;
+let scenesPutHang: boolean;
+/** The next scenes GET answers; every one after it hangs forever — the
+ *  pin for "the fan entry holds the rows without a refetch": whatever
+ *  the dock shows after the hung refetch began can only come from the
+ *  cache itself. */
+let scenesHangAfterNext: boolean;
+let scenesHangServed: boolean;
 
 function baseGet(path: string, init?: { params?: { path?: { chapter_id?: string } } }): Promise<{ data: unknown; response: Response }> {
   if (storyboardFail && path === "/api/planning/novels/{novel_id}/storyboard") {
@@ -279,6 +286,10 @@ function baseGet(path: string, init?: { params?: { path?: { chapter_id?: string 
   }
   if (path === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes") {
     if (scenesFail) return Promise.resolve({ data: undefined, response: ok(503) });
+    if (scenesHangAfterNext) {
+      if (scenesHangServed) return new Promise(() => {});
+      scenesHangServed = true;
+    }
     const chapterId = init?.params?.path?.chapter_id ?? "";
     const aggregate = AGGREGATES.get(chapterId);
     if (aggregate === undefined) return Promise.resolve({ data: undefined, response: ok(404) });
@@ -373,7 +384,14 @@ beforeEach(() => {
   remapDetail = undefined;
   remapForeignEntry = false;
   scenesPutFail = false;
+  scenesPutHang = false;
+  scenesHangAfterNext = false;
+  scenesHangServed = false;
   BOARD_CHAPTERS = freshBoardChapters();
+  // Chapter 2's aggregate, fresh before every test: the conflict pins
+  // move its rows and its stamp, and one test's move must not leak into
+  // the next test's fixture.
+  AGGREGATES.set("c2", sceneAggregate("c2"));
   api.GET.mockImplementation(baseGet);
   api.POST.mockImplementation((_path: string, init?: { body?: { structure_id?: string; confirm?: boolean } }) => {
     if (_path === "/api/planning/novels/{novel_id}/remap") {
@@ -395,6 +413,7 @@ beforeEach(() => {
       return Promise.resolve({ data: BOARD_CHAPTERS[chapterId], response: ok() });
     }
     if (_path === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes") {
+      if (scenesPutHang) return new Promise(() => {});
       if (scenesPutFail) return Promise.resolve({ data: { detail: "outage" }, response: ok(503) });
       sceneVersion = "2026-11-19T11:00:00Z";
       const chapterId = init?.params?.path?.chapter_id ?? "";
@@ -1035,6 +1054,195 @@ describe("the review fixes", () => {
     expect(
       api.PUT.mock.calls.some(([, init]) => (init as { params?: { path?: { chapter_id?: string } } })?.params?.path?.chapter_id === "c1"),
     ).toBe(false);
+  });
+});
+
+describe("the review fixes, second round", () => {
+  /** Chapter 2 selected with its dock standing — the shared preamble. */
+  async function openSignalDock() {
+    const cards = await screen.findAllByTestId("storyboard-card");
+    fireEvent.click(within(cards[1]).getByText("Das Signal im Permafrost"));
+    const dock = await screen.findByTestId("drill-in");
+    await within(dock).findAllByTestId("drill-in-scene");
+    return dock;
+  }
+
+  /** Dirty chapter 2's copy through the edit dialog — the marker the
+   *  conflict pins must not survive the fresh load. */
+  async function dirtySignalCopy(dock: HTMLElement, purpose: string) {
+    const scenes = within(dock).getAllByTestId("drill-in-scene");
+    fireEvent.click(within(scenes[0]).getByRole("button", { name: de["planning.storyboard.editScene"] }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(de["planning.storyboard.purpose"]), {
+      target: { value: purpose },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["planning.crud.saveChanges"] }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  }
+
+  it("the conflict seeds the fan's entry — the fresh load shows the server's rows without a refetch", async () => {
+    await renderStoryboard();
+    const dock = await openSignalDock();
+    await dirtySignalCopy(dock, "Lokale Antwort, die der Server nie sah.");
+
+    // The server moved on: a third scene stands and the stamp advanced —
+    // a FRESH aggregate, so the cache's own entry (a shallow copy of the
+    // old one) keeps its two rows and cannot alias the move.
+    const moved = sceneAggregate("c2");
+    moved.scenes.push({
+      id: "s-2-3",
+      chapter_id: "c2",
+      position: 3,
+      title: "Dritte Szene",
+      purpose: "",
+      conflict: "",
+      resolution: "",
+      beats: [],
+      status: "planned",
+      created_at: "2026-11-19T11:30:00Z",
+      updated_at: "2026-11-19T11:30:00Z",
+    });
+    AGGREGATES.set("c2", moved);
+    sceneVersion = "2026-11-19T12:00:00Z";
+    // The pre-read answers (the next scenes GET); every GET after it —
+    // the invalidation's refetch — hangs: whatever the dock shows after
+    // the fresh load can only come from the conflict's own copy.
+    scenesHangAfterNext = true;
+    fireEvent.click(within(dock).getByRole("button", { name: de["planning.storyboard.saveAggregate"] }));
+    expect(await within(dock).findByTestId("drill-in-conflict")).toBeTruthy();
+
+    fireEvent.click(within(screen.getByTestId("drill-in-conflict")).getByRole("button", { name: de["planning.storyboard.conflictReload"] }));
+
+    // The server's three rows stand — seeded, not refetched — the draft
+    // is gone, and no PUT crossed.
+    await waitFor(() => expect(within(dock).getAllByTestId("drill-in-scene")).toHaveLength(3));
+    expect(within(dock).getByText(/Szene 2\.3: Dritte Szene/)).toBeTruthy();
+    expect(screen.queryByText("Lokale Antwort, die der Server nie sah.")).toBeNull();
+    expect(
+      api.PUT.mock.calls.some(([p]) => p === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes"),
+    ).toBe(false);
+  });
+
+  it("a failed version pre-read refuses the save — no PUT crosses", async () => {
+    await renderStoryboard();
+    const dock = await openSignalDock();
+    await dirtySignalCopy(dock, "Antwort ohne Vorablesen.");
+
+    // The pre-read itself breaks: the version compare cannot run, and the
+    // save must refuse rather than fall through to an unchecked PUT.
+    scenesFail = true;
+    fireEvent.click(within(dock).getByRole("button", { name: de["planning.storyboard.saveAggregate"] }));
+    const failedText = await within(dock).findByText(de["planning.crud.error"]);
+    expect(
+      api.PUT.mock.calls.some(([p]) => p === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes"),
+    ).toBe(false);
+
+    // The retry re-runs the CHECKED save: the pre-read answers again, the
+    // stamp stands as the snapshot left it, and the PUT crosses.
+    scenesFail = false;
+    fireEvent.click(within(failedText.closest('[role="alert"]') as HTMLElement).getByRole("button", { name: de["planning.storyboard.retry"] }));
+    await waitFor(() =>
+      expect(
+        api.PUT.mock.calls.some(([p]) => p === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes"),
+      ).toBe(true),
+    );
+  });
+
+  it("a scene is minted from crypto randomness when randomUUID is absent", async () => {
+    // A runtime without randomUUID but with the universal getRandomValues:
+    // bytes 0..15 make the minted id a predictable hex line — Math.random
+    // could never produce it.
+    vi.stubGlobal("crypto", {
+      getRandomValues: (array: Uint8Array) => {
+        for (let index = 0; index < array.length; index += 1) array[index] = index;
+        return array;
+      },
+    });
+    await renderStoryboard();
+    const dock = await openSignalDock();
+    fireEvent.click(within(dock).getByRole("button", { name: /Szene zu Kapitel 2 hinzufügen/ }));
+    fireEvent.click(within(dock).getByRole("button", { name: de["planning.storyboard.saveAggregate"] }));
+    await waitFor(() =>
+      expect(
+        api.PUT.mock.calls.some(([p]) => p === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes"),
+      ).toBe(true),
+    );
+    const call = api.PUT.mock.calls.find(([, init]) => (init as { params?: { path?: { chapter_id?: string } } })?.params?.path?.chapter_id === "c2");
+    const body = (call?.[1] as { body: { scenes: { id: string }[] } }).body;
+    const added = body.scenes.find((scene) => scene.id !== "s-2-1" && scene.id !== "s-2-2");
+    expect(added?.id).toBe("scene-000102030405060708090a0b0c0d0e0f");
+  });
+
+  it("the dialog panels keep to a short viewport — long content scrolls inside the frame", async () => {
+    await renderStoryboard();
+    const dock = await openSignalDock();
+    const scenes = within(dock).getAllByTestId("drill-in-scene");
+
+    // The scene edit's form panel.
+    fireEvent.click(within(scenes[0]).getByRole("button", { name: de["planning.storyboard.editScene"] }));
+    const edit = await screen.findByRole("dialog");
+    expect(edit.className).toContain("max-h-[calc(100vh-2rem)]");
+    expect(edit.className).toContain("overflow-y-auto");
+    fireEvent.click(within(edit).getByRole("button", { name: de["planning.crud.cancel"] }));
+
+    // The scene remove's confirm panel (the discard guard shares it).
+    fireEvent.click(within(scenes[0]).getByRole("button", { name: de["planning.storyboard.removeScene"] }));
+    const remove = await screen.findByRole("alertdialog");
+    expect(remove.className).toContain("max-h-[calc(100vh-2rem)]");
+    expect(remove.className).toContain("overflow-y-auto");
+    fireEvent.click(within(remove).getByRole("button", { name: de["planning.crud.cancel"] }));
+
+    // The remap's panel.
+    fireEvent.click(screen.getByRole("button", { name: literal(de["storyboard.structure.heros-journey"]) }));
+    fireEvent.click(within(screen.getByTestId("storyboard-remap-notice")).getByRole("button", { name: de["planning.storyboard.remapApply"] }));
+    const remap = await screen.findByRole("dialog");
+    expect(remap.className).toContain("max-h-[calc(100vh-2rem)]");
+    expect(remap.className).toContain("overflow-y-auto");
+  });
+
+  it("while the save is in flight the dock holds its editing — no edit slips under the PUT", async () => {
+    await renderStoryboard();
+    const dock = await openSignalDock();
+    await dirtySignalCopy(dock, "Wird gerade gesichert.");
+
+    // The PUT never settles: the save stays busy.
+    scenesPutHang = true;
+    fireEvent.click(within(dock).getByRole("button", { name: de["planning.storyboard.saveAggregate"] }));
+    await waitFor(() => {
+      for (const scene of within(dock).getAllByTestId("drill-in-scene")) {
+        expect((within(scene).getByRole("button", { name: de["planning.storyboard.editScene"] }) as HTMLButtonElement).disabled).toBe(true);
+        expect((within(scene).getByRole("button", { name: de["planning.storyboard.moveUp"] }) as HTMLButtonElement).disabled).toBe(true);
+        expect((within(scene).getByRole("button", { name: de["planning.storyboard.moveDown"] }) as HTMLButtonElement).disabled).toBe(true);
+        expect((within(scene).getByRole("button", { name: de["planning.storyboard.removeScene"] }) as HTMLButtonElement).disabled).toBe(true);
+      }
+      expect(
+        (within(dock).getByRole("button", { name: /Szene zu Kapitel 2 hinzufügen/ }) as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+  });
+
+  it("a failed chapters read is its own face — no false empty, and the retry re-arms", async () => {
+    chaptersFail = true;
+    await renderStoryboard();
+    const cards = await screen.findAllByTestId("storyboard-card");
+
+    // The board stands on its own read; the chip names what broke instead
+    // of painting the counts of a novel it never heard back from.
+    const chip = screen.getByTestId("storyboard-progress");
+    await waitFor(() => expect(within(chip).getByText(de["planning.storyboard.scenesUnavailable"])).toBeTruthy());
+    expect(within(chip).queryByText(/0 Szenen gesamt/)).toBeNull();
+    expect(within(chip).queryByText(/^0 Kapitel$/)).toBeNull();
+
+    // The drill-in names the outage instead of loading forever — and its
+    // retry re-fetches the chapters read the fan arms through.
+    fireEvent.click(within(cards[1]).getByText("Das Signal im Permafrost"));
+    const dock = await screen.findByTestId("drill-in");
+    expect(await within(dock).findByText(de["planning.storyboard.scenesUnavailable"])).toBeTruthy();
+    chaptersFail = false;
+    fireEvent.click(within(dock).getByRole("button", { name: de["planning.storyboard.retry"] }));
+    await waitFor(() => expect(within(dock).getAllByTestId("drill-in-scene")).toHaveLength(2));
+    await waitFor(() => expect(within(chip).getByText("3 Kapitel")).toBeTruthy());
+    expect(within(chip).getByText("4 Szenen gesamt")).toBeTruthy();
   });
 });
 

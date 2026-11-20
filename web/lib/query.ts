@@ -1428,15 +1428,20 @@ export type SceneDraft = Omit<SceneUpsert, "beats"> & { beats: string[] };
 /**
  * Saving a chapter's whole scene list. The mutation is the version-stamp
  * contract's one door: unless `overwrite`, the chapter is re-read first
- * and a stamp that moved under the editor's snapshot refuses as
- * `SceneVersionConflict` (and invalidates the chapter's standing entry, so
- * the dock shows the server's copy behind the conflict face). The PUT
- * answers the persisted aggregate. Settling invalidates the chapter's own
- * scenes key (the fan's entry — the plan's named seam), the board (the
- * sync statuses derive from the scenes) and the chapters list (the save
- * advances the chapter's stamp, and the workspace's last-edited rule reads
- * it). A refusal carries status and detail — a 422 names the doubled id,
- * the id owned elsewhere or the status outside the lifecycle.
+ * and a pre-read that cannot answer (an outage, an unusable body)
+ * refuses the save as the loss-free error it is — no PUT may cross on a
+ * version check that never ran. A stamp that moved under the editor's
+ * snapshot refuses as `SceneVersionConflict`, and the server's fresh
+ * copy seeds the chapter's standing entry at once — the dock reads the
+ * truth behind the face without waiting for the settle's refetch, the
+ * same seeding the PUT's own answer performs. The PUT answers the
+ * persisted aggregate. Settling invalidates the chapter's own scenes key
+ * (the fan's entry — the plan's named seam), the board (the sync
+ * statuses derive from the scenes) and the chapters list (the save
+ * advances the chapter's stamp, and the workspace's last-edited rule
+ * reads it). A refusal carries status and detail — a 422 names the
+ * doubled id, the id owned elsewhere or the status outside the
+ * lifecycle.
  */
 export function useSaveChapterScenes(
   novelId: string,
@@ -1453,14 +1458,25 @@ export function useSaveChapterScenes(
       overwrite?: boolean;
     }) => {
       if (!input.overwrite) {
-        const { data, response } = await client.GET(
+        const { data, error, response } = await client.GET(
           "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes",
           { params: { path: { novel_id: novelId, chapter_id: input.chapterId } } },
         );
-        if (response.ok && data !== undefined && data.version_updated_at !== input.expectedVersion) {
-          // The server's copy is the answer the conflict face shows: hand
-          // it over, and let the standing entry re-ask so the dock reads
-          // the truth behind the face.
+        // The pre-read must ANSWER before any PUT crosses: falling
+        // through on a broken read would name last-writer-wins for a
+        // writer who never chose it.
+        if (!response.ok || data === undefined) {
+          throw Object.assign(new Error(`scene aggregate pre-read refused: ${response.status}`), {
+            status: response.status,
+            detail: (error as { detail?: unknown } | null | undefined)?.detail,
+          });
+        }
+        if (data.version_updated_at !== input.expectedVersion) {
+          // The server's copy is the answer the conflict face shows — and
+          // it seeds the fan's entry at once, so the dock reads the fresh
+          // rows behind the face without waiting for the settle's
+          // refetch; the standing entry still re-asks to confirm.
+          queryClient.setQueryData(chapterScenesKey(input.chapterId), data);
           invalidateChapterScenes(input.chapterId);
           throw new SceneVersionConflict(data);
         }

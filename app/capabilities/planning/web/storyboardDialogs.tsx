@@ -176,9 +176,15 @@ function FormHeader({
   );
 }
 
-const FORM_PANEL = "w-full max-w-sm space-y-3 rounded-lg border border-border bg-panel p-5 shadow-overlay";
-const CONFIRM_PANEL = "w-full max-w-xs space-y-2.5 rounded-lg border border-border bg-panel p-4 text-center shadow-overlay";
-const REMAP_PANEL = "w-full max-w-md space-y-3 rounded-lg border border-border bg-panel p-5 shadow-overlay";
+/** The panels' viewport law, the writing family's NewBookDialog answer:
+ *  never taller than the scrim's box (100vh minus its p-4), the overflow
+ *  scrolling inside the frame on a short screen. */
+const FORM_PANEL =
+  "max-h-[calc(100vh-2rem)] w-full max-w-sm space-y-3 overflow-y-auto rounded-lg border border-border bg-panel p-5 shadow-overlay";
+const CONFIRM_PANEL =
+  "max-h-[calc(100vh-2rem)] w-full max-w-xs space-y-2.5 overflow-y-auto rounded-lg border border-border bg-panel p-4 text-center shadow-overlay";
+const REMAP_PANEL =
+  "max-h-[calc(100vh-2rem)] w-full max-w-md space-y-3 overflow-y-auto rounded-lg border border-border bg-panel p-5 shadow-overlay";
 
 // --- The remap dialog -------------------------------------------------------
 
