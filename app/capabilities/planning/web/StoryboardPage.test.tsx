@@ -1001,13 +1001,16 @@ describe("the review fixes", () => {
     expect(screen.queryByTestId("drill-in-conflict")).toBeNull();
 
     // The retry re-sends the overwrite: no fresh version check, no bounce
-    // back into the conflict face, the PUT crosses again.
+    // back into the conflict face. The count pins the RE-SEND — two PUTs
+    // cross in the test's whole life (the failed overwrite, then its
+    // retry); asserting one would match only the first failure and let a
+    // retry that never fired pass.
     scenesPutFail = false;
     fireEvent.click(within(failedFace).getByRole("button", { name: de["planning.storyboard.retry"] }));
     await waitFor(() =>
       expect(
         api.PUT.mock.calls.filter(([p]) => p === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes"),
-      ).toHaveLength(1),
+      ).toHaveLength(2),
     );
     expect(screen.queryByTestId("drill-in-conflict")).toBeNull();
     await waitFor(() => expect(screen.queryByText(/Wähle mich\./)).toBeNull());
