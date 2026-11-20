@@ -603,6 +603,28 @@ describe("the structure switcher and the remap", () => {
     ).toBe("true");
   });
 
+  it("cancelling after the preview writes nothing — the board stands", async () => {
+    await renderStoryboard();
+    await screen.findAllByTestId("storyboard-card");
+    fireEvent.click(screen.getByRole("button", { name: literal(de["storyboard.structure.five-act"]) }));
+    fireEvent.click(within(screen.getByTestId("storyboard-remap-notice")).getByRole("button", { name: de["planning.storyboard.remapApply"] }));
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenCalledWith(
+        "/api/planning/novels/{novel_id}/remap",
+        { params: { path: { novel_id: NOVEL_ID } }, body: { structure_id: "five-act", confirm: false } },
+      ),
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: de["planning.crud.cancel"] }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    // No confirm was ever sent; the board reads its own structure still.
+    expect(api.POST.mock.calls.some(([, init]) => (init?.body as { confirm?: boolean } | undefined)?.confirm === true)).toBe(false);
+    expect(screen.getAllByTestId("storyboard-stage")).toHaveLength(3);
+    expect(
+      screen.getByRole("button", { name: literal(de["storyboard.structure.three-act"]) }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
   it("a mapping row the board cannot name omits the number — never a wrong one", async () => {
     remapForeignEntry = true;
     await renderStoryboard();
