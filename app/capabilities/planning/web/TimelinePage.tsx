@@ -132,9 +132,13 @@ export function TimelinePage() {
   // The scene-status counters: every real status of the lifecycle, counted
   // across the whole fan. Only a complete, error-free fan may count — a
   // chapters outage empties the list and the vacuous fan would read as
-  // „0 Szenen", and a half-current novel invents numbers otherwise.
+  // „0 Szenen", an events read still pending gates the events' own
+  // „ohne Datum" count, and a half-current novel invents numbers
+  // otherwise.
   const counters = useMemo(() => {
-    if (!chapters.isSuccess || !scenes.isSuccess || scenes.data === undefined) return null;
+    if (!events.isSuccess || !chapters.isSuccess || !scenes.isSuccess || scenes.data === undefined) {
+      return null;
+    }
     let complete = 0;
     let inProgress = 0;
     let planned = 0;
@@ -147,7 +151,7 @@ export function TimelinePage() {
     }
     const withoutDate = eventList.filter((event) => event.date_label === "").length;
     return { complete, inProgress, planned, withoutDate };
-  }, [chapters.isSuccess, scenes.isSuccess, scenes.data, eventList]);
+  }, [events.isSuccess, chapters.isSuccess, scenes.isSuccess, scenes.data, eventList]);
 
   const pending = events.isPending;
   const failed = events.isError;

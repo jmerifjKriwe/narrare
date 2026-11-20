@@ -432,6 +432,28 @@ describe("the scene-status counters", () => {
     await waitFor(() => expect(chapterAsks()).toBeGreaterThan(before));
   });
 
+  it("an events-pending first load never shows the zero line — the wait stands alone", async () => {
+    let resolveEvents!: (answer: { data: unknown; response: Response }) => void;
+    api.GET.mockImplementation((path: string, init?: { params?: { path?: { chapter_id?: string } } }) => {
+      if (path === "/api/planning/novels/{novel_id}/timeline-events") {
+        return new Promise<{ data: unknown; response: Response }>((resolve) => {
+          resolveEvents = resolve;
+        });
+      }
+      return baseGet(path, init);
+    });
+    await renderTimeline();
+    // Chapters and the fan land while the events wait; the withoutDate
+    // count derives from that list, and „0 Ereignis ohne Datum" must not
+    // stand on a read that has not answered.
+    expect(screen.getByRole("status")).toBeTruthy();
+    expect(screen.queryByTestId("timeline-counters")).toBeNull();
+    expect(screen.queryByTestId("timeline-counters-outage")).toBeNull();
+
+    resolveEvents({ data: events, response: ok() });
+    await waitFor(() => expect(screen.getByTestId("timeline-counters")).toBeTruthy());
+  });
+
   it("the events-failure retry carries the scene fan along", async () => {
     eventsFail = true;
     scenesFail = true;
