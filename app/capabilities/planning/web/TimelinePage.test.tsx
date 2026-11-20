@@ -432,6 +432,29 @@ describe("the scene-status counters", () => {
     await waitFor(() => expect(chapterAsks()).toBeGreaterThan(before));
   });
 
+  it("a pending chapters read shows neither counters nor outage face — nothing stands on a guess", async () => {
+    let resolveChapters!: (answer: { data: unknown; response: Response }) => void;
+    api.GET.mockImplementation((path: string, init?: { params?: { path?: { chapter_id?: string } } }) => {
+      if (path === "/api/writing/novels/{novel_id}/chapters") {
+        return new Promise<{ data: unknown; response: Response }>((resolve) => {
+          resolveChapters = resolve;
+        });
+      }
+      return baseGet(path, init);
+    });
+    await renderTimeline();
+    // The board stands on the events' own strength; the summary bar's
+    // counting slot stays empty while the chapters read is pending —
+    // not zeros (the vacuous fan), not the outage face (nothing failed).
+    await screen.findAllByTestId("timeline-card");
+    expect(screen.queryByTestId("timeline-counters")).toBeNull();
+    expect(screen.queryByTestId("timeline-counters-outage")).toBeNull();
+
+    // The landing completes the fan: the counters take their place.
+    resolveChapters({ data: CHAPTERS, response: ok() });
+    await waitFor(() => expect(screen.getByTestId("timeline-counters")).toBeTruthy());
+  });
+
   it("an events-pending first load never shows the zero line — the wait stands alone", async () => {
     let resolveEvents!: (answer: { data: unknown; response: Response }) => void;
     api.GET.mockImplementation((path: string, init?: { params?: { path?: { chapter_id?: string } } }) => {
