@@ -14,7 +14,9 @@
  * chapters' rule), the free-text date label with its hint, the
  * description, the optional chapter link, the free-text character names
  * (committed as chips on Enter, comma or blur — plain text, no KB
- * linkage), and the manual position (empty = unordered, listed last).
+ * linkage; the pending draft rides the form's state so the dirty-close
+ * guard sees it), and the manual position (empty = unordered, listed
+ * last).
  * The create POSTs the whole writer-facing row; the edit PUTs ONLY the
  * dirtied fields — the client's mirror of the server's `model_fields_set`
  * contract, a carried null clearing the chapter link or the position
@@ -269,20 +271,26 @@ function ChapterOptions({ chapters }: { chapters: readonly Chapter[] }) {
  * chip on Enter, a comma or a blur — the draft's comma-separated way of
  * typing works unchanged — and each chip carries its own remove control.
  * A name already standing is not doubled; an empty trim commits nothing.
+ * The pending draft rides the FORM's state (`namesDraft`), not a local
+ * one, so a typed-but-uncommitted name holds the close paths like any
+ * other answer in progress — Escape no longer discards it silently.
  */
 function NamesEditor({
   names,
+  draft,
+  onDraftChange,
   onChange,
 }: {
   names: readonly string[];
+  draft: string;
+  onDraftChange: (draft: string) => void;
   onChange: (names: string[]) => void;
 }) {
   const t = useTranslation();
-  const [draft, setDraft] = useState("");
 
   function commit() {
     const name = draft.trim();
-    setDraft("");
+    onDraftChange("");
     if (name === "" || names.includes(name)) return;
     onChange([...names, name]);
   }
@@ -311,7 +319,7 @@ function NamesEditor({
         type="text"
         value={draft}
         aria-label={t("planning.crud.namesLabel")}
-        onChange={(event) => setDraft(event.target.value)}
+        onChange={(event) => onDraftChange(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === ",") {
             event.preventDefault();
@@ -326,8 +334,13 @@ function NamesEditor({
   );
 }
 
-const FORM_PANEL = "w-full max-w-sm space-y-3 rounded-lg border border-border bg-panel p-5 shadow-overlay";
-const CONFIRM_PANEL = "w-full max-w-xs space-y-2.5 rounded-lg border border-border bg-panel p-4 text-center shadow-overlay";
+/** The panels keep to the viewport — the writing family's NewBookDialog
+ *  answer: never taller than the scrim's box (100vh minus its p-4), the
+ *  overflow scrolling inside the frame on a short screen. */
+const FORM_PANEL =
+  "max-h-[calc(100vh-2rem)] w-full max-w-sm space-y-3 overflow-y-auto rounded-lg border border-border bg-panel p-5 shadow-overlay";
+const CONFIRM_PANEL =
+  "max-h-[calc(100vh-2rem)] w-full max-w-xs space-y-2.5 overflow-y-auto rounded-lg border border-border bg-panel p-4 text-center shadow-overlay";
 
 /** The confirm family's footer: the safe answer first (primary), the
  *  destructive answer beside it with the consequence on its own title. */
@@ -384,7 +397,9 @@ function ConfirmBadge({ icon }: { icon: Parameters<typeof Icon>[0]["name"] }) {
 }
 
 /** The event form's shared fields: the state a create seeds empty and an
- *  edit prefills from the row. */
+ *  edit prefills from the row — plus the names editor's pending draft:
+ *  never a field of the row (it crosses no wire), but the dirty guard
+ *  must see it or Escape would discard it silently. */
 interface EventFormState {
   title: string;
   dateLabel: string;
@@ -392,6 +407,7 @@ interface EventFormState {
   chapterId: string;
   positionInput: string;
   names: string[];
+  namesDraft: string;
 }
 
 function eventFormState(event: TimelineEvent | null): EventFormState {
@@ -402,6 +418,7 @@ function eventFormState(event: TimelineEvent | null): EventFormState {
     chapterId: event?.chapter_id ?? "",
     positionInput: event?.position == null ? "" : String(event.position),
     names: event ? [...event.character_names] : [],
+    namesDraft: "",
   };
 }
 
@@ -414,6 +431,15 @@ function parsePosition(input: string): number | null {
   if (text === "") return null;
   const value = Number(text);
   return Number.isInteger(value) ? value : null;
+}
+
+/** The names that cross the wire: the standing chips plus a pending
+ *  draft — a save commits what the writer typed, exactly as Enter, a
+ *  comma and a blur do; an empty trim or a doubled name adds nothing. */
+function committedNames(form: EventFormState): string[] {
+  const name = form.namesDraft.trim();
+  if (name === "" || form.names.includes(name)) return form.names;
+  return [...form.names, name];
 }
 
 /** The dirtied fields of an edit, as the PUT's partial body: only what the
@@ -444,11 +470,19 @@ export function CreateEventDialog({
   chapters,
   openerId,
   onClose,
+  survivorFocusId,
+  retiredRef,
 }: {
   novelId: string;
   chapters: readonly Chapter[];
   openerId: string;
   onClose: () => void;
+  /** The switch-close path's survivor landing: the create's openers are
+   *  page chrome (the header door always stands), but the board-anchored
+   *  ones leave the DOM behind the loading face — a close that retired
+   *  the opener lands on the survivor instead. */
+  survivorFocusId?: string;
+  retiredRef?: RefObject<boolean>;
 }) {
   const t = useTranslation();
   const [form, setForm] = useState<EventFormState>(() => eventFormState(null));
@@ -458,7 +492,8 @@ export function CreateEventDialog({
   const busy = create.isPending;
   const dirty =
     form.title !== "" || form.dateLabel !== "" || form.description !== "" ||
-    form.chapterId !== "" || form.positionInput !== "" || form.names.length > 0;
+    form.chapterId !== "" || form.positionInput !== "" || form.names.length > 0 ||
+    form.namesDraft.trim() !== "";
 
   const titleRef = useRef<HTMLInputElement | null>(null);
   const headingId = useId();
@@ -475,7 +510,9 @@ export function CreateEventDialog({
         title: form.title.trim(),
         description: form.description,
         date_label: form.dateLabel,
-        character_names: form.names,
+        // The names cross the wire with any pending draft committed — the
+        // save itself is a commit, exactly as Enter, comma and blur are.
+        character_names: committedNames(form),
         chapter_id: form.chapterId === "" ? null : form.chapterId,
         position: parsePosition(positionText),
       },
@@ -494,6 +531,8 @@ export function CreateEventDialog({
       scrimDismiss
       focusRef={titleRef}
       panelClassName={FORM_PANEL}
+      survivorFocusId={survivorFocusId}
+      retiredRef={retiredRef}
     >
       <FormHeader headingId={headingId} title={t("planning.crud.createTitle")} busy={busy} dirty={dirty} onClose={onClose} />
       <EventFields form={form} onChange={(patch) => setForm((previous) => ({ ...previous, ...patch }))} chapters={chapters} titleRef={titleRef} />
@@ -514,6 +553,8 @@ export function EditEventDialog({
   onClose,
   onRemove,
   suspended = false,
+  survivorFocusId,
+  retiredRef,
 }: {
   event: TimelineEvent;
   chapters: readonly Chapter[];
@@ -523,6 +564,12 @@ export function EditEventDialog({
   onRemove: (event: TimelineEvent) => void;
   /** The confirm stands over this form: it keeps its state and waits. */
   suspended?: boolean;
+  /** The destructive path's survivor landing: when the page's confirm
+   *  retired the opener (retiredRef), this edit's own focus-return lands
+   *  on the survivor instead — the landing never depends on which
+   *  sibling modal's cleanup runs last. */
+  survivorFocusId?: string;
+  retiredRef?: RefObject<boolean>;
 }) {
   const t = useTranslation();
   const [form, setForm] = useState<EventFormState>(() => eventFormState(event));
@@ -530,7 +577,9 @@ export function EditEventDialog({
   const [error, setError] = useState(false);
   const update = useUpdateTimelineEvent(event.novel_id);
   const busy = update.isPending;
-  const dirty = Object.keys(eventChanges(event, form)).length > 0;
+  // The draft never crosses the wire (eventChanges ignores it), but it
+  // holds the close paths: an answer in progress is a dirty form.
+  const dirty = Object.keys(eventChanges(event, form)).length > 0 || form.namesDraft.trim() !== "";
 
   const titleRef = useRef<HTMLInputElement | null>(null);
   const headingId = useId();
@@ -543,7 +592,9 @@ export function EditEventDialog({
     setAttempted(true);
     if (form.title.trim() === "" || positionInvalid) return;
     update.mutate(
-      { eventId: event.id, changes: eventChanges(event, form) },
+      // The names cross the wire with any pending draft committed — the
+      // save itself is a commit, exactly as Enter, comma and blur are.
+      { eventId: event.id, changes: eventChanges(event, { ...form, names: committedNames(form) }) },
       { onSuccess: onClose, onError: () => setError(true) },
     );
   }
@@ -560,6 +611,8 @@ export function EditEventDialog({
       focusRef={titleRef}
       panelClassName={FORM_PANEL}
       suspended={suspended}
+      survivorFocusId={survivorFocusId}
+      retiredRef={retiredRef}
     >
       <FormHeader headingId={headingId} title={t("planning.crud.editTitle")} busy={busy} dirty={dirty} onClose={onClose} />
       <EventFields form={form} onChange={(patch) => setForm((previous) => ({ ...previous, ...patch }))} chapters={chapters} titleRef={titleRef} />
@@ -656,7 +709,12 @@ function EventFields({
       </div>
       <div>
         <span className="mb-1 block text-meta font-medium text-foreground">{t("planning.crud.namesLabel")}</span>
-        <NamesEditor names={form.names} onChange={(names) => onChange({ names })} />
+        <NamesEditor
+          names={form.names}
+          draft={form.namesDraft}
+          onDraftChange={(namesDraft) => onChange({ namesDraft })}
+          onChange={(names) => onChange({ names })}
+        />
       </div>
       <div>
         <label htmlFor="event-position" className="mb-1 block text-meta font-medium text-foreground">
@@ -685,6 +743,7 @@ export function DeleteEventDialog({
   onCancel,
   onDeleted,
   fallbackFocusId = "timeline-page",
+  retiredRef,
 }: {
   event: TimelineEvent;
   novelId: string;
@@ -695,6 +754,11 @@ export function DeleteEventDialog({
   onDeleted: () => void;
   /** The container that survives the delete, for focus when the opener goes. */
   fallbackFocusId?: string;
+  /** The page's opener-retirement flag, set before the closing unmount
+   *  (delete success or novel switch): the return lands on the survivor
+   *  exactly then, never on an opener the close retired. Standalone, the
+   *  return keeps the opener. */
+  retiredRef?: RefObject<boolean>;
 }) {
   const t = useTranslation();
   const [error, setError] = useState(false);
@@ -702,17 +766,13 @@ export function DeleteEventDialog({
   const busy = remove.isPending;
 
   const cancelRef = useRef<HTMLButtonElement | null>(null);
-  const retiredRef = useRef(false);
   const headingId = useId();
   const bodyId = useId();
 
   function confirm() {
     setError(false);
     remove.mutate(event.id, {
-      onSuccess: () => {
-        retiredRef.current = true;
-        onDeleted();
-      },
+      onSuccess: () => onDeleted(),
       onError: () => setError(true),
     });
   }

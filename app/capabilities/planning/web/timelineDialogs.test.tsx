@@ -219,6 +219,21 @@ describe("CreateEventDialog", () => {
     });
   });
 
+  it("the save commits a pending name draft — a chip typed but not committed rides the payload", async () => {
+    mount(harness((onClose) => (
+      <CreateEventDialog novelId={NOVEL_ID} chapters={CHAPTERS} openerId="opener" onClose={onClose} />
+    )));
+    openDialog();
+    fireEvent.change(field(de["planning.crud.titleLabel"]), { target: { value: "Notruf der Artemis" } });
+    const names = field(de["planning.crud.namesLabel"]) as HTMLInputElement;
+    fireEvent.change(names, { target: { value: "ARIA" } });
+    // Straight to save — no Enter, no comma, no blur: the draft is an
+    // answer in progress and must cross the wire with the row.
+    fireEvent.click(screen.getByRole("button", { name: de["planning.crud.save"] }));
+    await waitFor(() => expect(api.POST).toHaveBeenCalled());
+    expect(api.POST.mock.calls[0][1].body).toMatchObject({ character_names: ["ARIA"] });
+  });
+
   it("holds every close path while busy, then closes on the landing", async () => {
     let resolvePost!: (answer: { data: TimelineEvent; response: Response }) => void;
     api.POST.mockImplementation(
@@ -285,6 +300,51 @@ describe("CreateEventDialog", () => {
     fireEvent.change(field(de["planning.crud.titleLabel"]), { target: { value: "x" } });
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("a typed-but-uncommitted name holds every silent close path", () => {
+    mount(harness((onClose) => (
+      <CreateEventDialog novelId={NOVEL_ID} chapters={CHAPTERS} openerId="opener" onClose={onClose} />
+    )));
+    openDialog();
+    const names = field(de["planning.crud.namesLabel"]) as HTMLInputElement;
+    fireEvent.change(names, { target: { value: "ARIA" } });
+    // The draft is an answer in progress, not nothing: Escape holds, the
+    // cross dims, the scrim holds the same line.
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: de["planning.crud.close"] }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    fireEvent.mouseDown(screen.getByRole("dialog").parentElement as HTMLElement);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    // Committing the chip keeps the hold — now as a real name change.
+    fireEvent.keyDown(names, { key: "Enter" });
+    expect(screen.getByText("ARIA")).toBeTruthy();
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+});
+
+describe("the modal viewport", () => {
+  it("the panels keep to a short viewport — long content scrolls inside the frame", () => {
+    mount(harness((onClose) => (
+      <CreateEventDialog novelId={NOVEL_ID} chapters={CHAPTERS} openerId="opener" onClose={onClose} />
+    )));
+    openDialog();
+    const panel = screen.getByRole("dialog");
+    // The writing family's NewBookDialog answer: the panel never outgrows
+    // the scrim's box (100vh minus its p-4) and scrolls its own overflow.
+    expect(panel.className).toContain("max-h-[calc(100vh-2rem)]");
+    expect(panel.className).toContain("overflow-y-auto");
+
+    cleanup();
+    mount(harness((onClose) => (
+      <DeleteEventDialog event={EVENT} novelId={NOVEL_ID} openerId="opener" onCancel={onClose} onDeleted={onClose} />
+    )));
+    fireEvent.click(screen.getByText("opener"));
+    const confirm = screen.getByRole("alertdialog");
+    expect(confirm.className).toContain("max-h-[calc(100vh-2rem)]");
+    expect(confirm.className).toContain("overflow-y-auto");
   });
 });
 
@@ -361,6 +421,48 @@ describe("EditEventDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: de["planning.crud.saveChanges"] }));
     await waitFor(() => expect(api.PUT).toHaveBeenCalled());
     expect(api.PUT.mock.calls[0][1].body).toEqual({ character_names: ["Maya Chen"] });
+  });
+
+  it("the edit's save commits a pending name draft into the PUT", async () => {
+    mount(harness((onClose) => (
+      <EditEventDialog
+        event={EVENT}
+        chapters={CHAPTERS}
+        openerId="opener"
+        onClose={onClose}
+        onRemove={() => {}}
+      />
+    )));
+    openDialog();
+    const names = field(de["planning.crud.namesLabel"]) as HTMLInputElement;
+    fireEvent.change(names, { target: { value: "Rike" } });
+    // Save straight from the focused name field: the row's names ride the
+    // PUT with the draft committed — never silently dropped.
+    fireEvent.click(screen.getByRole("button", { name: de["planning.crud.saveChanges"] }));
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    expect(api.PUT.mock.calls[0][1].body).toMatchObject({
+      character_names: ["Maya Chen", "Lin Chen", "Rike"],
+    });
+  });
+
+  it("an uncommitted name draft holds the close paths without dirtying the row", () => {
+    mount(harness((onClose) => (
+      <EditEventDialog event={EVENT} chapters={CHAPTERS} openerId="opener" onClose={onClose} onRemove={() => {}} />
+    )));
+    // Pristine in every field — Escape closes (the row's own answers stand).
+    openDialog();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(screen.getByText("opener"));
+    const names = field(de["planning.crud.namesLabel"]) as HTMLInputElement;
+    fireEvent.change(names, { target: { value: "Rike" } });
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    // Committing the draft keeps the hold — a real name change now.
+    fireEvent.keyDown(names, { key: "Enter" });
+    expect(screen.getByText("Rike")).toBeTruthy();
+    expect(screen.getByRole("dialog")).toBeTruthy();
   });
 
   it("the destructive remove hands off to the page, disabled while busy", async () => {
