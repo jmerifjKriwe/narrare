@@ -470,11 +470,19 @@ export function CreateEventDialog({
   chapters,
   openerId,
   onClose,
+  survivorFocusId,
+  retiredRef,
 }: {
   novelId: string;
   chapters: readonly Chapter[];
   openerId: string;
   onClose: () => void;
+  /** The switch-close path's survivor landing: the create's openers are
+   *  page chrome (the header door always stands), but the board-anchored
+   *  ones leave the DOM behind the loading face — a close that retired
+   *  the opener lands on the survivor instead. */
+  survivorFocusId?: string;
+  retiredRef?: RefObject<boolean>;
 }) {
   const t = useTranslation();
   const [form, setForm] = useState<EventFormState>(() => eventFormState(null));
@@ -523,6 +531,8 @@ export function CreateEventDialog({
       scrimDismiss
       focusRef={titleRef}
       panelClassName={FORM_PANEL}
+      survivorFocusId={survivorFocusId}
+      retiredRef={retiredRef}
     >
       <FormHeader headingId={headingId} title={t("planning.crud.createTitle")} busy={busy} dirty={dirty} onClose={onClose} />
       <EventFields form={form} onChange={(patch) => setForm((previous) => ({ ...previous, ...patch }))} chapters={chapters} titleRef={titleRef} />
@@ -733,6 +743,7 @@ export function DeleteEventDialog({
   onCancel,
   onDeleted,
   fallbackFocusId = "timeline-page",
+  retiredRef,
 }: {
   event: TimelineEvent;
   novelId: string;
@@ -743,6 +754,11 @@ export function DeleteEventDialog({
   onDeleted: () => void;
   /** The container that survives the delete, for focus when the opener goes. */
   fallbackFocusId?: string;
+  /** The page's opener-retirement flag, set before the closing unmount
+   *  (delete success or novel switch): the return lands on the survivor
+   *  exactly then, never on an opener the close retired. Standalone, the
+   *  return keeps the opener. */
+  retiredRef?: RefObject<boolean>;
 }) {
   const t = useTranslation();
   const [error, setError] = useState(false);
@@ -750,17 +766,13 @@ export function DeleteEventDialog({
   const busy = remove.isPending;
 
   const cancelRef = useRef<HTMLButtonElement | null>(null);
-  const retiredRef = useRef(false);
   const headingId = useId();
   const bodyId = useId();
 
   function confirm() {
     setError(false);
     remove.mutate(event.id, {
-      onSuccess: () => {
-        retiredRef.current = true;
-        onDeleted();
-      },
+      onSuccess: () => onDeleted(),
       onError: () => setError(true),
     });
   }

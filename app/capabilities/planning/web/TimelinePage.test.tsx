@@ -743,6 +743,81 @@ describe("the novel switch", () => {
     // never to a body its opener left behind.
     expect(document.activeElement?.id).toBe("timeline-page");
   });
+
+  it("a switch that closes a standing delete confirm lands focus on the page survivor", async () => {
+    // The other book carries its own events: the confirm's per-card
+    // opener is genuinely gone from the new book's DOM.
+    api.GET.mockImplementation(
+      (path: string, init?: { params?: { path?: { chapter_id?: string; novel_id?: string } } }) => {
+        if (
+          path === "/api/planning/novels/{novel_id}/timeline-events" &&
+          init?.params?.path?.novel_id === OTHER_NOVEL_ID
+        ) {
+          return Promise.resolve({
+            data: [
+              eventRow({ id: "ev-other", position: 1, title: "Fremdes Ufer", chapter_id: null, character_names: [] }),
+            ],
+            response: ok(),
+          });
+        }
+        return baseGet(path, init);
+      },
+    );
+    const router = await renderTimeline();
+    const cards = await screen.findAllByTestId("timeline-card");
+    fireEvent.click(within(cards[0]).getByText("Der Große Bruch"));
+    const edit = await screen.findByRole("dialog");
+    fireEvent.click(within(edit).getByRole("button", { name: de["planning.crud.remove"] }));
+    await screen.findByRole("alertdialog");
+
+    await router.navigate({ to: TIMELINE_PATH, params: { novelId: OTHER_NOVEL_ID } });
+    await screen.findByText("Fremdes Ufer");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // The closed confirm returns to the page that stands in the new
+    // book — its internal success flag never fired, so the landing must
+    // ride the page's retirement, not the write's.
+    expect(document.activeElement?.id).toBe("timeline-page");
+  });
+
+  it("a switch that closes a create opened from the board lands focus on the page survivor", async () => {
+    // The other book's answer is held back: the create closes while the
+    // loading face stands, its board-anchored opener absent from the DOM.
+    let deliverOther!: (answer: { data: unknown; response: Response }) => void;
+    api.GET.mockImplementation(
+      (path: string, init?: { params?: { path?: { chapter_id?: string; novel_id?: string } } }) => {
+        if (
+          path === "/api/planning/novels/{novel_id}/timeline-events" &&
+          init?.params?.path?.novel_id === OTHER_NOVEL_ID
+        ) {
+          return new Promise<{ data: unknown; response: Response }>((resolve) => {
+            deliverOther = resolve;
+          });
+        }
+        return baseGet(path, init);
+      },
+    );
+    const router = await renderTimeline();
+    await screen.findAllByTestId("timeline-card");
+    fireEvent.click(
+      screen.getByRole("button", { name: new RegExp(de["planning.timeline.newUndated"]) }),
+    );
+    await screen.findByRole("dialog");
+
+    await router.navigate({ to: TIMELINE_PATH, params: { novelId: OTHER_NOVEL_ID } });
+    expect(screen.getByRole("status")).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    // The undated placeholder's id returns with the new book's board —
+    // but the return fires now, behind the loading face. Only the page
+    // survivor stands to receive it.
+    expect(document.activeElement?.id).toBe("timeline-page");
+
+    deliverOther({
+      data: [eventRow({ id: "ev-other", position: 1, title: "Fremdes Ufer", chapter_id: null, character_names: [] })],
+      response: ok(),
+    });
+    await screen.findByText("Fremdes Ufer");
+  });
 });
 
 describe("the sub-nav doors", () => {

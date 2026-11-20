@@ -583,6 +583,8 @@ export function TimelinePage() {
           chapters={chapterList}
           openerId={dialog.openerId}
           onClose={() => setDialog(null)}
+          survivorFocusId="timeline-page"
+          retiredRef={openerRetiredRef}
         />
       )}
       {(dialog?.kind === "edit" || dialog?.kind === "delete") && (
@@ -604,11 +606,13 @@ export function TimelinePage() {
           openerId={dialog.openerId}
           onCancel={() => setDialog({ kind: "edit", event: dialog.event, openerId: dialog.openerId })}
           onDeleted={() => {
-            // Retire the opener BEFORE the unmount: both modals' returns
-            // then land on the survivor, whatever their cleanup order.
+            // Retire the opener BEFORE the unmount: all the modals'
+            // returns then land on the survivor, whatever their cleanup
+            // order.
             openerRetiredRef.current = true;
             setDialog(null);
           }}
+          retiredRef={openerRetiredRef}
         />
       )}
     </div>
