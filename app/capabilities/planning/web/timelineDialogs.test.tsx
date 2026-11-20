@@ -219,6 +219,21 @@ describe("CreateEventDialog", () => {
     });
   });
 
+  it("the save commits a pending name draft — a chip typed but not committed rides the payload", async () => {
+    mount(harness((onClose) => (
+      <CreateEventDialog novelId={NOVEL_ID} chapters={CHAPTERS} openerId="opener" onClose={onClose} />
+    )));
+    openDialog();
+    fireEvent.change(field(de["planning.crud.titleLabel"]), { target: { value: "Notruf der Artemis" } });
+    const names = field(de["planning.crud.namesLabel"]) as HTMLInputElement;
+    fireEvent.change(names, { target: { value: "ARIA" } });
+    // Straight to save — no Enter, no comma, no blur: the draft is an
+    // answer in progress and must cross the wire with the row.
+    fireEvent.click(screen.getByRole("button", { name: de["planning.crud.save"] }));
+    await waitFor(() => expect(api.POST).toHaveBeenCalled());
+    expect(api.POST.mock.calls[0][1].body).toMatchObject({ character_names: ["ARIA"] });
+  });
+
   it("holds every close path while busy, then closes on the landing", async () => {
     let resolvePost!: (answer: { data: TimelineEvent; response: Response }) => void;
     api.POST.mockImplementation(
@@ -406,6 +421,28 @@ describe("EditEventDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: de["planning.crud.saveChanges"] }));
     await waitFor(() => expect(api.PUT).toHaveBeenCalled());
     expect(api.PUT.mock.calls[0][1].body).toEqual({ character_names: ["Maya Chen"] });
+  });
+
+  it("the edit's save commits a pending name draft into the PUT", async () => {
+    mount(harness((onClose) => (
+      <EditEventDialog
+        event={EVENT}
+        chapters={CHAPTERS}
+        openerId="opener"
+        onClose={onClose}
+        onRemove={() => {}}
+      />
+    )));
+    openDialog();
+    const names = field(de["planning.crud.namesLabel"]) as HTMLInputElement;
+    fireEvent.change(names, { target: { value: "Rike" } });
+    // Save straight from the focused name field: the row's names ride the
+    // PUT with the draft committed — never silently dropped.
+    fireEvent.click(screen.getByRole("button", { name: de["planning.crud.saveChanges"] }));
+    await waitFor(() => expect(api.PUT).toHaveBeenCalled());
+    expect(api.PUT.mock.calls[0][1].body).toMatchObject({
+      character_names: ["Maya Chen", "Lin Chen", "Rike"],
+    });
   });
 
   it("an uncommitted name draft holds the close paths without dirtying the row", () => {

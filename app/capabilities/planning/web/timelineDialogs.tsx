@@ -433,6 +433,15 @@ function parsePosition(input: string): number | null {
   return Number.isInteger(value) ? value : null;
 }
 
+/** The names that cross the wire: the standing chips plus a pending
+ *  draft — a save commits what the writer typed, exactly as Enter, a
+ *  comma and a blur do; an empty trim or a doubled name adds nothing. */
+function committedNames(form: EventFormState): string[] {
+  const name = form.namesDraft.trim();
+  if (name === "" || form.names.includes(name)) return form.names;
+  return [...form.names, name];
+}
+
 /** The dirtied fields of an edit, as the PUT's partial body: only what the
  *  writer changed crosses the wire, and a cleared chapter link or position
  *  rides as the carried null that clears it (the server's contract). */
@@ -493,7 +502,9 @@ export function CreateEventDialog({
         title: form.title.trim(),
         description: form.description,
         date_label: form.dateLabel,
-        character_names: form.names,
+        // The names cross the wire with any pending draft committed — the
+        // save itself is a commit, exactly as Enter, comma and blur are.
+        character_names: committedNames(form),
         chapter_id: form.chapterId === "" ? null : form.chapterId,
         position: parsePosition(positionText),
       },
@@ -532,6 +543,8 @@ export function EditEventDialog({
   onClose,
   onRemove,
   suspended = false,
+  survivorFocusId,
+  retiredRef,
 }: {
   event: TimelineEvent;
   chapters: readonly Chapter[];
@@ -541,6 +554,12 @@ export function EditEventDialog({
   onRemove: (event: TimelineEvent) => void;
   /** The confirm stands over this form: it keeps its state and waits. */
   suspended?: boolean;
+  /** The destructive path's survivor landing: when the page's confirm
+   *  retired the opener (retiredRef), this edit's own focus-return lands
+   *  on the survivor instead — the landing never depends on which
+   *  sibling modal's cleanup runs last. */
+  survivorFocusId?: string;
+  retiredRef?: RefObject<boolean>;
 }) {
   const t = useTranslation();
   const [form, setForm] = useState<EventFormState>(() => eventFormState(event));
@@ -563,7 +582,9 @@ export function EditEventDialog({
     setAttempted(true);
     if (form.title.trim() === "" || positionInvalid) return;
     update.mutate(
-      { eventId: event.id, changes: eventChanges(event, form) },
+      // The names cross the wire with any pending draft committed — the
+      // save itself is a commit, exactly as Enter, comma and blur are.
+      { eventId: event.id, changes: eventChanges(event, { ...form, names: committedNames(form) }) },
       { onSuccess: onClose, onError: () => setError(true) },
     );
   }
@@ -580,6 +601,8 @@ export function EditEventDialog({
       focusRef={titleRef}
       panelClassName={FORM_PANEL}
       suspended={suspended}
+      survivorFocusId={survivorFocusId}
+      retiredRef={retiredRef}
     >
       <FormHeader headingId={headingId} title={t("planning.crud.editTitle")} busy={busy} dirty={dirty} onClose={onClose} />
       <EventFields form={form} onChange={(patch) => setForm((previous) => ({ ...previous, ...patch }))} chapters={chapters} titleRef={titleRef} />

@@ -47,6 +47,7 @@ const api = client as unknown as Record<"GET" | "POST" | "PUT" | "DELETE", Retur
 configure({ asyncUtilTimeout: 5000 });
 
 const NOVEL_ID = "11111111-1111-1111-1111-111111111111";
+const OTHER_NOVEL_ID = "55555555-5555-5555-5555-555555555555";
 const TIMELINE_PATH = "/novels/$novelId/planning/timeline";
 const STORYBOARD_PATH = "/novels/$novelId/planning/storyboard";
 const CAUSALITY_PATH = "/novels/$novelId/planning/causality";
@@ -614,6 +615,21 @@ describe("the CRUD round-trips through the page", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
+  it("a confirmed delete lands focus on the surviving page, never the dead card's opener", async () => {
+    await renderTimeline();
+    const cards = await screen.findAllByTestId("timeline-card");
+    fireEvent.click(within(cards[0]).getByText("Der Große Bruch"));
+    const edit = await screen.findByRole("dialog");
+    fireEvent.click(within(edit).getByRole("button", { name: de["planning.crud.remove"] }));
+    const confirm = await screen.findByRole("alertdialog");
+    fireEvent.click(within(confirm).getByRole("button", { name: de["planning.crud.deleteConfirm"] }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    // Both modals left in one commit; the landing must be the survivor —
+    // never the opener of the card the delete retired.
+    expect(document.activeElement?.id).toBe("timeline-page");
+  });
+
   it("the destructive hand-off keeps the edit's answers — cancel restores them", async () => {
     await renderTimeline();
     const cards = await screen.findAllByTestId("timeline-card");
@@ -662,6 +678,30 @@ describe("the CRUD round-trips through the page", () => {
       },
     ));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+});
+
+describe("the novel switch", () => {
+  it("a switch to another novel's timeline leaves the old book's filters and dialogs behind", async () => {
+    const router = await renderTimeline();
+    await screen.findAllByTestId("timeline-card");
+    fireEvent.click(screen.getByRole("button", { name: "Maya Chen" }));
+    expect(screen.getByRole("button", { name: "Maya Chen" }).getAttribute("aria-pressed")).toBe("true");
+
+    await router.navigate({ to: TIMELINE_PATH, params: { novelId: OTHER_NOVEL_ID } });
+    await screen.findAllByTestId("timeline-card");
+    // The filter state belongs to the book it was chosen in: the chips
+    // stand unpressed, the quick filter back at Alle.
+    expect(screen.getByRole("button", { name: "Maya Chen" }).getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByRole("button", { name: de["planning.timeline.all"] }).getAttribute("aria-pressed")).toBe("true");
+
+    // An open dialog belongs to its book too — the switch closes it.
+    const cards = screen.getAllByTestId("timeline-card");
+    fireEvent.click(within(cards[0]).getByText("Der Große Bruch"));
+    await screen.findByRole("dialog");
+    await router.navigate({ to: TIMELINE_PATH, params: { novelId: NOVEL_ID } });
+    await screen.findAllByTestId("timeline-card");
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
 
