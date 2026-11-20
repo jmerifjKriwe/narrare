@@ -28,6 +28,18 @@ function Panel({ onEscape, disabledLast = false }: { onEscape: () => void; disab
   );
 }
 
+/** A suspended panel (a confirm standing over the form it came from): the
+ *  trap must stand down while another dialog owns the keyboard. */
+function SuspendedPanel({ onEscape, enabled }: { onEscape: () => void; enabled: boolean }) {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useModalKeys(panelRef, onEscape, { enabled });
+  return (
+    <div ref={panelRef} role="dialog" aria-label="suspended">
+      <button type="button">only</button>
+    </div>
+  );
+}
+
 describe("useModalKeys", () => {
   it("Tab on the last control wraps to the first", () => {
     render(<Panel onEscape={vi.fn()} />);
@@ -105,6 +117,24 @@ describe("useModalKeys", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     fireEvent.keyDown(document, { key: "Tab" });
     expect(onEscape).not.toHaveBeenCalled();
+  });
+
+  it("a disabled trap neither answers Escape nor steals Tab", () => {
+    // The destructive-confirm stack (W6): the form beneath the confirm
+    // stands down — its trap must not eat the confirm's Tab presses.
+    const onEscape = vi.fn();
+    render(
+      <div>
+        <SuspendedPanel onEscape={onEscape} enabled={false} />
+        <button type="button">elsewhere</button>
+      </div>,
+    );
+    const elsewhere = screen.getByRole("button", { name: "elsewhere" });
+    elsewhere.focus();
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(onEscape).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(elsewhere);
   });
 
   it("FOCUSABLE names every live control kind the dialogs offer", () => {

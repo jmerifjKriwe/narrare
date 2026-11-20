@@ -895,10 +895,11 @@ def test_post_setup_setup_hands_back_to_the_shelf(page: Page, installed: Stack) 
 def test_the_chrome_frames_the_shelf(page: Page, installed: Stack) -> None:
     """W4 Task 10 (D15, D17): the app-wide rail and topbar frame the shelf —
     the nav's live doors (shelf, editor, Wissen live with the knowledge
-    wave W5), the two honest later-wave ones, the book switcher's real
-    novels menu, the interim sync state, the real word total, the disabled
-    ⌘K chip (#882), the language chip as the real switcher, the tri-state
-    theme toggle and the user block's fallback.
+    wave W5, Planung live with the planning wave W6), the one honest
+    later-wave door, the book switcher's real novels menu, the interim sync
+    state, the real word total, the disabled ⌘K chip (#882), the language
+    chip as the real switcher, the tri-state theme toggle and the user
+    block's fallback.
     The database assertions remain the honest check."""
     create_novel(WINTERHAUS)
     novel = create_novel(KLANG, genre=KLANG_GENRE, target_words=80000)
@@ -914,7 +915,9 @@ def test_the_chrome_frames_the_shelf(page: Page, installed: Stack) -> None:
     # The rail: the shelf door live and current, the editor door live with
     # the workspace (W4 Task 11 — it opens the active book), the Wissen
     # door live with the knowledge wave (W5 — the active book's lore
-    # graph), the two later-wave doors honestly disabled.
+    # graph), the Planung door live with the planning wave (W6 Task 3 —
+    # the active book's chronology), the one later-wave door honestly
+    # disabled.
     rail = page.get_by_role("navigation", name="Navigation")
     expect(rail.get_by_role("link", name="Bücherregal")).to_have_attribute("aria-current", "page")
     editor = rail.get_by_role("link", name="Editor")
@@ -923,7 +926,10 @@ def test_the_chrome_frames_the_shelf(page: Page, installed: Stack) -> None:
     wissen = rail.get_by_role("link", name="Wissen")
     expect(wissen).to_have_attribute("href", f"/novels/{novel['id']}/knowledge/graph")
     expect(wissen).not_to_have_attribute("aria-current", "page")
-    for label in ("Planung", "Einstellungen"):
+    planung = rail.get_by_role("link", name="Planung")
+    expect(planung).to_have_attribute("href", f"/novels/{novel['id']}/planning/timeline")
+    expect(planung).not_to_have_attribute("aria-current", "page")
+    for label in ("Einstellungen",):
         expect(rail.get_by_role("button", name=label)).to_be_disabled()
 
     # The topbar's shelf face (tile 7): the breadcrumb, the real total over

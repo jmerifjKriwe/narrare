@@ -3,6 +3,6 @@
 # docs/user/INDEX.md. Behaviour, schemas and prompts never go here.
 id: planning
 title: planning.heading # i18n key; add it to web/i18n/<locale>.json for every catalog
-path: /planning
+path: /novels/$novelId/planning/timeline # the chronology — the capability's first surface (W6 Task 3)
 needs: []
-nav: true # listed in the home page navigation
+nav: false # the surfaces are per-novel (the rail's Planung door), not home destinations

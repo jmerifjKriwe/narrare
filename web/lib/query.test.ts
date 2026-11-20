@@ -33,13 +33,19 @@ import {
   useActivityQuery,
   useArchiveNovel,
   useChaptersQuery,
+  useCreateTimelineEvent,
   useDeleteDocument,
+  useDeleteTimelineEvent,
   useDocumentsQuery,
   useNovelQuery,
+  useNovelScenes,
   useNovelsQuery,
   usePassageSearch,
   useSourceSearch,
+  useTimelineEvents,
+  useUpdateTimelineEvent,
   useUploadDocument,
+  invalidateChapterScenes,
 } from "./query";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
@@ -68,6 +74,8 @@ const CHAPTERS = [
     title: "",
     body: "Anfang.",
     position: 0,
+    scene_count: 0,
+    word_count: 0,
     created_at: "2026-10-30T09:00:00Z",
     updated_at: "2026-10-30T09:00:00Z",
   },
@@ -363,6 +371,178 @@ describe("the document mutations' invalidation family — the archive and the co
     await upload.result.current.mutateAsync(new File(["x"], "Neue Quelle.txt", { type: "text/plain" }));
     expect(queryClient.getQueryState(["knowledge", "passages", "Echo"])?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(["knowledge", "documents"])?.isInvalidated).toBe(true);
+  });
+});
+
+/**
+ * The planning read family (W6 Task 3): the timeline's event list under
+ * the planning capability's own key, and the novel-wide scene fan-out —
+ * one ask per chapter, each cached under the per-chapter key the
+ * aggregate save invalidates (`invalidateChapterScenes`, the seam Task
+ * 4's drill-in writes through).
+ */
+describe("the planning reads", () => {
+  const EVENT = {
+    id: "ev1",
+    novel_id: NOVEL_ID,
+    chapter_id: null,
+    title: "Der Große Bruch",
+    description: "",
+    position: 1,
+    date_label: "2278",
+    character_names: ["Maya Chen"],
+    created_at: "2026-11-19T10:00:00Z",
+    updated_at: "2026-11-19T10:00:00Z",
+  };
+  const SECOND_CHAPTER = { ...CHAPTERS[0], id: "c2", position: 1 };
+  const AGGREGATE_C1 = {
+    chapter_id: CHAPTERS[0].id,
+    scenes: [],
+    version_updated_at: "2026-11-19T10:00:00Z",
+  };
+  const AGGREGATE_C2 = {
+    chapter_id: SECOND_CHAPTER.id,
+    scenes: [],
+    version_updated_at: "2026-11-19T10:00:00Z",
+  };
+
+  it("useTimelineEvents fills [\"planning\",\"timeline\", id] with the list", async () => {
+    api.GET.mockResolvedValue({ data: [EVENT], response: ok() });
+    const hook = renderHook(() => useTimelineEvents(NOVEL_ID), { wrapper });
+
+    await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
+    expect(hook.result.current.data).toEqual([EVENT]);
+    expect(api.GET).toHaveBeenCalledWith("/api/planning/novels/{novel_id}/timeline-events", {
+      params: { path: { novel_id: NOVEL_ID } },
+    });
+    expect(queryClient.getQueryState(["planning", "timeline", NOVEL_ID])?.status).toBe("success");
+  });
+
+  it("keeps a 404 as the error it is — never an invented empty timeline", async () => {
+    api.GET.mockResolvedValue({ data: undefined, response: notFound() });
+    const hook = renderHook(() => useTimelineEvents(NOVEL_ID), { wrapper });
+
+    await waitFor(() => expect(hook.result.current.isError).toBe(true));
+    expect(hook.result.current.data).toBeUndefined();
+  });
+
+  it("a settled create invalidates the timeline key the page reads", async () => {
+    api.GET.mockResolvedValue({ data: [], response: ok() });
+    api.POST.mockResolvedValue({ data: EVENT, response: new Response(null, { status: 201 }) });
+    const list = renderHook(() => useTimelineEvents(NOVEL_ID), { wrapper });
+    await waitFor(() => expect(list.result.current.isSuccess).toBe(true));
+    list.unmount();
+
+    const create = renderHook(() => useCreateTimelineEvent(NOVEL_ID), { wrapper });
+    await create.result.current.mutateAsync({
+      title: "Der Große Bruch",
+      description: "",
+      chapter_id: null,
+      position: 1,
+      date_label: "2278",
+      character_names: ["Maya Chen"],
+    });
+    expect(queryClient.getQueryState(["planning", "timeline", NOVEL_ID])?.isInvalidated).toBe(true);
+  });
+
+  it("the edit carries only the dirtied fields — a null clears, an absent field stays", async () => {
+    api.PUT.mockResolvedValue({ data: EVENT, response: ok() });
+    api.GET.mockResolvedValue({ data: [], response: ok() });
+    const edit = renderHook(() => useUpdateTimelineEvent(NOVEL_ID), { wrapper });
+    await edit.result.current.mutateAsync({
+      eventId: "ev1",
+      changes: { title: "Der Große Bruch (korrigiert)", chapter_id: null },
+    });
+    // The client's mirror of the server's model_fields_set contract: only
+    // the carried fields reach the wire, so an absent description or
+    // position leaves the stored row alone.
+    expect(api.PUT).toHaveBeenCalledWith(
+      "/api/planning/novels/{novel_id}/timeline-events/{event_id}",
+      {
+        params: { path: { novel_id: NOVEL_ID, event_id: "ev1" } },
+        body: { title: "Der Große Bruch (korrigiert)", chapter_id: null },
+      },
+    );
+  });
+
+  it("a refused 422 carries its detail across the mutation boundary", async () => {
+    api.PUT.mockResolvedValue({
+      data: undefined,
+      error: { detail: "title must not be blank" },
+      response: new Response(null, { status: 422 }),
+    });
+    api.GET.mockResolvedValue({ data: [], response: ok() });
+    const edit = renderHook(() => useUpdateTimelineEvent(NOVEL_ID), { wrapper });
+    await expect(
+      edit.result.current.mutateAsync({ eventId: "ev1", changes: { title: "  " } }),
+    ).rejects.toThrow();
+    await waitFor(() => expect(edit.result.current.error).not.toBeNull());
+    const thrown = edit.result.current.error;
+    expect((thrown as { status?: number }).status).toBe(422);
+    expect((thrown as { detail?: unknown }).detail).toBe("title must not be blank");
+  });
+
+  it("the delete asks the 204 route and settles the list key on failure too", async () => {
+    api.DELETE.mockResolvedValue({ data: undefined, response: new Response(null, { status: 204 }) });
+    api.GET.mockResolvedValue({ data: [], response: ok() });
+    const list = renderHook(() => useTimelineEvents(NOVEL_ID), { wrapper });
+    await waitFor(() => expect(list.result.current.isSuccess).toBe(true));
+    list.unmount();
+
+    const remove = renderHook(() => useDeleteTimelineEvent(NOVEL_ID), { wrapper });
+    await remove.result.current.mutateAsync("ev1");
+    expect(api.DELETE).toHaveBeenCalledWith(
+      "/api/planning/novels/{novel_id}/timeline-events/{event_id}",
+      { params: { path: { novel_id: NOVEL_ID, event_id: "ev1" } } },
+    );
+    expect(queryClient.getQueryState(["planning", "timeline", NOVEL_ID])?.isInvalidated).toBe(true);
+  });
+
+  it("the scene fan-out asks every chapter in parallel under its own key", async () => {
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes") {
+        return { data: AGGREGATE_C1, response: ok() };
+      }
+      throw new Error(`unexpected GET: ${path}`);
+    });
+    const hook = renderHook(() => useNovelScenes([CHAPTERS[0], SECOND_CHAPTER]), { wrapper });
+
+    await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
+    expect(hook.result.current.data).toEqual([AGGREGATE_C1, AGGREGATE_C1]);
+    // One ask per chapter, each carrying its own path param — the fan-out
+    // the plan pins, never one invented bulk endpoint.
+    const asks = api.GET.mock.calls.filter(
+      ([path]) => path === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes",
+    );
+    expect(asks).toHaveLength(2);
+    expect(asks[0][1]).toMatchObject({ params: { path: { chapter_id: CHAPTERS[0].id } } });
+    expect(asks[1][1]).toMatchObject({ params: { path: { chapter_id: SECOND_CHAPTER.id } } });
+    expect(queryClient.getQueryState(["planning", "scenes", CHAPTERS[0].id])?.status).toBe("success");
+    expect(queryClient.getQueryState(["planning", "scenes", SECOND_CHAPTER.id])?.status).toBe("success");
+  });
+
+  it("a chapter whose aggregate read fails answers the fan-out with an error", async () => {
+    api.GET.mockImplementation(async (_path: string, init?: { params?: { path?: { chapter_id?: string } } }) => {
+      if (init?.params?.path?.chapter_id === CHAPTERS[0].id) {
+        return { data: undefined, response: notFound() };
+      }
+      return { data: AGGREGATE_C2, response: ok() };
+    });
+    const hook = renderHook(() => useNovelScenes([CHAPTERS[0], SECOND_CHAPTER]), { wrapper });
+
+    await waitFor(() => expect(hook.result.current.isError).toBe(true));
+    expect(hook.result.current.data).toBeUndefined();
+  });
+
+  it("invalidateChapterScenes marks exactly its chapter's key, not its siblings'", async () => {
+    api.GET.mockResolvedValue({ data: AGGREGATE_C1, response: ok() });
+    const hook = renderHook(() => useNovelScenes([CHAPTERS[0], SECOND_CHAPTER]), { wrapper });
+    await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
+    hook.unmount();
+
+    invalidateChapterScenes(SECOND_CHAPTER.id);
+    expect(queryClient.getQueryState(["planning", "scenes", SECOND_CHAPTER.id])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(["planning", "scenes", CHAPTERS[0].id])?.isInvalidated).toBe(false);
   });
 });
 

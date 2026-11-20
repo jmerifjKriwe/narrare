@@ -190,10 +190,57 @@ const sourcesRoute = createRoute({
     </>
   ),
 });
+/** The chronology's harness face (W6 Task 3): the rail's Planung door
+ *  navigates here and wears its active face on this route. */
+const timelineRoute = createRoute({
+  getParentRoute: () => testRoot,
+  path: "/novels/$novelId/planning/timeline",
+  component: () => (
+    <>
+      <p>timeline</p>
+      <IconRail />
+    </>
+  ),
+});
+/** The storyboard's harness face (W6 Task 4): the Planung area's second
+ *  surface — the door keeps opening the timeline, but wears its active
+ *  face here too. */
+const storyboardRoute = createRoute({
+  getParentRoute: () => testRoot,
+  path: "/novels/$novelId/planning/storyboard",
+  component: () => (
+    <>
+      <p>storyboard</p>
+      <IconRail />
+    </>
+  ),
+});
+/** The causality strip's harness face (W6 Task 5): the Planung area's third
+ *  surface — the same active-face rule. */
+const causalityRoute = createRoute({
+  getParentRoute: () => testRoot,
+  path: "/novels/$novelId/planning/causality",
+  component: () => (
+    <>
+      <p>causality</p>
+      <IconRail />
+    </>
+  ),
+});
 
 function renderRail(path = "/rail-test") {
   const router = createRouter({
-    routeTree: testRoot.addChildren([homeRoute, railRoute, novelRoute, graphRoute, dossiersRoute, sourcesRoute]),
+    routeTree: testRoot.addChildren([
+      homeRoute,
+      railRoute,
+      novelRoute,
+      graphRoute,
+      dossiersRoute,
+      sourcesRoute,
+      timelineRoute,
+      storyboardRoute,
+      causalityRoute,
+    ]),
     history: createMemoryHistory({ initialEntries: [path] }),
   });
   render(
@@ -405,19 +452,45 @@ describe("the rail — nav", () => {
     expect(current.getAttribute("href")).toBe(`/novels/${WINTERHAUS.id}/knowledge/graph`);
   });
 
-  it("the two remaining later-wave doors stay honestly disabled with their notes while books stand", async () => {
+  it("the Planung door opens the active book's chronology — current on the timeline route (W6 Task 3)", async () => {
+    renderRail();
+    // Once the books stand, Planung is a live door to the active book's
+    // timeline — the planning capability's first surface.
+    const planung = await screen.findByRole("link", { name: de["shell.nav.planning"] });
+    expect(planung.getAttribute("href")).toBe(`/novels/${DEAD_SIGNAL.id}/planning/timeline`);
+    expect(planung.getAttribute("aria-current")).toBeNull();
+    cleanup();
+    renderRail(`/novels/${WINTERHAUS.id}/planning/timeline`);
+    const current = await screen.findByRole("link", { name: de["shell.nav.planning"] });
+    expect(current.getAttribute("aria-current")).toBe("page");
+    expect(current.getAttribute("href")).toBe(`/novels/${WINTERHAUS.id}/planning/timeline`);
+  });
+
+  it("the Planung door wears its active face on the storyboard route too — one area, two surfaces (W6 Task 4)", async () => {
+    // The door keeps opening the timeline (the area's first surface); the
+    // storyboard is reached through the surfaces' own sub-nav doors. The
+    // active face marks the AREA, so it stands on both routes.
+    renderRail(`/novels/${WINTERHAUS.id}/planning/storyboard`);
+    const current = await screen.findByRole("link", { name: de["shell.nav.planning"] });
+    expect(current.getAttribute("aria-current")).toBe("page");
+    expect(current.getAttribute("href")).toBe(`/novels/${WINTERHAUS.id}/planning/timeline`);
+  });
+
+  it("the Planung door wears its active face on the causality route too — one area, three surfaces (W6 Task 5)", async () => {
+    renderRail(`/novels/${WINTERHAUS.id}/planning/causality`);
+    const current = await screen.findByRole("link", { name: de["shell.nav.planning"] });
+    expect(current.getAttribute("aria-current")).toBe("page");
+    expect(current.getAttribute("href")).toBe(`/novels/${WINTERHAUS.id}/planning/timeline`);
+  });
+
+  it("the one remaining later-wave door stays honestly disabled with its note while books stand", async () => {
     renderRail();
     // Wait for the books so the active-book doors have settled to their live
-    // faces — Wissen is a link now; Planung and Einstellungen still wait.
-    await screen.findByRole("link", { name: de["shell.nav.knowledge"] });
-    for (const [label, note] of [
-      [de["shell.nav.planning"], de["shell.nav.planning.note"]],
-      [de["shell.nav.settings"], de["shell.nav.settings.note"]],
-    ] as const) {
-      const button = screen.getByRole("button", { name: label });
-      expect(button.hasAttribute("disabled")).toBe(true);
-      expect(button.getAttribute("title")).toBe(note);
-    }
+    // faces — Wissen and Planung are links now; Einstellungen still waits.
+    await screen.findByRole("link", { name: de["shell.nav.planning"] });
+    const button = screen.getByRole("button", { name: de["shell.nav.settings"] });
+    expect(button.hasAttribute("disabled")).toBe(true);
+    expect(button.getAttribute("title")).toBe(de["shell.nav.settings.note"]);
   });
 });
 

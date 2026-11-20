@@ -240,6 +240,23 @@ describe("the topbar — save, search, language", () => {
     );
   });
 
+  it("the interim ⌘K chip folds away below sm — the bar fits phone widths (#911)", async () => {
+    renderTopBar("/");
+    const search = await screen.findByRole("button", { name: `${de["shell.topbar.search"]} ⌘K` });
+    // jsdom lays out nothing, so the pin holds the mechanism — the chip is
+    // display:none below the sm breakpoint and back at sm — while the live
+    // capture at 390px is the behavioral proof of the width itself.
+    const chip = search.closest("div") as HTMLElement;
+    expect(chip.classList.contains("hidden")).toBe(true);
+    expect(chip.classList.contains("sm:block")).toBe(true);
+    // The real controls never fold: the word chip and the language switcher
+    // stay mounted at every width.
+    const words = await screen.findByText(t("shell.topbar.wordsTotal", { count: 4584 }));
+    expect((words.closest("div") as HTMLElement).classList.contains("hidden")).toBe(false);
+    const language = await screen.findByRole("button", { name: /Sprache/ });
+    expect(language.classList.contains("hidden")).toBe(false);
+  });
+
   it("the language chip is the real switcher — a choice PATCHes the row and speaks it", async () => {
     renderTopBar("/");
     const chip = await screen.findByRole("button", { name: /Sprache/ });

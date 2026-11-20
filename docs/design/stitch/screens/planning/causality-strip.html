@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"cover-sepia":"#743B1F","state-danger":"#AC3031","surface-tint":"#8c4e30","on-primary-fixed-variant":"#6f371c","bg-panel-dark":"#1C1914","area-knowledge":"#606127","on-secondary-container":"#795c52","area-chat":"#3A637B","surface-container-low":"#faf2ea","surface-container-lowest":"#ffffff","area-writing":"#914F2F","tertiary-fixed":"#ffdcc3","on-primary-fixed":"#351000","outline":"#86736c","secondary-fixed-dim":"#e3bfb2","secondary-container":"#fed8ca","cover-pale":"#EEEBE5","text-muted-light":"#6E6B65","surface-container-high":"#eee7df","area-planning":"#834D7E","error":"#ba1a1a","secondary":"#74584e","inverse-on-surface":"#f7f0e7","on-surface-variant":"#53433d","tertiary-container":"#6e3f14","bg-canvas-dark":"#16140F","surface-container":"#f4ede4","area-settings":"#5A5549","primary":"#58250b","on-secondary":"#ffffff","amber-focus":"#8F4622","surface-dim":"#e0d9d1","error-container":"#ffdad6","on-primary-container":"#f8a884","inverse-surface":"#33302b","on-error":"#ffffff","border-dark":"#35332D","secondary-fixed":"#ffdbce","tertiary":"#522900","text-muted-dark":"#89867F","on-tertiary-fixed-variant":"#693c10","on-secondary-fixed-variant":"#5a4137","primary-container":"#743b1f","primary-fixed-dim":"#ffb695","on-tertiary-container":"#eead78","state-warning":"#9A6100","bg-soft-light":"#EFEBE2","on-tertiary-fixed":"#2f1500","bg-card-dark":"#211F1A","primary-fixed":"#ffdbcc","surface-bright":"#fff8f2","on-surface":"#1e1b16","background":"#fff8f2","on-primary":"#ffffff","on-background":"#1e1b16","on-tertiary":"#ffffff","surface-container-highest":"#e9e1d9","on-error-container":"#93000a","text-foreground-dark":"#DFDEDA","amber-focus-dark":"#F2AD73","border-light":"#E0DEDA","on-secondary-fixed":"#2a170f","rule-dark":"#302D28","cover-ink":"#24211C","bg-soft-dark":"#2C2922","outline-variant":"#d8c2b9","tertiary-fixed-dim":"#fcb882","surface-variant":"#e9e1d9","state-success":"#21763C","bg-card-light":"#FFFFFF","surface":"#fff8f2","inverse-primary":"#ffb695","bg-canvas-light":"#F6F3ED","rule-light":"#EEEBE5","bg-panel-light":"#FDFCF9"},borderRadius:{DEFAULT:"0.125rem",lg:"0.25rem",xl:"0.5rem",full:"0.75rem"},spacing:{margin:"1.5rem","rail-expanded":"10.5rem","space-lg":"1.5rem","space-sm":"0.5rem","prose-max-width":"34rem","space-xs":"0.25rem","container-max":"75rem","space-md":"1rem","space-xl":"2rem","rail-collapsed":"3rem","dock-width":"21rem",gutter:"1rem"},fontFamily:{"label-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-2":["EB Garamond"],"prose-editorial":["EB Garamond"],"body-default":["Plus Jakarta Sans"],"eyebrow-tracked":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"],"meta-default":["Plus Jakarta Sans"],"headline-hero":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"]},fontSize:{"label-default":["13px",{lineHeight:"18px",fontWeight:"500"}],"headline-emph":["15px",{lineHeight:"22px",fontWeight:"600"}],"prose-heading-2":["21px",{lineHeight:"28px",fontWeight:"600"}],"prose-editorial":["18px",{lineHeight:"31.5px",letterSpacing:"0.01em",fontWeight:"400"}],"body-default":["14px",{lineHeight:"22px",fontWeight:"400"}],"eyebrow-tracked":["11px",{lineHeight:"16px",letterSpacing:"0.08em",fontWeight:"600"}],"headline-title":["20px",{lineHeight:"26px",letterSpacing:"-0.015em",fontWeight:"600"}],"meta-default":["12px",{lineHeight:"17px",fontWeight:"400"}],"headline-hero":["28px",{lineHeight:"32px",letterSpacing:"-0.02em",fontWeight:"700"}],"prose-heading-1":["26px",{lineHeight:"34px",letterSpacing:"-0.01em",fontWeight:"600"}]}}}}</script></head><body class="bg-background font-body-default text-body-default text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-rail-collapsed bg-surface-container-low shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between items-center py-space-sm"><div class="flex flex-col items-center gap-space-md w-full"><a class="w-8 h-8 rounded-DEFAULT bg-primary-container text-on-primary flex items-center justify-center font-prose-heading-2 text-prose-heading-2 shadow-[0_1px_3px_0_rgba(44,24,16,0.05)]" data-path="bibliothek" href="#" title="Narrare Atelier">N</a><nav class="flex flex-col items-center gap-space-xs w-full px-space-xs" data-active-classes="bg-primary-container text-on-primary rounded-DEFAULT"><a class="w-9 h-9 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-DEFAULT transition-colors" data-path="bibliothek" href="#" title="Bibliothek"><span class="material-symbols-outlined text-[20px]">auto_stories</span></a><a class="w-9 h-9 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-DEFAULT transition-colors" data-path="manuskript-editor" href="#" title="Manuskript &amp; Schreiben"><span class="material-symbols-outlined text-[20px]">edit_note</span></a><a class="w-9 h-9 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-DEFAULT transition-colors" data-path="kausalitaetsleiste" href="#" title="Planung &amp; Dramaturgie"><span class="material-symbols-outlined text-[20px]">schema</span></a><a class="w-9 h-9 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-DEFAULT transition-colors" data-path="lore-wissensgraph" href="#" title="Wissen &amp; Lore-Graph"><span class="material-symbols-outlined text-[20px]">hub</span></a><a class="w-9 h-9 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-DEFAULT transition-colors" data-path="figuren-verzeichnis" href="#" title="Figuren &amp; Akteure"><span class="material-symbols-outlined text-[20px]">group</span></a></nav></div><div class="flex flex-col items-center gap-space-xs w-full px-space-xs"><a class="w-9 h-9 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-DEFAULT transition-colors" data-path="einstellungen" href="#" title="Einstellungen"><span class="material-symbols-outlined text-[20px]">settings</span></a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center mt-space-xs"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></aside><div class="pl-rail-collapsed"><header class="fixed top-0 left-rail-collapsed right-0 z-40 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-14 w-full px-space-md flex items-center justify-between"><div class="flex items-center gap-space-md min-w-0"><div class="flex items-center gap-space-xs font-meta-default text-meta-default text-on-surface-variant truncate"><span class="hover:text-on-surface cursor-pointer transition-colors">Atelier</span><span class="text-outline-variant font-body-default text-body-default">/</span><span class="font-label-default text-label-default text-on-surface font-semibold truncate">Dead Signal</span><span class="text-outline-variant font-body-default text-body-default">/</span><span class="text-cover-sepia font-label-default text-label-default">Planung &amp; Dramaturgie</span></div><div class="hidden sm:flex items-center gap-space-xs px-space-sm py-0.5 rounded-full bg-surface-container-low"><span class="w-1.5 h-1.5 rounded-full bg-state-success"></span><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface-variant">Gespeichert</span></div></div><div class="flex items-center gap-space-sm"><button class="flex items-center gap-space-xs px-space-sm py-1 rounded-DEFAULT bg-surface-container-high hover:bg-surface-container text-on-surface font-label-default text-label-default transition-colors" type="button"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">search</span><span class="hidden md:inline text-on-surface-variant font-meta-default text-meta-default">Suchen...</span><kbd class="hidden lg:inline px-1 py-0.2 bg-surface-container-lowest rounded text-on-surface-variant font-meta-default text-meta-default">⌘K</kbd></button><button class="flex items-center gap-space-xs px-space-sm py-1 rounded-DEFAULT bg-primary-container hover:bg-cover-sepia text-on-primary font-label-default text-label-default transition-colors" type="button"><span class="material-symbols-outlined text-[16px]">auto_awesome</span><span class="hidden sm:inline">Inspektor</span></button></div></div><div class="h-10 w-full px-space-md bg-surface-container-low flex items-center justify-between"><nav class="flex items-center gap-space-xs" data-active-classes="bg-surface text-cover-sepia font-semibold shadow-[0_1px_3px_0_rgba(44,24,16,0.05)] rounded-DEFAULT"><a class="px-space-sm py-1 font-label-default text-label-default text-on-surface-variant hover:text-on-surface transition-colors" data-path="chronologie" href="#">Chronologie</a><a class="px-space-sm py-1 font-label-default text-label-default text-on-surface-variant hover:text-on-surface transition-colors" data-path="storyboard" href="#">Storyboard</a><a class="px-space-sm py-1 font-label-default text-label-default text-on-surface-variant hover:text-on-surface transition-colors" data-path="kausalitaetsleiste" href="#">Kausalitätsleiste</a></nav><div class="flex items-center gap-space-sm font-meta-default text-meta-default text-on-surface-variant"><span class="hidden md:inline">3 Akte · 14 Szenen · 42.180 Wörter</span></div></div></header><main class="w-full pt-24 bg-background min-h-screen"><div class="flex flex-col w-full">
+<div class="w-full px-space-md py-space-lg flex flex-col gap-space-lg max-w-[1700px] mx-auto">
+<!-- Subline & Direct Action Bar -->
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md pb-space-xs">
+<div class="flex flex-col gap-space-xs max-w-3xl">
+<div class="flex items-center gap-space-sm">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia tracking-widest">Dramaturgische Logik</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Ursache &amp; Wirkung</span>
+</div>
+<p class="font-prose-editorial text-prose-editorial text-on-surface italic">
+          Ehrliche Kausalkette: Wie jede Szene die nächste erzwingt — Konflikt, Konsequenz und Weiterschaltung durch Ursache &amp; Wirkung.
+        </p>
+</div>
+<!-- Action Chips & Status -->
+<div class="flex flex-wrap items-center gap-space-sm">
+<div class="flex items-center gap-space-xs px-space-sm py-1 bg-surface-container rounded-DEFAULT shadow-sm">
+<span class="material-symbols-outlined text-[15px] text-cover-sepia">menu_book</span>
+<span class="font-meta-default text-meta-default text-on-surface">8 Kapitel · 24 Szenen insgesamt</span>
+</div>
+<div class="flex items-center gap-space-xs px-space-sm py-1 bg-surface-container rounded-DEFAULT shadow-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+<span class="font-meta-default text-meta-default text-on-surface">Kausaler Faden: Lückenlos geschlossen</span>
+</div>
+<button class="flex items-center gap-space-xs px-space-sm py-1 rounded-DEFAULT bg-primary-container text-on-primary font-label-default text-label-default shadow-sm hover:bg-cover-sepia transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span>Szene verketten</span>
+</button>
+<a class="flex items-center gap-space-xs px-space-sm py-1 rounded-DEFAULT bg-surface-container-high text-on-surface font-label-default text-label-default shadow-sm hover:bg-surface-container transition-colors" data-path="manuskript-editor" href="#">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">arrow_back</span>
+<span>Zum Manuskript</span>
+</a>
+</div>
+</div>
+<!-- Editorial Canvas Graphic (Subtle Horizon Atmosphere) -->
+<div class="relative w-full h-24 rounded-DEFAULT overflow-hidden shadow-sm flex items-center justify-between px-space-lg bg-surface-container-low">
+<div class="absolute inset-0 bg-cover bg-center opacity-15 mix-blend-multiply" data-alt="Quiet atmospheric permafrost tundra at Arctic twilight under deep sepia and ivory tones, minimal landscape, fine grain, calm and contemplative fine art photography." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDx2k3aWd68gObNGCmG2XTbpClqu6Edf8YTTjNjfXccKbLFfCJTabOZMtGSQcS_3d0b-ApqUTpKiZVKerL6YHHRZb9hoeUo-xuj3awbWPWBWi2oV8Grcle4CQ2kqu9PJqE6dL9_nSStNcKyQg3nDi1lrJ8_XR3DonrRSow9xDodo4ywDVCDTvUT5zBFsbVxdMaB4m12WgsGaL9utaimLYuaZ-mYp00txdqnFZeSn-nJkhHI_WCxF2GNap53cRM8S73JDasXl9K-kde8')"></div>
+<div class="relative z-10 flex flex-col gap-0.5">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Romanprojekt</span>
+<h2 class="font-prose-heading-1 text-prose-heading-1 text-on-surface tracking-tight">Dead Signal — Der deterministische Bogen</h2>
+</div>
+<div class="relative z-10 hidden sm:flex items-center gap-space-md text-text-muted-light font-meta-default text-meta-default">
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-cover-sepia"></span> Festgelegter Impuls</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-outline-variant"></span> Folgereaktion</span>
+</div>
+</div>
+<!-- Main Horizontal Chain Container -->
+<div class="w-full flex flex-col gap-space-sm">
+<div class="flex items-center justify-between px-space-xs text-text-muted-light">
+<div class="flex items-center gap-space-xs font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider">
+<span class="material-symbols-outlined text-[16px] text-cover-sepia">linear_scale</span>
+<span>Horizontale Fortschreitung (Ursache → Folge)</span>
+</div>
+<span class="font-meta-default text-meta-default italic hidden md:inline">Horizontal verschiebbar · 3 Kapitelanschnitte geladen</span>
+</div>
+<!-- Scrollable Track -->
+<div class="w-full overflow-x-auto pb-space-md pt-space-xs">
+<div class="inline-flex items-stretch gap-space-md min-w-max pr-space-lg">
+<!-- KAPITEL 1 -->
+<div class="flex items-stretch bg-surface-container-low/70 rounded-DEFAULT p-space-sm shadow-sm gap-space-sm">
+<div class="flex flex-col justify-between py-space-xs px-space-sm bg-surface-container rounded-DEFAULT w-44 shrink-0 shadow-sm">
+<div class="flex flex-col gap-space-xs">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia">Kapitel 1</span>
+<h3 class="font-prose-heading-2 text-prose-heading-2 text-on-surface leading-tight">Ankunft auf Horizon Station</h3>
+</div>
+<div class="flex flex-col gap-1 pt-space-md font-meta-default text-meta-default text-text-muted-light">
+<span>3 Szenen</span>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-state-success">Ausgangsphase</span>
+</div>
+</div>
+<!-- Szene 1.1 -->
+<div class="w-72 bg-bg-card-light rounded-DEFAULT p-space-md flex flex-col justify-between shadow-sm">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Szene 1.1: Kalibrierung der Messsonde</h4>
+<span class="px-space-xs py-0.5 rounded-DEFAULT bg-surface-container-high font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia shrink-0">Verfasst</span>
+</div>
+<div class="flex flex-col gap-space-xs mt-space-xs">
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Konflikt:</span>
+<p class="font-body-default text-body-default text-on-surface">Die Sensoren empfangen Rauschmuster, die nicht den astronomischen Tabellen entsprechen.</p>
+</div>
+<div class="flex flex-col mt-space-xs">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Auflösung:</span>
+<p class="font-body-default text-body-default text-on-surface">Maya schaltet die Filter manuell aus, um das Direktsignal zu isolieren.</p>
+</div>
+</div>
+</div>
+<div class="pt-space-md mt-space-sm flex items-center justify-between text-text-muted-light font-meta-default text-meta-default">
+<span>1.420 Wörter</span>
+<span class="material-symbols-outlined text-[16px] text-cover-sepia">lock</span>
+</div>
+</div>
+<!-- Connector Scene 1.1 -> 1.2 -->
+<div class="flex flex-col items-center justify-center px-1 shrink-0">
+<div class="w-6 h-px bg-outline-variant"></div>
+<span class="material-symbols-outlined text-[16px] text-cover-sepia -ml-1">east</span>
+<span class="font-eyebrow-tracked text-[9px] uppercase tracking-widest text-text-muted-light rotate-90 my-2">Erzwingt</span>
+</div>
+<!-- Szene 1.2 -->
+<div class="w-72 bg-bg-card-light rounded-DEFAULT p-space-md flex flex-col justify-between shadow-sm">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Szene 1.2: Das Artefakt im Schacht</h4>
+<span class="px-space-xs py-0.5 rounded-DEFAULT bg-surface-container-high font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia shrink-0">Verfasst</span>
+</div>
+<div class="flex flex-col gap-space-xs mt-space-xs">
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Konflikt:</span>
+<p class="font-body-default text-body-default text-on-surface">Der Schacht ist durch Vereisung blockiert; das Direktsignal überhitzt die Relais.</p>
+</div>
+<div class="flex flex-col mt-space-xs">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Auflösung:</span>
+<p class="font-body-default text-body-default text-on-surface">Maya bricht das Siegel der Notdruckkammer und setzt das Hauptkabel frei.</p>
+</div>
+</div>
+</div>
+<div class="pt-space-md mt-space-sm flex items-center justify-between text-text-muted-light font-meta-default text-meta-default">
+<span>1.890 Wörter</span>
+<span class="material-symbols-outlined text-[16px] text-cover-sepia">lock</span>
+</div>
+</div>
+<!-- Connector Scene 1.2 -> 1.3 -->
+<div class="flex flex-col items-center justify-center px-1 shrink-0">
+<div class="w-6 h-px bg-outline-variant"></div>
+<span class="material-symbols-outlined text-[16px] text-cover-sepia -ml-1">east</span>
+<span class="font-eyebrow-tracked text-[9px] uppercase tracking-widest text-text-muted-light rotate-90 my-2">Erzwingt</span>
+</div>
+<!-- Szene 1.3 -->
+<div class="w-72 bg-bg-card-light rounded-DEFAULT p-space-md flex flex-col justify-between shadow-sm">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Szene 1.3: Erste Rückkopplung</h4>
+<span class="px-space-xs py-0.5 rounded-DEFAULT bg-surface-container-high font-eyebrow-tracked text-eyebrow-tracked uppercase text-state-warning shrink-0">In Arbeit</span>
+</div>
+<div class="flex flex-col gap-space-xs mt-space-xs">
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Konflikt:</span>
+<p class="font-body-default text-body-default text-on-surface">Das Kabel sendet eine Resonanzwelle zurück in das Funkmodul der Funkzentrale.</p>
+</div>
+<div class="flex flex-col mt-space-xs">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Auflösung:</span>
+<p class="font-body-default text-body-default text-on-surface">Stationsleiter Holm kappt die Stromzufuhr — das Signal stirbt nicht, es wandert in den Permafrost ab.</p>
+</div>
+</div>
+</div>
+<div class="pt-space-md mt-space-sm flex items-center justify-between text-text-muted-light font-meta-default text-meta-default">
+<span>940 Wörter</span>
+<span class="material-symbols-outlined text-[16px] text-state-warning">edit</span>
+</div>
+</div>
+</div>
+<!-- Major Inter-Chapter Transition Connector -->
+<div class="flex flex-col items-center justify-center px-space-xs shrink-0 max-w-[140px] text-center">
+<div class="w-full flex items-center justify-center">
+<div class="w-8 h-px bg-cover-sepia"></div>
+<span class="material-symbols-outlined text-[20px] text-cover-sepia">double_arrow</span>
+<div class="w-8 h-px bg-cover-sepia"></div>
+</div>
+<span class="font-eyebrow-tracked text-[10px] uppercase tracking-wider text-cover-sepia font-semibold mt-1">Kapitel-Übergang</span>
+<p class="font-meta-default text-[11px] text-text-muted-light mt-0.5 leading-snug">Signal wandert in Permafrost → zwingt Bohrung</p>
+</div>
+<!-- KAPITEL 2 -->
+<div class="flex items-stretch bg-surface-container-low/70 rounded-DEFAULT p-space-sm shadow-sm gap-space-sm">
+<div class="flex flex-col justify-between py-space-xs px-space-sm bg-surface-container rounded-DEFAULT w-44 shrink-0 shadow-sm">
+<div class="flex flex-col gap-space-xs">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia">Kapitel 2</span>
+<h3 class="font-prose-heading-2 text-prose-heading-2 text-on-surface leading-tight">Das Signal im Permafrost</h3>
+</div>
+<div class="flex flex-col gap-1 pt-space-md font-meta-default text-meta-default text-text-muted-light">
+<span>3 Szenen</span>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia">Eskalationsphase</span>
+</div>
+</div>
+<!-- Szene 2.1 -->
+<div class="w-72 bg-bg-card-light rounded-DEFAULT p-space-md flex flex-col justify-between shadow-sm">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Szene 2.1: Der mobile Georadar-Zug</h4>
+<span class="px-space-xs py-0.5 rounded-DEFAULT bg-surface-container-high font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia shrink-0">Verfasst</span>
+</div>
+<div class="flex flex-col gap-space-xs mt-space-xs">
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Konflikt:</span>
+<p class="font-body-default text-body-default text-on-surface">Das Kettenfahrzeug gerät in eine Spalte während die Eistemperatur plötzlich auf -4°C ansteigt.</p>
+</div>
+<div class="flex flex-col mt-space-xs">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Auflösung:</span>
+<p class="font-body-default text-body-default text-on-surface">Maya opfert die Bergelinde, um das Sonargerät in die Gletschermitte abzusenken.</p>
+</div>
+</div>
+</div>
+<div class="pt-space-md mt-space-sm flex items-center justify-between text-text-muted-light font-meta-default text-meta-default">
+<span>2.100 Wörter</span>
+<span class="material-symbols-outlined text-[16px] text-cover-sepia">lock</span>
+</div>
+</div>
+<!-- Connector Scene 2.1 -> 2.2 -->
+<div class="flex flex-col items-center justify-center px-1 shrink-0">
+<div class="w-6 h-px bg-outline-variant"></div>
+<span class="material-symbols-outlined text-[16px] text-cover-sepia -ml-1">east</span>
+<span class="font-eyebrow-tracked text-[9px] uppercase tracking-widest text-text-muted-light rotate-90 my-2">Erzwingt</span>
+</div>
+<!-- Szene 2.2 -->
+<div class="w-72 bg-bg-card-light rounded-DEFAULT p-space-md flex flex-col justify-between shadow-sm">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Szene 2.2: Eiskern Delta-7</h4>
+<span class="px-space-xs py-0.5 rounded-DEFAULT bg-surface-container-high font-eyebrow-tracked text-eyebrow-tracked uppercase text-state-warning shrink-0">In Arbeit</span>
+</div>
+<div class="flex flex-col gap-space-xs mt-space-xs">
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Konflikt:</span>
+<p class="font-body-default text-body-default text-on-surface">Der geborgene Zylinder zeigt organische Mikroeinschlüsse, die auf menschliche DNA reagieren.</p>
+</div>
+<div class="flex flex-col mt-space-xs">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Auflösung:</span>
+<p class="font-body-default text-body-default text-on-surface">Maya verheimlicht den Befund vor dem Biologen Aris und isoliert die Probe privat.</p>
+</div>
+</div>
+</div>
+<div class="pt-space-md mt-space-sm flex items-center justify-between text-text-muted-light font-meta-default text-meta-default">
+<span>1.150 Wörter</span>
+<span class="material-symbols-outlined text-[16px] text-state-warning">edit</span>
+</div>
+</div>
+<!-- Connector Scene 2.2 -> 2.3 -->
+<div class="flex flex-col items-center justify-center px-1 shrink-0">
+<div class="w-6 h-px bg-outline-variant"></div>
+<span class="material-symbols-outlined text-[16px] text-cover-sepia -ml-1">east</span>
+<span class="font-eyebrow-tracked text-[9px] uppercase tracking-widest text-text-muted-light rotate-90 my-2">Erzwingt</span>
+</div>
+<!-- Szene 2.3 -->
+<div class="w-72 bg-bg-card-light rounded-DEFAULT p-space-md flex flex-col justify-between shadow-sm">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Szene 2.3: Vertrauensverlust</h4>
+<span class="px-space-xs py-0.5 rounded-DEFAULT bg-surface-container-high font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface-variant shrink-0">Geplant</span>
+</div>
+<div class="flex flex-col gap-space-xs mt-space-xs">
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Konflikt:</span>
+<p class="font-body-default text-body-default text-on-surface">Aris entdeckt das fehlende Logbuch des Kryolagers und konfrontiert Maya während des Abendappells.</p>
+</div>
+<div class="flex flex-col mt-space-xs">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Auflösung:</span>
+<p class="font-body-default text-body-default text-on-surface">Maya bricht die Verbindung zur Funkbasis ab und schließt sich im Analysetrakt ein.</p>
+</div>
+</div>
+</div>
+<div class="pt-space-md mt-space-sm flex items-center justify-between text-text-muted-light font-meta-default text-meta-default">
+<span>Konzeptnotiz</span>
+<span class="material-symbols-outlined text-[16px] text-text-muted-light">schedule</span>
+</div>
+</div>
+</div>
+<!-- Major Inter-Chapter Transition Connector -->
+<div class="flex flex-col items-center justify-center px-space-xs shrink-0 max-w-[140px] text-center">
+<div class="w-full flex items-center justify-center">
+<div class="w-8 h-px bg-cover-sepia"></div>
+<span class="material-symbols-outlined text-[20px] text-cover-sepia">double_arrow</span>
+<div class="w-8 h-px bg-cover-sepia"></div>
+</div>
+<span class="font-eyebrow-tracked text-[10px] uppercase tracking-wider text-cover-sepia font-semibold mt-1">Kapitel-Übergang</span>
+<p class="font-meta-default text-[11px] text-text-muted-light mt-0.5 leading-snug">Einschließung löst Stationsalarm aus</p>
+</div>
+<!-- KAPITEL 3 -->
+<div class="flex items-stretch bg-surface-container-low/70 rounded-DEFAULT p-space-sm shadow-sm gap-space-sm">
+<div class="flex flex-col justify-between py-space-xs px-space-sm bg-surface-container rounded-DEFAULT w-44 shrink-0 shadow-sm">
+<div class="flex flex-col gap-space-xs">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia">Kapitel 3</span>
+<h3 class="font-prose-heading-2 text-prose-heading-2 text-on-surface leading-tight">Quarantäne-Befehl</h3>
+</div>
+<div class="flex flex-col gap-1 pt-space-md font-meta-default text-meta-default text-text-muted-light">
+<span>2 Szenen</span>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Entwurf</span>
+</div>
+</div>
+<!-- Szene 3.1 -->
+<div class="w-72 bg-bg-card-light rounded-DEFAULT p-space-md flex flex-col justify-between shadow-sm">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Szene 3.1: Das Sperrventil</h4>
+<span class="px-space-xs py-0.5 rounded-DEFAULT bg-surface-container-high font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface-variant shrink-0">Geplant</span>
+</div>
+<div class="flex flex-col gap-space-xs mt-space-xs">
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Konflikt:</span>
+<p class="font-body-default text-body-default text-on-surface">Holm lässt das Atemluftgemisch im Labortrakt drosseln, um die Türentriegelung zu erzwingen.</p>
+</div>
+<div class="flex flex-col mt-space-xs">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Auflösung:</span>
+<p class="font-body-default text-body-default text-on-surface">Maya initiiert die Sequenzierung der Probe, bevor der Sauerstoffdruck kollabiert.</p>
+</div>
+</div>
+</div>
+<div class="pt-space-md mt-space-sm flex items-center justify-between text-text-muted-light font-meta-default text-meta-default">
+<span>Skizziert</span>
+<span class="material-symbols-outlined text-[16px] text-text-muted-light">schedule</span>
+</div>
+</div>
+<!-- Connector Scene 3.1 -> 3.2 -->
+<div class="flex flex-col items-center justify-center px-1 shrink-0">
+<div class="w-6 h-px bg-outline-variant"></div>
+<span class="material-symbols-outlined text-[16px] text-cover-sepia -ml-1">east</span>
+<span class="font-eyebrow-tracked text-[9px] uppercase tracking-widest text-text-muted-light rotate-90 my-2">Erzwingt</span>
+</div>
+<!-- Szene 3.2 (Honest Placeholder Scene) -->
+<div class="w-72 bg-bg-card-light/75 rounded-DEFAULT p-space-md flex flex-col justify-between shadow-sm border-dashed border-2 border-outline-variant/30">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<h4 class="font-headline-emph text-headline-emph text-text-muted-light">Szene 3.2: Unbenanntes Fragment</h4>
+<span class="px-space-xs py-0.5 rounded-DEFAULT bg-surface-container font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light shrink-0">Entwurf</span>
+</div>
+<div class="flex flex-col gap-space-xs mt-space-xs">
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Konflikt:</span>
+<p class="font-body-default text-body-default text-text-muted-light italic">—</p>
+</div>
+<div class="flex flex-col mt-space-xs">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Auflösung:</span>
+<p class="font-body-default text-body-default text-text-muted-light italic">—</p>
+</div>
+</div>
+</div>
+<div class="pt-space-md mt-space-sm flex items-center justify-between text-text-muted-light font-meta-default text-meta-default">
+<span>Noch nicht formuliert</span>
+<span class="material-symbols-outlined text-[16px] text-text-muted-light">edit_off</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Editorial Rules & Methodology Bento Row -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md pt-space-xs">
+<!-- Box 1: Prinzip Kausalität -->
+<div class="bg-surface-container rounded-DEFAULT p-space-md shadow-sm flex flex-col justify-between gap-space-sm">
+<div class="flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-cover-sepia text-[22px]">account_tree</span>
+<div>
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Der Kausale Zwang</h4>
+<p class="font-body-default text-body-default text-text-muted-light mt-1">
+              Keine Szene darf mit „Und dann passierte Folgendes“ ansetzen. Jede Szene existiert einzig, weil die vorangegangene Auflösung einen unhaltbaren Zustand geschaffen hat.
+            </p>
+</div>
+</div>
+<div class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia">Regel: „Deshalb“ statt „Und dann“</div>
+</div>
+<!-- Box 2: Diagnostik -->
+<div class="bg-surface-container rounded-DEFAULT p-space-md shadow-sm flex flex-col justify-between gap-space-sm">
+<div class="flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-cover-sepia text-[22px]">fact_check</span>
+<div>
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Prüfung auf Leerlauf</h4>
+<p class="font-body-default text-body-default text-text-muted-light mt-1">
+              Szenen ohne aufgelösten Konflikt erzeugen dramaturgischen Totraum. Die Kette entlarvt narrative Sackgassen, noch bevor du Tausende Wörter investierst.
+            </p>
+</div>
+</div>
+<div class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-state-success">Status: Aktuell 0 Lücken</div>
+</div>
+<!-- Box 3: Manuskript-Synchronität -->
+<div class="bg-surface-container rounded-DEFAULT p-space-md shadow-sm flex flex-col justify-between gap-space-sm">
+<div class="flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-cover-sepia text-[22px]">history_edu</span>
+<div>
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Schreibhandwerk pur</h4>
+<p class="font-body-default text-body-default text-text-muted-light mt-1">
+              Änderungen an einer Szene im Editor fließen direkt in die Kausalitätsleiste zurück. Die Übersicht bleibt ein getreuer Spiegel deines Manuskripts.
+            </p>
+</div>
+</div>
+<div class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Letzter Abgleich vor 4 Min.</div>
+</div>
+</div>
+<!-- Tabula-Rasa Reference / Empty State Showcase Banner -->
+<div class="w-full bg-surface-container-low rounded-DEFAULT p-space-lg shadow-sm flex flex-col md:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-DEFAULT bg-surface-container-high flex items-center justify-center text-cover-sepia shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-[26px]">view_timeline</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-emph text-headline-emph text-on-surface">Für neue oder unbesetzte Romanprojekte</span>
+<p class="font-body-default text-body-default text-text-muted-light">
+            Noch keine Szenen verfasst? Schreib oder plane deine erste Szene direkt im Storyboard — die Kausalitätsleiste formt sich danach ganz von selbst.
+          </p>
+</div>
+</div>
+<a class="shrink-0 flex items-center gap-space-xs px-space-md py-2 rounded-DEFAULT bg-surface text-cover-sepia font-label-default text-label-default shadow-sm hover:bg-surface-container transition-colors" data-path="storyboard" href="#">
+<span>Zum Storyboard wechseln</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+<!-- Editorial Bottom Note -->
+<div class="w-full pb-space-lg pt-space-xs flex flex-col sm:flex-row items-center justify-between text-text-muted-light font-meta-default text-meta-default border-t border-outline-variant/30 gap-space-xs">
+<p class="italic text-center sm:text-left">
+        Keine Simulation, keine Verzweigungen. Die Kausalitätsleiste spiegelt ausschließlich deine realen Szeneneinträge wider.
+      </p>
+<div class="flex items-center gap-space-sm shrink-0">
+<span>Narrare Atelier · Kausaler Inspektor</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span>Version 2.4</span>
+</div>
+</div>
+</div>
+</div></main></div></body></html>
