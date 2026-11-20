@@ -326,7 +326,10 @@ export function StoryboardPage() {
             data-testid="storyboard-progress"
             className="flex flex-wrap items-center gap-2 rounded-full border border-rule bg-card px-3 py-1 text-meta text-foreground shadow-card"
           >
-            <span aria-hidden="true" className="h-2 w-2 rounded-full bg-success" />
+            <span
+              aria-hidden="true"
+              className={`h-2 w-2 rounded-full ${novel.isError ? "bg-outline" : "bg-success"}`}
+            />
             {novelWords !== null ? (
               novelTarget !== null && novelTarget > 0 ? (
                 <>

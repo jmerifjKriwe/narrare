@@ -512,6 +512,8 @@ describe("the board stages the novel's real chapters", () => {
     expect(await within(progress).findByText("28 % erreicht")).toBeTruthy();
     expect(await within(progress).findByText("3 Kapitel")).toBeTruthy();
     expect(await within(progress).findByText("4 Szenen gesamt")).toBeTruthy();
+    // The dot beside standing totals is the green „in sync" mark.
+    expect((progress.firstElementChild as HTMLElement).className).toContain("bg-success");
   });
 
   it("a novel without a target names no invented one", async () => {
@@ -1353,6 +1355,11 @@ describe("the Codacy re-analysis round", () => {
     await screen.findAllByTestId("storyboard-card");
     const chip = screen.getByTestId("storyboard-progress");
     expect(await within(chip).findByText(de["planning.storyboard.wordsUnavailable"])).toBeTruthy();
+    // The dot beside the face is the family's neutral tone — not the
+    // green „in sync“ mark of a word total that never stood.
+    const dot = chip.firstElementChild as HTMLElement;
+    expect(dot.className).toContain("bg-outline");
+    expect(dot.className).not.toContain("bg-success");
     expect(within(chip).queryByText(/18\.260/)).toBeNull();
     expect(within(chip).queryByText(/65\.000/)).toBeNull();
     // The counts the chapters read does own still stand.

@@ -42,15 +42,21 @@ const STATUS_CHIP: Record<string, string> = {
 
 /** A client-minted id for a scene the draft adds: the diff treats an id
  *  no row owns as a creation, so the mint IS the create — no claim step.
- *  randomUUID preferred; a runtime without it gets the older, universal
- *  getRandomValues — 16 crypto-random bytes dressed as the UUID the
- *  schema's own id field demands (`SceneUpsert.id: UUID`; a plain hex
- *  line would 422 the whole add-scene flow). */
+ *  randomUUID preferred; a runtime without it gets getRandomValues —
+ *  universal among crypto-having runtimes — 16 crypto-random bytes
+ *  dressed as the UUID the schema's own id field demands
+ *  (`SceneUpsert.id: UUID`; a plain hex line would 422 the whole
+ *  add-scene flow). Both lookups guard the same way: no crypto at all
+ *  has no honest answer, and refuses instead of minting an id the
+ *  server would refuse anyway. */
 function mintSceneId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
   }
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  const bytes = globalThis.crypto?.getRandomValues?.(new Uint8Array(16));
+  if (bytes === undefined) {
+    throw new Error("a scene id needs crypto randomness and no crypto is available");
+  }
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
   const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
