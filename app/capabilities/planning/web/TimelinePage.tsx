@@ -87,23 +87,30 @@ export function TimelinePage() {
   const [quick, setQuick] = useState<QuickFilter>("all");
   const [dialog, setDialog] = useState<Dialog | null>(null);
 
-  // The destructive retirement flag: a confirmed delete retires the card
-  // opener BOTH dialogs would return to. The page sets it before the
-  // unmount and hands it to the suspended edit, so the edit's own
-  // focus-return lands on the survivor too — the delete's landing no
-  // longer depends on which sibling's cleanup runs last.
-  const retiredByDeleteRef = useRef(false);
+  // The opener-retirement flag: a confirmed delete OR a novel switch
+  // retires the card opener the dialogs would return to (the deleted
+  // row is gone; the old book's card is gone with its list). The page
+  // sets the flag before the unmount and hands it to the suspended
+  // edit, so the edit's own focus-return lands on the survivor too —
+  // the landing never depends on which sibling's cleanup runs last,
+  // nor on the opener still standing.
+  const openerRetiredRef = useRef(false);
   // Each dialog session starts un-retired; the reset lands after the
-  // previous session's unmount read the flag.
+  // previous session's unmount read the flag. The flag may also be set
+  // by a dialog-less switch — harmless: no dialog stands to read it,
+  // and the next open resets it before any close path runs.
   // biome-ignore lint/correctness/useExhaustiveDependencies: dialog is the deliberate re-run key, not a value the body reads — each dialog session must start un-retired.
   useEffect(() => {
-    retiredByDeleteRef.current = false;
+    openerRetiredRef.current = false;
   }, [dialog]);
 
   // A novel switch is a new page in all but name: the filters and any
   // open dialog belong to the book they were chosen in, never the next.
   // biome-ignore lint/correctness/useExhaustiveDependencies: novelId is the deliberate re-run key, not a value the body reads — a book switch must reset the selection (the workspace's own pattern).
   useEffect(() => {
+    // The close retires the open dialog's opener with it (the old book's
+    // card is gone from the DOM), so the return lands on the survivor.
+    openerRetiredRef.current = true;
     setSelectedNames([]);
     setQuick("all");
     setDialog(null);
@@ -587,7 +594,7 @@ export function TimelinePage() {
           onRemove={(event) => setDialog({ kind: "delete", event, openerId: dialog.openerId })}
           suspended={dialog.kind === "delete"}
           survivorFocusId="timeline-page"
-          retiredRef={retiredByDeleteRef}
+          retiredRef={openerRetiredRef}
         />
       )}
       {dialog?.kind === "delete" && (
@@ -599,7 +606,7 @@ export function TimelinePage() {
           onDeleted={() => {
             // Retire the opener BEFORE the unmount: both modals' returns
             // then land on the survivor, whatever their cleanup order.
-            retiredByDeleteRef.current = true;
+            openerRetiredRef.current = true;
             setDialog(null);
           }}
         />

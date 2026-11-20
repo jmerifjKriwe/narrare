@@ -703,6 +703,46 @@ describe("the novel switch", () => {
     await screen.findAllByTestId("timeline-card");
     expect(screen.queryByRole("dialog")).toBeNull();
   });
+
+  it("a switch that closes an open edit lands focus on the page survivor, not the body", async () => {
+    // The other book carries its own events: the edit's per-card opener
+    // is genuinely gone from the new book's DOM.
+    api.GET.mockImplementation(
+      (path: string, init?: { params?: { path?: { chapter_id?: string; novel_id?: string } } }) => {
+        if (
+          path === "/api/planning/novels/{novel_id}/timeline-events" &&
+          init?.params?.path?.novel_id === OTHER_NOVEL_ID
+        ) {
+          return Promise.resolve({
+            data: [
+              eventRow({
+                id: "ev-other",
+                position: 1,
+                title: "Fremdes Ufer",
+                chapter_id: null,
+                character_names: [],
+                date_label: "2290",
+              }),
+            ],
+            response: ok(),
+          });
+        }
+        return baseGet(path, init);
+      },
+    );
+    const router = await renderTimeline();
+    const cards = await screen.findAllByTestId("timeline-card");
+    fireEvent.click(within(cards[0]).getByText("Der Große Bruch"));
+    const edit = await screen.findByRole("dialog");
+    expect(document.activeElement).toBe(within(edit).getByLabelText(de["planning.crud.titleLabel"]));
+
+    await router.navigate({ to: TIMELINE_PATH, params: { novelId: OTHER_NOVEL_ID } });
+    await screen.findByText("Fremdes Ufer");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // The closed edit returns to the page that stands in the new book —
+    // never to a body its opener left behind.
+    expect(document.activeElement?.id).toBe("timeline-page");
+  });
 });
 
 describe("the sub-nav doors", () => {
