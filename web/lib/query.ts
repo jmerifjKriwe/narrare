@@ -22,7 +22,11 @@ import {
   type Novel,
   type NovelCreate,
   type Relation,
+  type RemapRead,
   type SceneAggregate,
+  type SceneUpsert,
+  type Storyboard,
+  type StoryboardChapter,
   type Suggestion,
   type TimelineEvent,
   type TimelineEventCreate,
@@ -1302,6 +1306,185 @@ export function useNovelScenes(
         isSuccess: results.every((result) => result.isSuccess),
         refetch: () => Promise.all(results.map((result) => result.refetch())),
       }) as unknown as UseQueryResult<SceneAggregate[]>,
+  });
+}
+
+// --- The storyboard reads and writes (W6 Task 4) ----------------------------
+
+/**
+ * The novel's storyboard — the same read the writing capability's tension
+ * card makes through its own hook, on the SAME key (`["planning",
+ * "storyboard", novelId]`), so the two surfaces share one cache entry and
+ * every write below refreshes both (rule 1: the coordination is the key,
+ * never an import). An answer that is not ok throws, so the cache holds
+ * either the board or the failure — never an invented empty storyboard.
+ */
+export function useStoryboard(novelId: string): UseQueryResult<Storyboard> {
+  return useQuery({
+    queryKey: ["planning", "storyboard", novelId],
+    queryFn: async () => {
+      const { data, response } = await client.GET("/api/planning/novels/{novel_id}/storyboard", {
+        params: { path: { novel_id: novelId } },
+      });
+      if (!response.ok || !data) throw new Error(`storyboard unavailable: ${response.status}`);
+      return data;
+    },
+  });
+}
+
+/** Invalidate the novel's board — the storyboard writes' shared settle. */
+function invalidateStoryboard(novelId: string): void {
+  void queryClient.invalidateQueries({ queryKey: ["planning", "storyboard", novelId] });
+}
+
+/**
+ * Moving one chapter to a stage of the current structure. The PUT answers
+ * the assignment; a refusal carries status and detail — a 422 names the
+ * unknown chapter or the stage key outside the structure, and the board's
+ * refetch (the settle) is what returns the card to its true column.
+ */
+export function useSetChapterStage(
+  novelId: string,
+): UseMutationResult<StoryboardChapter, Error, { chapterId: string; stageKey: string }> {
+  return useMutation({
+    mutationFn: async (input: { chapterId: string; stageKey: string }) => {
+      const { data, error, response } = await client.PUT(
+        "/api/planning/novels/{novel_id}/chapters/{chapter_id}/stage",
+        {
+          params: { path: { novel_id: novelId, chapter_id: input.chapterId } },
+          body: { stage_key: input.stageKey },
+        },
+      );
+      if (!response.ok || !data) {
+        throw Object.assign(new Error(`stage assignment refused: ${response.status}`), {
+          status: response.status,
+          detail: (error as { detail?: unknown } | null | undefined)?.detail,
+        });
+      }
+      return data;
+    },
+    onSettled: () => {
+      invalidateStoryboard(novelId);
+    },
+  });
+}
+
+/**
+ * The remap, both steps of the server's own contract: `confirm: false`
+ * previews the mapping without writing a row, `confirm: true` writes the
+ * assignments plus the novel setting in one transaction — exactly the
+ * previewed mapping. A preview settles without invalidating anything
+ * (nothing moved); a confirm invalidates the board. A refusal carries
+ * status and detail — a 422 names the structure id the registry does not
+ * know (`unknown structure: …`), the face Review Focus 2 pins.
+ */
+export function useRemapStoryboard(
+  novelId: string,
+): UseMutationResult<RemapRead, Error, { structureId: string; confirm: boolean }> {
+  return useMutation({
+    mutationFn: async (input: { structureId: string; confirm: boolean }) => {
+      const { data, error, response } = await client.POST("/api/planning/novels/{novel_id}/remap", {
+        params: { path: { novel_id: novelId } },
+        body: { structure_id: input.structureId, confirm: input.confirm },
+      });
+      if (!response.ok || !data) {
+        throw Object.assign(new Error(`remap refused: ${response.status}`), {
+          status: response.status,
+          detail: (error as { detail?: unknown } | null | undefined)?.detail,
+        });
+      }
+      return data;
+    },
+    onSuccess: (_data, input) => {
+      if (input.confirm) invalidateStoryboard(novelId);
+    },
+  });
+}
+
+/**
+ * The stale-aggregate answer the API's own semantics serve: the PUT has no
+ * server-side version check — two concurrent saves resolve
+ * last-writer-wins — so the check is the client's, at the save: the
+ * chapter's stamp (`version_updated_at`, touched by every aggregate write)
+ * is re-read first, and a stamp that moved since the editor's snapshot
+ * throws THIS error carrying the server's fresh copy, before any PUT
+ * crosses the wire. The face offers the fresh load or the honest
+ * overwrite; `overwrite: true` on the retry is the writer naming
+ * last-writer-wins with open eyes.
+ */
+export class SceneVersionConflict extends Error {
+  constructor(readonly server: SceneAggregate) {
+    super("the chapter's scenes changed elsewhere");
+  }
+}
+
+/** The fields of one scene the aggregate PUT carries: the whole list, in
+ *  its new order — ids the client mints for new scenes, positions implied
+ *  by the array (the server renumbers 1..N). The beats are the editor's
+ *  own guarantee (the schema's generated optional reads as the server's
+ *  default empty list; the working copy never carries `undefined`). */
+export type SceneDraft = Omit<SceneUpsert, "beats"> & { beats: string[] };
+
+/**
+ * Saving a chapter's whole scene list. The mutation is the version-stamp
+ * contract's one door: unless `overwrite`, the chapter is re-read first
+ * and a stamp that moved under the editor's snapshot refuses as
+ * `SceneVersionConflict` (and invalidates the chapter's standing entry, so
+ * the dock shows the server's copy behind the conflict face). The PUT
+ * answers the persisted aggregate. Settling invalidates the chapter's own
+ * scenes key (the fan's entry — the plan's named seam), the board (the
+ * sync statuses derive from the scenes) and the chapters list (the save
+ * advances the chapter's stamp, and the workspace's last-edited rule reads
+ * it). A refusal carries status and detail — a 422 names the doubled id,
+ * the id owned elsewhere or the status outside the lifecycle.
+ */
+export function useSaveChapterScenes(
+  novelId: string,
+): UseMutationResult<
+  SceneAggregate,
+  Error,
+  { chapterId: string; scenes: readonly SceneDraft[]; expectedVersion: string; overwrite?: boolean }
+> {
+  return useMutation({
+    mutationFn: async (input: {
+      chapterId: string;
+      scenes: readonly SceneDraft[];
+      expectedVersion: string;
+      overwrite?: boolean;
+    }) => {
+      if (!input.overwrite) {
+        const { data, response } = await client.GET(
+          "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes",
+          { params: { path: { novel_id: novelId, chapter_id: input.chapterId } } },
+        );
+        if (response.ok && data !== undefined && data.version_updated_at !== input.expectedVersion) {
+          // The server's copy is the answer the conflict face shows: hand
+          // it over, and let the standing entry re-ask so the dock reads
+          // the truth behind the face.
+          invalidateChapterScenes(input.chapterId);
+          throw new SceneVersionConflict(data);
+        }
+      }
+      const { data, error, response } = await client.PUT(
+        "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes",
+        {
+          params: { path: { novel_id: novelId, chapter_id: input.chapterId } },
+          body: { scenes: [...input.scenes] },
+        },
+      );
+      if (!response.ok || !data) {
+        throw Object.assign(new Error(`scene aggregate refused: ${response.status}`), {
+          status: response.status,
+          detail: (error as { detail?: unknown } | null | undefined)?.detail,
+        });
+      }
+      return data;
+    },
+    onSettled: (_data, _error, input) => {
+      invalidateChapterScenes(input.chapterId);
+      invalidateStoryboard(novelId);
+      void queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
+    },
   });
 }
 

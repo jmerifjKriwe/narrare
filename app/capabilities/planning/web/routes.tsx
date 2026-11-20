@@ -10,12 +10,17 @@ import { FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 import { rootRoute } from "@shell/routes/__root";
 
-// React.lazy keeps the face out of the shell's bundle: it loads as its
+// React.lazy keeps each face out of the shell's bundle: it loads as its
 // own chunk when the route opens, and the shell root's Suspense
 // boundary covers the gap.
 const TimelinePage = lazy(async () => {
   const page = await import("./TimelinePage");
   return { default: page.TimelinePage };
+});
+
+const StoryboardPage = lazy(async () => {
+  const page = await import("./StoryboardPage");
+  return { default: page.StoryboardPage };
 });
 
 /**
@@ -40,32 +45,31 @@ const setupStatusQueryOptions = queryOptions({
   },
 });
 
-/** The waiting face's route ids — the param read needs the literal. */
+/** The waiting face's route id — the param read needs the literal. */
 const PENDING_FROM = {
-  storyboard: "/novels/$novelId/planning/storyboard",
   causality: "/novels/$novelId/planning/causality",
 } as const;
 
 /**
  * The honest waiting face of a registered route whose surface lands later
- * in this wave (the storyboard is W6 Task 4, the causality strip Task 5):
- * the URL is real and the sub-nav walks here, so the page says plainly
- * that the surface is still being built and holds the door back to the
- * chronology — the wave's gap discipline, never an invented face and
- * never a redirect that would hide the address.
+ * in this wave (the causality strip is W6 Task 5): the URL is real and
+ * the sub-nav walks here, so the page says plainly that the surface is
+ * still being built and holds the door back to the chronology — the
+ * wave's gap discipline, never an invented face and never a redirect
+ * that would hide the address. The storyboard waited here until Task 4
+ * landed its own surface.
  */
-function PendingSurface({ area }: { area: "storyboard" | "causality" }) {
+function PendingSurface() {
   const t = useTranslation();
-  const { novelId } = useParams({ from: PENDING_FROM[area] });
-  const titleKey = area === "storyboard" ? "planning.sub.storyboard" : "planning.sub.causality";
-  usePageTitle(t(titleKey));
+  const { novelId } = useParams({ from: PENDING_FROM.causality });
+  usePageTitle(t("planning.sub.causality"));
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 p-6">
       <div className="max-w-sm space-y-3 rounded-[var(--radius-surface)] border border-border bg-panel p-8 text-center">
         <span className="inline-block text-muted">
-          <Icon name={area === "storyboard" ? "viewList" : "waves"} size={28} />
+          <Icon name="waves" size={28} />
         </span>
-        <h1 className="text-body font-semibold text-foreground">{t(titleKey)}</h1>
+        <h1 className="text-body font-semibold text-foreground">{t("planning.sub.causality")}</h1>
         <p className="text-meta text-muted">{t("planning.pending.note")}</p>
         <Link
           to="/novels/$novelId/planning/timeline"
@@ -79,12 +83,8 @@ function PendingSurface({ area }: { area: "storyboard" | "causality" }) {
   );
 }
 
-function StoryboardPending() {
-  return <PendingSurface area="storyboard" />;
-}
-
 function CausalityPending() {
-  return <PendingSurface area="causality" />;
+  return <PendingSurface />;
 }
 
 /**
@@ -107,9 +107,10 @@ const timelineRoute = createRoute({
 });
 
 /**
- * The storyboard's address (W6 Task 4): registered now so the sub-nav's
- * doors and the rail's active face are real from the first surface, with
- * the honest waiting face until its own task lands.
+ * The storyboard's surface (W6 Task 4): the planning capability's second
+ * addressable page — the structure switcher over the five real ids, the
+ * staged chapter columns, the stage assignment PUT, the remap's two-step
+ * contract and the scene drill-in with its stale-version conflict face.
  */
 const storyboardRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -118,7 +119,7 @@ const storyboardRoute = createRoute({
     const complete = await queryClient.ensureQueryData(setupStatusQueryOptions);
     if (!complete) throw redirect({ to: "/setup" });
   },
-  component: StoryboardPending,
+  component: StoryboardPage,
 });
 
 /**
