@@ -255,6 +255,7 @@ let structure: (typeof STRUCTURE_IDS)[number];
 let storyboardFail: boolean;
 let chaptersFail: boolean;
 let scenesFail: boolean;
+let novelFail: boolean;
 let sceneVersion: string;
 let remapStatus: number;
 let remapDetail: unknown;
@@ -276,6 +277,7 @@ function baseGet(path: string, init?: { params?: { path?: { chapter_id?: string 
     return Promise.resolve({ data: storyboardRow(structure), response: ok() });
   }
   if (path === "/api/writing/novels/{novel_id}") {
+    if (novelFail) return Promise.resolve({ data: undefined, response: ok(503) });
     return Promise.resolve({ data: NOVEL, response: ok() });
   }
   if (chaptersFail && path === "/api/writing/novels/{novel_id}/chapters") {
@@ -379,6 +381,7 @@ beforeEach(() => {
   storyboardFail = false;
   chaptersFail = false;
   scenesFail = false;
+  novelFail = false;
   sceneVersion = "2026-11-19T10:00:00Z";
   remapStatus = 0;
   remapDetail = undefined;
@@ -1151,10 +1154,11 @@ describe("the review fixes, second round", () => {
     );
   });
 
-  it("a scene is minted from crypto randomness when randomUUID is absent", async () => {
+  it("a scene is minted as a real UUID from crypto randomness when randomUUID is absent", async () => {
     // A runtime without randomUUID but with the universal getRandomValues:
-    // bytes 0..15 make the minted id a predictable hex line — Math.random
-    // could never produce it.
+    // bytes 0..15 make the minted id a predictable line — and the server's
+    // SceneUpsert.id is a UUID, so the fallback must dress the bytes as
+    // one (version 4, variant 8) or the whole add-scene flow 422s.
     vi.stubGlobal("crypto", {
       getRandomValues: (array: Uint8Array) => {
         for (let index = 0; index < array.length; index += 1) array[index] = index;
@@ -1173,7 +1177,8 @@ describe("the review fixes, second round", () => {
     const call = api.PUT.mock.calls.find(([, init]) => (init as { params?: { path?: { chapter_id?: string } } })?.params?.path?.chapter_id === "c2");
     const body = (call?.[1] as { body: { scenes: { id: string }[] } }).body;
     const added = body.scenes.find((scene) => scene.id !== "s-2-1" && scene.id !== "s-2-2");
-    expect(added?.id).toBe("scene-000102030405060708090a0b0c0d0e0f");
+    // Bytes 0..15 with the v4/variant bits set read as exactly this UUID.
+    expect(added?.id).toBe("00010203-0405-4607-8809-0a0b0c0d0e0f");
   });
 
   it("the dialog panels keep to a short viewport — long content scrolls inside the frame", async () => {
@@ -1246,6 +1251,137 @@ describe("the review fixes, second round", () => {
     await waitFor(() => expect(within(dock).getAllByTestId("drill-in-scene")).toHaveLength(2));
     await waitFor(() => expect(within(chip).getByText("3 Kapitel")).toBeTruthy());
     expect(within(chip).getByText("4 Szenen gesamt")).toBeTruthy();
+  });
+});
+
+describe("the Codacy re-analysis round", () => {
+  /** Chapter 2 selected with its dock standing. */
+  async function openSignalDock() {
+    const cards = await screen.findAllByTestId("storyboard-card");
+    fireEvent.click(within(cards[1]).getByText("Das Signal im Permafrost"));
+    const dock = await screen.findByTestId("drill-in");
+    await within(dock).findAllByTestId("drill-in-scene");
+    return dock;
+  }
+
+  it("the dock keeps to a small screen — its own list scrolls instead of clipping", async () => {
+    await renderStoryboard();
+    const dock = await openSignalDock();
+    // The mobile (sub-xl) dock carries its own height bound and scroll:
+    // the page body clips at every breakpoint, so an unbounded list would
+    // lose its tail — and the save bar — off-screen with no way to reach
+    // them. The xl: variants keep the wide-viewport contract (the dock
+    // fills the column and scrolls inside it).
+    expect(dock.className).toContain("max-h-[70vh]");
+    expect(dock.className).toContain("overflow-y-auto");
+    expect(dock.className).toContain("xl:max-h-full");
+  });
+
+  it("the conflict's fresh load retires the face — a re-edit saves checked, not into a stale conflict", async () => {
+    await renderStoryboard();
+    const dock = await openSignalDock();
+    const scenes = within(dock).getAllByTestId("drill-in-scene");
+    fireEvent.click(within(scenes[0]).getByRole("button", { name: de["planning.storyboard.editScene"] }));
+    let dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(de["planning.storyboard.purpose"]), {
+      target: { value: "Erste Antwort." },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["planning.crud.saveChanges"] }));
+
+    sceneVersion = "2026-11-19T12:00:00Z";
+    fireEvent.click(within(dock).getByRole("button", { name: de["planning.storyboard.saveAggregate"] }));
+    expect(await within(dock).findByTestId("drill-in-conflict")).toBeTruthy();
+    fireEvent.click(within(screen.getByTestId("drill-in-conflict")).getByRole("button", { name: de["planning.storyboard.conflictReload"] }));
+    await waitFor(() => expect(screen.queryByTestId("drill-in-conflict")).toBeNull());
+
+    // The next edit is a NEW save on the reloaded rows: its bar must be
+    // the honest save/discard one — the spent conflict may not stand
+    // over it (its only doors are a reload of a clean copy and an
+    // unversioned overwrite).
+    const fresh = within(dock).getAllByTestId("drill-in-scene");
+    fireEvent.click(within(fresh[0]).getByRole("button", { name: de["planning.storyboard.editScene"] }));
+    dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(de["planning.storyboard.purpose"]), {
+      target: { value: "Zweite Antwort nach dem Neu laden." },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["planning.crud.saveChanges"] }));
+    expect(screen.queryByTestId("drill-in-conflict")).toBeNull();
+    fireEvent.click(within(dock).getByRole("button", { name: de["planning.storyboard.saveAggregate"] }));
+
+    // The save runs CHECKED against the reloaded stamp — it crosses, and
+    // no conflict face returns.
+    await waitFor(() =>
+      expect(
+        api.PUT.mock.calls.some(([p]) => p === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes"),
+      ).toBe(true),
+    );
+    expect(screen.queryByTestId("drill-in-conflict")).toBeNull();
+  });
+
+  it("a failed remap confirm retries as the confirm — never back into the preview", async () => {
+    await renderStoryboard();
+    await screen.findAllByTestId("storyboard-card");
+    fireEvent.click(screen.getByRole("button", { name: literal(de["storyboard.structure.five-act"]) }));
+    fireEvent.click(within(screen.getByTestId("storyboard-remap-notice")).getByRole("button", { name: de["planning.storyboard.remapApply"] }));
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenCalledWith(
+        "/api/planning/novels/{novel_id}/remap",
+        { params: { path: { novel_id: NOVEL_ID } }, body: { structure_id: "five-act", confirm: false } },
+      ),
+    );
+
+    // The confirm leaves and fails: the retry must re-send CONFIRM, not
+    // quietly fall back to a second preview.
+    remapStatus = 503;
+    fireEvent.click(within(dialog).getByRole("button", { name: de["planning.storyboard.remapConfirm"] }));
+    const failedText = await within(dialog).findByText(de["planning.storyboard.remapError"]);
+    remapStatus = 0;
+    fireEvent.click(within(failedText.closest('[role="alert"]') as HTMLElement).getByRole("button", { name: de["planning.storyboard.retry"] }));
+
+    await waitFor(() =>
+      expect(
+        api.POST.mock.calls.filter(([, init]) => (init as { body?: { confirm?: boolean } })?.body?.confirm === true),
+      ).toHaveLength(2),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("a failed novel read names itself in the chip — the word totals never silently vanish", async () => {
+    novelFail = true;
+    await renderStoryboard();
+    await screen.findAllByTestId("storyboard-card");
+    const chip = screen.getByTestId("storyboard-progress");
+    expect(await within(chip).findByText(de["planning.storyboard.wordsUnavailable"])).toBeTruthy();
+    expect(within(chip).queryByText(/18\.260/)).toBeNull();
+    expect(within(chip).queryByText(/65\.000/)).toBeNull();
+    // The counts the chapters read does own still stand.
+    expect(within(chip).getByText("3 Kapitel")).toBeTruthy();
+  });
+
+  it("removing one of two equal beats keeps the other — the remove is by row, not by value", async () => {
+    // The server's rows carry the same beat twice (nothing in the schema
+    // forbids it — only the editor's own commit refuses new doubles) —
+    // set BEFORE the render, so the fan reads it whenever it fires.
+    const doubled = sceneAggregate("c2");
+    doubled.scenes[0].beats.push(doubled.scenes[0].beats[0]);
+    AGGREGATES.set("c2", doubled);
+    await renderStoryboard();
+    const dock = await openSignalDock();
+    expect(within(dock).getAllByText("Sonde schlägt bei 14.2 Hz aus")).toHaveLength(2);
+
+    const scenes = within(dock).getAllByTestId("drill-in-scene");
+    fireEvent.click(within(scenes[0]).getByRole("button", { name: de["planning.storyboard.editScene"] }));
+    const dialog = await screen.findByRole("dialog");
+    const removes = within(dialog).getAllByRole("button", {
+      name: de["planning.crud.removeName"].replace("{name}", "Sonde schlägt bei 14.2 Hz aus"),
+    });
+    fireEvent.click(removes[0]);
+    fireEvent.click(within(dialog).getByRole("button", { name: de["planning.crud.saveChanges"] }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    // The twin keeps its row; only the clicked one left the copy.
+    expect(within(dock).getAllByText("Sonde schlägt bei 14.2 Hz aus")).toHaveLength(1);
   });
 });
 

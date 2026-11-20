@@ -43,14 +43,18 @@ const STATUS_CHIP: Record<string, string> = {
 /** A client-minted id for a scene the draft adds: the diff treats an id
  *  no row owns as a creation, so the mint IS the create — no claim step.
  *  randomUUID preferred; a runtime without it gets the older, universal
- *  getRandomValues — 16 crypto-random bytes in hex, the same width a
- *  UUID carries. */
+ *  getRandomValues — 16 crypto-random bytes dressed as the UUID the
+ *  schema's own id field demands (`SceneUpsert.id: UUID`; a plain hex
+ *  line would 422 the whole add-scene flow). */
 function mintSceneId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
   const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return `scene-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 /** The whole list as one comparable line: the dirty check and the PUT's
@@ -194,7 +198,7 @@ export function SceneDrillIn({
     <aside
       data-testid="drill-in"
       aria-label={t("planning.storyboard.drillInTitle")}
-      className="flex w-full flex-col gap-3 rounded-[var(--radius-surface)] border border-rule bg-panel p-4 shadow-card xl:max-h-full xl:w-[22rem] xl:shrink-0 xl:overflow-y-auto"
+      className="flex max-h-[70vh] w-full flex-col gap-3 overflow-y-auto rounded-[var(--radius-surface)] border border-rule bg-panel p-4 shadow-card xl:max-h-full xl:w-[22rem] xl:shrink-0"
     >
       {/* The header — the draft's eyebrow row, chip, serif title and meta. */}
       <div className="flex flex-col gap-1 border-b border-rule pb-3">
@@ -380,7 +384,14 @@ export function SceneDrillIn({
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setDraft(null)}
+                  onClick={() => {
+                    // The copy folds onto the reloaded rows AND the spent
+                    // attempt retires with it: a stale conflict face over
+                    // the next edit would hide the honest save bar and
+                    // offer only its own unversioned overwrite.
+                    setDraft(null);
+                    saveScenes.reset();
+                  }}
                   className={`rounded border border-border px-2 py-1 text-meta font-medium text-foreground transition-colors hover:bg-surface-container ${FOCUS}`}
                 >
                   {t("planning.storyboard.conflictReload")}

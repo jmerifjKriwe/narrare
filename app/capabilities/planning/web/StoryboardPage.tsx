@@ -327,8 +327,8 @@ export function StoryboardPage() {
             className="flex flex-wrap items-center gap-2 rounded-full border border-rule bg-card px-3 py-1 text-meta text-foreground shadow-card"
           >
             <span aria-hidden="true" className="h-2 w-2 rounded-full bg-success" />
-            {novelWords !== null &&
-              (novelTarget !== null && novelTarget > 0 ? (
+            {novelWords !== null ? (
+              novelTarget !== null && novelTarget > 0 ? (
                 <>
                   <span>
                     {t("planning.storyboard.progressWords", {
@@ -344,7 +344,12 @@ export function StoryboardPage() {
                 </>
               ) : (
                 <span>{t("planning.storyboard.progressNoTarget", { words: formatNumber(novelWords) })}</span>
-              ))}
+              )
+            ) : (
+              novel.isError && (
+                <span className="font-medium text-muted">{t("planning.storyboard.wordsUnavailable")}</span>
+              )
+            )}
             {chapters.isSuccess && (
               <span className="font-medium">{t("planning.storyboard.chaptersCount", { count: chapterList.length })}</span>
             )}
