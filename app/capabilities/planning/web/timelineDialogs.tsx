@@ -14,7 +14,9 @@
  * chapters' rule), the free-text date label with its hint, the
  * description, the optional chapter link, the free-text character names
  * (committed as chips on Enter, comma or blur — plain text, no KB
- * linkage), and the manual position (empty = unordered, listed last).
+ * linkage; the pending draft rides the form's state so the dirty-close
+ * guard sees it), and the manual position (empty = unordered, listed
+ * last).
  * The create POSTs the whole writer-facing row; the edit PUTs ONLY the
  * dirtied fields — the client's mirror of the server's `model_fields_set`
  * contract, a carried null clearing the chapter link or the position
@@ -269,20 +271,26 @@ function ChapterOptions({ chapters }: { chapters: readonly Chapter[] }) {
  * chip on Enter, a comma or a blur — the draft's comma-separated way of
  * typing works unchanged — and each chip carries its own remove control.
  * A name already standing is not doubled; an empty trim commits nothing.
+ * The pending draft rides the FORM's state (`namesDraft`), not a local
+ * one, so a typed-but-uncommitted name holds the close paths like any
+ * other answer in progress — Escape no longer discards it silently.
  */
 function NamesEditor({
   names,
+  draft,
+  onDraftChange,
   onChange,
 }: {
   names: readonly string[];
+  draft: string;
+  onDraftChange: (draft: string) => void;
   onChange: (names: string[]) => void;
 }) {
   const t = useTranslation();
-  const [draft, setDraft] = useState("");
 
   function commit() {
     const name = draft.trim();
-    setDraft("");
+    onDraftChange("");
     if (name === "" || names.includes(name)) return;
     onChange([...names, name]);
   }
@@ -311,7 +319,7 @@ function NamesEditor({
         type="text"
         value={draft}
         aria-label={t("planning.crud.namesLabel")}
-        onChange={(event) => setDraft(event.target.value)}
+        onChange={(event) => onDraftChange(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === ",") {
             event.preventDefault();
@@ -326,8 +334,13 @@ function NamesEditor({
   );
 }
 
-const FORM_PANEL = "w-full max-w-sm space-y-3 rounded-lg border border-border bg-panel p-5 shadow-overlay";
-const CONFIRM_PANEL = "w-full max-w-xs space-y-2.5 rounded-lg border border-border bg-panel p-4 text-center shadow-overlay";
+/** The panels keep to the viewport — the writing family's NewBookDialog
+ *  answer: never taller than the scrim's box (100vh minus its p-4), the
+ *  overflow scrolling inside the frame on a short screen. */
+const FORM_PANEL =
+  "max-h-[calc(100vh-2rem)] w-full max-w-sm space-y-3 overflow-y-auto rounded-lg border border-border bg-panel p-5 shadow-overlay";
+const CONFIRM_PANEL =
+  "max-h-[calc(100vh-2rem)] w-full max-w-xs space-y-2.5 overflow-y-auto rounded-lg border border-border bg-panel p-4 text-center shadow-overlay";
 
 /** The confirm family's footer: the safe answer first (primary), the
  *  destructive answer beside it with the consequence on its own title. */
@@ -384,7 +397,9 @@ function ConfirmBadge({ icon }: { icon: Parameters<typeof Icon>[0]["name"] }) {
 }
 
 /** The event form's shared fields: the state a create seeds empty and an
- *  edit prefills from the row. */
+ *  edit prefills from the row — plus the names editor's pending draft:
+ *  never a field of the row (it crosses no wire), but the dirty guard
+ *  must see it or Escape would discard it silently. */
 interface EventFormState {
   title: string;
   dateLabel: string;
@@ -392,6 +407,7 @@ interface EventFormState {
   chapterId: string;
   positionInput: string;
   names: string[];
+  namesDraft: string;
 }
 
 function eventFormState(event: TimelineEvent | null): EventFormState {
@@ -402,6 +418,7 @@ function eventFormState(event: TimelineEvent | null): EventFormState {
     chapterId: event?.chapter_id ?? "",
     positionInput: event?.position == null ? "" : String(event.position),
     names: event ? [...event.character_names] : [],
+    namesDraft: "",
   };
 }
 
@@ -458,7 +475,8 @@ export function CreateEventDialog({
   const busy = create.isPending;
   const dirty =
     form.title !== "" || form.dateLabel !== "" || form.description !== "" ||
-    form.chapterId !== "" || form.positionInput !== "" || form.names.length > 0;
+    form.chapterId !== "" || form.positionInput !== "" || form.names.length > 0 ||
+    form.namesDraft.trim() !== "";
 
   const titleRef = useRef<HTMLInputElement | null>(null);
   const headingId = useId();
@@ -530,7 +548,9 @@ export function EditEventDialog({
   const [error, setError] = useState(false);
   const update = useUpdateTimelineEvent(event.novel_id);
   const busy = update.isPending;
-  const dirty = Object.keys(eventChanges(event, form)).length > 0;
+  // The draft never crosses the wire (eventChanges ignores it), but it
+  // holds the close paths: an answer in progress is a dirty form.
+  const dirty = Object.keys(eventChanges(event, form)).length > 0 || form.namesDraft.trim() !== "";
 
   const titleRef = useRef<HTMLInputElement | null>(null);
   const headingId = useId();
@@ -656,7 +676,12 @@ function EventFields({
       </div>
       <div>
         <span className="mb-1 block text-meta font-medium text-foreground">{t("planning.crud.namesLabel")}</span>
-        <NamesEditor names={form.names} onChange={(names) => onChange({ names })} />
+        <NamesEditor
+          names={form.names}
+          draft={form.namesDraft}
+          onDraftChange={(namesDraft) => onChange({ namesDraft })}
+          onChange={(names) => onChange({ names })}
+        />
       </div>
       <div>
         <label htmlFor="event-position" className="mb-1 block text-meta font-medium text-foreground">

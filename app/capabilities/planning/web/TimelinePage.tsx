@@ -11,9 +11,11 @@
  *   dashed „undatiertes Ereignis anlegen" placeholder as its last card.
  * - The cards carry only real fields: the free-text date (mono) or the
  *   honest „Kein Datum", the title, the description excerpt, the
- *   free-text name chips and the chapter door-chip — a chapter that no
- *   longer resolves is no door at all („Kein Kapitel", never a dead
- *   link; the model SET NULLs on the server, and a stale list must not
+ *   free-text name chips and the chapter chip — plain text naming the
+ *   chapter, never a link: the workspace route carries no chapter param,
+ *   and a door that lands wherever the workspace last stood is a
+ *   half-truth (a chapter that no longer resolves says „Kein Kapitel";
+ *   the model SET NULLs on the server, and a stale list must not
  *   out-lie it). The draft's invented relative-time badges („Vor 9 J."),
  *   the „Entwurf" badge (no field carries it) and the bottom PDF/export
  *   dock (no backend) are not ported.
@@ -37,7 +39,7 @@
  * The page reads the real API through the shell's query seam and imports
  * no other capability (rule 1).
  */
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { useTranslation } from "@shell/lib/i18n";
@@ -118,9 +120,10 @@ export function TimelinePage() {
   const ordered = visible.filter((event) => event.position !== null);
   const unordered = visible.filter((event) => event.position === null);
 
-  // The chapter door resolves through the chapters list — a chapter_id
-  // nothing resolves to is no door at all (SET NULL is the server's own
-  // answer; a stale list must not out-lie it with a dead link).
+  // The chapter chip's words resolve through the chapters list — a
+  // chapter_id nothing resolves to is not named at all (SET NULL is the
+  // server's own answer; a stale list must not out-lie it with a dead
+  // link).
   const chapterById = useMemo(
     () => new Map(chapterList.map((chapter) => [chapter.id, chapter])),
     [chapterList],
@@ -128,9 +131,10 @@ export function TimelinePage() {
 
   // The scene-status counters: every real status of the lifecycle, counted
   // across the whole fan. Only a complete, error-free fan may count — a
-  // half-current novel invents numbers otherwise.
+  // chapters outage empties the list and the vacuous fan would read as
+  // „0 Szenen", and a half-current novel invents numbers otherwise.
   const counters = useMemo(() => {
-    if (!scenes.isSuccess || scenes.data === undefined) return null;
+    if (!chapters.isSuccess || !scenes.isSuccess || scenes.data === undefined) return null;
     let complete = 0;
     let inProgress = 0;
     let planned = 0;
@@ -143,7 +147,7 @@ export function TimelinePage() {
     }
     const withoutDate = eventList.filter((event) => event.date_label === "").length;
     return { complete, inProgress, planned, withoutDate };
-  }, [scenes.isSuccess, scenes.data, eventList]);
+  }, [chapters.isSuccess, scenes.isSuccess, scenes.data, eventList]);
 
   const pending = events.isPending;
   const failed = events.isError;
@@ -170,9 +174,9 @@ export function TimelinePage() {
   }
 
   /** One event card — the draft's geometry: the mono date over the serif
-   *  title and the clamped excerpt, the names and the chapter door in the
-   *  foot. The card's body is the edit affordance; the door stands outside
-   *  it (an anchor never nests in a button). */
+   *  title and the clamped excerpt, the names and the chapter chip in the
+   *  foot. The card's body is the edit affordance; the chip stands outside
+   *  it (a control never nests in a button). */
   function card(event: TimelineEvent, unorderedCard: boolean) {
     const chapter = event.chapter_id === null ? undefined : chapterById.get(event.chapter_id);
     const openerId = `timeline-card-${event.id}`;
@@ -215,17 +219,15 @@ export function TimelinePage() {
             ))}
           </span>
           {chapter !== undefined ? (
-            <Link
-              to="/novels/$novelId"
-              params={{ novelId }}
-              title={chapterChipWords(chapter.position, unorderedCard)}
-              className={`rounded-[var(--radius-control)] bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/20 ${FOCUS}`}
-            >
+            // Plain text, not a door: the workspace route knows no chapter
+            // param, and a link that lands anywhere but the chapter it
+            // names would be a half-true navigation control.
+            <span className="rounded-[var(--radius-control)] bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
               {chapterChipWords(chapter.position, unorderedCard)}
-            </Link>
+            </span>
           ) : event.chapter_id !== null && chapters.isError ? (
-            // The row carries a link the unreadable list cannot name —
-            // that is unknown, not absent, and never a dead door.
+            // The row names a chapter the unreadable list cannot resolve —
+            // that is unknown, not absent, and never a guess.
             <span className="rounded-[var(--radius-control)] bg-surface-container px-1.5 py-0.5 text-muted">
               {t("planning.timeline.chapterUnknown")}
             </span>
@@ -298,7 +300,10 @@ export function TimelinePage() {
             honest disabled gap: no draft drew its face. */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1.5 rounded-[var(--radius-control)] border border-rule bg-card px-2.5 py-1 shadow-card">
+            <span
+              data-testid="timeline-name-filters"
+              className="flex flex-wrap items-center gap-1.5 rounded-[var(--radius-control)] border border-rule bg-card px-2.5 py-1 shadow-card"
+            >
               <span className="text-muted">
                 <Icon name="tune" size={14} />
               </span>
@@ -442,11 +447,12 @@ export function TimelinePage() {
                   </span>
                 </div>
               ) : (
-                scenes.isError && (
-                  // A failed fan-out invents no numbers: the muted outage
-                  // note stands where the counters stand, named by the
-                  // region's own label, and its retry re-asks the fan in
-                  // place — no remount needed.
+                (scenes.isError || chapters.isError) && (
+                  // A failed fan-out — or a chapters outage, whose empty
+                  // fan would read as zeros — invents no numbers: the
+                  // muted outage note stands where the counters stand,
+                  // named by the region's own label, and its retry re-asks
+                  // the chapters and the fan in place — no remount needed.
                   <div
                     data-testid="timeline-counters-outage"
                     className="flex items-center gap-2 text-meta text-muted"
@@ -460,6 +466,7 @@ export function TimelinePage() {
                     <button
                       type="button"
                       onClick={() => {
+                        void chapters.refetch();
                         void scenes.refetch();
                       }}
                       className={`font-medium text-primary underline underline-offset-2 transition-colors hover:text-foreground ${FOCUS}`}
@@ -519,7 +526,7 @@ export function TimelinePage() {
                     type="button"
                     id="timeline-new-undated"
                     onClick={() => setDialog({ kind: "create", openerId: "timeline-new-undated" })}
-                    className="flex min-h-28 flex-col items-center justify-center gap-1 rounded-[var(--radius-surface)] border border-dashed border-border bg-surface-container-low/50 p-6 text-center text-muted transition-colors hover:border-outline ${FOCUS}"
+                    className={`flex min-h-28 flex-col items-center justify-center gap-1 rounded-[var(--radius-surface)] border border-dashed border-border bg-surface-container-low/50 p-6 text-center text-muted transition-colors hover:border-outline ${FOCUS}`}
                   >
                     <span className="text-outline">
                       <Icon name="plus" size={22} />
