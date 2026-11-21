@@ -549,24 +549,15 @@ export function StoryboardPage() {
         </div>
       )}
 
-      {/* The route-leave guard (#928) — the dirty copy's second trigger:
-          any navigation away asks the same confirm before the copy folds
-          behind a silent route change. The scrim does not dismiss; focus
-          lands on the safe answer and returns to the page on a cancel. */}
-      {blocker.status === "blocked" && selectedId !== null && (
-        <DiscardDraftDialog
-          chapterTitle={selectedTitle}
-          openerId="storyboard-page"
-          onCancel={() => blocker.reset()}
-          onDiscard={() => blocker.proceed()}
-        />
-      )}
-
       {/* The dirty-copy guard — a confirmed switch folds the copy into
-          the new chapter's clean rows; a cancel keeps both standing. It
-          stands down while a route leave is blocked, so the two guards
-          never stack into a second dialog over the first. */}
-      {blocker.status !== "blocked" && switchGuardId !== null && selectedId !== null && (
+          the new chapter's clean rows; a cancel keeps both standing.
+          It is the standing ask: a route leave fired while it stands is
+          held by the leave blocker and asks after it — the guards queue,
+          one dialog at a time, never stacked (#928's pin). A confirm
+          that folds the copy while a leave stands held releases that
+          leave too: the loss it waited to name was already given, and a
+          fresh leave from the folded dock walks clean. */}
+      {switchGuardId !== null && selectedId !== null && (
         <DiscardDraftDialog
           chapterTitle={selectedTitle}
           openerId={`storyboard-select-${switchGuardId}`}
@@ -574,7 +565,23 @@ export function StoryboardPage() {
           onDiscard={() => {
             setSelectedId(switchGuardId);
             setSwitchGuardId(null);
+            if (blocker.status === "blocked") blocker.reset();
           }}
+        />
+      )}
+
+      {/* The route-leave guard (#928) — the dirty copy's second trigger:
+          any navigation away asks the same confirm before the copy folds
+          behind a silent route change. The scrim does not dismiss; focus
+          lands on the safe answer and returns to the page on a cancel.
+          It stands down while the chapter-switch guard's own ask stands
+          over the page — the held leave asks once that answer is given. */}
+      {blocker.status === "blocked" && switchGuardId === null && selectedId !== null && (
+        <DiscardDraftDialog
+          chapterTitle={selectedTitle}
+          openerId="storyboard-page"
+          onCancel={() => blocker.reset()}
+          onDiscard={() => blocker.proceed()}
         />
       )}
 
