@@ -288,13 +288,13 @@ def test_the_real_checkout_discovers_the_rebuilt_suites(
 
     W0 demolished the capability UIs and their suites with them; the
     rebuild brings them back screen by screen — setup's suite was the
-    first one home (W2), writing's shelf suite joined it (W3), and the
-    knowledge suite is third (W5). The expectation names the rebuilt set
-    as it stands and grows with each wave's suite; the bare set-equality
-    failure will say what drifted.
+    first one home (W2), writing's shelf suite joined it (W3), knowledge's
+    is fourth-generation (W5), and planning's rides W6. The expectation
+    names the rebuilt set as it stands and grows with each wave's suite;
+    the bare set-equality failure will say what drifted.
     """
     monkeypatch.chdir(REPO_ROOT)
-    assert known_capabilities() == {"knowledge", "setup", "writing"}
+    assert known_capabilities() == {"knowledge", "planning", "setup", "writing"}
 
 
 def test_a_shared_surface_change_in_the_interim_owes_nothing(
