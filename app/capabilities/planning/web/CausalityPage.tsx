@@ -12,10 +12,12 @@
  *   draft's invented per-scene word counts, lock states and phase labels
  *   are not ported (no field carries them).
  * - The connectors say exactly what the fields support: „Erzwingt"
- *   between a scene and its successor, „Kapitel-Übergang" between two
- *   chapters that both carry scenes — without the draft's invented
- *   transition sentence. A chapter whose fan answers no scenes stands
- *   with its label card alone; no arrow points into emptiness.
+ *   between a scene and its successor, „Kapitel-Übergang" into a chapter
+ *   whose IMMEDIATELY preceding rendered group bears scenes — an empty
+ *   chapter between two scene-bearing ones is a break, and no arrow
+ *   crosses it — without the draft's invented transition sentence. A
+ *   chapter whose fan answers no scenes stands with its label card
+ *   alone; no arrow points into emptiness.
  * - The header chips derive from real counts: chapters, scenes, and the
  *   gap count (a scene missing its conflict or its resolution) — a
  *   gapless chain reads as closed, an open one names its count. The
@@ -33,13 +35,13 @@
  * no other capability (rule 1).
  */
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { Fragment, useMemo, type ReactNode } from "react";
 
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
 import { useChaptersQuery, useNovelScenes } from "@shell/lib/query";
 import { FOCUS } from "@shell/ui/card";
-import { Icon } from "@shell/ui/icons";
+import { Icon, type IconName } from "@shell/ui/icons";
 
 import type { Chapter, SceneAggregate } from "@shell/lib/api/client";
 
@@ -73,6 +75,45 @@ function countGaps(chapters: readonly ChainChapter[]): number {
     0,
   );
 }
+
+/** The methodology row's three boxes — the draft's bento on one config:
+ *  the diagnostics box's `footer` renders the real gap count (green at
+ *  zero, warning otherwise), the rule box's the craft rule, the third box
+ *  in the draft has none. (The catalog-key fields are named `title` and
+ *  `body` — a `…Key` field name trips the secret scanner's generic
+ *  api-key rule.) */
+const METHODOLOGY: readonly {
+  icon: IconName;
+  title: MessageKey;
+  body: MessageKey;
+  footer?: (t: (key: MessageKey, params?: Record<string, string | number>) => string, gaps: number) => ReactNode;
+}[] = [
+  {
+    icon: "hub",
+    title: "planning.causality.bento1Title",
+    body: "planning.causality.bento1Body",
+    footer: (t) => (
+      <div className="text-[10px] font-bold uppercase tracking-wider text-primary">
+        {t("planning.causality.bento1Rule")}
+      </div>
+    ),
+  },
+  {
+    icon: "checkCircle",
+    title: "planning.causality.bento2Title",
+    body: "planning.causality.bento2Body",
+    footer: (t, gaps) => (
+      <div className={`text-[10px] font-bold uppercase tracking-wider ${gaps === 0 ? "text-success" : "text-warning"}`}>
+        {t("planning.causality.gapStatus", { count: gaps })}
+      </div>
+    ),
+  },
+  {
+    icon: "historyEdu",
+    title: "planning.causality.bento3Title",
+    body: "planning.causality.bento3Body",
+  },
+];
 
 export function CausalityPage() {
   const t = useTranslation();
@@ -206,13 +247,17 @@ export function CausalityPage() {
   /** One chapter group — the draft's label card beside its scene chain:
    *  the chapter number, its title (an empty one says so), the scene
    *  count, and the scenes in the server's own order with the connectors
-   *  between them. */
-  function chapterGroup(entry: ChainChapter, scenesBefore: number) {
+   *  between them. The transition stands only where the chain actually
+   *  continues across the crossing: the IMMEDIATELY preceding rendered
+   *  group must bear scenes — an empty chapter between two scene-bearing
+   *  ones is a break, and no arrow claims a forcing the empty group does
+   *  not carry. */
+  function chapterGroup(entry: ChainChapter, precededByScenes: boolean) {
     const title =
       entry.chapter.title.trim() === "" ? t("planning.crud.untitledChapter") : entry.chapter.title;
     return (
-      <>
-        {entry.scenes.length > 0 && scenesBefore > 0 && chapterTransition()}
+      <Fragment key={entry.chapter.id}>
+        {entry.scenes.length > 0 && precededByScenes && chapterTransition()}
         <section
           data-testid="causality-chapter"
           aria-label={`${t("planning.storyboard.chapterCard", { position: entry.chapter.position + 1 })}: ${title}`}
@@ -238,7 +283,7 @@ export function CausalityPage() {
             </div>
           ))}
         </section>
-      </>
+      </Fragment>
     );
   }
 
@@ -397,13 +442,15 @@ export function CausalityPage() {
                 </div>
                 {/* The chain's state: closed where every scene answers,
                     named by its gap count where it doesn't — derived from
-                    the fields, never dressed as whole. */}
+                    the fields, never dressed as whole. The dot carries the
+                    state in color (the draft's own chip: state dot, plain
+                    on-surface text — a graphic needs 3:1, and the words
+                    stay readable); the warning tone on 12px text would
+                    miss the contrast floor on this chip's surface. */}
                 {gaps !== null && (
                   <div
                     data-testid="causality-chain"
-                    className={`flex items-center gap-1.5 rounded-[var(--radius-control)] bg-surface-container px-2.5 py-1 text-meta shadow-sm ${
-                      gaps === 0 ? "text-foreground" : "text-warning"
-                    }`}
+                    className="flex items-center gap-1.5 rounded-[var(--radius-control)] bg-surface-container px-2.5 py-1 text-meta text-foreground shadow-sm"
                   >
                     <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${gaps === 0 ? "bg-success" : "bg-warning"}`} />
                     <span className="font-medium">
@@ -439,12 +486,9 @@ export function CausalityPage() {
               className="w-full overflow-x-auto pb-2"
             >
               <div className="inline-flex min-w-max items-stretch gap-3 pr-3">
-                {chain.map((entry, index) => {
-                  const scenesBefore = chain
-                    .slice(0, index)
-                    .reduce((sum, standing) => sum + standing.scenes.length, 0);
-                  return chapterGroup(entry, scenesBefore);
-                })}
+                {chain.map((entry, index) =>
+                  chapterGroup(entry, index > 0 && (chain[index - 1]?.scenes.length ?? 0) > 0),
+                )}
               </div>
             </div>
 
@@ -454,45 +498,23 @@ export function CausalityPage() {
               data-testid="causality-bento"
               className="grid grid-cols-1 gap-3 pt-1 md:grid-cols-3"
             >
-              <div className="flex flex-col justify-between gap-2 rounded-[var(--radius-surface)] bg-card p-3.5 shadow-card">
-                <div className="flex items-start gap-2.5">
-                  <span aria-hidden="true" className="text-primary">
-                    <Icon name="hub" size={20} />
-                  </span>
-                  <div className="flex flex-col gap-1">
-                    <h3 className="text-label font-semibold text-foreground">{t("planning.causality.bento1Title")}</h3>
-                    <p className="text-meta leading-relaxed text-muted">{t("planning.causality.bento1Body")}</p>
+              {METHODOLOGY.map(({ icon, title, body, footer }) => (
+                <div
+                  key={title}
+                  className="flex flex-col justify-between gap-2 rounded-[var(--radius-surface)] bg-card p-3.5 shadow-card"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <span aria-hidden="true" className="text-primary">
+                      <Icon name={icon} size={20} />
+                    </span>
+                    <div className="flex flex-col gap-1">
+                      <h3 className="text-label font-semibold text-foreground">{t(title)}</h3>
+                      <p className="text-meta leading-relaxed text-muted">{t(body)}</p>
+                    </div>
                   </div>
+                  {footer?.(t, gaps ?? 0)}
                 </div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-primary">
-                  {t("planning.causality.bento1Rule")}
-                </div>
-              </div>
-              <div className="flex flex-col justify-between gap-2 rounded-[var(--radius-surface)] bg-card p-3.5 shadow-card">
-                <div className="flex items-start gap-2.5">
-                  <span aria-hidden="true" className="text-primary">
-                    <Icon name="checkCircle" size={20} />
-                  </span>
-                  <div className="flex flex-col gap-1">
-                    <h3 className="text-label font-semibold text-foreground">{t("planning.causality.bento2Title")}</h3>
-                    <p className="text-meta leading-relaxed text-muted">{t("planning.causality.bento2Body")}</p>
-                  </div>
-                </div>
-                <div className={`text-[10px] font-bold uppercase tracking-wider ${gaps === 0 ? "text-success" : "text-warning"}`}>
-                  {t("planning.causality.gapStatus", { count: gaps ?? 0 })}
-                </div>
-              </div>
-              <div className="flex flex-col justify-between gap-2 rounded-[var(--radius-surface)] bg-card p-3.5 shadow-card">
-                <div className="flex items-start gap-2.5">
-                  <span aria-hidden="true" className="text-primary">
-                    <Icon name="historyEdu" size={20} />
-                  </span>
-                  <div className="flex flex-col gap-1">
-                    <h3 className="text-label font-semibold text-foreground">{t("planning.causality.bento3Title")}</h3>
-                    <p className="text-meta leading-relaxed text-muted">{t("planning.causality.bento3Body")}</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
