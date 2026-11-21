@@ -692,3 +692,25 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
     expect(catalogs.de["knowledge.crud.fromRequired"]).toContain("Wähle");
   });
 });
+
+describe("the panels' viewport law (#926)", () => {
+  it("the form panel keeps to a short viewport — the overflow scrolls inside the frame", () => {
+    const harnessEdit = harness((close) => <EditEntityDialog entity={MAYA} openerId="opener" onClose={close} />);
+    mount(harnessEdit);
+    openDialog();
+    const form = screen.getByRole("dialog");
+    expect(form.className).toContain("max-h-[calc(100vh-2rem)]");
+    expect(form.className).toContain("overflow-y-auto");
+  });
+
+  it("the confirm panel keeps to a short viewport too", () => {
+    const harnessDelete = harness((close) => (
+      <DeleteEntityDialog entity={MAYA} relationCount={2} openerId="opener" onClose={close} />
+    ));
+    mount(harnessDelete);
+    openDialog();
+    const confirm = screen.getByRole("alertdialog");
+    expect(confirm.className).toContain("max-h-[calc(100vh-2rem)]");
+    expect(confirm.className).toContain("overflow-y-auto");
+  });
+});

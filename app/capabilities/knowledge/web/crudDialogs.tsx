@@ -349,8 +349,14 @@ function ValidationLine({ message }: { message: string }) {
   );
 }
 
-const FORM_PANEL = "w-full max-w-sm space-y-3 rounded-lg border border-border bg-panel p-5 shadow-overlay";
-const CONFIRM_PANEL = "w-full max-w-xs space-y-2.5 rounded-lg border border-border bg-panel p-4 text-center shadow-overlay";
+/** The panels' viewport law, the writing family's NewBookDialog answer:
+ *  never taller than the scrim's box (100vh minus its p-4), the overflow
+ *  scrolling inside the frame on a short screen (#926 — the planning
+ *  timeline family's own fix, the identical unconstrained strings). */
+const FORM_PANEL =
+  "max-h-[calc(100vh-2rem)] w-full max-w-sm space-y-3 overflow-y-auto rounded-lg border border-border bg-panel p-5 shadow-overlay";
+const CONFIRM_PANEL =
+  "max-h-[calc(100vh-2rem)] w-full max-w-xs space-y-2.5 overflow-y-auto rounded-lg border border-border bg-panel p-4 text-center shadow-overlay";
 
 /** The confirm family's footer: the safe answer first (primary), the
  *  destructive answer beside it with the consequence on its own title. */
