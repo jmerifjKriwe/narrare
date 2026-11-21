@@ -176,9 +176,15 @@ function FormHeader({
   );
 }
 
-const FORM_PANEL = "w-full max-w-sm space-y-3 rounded-lg border border-border bg-panel p-5 shadow-overlay";
-const CONFIRM_PANEL = "w-full max-w-xs space-y-2.5 rounded-lg border border-border bg-panel p-4 text-center shadow-overlay";
-const REMAP_PANEL = "w-full max-w-md space-y-3 rounded-lg border border-border bg-panel p-5 shadow-overlay";
+/** The panels' viewport law, the writing family's NewBookDialog answer:
+ *  never taller than the scrim's box (100vh minus its p-4), the overflow
+ *  scrolling inside the frame on a short screen. */
+const FORM_PANEL =
+  "max-h-[calc(100vh-2rem)] w-full max-w-sm space-y-3 overflow-y-auto rounded-lg border border-border bg-panel p-5 shadow-overlay";
+const CONFIRM_PANEL =
+  "max-h-[calc(100vh-2rem)] w-full max-w-xs space-y-2.5 overflow-y-auto rounded-lg border border-border bg-panel p-4 text-center shadow-overlay";
+const REMAP_PANEL =
+  "max-h-[calc(100vh-2rem)] w-full max-w-md space-y-3 overflow-y-auto rounded-lg border border-border bg-panel p-5 shadow-overlay";
 
 // --- The remap dialog -------------------------------------------------------
 
@@ -217,6 +223,10 @@ export function RemapDialog({
   const t = useTranslation();
   const [preview, setPreview] = useState<RemapRead | null>(null);
   const [failed, setFailed] = useState<{ status?: number } | null>(null);
+  // Which step a failure belongs to: a failed CONFIRM must retry as the
+  // confirm (the mode-preserving retry the dock's save speaks) — falling
+  // back to a fresh preview would quietly drop the writer's answer.
+  const [failedConfirm, setFailedConfirm] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const remap = useRemapStoryboard(novelId);
 
@@ -240,6 +250,7 @@ export function RemapDialog({
           }
         },
         onError: (error) => {
+          setFailedConfirm(confirm);
           setFailed({ status: (error as { status?: number }).status });
         },
       },
@@ -320,7 +331,7 @@ export function RemapDialog({
         </p>
       )}
       {failed !== null && !unknownStructure && (
-        <ErrorLine message={t("planning.storyboard.remapError")} onRetry={() => run(false)} />
+        <ErrorLine message={t("planning.storyboard.remapError")} onRetry={() => run(failedConfirm)} />
       )}
       <div className="flex items-center justify-end gap-2 border-t border-rule pt-3">
         <button
@@ -355,7 +366,9 @@ export function RemapDialog({
 
 /** The beats editor (the names box's pattern): the input commits one beat
  *  on Enter, a comma or a blur, and each beat carries its own remove
- *  control. A beat already standing is not doubled; an empty trim commits
+ *  control — by ROW, so two equal strings keep their twins (the server's
+ *  rows may carry doubles; only this editor's commit refuses new ones).
+ *  A beat already standing is not doubled; an empty trim commits
  *  nothing. */
 function BeatsEditor({
   beats,
@@ -387,7 +400,7 @@ function BeatsEditor({
             <button
               type="button"
               aria-label={t("planning.crud.removeName", { name: beat })}
-              onClick={() => onChange(beats.filter((standing) => standing !== beat))}
+              onClick={() => onChange(beats.filter((_, index) => index !== at))}
               className={`rounded p-0.5 text-muted transition-colors hover:text-danger ${FOCUS}`}
             >
               <Icon name="cross" size={12} />

@@ -316,14 +316,22 @@ export function StoryboardPage() {
             </button>
           </div>
           {/* The word-total chip — the novel's real field, no invented
-              target where none stands. */}
+              target where none stands. The chapter and scene counts stand
+              only once the chapters read has ANSWERED: a pending or
+              failed read is its own face (the scenes' "unavailable"),
+              never the "0 Kapitel / 0 Szenen" of a novel it never heard
+              back from — an empty fan cannot tell an empty novel from a
+              broken list. */}
           <div
             data-testid="storyboard-progress"
             className="flex flex-wrap items-center gap-2 rounded-full border border-rule bg-card px-3 py-1 text-meta text-foreground shadow-card"
           >
-            <span aria-hidden="true" className="h-2 w-2 rounded-full bg-success" />
-            {novelWords !== null &&
-              (novelTarget !== null && novelTarget > 0 ? (
+            <span
+              aria-hidden="true"
+              className={`h-2 w-2 rounded-full ${novel.isError ? "bg-outline" : "bg-success"}`}
+            />
+            {novelWords !== null ? (
+              novelTarget !== null && novelTarget > 0 ? (
                 <>
                   <span>
                     {t("planning.storyboard.progressWords", {
@@ -339,16 +347,21 @@ export function StoryboardPage() {
                 </>
               ) : (
                 <span>{t("planning.storyboard.progressNoTarget", { words: formatNumber(novelWords) })}</span>
-              ))}
-            {!chapters.isError && (
+              )
+            ) : (
+              novel.isError && (
+                <span className="font-medium text-muted">{t("planning.storyboard.wordsUnavailable")}</span>
+              )
+            )}
+            {chapters.isSuccess && (
               <span className="font-medium">{t("planning.storyboard.chaptersCount", { count: chapterList.length })}</span>
             )}
-            {scenesTotal !== null ? (
+            {scenesTotal !== null && chapters.isSuccess ? (
               <span className="font-medium text-muted">
                 {t("planning.storyboard.scenesTotal", { count: scenesTotal })}
               </span>
             ) : (
-              scenes.isError && (
+              (scenes.isError || chapters.isError) && (
                 <span className="font-medium text-muted">{t("planning.storyboard.scenesUnavailable")}</span>
               )
             )}
@@ -487,15 +500,19 @@ export function StoryboardPage() {
               )}
             </div>
           </div>
-          {/* The drill-in — the selected chapter's scene aggregate. */}
+          {/* The drill-in — the selected chapter's scene aggregate. Its
+              outage face covers the chapters read too: without the list
+              the fan cannot arm, and the dock would wait on a load that
+              cannot come — so the retry re-fetches both. */}
           <div className="shrink-0 p-4 pt-0 xl:h-full xl:overflow-hidden xl:p-4 xl:pl-0">
             <SceneDrillIn
               novelId={novelId}
               chapter={boardChapters.find((chapter) => chapter.chapter_id === selectedId) ?? null}
               aggregate={scenes.data?.find((entry) => entry.chapter_id === selectedId)}
-              scenesFailed={scenes.isError}
+              scenesFailed={scenes.isError || chapters.isError}
               onRetryScenes={() => {
                 void scenes.refetch();
+                void chapters.refetch();
               }}
               onDirtyChange={handleDirtyChange}
             />
