@@ -184,8 +184,8 @@ roadmap's design-debt section.
 | Theme and language | Light, dark or system; three languages, du or Sie | `live` | `0` |
 | Prompt overrides (PROMPT-001/002) | Every prompt editable, with a diff against the shipped one | `backend` | `1` |
 | Prompt variables and preview (PROMPT-003) | See what a prompt renders before it runs | `designed` | `1` |
-| Command palette (⌘K) | Every action by name, from anywhere | `designed` | `1` |
-| Help centre | The manual inside the app, per surface | `designed` | `1` |
+| Command palette (⌘K) | Every action by name, from anywhere | `designed` | `2` |
+| Help centre | The manual inside the app, per surface | `designed` | `2` |
 | Shortcut remapping (SET-004) | Bind keys to actions, with conflict resolution | `later` | `later` |
 
 ## Analytics and cost

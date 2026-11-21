@@ -77,6 +77,10 @@ usable without touching an API or a `.env` file.
   the graph page), then the free chat with streaming and the prose sink in the
   workspace dock. The design is
   [`2026-11-20-assistant-sessions-design.md`](docs/superpowers/specs/2026-11-20-assistant-sessions-design.md).
+- **The rebuild's two loose doors.** The re-embed action the embedding-mismatch
+  face still owes, and the activity reading — `GET /api/writing/activity` answers
+  words per day, the streak and the goal, and no surface shows it. One small wave
+  each, no new contract.
 
 **Not in this phase, though it looked like it:** the command palette and the help
 centre. The palette draft is universal search — scenes, canon and events beside the
@@ -104,7 +108,7 @@ because eleven analysis reports must not become eleven schemas.
 | 2.5 | Interchange | DOCX, Scrivener and ePub in; PDF, ePub and DOCX out, downloaded from the browser | Import studio, export and typesetting |
 | 2.6 | Series | A series owns canon and voice; volumes share them | Series architecture, cross-volume generation and drift |
 | 2.7 | Notes | A scratchpad outside every novel | Notes |
-| 2.8 | Stats and cost | Read endpoints over activity and the model-call audit | Writing stats, cost view |
+| 2.8 | Stats and cost | One read endpoint over the model-call audit; the activity read already exists, and Phase 1 gives it a surface | Cost view, per-task spend |
 | 2.9 | Command and search | Fill the generated command registry (it exists and is empty) from each capability's actions, and add one read endpoint that searches scenes, canon and events | The command palette, and every command-only action after it |
 | 2.10 | Help content | A renderer over the per-capability help files that already exist, with coverage visible | The help centre |
 
