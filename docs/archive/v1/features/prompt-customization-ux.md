@@ -293,11 +293,11 @@ Neue Schlüssel in `packages/i18n/messages/en/studio.json` unter `settings.ai.pr
 
 ## Related Features
 
-- [PROMPT-001](../prompts/PROMPT-001-file-overrides.md) — File-based Prompt Overrides (Basis)
-- [PROMPT-002](../prompts/PROMPT-002-db-templates.md) — User DB Prompt Templates (Basis)
-- [ONBOARD-001](../onboarding-user-guide.md) — Variablen-Erklärung kann Tour-Step sein
+- [PROMPT-001](prompts/PROMPT-001-file-overrides.md) — File-based Prompt Overrides (Basis)
+- [PROMPT-002](prompts/PROMPT-002-db-templates.md) — User DB Prompt Templates (Basis)
+- [ONBOARD-001](onboarding-user-guide.md) — Variablen-Erklärung kann Tour-Step sein
 - [SET-004](../settings/SET-004-provider-config.md) — AI Provider Configuration (Settings-Kontext)
-- [INFRA-002](../infra/INFRA-002-prompt-system.md) — Unified Prompt System (Prompt-Architektur)
+- [INFRA-002](infra/INFRA-002-prompt-system.md) — Unified Prompt System (Prompt-Architektur)
 
 ## Status & History
 

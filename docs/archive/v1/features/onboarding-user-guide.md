@@ -210,11 +210,11 @@ Nicht anwendbar — keine KI-Ladezustände.
 
 ## Related Features
 
-- [SETUP-001](../setup/SETUP-001-setup-wizard.md) — Setup Wizard (Voraussetzung)
-- [SETUP-002](../setup/SETUP-002-demo-content.md) — Demo Projects (bestehende 3 Demos)
-- [SETUP-004](../setup/SETUP-004-provider-config.md) — AI Provider Configuration
-- [WRITE-007](../writing/WRITE-007-inline-suggestions.md) — GhostText-Onboarding-Integration
-- [CHAT-001](../chat/CHAT-001-free-form-chat.md) — Freier Assistent (Tour-Step)
+- [SETUP-001](setup/SETUP-001-setup-wizard.md) — Setup Wizard (Voraussetzung)
+- [SETUP-002](setup/SETUP-002-demo-content.md) — Demo Projects (bestehende 3 Demos)
+- [SETUP-004](setup/SETUP-004-provider-config.md) — AI Provider Configuration
+- [WRITE-007](writing/WRITE-007-inline-suggestions.md) — GhostText-Onboarding-Integration
+- [CHAT-001](chat/CHAT-001-free-form-chat.md) — Freier Assistent (Tour-Step)
 
 ## Status & History
 

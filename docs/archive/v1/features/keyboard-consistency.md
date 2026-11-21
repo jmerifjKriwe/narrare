@@ -193,10 +193,10 @@ Keine spezifischen Fehlerfälle — Keyboard-Handler haben keinen Backend-Status
 
 ## Related Features
 
-- [ONBOARD-001](../onboarding-user-guide.md) — Tour kann Shortcuts erwähnen
-- [SET-001](../settings/SET-001-user-settings.md) — Shortcuts-Liste in Settings
-- [WRITE-007](../writing/WRITE-007-inline-suggestions.md) — GhostText Tab-Verhalten
-- [CHAT-001](../chat/CHAT-001-free-form-chat.md) — Session Chat Enter-Verhalten
+- [ONBOARD-001](onboarding-user-guide.md) — Tour kann Shortcuts erwähnen
+- [SET-001](settings/SET-001-user-settings.md) — Shortcuts-Liste in Settings
+- [WRITE-007](writing/WRITE-007-inline-suggestions.md) — GhostText Tab-Verhalten
+- [CHAT-001](chat/CHAT-001-free-form-chat.md) — Session Chat Enter-Verhalten
 
 ## Status & History
 

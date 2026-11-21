@@ -108,28 +108,32 @@ novel is one click away and a blank one is a title field. Nothing needs configur
 first: the default provider is a deterministic stand-in, so a first run needs no key
 and no `.env`.
 
-To write with a real model, open Settings → Providers and add an OpenAI-compatible
-endpoint; each task — the continuation, the chat, the extraction, the check — can be
-pointed at its own profile. `.env` still works for the whole process, which is what a
-headless run wants.
+To write with a real model, add an OpenAI-compatible endpoint as a provider profile;
+each task — the continuation, the chat, the extraction, the check — can be pointed at
+its own profile. The settings screen that makes this a form is Phase 1 of the
+[roadmap](roadmap.md); until then `.env` configures the whole process, which is what a
+headless run wants anyway.
 
 ## Status
 
 Pre-1.0 and moving. The foundation is in place: provider profiles and their per-task
-assignment live in the app's settings, and a manuscript exports to and imports from a
-portable archive, with conflicts reported rather than silently overwritten. Series do
-not exist yet, and the only packaged form is the container image — no installer, no
-desktop app.
+assignment are served by the API, and a manuscript exports to and imports from a
+portable archive, with conflicts reported rather than silently overwritten. Series
+exist as a name and a volume number on a book, not as a surface. The only packaged form
+is the container image — no installer, no desktop app.
 
 What *is* built is proven the expensive way: every capability carries an end-to-end
 test that drives a real browser against the real API and a real Postgres, and the only
 fake in the system is the model at its boundary.
+
+What is missing, in which order: [roadmap.md](roadmap.md).
 
 ## Documentation
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — getting started, branch model, commit convention, PR process
 - [SECURITY.md](SECURITY.md) — the supported version and how to report a vulnerability
 - [AGENTS.md](AGENTS.md) — the rules of the codebase and the agent layer
+- [roadmap.md](roadmap.md) — where the product stands and what comes next
 - [v2 architecture spec](docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md)
   — the authority for structure and boundaries
 - [docs/user/INDEX.md](docs/user/INDEX.md) — the app's surfaces, generated from the

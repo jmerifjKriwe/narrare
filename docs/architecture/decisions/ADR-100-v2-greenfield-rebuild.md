@@ -34,9 +34,9 @@ the new series.
 
 All prior ADRs are superseded: their subjects either lost their subject matter in
 the cutover (mem0, TaskIQ, Redis, pyrefly, series, stats, VRT, adoption and
-drift gates) or are re-decided by the spec itself. `docs/features/` remains as
-the product-history record of the v1 era; its links to ADRs point into git
-history.
+drift gates) or are re-decided by the spec itself. The v1 feature corpus remains as
+the product-history record of the v1 era (since 2026-11-20 at
+`docs/archive/v1/features/`); its links to ADRs point into git history.
 
 ## Consequences
 
