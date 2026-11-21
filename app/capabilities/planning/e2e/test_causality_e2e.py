@@ -4,10 +4,12 @@
 
 The chain renders the novel's real scenes — chapter-grouped, the „Erzwingt"
 connectors between a scene and its successor, the „Kapitel-Übergang" only
-where both sides carry scenes — on the fields the server keeps: a missing
-conflict or resolution renders the honest „—" and names the gap count, a
-gapless chain reads as closed, an empty novel walks to the storyboard where
-scenes are planned. The sibling doors stand on every face.
+where the immediately preceding rendered group carries scenes (an empty
+chapter between two scene-bearing ones breaks the chain, no arrow crosses
+it) — on the fields the server keeps: a missing conflict or resolution
+renders the honest „—" and names the gap count, a gapless chain reads as
+closed, an empty novel walks to the storyboard where scenes are planned.
+The sibling doors stand on every face.
 """
 
 from typing import TYPE_CHECKING
@@ -32,11 +34,15 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
 
 def _seed_chain(novel_id: str) -> list[str]:
-    """Three chapters: a full scene, a gapped one, an answered one, and a
-    chapter the fan answers with nothing — the label card stands alone."""
+    """Four chapters: a full scene, a gapped one, an answered one, a
+    chapter the fan answers with nothing — the label card stands alone —
+    and one scene-bearing chapter AFTER the empty one, so the fixture
+    covers the break: no transition crosses an empty chapter into the
+    scenes that follow it."""
     first = create_chapter(novel_id, "Ankunft")
     second = create_chapter(novel_id, "Notfall-Code")
     third = create_chapter(novel_id, "Der Nebel")
+    fourth = create_chapter(novel_id, "Der Aufbruch")
     save_scenes(
         novel_id,
         str(first["id"]),
@@ -62,7 +68,24 @@ def _seed_chain(novel_id: str) -> list[str]:
             )
         ],
     )
-    return [str(first["id"]), str(second["id"]), str(third["id"])]
+    save_scenes(
+        novel_id,
+        str(fourth["id"]),
+        [
+            scene(
+                "Der Marsch",
+                conflict="Der Weg führt durch den Nebel.",
+                resolution="Die Crew folgt den Markierungen.",
+                status="complete",
+            )
+        ],
+    )
+    return [
+        str(first["id"]),
+        str(second["id"]),
+        str(third["id"]),
+        str(fourth["id"]),
+    ]
 
 
 def test_the_chain_renders_the_seeded_scenes(page: Page, installed: Stack) -> None:
@@ -76,12 +99,12 @@ def test_the_chain_renders_the_seeded_scenes(page: Page, installed: Stack) -> No
     goto_causality(page, novel_id)
 
     counts = page.get_by_test_id("causality-counts")
-    expect(counts).to_contain_text("3 Kapitel")
-    expect(counts).to_contain_text("3 Szenen gesamt")
+    expect(counts).to_contain_text("4 Kapitel")
+    expect(counts).to_contain_text("4 Szenen gesamt")
     expect(page.get_by_test_id("causality-chain")).to_contain_text("Kausaler Faden: 1 offene Lücke")
 
     chapters = page.get_by_test_id("causality-chapter")
-    expect(chapters).to_have_count(3)
+    expect(chapters).to_have_count(4)
     expect(chapters.filter(has_text="Ankunft")).to_contain_text(
         "Szene 1.1: Kalibrierung der Messsonde"
     )
@@ -102,8 +125,11 @@ def test_the_chain_renders_the_seeded_scenes(page: Page, installed: Stack) -> No
     expect(ausfall.get_by_text("—", exact=True)).to_have_count(1)
 
     # The connectors: „Erzwingt" between the two scenes of one chapter,
-    # „Kapitel-Übergang" only into the next chapter that carries scenes —
-    # the empty third stands with its label card alone.
+    # „Kapitel-Übergang" only where the IMMEDIATELY preceding rendered
+    # group bears scenes — the empty „Der Nebel" stands with its label
+    # card alone and NO arrow crosses it into „Der Aufbruch": the chain
+    # is broken, and the next chapter's scenes claim no forcing through
+    # the void.
     expect(page.get_by_test_id("causality-link")).to_have_count(1)
     expect(page.get_by_test_id("causality-link").get_by_text("Erzwingt")).to_be_visible()
     expect(page.get_by_test_id("causality-transition")).to_have_count(1)
@@ -111,9 +137,16 @@ def test_the_chain_renders_the_seeded_scenes(page: Page, installed: Stack) -> No
         page.get_by_test_id("causality-transition").get_by_text("Kapitel-Übergang")
     ).to_be_visible()
     expect(chapters.filter(has_text="Der Nebel")).to_contain_text("0 Szenen")
+    expect(chapters.filter(has_text="Der Aufbruch")).to_contain_text("Szene 4.1: Der Marsch")
 
     # The methodology row counts the same truth.
     expect(page.get_by_test_id("causality-bento")).to_contain_text("Status: 1 offene Lücke")
+
+    # The light-theme axe floor clears on the populated causality face
+    # itself — scanned while this page stands, before the doors walk to
+    # the siblings (a scan after the walk would grade the storyboard, not
+    # this surface).
+    assert_accessible(page)
 
     # The sibling doors walk on the populated face.
     page.get_by_test_id("causality-timeline-door").click()
@@ -122,7 +155,6 @@ def test_the_chain_renders_the_seeded_scenes(page: Page, installed: Stack) -> No
     expect(page.get_by_test_id("causality-page")).to_be_visible()
     page.get_by_test_id("causality-storyboard-door").click()
     expect(page.get_by_test_id("storyboard-page")).to_be_visible()
-    assert_accessible(page)
 
 
 def test_the_gapless_chain_reads_as_closed(page: Page, installed: Stack) -> None:

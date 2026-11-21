@@ -318,6 +318,55 @@ describe("the chain renders the novel's real scenes", () => {
     expect(label).toBeTruthy();
   });
 
+  it("an empty chapter between two scene-bearing ones breaks the chain — no arrow through the void", async () => {
+    // A(empty) · B(empty scenes) · C(scenes): the transition needs the
+    // immediately preceding rendered group to bear scenes — B's emptiness
+    // is a break, and an arrow from B into C would claim a forcing B does
+    // not carry.
+    chapters = [
+      chapterRow({ id: "c1", title: "Mit Szenen", position: 0 }),
+      chapterRow({ id: "c2", title: "Leer dazwischen", position: 1 }),
+      chapterRow({ id: "c3", title: "Wieder Szenen", position: 2 }),
+    ];
+    api.GET.mockImplementation((path: string, init?: { params?: { path?: { chapter_id?: string } } }) => {
+      if (path === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes") {
+        const id = init?.params?.path?.chapter_id ?? "";
+        return Promise.resolve({
+          data: {
+            chapter_id: id,
+            version_updated_at: "2026-11-18T10:00:00Z",
+            scenes:
+              id === "c2"
+                ? []
+                : [
+                    sceneRow(id, {
+                      id: `s-${id}`,
+                      position: 1,
+                      conflict: `Konflikt ${id}`,
+                      resolution: `Auflösung ${id}`,
+                      status: "complete",
+                    }),
+                  ],
+          },
+          response: ok(),
+        });
+      }
+      return baseGet(path, init);
+    });
+    await renderCausality();
+    const track = await screen.findByTestId("causality-track");
+    expect(within(track).getAllByTestId("causality-chapter")).toHaveLength(3);
+    // The broken chain names no transition anywhere — and no scene link
+    // (each standing chapter carries one scene).
+    expect(within(track).queryByTestId("causality-transition")).toBeNull();
+    expect(within(track).queryByTestId("causality-link")).toBeNull();
+    // The counts still speak the real fields: two scenes, two gaps (both
+    // flanking chapters' scenes are answered — the empty chapter carries
+    // no scene to gap).
+    const counts = screen.getByTestId("causality-counts");
+    expect(within(counts).getByText(format("planning.storyboard.scenesTotal", { count: 2 }))).toBeTruthy();
+  });
+
   it("connectors chain the scenes — Erzwingt within a chapter, Kapitel-Übergang across", async () => {
     await renderCausality();
     const track = await screen.findByTestId("causality-track");
@@ -390,7 +439,12 @@ describe("the chain renders the novel's real scenes", () => {
   it("the methodology row and the manuscript door stand on the populated face", async () => {
     const router = await renderCausality();
     await screen.findByTestId("causality-track");
-    expect(screen.getByTestId("causality-bento").textContent).toContain(de["planning.causality.bento1Title"]);
+    // All three boxes of the draft's bento, one mapped render.
+    const bento = screen.getByTestId("causality-bento");
+    expect(within(bento).getByText(de["planning.causality.bento1Title"])).toBeTruthy();
+    expect(within(bento).getByText(de["planning.causality.bento1Rule"])).toBeTruthy();
+    expect(within(bento).getByText(de["planning.causality.bento2Title"])).toBeTruthy();
+    expect(within(bento).getByText(de["planning.causality.bento3Title"])).toBeTruthy();
 
     // The draft's Zum Manuskript door walks to the workspace.
     fireEvent.click(screen.getByTestId("causality-manuscript-door"));
