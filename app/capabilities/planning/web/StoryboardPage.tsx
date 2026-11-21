@@ -208,7 +208,7 @@ export function StoryboardPage() {
                 {selected ? ` · ${t("planning.storyboard.focusActive")}` : ""}
               </span>
             </span>
-            <span className="font-mono text-meta text-outline">
+            <span className="font-mono text-meta text-muted">
               {t("planning.storyboard.chapterWords", {
                 words: chapter.word_count,
                 display: formatNumber(chapter.word_count),
@@ -371,7 +371,7 @@ export function StoryboardPage() {
             lifted; picking another prepares the remap without writing. */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-rule/70 pt-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-outline">
+            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted">
               <Icon name="schema" size={14} /> {t("planning.storyboard.structureLabel")}
             </span>
             <div data-testid="storyboard-structure-switcher" className="flex flex-wrap gap-1">

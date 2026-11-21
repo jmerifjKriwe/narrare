@@ -1,13 +1,9 @@
 import { queryOptions } from "@tanstack/react-query";
-import { createRoute, redirect, Link, useParams } from "@tanstack/react-router";
+import { createRoute, redirect } from "@tanstack/react-router";
 import { lazy } from "react";
 
 import { client } from "@shell/lib/api/client";
-import { useTranslation } from "@shell/lib/i18n";
-import { usePageTitle } from "@shell/lib/pageTitle";
 import { queryClient } from "@shell/lib/query";
-import { FOCUS } from "@shell/ui/card";
-import { Icon } from "@shell/ui/icons";
 import { rootRoute } from "@shell/routes/__root";
 
 // React.lazy keeps each face out of the shell's bundle: it loads as its
@@ -21,6 +17,11 @@ const TimelinePage = lazy(async () => {
 const StoryboardPage = lazy(async () => {
   const page = await import("./StoryboardPage");
   return { default: page.StoryboardPage };
+});
+
+const CausalityPage = lazy(async () => {
+  const page = await import("./CausalityPage");
+  return { default: page.CausalityPage };
 });
 
 /**
@@ -44,48 +45,6 @@ const setupStatusQueryOptions = queryOptions({
     return data.complete;
   },
 });
-
-/** The waiting face's route id — the param read needs the literal. */
-const PENDING_FROM = {
-  causality: "/novels/$novelId/planning/causality",
-} as const;
-
-/**
- * The honest waiting face of a registered route whose surface lands later
- * in this wave (the causality strip is W6 Task 5): the URL is real and
- * the sub-nav walks here, so the page says plainly that the surface is
- * still being built and holds the door back to the chronology — the
- * wave's gap discipline, never an invented face and never a redirect
- * that would hide the address. The storyboard waited here until Task 4
- * landed its own surface.
- */
-function PendingSurface() {
-  const t = useTranslation();
-  const { novelId } = useParams({ from: PENDING_FROM.causality });
-  usePageTitle(t("planning.sub.causality"));
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 p-6">
-      <div className="max-w-sm space-y-3 rounded-[var(--radius-surface)] border border-border bg-panel p-8 text-center">
-        <span className="inline-block text-muted">
-          <Icon name="waves" size={28} />
-        </span>
-        <h1 className="text-body font-semibold text-foreground">{t("planning.sub.causality")}</h1>
-        <p className="text-meta text-muted">{t("planning.pending.note")}</p>
-        <Link
-          to="/novels/$novelId/planning/timeline"
-          params={{ novelId }}
-          className={`inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-surface-container-high px-3 py-1.5 text-meta font-medium text-foreground transition-colors hover:bg-surface-container ${FOCUS}`}
-        >
-          {t("planning.pending.openTimeline")}
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-function CausalityPending() {
-  return <PendingSurface />;
-}
 
 /**
  * The chronology (W6 Task 3) — the planning capability's first addressable
@@ -123,8 +82,8 @@ const storyboardRoute = createRoute({
 });
 
 /**
- * The causality strip's address (W6 Task 5): the same mount shape and the
- * same waiting face.
+ * The causality strip's address (W6 Task 5): the same mount shape as its
+ * siblings; the waiting face retired when the surface landed.
  */
 const causalityRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -133,7 +92,7 @@ const causalityRoute = createRoute({
     const complete = await queryClient.ensureQueryData(setupStatusQueryOptions);
     if (!complete) throw redirect({ to: "/setup" });
   },
-  component: CausalityPending,
+  component: CausalityPage,
 });
 
 // The capability route contract: every route this capability mounts under
