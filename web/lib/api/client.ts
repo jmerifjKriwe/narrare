@@ -24,6 +24,16 @@ export type Chapter = components["schemas"]["ChapterRead"];
 export type Scene = components["schemas"]["app__capabilities__writing__schemas__SceneRead"];
 export type Storyboard = components["schemas"]["StoryboardRead"];
 export type StoryboardStage = components["schemas"]["StoryboardStageRead"];
+/** One chapter's storyboard row (W6): the effective stage, where the stage
+ *  came from, and how closely the writing follows the plan. */
+export type StoryboardChapter = components["schemas"]["StoryboardChapterRead"];
+/** The structure change's two-step answer (W6): the preview and the confirm
+ *  agree chapter by chapter — `mapping` carries every move. */
+export type RemapRead = components["schemas"]["RemapRead"];
+/** One scene of the aggregate PUT (W6): ids the client mints for new
+ *  scenes, and the writer-facing fields — the timestamps stay the
+ *  server's own. */
+export type SceneUpsert = components["schemas"]["SceneUpsert"];
 export type KnowledgeDocument = components["schemas"]["DocumentRead"];
 export type Hit = components["schemas"]["SearchHit"];
 export type Job = components["schemas"]["JobRead"];
