@@ -33,11 +33,14 @@ import { Icon } from "@shell/ui/icons";
 
 import { sceneDisplayTitle, SceneEditDialog, RemoveSceneDialog } from "./storyboardDialogs";
 
-/** The status chip's tone per real lifecycle state. */
+/** The status chip's tone per real lifecycle state — the causality strip's
+ *  own mapping: complete in the success tone, planned quiet in the muted
+ *  ink that clears AA on the chip's ground (the hairline token is an edge,
+ *  never text ink). */
 const STATUS_CHIP: Record<string, string> = {
   complete: "bg-surface-container text-success",
   in_progress: "bg-secondary/15 text-foreground",
-  planned: "bg-surface-container text-outline",
+  planned: "bg-surface-container text-muted",
 };
 
 /** A client-minted id for a scene the draft adds: the diff treats an id

@@ -136,7 +136,7 @@ export function CausalityPage() {
           </div>
           <div className="flex flex-col gap-0.5 text-[13px] leading-snug">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-outline">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted">
                 {t("planning.storyboard.conflict")}:
               </span>{" "}
               <span className={scene.conflict.trim() === "" ? "italic text-muted" : "text-foreground"}>
@@ -144,7 +144,7 @@ export function CausalityPage() {
               </span>
             </div>
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-outline">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted">
                 {t("planning.storyboard.resolutionField")}:
               </span>{" "}
               <span className={scene.resolution.trim() === "" ? "italic text-muted" : "text-foreground"}>
@@ -429,10 +429,13 @@ export function CausalityPage() {
             </div>
 
             {/* The chain — the draft's horizontally scrollable track, the
-                chapter groups left-to-right with their connectors. */}
+                chapter groups left-to-right with their connectors. The
+                tabIndex keeps the scrollable region on the keyboard (the
+                scrollable-region rule the axe floor runs). */}
             <div
               data-testid="causality-track"
               aria-label={t("planning.causality.trackLabel")}
+              tabIndex={0}
               className="w-full overflow-x-auto pb-2"
             >
               <div className="inline-flex min-w-max items-stretch gap-3 pr-3">

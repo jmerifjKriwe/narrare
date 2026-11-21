@@ -230,7 +230,7 @@ export function TimelinePage() {
           className={`flex flex-1 flex-col text-left ${FOCUS}`}
         >
           <span className="mb-2 flex items-center justify-between gap-2">
-            <span className="font-mono text-meta font-bold text-outline">
+            <span className="font-mono text-meta font-bold text-muted">
               {event.date_label !== "" ? event.date_label : t("planning.timeline.noDate")}
             </span>
           </span>
