@@ -1476,4 +1476,40 @@ describe("the route-leave guard (#928)", () => {
     await waitFor(() => expect(router.state.location.pathname).toContain("/planning/timeline"));
     expect(screen.queryByRole("alertdialog")).toBeNull();
   });
+
+  it("a leave fired while the switch guard stands queues behind it — one dialog at a time", async () => {
+    const router = await renderStoryboard();
+    await dirtySignalCopy();
+
+    // The chapter-switch guard's ask stands.
+    const ankunft = screen.getAllByTestId("storyboard-card").find((card) =>
+      within(card).queryByText("Ankunft auf Horizon Station") !== null,
+    ) as HTMLElement;
+    fireEvent.click(within(ankunft).getByText("Ankunft auf Horizon Station"));
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+
+    // A programmatic route leave fires mid-dialog: the resolver holds it
+    // exactly like a dock-door click, and the standing ask stays standing
+    // — exactly ONE alertdialog, the switch confirm, no leave dialog
+    // stacking a second question over the first.
+    void router.navigate({ to: WORKSPACE_PATH, params: { novelId: NOVEL_ID } });
+    await waitFor(() => expect(screen.getAllByRole("alertdialog")).toHaveLength(1));
+    expect(within(screen.getByRole("alertdialog")).getByText(/Das Signal im Permafrost/)).toBeTruthy();
+    expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/planning/storyboard`);
+
+    // The first ask answered (cancel: the copy keeps standing), the held
+    // leave now asks its own — still exactly one at a time, the page
+    // never moved.
+    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: de["planning.crud.cancel"] }));
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    expect(screen.getAllByRole("alertdialog")).toHaveLength(1);
+    expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/planning/storyboard`);
+
+    // The leave's own safe answer stands everything down: page and copy.
+    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: de["planning.crud.cancel"] }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/planning/storyboard`);
+    expect(within(screen.getByTestId("drill-in")).getByText(/Wähle mich\./)).toBeTruthy();
+    expect(within(screen.getByTestId("drill-in")).getByText(/KAPITEL 2/)).toBeTruthy();
+  });
 });
