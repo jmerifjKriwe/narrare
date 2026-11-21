@@ -31,14 +31,11 @@ from app.capabilities.planning.e2e.conftest import (
     set_theme,
 )
 from app.kernel.testing.a11y import assert_accessible
-from app.kernel.testing.stack import WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
-
-BASE = WEB_URL
 
 
 def _open(page: Page, novel_id: str) -> None:
