@@ -1,164 +1,175 @@
 <!DOCTYPE html>
 
-<html class="h-full bg-[#f8f5f0]" lang="de"><head>
+<html class="h-full" lang="de"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Narrare — Atelier-Einstellungen</title>
-<!-- Tailwind CSS v3 with Plugins -->
+<title>Atelier-Einstellungen — Allgemein &amp; Profil — Narrare</title>
+<!-- Tailwind CSS v3 -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <!-- Google Fonts: EB Garamond & Plus Jakarta Sans -->
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<!-- Tailwind Configuration -->
-<script data-purpose="tailwind-config">
+<!-- Tailwind Configuration with strict token set -->
+<script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            pergament: {
-              50: '#fcfbfa',
-              100: '#f8f5f0',
-              200: '#f2ece4',
-              300: '#e8e2d8',
-              400: '#d7cfc2',
-              border: '#e4ddd3'
-            },
-            terracotta: {
-              DEFAULT: '#743b1f',
-              hover: '#5e2f18',
-              soft: '#8b3a2b',
-              light: '#f5eeea'
-            },
-            ink: {
-              DEFAULT: '#221f1d',
-              muted: '#68615b',
-              subtle: '#968e85'
-            }
+            canvas: '#F6F3ED',
+            panel: '#FDFCF9',
+            card: '#FFF8F2',
+            stroke: '#E0DEDA',
+            hairline: '#EEEBE5',
+            ink: '#1E1B16',
+            'ink-muted': '#6E6B65',
+            primary: '#743B1F',
+            'on-primary': '#FAF8F5'
           },
           fontFamily: {
             serif: ['"EB Garamond"', 'Georgia', 'serif'],
             sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif']
+          },
+          boxShadow: {
+            atelier: '0 4px 20px -2px rgba(30, 27, 22, 0.04)',
+            popover: '0 8px 30px -4px rgba(30, 27, 22, 0.08)'
           }
         }
       }
     };
   </script>
-<style data-purpose="custom-typography">
+<style>
     body {
       font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-      color: #221f1d;
-      background-color: #f8f5f0;
+      color: #1E1B16;
+      background-color: #F6F3ED;
       -webkit-font-smoothing: antialiased;
     }
     .font-serif-title {
       font-family: "EB Garamond", Georgia, serif;
     }
-    /* Subtile Akzentleiste für aktive Menüelemente */
-    .rail-active-indicator {
+    .active-rail-indicator {
       position: absolute;
       left: 0;
       top: 0;
       bottom: 0;
-      width: 2.5px;
-      background-color: #743b1f;
+      width: 2px;
+      background-color: #743B1F;
+    }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
     }
   </style>
 </head>
-<body class="h-full flex overflow-hidden text-ink antialiased selection:bg-terracotta/15 selection:text-terracotta">
-<!-- BEGIN: LeftIconRail -->
-<aside aria-label="Atelier Navigation" class="w-14 shrink-0 bg-[#f4efe8] border-r border-pergament-border flex flex-col items-center justify-between py-3 z-30 select-none">
-<div class="flex flex-col items-center space-y-4 w-full">
-<!-- Atelier Siegel / Logo -->
-<a class="h-9 w-9 flex items-center justify-center rounded-md text-terracotta hover:bg-black/5 transition-colors" href="#" title="Narrare Atelier">
-<span class="font-serif-title font-semibold text-2xl tracking-tighter">N</span>
+<body class="h-full flex overflow-hidden text-ink antialiased selection:bg-primary/10 selection:text-primary">
+<!-- BEGIN: LeftIconRail (64px) -->
+<aside aria-label="Atelier Navigation" class="w-16 shrink-0 bg-panel border-r border-stroke flex flex-col items-center justify-between py-4 z-30 select-none">
+<div class="flex flex-col items-center space-y-6 w-full">
+<!-- Narrare-Monogramm 'N' -->
+<a class="h-9 w-9 flex items-center justify-center rounded text-primary hover:bg-black/[0.03] transition-colors" href="#" title="Narrare Atelier">
+<span class="font-serif-title text-2xl font-semibold tracking-tight">N</span>
 </a>
 <!-- Hauptnavigations-Icons -->
-<nav class="flex flex-col items-center space-y-1 w-full pt-1">
-<!-- Bibliothek -->
-<a class="relative w-full h-10 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.03] transition-colors" href="#" title="Bibliothek">
-<svg class="w-5 h-5 stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<nav class="flex flex-col items-center space-y-2 w-full">
+<!-- Bibliothek / Bücherregal -->
+<a class="relative w-full h-11 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.02] transition-colors" href="#" title="Bibliothek">
+<svg class="w-5 h-5 stroke-[1.5]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
 </a>
-<!-- Editor / Manuskript -->
-<a class="relative w-full h-10 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.03] transition-colors" href="#" title="Manuskript-Editor">
-<svg class="w-5 h-5 stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<!-- Manuskript / Feder -->
+<a class="relative w-full h-11 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.02] transition-colors" href="#" title="Manuskript-Editor">
+<svg class="w-5 h-5 stroke-[1.5]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
 </a>
-<!-- Lore-Graph -->
-<a class="relative w-full h-10 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.03] transition-colors" href="#" title="Wissens-Graph">
-<svg class="w-5 h-5 stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<!-- Lore-Graph / Netzwerk -->
+<a class="relative w-full h-11 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.02] transition-colors" href="#" title="Lore-Graph">
+<svg class="w-5 h-5 stroke-[1.5]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
 </a>
-<!-- Planung / Storyboard -->
-<a class="relative w-full h-10 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.03] transition-colors" href="#" title="Planung &amp; Akte">
-<svg class="w-5 h-5 stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<!-- Konsistenz / Timeline -->
+<a class="relative w-full h-11 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.02] transition-colors" href="#" title="Konsistenz &amp; Timeline">
+<svg class="w-5 h-5 stroke-[1.5]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
 </a>
 </nav>
 </div>
-<!-- Unterer Rail-Bereich: Einstellungen Aktiv -->
+<!-- Fußbereich: Einstellungen Aktiv -->
 <div class="w-full flex flex-col items-center">
-<a aria-current="page" class="relative w-full h-11 flex items-center justify-center text-terracotta bg-[#ede6dc]/70" href="#" title="Einstellungen (aktiv)">
-<span class="rail-active-indicator"></span>
-<svg class="w-5 h-5 stroke-[1.8]" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" stroke-linecap="round" stroke-linejoin="round"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<a aria-current="page" class="relative w-full h-12 flex items-center justify-center text-primary bg-card transition-colors" href="#" title="Einstellungen (aktiv)">
+<span class="active-rail-indicator"></span>
+<svg class="w-5 h-5 stroke-[1.7]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
 </a>
 </div>
 </aside>
 <!-- END: LeftIconRail -->
 <!-- BEGIN: MainContainer -->
-<div class="flex-1 flex flex-col h-full min-w-0 bg-[#f8f5f0] overflow-hidden">
+<div class="flex-1 flex flex-col h-full min-w-0 bg-canvas overflow-hidden">
 <!-- BEGIN: TopBar -->
-<header class="h-14 border-b border-pergament-border px-8 flex items-center justify-between bg-[#fbf9f6] select-none shrink-0 relative z-20">
-<!-- Brotkrumen-Pfad (Ohne Versionsnummer, ohne Speichern-Leiste oben) -->
-<nav aria-label="Brotkrumen" class="flex items-center space-x-2 text-sm">
+<header class="h-14 border-b border-stroke px-8 flex items-center justify-between bg-panel select-none shrink-0 relative z-20">
+<!-- Brotkrumen-Pfad -->
+<nav aria-label="Brotkrumen" class="flex items-center space-x-2 text-xs">
 <span class="text-ink-muted">Atelier</span>
-<span class="text-ink-subtle">›</span>
-<span class="font-medium text-ink tracking-tight">Einstellungen</span>
-<span class="text-ink-subtle">›</span>
+<span class="text-ink-muted/50">›</span>
+<span class="font-medium text-ink">Einstellungen</span>
+<span class="text-ink-muted/50">›</span>
 <span class="text-ink-muted">Allgemein</span>
 </nav>
-<!-- Profil-Menü / Offenes Popover oben rechts -->
+<!-- Profil-Menü / Geöffnetes Popover -->
 <div class="relative" data-purpose="user-menu-wrapper">
 <!-- Auslöser-Kachel -->
-<button aria-expanded="true" class="flex items-center gap-2.5 pl-2.5 pr-2 py-1.5 rounded border border-pergament-border bg-white/70 hover:bg-white text-left transition-colors shadow-sm" type="button">
-<div class="w-6 h-6 rounded bg-[#e7ded3] border border-pergament-border text-terracotta font-serif-title font-semibold text-xs flex items-center justify-center">
+<button aria-expanded="true" class="flex items-center gap-2 pl-2 pr-2.5 py-1 rounded border border-stroke bg-card text-left transition-colors shadow-atelier" type="button">
+<div class="w-6 h-6 rounded bg-hairline text-primary font-serif-title font-semibold text-xs flex items-center justify-center">
             HC
           </div>
 <span class="text-xs font-medium text-ink">H. Calder</span>
-<svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<svg class="w-3.5 h-3.5 text-ink-muted ml-0.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
 </button>
-<!-- Sichtbares Nutzerblock-Menü Popover -->
-<div class="absolute right-0 mt-2 w-72 bg-[#fffdfa] rounded-md border border-pergament-border shadow-lg py-2 z-50 text-xs">
+<!-- GEÖFFNETES Popover-Menü -->
+<div class="absolute right-0 mt-2 w-80 bg-card rounded border border-stroke shadow-popover py-2 z-50 text-xs">
 <!-- Benutzerinfo-Kopf -->
-<div class="px-3.5 py-2 border-b border-pergament-border/70 mb-1">
-<div class="font-medium text-ink text-[13px] leading-tight">H. Calder</div>
-<div class="text-[11px] text-ink-muted truncate font-mono mt-0.5">h.calder@station7.de</div>
+<div class="px-4 py-2.5 border-b border-hairline mb-1">
+<div class="font-medium text-ink text-sm leading-tight">H. Calder</div>
+<div class="text-[11px] text-ink-muted font-mono mt-0.5">h.calder@station7.de</div>
 </div>
 <!-- Menüeinträge -->
 <div class="py-1">
-<a class="flex items-center justify-between px-3.5 py-2 text-ink hover:bg-[#f3ede3] transition-colors" href="#profil-sektion">
+<a class="flex items-center justify-between px-4 py-2 text-ink hover:bg-canvas transition-colors" href="#">
 <span>Autorenname bearbeiten</span>
-<kbd class="text-[10px] text-ink-subtle font-sans tracking-wide">Profil</kbd>
+<span class="text-[10px] text-ink-muted font-sans">Profil</span>
 </a>
-<a class="flex items-center justify-between px-3.5 py-2 text-ink hover:bg-[#f3ede3] transition-colors" href="#tagesziel-feld">
+<a class="flex items-center justify-between px-4 py-2 text-ink hover:bg-canvas transition-colors" href="#">
 <span>Tagesziel festlegen</span>
 <span class="text-[10px] text-ink-muted">500 W</span>
 </a>
-<a class="flex items-center justify-between px-3.5 py-2 bg-[#f3ede3] text-terracotta font-medium transition-colors" href="#">
-<span class="flex items-center gap-1.5">
-<span class="w-1.5 h-1.5 rounded-full bg-terracotta"></span>
+<a class="flex items-center justify-between px-4 py-2 bg-canvas/70 text-primary font-medium transition-colors" href="#">
+<span class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
                 Einstellungen
               </span>
-<span class="text-[10px] text-terracotta/80">Aktiv</span>
+<span class="text-[10px] text-primary/80">Aktiv</span>
 </a>
 </div>
-<div class="my-1 border-t border-pergament-border"></div>
+<div class="my-1 border-t border-hairline"></div>
 <!-- Abmelden (Lokalbetrieb deaktiviert) -->
-<div class="px-3.5 py-2">
-<div class="flex items-center justify-between text-ink-subtle cursor-not-allowed">
-<span class="font-normal line-through decoration-ink-subtle/50">Abmelden</span>
-<span class="text-[9px] px-1.5 py-0.5 rounded bg-black/[0.04] text-ink-muted uppercase tracking-wider font-semibold">Lokal</span>
+<div class="px-4 py-2">
+<div class="flex items-center justify-between text-ink-muted/50 cursor-not-allowed">
+<span class="font-normal line-through">Abmelden</span>
+<span class="text-[9px] px-1.5 py-0.5 rounded bg-black/[0.04] text-ink-muted uppercase tracking-wider font-semibold">LOKAL</span>
 </div>
-<p class="text-[10.5px] leading-relaxed text-ink-muted mt-1.5 bg-[#f6f2ec] p-2 rounded border border-pergament-border/60">
+<div class="text-[11px] leading-relaxed text-ink-muted mt-2 bg-panel p-2.5 rounded border border-hairline">
               Lokalbetrieb — keine Cloud-Sitzung, Abmelden nicht verfügbar.
-            </p>
+            </div>
 </div>
 </div>
 </div>
@@ -174,238 +185,171 @@
             Verwalte die Schreibumgebung, Sprachpräferenzen und Autorenangaben für deine lokalen Manuskripte.
           </p>
 </div>
-<!-- BEGIN: SectionSpracheErscheinung -->
+<!-- BEGIN: Section 'Sprache & Erscheinungsbild' -->
 <section aria-labelledby="heading-appearance" class="space-y-6">
-<div class="border-b border-pergament-border pb-2.5">
+<div class="border-b border-stroke pb-2.5">
 <h2 class="font-serif-title text-xl text-ink font-normal" id="heading-appearance">Sprache &amp; Erscheinungsbild</h2>
-<p class="text-xs text-ink-muted mt-0.5">Sofort wirksame Optionen für Typografie und Oberfläche.</p>
+<p class="text-xs text-ink-muted mt-0.5">Sofort wirkende Optionen für Typografie und Oberfläche.</p>
 </div>
-<!-- Sprache-Umschalter -->
+<!-- Gruppe: OBERFLÄCHENSPRACHE -->
 <div class="space-y-3">
 <label class="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Oberflächensprache</label>
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-<!-- Radio Deutsch (Aktiv) -->
-<label class="relative flex items-center justify-between p-3.5 rounded border border-terracotta bg-white shadow-sm cursor-pointer hover:border-terracotta transition-colors">
-<div class="flex items-center gap-2.5">
-<input checked="" class="text-terracotta focus:ring-terracotta/20 border-pergament-border h-4 w-4" name="ui_language" type="radio" value="de"/>
+<!-- Karte 1: Deutsch (Aktiv-Radio gefüllt mit Primärton #743B1F, Badge: Aktiv) -->
+<label class="relative flex items-center justify-between p-3.5 rounded border border-primary bg-card shadow-atelier cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-4 h-4 rounded-full border border-primary flex items-center justify-center">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+</div>
 <span class="text-sm font-medium text-ink">Deutsch</span>
 </div>
-<span class="text-[11px] text-terracotta font-medium tracking-tight">Aktiv</span>
+<span class="text-[11px] text-primary font-medium">Aktiv</span>
 </label>
-<!-- Radio English -->
-<label class="relative flex items-center justify-between p-3.5 rounded border border-pergament-border bg-[#faf7f2] cursor-pointer hover:bg-white hover:border-pergament-400 transition-colors">
-<div class="flex items-center gap-2.5">
-<input class="text-terracotta focus:ring-terracotta/20 border-pergament-border h-4 w-4" name="ui_language" type="radio" value="en"/>
+<!-- Karte 2: English (Radio leer, Badge: EN) -->
+<label class="relative flex items-center justify-between p-3.5 rounded border border-stroke bg-card cursor-pointer hover:border-stroke hover:bg-panel transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-4 h-4 rounded-full border border-stroke"></div>
 <span class="text-sm font-normal text-ink">English</span>
 </div>
-<span class="text-[10.5px] text-ink-subtle">EN</span>
+<span class="text-[11px] text-ink-muted">EN</span>
 </label>
-<!-- Radio Français -->
-<label class="relative flex items-center justify-between p-3.5 rounded border border-pergament-border bg-[#faf7f2] cursor-pointer hover:bg-white hover:border-pergament-400 transition-colors">
-<div class="flex items-center gap-2.5">
-<input class="text-terracotta focus:ring-terracotta/20 border-pergament-border h-4 w-4" name="ui_language" type="radio" value="fr"/>
+<!-- Karte 3: Français (Radio leer, Badge: FR) -->
+<label class="relative flex items-center justify-between p-3.5 rounded border border-stroke bg-card cursor-pointer hover:border-stroke hover:bg-panel transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-4 h-4 rounded-full border border-stroke"></div>
 <span class="text-sm font-normal text-ink">Français</span>
 </div>
-<span class="text-[10.5px] text-ink-subtle">FR</span>
+<span class="text-[11px] text-ink-muted">FR</span>
 </label>
 </div>
-<!-- Checkbox Browser-Erkennung & Sofort-Hinweis -->
+<!-- Checkbox & Hinweistext -->
 <div class="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-ink-muted">
 <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-<input checked="" class="rounded border-pergament-border text-terracotta focus:ring-terracotta/20 h-4 w-4" type="checkbox"/>
-<span>Dem Browser folgen (Spracherkennung beim Start)</span>
+<input checked="" class="rounded border-stroke text-primary focus:ring-primary/20 h-4 w-4" type="checkbox"/>
+<span class="text-ink">Dem Browser folgen (Spracherkennung beim Start)</span>
 </label>
-<span class="text-[11px] text-ink-subtle italic">Änderung wird sofort angewendet.</span>
+<span class="text-[11px] text-ink-muted italic">Änderung wird sofort angewendet.</span>
 </div>
 </div>
-<!-- Farbschema / Theme -->
-<div class="space-y-3 pt-4">
+<!-- Gruppe: FARBTON & KONTRAST -->
+<div class="space-y-3 pt-3">
 <label class="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Farbton &amp; Kontrast</label>
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-<!-- Hell (Pergament) - Aktiv -->
-<label class="relative p-3.5 rounded border-2 border-terracotta bg-white flex flex-col justify-between h-24 cursor-pointer shadow-sm">
+<!-- Karte 1: Hell (Pergament) (Aktiv ausgewählt mit #743B1F Umrandung / Radio, Farbfelder Creme/Braun, Sublabel: Atelier) -->
+<label class="relative p-3.5 rounded border border-primary bg-card flex flex-col justify-between h-24 cursor-pointer shadow-atelier">
 <div class="flex items-center justify-between w-full">
-<span class="text-xs font-semibold text-ink">Hell (Pergament)</span>
-<div class="w-3.5 h-3.5 rounded-full border border-terracotta flex items-center justify-center">
-<div class="w-2 h-2 rounded-full bg-terracotta"></div>
+<span class="text-xs font-medium text-ink">Hell (Pergament)</span>
+<div class="w-3.5 h-3.5 rounded-full border border-primary flex items-center justify-center">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
 </div>
 </div>
-<div class="flex items-center gap-1.5 pt-2">
-<span class="h-4 w-6 rounded bg-[#f8f5f0] border border-pergament-border inline-block"></span>
-<span class="h-4 w-4 rounded bg-[#743b1f] inline-block"></span>
-<span class="text-[10.5px] text-ink-muted ml-auto font-serif-title italic">Atelier</span>
+<div class="flex items-center justify-between pt-2">
+<div class="flex items-center gap-1.5">
+<span class="h-3.5 w-5 rounded-sm bg-[#F6F3ED] border border-stroke inline-block"></span>
+<span class="h-3.5 w-3.5 rounded-sm bg-primary inline-block"></span>
+</div>
+<span class="text-[11px] text-ink-muted font-serif-title italic">Atelier</span>
 </div>
 </label>
-<!-- Dunkel (Tinte / Midnight Ink) -->
-<label class="relative p-3.5 rounded border border-pergament-border bg-[#faf7f2] hover:bg-white flex flex-col justify-between h-24 cursor-pointer transition-colors">
+<!-- Karte 2: Dunkel (Tinte) (Farbfelder Schwarz/Kupfer, Sublabel: Midnight) -->
+<label class="relative p-3.5 rounded border border-stroke bg-card hover:bg-panel flex flex-col justify-between h-24 cursor-pointer transition-colors">
 <div class="flex items-center justify-between w-full">
-<span class="text-xs font-medium text-ink">Dunkel (Tinte)</span>
-<div class="w-3.5 h-3.5 rounded-full border border-pergament-400"></div>
+<span class="text-xs font-normal text-ink">Dunkel (Tinte)</span>
+<div class="w-3.5 h-3.5 rounded-full border border-stroke"></div>
 </div>
-<div class="flex items-center gap-1.5 pt-2">
-<span class="h-4 w-6 rounded bg-[#1e1c1a] border border-[#35312d] inline-block"></span>
-<span class="h-4 w-4 rounded bg-[#c5825b] inline-block"></span>
-<span class="text-[10.5px] text-ink-muted ml-auto font-serif-title italic">Midnight</span>
+<div class="flex items-center justify-between pt-2">
+<div class="flex items-center gap-1.5">
+<span class="h-3.5 w-5 rounded-sm bg-[#16140F] border border-[#35332D] inline-block"></span>
+<span class="h-3.5 w-3.5 rounded-sm bg-[#C5825B] inline-block"></span>
+</div>
+<span class="text-[11px] text-ink-muted font-serif-title italic">Midnight</span>
 </div>
 </label>
-<!-- Automatisch (System) -->
-<label class="relative p-3.5 rounded border border-pergament-border bg-[#faf7f2] hover:bg-white flex flex-col justify-between h-24 cursor-pointer transition-colors">
+<!-- Karte 3: Systemstandard (Icon/Split-Vorschau, Sublabel: Automatisch) -->
+<label class="relative p-3.5 rounded border border-stroke bg-card hover:bg-panel flex flex-col justify-between h-24 cursor-pointer transition-colors">
 <div class="flex items-center justify-between w-full">
-<span class="text-xs font-medium text-ink">Systemstandard</span>
-<div class="w-3.5 h-3.5 rounded-full border border-pergament-400"></div>
+<span class="text-xs font-normal text-ink">Systemstandard</span>
+<div class="w-3.5 h-3.5 rounded-full border border-stroke"></div>
 </div>
-<div class="flex items-center gap-1.5 pt-2">
-<span class="h-4 w-6 rounded bg-gradient-to-r from-[#f8f5f0] via-[#dcd5cb] to-[#1e1c1a] border border-pergament-border inline-block"></span>
-<span class="text-[10.5px] text-ink-subtle ml-auto">Automatisch</span>
+<div class="flex items-center justify-between pt-2">
+<div class="flex items-center">
+<span class="h-3.5 w-5 rounded-sm bg-gradient-to-r from-[#F6F3ED] via-[#DCD5CB] to-[#16140F] border border-stroke inline-block"></span>
+</div>
+<span class="text-[11px] text-ink-muted">Automatisch</span>
 </div>
 </label>
 </div>
 </div>
 </section>
-<!-- END: SectionSpracheErscheinung -->
-<!-- BEGIN: SectionAutorenProfil -->
-<section aria-labelledby="heading-author" class="space-y-6 pt-2" id="profil-sektion">
-<div class="border-b border-pergament-border pb-2.5 flex items-baseline justify-between">
+<!-- END: Section 'Sprache & Erscheinungsbild' -->
+<!-- BEGIN: Section 'Autoren-Profil' -->
+<section aria-labelledby="heading-author" class="space-y-6 pt-2">
+<div class="border-b border-stroke pb-2.5 flex items-baseline justify-between">
 <div>
 <h2 class="font-serif-title text-xl text-ink font-normal" id="heading-author">Autoren-Profil</h2>
 <p class="text-xs text-ink-muted mt-0.5">Diese Angaben erscheinen in Manuskript-Köpfen und Meta-Notizen.</p>
 </div>
 <!-- Dirty State Badge -->
-<span class="inline-flex items-center gap-1 text-[11px] font-medium text-terracotta bg-terracotta/10 px-2 py-0.5 rounded">
-<span class="w-1.5 h-1.5 rounded-full bg-terracotta animate-pulse"></span>
+<span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-primary bg-primary/[0.08] px-2.5 py-0.5 rounded-full">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
               Ungespeicherte Eingaben
             </span>
 </div>
-<!-- Formularbereich mit Feldern -->
-<form class="bg-white rounded-md border border-pergament-border p-6 shadow-sm space-y-6" onsubmit="event.preventDefault();">
-<!-- Feld 1: Autorenname -->
+<!-- Formular-Container -->
+<form class="bg-card rounded border border-stroke p-6 shadow-atelier space-y-6" onsubmit="event.preventDefault();">
+<!-- Feld: AUTORENNAME -->
 <div class="space-y-1.5">
 <div class="flex justify-between items-center">
 <label class="block text-xs font-semibold uppercase tracking-wider text-ink" for="author_name">
                   Autorenname
                 </label>
-<span class="text-[11px] text-ink-subtle">Sichtbar im Editor &amp; Export</span>
+<span class="text-[11px] text-ink-muted">Sichtbar im Editor &amp; Export</span>
 </div>
-<input class="w-full text-sm rounded border-pergament-border bg-[#fffdfb] focus:border-terracotta focus:ring-1 focus:ring-terracotta text-ink px-3.5 py-2.5 transition-colors" id="author_name" name="author_name" placeholder="z. B. H. Calder" type="text" value="H. Calder"/>
-<p class="text-[11.5px] text-ink-muted leading-normal">
+<input class="w-full text-sm rounded border-stroke bg-panel focus:border-primary focus:ring-1 focus:ring-primary text-ink px-3.5 py-2.5 transition-colors" id="author_name" name="author_name" placeholder="z. B. H. Calder" type="text" value="H. Calder"/>
+<p class="text-[11px] text-ink-muted leading-relaxed">
                 Leerlassen, damit die E-Mail-Adresse (<span class="font-mono text-ink">h.calder@station7.de</span>) als Bezeichner im Manuskript und Menü antwortet.
               </p>
 </div>
-<!-- Feld 2: Tagesziel -->
-<div class="space-y-1.5" id="tagesziel-feld">
+<!-- Feld: TAGESZIEL (WÖRTER) -->
+<div class="space-y-1.5">
 <div class="flex justify-between items-center">
 <label class="block text-xs font-semibold uppercase tracking-wider text-ink" for="daily_goal">
                   Tagesziel (Wörter)
                 </label>
-<span class="text-[11px] text-ink-subtle">Optionale Schreibdisziplin</span>
+<span class="text-[11px] text-ink-muted">Optionale Schreibdisziplin</span>
 </div>
 <div class="relative w-48">
-<input class="w-full text-sm rounded border-pergament-border bg-[#fffdfb] focus:border-terracotta focus:ring-1 focus:ring-terracotta text-ink pl-3.5 pr-12 py-2.5 transition-colors" id="daily_goal" min="0" name="daily_goal" step="50" type="number" value="500"/>
-<span class="absolute inset-y-0 right-3 flex items-center text-xs text-ink-subtle pointer-events-none">
+<input class="w-full text-sm rounded border-stroke bg-panel focus:border-primary focus:ring-1 focus:ring-primary text-ink pl-3.5 pr-14 py-2.5 transition-colors" id="daily_goal" min="0" name="daily_goal" step="50" type="number" value="500"/>
+<span class="absolute inset-y-0 right-3 flex items-center text-xs text-ink-muted pointer-events-none">
                   Wörter
                 </span>
 </div>
-<p class="text-[11.5px] text-ink-muted leading-normal">
+<p class="text-[11px] text-ink-muted leading-relaxed">
                 Leerlassen für kein festes Tageslimit. Bei 0 wird kein Fortschrittsbalken im Schreibfokus eingeblendet.
               </p>
 </div>
-<!-- Formular-Fuß: Statuszeile & Buttons (Dirty-State) -->
-<div class="pt-4 border-t border-pergament-border/70 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-<!-- Ehrliche Status-Rückmeldung -->
+<!-- Formular-Fußzeile -->
+<div class="pt-4 border-t border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<!-- Links: Uhr-Icon + Text -->
 <div class="flex items-center gap-2 text-xs text-ink-muted">
-<svg class="w-4 h-4 text-terracotta/70 shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<svg class="w-4 h-4 text-primary shrink-0 stroke-[1.8]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
 <span>Wird beim Bestätigen direkt im Browser-Speicher abgelegt.</span>
 </div>
-<!-- Button-Gruppe -->
+<!-- Rechts: Buttons Verwerfen & Speichern -->
 <div class="flex items-center gap-3 self-end sm:self-auto">
-<button class="px-4 py-2 text-xs font-medium text-ink-muted hover:text-ink hover:bg-black/5 rounded transition-colors" type="button">
+<button class="px-4 py-2 text-xs font-medium text-ink-muted hover:text-ink hover:bg-black/[0.03] rounded transition-colors" type="button">
                   Verwerfen
                 </button>
-<button class="px-4 py-2 text-xs font-semibold text-white bg-terracotta hover:bg-terracotta-hover rounded shadow-sm transition-colors flex items-center gap-2 focus:ring-2 focus:ring-terracotta/40" type="submit">
-<span>Änderungen speichern</span>
-</button>
+<button class="px-4 py-2 text-xs font-semibold text-on-primary bg-primary hover:bg-[#5E2F18] rounded shadow-atelier transition-colors focus:ring-2 focus:ring-primary/40" type="submit">
+                  Änderungen speichern
+                </button>
 </div>
 </div>
-</form>
+</form><div class="p-4 rounded border border-stroke bg-panel flex items-start gap-3 mt-4 text-xs"><svg class="w-4 h-4 text-primary shrink-0 mt-0.5 stroke-[1.8]" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" stroke-linecap="round" stroke-linejoin="round"></path></svg><div><h3 class="font-medium text-ink">Offline-Kompensation</h3><p class="text-ink-muted mt-0.5 leading-relaxed">Lokaler Fake-Treiber aktiv. Eingaben verbleiben auf diesem Rechner.</p></div></div>
 </section>
-<!-- END: SectionAutorenProfil -->
-<!-- BEGIN: SectionOfflineNote -->
-<section aria-label="Hinweis zum Speicherort" class="rounded border border-pergament-border bg-[#f4efe8]/70 p-4">
-<div class="flex items-start gap-3">
-<svg class="w-4 h-4 text-ink-muted mt-0.5 shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<div class="text-xs text-ink-muted space-y-1">
-<p class="font-semibold text-ink">Lokaler Fake-Treiber aktiv. Eingaben verbleiben auf diesem Rechner.</p>
-<p class="leading-relaxed">
-                Das Atelier arbeitet ohne externe Serveranbindung oder Synchronisation. Alle geänderten Schlüssel und Profilwerte werden isoliert in der lokalen Speicherschicht vorgehalten.
-              </p>
-</div>
-</div>
-</section>
-<!-- END: SectionOfflineNote -->
-<!-- BEGIN: SectionStateShowcases -->
-<section aria-labelledby="heading-states" class="pt-6 border-t border-pergament-border">
-<div class="mb-4">
-<span class="text-[10px] font-mono uppercase tracking-widest text-ink-subtle">Referenz / Zustands-Demonstrationen</span>
-<h3 class="font-serif-title text-base text-ink font-normal mt-0.5" id="heading-states">Schnittstellen-Zustände</h3>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-<!-- Zustand A: Lade-Skelett -->
-<div class="rounded border border-pergament-border bg-white p-4 space-y-3">
-<div class="flex items-center justify-between">
-<span class="text-[11px] font-semibold text-ink-muted">Zustand A: Laden</span>
-<span class="text-[10px] font-mono text-ink-subtle">Skelett</span>
-</div>
-<div class="space-y-2 animate-pulse">
-<div class="h-2.5 bg-pergament-300 rounded w-1/3"></div>
-<div class="h-8 bg-pergament-200 rounded w-full"></div>
-<div class="h-2 bg-pergament-300 rounded w-2/3"></div>
-</div>
-<p class="text-[10.5px] text-ink-subtle pt-1 border-t border-pergament-border/50">
-                Pulsierende Pergament-Platzhalter während des Boot-Vorgangs.
-              </p>
-</div>
-<!-- Zustand B: Ausfallgesicht / Ladefehler -->
-<div class="rounded border border-pergament-border bg-[#fffbfa] p-4 flex flex-col justify-between">
-<div>
-<div class="flex items-center justify-between mb-2">
-<span class="text-[11px] font-semibold text-terracotta-soft">Zustand B: Störung</span>
-<span class="text-[10px] font-mono text-terracotta-soft">Lesefehler</span>
-</div>
-<p class="text-xs text-ink font-medium">Einstellungen konnten nicht geladen werden.</p>
-<p class="text-[11px] text-ink-muted mt-1 leading-snug">Der lokale Treiber antwortet nicht rechtzeitig.</p>
-</div>
-<div class="pt-3">
-<button class="text-xs font-medium text-terracotta hover:underline inline-flex items-center gap-1" type="button">
-<span>Erneut versuchen</span>
-<span>↺</span>
-</button>
-</div>
-</div>
-<!-- Zustand C: Leeres Profil / Fallback -->
-<div class="rounded border border-pergament-border bg-white p-4 flex flex-col justify-between">
-<div>
-<div class="flex items-center justify-between mb-2">
-<span class="text-[11px] font-semibold text-ink-muted">Zustand C: Fallback</span>
-<span class="text-[10px] font-mono text-ink-subtle">Leerstand</span>
-</div>
-<div class="text-xs text-ink space-y-1">
-<div class="flex items-center justify-between">
-<span class="text-ink-subtle text-[11px]">Bezeichner:</span>
-<span class="font-mono text-[11px] text-ink font-medium">h.calder@...</span>
-</div>
-<div class="flex items-center justify-between">
-<span class="text-ink-subtle text-[11px]">Tagesziel:</span>
-<span class="italic text-[11px] text-ink-muted">Kein Ziel gesetzt</span>
-</div>
-</div>
-</div>
-<p class="text-[10.5px] text-ink-subtle pt-2 border-t border-pergament-border/50">
-                Autorenname leer → E-Mail springt geräuschlos ein.
-              </p>
-</div>
-</div>
-</section>
-<!-- END: SectionStateShowcases -->
+<!-- END: Section 'Autoren-Profil' -->
 </div>
 </main>
 <!-- END: ScrollableContent -->
