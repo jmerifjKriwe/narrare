@@ -4,8 +4,9 @@
  * `three-act-storyboard-2` draft onto the shell's tokens. The novel's real
  * StoryboardRead stands the board:
  *
- * - The structure switcher offers the five real ids (three-act the default
- *   every unremapped novel reads); picking another stands the remap
+ * - The structure switcher offers the generated registry's rows (the
+ *   server's own five structures — three-act the default every unremapped
+ *   novel reads); picking another stands the remap
  *   notice, whose apply opens the server's own two-step contract — the
  *   preview (`confirm: false`), then the confirm that writes exactly the
  *   previewed mapping. An unknown structure id surfaces the API's refusal
@@ -49,16 +50,13 @@ import { FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 
 import type { StoryboardChapter, StoryboardStage } from "@shell/lib/api/client";
+import { structures } from "@shell/lib/generated/structures";
+
 import { SceneDrillIn } from "./sceneDrillIn";
 import { DiscardDraftDialog, RemapDialog, stageLabel } from "./storyboardDialogs";
 
 const TIMELINE_PATH = "/novels/$novelId/planning/timeline";
 const CAUSALITY_PATH = "/novels/$novelId/planning/causality";
-
-/** The five real structure ids, the switcher's own order — the client's
- *  mirror of the server registry for the labels alone; the stages, the
- *  default and the remap all stay the server's own answer. */
-const STRUCTURE_IDS = ["three-act", "heros-journey", "save-the-cat", "five-act", "seven-point"] as const;
 
 /** The sync dot's tone per real status — the mark, the label names it. */
 const SYNC_DOT: Record<string, string> = {
@@ -396,23 +394,25 @@ export function StoryboardPage() {
             )}
           </div>
         </div>
-        {/* The structure switcher — the five real ids, the standing one
-            lifted; picking another prepares the remap without writing. */}
+        {/* The structure switcher — the generated registry's rows, one
+            option per structure the server registers (a new structure
+            appears by existing, zero switcher edits); picking another
+            prepares the remap without writing. */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-rule/70 pt-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted">
               <Icon name="schema" size={14} /> {t("planning.storyboard.structureLabel")}
             </span>
             <div data-testid="storyboard-structure-switcher" className="flex flex-wrap gap-1">
-              {STRUCTURE_IDS.map((id) => {
-                const active = id === structureId;
+              {structures.map((structure) => {
+                const active = structure.id === structureId;
                 return (
                   <button
-                    key={id}
+                    key={structure.id}
                     type="button"
                     aria-pressed={active}
                     onClick={() => {
-                      if (!active) setPendingStructure(id);
+                      if (!active) setPendingStructure(structure.id);
                     }}
                     className={`flex items-center gap-1 rounded-[var(--radius-control)] px-2.5 py-0.5 text-label shadow-sm transition-colors ${FOCUS} ${
                       active
@@ -421,7 +421,7 @@ export function StoryboardPage() {
                     }`}
                   >
                     {active && <Icon name="check" size={13} />}
-                    {t(`storyboard.structure.${id}` as MessageKey)}
+                    {t(structure.titleKey)}
                   </button>
                 );
               })}

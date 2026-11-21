@@ -34,6 +34,7 @@ vi.mock("@shell/lib/api/client", () => ({
 
 import { client, type Chapter, type Novel, type Storyboard } from "@shell/lib/api/client";
 import { catalogs } from "@shell/lib/generated/catalogs";
+import { structures } from "@shell/lib/generated/structures";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 
@@ -60,13 +61,15 @@ function ok(status = 200): Response {
   return new Response(null, { status });
 }
 
-// The five real ids, the switcher's own order (the client mirror of the
-// server registry — the labels are the corrected draft wording).
-const STRUCTURE_IDS = ["three-act", "heros-journey", "save-the-cat", "five-act", "seven-point"] as const;
+// The generated registry is the only list: the test derives its ids from
+// the same import the switcher reads (#929), so a structure added or
+// retired server-side moves every copy at once.
+type StructureId = (typeof structures)[number]["id"];
+const STRUCTURE_IDS: StructureId[] = structures.map((structure) => structure.id);
 
 /** The registry's stage keys per structure — the column order the server
  *  answers, mirrored for building fixtures. */
-const STAGE_KEYS: Record<(typeof STRUCTURE_IDS)[number], string[]> = {
+const STAGE_KEYS: Record<StructureId, string[]> = {
   "three-act": ["setup", "confrontation", "resolution"],
   "heros-journey": [
     "ordinary-world", "call-to-adventure", "refusal", "mentor", "threshold",
@@ -159,7 +162,7 @@ let BOARD_CHAPTERS: Record<string, BoardChapter> = freshBoardChapters();
 
 /** The real interval tiles per structure — three-act is the registry's own
  *  hand-set 25/50/25 split, the rest tile evenly (the backend's own rule). */
-const STAGE_RATIOS: Record<(typeof STRUCTURE_IDS)[number], Array<[number, number]>> = {
+const STAGE_RATIOS: Record<StructureId, Array<[number, number]>> = {
   "three-act": [
     [0.0, 0.25],
     [0.25, 0.75],
@@ -173,7 +176,7 @@ const STAGE_RATIOS: Record<(typeof STRUCTURE_IDS)[number], Array<[number, number
 
 /** The storyboard answer under one structure: every chapter standing in
  *  the column its stage_key names, the stage defs tiling [0,1]. */
-function storyboardRow(structureId: (typeof STRUCTURE_IDS)[number], overrides: Partial<Storyboard> = {}): Storyboard {
+function storyboardRow(structureId: StructureId, overrides: Partial<Storyboard> = {}): Storyboard {
   const keys = STAGE_KEYS[structureId];
   const ratios = STAGE_RATIOS[structureId];
   const chapters = Object.values(BOARD_CHAPTERS);
@@ -251,7 +254,7 @@ const AGGREGATES = new Map([
 
 // The mutable scenario: the standing structure the storyboard answers
 // with, the remap answers, and the outage toggles.
-let structure: (typeof STRUCTURE_IDS)[number];
+let structure: StructureId;
 let storyboardFail: boolean;
 let chaptersFail: boolean;
 let scenesFail: boolean;
@@ -307,7 +310,7 @@ function baseGet(path: string, init?: { params?: { path?: { chapter_id?: string 
  *  to the target structure's even suggestion (the fixtures' positions are
  *  0, 1, 2 of a three-chapter novel, so the ratio thirds decide). */
 function remapAnswer(target: string, confirm: boolean) {
-  const keys = STAGE_KEYS[target as (typeof STRUCTURE_IDS)[number]];
+  const keys = STAGE_KEYS[target as StructureId];
   const chapters = Object.values(BOARD_CHAPTERS);
   const mapping = chapters.map((chapter) => ({
     chapter_id: chapter.chapter_id,
@@ -403,7 +406,7 @@ beforeEach(() => {
       }
       const target = init?.body?.structure_id ?? "three-act";
       const confirm = init?.body?.confirm ?? false;
-      if (confirm) structure = target as (typeof STRUCTURE_IDS)[number];
+      if (confirm) structure = target as StructureId;
       return Promise.resolve({ data: remapAnswer(target, confirm), response: ok() });
     }
     throw new Error(`unexpected POST: ${_path}`);
