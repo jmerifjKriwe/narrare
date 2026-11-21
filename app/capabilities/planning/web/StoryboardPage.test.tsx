@@ -1512,4 +1512,31 @@ describe("the route-leave guard (#928)", () => {
     expect(within(screen.getByTestId("drill-in")).getByText(/Wähle mich\./)).toBeTruthy();
     expect(within(screen.getByTestId("drill-in")).getByText(/KAPITEL 2/)).toBeTruthy();
   });
+
+  it("a confirmed switch releases a held leave cleanly — no second ask over the folded copy", async () => {
+    const router = await renderStoryboard();
+    await dirtySignalCopy();
+
+    // The switch ask stands, then a programmatic leave is held behind it.
+    const ankunft = screen.getAllByTestId("storyboard-card").find((card) =>
+      within(card).queryByText("Ankunft auf Horizon Station") !== null,
+    ) as HTMLElement;
+    fireEvent.click(within(ankunft).getByText("Ankunft auf Horizon Station"));
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    void router.navigate({ to: WORKSPACE_PATH, params: { novelId: NOVEL_ID } });
+    await waitFor(() => expect(screen.getAllByRole("alertdialog")).toHaveLength(1));
+
+    // The named loss is given to the switch ask: the copy folds into
+    // chapter 1, and the held leave dies with it — the loss it waited to
+    // name was already given, so its dialog never mounts, no spurious
+    // ask stands over the now-clean chapter, and the page stays where
+    // the confirmed switch put it.
+    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: de["planning.storyboard.discardDraftConfirm"] }));
+    await waitFor(() => expect(within(screen.getByTestId("drill-in")).getByText(/KAPITEL 1/)).toBeTruthy());
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.queryAllByRole("alertdialog")).toHaveLength(0);
+    expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/planning/storyboard`);
+    // The fold took the copy with the switch — chapter 1's clean rows stand.
+    expect(within(screen.getByTestId("drill-in")).queryByText(/Wähle mich\./)).toBeNull();
+  });
 });
