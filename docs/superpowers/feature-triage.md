@@ -1,5 +1,11 @@
 # Feature Triage — v1 to v2
 
+> **Historical decision, superseded as the working list on 2026-11-20.** The live
+> inventory is [`docs/features/INDEX.md`](../features/INDEX.md) and the order is
+> [`roadmap.md`](../../roadmap.md); this page stays the record of the 2026-10-31
+> verdict per v1 feature. The archived corpus it decided about is at
+> [`docs/archive/v1/features/`](../archive/v1/features/INDEX.md).
+>
 > Created 2026-10-31. Source: `docs/features/INDEX.md` (v1 feature registry) + v2 build plan `docs/superpowers/plans/2026-10-21-v2-build.md`.
 > Core scope per build plan: writing, knowledge, chat, setup. Everything else is "re-decide on merit" — this table is that decision.
 

@@ -432,7 +432,8 @@ Also deleted outright, not deferred: the second typechecker, VRT/golden machiner
 and every gate listed in §6. Tests are not ported (D15) — each capability brings its
 own, and only behaviour is tested, not the existence of wiring. No coverage threshold.
 
-**The feature corpus is an input, not the scope.** `docs/features/` registers 92
+**The feature corpus is an input, not the scope.** The v1 corpus (moved on
+2026-11-20 to `docs/archive/v1/features/`) registers 92
 features. On 2026-10-21 the index says 72 stable, 15 planned, 3 idea and 2
 deprecated or retired — and the per-file status lines are free text, so the index is
 the only consistent source. That status is a claim, not evidence. The port scope is
@@ -444,8 +445,9 @@ were never built: WRITE-008 (multi-draft generation), WRITE-013 (writing workflo
 and KB-010 (editor-integrated knowledge graph). They are parked with the other
 unbuilt candidates, never ported silently. The feature files themselves are not
 migrated into a capability: a capability's user-visible documentation is generated
-(D5), and `docs/features/` stays in the tree as the v1 product history, explicitly
-non-binding — its `INDEX.md` says so.
+(D5), and the v1 corpus stays in the tree as product history, explicitly
+non-binding — its `INDEX.md` says so. (Since 2026-11-20 it lives in
+`docs/archive/v1/features/`; the live inventory is `docs/features/INDEX.md`.)
 
 **Cutover (D16).** The old application stays runnable until the last core capability is
 ported, then is deleted in one change. Work happens on a dedicated branch and worktree;

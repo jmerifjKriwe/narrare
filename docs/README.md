@@ -5,7 +5,12 @@ Where everything lives, and what each place is for.
 ## Using the application
 
 - [User guide](user/INDEX.md) — the screens, the writing flow, settings.
-- [Feature notes](features/INDEX.md) — one page per capability and cross-cutting topic.
+- [Feature inventory](features/INDEX.md) — every feature, and whether it exists yet.
+
+## Where it is going
+
+- [Roadmap](../roadmap.md) — where the product stands, what feature complete means,
+  and the order in which the gaps close.
 
 ## Installing and running it
 
@@ -38,5 +43,9 @@ packages — read one only when a comment points at it. Its
 [follow-ups page](superpowers/follow-ups.md) indexes the open findings.
 
 [`design/stitch/`](design/stitch/README.md) holds the exported Stitch design
-drafts of the shell — 42 screens by area, the design system behind them, and
-three project documents.
+drafts of the shell — 78 screens by area, the design system behind them, and
+the project documents Stitch produced.
+
+[`archive/`](archive/README.md) holds what a live document replaced: the v1
+feature corpus today, with its user stories and old code paths. Read it for
+history, never for rules.
