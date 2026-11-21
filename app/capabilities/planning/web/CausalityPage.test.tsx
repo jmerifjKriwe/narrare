@@ -360,11 +360,93 @@ describe("the chain renders the novel's real scenes", () => {
     // (each standing chapter carries one scene).
     expect(within(track).queryByTestId("causality-transition")).toBeNull();
     expect(within(track).queryByTestId("causality-link")).toBeNull();
-    // The counts still speak the real fields: two scenes, two gaps (both
+    // The counts still speak the real fields: two scenes, no gaps (both
     // flanking chapters' scenes are answered — the empty chapter carries
-    // no scene to gap).
+    // no scene to gap) — so the chain chip reads the real closed zero.
     const counts = screen.getByTestId("causality-counts");
     expect(within(counts).getByText(format("planning.storyboard.scenesTotal", { count: 2 }))).toBeTruthy();
+    const chain = screen.getByTestId("causality-chain");
+    expect(within(chain).getByText(de["planning.causality.chainWhole"])).toBeTruthy();
+    expect(within(chain).queryByText(format("planning.causality.chainGaps", { count: 0 }))).toBeNull();
+  });
+
+  it("an empty chapter FIRST stands alone — no arrow before the first scene-bearing group", async () => {
+    chapters = [
+      chapterRow({ id: "c1", title: "Leer vorne", position: 0 }),
+      chapterRow({ id: "c2", title: "Danach Szenen", position: 1 }),
+    ];
+    api.GET.mockImplementation((path: string, init?: { params?: { path?: { chapter_id?: string } } }) => {
+      if (path === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes") {
+        const id = init?.params?.path?.chapter_id ?? "";
+        return Promise.resolve({
+          data: {
+            chapter_id: id,
+            version_updated_at: "2026-11-18T10:00:00Z",
+            scenes:
+              id === "c1"
+                ? []
+                : [
+                    sceneRow(id, {
+                      id: `s-${id}`,
+                      position: 1,
+                      conflict: `Konflikt ${id}`,
+                      resolution: `Auflösung ${id}`,
+                      status: "complete",
+                    }),
+                  ],
+          },
+          response: ok(),
+        });
+      }
+      return baseGet(path, init);
+    });
+    await renderCausality();
+    const track = await screen.findByTestId("causality-track");
+    expect(within(track).getAllByTestId("causality-chapter")).toHaveLength(2);
+    // The empty opener claims no transition: the first scene-bearing
+    // group has no rendered predecessor that bears scenes.
+    expect(within(track).queryByTestId("causality-transition")).toBeNull();
+    expect(within(track).queryByTestId("causality-link")).toBeNull();
+  });
+
+  it("an empty chapter LAST stands alone — no trailing transition", async () => {
+    chapters = [
+      chapterRow({ id: "c1", title: "Szenen zuerst", position: 0 }),
+      chapterRow({ id: "c2", title: "Leer hinten", position: 1 }),
+    ];
+    api.GET.mockImplementation((path: string, init?: { params?: { path?: { chapter_id?: string } } }) => {
+      if (path === "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes") {
+        const id = init?.params?.path?.chapter_id ?? "";
+        return Promise.resolve({
+          data: {
+            chapter_id: id,
+            version_updated_at: "2026-11-18T10:00:00Z",
+            scenes:
+              id === "c2"
+                ? []
+                : [
+                    sceneRow(id, {
+                      id: `s-${id}`,
+                      position: 1,
+                      conflict: `Konflikt ${id}`,
+                      resolution: `Auflösung ${id}`,
+                      status: "complete",
+                    }),
+                  ],
+          },
+          response: ok(),
+        });
+      }
+      return baseGet(path, init);
+    });
+    await renderCausality();
+    const track = await screen.findByTestId("causality-track");
+    expect(within(track).getAllByTestId("causality-chapter")).toHaveLength(2);
+    // The scene-bearing group draws no arrow into the empty tail: the
+    // transition needs the NEXT group to bear scenes too.
+    expect(within(track).queryByTestId("causality-transition")).toBeNull();
+    expect(within(track).queryByTestId("causality-link")).toBeNull();
+    expect(within(track).getByText("Leer hinten")).toBeTruthy();
   });
 
   it("connectors chain the scenes — Erzwingt within a chapter, Kapitel-Übergang across", async () => {
