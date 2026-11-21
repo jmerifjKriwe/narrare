@@ -33,8 +33,9 @@ for being minor. A fix closes it from its own commit (`Closes #<n>`); an issue t
 will not be acted on is closed with the condition that re-opens it, and an index
 closes with its last child.
 
-A finding also carries exactly one `area:` label — writing, knowledge, chat, settings,
-setup, brand, kernel, web, tooling, ci, docs — naming where it lives, and a `kind:`
+A finding also carries exactly one `area:` label — writing, knowledge, planning,
+chat, settings, setup, brand, kernel, web, tooling, ci, docs — naming where it
+lives, and a `kind:`
 label — test-gap, docs-drift, flake, a11y, i18n, race, security — when its nature is
 one of those. Area is mandatory, kind is optional, and an index issue carries neither:
 
