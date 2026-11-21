@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-[#f8f5f0]" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Narrare — Atelier-Einstellungen</title>
+<!-- Tailwind CSS v3 with Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts: EB Garamond & Plus Jakarta Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Configuration -->
+<script data-purpose="tailwind-config" id="tailwind-config">
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            pergament: {
+              50: '#fcfbfa',
+              100: '#f8f5f0',
+              200: '#f2ece4',
+              300: '#e8e2d8',
+              400: '#d7cfc2',
+              border: '#e4ddd3'
+            },
+            terracotta: {
+              DEFAULT: '#743b1f',
+              hover: '#5e2f18',
+              soft: '#8b3a2b',
+              light: '#f5eeea'
+            },
+            ink: {
+              DEFAULT: '#221f1d',
+              muted: '#68615b',
+              subtle: '#968e85'
+            }
+          },
+          fontFamily: {
+            serif: ['"EB Garamond"', 'Georgia', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+<style data-purpose="custom-typography">
+    body {
+      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+      color: #221f1d;
+      background-color: #f8f5f0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-serif-title {
+      font-family: "EB Garamond", Georgia, serif;
+    }
+    /* Subtile Akzentleiste für aktive Menüelemente */
+    .rail-active-indicator {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2.5px;
+      background-color: #743b1f;
+    }
+  </style>
+<meta content="web_dashboard" name="shell-type"/></head>
+<body class="h-full flex overflow-hidden text-ink antialiased selection:bg-terracotta/15 selection:text-terracotta">
+<!-- BEGIN: LeftIconRail -->
+<aside aria-label="Atelier Navigation" class="w-14 shrink-0 bg-[#f4efe8] border-r border-pergament-border flex flex-col items-center justify-between py-3 z-30 select-none">
+<div class="flex flex-col items-center space-y-4 w-full">
+<!-- Atelier Siegel / Logo -->
+<a class="h-9 w-9 flex items-center justify-center rounded-md text-terracotta hover:bg-black/5 transition-colors" href="#" title="Narrare Atelier">
+<span class="font-serif-title font-semibold text-2xl tracking-tighter">N</span>
+</a>
+<!-- Hauptnavigations-Icons -->
+<nav class="flex flex-col items-center space-y-1 w-full pt-1">
+<!-- Bibliothek -->
+<a class="relative w-full h-10 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.03] transition-colors" href="#" title="Bibliothek">
+<svg class="w-5 h-5 stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</a>
+<!-- Editor / Manuskript -->
+<a class="relative w-full h-10 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.03] transition-colors" href="#" title="Manuskript-Editor">
+<svg class="w-5 h-5 stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</a>
+<!-- Lore-Graph -->
+<a class="relative w-full h-10 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.03] transition-colors" href="#" title="Wissens-Graph">
+<svg class="w-5 h-5 stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</a>
+<!-- Planung / Storyboard -->
+<a class="relative w-full h-10 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.03] transition-colors" href="#" title="Planung &amp; Akte">
+<svg class="w-5 h-5 stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</a>
+</nav>
+</div>
+<!-- Unterer Rail-Bereich: Einstellungen Aktiv -->
+<div class="w-full flex flex-col items-center">
+<a aria-current="page" class="relative w-full h-11 flex items-center justify-center text-terracotta bg-[#ede6dc]/70" href="#" title="Einstellungen (aktiv)">
+<span class="rail-active-indicator"></span>
+<svg class="w-5 h-5 stroke-[1.8]" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" stroke-linecap="round" stroke-linejoin="round"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</a>
+</div>
+</aside>
+<!-- END: LeftIconRail -->
+<!-- BEGIN: MainContainer -->
+<div class="flex-1 flex flex-col h-full min-w-0 bg-[#f8f5f0] overflow-hidden">
+<!-- BEGIN: TopBar -->
+<header class="h-14 border-b border-pergament-border px-8 flex items-center justify-between bg-[#fbf9f6] select-none shrink-0 relative z-20">
+<!-- Brotkrumen-Pfad (Ohne Versionsnummer, ohne Speichern-Leiste oben) -->
+<nav aria-label="Brotkrumen" class="flex items-center space-x-2 text-sm">
+<span class="text-ink-muted">Atelier</span>
+<span class="text-ink-subtle">›</span>
+<span class="font-medium text-ink tracking-tight">Einstellungen</span>
+<span class="text-ink-subtle">›</span>
+<span class="text-ink-muted">Allgemein</span>
+</nav>
+<!-- Profil-Menü / Offenes Popover oben rechts -->
+<div class="relative" data-purpose="user-menu-wrapper">
+<!-- Auslöser-Kachel -->
+<button aria-expanded="true" class="flex items-center gap-2.5 pl-2.5 pr-2 py-1.5 rounded border border-pergament-border bg-white/70 hover:bg-white text-left transition-colors shadow-sm" type="button">
+<div class="w-6 h-6 rounded bg-[#e7ded3] border border-pergament-border text-terracotta font-serif-title font-semibold text-xs flex items-center justify-center">
+            HC
+          </div>
+<span class="text-xs font-medium text-ink">H. Calder</span>
+<svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+<!-- Sichtbares Nutzerblock-Menü Popover -->
+<div class="absolute right-0 mt-2 w-72 bg-[#fffdfa] rounded-md border border-pergament-border shadow-lg py-2 z-50 text-xs">
+<!-- Benutzerinfo-Kopf -->
+<div class="px-3.5 py-2 border-b border-pergament-border/70 mb-1">
+<div class="font-medium text-ink text-[13px] leading-tight">H. Calder</div>
+<div class="text-[11px] text-ink-muted truncate font-mono mt-0.5">h.calder@station7.de</div>
+</div>
+<!-- Menüeinträge -->
+<div class="py-1">
+<a class="flex items-center justify-between px-3.5 py-2 text-ink hover:bg-[#f3ede3] transition-colors" href="#profil-sektion">
+<span>Autorenname bearbeiten</span>
+<kbd class="text-[10px] text-ink-subtle font-sans tracking-wide">Profil</kbd>
+</a>
+<a class="flex items-center justify-between px-3.5 py-2 text-ink hover:bg-[#f3ede3] transition-colors" href="#tagesziel-feld">
+<span>Tagesziel festlegen</span>
+<span class="text-[10px] text-ink-muted">500 W</span>
+</a>
+<a class="flex items-center justify-between px-3.5 py-2 bg-[#f3ede3] text-terracotta font-medium transition-colors" href="#">
+<span class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-terracotta"></span>
+                Einstellungen
+              </span>
+<span class="text-[10px] text-terracotta/80">Aktiv</span>
+</a>
+</div>
+<div class="my-1 border-t border-pergament-border"></div>
+<!-- Abmelden (Lokalbetrieb deaktiviert) -->
+<div class="px-3.5 py-2">
+<div class="flex items-center justify-between text-ink-subtle cursor-not-allowed">
+<span class="font-normal line-through decoration-ink-subtle/50">Abmelden</span>
+<span class="text-[9px] px-1.5 py-0.5 rounded bg-black/[0.04] text-ink-muted uppercase tracking-wider font-semibold">Lokal</span>
+</div>
+<p class="text-[10.5px] leading-relaxed text-ink-muted mt-1.5 bg-[#f6f2ec] p-2 rounded border border-pergament-border/60">
+              Lokalbetrieb — keine Cloud-Sitzung, Abmelden nicht verfügbar.
+            </p>
+</div>
+</div>
+</div>
+</header>
+<!-- END: TopBar -->
+<!-- BEGIN: ScrollableContent -->
+<main class="flex-1 overflow-y-auto px-8 py-10" id="main-content"><div class="flex flex-col w-full">
+<!-- Status & Scope Banner -->
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container-low px-5 py-3.5 rounded-lg shadow-sm">
+<div class="flex items-center gap-3">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container text-terracotta text-label-default font-label-default">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+        Lokalbetrieb aktiv
+      </span>
+<span class="text-text-muted-light text-meta-default font-meta-default">
+        Keine Cloud-Pflicht · Sämtliche Schlüssel verbleiben verschlüsselt auf diesem Gerät
+      </span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-text-muted-light text-meta-default font-meta-default">Atelier-Scope:</span>
+<code class="px-2 py-0.5 rounded bg-surface-container text-primary font-mono text-meta-default font-meta-default">narrare.daemon.sock</code>
+</div>
+</div>
+<!-- Header des Inhaltsbereichs -->
+<div class="mb-8">
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-6 border-b border-surface-container">
+<div class="space-y-2 max-w-3xl">
+<span class="text-terracotta font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider block">
+          Inferenz &amp; Maschinen-Dialog
+        </span>
+<h1 class="font-prose-heading-1 text-prose-heading-1 text-on-surface">
+          KI-Regeln &amp; Modell-Architektur
+        </h1>
+<p class="font-body-default text-body-default text-text-muted-light">
+          Verwalte Schnittstellen, Inferenz-Modelle und Aufgaben-Bindungen für deine lokale Schreibumgebung. Ohne externe Provider antwortet der integrierte Offline-Treiber.
+        </p>
+</div>
+<!-- Projekt-Hinweiszeiger -->
+<a class="inline-flex items-center gap-2 px-3 py-2 rounded bg-surface-container text-primary hover:bg-surface-container-high transition-colors text-label-default font-label-default group shrink-0" href="#">
+<span class="material-symbols-outlined text-base">auto_stories</span>
+<span>Roman-Tonalität &amp; Kausalitätsregeln in Buch-Einstellungen</span>
+<span class="material-symbols-outlined text-sm group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+</a>
+</div>
+<!-- Sub-Tabs / Bereichs-Umschalter -->
+<div class="flex items-center gap-2 mt-6">
+<button class="px-4 py-2 rounded text-label-default font-label-default bg-primary text-on-primary shadow-sm transition-all flex items-center gap-2" id="tab-btn-provider" onclick="switchTab('provider')" type="button">
+<span class="material-symbols-outlined text-base">hub</span>
+<span>1. Provider</span>
+<span class="ml-1 px-1.5 py-0.2 rounded bg-primary-container text-on-primary-container text-meta-default font-meta-default">2 aktiv</span>
+</button>
+<button class="px-4 py-2 rounded text-label-default font-label-default bg-surface-container text-on-surface hover:bg-surface-container-high transition-all flex items-center gap-2" id="tab-btn-models" onclick="switchTab('models')" type="button">
+<span class="material-symbols-outlined text-base">memory</span>
+<span>2. Modelle</span>
+<span class="ml-1 px-1.5 py-0.2 rounded bg-surface text-text-muted-light text-meta-default font-meta-default">3 registriert</span>
+</button>
+<button class="px-4 py-2 rounded text-label-default font-label-default bg-surface-container text-on-surface hover:bg-surface-container-high transition-all flex items-center gap-2" id="tab-btn-tasks" onclick="switchTab('tasks')" type="button">
+<span class="material-symbols-outlined text-base">alt_route</span>
+<span>3. Aufgaben-Bindungen</span>
+<span class="ml-1 px-1.5 py-0.2 rounded bg-surface text-text-muted-light text-meta-default font-meta-default">4 Zuweisungen</span>
+</button>
+</div>
+</div>
+<!-- TAB 1: PROVIDER -->
+<section class="space-y-6" id="tab-provider">
+<!-- Ehrliche Info-Karte zum Offline-Treiber -->
+<div class="bg-surface-container-low p-5 rounded-lg flex items-start gap-4">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center text-terracotta shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-lg">shield</span>
+</div>
+<div class="space-y-1">
+<h2 class="font-headline-emph text-headline-emph text-on-surface">
+          Kein Provider zwingend erforderlich
+        </h2>
+<p class="font-body-default text-body-default text-text-muted-light leading-relaxed">
+          Solange keine Schnittstelle hinterlegt ist, antwortet Narrare mit dem lokalen Offline-Fake-Treiber — kostenfrei, vollkommen privat und ohne Datenabfluss. Deine Entwürfe verlassen niemals diesen Rechner, solange du es nicht explizit konfigurierst.
+        </p>
+</div>
+</div>
+<!-- Provider-Karten Liste -->
+<div class="space-y-4">
+<!-- Karte 1: Lokaler Server (Erfolgreicher Handshake) -->
+<div class="bg-surface-container-lowest p-6 rounded-lg shadow-sm space-y-4">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-surface-container">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-lg">terminal</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Lokaler Inferenz-Server</h3>
+<span class="px-2 py-0.5 rounded text-meta-default font-meta-default bg-surface-container text-text-muted-light">Ollama</span>
+</div>
+<p class="text-meta-default font-meta-default text-text-muted-light">Lokale Ausführung auf eigenem Hauptprozessor / Metal-Shader</p>
+</div>
+</div>
+<div class="flex items-center gap-2 self-start sm:self-auto">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container text-state-success text-meta-default font-meta-default">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+              Handshake erfolgreich (240 ms)
+            </span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-body-default font-body-default">
+<div class="space-y-1">
+<span class="text-meta-default font-meta-default text-text-muted-light">Endpunkt-URL</span>
+<div class="font-mono text-meta-default font-meta-default text-on-surface bg-surface-container px-3 py-1.5 rounded">
+              http://localhost:11434/v1
+            </div>
+</div>
+<div class="space-y-1">
+<span class="text-meta-default font-meta-default text-text-muted-light">Authentifizierung</span>
+<div class="font-mono text-meta-default font-meta-default text-text-muted-light bg-surface-container px-3 py-1.5 rounded">
+              Nicht erforderlich (Lokaler Socket)
+            </div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-2">
+<span class="text-meta-default font-meta-default text-text-muted-light">Zuletzt geprüft: Vor 3 Minuten</span>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-label-default font-label-default flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-sm">sync</span>
+              Verbindung testen
+            </button>
+<button class="px-3 py-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-label-default font-label-default" type="button">
+              Bearbeiten
+            </button>
+<button class="px-3 py-1.5 rounded text-state-danger hover:bg-surface-container transition-colors text-label-default font-label-default" type="button">
+              Entfernen
+            </button>
+</div>
+</div>
+</div>
+<!-- Karte 2: Anthropic-kompatibel mit maskiertem Key & Asynchronem Test-Zustand -->
+<div class="bg-surface-container-lowest p-6 rounded-lg shadow-sm space-y-4">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-surface-container">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-lg">cloud</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Anthropic Schnittstelle</h3>
+<span class="px-2 py-0.5 rounded text-meta-default font-meta-default bg-surface-container text-text-muted-light">Direkter HTTP-Endpunkt</span>
+</div>
+<p class="text-meta-default font-meta-default text-text-muted-light">Verbindung für Claude-Modellreihe</p>
+</div>
+</div>
+<!-- Handshake-Zustand: Aktiv simuliert -->
+<div class="flex items-center gap-2 self-start sm:self-auto">
+<span class="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-surface-container text-state-warning text-meta-default font-meta-default animate-pulse">
+<span class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+              Sende Test-Heartbeat an Endpunkt… (Timeout: 15s)
+            </span>
+</div>
+</div>
+<!-- Gesperrte Eingabefelder während Handshake -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<span class="text-meta-default font-meta-default text-text-muted-light">Endpunkt-URL</span>
+<span class="text-meta-default font-meta-default text-text-muted-light flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">lock</span> Schreibsperre aktiv
+              </span>
+</div>
+<div class="font-mono text-meta-default font-meta-default text-on-surface bg-surface-container px-3 py-1.5 rounded opacity-75 cursor-not-allowed">
+              https://api.anthropic.com/v1
+            </div>
+</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<span class="text-meta-default font-meta-default text-text-muted-light">API-Schlüssel (Maskiert)</span>
+<span class="text-meta-default font-meta-default text-text-muted-light flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">shield</span> Vault gesichert
+              </span>
+</div>
+<div class="font-mono text-meta-default font-meta-default text-on-surface bg-surface-container px-3 py-1.5 rounded opacity-75 cursor-not-allowed">
+              sk-ant-api03-••••••••••••••••••••••••••••3x9A
+            </div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-2">
+<span class="text-meta-default font-meta-default text-text-muted-light">Schlüssel wird nur im lokalen OS-Keystore hinterlegt</span>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 rounded bg-surface-container text-text-muted-light opacity-50 cursor-not-allowed text-label-default font-label-default flex items-center gap-1.5" disabled="" type="button">
+<span class="material-symbols-outlined text-sm">sync</span>
+              Prüfung läuft…
+            </button>
+<button class="px-3 py-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-label-default font-label-default" type="button">
+              Bearbeiten
+            </button>
+<button class="px-3 py-1.5 rounded text-state-danger hover:bg-surface-container transition-colors text-label-default font-label-default" type="button">
+              Entfernen
+            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Sektion: Neuen Provider konfigurieren -->
+<div class="bg-surface-container-lowest p-6 rounded-lg shadow-sm space-y-5">
+<div class="flex items-center justify-between pb-3 border-b border-surface-container">
+<div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Neuen Provider anlegen</h3>
+<p class="text-meta-default font-meta-default text-text-muted-light">Trage eine beliebige OpenAI-kompatible oder native API-Schnittstelle ein.</p>
+</div>
+<span class="text-meta-default font-meta-default text-text-muted-light">HTTP / HTTPS</span>
+</div>
+<form class="space-y-4" onsubmit="event.preventDefault();">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-1">
+<label class="block text-meta-default font-meta-default text-text-muted-light" for="provider-name">Name des Providers</label>
+<input class="w-full h-8 px-2.5 rounded bg-surface-container text-on-surface text-label-default font-label-default focus:outline-none focus:bg-surface-container-high transition-colors" id="provider-name" placeholder="z. B. Lokaler TextGen-WebUI oder Groq" type="text"/>
+</div>
+<div class="space-y-1">
+<label class="block text-meta-default font-meta-default text-text-muted-light" for="provider-type">Schnittstellen-Typ</label>
+<select class="w-full h-8 px-2.5 rounded bg-surface-container text-on-surface text-label-default font-label-default focus:outline-none focus:bg-surface-container-high transition-colors" id="provider-type">
+<option value="ollama">Lokale Ollama-Instanz (Standard)</option>
+<option value="openai">OpenAI-kompatibler Endpunkt (v1/chat/completions)</option>
+<option value="anthropic">Anthropic Messages-API</option>
+<option value="custom">Benutzerdefinierte Inferenz-Pipeline</option>
+</select>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-1">
+<label class="block text-meta-default font-meta-default text-text-muted-light" for="provider-url">Basis-Endpunkt-URL</label>
+<input class="w-full h-8 px-2.5 rounded bg-surface-container text-on-surface font-mono text-meta-default font-meta-default focus:outline-none focus:bg-surface-container-high transition-colors" id="provider-url" placeholder="http://127.0.0.1:8080/v1" type="url"/>
+</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<label class="block text-meta-default font-meta-default text-text-muted-light" for="provider-key">API-Schlüssel</label>
+<span class="text-meta-default font-meta-default text-text-muted-light">Optional bei lokalen Netzen</span>
+</div>
+<input class="w-full h-8 px-2.5 rounded bg-surface-container text-on-surface font-mono text-meta-default font-meta-default focus:outline-none focus:bg-surface-container-high transition-colors" id="provider-key" placeholder="Wird maskiert gespeichert" type="password"/>
+</div>
+</div>
+<div class="flex items-center justify-end gap-3 pt-2">
+<button class="px-4 py-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-label-default font-label-default" type="button">
+            Verbindungstest vor Speichern
+          </button>
+<button class="px-4 py-1.5 rounded bg-primary text-on-primary hover:bg-primary-container transition-colors text-label-default font-label-default shadow-sm flex items-center gap-1.5" type="submit">
+<span class="material-symbols-outlined text-base">add</span>
+            Provider anlegen
+          </button>
+</div>
+</form>
+</div>
+</section>
+<!-- TAB 2: MODELLE -->
+<section class="space-y-6 hidden" id="tab-models">
+<!-- Header Modellverwaltung -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container-low p-4 rounded-lg">
+<div class="space-y-0.5">
+<h2 class="font-headline-emph text-headline-emph text-on-surface">Registrierte Sprachmodelle</h2>
+<p class="text-meta-default font-meta-default text-text-muted-light">
+          Modelle werden an Provider gekoppelt. Genau ein Modell fungiert als Atelier-Standard.
+        </p>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-label-default font-label-default flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-sm">travel_explore</span>
+          Vom Provider abrufen (Discovery)
+        </button>
+<button class="px-3 py-1.5 rounded bg-primary text-on-primary hover:bg-primary-container transition-colors text-label-default font-label-default shadow-sm flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-sm">add</span>
+          Modell registrieren
+        </button>
+</div>
+</div>
+<!-- Modellkarten Raster -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+<!-- Modell 1: Claude 3.5 Sonnet (Standard-Modell) -->
+<div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm space-y-4 flex flex-col justify-between">
+<div class="space-y-3">
+<div class="flex items-start justify-between gap-2">
+<div>
+<div class="flex items-center gap-2">
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Claude 3.5 Sonnet</h3>
+<span class="px-2 py-0.5 rounded text-meta-default font-meta-default bg-surface-container text-terracotta font-medium">Standard-Modell</span>
+</div>
+<span class="text-meta-default font-meta-default text-text-muted-light">via Anthropic Schnittstelle</span>
+</div>
+<span class="w-2.5 h-2.5 rounded-full bg-state-success" title="Provider erreichbar"></span>
+</div>
+<div class="space-y-1">
+<span class="text-meta-default font-meta-default text-text-muted-light">Modell-Bezeichner (API-String)</span>
+<div class="font-mono text-meta-default font-meta-default text-primary bg-surface-container px-2.5 py-1 rounded">
+              claude-3-5-sonnet-20241022
+            </div>
+</div>
+<!-- Parameter-Kacheln -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+<div class="p-2 rounded bg-surface-container space-y-0.5">
+<span class="text-meta-default font-meta-default text-text-muted-light block">Kontext</span>
+<span class="text-label-default font-label-default text-on-surface">200k Tokens</span>
+</div>
+<div class="p-2 rounded bg-surface-container space-y-0.5">
+<span class="text-meta-default font-meta-default text-text-muted-light block">Max Output</span>
+<span class="text-label-default font-label-default text-on-surface">8.192 Tokens</span>
+</div>
+<div class="p-2 rounded bg-surface-container space-y-0.5">
+<span class="text-meta-default font-meta-default text-text-muted-light block">Temperatur</span>
+<span class="text-label-default font-label-default text-on-surface">0.7</span>
+</div>
+<div class="p-2 rounded bg-surface-container space-y-0.5">
+<span class="text-meta-default font-meta-default text-text-muted-light block">Timeout</span>
+<span class="text-label-default font-label-default text-on-surface">60 s</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-3 border-t border-surface-container">
+<span class="text-meta-default font-meta-default text-text-muted-light">Gebunden an: 2 Aufgaben</span>
+<div class="flex items-center gap-2">
+<button class="px-2.5 py-1 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-label-default font-label-default" type="button">
+              Bearbeiten
+            </button>
+<span class="text-meta-default font-meta-default text-text-muted-light px-2 py-1 rounded bg-surface-container cursor-not-allowed" title="Standard-Modell kann nicht gelöscht werden">
+              Gesperrt
+            </span>
+</div>
+</div>
+</div>
+<!-- Modell 2: Llama 3 8B Instruct (Lokales Modell) -->
+<div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm space-y-4 flex flex-col justify-between">
+<div class="space-y-3">
+<div class="flex items-start justify-between gap-2">
+<div>
+<div class="flex items-center gap-2">
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Llama 3 8B Instruct</h3>
+<span class="px-2 py-0.5 rounded text-meta-default font-meta-default bg-surface-container text-text-muted-light">Lokal (Ollama)</span>
+</div>
+<span class="text-meta-default font-meta-default text-text-muted-light">via Lokaler Inferenz-Server</span>
+</div>
+<span class="w-2.5 h-2.5 rounded-full bg-state-success" title="Provider erreichbar"></span>
+</div>
+<div class="space-y-1">
+<span class="text-meta-default font-meta-default text-text-muted-light">Modell-Bezeichner (API-String)</span>
+<div class="font-mono text-meta-default font-meta-default text-on-surface bg-surface-container px-2.5 py-1 rounded">
+              llama3:8b-instruct-q8_0
+            </div>
+</div>
+<!-- Parameter-Kacheln mit Systemstandard -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+<div class="p-2 rounded bg-surface-container space-y-0.5">
+<span class="text-meta-default font-meta-default text-text-muted-light block">Kontext</span>
+<span class="text-label-default font-label-default text-text-muted-light">Systemstandard</span>
+</div>
+<div class="p-2 rounded bg-surface-container space-y-0.5">
+<span class="text-meta-default font-meta-default text-text-muted-light block">Max Output</span>
+<span class="text-label-default font-label-default text-on-surface">4.096 Tokens</span>
+</div>
+<div class="p-2 rounded bg-surface-container space-y-0.5">
+<span class="text-meta-default font-meta-default text-text-muted-light block">Temperatur</span>
+<span class="text-label-default font-label-default text-text-muted-light">Systemstandard</span>
+</div>
+<div class="p-2 rounded bg-surface-container space-y-0.5">
+<span class="text-meta-default font-meta-default text-text-muted-light block">Timeout</span>
+<span class="text-label-default font-label-default text-on-surface">90 s</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-3 border-t border-surface-container">
+<button class="text-label-default font-label-default text-terracotta hover:underline" type="button">
+            Als Standard festlegen
+          </button>
+<div class="flex items-center gap-2">
+<button class="px-2.5 py-1 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-label-default font-label-default" type="button">
+              Bearbeiten
+            </button>
+<button class="px-2.5 py-1 rounded text-state-danger hover:bg-surface-container transition-colors text-label-default font-label-default" type="button">
+              Entfernen
+            </button>
+</div>
+</div>
+</div>
+<!-- Modell 3: Lokaler Offline-Treiber (Kanonischer Fallback) -->
+<div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm space-y-4 flex flex-col justify-between border-l-2 border-primary">
+<div class="space-y-3">
+<div class="flex items-start justify-between gap-2">
+<div>
+<div class="flex items-center gap-2">
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Integrierter Offline-Treiber</h3>
+<span class="px-2 py-0.5 rounded text-meta-default font-meta-default bg-surface-container text-terracotta">Eingebaut</span>
+</div>
+<span class="text-meta-default font-meta-default text-text-muted-light">Deterministischer Heuristik- &amp; Echo-Treiber</span>
+</div>
+<span class="w-2.5 h-2.5 rounded-full bg-state-success" title="Immer bereit"></span>
+</div>
+<div class="space-y-1">
+<span class="text-meta-default font-meta-default text-text-muted-light">Modell-Bezeichner</span>
+<div class="font-mono text-meta-default font-meta-default text-text-muted-light bg-surface-container px-2.5 py-1 rounded">
+              narrare-internal://offline-driver
+            </div>
+</div>
+<p class="font-body-default text-body-default text-text-muted-light">
+            Erfordert keine Verbindung, erzeugt keine Token-Kosten und simuliert Entitäten-Extraktion anhand regulärer Ausdrücke und Wortstammerkennung.
+          </p>
+</div>
+<div class="flex items-center justify-between pt-3 border-t border-surface-container">
+<span class="text-meta-default font-meta-default text-text-muted-light">Gebunden an: Entitäten-Extraktion</span>
+<span class="text-meta-default font-meta-default text-text-muted-light px-2 py-1 rounded bg-surface-container">Systemkomponente</span>
+</div>
+</div>
+</div>
+</section>
+<!-- TAB 3: AUFGABEN-BINDUNGEN -->
+<section class="space-y-6 hidden" id="tab-tasks">
+<!-- Header Aufgaben -->
+<div class="bg-surface-container-low p-5 rounded-lg space-y-1">
+<h2 class="font-headline-emph text-headline-emph text-on-surface">Kaskadierte Modell-Zuweisung nach Aufgaben</h2>
+<p class="font-body-default text-body-default text-text-muted-light">
+        Hier delegierst du die vier Kern-Aufgaben des Ateliers an spezifische Modelle oder behältst den kostenfreien Offline-Treiber bei.
+      </p>
+</div>
+<!-- Die vier kanonischen Aufgabenkarten -->
+<div class="space-y-4">
+<!-- Aufgabe 1: Text fortsetzen -->
+<div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="space-y-1 max-w-xl">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-base text-terracotta">edit_note</span>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">1. Text fortsetzen</h3>
+</div>
+<p class="font-body-default text-body-default text-text-muted-light">
+            Ghost-Writing, dynamische Szenen-Fortführung und syntaktische Vorschläge direkt im Fließtext.
+          </p>
+<div class="pt-1 flex items-center gap-2">
+<span class="text-meta-default font-meta-default text-text-muted-light">Effektiv aktiv:</span>
+<code class="font-mono text-meta-default font-meta-default text-primary px-1.5 py-0.5 rounded bg-surface-container">claude-3-5-sonnet-20241022</code>
+</div>
+</div>
+<div class="w-full md:w-64 space-y-1 shrink-0">
+<label class="block text-meta-default font-meta-default text-text-muted-light" for="task-1-select">Zugewiesenes Modell</label>
+<select class="w-full h-8 px-2.5 rounded bg-surface-container text-on-surface text-label-default font-label-default focus:outline-none focus:bg-surface-container-high transition-colors" id="task-1-select">
+<option selected="">Claude 3.5 Sonnet</option>
+<option>Llama 3 8B Instruct</option>
+<option>Lokaler Fake-Treiber (Offline)</option>
+</select>
+</div>
+</div>
+<!-- Aufgabe 2: Chat & Recherche -->
+<div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="space-y-1 max-w-xl">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-base text-terracotta">forum</span>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">2. Chat &amp; Recherche</h3>
+</div>
+<p class="font-body-default text-body-default text-text-muted-light">
+            Dialogische Befragung von Manuskript-Notizen, Historien und weltbaulichen Zusammenhängen im rechten Inspector Dock.
+          </p>
+<div class="pt-1 flex items-center gap-2">
+<span class="text-meta-default font-meta-default text-text-muted-light">Effektiv aktiv:</span>
+<code class="font-mono text-meta-default font-meta-default text-primary px-1.5 py-0.5 rounded bg-surface-container">claude-3-5-sonnet-20241022</code>
+</div>
+</div>
+<div class="w-full md:w-64 space-y-1 shrink-0">
+<label class="block text-meta-default font-meta-default text-text-muted-light" for="task-2-select">Zugewiesenes Modell</label>
+<select class="w-full h-8 px-2.5 rounded bg-surface-container text-on-surface text-label-default font-label-default focus:outline-none focus:bg-surface-container-high transition-colors" id="task-2-select">
+<option selected="">Claude 3.5 Sonnet</option>
+<option>Llama 3 8B Instruct</option>
+<option>Lokaler Fake-Treiber (Offline)</option>
+</select>
+</div>
+</div>
+<!-- Aufgabe 3: Entitäten extrahieren (Offline-Treiber aktiv) -->
+<div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-2 border-state-success">
+<div class="space-y-1 max-w-xl">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-base text-state-success">account_tree</span>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">3. Entitäten extrahieren</h3>
+</div>
+<p class="font-body-default text-body-default text-text-muted-light">
+            Erkennung von auftauchenden Figuren, Orten, Artefakten und Fraktionen im Text zur Befüllung des Wissens-Graphen.
+          </p>
+<div class="pt-1 flex items-center gap-2">
+<span class="text-meta-default font-meta-default text-text-muted-light">Effektiv aktiv:</span>
+<span class="inline-flex items-center gap-1 text-meta-default font-meta-default text-state-success bg-surface-container px-2 py-0.5 rounded">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+              Offline-Treiber aktiv (0 Kosten · 100% lokal)
+            </span>
+</div>
+</div>
+<div class="w-full md:w-64 space-y-1 shrink-0">
+<label class="block text-meta-default font-meta-default text-text-muted-light" for="task-3-select">Zugewiesenes Modell</label>
+<select class="w-full h-8 px-2.5 rounded bg-surface-container text-on-surface text-label-default font-label-default focus:outline-none focus:bg-surface-container-high transition-colors" id="task-3-select">
+<option selected="">Lokaler Fake-Treiber (Offline)</option>
+<option>Claude 3.5 Sonnet</option>
+<option>Llama 3 8B Instruct</option>
+</select>
+</div>
+</div>
+<!-- Aufgabe 4: Konsistenz prüfen -->
+<div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="space-y-1 max-w-xl">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-base text-terracotta">rule</span>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">4. Konsistenz prüfen</h3>
+</div>
+<p class="font-body-default text-body-default text-text-muted-light">
+            Kausalitäts-Audit, Zeitleisten-Abgleich und Erkennung von Widersprüchen (z. B. Augenfarben, Entfernungen, tote Figuren).
+          </p>
+<div class="pt-1 flex items-center gap-2">
+<span class="text-meta-default font-meta-default text-text-muted-light">Effektiv aktiv:</span>
+<code class="font-mono text-meta-default font-meta-default text-text-muted-light px-1.5 py-0.5 rounded bg-surface-container">claude-3-5-sonnet-20241022 (Standard ererbt)</code>
+</div>
+</div>
+<div class="w-full md:w-64 space-y-1 shrink-0">
+<label class="block text-meta-default font-meta-default text-text-muted-light" for="task-4-select">Zugewiesenes Modell</label>
+<select class="w-full h-8 px-2.5 rounded bg-surface-container text-on-surface text-label-default font-label-default focus:outline-none focus:bg-surface-container-high transition-colors" id="task-4-select">
+<option selected="">[ Standard-Modell übernehmen ]</option>
+<option>Claude 3.5 Sonnet</option>
+<option>Llama 3 8B Instruct</option>
+<option>Lokaler Fake-Treiber (Offline)</option>
+</select>
+</div>
+</div>
+</div>
+</section>
+<!-- EHRBLICHE GRENZFÄLLE & STATUS-PANELS (Didaktische Zustands-Referenz) -->
+<div class="mt-12 pt-8 border-t border-surface-container space-y-4">
+<div class="flex items-center justify-between">
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light tracking-wider">
+        System-Diagnose &amp; Reale Fehlertoleranz
+      </span>
+<span class="text-meta-default font-meta-default text-text-muted-light">Echtzeit-Rückmeldungen der Schnittstellen</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Zustand A: Authentifizierungsfehler 401 -->
+<div class="p-4 rounded-lg bg-surface-container-lowest space-y-2 border-l-2 border-state-warning shadow-sm">
+<div class="flex items-center gap-2 text-state-warning">
+<span class="material-symbols-outlined text-base">key_off</span>
+<h4 class="font-headline-emph text-headline-emph">Authentifizierungsfehler (401)</h4>
+</div>
+<p class="font-body-default text-body-default text-text-muted-light text-xs">
+          Der hinterlegte API-Schlüssel wurde vom Provider abgewiesen oder ist abgelaufen.
+        </p>
+<button class="mt-2 px-2.5 py-1 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-meta-default font-meta-default" type="button">
+          Schlüssel korrigieren
+        </button>
+</div>
+<!-- Zustand B: Endpunkt nicht erreichbar 502 / Connection Refused -->
+<div class="p-4 rounded-lg bg-surface-container-lowest space-y-2 border-l-2 border-state-danger shadow-sm">
+<div class="flex items-center gap-2 text-state-danger">
+<span class="material-symbols-outlined text-base">wifi_off</span>
+<h4 class="font-headline-emph text-headline-emph">Endpunkt nicht erreichbar (502)</h4>
+</div>
+<p class="font-body-default text-body-default text-text-muted-light text-xs">
+          Verbindung zu <code class="font-mono text-on-surface">127.0.0.1:11434</code> fehlgeschlagen. Läuft <code class="font-mono text-on-surface">ollama serve</code> im Terminal?
+        </p>
+<button class="mt-2 px-2.5 py-1 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-meta-default font-meta-default" type="button">
+          Erneut anpingen
+        </button>
+</div>
+<!-- Zustand C: Keine Provider konfiguriert (Sanfter Zero-State) -->
+<div class="p-4 rounded-lg bg-surface-container-lowest space-y-2 border-l-2 border-terracotta shadow-sm">
+<div class="flex items-center gap-2 text-terracotta">
+<span class="material-symbols-outlined text-base">offline_bolt</span>
+<h4 class="font-headline-emph text-headline-emph">Standard: Offline-Betrieb</h4>
+</div>
+<p class="font-body-default text-body-default text-text-muted-light text-xs">
+          Du kannst sofort schreiben. Narrare nutzt standardmäßig den lokalen Offline-Treiber ohne jedwede API-Kosten.
+        </p>
+<span class="inline-block mt-2 text-meta-default font-meta-default text-text-muted-light">
+          Keine Aktion erforderlich
+        </span>
+</div>
+</div>
+</div>
+<script>
+    function switchTab(tabKey) {
+      // Hide all tabs
+      document.getElementById('tab-provider').classList.add('hidden');
+      document.getElementById('tab-models').classList.add('hidden');
+      document.getElementById('tab-tasks').classList.add('hidden');
+
+      // Reset button styles
+      const defaultBtnClass = 'px-4 py-2 rounded text-label-default font-label-default bg-surface-container text-on-surface hover:bg-surface-container-high transition-all flex items-center gap-2';
+      const activeBtnClass = 'px-4 py-2 rounded text-label-default font-label-default bg-primary text-on-primary shadow-sm transition-all flex items-center gap-2';
+
+      document.getElementById('tab-btn-provider').className = defaultBtnClass;
+      document.getElementById('tab-btn-models').className = defaultBtnClass;
+      document.getElementById('tab-btn-tasks').className = defaultBtnClass;
+
+      // Show selected tab & set active button
+      if (tabKey === 'provider') {
+        document.getElementById('tab-provider').classList.remove('hidden');
+        document.getElementById('tab-btn-provider').className = activeBtnClass;
+      } else if (tabKey === 'models') {
+        document.getElementById('tab-models').classList.remove('hidden');
+        document.getElementById('tab-btn-models').className = activeBtnClass;
+      } else if (tabKey === 'tasks') {
+        document.getElementById('tab-tasks').classList.remove('hidden');
+        document.getElementById('tab-btn-tasks').className = activeBtnClass;
+      }
+    }
+  </script>
+</div></main>
+<!-- END: ScrollableContent -->
+</div>
+<!-- END: MainContainer -->
+</body></html>
