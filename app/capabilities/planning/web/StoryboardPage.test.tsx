@@ -1410,3 +1410,67 @@ describe("the catalogs", () => {
     expect(catalogs.fr["planning.storyboard.stageShare"]).toContain("mots");
   });
 });
+
+describe("the route-leave guard (#928)", () => {
+  /** Chapter 2's copy, dirtied through the edit dialog — the shared
+   *  preamble of the route-leave pins. */
+  async function dirtySignalCopy() {
+    const cards = await screen.findAllByTestId("storyboard-card");
+    fireEvent.click(within(cards[1]).getByText("Das Signal im Permafrost"));
+    const dock = await screen.findByTestId("drill-in");
+    const scenes = await within(dock).findAllByTestId("drill-in-scene");
+    fireEvent.click(within(scenes[0]).getByRole("button", { name: de["planning.storyboard.editScene"] }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(de["planning.storyboard.purpose"]), {
+      target: { value: "Wähle mich." },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["planning.crud.saveChanges"] }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    return dock;
+  }
+
+  it("a dirty draft asks before any route leave — the same confirm the chapter switch speaks", async () => {
+    const router = await renderStoryboard();
+    const dock = await dirtySignalCopy();
+
+    // The dock's workspace door (a Link) fires a route leave: the blocker
+    // holds it and the confirm stands, naming the chapter the copy belongs
+    // to — the page never folds the draft behind a silent navigation.
+    fireEvent.click(within(dock).getByRole("link", { name: de["planning.storyboard.openWorkspace"] }));
+    const guard = await screen.findByRole("alertdialog");
+    expect(within(guard).getByText(/Das Signal im Permafrost/)).toBeTruthy();
+    expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/planning/storyboard`);
+
+    // The safe answer keeps BOTH: the page and the copy.
+    fireEvent.click(within(guard).getByRole("button", { name: de["planning.crud.cancel"] }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/planning/storyboard`);
+    expect(within(screen.getByTestId("drill-in")).getByText(/Wähle mich\./)).toBeTruthy();
+
+    // The named loss proceeds — the route completes, the copy folds with
+    // the page it belonged to.
+    fireEvent.click(within(screen.getByTestId("drill-in")).getByRole("link", { name: de["planning.storyboard.openWorkspace"] }));
+    const second = await screen.findByRole("alertdialog");
+    fireEvent.click(within(second).getByRole("button", { name: de["planning.storyboard.discardDraftConfirm"] }));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}`));
+    expect(await screen.findByText("workspace face")).toBeTruthy();
+  });
+
+  it("a sub-nav sibling door asks too, and a clean draft leaves without a dialog", async () => {
+    const router = await renderStoryboard();
+    await dirtySignalCopy();
+
+    // The subbar's timeline door is a route leave like any other.
+    fireEvent.click(screen.getByTestId("storyboard-timeline-door"));
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: de["planning.storyboard.discardDraftConfirm"] }));
+    await waitFor(() => expect(router.state.location.pathname).toContain("/planning/timeline"));
+
+    // A clean draft never asks: a fresh page walks straight out.
+    await renderStoryboard();
+    await screen.findAllByTestId("storyboard-card");
+    fireEvent.click(screen.getByTestId("storyboard-timeline-door"));
+    await waitFor(() => expect(router.state.location.pathname).toContain("/planning/timeline"));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+});

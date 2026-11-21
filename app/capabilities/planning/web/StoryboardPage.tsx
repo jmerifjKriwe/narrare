@@ -32,8 +32,8 @@
  * The page reads the real API through the shell's query seam and imports
  * no other capability (rule 1).
  */
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useCallback, useMemo, useState } from "react";
+import { Link, useBlocker, useNavigate, useParams } from "@tanstack/react-router";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
@@ -131,6 +131,25 @@ export function StoryboardPage() {
   const [switchGuardId, setSwitchGuardId] = useState<string | null>(null);
   const handleDirtyChange = useCallback((dirty: boolean) => setDockDirty(dirty), []);
 
+  // The blocker reads the live dirtiness through a ref, so its callbacks
+  // stay stable (a fresh closure per render would re-register the history
+  // block — the workspace LeaveGuard's own pattern).
+  const dockDirtyRef = useRef(false);
+  dockDirtyRef.current = dockDirty;
+
+  /** The route-leave guard (#928): the workspace door, a sub-nav sibling
+   *  and the browser's back are router navigations, and while the copy
+   *  stands dirty each of them asks first — the same confirm the chapter
+   *  switch speaks (the workspace LeaveGuard's blocker; the browser's own
+   *  beforeunload rides along for a refresh, which no dialog can catch).
+   *  Cancelling resets the leave, the copy keeps standing; a named loss
+   *  proceeds and folds with the page. */
+  const blocker = useBlocker({
+    shouldBlockFn: () => dockDirtyRef.current,
+    enableBeforeUnload: () => dockDirtyRef.current,
+    withResolver: true,
+  });
+
   /** The drill-in's selection door: a clean switch walks straight, a
    *  dirty one hands the click to the discard confirm. */
   const selectChapter = useCallback(
@@ -154,6 +173,16 @@ export function StoryboardPage() {
     [stageList],
   );
   const structureId = data?.structure_id ?? "three-act";
+  // The selected chapter and its display title — both dirty-copy guards
+  // name the loss through it (an empty title says so, never an empty
+  // string in the dialog's body).
+  const selectedChapter = boardChapters.find((chapter) => chapter.chapter_id === selectedId) ?? null;
+  const selectedTitle =
+    selectedChapter === null
+      ? ""
+      : selectedChapter.title.trim() === ""
+        ? t("planning.crud.untitledChapter")
+        : selectedChapter.title;
 
   // The fan's per-chapter scene counts — only a complete, error-free fan
   // may count (the timeline counters' own rule).
@@ -520,15 +549,26 @@ export function StoryboardPage() {
         </div>
       )}
 
-      {/* The dirty-copy guard — a confirmed switch folds the copy into
-          the new chapter's clean rows; a cancel keeps both standing. */}
-      {switchGuardId !== null && selectedId !== null && (
+      {/* The route-leave guard (#928) — the dirty copy's second trigger:
+          any navigation away asks the same confirm before the copy folds
+          behind a silent route change. The scrim does not dismiss; focus
+          lands on the safe answer and returns to the page on a cancel. */}
+      {blocker.status === "blocked" && selectedId !== null && (
         <DiscardDraftDialog
-          chapterTitle={
-            boardChapters.find((chapter) => chapter.chapter_id === selectedId)?.title.trim() === ""
-              ? t("planning.crud.untitledChapter")
-              : (boardChapters.find((chapter) => chapter.chapter_id === selectedId)?.title ?? "")
-          }
+          chapterTitle={selectedTitle}
+          openerId="storyboard-page"
+          onCancel={() => blocker.reset()}
+          onDiscard={() => blocker.proceed()}
+        />
+      )}
+
+      {/* The dirty-copy guard — a confirmed switch folds the copy into
+          the new chapter's clean rows; a cancel keeps both standing. It
+          stands down while a route leave is blocked, so the two guards
+          never stack into a second dialog over the first. */}
+      {blocker.status !== "blocked" && switchGuardId !== null && selectedId !== null && (
+        <DiscardDraftDialog
+          chapterTitle={selectedTitle}
           openerId={`storyboard-select-${switchGuardId}`}
           onCancel={() => setSwitchGuardId(null)}
           onDiscard={() => {

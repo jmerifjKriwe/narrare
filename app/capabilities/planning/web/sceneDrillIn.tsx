@@ -167,8 +167,12 @@ export function SceneDrillIn({
 
   // The dirtiness rides upward as it changes: the page's chapter-switch
   // guard reads it, so an unsaved copy never folds behind a silent card.
+  // The cleanup retires the report with the dock: a body swap (an outage
+  // face, a pending refetch) folds the copy silently, and the page's
+  // route blocker must not keep guarding a copy that no longer stands.
   useEffect(() => {
     onDirtyChange(dirty);
+    return () => onDirtyChange(false);
   }, [dirty, onDirtyChange]);
 
   function beginDraft(): SceneDraft[] {
