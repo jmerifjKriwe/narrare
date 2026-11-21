@@ -158,16 +158,17 @@ export function CausalityPage() {
   }
 
   /** The scene-to-scene connector: the draft's line, its eastward chevron
-   *  and the rotated „Erzwingt" micro-label — the arrow claims only what
-   *  the chain's own order shows. */
+   *  and the rotated „Erzwingt" micro-label. The label is real content —
+   *  the forcing relation is announced in reading order, exactly between
+   *  the scenes it holds between — while the glyphs stay hidden (a glyph
+   *  is never its own accessible name). */
   function sceneLink() {
     return (
       <div
         data-testid="causality-link"
-        aria-hidden="true"
         className="flex w-8 shrink-0 flex-col items-center justify-center gap-1 self-center"
       >
-        <span className="h-px w-4 bg-outline/50" />
+        <span aria-hidden="true" className="h-px w-4 bg-outline/50" />
         <span aria-hidden="true" className="-rotate-90 text-outline">
           <Icon name="chevronDown" size={13} />
         </span>
@@ -179,19 +180,19 @@ export function CausalityPage() {
   }
 
   /** The chapter transition: the draft's double chevron and its label —
-   *  no invented summary sentence; the cards themselves are the words. */
+   *  no invented summary sentence; the cards themselves are the words.
+   *  The label is announced like „Erzwingt" — real meaning, not decor. */
   function chapterTransition() {
     return (
       <div
         data-testid="causality-transition"
-        aria-hidden="true"
         className="flex w-24 shrink-0 flex-col items-center justify-center gap-1 self-center text-center"
       >
-        <span className="flex items-center">
-          <span aria-hidden="true" className="-rotate-90 text-primary">
+        <span aria-hidden="true" className="flex items-center">
+          <span className="-rotate-90 text-primary">
             <Icon name="chevronDown" size={15} />
           </span>
-          <span aria-hidden="true" className="-ml-2 -rotate-90 text-primary">
+          <span className="-ml-2 -rotate-90 text-primary">
             <Icon name="chevronDown" size={15} />
           </span>
         </span>

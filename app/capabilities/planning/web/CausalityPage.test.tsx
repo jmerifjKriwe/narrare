@@ -332,6 +332,18 @@ describe("the chain renders the novel's real scenes", () => {
     const transitions = within(track).getAllByTestId("causality-transition");
     expect(transitions).toHaveLength(1);
     expect(within(transitions[0]).getByText(de["planning.causality.chapterTransition"])).toBeTruthy();
+
+    // The connector labels are real content, not decor: they reach the
+    // accessibility tree (only the glyphs stay hidden — a glyph is never
+    // its own accessible name), and „Erzwingt" stands in reading order
+    // between exactly the two scenes it holds together.
+    expect(links[0].getAttribute("aria-hidden")).toBeNull();
+    expect(transitions[0].getAttribute("aria-hidden")).toBeNull();
+    const forces = within(links[0]).getByText(de["planning.causality.forces"]);
+    expect(forces.closest('[aria-hidden="true"]')).toBeNull();
+    const scenes = within(track).getAllByTestId("causality-scene");
+    expect(scenes[0].compareDocumentPosition(forces) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(scenes[1].compareDocumentPosition(forces) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
   });
 
   it("the header chips derive from real counts — chapters, scenes, gaps", async () => {
