@@ -12,10 +12,12 @@
  * nav (Bücherregal live with its per-route active face; Editor and Wissen
  * live with the workspace and the lore graph; Planung live with the
  * planning wave's chronology — W6 Task 3, the Wissen ruling; Einstellungen
- * honestly disabled with its later-wave note), and the foot: the sync dot (the LIVE autosave
- * owner's face, `saveStatus.ts` — Task 12 wired it; tile 3's three states), the
- * real tri-state theme toggle (system → light → dark, the settings theme
- * PATCH, a refusal restores), and the user block (author_name → email
+ * live with the settings surface (W7 Task 3), the one global door — no book
+ * param — wearing its active face on `/settings`), and the foot: the sync
+ * dot (the LIVE autosave owner's face, `saveStatus.ts` — Task 12 wired it;
+ * tile 3's three states), the real tri-state theme toggle (system → light →
+ * dark, through the shared `useTheme` seam — the settings page's appearance
+ * cards ride the same write), and the user block (author_name → email
  * fallback, initials, NO tier — the drafts pin „KEIN Tier").
  *
  * The switcher's menu docks 4px off the chip (tile 2) and escapes the
@@ -35,13 +37,12 @@
  * three surfaces. The Planung door is live with the chronology (W6 Task 3,
  * the same ruling): it opens the active book's timeline and wears the
  * active face on any planning surface — the timeline today, the storyboard
- * and the causality strip as their tasks land. Einstellungen keeps its
- * later-wave note.
+ * and the causality strip as their tasks land. The Einstellungen door is
+ * live with the settings surface (W7 Task 3): global, so it opens with or
+ * without a book, and `/settings` is its own active face.
  *
- * The user menu the draft's tile 4 draws (Autorenname bearbeiten,
- * Tagesziel festlegen, Einstellungen, Abmelden) rides the settings wave
- * (Task 19's author profile and goal surfaces) — no action exists yet, so
- * the block ships as the drafted display chip, not a dead menu.
+ * The user block stays display-only here: the drafted user menu (W7 Task 3)
+ * lives on the topbar, where the settings-allgemein draft draws the tile.
  *
  * Icon faces (spec §6.9): the draft's Material names pin concepts, the app
  * keeps its own glyphs — collections_bookmark → bookmarkCollection,
@@ -60,15 +61,14 @@ import {
 } from "react";
 
 import type { Novel } from "../lib/api/client";
-import { client } from "../lib/api/client";
 import { PALETTE } from "../lib/cover/BookCover";
 import { coverModel } from "../lib/cover/cover";
 import { useTranslation, type MessageKey } from "../lib/i18n";
-import { queryClient, useSettingsQuery } from "../lib/query";
+import { useSettingsQuery, useTheme } from "../lib/query";
 import { SAVE_FACES, SAVE_TONE_CLASS, useSaveStatus } from "../lib/saveStatus";
-import { applyTheme, type Theme } from "../lib/theme";
+import type { Theme } from "../lib/theme";
 import { Icon, type IconName } from "../ui/icons";
-import { useChromeNovels } from "./chrome";
+import { initialsFrom, useChromeNovels } from "./chrome";
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
 const SERIF = "[font-family:var(--font-serif)]";
@@ -89,8 +89,8 @@ const LABEL =
 
 /** The nav's five entries in the draft's order. The shelf has its route;
  *  the editor, Wissen and Planung doors resolve the active book's surface
- *  at render (workspace, lore graph, chronology); Einstellungen waits
- *  honestly disabled with its later-wave note. */
+ *  at render (workspace, lore graph, chronology); Einstellungen is the one
+ *  global door (W7 Task 3) — the settings surface is its own target. */
 const NAV: readonly {
   label: MessageKey;
   icon: IconName;
@@ -101,7 +101,7 @@ const NAV: readonly {
   { label: "shell.nav.editor", icon: "editNote", note: "shell.nav.editor.note" },
   { label: "shell.nav.knowledge", icon: "hub", note: "shell.nav.knowledge.note" },
   { label: "shell.nav.planning", icon: "schema", note: "shell.nav.planning.note" },
-  { label: "shell.nav.settings", icon: "settings", note: "shell.nav.settings.note" },
+  { label: "shell.nav.settings", icon: "settings", to: "/settings" },
 ];
 
 /** The novel status words the menu's progress meta speaks — the shelf's
@@ -133,20 +133,9 @@ function CoverChip({ novel, className }: { novel: Novel; className: string }) {
   );
 }
 
-/** The initials the user block's avatar wears: the first and last word's
- *  initial of the author name, or of the email's local part — „H. Calder"
- *  and „h.calder@…" both read HC. No source, no initials (the person glyph
- *  answers). */
-function initialsFrom(source: string | null): string | null {
-  if (source === null) return null;
-  const words = source.trim().split(/[\s._-]+/).filter((word) => word.length > 0);
-  if (words.length === 0) return null;
-  const first = Array.from(words[0].toUpperCase())[0] ?? "";
-  const last = words.length > 1 ? (Array.from(words[words.length - 1].toUpperCase())[0] ?? "") : "";
-  return first + last || null;
-}
-
-/** The theme cycle's three states: the row's null is the system's own. */
+/** The theme cycle's three states: the row's null is the system's own.
+ *  The write rides the shared `useTheme` seam — the settings page's
+ *  appearance cards make the same PATCH through the same door. */
 const THEME_CYCLE: Record<"system" | Theme, { next: Theme | null; name: MessageKey }> = {
   system: { next: "light", name: "shell.theme.system" },
   light: { next: "dark", name: "shell.theme.light" },
@@ -314,26 +303,14 @@ export function IconRail() {
     return [novel.genre, fact].filter(Boolean).join(" • ");
   }
 
-  // The theme toggle: the row's choice (null = system), applied at once and
-  // PATCHed through the theme's own door; a refusal restores the prior
-  // appearance, success refreshes the cached row.
-  const theme = settings.data?.theme ?? null;
+  // The theme toggle: the shared seam (the settings page's cards ride the
+  // same write) — the row's choice applied at once, PATCHed through the
+  // theme's own door, a refusal restoring the prior appearance.
+  const { theme, setTheme } = useTheme();
   const themeState: "system" | Theme = theme === "light" || theme === "dark" ? theme : "system";
   const cycle = THEME_CYCLE[themeState];
   const nextName = cycle.next === null ? t("shell.theme.system") : t(THEME_CYCLE[cycle.next].name);
   const themeLabel = t("shell.rail.theme", { current: t(cycle.name), next: nextName });
-  async function toggleTheme() {
-    const previous = theme;
-    const next = cycle.next;
-    applyTheme(next);
-    try {
-      const { response } = await client.PATCH("/api/settings/theme", { body: { theme: next } });
-      if (!response.ok) throw new Error(`refused: ${response.status}`);
-      void queryClient.invalidateQueries({ queryKey: ["settings"] });
-    } catch {
-      applyTheme(previous === "light" || previous === "dark" ? previous : null);
-    }
-  }
 
   // The user block: author_name first, the email label when none is stored,
   // the honest profile neutral when neither exists — never a tier.
@@ -499,8 +476,9 @@ export function IconRail() {
         <div aria-hidden="true" className="h-px w-8 bg-border" />
 
         {/* The nav: the shelf and the editor live (the editor opens the
-            active book's workspace, Task 11), the three later-wave doors
-            honestly disabled with their notes. */}
+            active book's workspace, Task 11), the two later-wave doors
+            honestly disabled with their notes — and the gear door live
+            with the settings surface (W7 Task 3), the one global one. */}
         <nav aria-label={t("shell.nav.label")} className="flex w-full flex-col items-center gap-1.5">
           {NAV.map((entry) => {
             const face = (isCurrent: boolean) =>
@@ -657,7 +635,7 @@ export function IconRail() {
           type="button"
           aria-label={themeLabel}
           title={themeLabel}
-          onClick={() => void toggleTheme()}
+          onClick={() => void setTheme(cycle.next)}
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded text-muted transition-colors hover:bg-surface-container-low hover:text-foreground ${FOCUS}`}
         >
           <Icon name="theme" size={19} />
@@ -665,7 +643,8 @@ export function IconRail() {
 
         {/* The user block: initials and name, author_name → email fallback,
             the honest neutral when neither stands. Display only — the
-            drafted user menu's actions ride the settings wave (Task 19). */}
+            drafted user menu (W7 Task 3) lives on the topbar, where the
+            settings-allgemein draft draws the tile. */}
         <div
           className="flex w-full items-center justify-center gap-2 rounded border border-transparent p-0 transition-colors group-hover/rail:justify-start group-hover/rail:border-border/40 group-hover/rail:bg-surface-container-low/60 group-hover/rail:p-1.5 pointer-coarse:justify-start pointer-coarse:border-border/40 pointer-coarse:bg-surface-container-low/60 pointer-coarse:p-1.5"
           title={userTitle}

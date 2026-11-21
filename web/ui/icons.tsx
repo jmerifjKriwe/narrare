@@ -131,6 +131,13 @@ export const icons = {
       <path d="M8 4.6V8.2L10.6 9.6" />
     </>
   ),
+  /** The quiet fact: the info card's mark — a circle around an i. */
+  info: (
+    <>
+      <circle cx="8" cy="8" r="5.5" />
+      <path d="M8 7.4V11M8 4.9V5" />
+    </>
+  ),
   /** The editor's note: ruled lines with the nib laid against them. */
   editNote: (
     <>

@@ -29,7 +29,7 @@ vi.mock("./api/client", () => ({
 
 import { client } from "./api/client";
 import { catalogs } from "./generated/catalogs";
-import { LanguageChip, LanguageSwitcher } from "./language";
+import { LanguageChip, LanguageSwitcher, useLanguageChoice } from "./language";
 import { activeLocale, applyLocale, chosenLocale } from "./locale";
 import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
 import { queryClient, useSettingsQuery } from "./query";
@@ -474,5 +474,127 @@ describe("the chrome chip — variante A, the real switcher (D17)", () => {
     fireEvent.click(within(menu).getAllByRole("menuitemradio")[0]);
     await waitFor(() => expect(activeLocale()).toBe("de"));
     expect(screen.getByRole("radio", { name: "Deutsch" }).getAttribute("aria-checked")).toBe("true");
+  });
+});
+
+// --- The null choice — „Dem Browser folgen“ (W7, the settings face) ---------
+
+/**
+ * The settings surface's checkbox rides the seam directly: this probe drives
+ * `choose(null)` and `choose(locale)` the way the „Dem Browser folgen“
+ * checkbox does, so the seam's own contract is what these pins hold — the
+ * page's geometry lives in the settings capability's suite.
+ */
+function NullChoiceProbe({ preSetup = false }: { preSetup?: boolean } = {}) {
+  const { locale, chosen, choose } = useLanguageChoice({ preSetup });
+  return (
+    <div>
+      <p data-testid="active">{locale}</p>
+      <p data-testid="chosen">{chosen === null ? "browser" : chosen}</p>
+      <button type="button" onClick={() => void choose(null)}>
+        follow
+      </button>
+      <button type="button" onClick={() => void choose("fr")}>
+        fr
+      </button>
+    </div>
+  );
+}
+
+describe("the null choice — „Dem Browser folgen“ (W7)", () => {
+  it("hands the choice to the browser at once and writes {locale: null}", async () => {
+    setUp = true;
+    applyLocale("de");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SettingsProbe />
+        <NullChoiceProbe />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
+
+    fireEvent.click(screen.getByRole("button", { name: "follow" }));
+    expect(screen.getByTestId("chosen").textContent).toBe("browser"); // at once
+    await waitFor(() =>
+      expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: null } }),
+    );
+    expect(storedLocale).toBeNull();
+  });
+
+  it("the page speaks the browser's language from the null choice", async () => {
+    setUp = true;
+    applyLocale("de");
+    // The browser reads French: following it means the page turns French.
+    vi.stubGlobal("navigator", { language: "fr-FR", languages: ["fr-FR"] });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <NullChoiceProbe />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByTestId("active").textContent).toBe("de");
+
+    fireEvent.click(screen.getByRole("button", { name: "follow" }));
+    await waitFor(() => expect(screen.getByTestId("active").textContent).toBe("fr"));
+  });
+
+  it("a refusal restores the prior stored choice", async () => {
+    setUp = true;
+    applyLocale("de");
+    vi.stubGlobal("navigator", { language: "fr-FR", languages: ["fr-FR"] });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <NullChoiceProbe />
+      </QueryClientProvider>,
+    );
+
+    api.PATCH.mockResolvedValueOnce({
+      error: { detail: "refused" },
+      response: new Response(null, { status: 503 }),
+    });
+    fireEvent.click(screen.getByRole("button", { name: "follow" }));
+    await waitFor(() => expect(screen.getByTestId("chosen").textContent).toBe("de"));
+    expect(screen.getByTestId("active").textContent).toBe("de");
+  });
+
+  it("following twice writes once — the stored answer unchanged is no ask", () => {
+    setUp = true;
+    applyLocale(null);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <NullChoiceProbe />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "follow" }));
+    expect(api.PATCH).not.toHaveBeenCalled();
+  });
+
+  it("a stored choice ends the browser follow — the checkbox's other half", async () => {
+    setUp = true;
+    applyLocale(null); // the browser decides
+    render(
+      <QueryClientProvider client={queryClient}>
+        <NullChoiceProbe />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "fr" }));
+    await waitFor(() => expect(screen.getByTestId("chosen").textContent).toBe("fr"));
+    expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "fr" } });
+  });
+
+  it("pre-setup has no null face — the mirror contract answers nothing", () => {
+    storePreSetupLocale("de");
+    applyLocale("de");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <NullChoiceProbe preSetup />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "follow" }));
+    expect(api.PATCH).not.toHaveBeenCalled();
+    expect(readPreSetupLocale()).toBe("de"); // the mirror stands untouched
+    expect(screen.getByTestId("chosen").textContent).toBe("de");
   });
 });

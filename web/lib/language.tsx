@@ -65,11 +65,21 @@ const FOCUS =
  * mirror contract (the welcome and the wizard, where the settings row does
  * not exist yet); the chrome's chip and the shelf's retired radio rode the
  * post-setup contract — the row is the record, no mirror.
+ *
+ * `next: null` is „Dem Browser folgen“ (the settings face's checkbox, W7):
+ * the stored choice is dropped, the page turns to the browser's language at
+ * once, and the write carries the schema's own null. The mirror contract has
+ * no null face — pre-setup the mirror stands for a positive choice, so a
+ * null there is a no-op — and a refusal restores the prior stored choice,
+ * exactly like a language's refusal does.
  */
 export function useLanguageChoice({ preSetup = false }: { preSetup?: boolean } = {}) {
   // Subscribing here is what makes a switch re-render every face at once —
-  // one store, so the chip and the radios can never disagree.
+  // one store, so the chip and the radios can never disagree. `chosen` is
+  // the stored answer (null = the browser decides): the settings checkbox
+  // reads its state off it, off the same store announcements.
   const locale = useSyncExternalStore(subscribeLocale, activeLocale, activeLocale);
+  const chosen = useSyncExternalStore(subscribeLocale, chosenLocale, chosenLocale);
 
   // The pre-setup mirror, adopted before paint when the row holds no choice
   // yet — a refresh keeps the language, never flashes the browser's own.
@@ -79,12 +89,17 @@ export function useLanguageChoice({ preSetup = false }: { preSetup?: boolean } =
     if (mirrored !== null) applyLocale(mirrored);
   }, [preSetup]);
 
-  /** Apply and persist a locale — the one write every face makes. */
-  async function choose(next: Locale) {
-    if (next === activeLocale()) return;
+  /** Apply and persist a choice — the one write every face makes. The
+   *  guard is against the STORED answer: choosing the language the row
+   *  already holds (or following the browser when it is followed) is no
+   *  write, while a null over a stored choice — and a stored choice over
+   *  the follow — is the real change the write owes. */
+  async function choose(next: Locale | null) {
+    if (next === chosenLocale()) return;
+    if (preSetup && next === null) return;
     const previous = chosenLocale();
     applyLocale(next);
-    if (preSetup) storePreSetupLocale(next);
+    if (preSetup && next !== null) storePreSetupLocale(next);
     try {
       const { response } = await client.PATCH("/api/settings", { body: { locale: next } });
       // Setup required: the row cannot hold the choice yet — the mirror
@@ -95,11 +110,11 @@ export function useLanguageChoice({ preSetup = false }: { preSetup?: boolean } =
       void queryClient.invalidateQueries({ queryKey: ["settings"] });
     } catch {
       applyLocale(previous);
-      if (preSetup) storePreSetupLocale(previous);
+      if (preSetup && previous !== null) storePreSetupLocale(previous);
     }
   }
 
-  return { locale, choose };
+  return { locale, chosen, choose };
 }
 
 /** The radio face's drafted geometries — each door's port, kept verbatim. */

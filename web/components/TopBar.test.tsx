@@ -94,12 +94,19 @@ const ARCHIVED = novelRow({
 const ROWS = [DEAD_SIGNAL, WINTERHAUS, ARCHIVED];
 
 let novelsAnswer: () => Promise<{ data?: unknown; response: Response }>;
+let settingsRow: {
+  locale: string | null;
+  theme: string | null;
+  author_name: string | null;
+  daily_goal_words: number | null;
+  email: string | null;
+};
 
 function scriptApi() {
   api.GET.mockImplementation(async (path: string) => {
     if (path === "/api/settings") {
       return {
-        data: { locale: "de", theme: null, author_name: null, email: null },
+        data: { ...settingsRow },
         response: ok(),
       };
     }
@@ -108,7 +115,8 @@ function scriptApi() {
   });
   api.PATCH.mockImplementation(async (path: string, init?: { body?: { locale?: string } }) => {
     if (path === "/api/settings") {
-      return { data: { locale: init?.body?.locale ?? null, theme: null }, response: ok() };
+      settingsRow = { ...settingsRow, locale: init?.body?.locale ?? null };
+      return { data: { ...settingsRow }, response: ok() };
     }
     throw new Error(`unexpected request: ${path}`);
   });
@@ -127,10 +135,22 @@ const bookRoute = createRoute({
   path: "/novels/$novelId",
   component: () => <TopBar />,
 });
+/** The settings surface's harness face (W7 Task 3): the user-block menu's
+ *  doors land here — the marker makes the landing observable. */
+const settingsRoute = createRoute({
+  getParentRoute: () => testRoot,
+  path: "/settings",
+  component: () => (
+    <>
+      <p>settings</p>
+      <TopBar />
+    </>
+  ),
+});
 
 function renderTopBar(path = "/") {
   const router = createRouter({
-    routeTree: testRoot.addChildren([homeRoute, bookRoute]),
+    routeTree: testRoot.addChildren([homeRoute, bookRoute, settingsRoute]),
     history: createMemoryHistory({ initialEntries: [path] }),
   });
   render(
@@ -145,6 +165,13 @@ const de = catalogs.de;
 
 beforeEach(() => {
   novelsAnswer = async () => ({ data: ROWS, response: ok() });
+  settingsRow = {
+    locale: "de",
+    theme: null,
+    author_name: "H. Calder",
+    daily_goal_words: 500,
+    email: "h.calder@station7.de",
+  };
   scriptApi();
   localStorage.clear();
   vi.stubGlobal("navigator", { language: "de-DE", languages: ["de-DE"] });
@@ -270,5 +297,126 @@ describe("the topbar — save, search, language", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /Language/ }).textContent).toContain("EN (English)"),
     );
+  });
+});
+
+// --- The user block menu (W7 Task 3) — the drafted tile, wired --------------
+
+describe("the topbar — the settings face (W7)", () => {
+  it("reads Atelier / Einstellungen — the draft's crumb on its surface", async () => {
+    renderTopBar("/settings");
+    await screen.findByText("settings");
+    expect(screen.getByText(de["shell.nav.settings"])).toBeTruthy();
+    expect(screen.queryByText(de["shell.topbar.shelf"])).toBeNull();
+    // And nowhere else: the shelf keeps its own face.
+    cleanup();
+    queryClient.clear();
+    renderTopBar("/");
+    await screen.findByRole("link", { name: de["shell.topbar.atelier"] });
+    expect(screen.getByText(de["shell.topbar.shelf"])).toBeTruthy();
+  });
+});
+
+describe("the user block menu — the drafted tile, wired", () => {
+  async function openMenu() {
+    const trigger = await screen.findByRole("button", { name: /H\. Calder/ });
+    fireEvent.click(trigger);
+    const menu = await screen.findByRole("menu", { name: de["shell.rail.user"] });
+    return { trigger, menu };
+  }
+
+  it("the trigger names the author with the initials avatar over the email fallback", async () => {
+    renderTopBar("/");
+    const trigger = await screen.findByRole("button", { name: /H\. Calder/ });
+    expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(trigger.textContent).toContain("HC");
+    // The row holds no name: the email answers as the block's label.
+    settingsRow = { ...settingsRow, author_name: null };
+    cleanup();
+    queryClient.clear();
+    renderTopBar("/");
+    const fallback = await screen.findByRole("button", { name: /h\.calder@station7\.de/ });
+    expect(fallback.textContent).toContain("HC");
+  });
+
+  it("the open menu carries the drafted rows with the row's own facts", async () => {
+    renderTopBar("/");
+    const { menu } = await openMenu();
+    // The header: name and the mono email.
+    expect(menu.textContent).toContain("H. Calder");
+    expect(menu.textContent).toContain("h.calder@station7.de");
+    const items = within(menu).getAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      expect.stringContaining(de["shell.menu.authorName"]),
+      expect.stringContaining(de["shell.menu.goal"]),
+      expect.stringContaining(de["shell.menu.settings"]),
+    ]);
+    // The metas: the draft's Profil mark and the REAL goal, never a mock 500.
+    expect(screen.getByText(de["shell.menu.profileMeta"])).toBeTruthy();
+    expect(screen.getByText(t("shell.menu.goalMeta", { count: 500 }))).toBeTruthy();
+    // Abmelden is honest: no menuitem role, the line-through label, the
+    // LOKAL badge and its no-backend note.
+    expect(within(menu).queryByRole("menuitem", { name: de["shell.menu.signOut"] })).toBeNull();
+    expect(menu.textContent).toContain(de["shell.menu.signOut"]);
+    expect(screen.getByText(de["shell.menu.localBadge"])).toBeTruthy();
+    expect(screen.getByText(de["shell.menu.localNote"])).toBeTruthy();
+  });
+
+  it("the doors address the settings surface's sections — Autorenname first", async () => {
+    const router = renderTopBar("/");
+    await openMenu();
+    // The row's accessible name carries its meta peek (name-from-content).
+    fireEvent.click(screen.getByRole("menuitem", { name: /Autorenname bearbeiten/ }));
+    await waitFor(() => expect(screen.getByText("settings")).toBeTruthy());
+    expect(router.state.location.pathname).toBe("/settings");
+    expect(router.state.location.hash).toBe("profil-sektion");
+  });
+
+  it("the goal door lands on the goal field's address", async () => {
+    const router = renderTopBar("/");
+    await openMenu();
+    fireEvent.click(screen.getByRole("menuitem", { name: /Tagesziel festlegen/ }));
+    await waitFor(() => expect(screen.getByText("settings")).toBeTruthy());
+    expect(router.state.location.pathname).toBe("/settings");
+    expect(router.state.location.hash).toBe("tagesziel-feld");
+  });
+
+  it("the Einstellungen row opens /settings and wears Aktiv on it", async () => {
+    const router = renderTopBar("/");
+    const { menu } = await openMenu();
+    const item = within(menu).getByRole("menuitem", { name: de["shell.menu.settings"] });
+    expect(item.getAttribute("aria-current")).toBeNull();
+    fireEvent.click(item);
+    await waitFor(() => expect(router.state.location.pathname).toBe("/settings"));
+
+    // On the surface the row marks itself the draft's way — the Aktiv meta.
+    cleanup();
+    queryClient.clear();
+    renderTopBar("/settings");
+    await openMenu();
+    const active = within(await screen.findByRole("menu", { name: de["shell.rail.user"] })).getByRole(
+      "menuitem",
+      { name: /Einstellungen/ },
+    );
+    expect(active.getAttribute("aria-current")).toBe("true");
+    expect(screen.getByText(de["shell.menu.settingsActive"])).toBeTruthy();
+  });
+
+  it("the goal meta answers the honest dash when no goal stands", async () => {
+    settingsRow = { ...settingsRow, daily_goal_words: null };
+    renderTopBar("/");
+    await openMenu();
+    expect(screen.getByText("—")).toBeTruthy();
+    expect(screen.queryByText(t("shell.menu.goalMeta", { count: 0 }))).toBeNull();
+  });
+
+  it("Escape closes and returns the focus — the quick menu's discipline", async () => {
+    renderTopBar("/");
+    const { trigger } = await openMenu();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("menu", { name: de["shell.rail.user"] })).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
   });
 });
