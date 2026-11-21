@@ -31,6 +31,8 @@ import { useTranslation } from "@shell/lib/i18n";
 import { useUpdateSettings } from "@shell/lib/query";
 import { Icon } from "@shell/ui/icons";
 
+import { useSettingsTasksQuery } from "./tasksQuery";
+
 /** The shell's focus ring on every control the form offers. */
 const FOCUS =
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
@@ -83,8 +85,24 @@ export function ProfileForm({ row }: { row: ProfileRow }) {
   const [goalError, setGoalError] = useState(false);
   const [error, setError] = useState<(Error & { status?: number }) | null>(null);
 
-  const dirty = name !== storedName || goalRaw !== storedGoalRaw;
+  // The badge claims exactly what the wire would do: the SAME comparison
+  // the save runs. The name counts dirty when the TRIMMED answer differs
+  // („H. Calder " is the stored name), the goal when the PARSED answer
+  // differs — „0500" over a stored 500 parses to the stored value and is
+  // no change, while an unparseable field is the dirty change it is (the
+  // save will refuse it on the field).
+  const goalAnswer = parseDailyGoal(goalRaw);
+  const dirty = name.trim() !== storedName || goalAnswer !== row.daily_goal_words;
   const busy = updateSettings.isPending;
+
+  /** The offline card's backend truth: it stands only while every
+   *  assignable task answers the local fake driver. A task served by a
+   *  configured provider hides it; an audit-only row has no driver and
+   *  contradicts nothing; a failed read hides it too — no claim without
+   *  an answer. */
+  const tasks = useSettingsTasksQuery();
+  const localDriver =
+    tasks.isSuccess && tasks.data.every((task) => (task.assignable ? task.kind === "fake" : true));
 
   /** The one save: validate, diff against the row, ride the mutation with
    *  only the dirtied fields. The locale always rides (the schema's rule). */
@@ -257,17 +275,21 @@ export function ProfileForm({ row }: { row: ProfileRow }) {
         </div>
       </form>
 
-      {/* The offline note: the draft's Offline-Kompensation card, the
-          backend's local truth in its info tone. */}
-      <div className="mt-4 flex items-start gap-3 rounded-lg border border-border bg-panel p-4 text-meta">
-        <span className="mt-0.5 shrink-0 text-primary">
-          <Icon name="info" size={16} />
-        </span>
-        <div>
-          <h3 className="font-medium text-foreground">{t("settings.offline.title")}</h3>
-          <p className="mt-0.5 leading-relaxed text-muted">{t("settings.offline.body")}</p>
+      {/* The offline note: the draft's Offline-Kompensation card, shown
+          only while the backend's own tasks read answers the local fake
+          driver for every assignable task — a configured provider hides
+          it, and a failed read claims nothing. */}
+      {localDriver && (
+        <div className="mt-4 flex items-start gap-3 rounded-lg border border-border bg-panel p-4 text-meta">
+          <span className="mt-0.5 shrink-0 text-primary">
+            <Icon name="info" size={16} />
+          </span>
+          <div>
+            <h3 className="font-medium text-foreground">{t("settings.offline.title")}</h3>
+            <p className="mt-0.5 leading-relaxed text-muted">{t("settings.offline.body")}</p>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

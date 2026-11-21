@@ -63,6 +63,26 @@ let settingsRow: {
   email: string | null;
 };
 
+/** The mock instance's tasks — the backend's cascade truth for the card. */
+let tasksRows: {
+  task_key: string;
+  profile_id: string | null;
+  profile_name: string | null;
+  kind: string;
+  assignable: boolean;
+}[];
+
+function taskRow(overrides: Partial<(typeof tasksRows)[number]> = {}): (typeof tasksRows)[number] {
+  return {
+    task_key: "write.prose",
+    profile_id: null,
+    profile_name: null,
+    kind: "fake",
+    assignable: true,
+    ...overrides,
+  };
+}
+
 function row(overrides: Partial<typeof settingsRow> = {}): typeof settingsRow {
   return {
     locale: "de",
@@ -78,6 +98,7 @@ function scriptApi() {
   api.GET.mockImplementation(async (path: string) => {
     if (path === "/api/settings") return { data: { ...settingsRow }, response: ok() };
     if (path === "/api/setup/status") return { data: { complete: true }, response: ok() };
+    if (path === "/api/settings/tasks") return { data: tasksRows.map((task) => ({ ...task })), response: ok() };
     throw new Error(`unexpected request: ${path}`);
   });
   api.PATCH.mockImplementation(async (path: string, init?: { body?: Record<string, unknown> }) => {
@@ -149,6 +170,11 @@ beforeEach(() => {
   api.GET.mockReset();
   api.PATCH.mockReset();
   settingsRow = row();
+  tasksRows = [
+    taskRow(),
+    taskRow({ task_key: "write.scene", profile_name: "Local", profile_id: "11111111-1111-1111-1111-111111111111" }),
+    taskRow({ task_key: "audit.text", kind: "audit", assignable: false }),
+  ];
   scriptApi();
   localStorage.clear();
   queryClient.clear();
@@ -181,8 +207,9 @@ describe("the Allgemein surface — the draft's geometry", () => {
     expect(goalInput().value).toBe("500");
     // The email answers as the fallback label — the hint names it.
     expect(screen.getByText(t("settings.author.hint.email", { email: "h.calder@station7.de" }))).toBeTruthy();
-    // The offline note: the draft's card, title and body.
-    expect(screen.getByText(de["settings.offline.title"])).toBeTruthy();
+    // The offline note: the draft's card, title and body — it stands once
+    // the tasks read has answered the local driver for every task.
+    expect(await screen.findByText(de["settings.offline.title"])).toBeTruthy();
     expect(screen.getByText(de["settings.offline.body"])).toBeTruthy();
     expect(screen.getByText(de["settings.subtitle"])).toBeTruthy();
     expect(screen.getByText(de["settings.language.instant"])).toBeTruthy();
@@ -397,6 +424,28 @@ describe("the profile form — one dirty form", () => {
     expect(settingsPatches()[0][1].body).toEqual({ locale: "de", author_name: null });
   });
 
+  it("the badge claims exactly what the wire would do — „0500“ is the stored 500", async () => {
+    await open();
+    // A zero-padded retyping parses to the stored value: no badge, and the
+    // save is the same silent no-op the badge now claims.
+    fireEvent.change(goalInput(), { target: { value: "0500" } });
+    expect(screen.queryByText(de["settings.profile.dirty"])).toBeNull();
+    fireEvent.click(saveButton());
+    expect(settingsPatches().length).toBe(0);
+    // A real change still shows it.
+    fireEvent.change(goalInput(), { target: { value: "750" } });
+    expect(screen.getByText(de["settings.profile.dirty"])).toBeTruthy();
+    // And the trimmed name: a trailing space is the stored name, no badge.
+    fireEvent.change(goalInput(), { target: { value: "500" } });
+    fireEvent.change(authorInput(), { target: { value: "H. Calder " } });
+    expect(screen.queryByText(de["settings.profile.dirty"])).toBeNull();
+    // An unparseable field IS the dirty change it is — the save will
+    // refuse it on the field, so the badge stands with it.
+    fireEvent.change(authorInput(), { target: { value: "H. Calder" } });
+    fireEvent.change(goalInput(), { target: { value: "abc" } });
+    expect(screen.getByText(de["settings.profile.dirty"])).toBeTruthy();
+  });
+
   it("the goal clears with a carried null and the name stays absent", async () => {
     await open();
     fireEvent.change(goalInput(), { target: { value: "" } });
@@ -514,6 +563,51 @@ describe("the profile form — one dirty form", () => {
     fireEvent.click(saveButton());
     expect(await screen.findByText(de["settings.error"])).toBeTruthy();
     expect(authorInput().value).toBe("Neuer Name");
+  });
+});
+
+describe("the offline card — the driver's truth, not a printed claim", () => {
+  it("stands while every assignable task answers the local fake driver", async () => {
+    renderSettings();
+    await screen.findByLabelText(de["settings.author.label"]);
+    expect(await screen.findByText(de["settings.offline.title"])).toBeTruthy();
+    expect(screen.getByText(de["settings.offline.body"])).toBeTruthy();
+  });
+
+  it("hides once any assignable task answers a configured provider", async () => {
+    tasksRows = [
+      taskRow(),
+      taskRow({ task_key: "write.scene", kind: "openai-chat", profile_name: "Cloud", profile_id: "22222222-2222-2222-2222-222222222222" }),
+    ];
+    renderSettings();
+    await screen.findByLabelText(de["settings.author.label"]);
+    // Let the tasks answer settle, then assert the absence.
+    await waitFor(() => expect(api.GET.mock.calls.filter(([path]) => path === "/api/settings/tasks").length).toBeGreaterThan(0));
+    expect(screen.queryByText(de["settings.offline.title"])).toBeNull();
+  });
+
+  it("an audit-only row hides nothing — no driver answers it at all", async () => {
+    tasksRows = [
+      taskRow(),
+      taskRow({ task_key: "audit.text", kind: "audit", assignable: false }),
+    ];
+    renderSettings();
+    await screen.findByLabelText(de["settings.author.label"]);
+    expect(await screen.findByText(de["settings.offline.title"])).toBeTruthy();
+  });
+
+  it("no answer, no claim — a failed tasks read hides the card", async () => {
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/tasks") {
+        return { data: undefined, response: new Response(null, { status: 500 }) };
+      }
+      if (path === "/api/settings") return { data: { ...settingsRow }, response: ok() };
+      throw new Error(`unexpected request: ${path}`);
+    });
+    renderSettings();
+    await screen.findByLabelText(de["settings.author.label"]);
+    await waitFor(() => expect(api.GET.mock.calls.filter(([path]) => path === "/api/settings/tasks").length).toBeGreaterThan(0));
+    expect(screen.queryByText(de["settings.offline.title"])).toBeNull();
   });
 });
 
