@@ -8,8 +8,9 @@
  * order — positioned rows in the ordered section, null positions last in
  * the unordered one — with only real fields on the cards: the free-text
  * date, the title, the description excerpt, the free-text name chips and
- * the chapter door-chip (no dead links: a chapter that no longer resolves
- * is no door at all). The name-chip filter composes with the quick
+ * the chapter chip — plain text naming the chapter (the workspace route
+ * knows no chapter param, so no link), and a chapter that no longer
+ * resolves says so („Kein Kapitel", never a dead link). The name-chip filter composes with the quick
  * filters; the scene-status counters derive from the per-chapter fan-out;
  * the subbar with its sibling doors stands in EVERY state — pending,
  * outage, empty, populated (W5 #923's rule). CRUD round-trips through the
@@ -46,6 +47,7 @@ const api = client as unknown as Record<"GET" | "POST" | "PUT" | "DELETE", Retur
 configure({ asyncUtilTimeout: 5000 });
 
 const NOVEL_ID = "11111111-1111-1111-1111-111111111111";
+const OTHER_NOVEL_ID = "55555555-5555-5555-5555-555555555555";
 const TIMELINE_PATH = "/novels/$novelId/planning/timeline";
 const STORYBOARD_PATH = "/novels/$novelId/planning/storyboard";
 const CAUSALITY_PATH = "/novels/$novelId/planning/causality";
@@ -260,7 +262,8 @@ describe("the board renders the novel's real events", () => {
     }
     const bruch = cards.find((card) => within(card).queryByText("Der Große Bruch") !== null) as HTMLElement;
     expect(within(bruch).getByText("2278")).toBeTruthy();
-    // The chapter link resolves: the door-chip carries the chapter position.
+    // The chapter chip resolves through the chapters list and names its
+    // position — plain text, never a link.
     const unglueck = cards.find((card) => within(card).queryByText("Unglück auf Station 7") !== null) as HTMLElement;
     expect(within(unglueck).getByText("Kapitel 2")).toBeTruthy();
     expect(within(unglueck).getByText("Maya Chen")).toBeTruthy();
@@ -271,14 +274,12 @@ describe("the board renders the novel's real events", () => {
     expect(within(sek).getByText(de["planning.timeline.noDate"])).toBeTruthy();
   });
 
-  it("the chapter chip is a door to the book's workspace; a chapter that no longer resolves is no door", async () => {
+  it("the chapter chip names its chapter in plain text — no half-true door", async () => {
     events = [
       eventRow({ id: "ev-dead", position: 1, chapter_id: "c-gone", title: "Verwaistes Ereignis" }),
     ];
     await renderTimeline();
     const card = (await screen.findAllByTestId("timeline-card"))[0];
-    const door = within(card).queryByRole("link");
-    expect(door).toBeNull();
     expect(within(card).getByText(de["planning.timeline.noChapter"])).toBeTruthy();
 
     // The cached first answer must not out-live the scenario: the second
@@ -287,8 +288,11 @@ describe("the board renders the novel's real events", () => {
     queryClient.clear();
     events = [UNGLUECK];
     await renderTimeline();
-    const chip = await screen.findByRole("link", { name: "Kapitel 2" });
-    expect(chip.getAttribute("href")).toBe(`/novels/${NOVEL_ID}`);
+    expect(await screen.findByText("Kapitel 2")).toBeTruthy();
+    // The workspace route carries no chapter param — a link would land
+    // wherever the workspace last stood, naming a chapter it does not
+    // open. The chronology carries no link at all.
+    expect(screen.queryByRole("link")).toBeNull();
   });
 });
 
@@ -302,6 +306,15 @@ describe("the filters", () => {
     expect(visible.some((text) => text?.includes("Unglück auf Station 7"))).toBe(true);
     expect(visible.some((text) => text?.includes("Öffnung von Sektor D-4"))).toBe(true);
     expect(visible.some((text) => text?.includes("Der Große Bruch"))).toBe(false);
+  });
+
+  it("the name-chip row wraps — many long names never overflow the bar", async () => {
+    await renderTimeline();
+    await screen.findAllByTestId("timeline-card");
+    // CSS truth on the token container: the chips wrap inside their own
+    // row instead of pushing it past the viewport's edge.
+    const row = screen.getByTestId("timeline-name-filters");
+    expect(row.className).toContain("flex-wrap");
   });
 
   it("the quick filters compose with the names — no hit clears honestly", async () => {
@@ -355,10 +368,10 @@ describe("the unordered chapter chip", () => {
       }),
     ];
     await renderTimeline();
-    const chip = await screen.findByRole("link", { name: de["planning.timeline.plannedChapterChip"].replace("{position}", "2") });
-    expect(chip.getAttribute("href")).toBe(`/novels/${NOVEL_ID}`);
-    // The ordered section stays prefix-free (pinned by the Kapitel-2 door
-    // test above).
+    const chip = await screen.findByText(de["planning.timeline.plannedChapterChip"].replace("{position}", "2"));
+    // Plain text, not a door — the ordered section stays prefix-free
+    // (pinned by the Kapitel-2 test above).
+    expect(chip.closest("a")).toBeNull();
   });
 });
 
@@ -399,6 +412,70 @@ describe("the scene-status counters", () => {
     const before = asks();
     fireEvent.click(within(note).getByRole("button", { name: de["planning.timeline.retry"] }));
     await waitFor(() => expect(asks()).toBeGreaterThan(before));
+  });
+
+  it("a chapters outage invents no numbers — the empty fan is not a complete one", async () => {
+    chaptersFail = true;
+    events = [UNGLUECK];
+    await renderTimeline();
+    await screen.findAllByTestId("timeline-card");
+    // The fan over an empty chapters list succeeds vacuously; the counters
+    // must not read that as „0 Szenen" beside the outage note.
+    expect(screen.queryByTestId("timeline-counters")).toBeNull();
+    const note = screen.getByTestId("timeline-counters-outage");
+    expect(note.textContent).toContain(de["planning.timeline.scenesOutage"]);
+
+    // The in-place retry re-asks the chapters the fan hangs from.
+    const chapterAsks = () =>
+      api.GET.mock.calls.filter(([path]) => path === "/api/writing/novels/{novel_id}/chapters").length;
+    const before = chapterAsks();
+    fireEvent.click(within(note).getByRole("button", { name: de["planning.timeline.retry"] }));
+    await waitFor(() => expect(chapterAsks()).toBeGreaterThan(before));
+  });
+
+  it("a pending chapters read shows neither counters nor outage face — nothing stands on a guess", async () => {
+    let resolveChapters!: (answer: { data: unknown; response: Response }) => void;
+    api.GET.mockImplementation((path: string, init?: { params?: { path?: { chapter_id?: string } } }) => {
+      if (path === "/api/writing/novels/{novel_id}/chapters") {
+        return new Promise<{ data: unknown; response: Response }>((resolve) => {
+          resolveChapters = resolve;
+        });
+      }
+      return baseGet(path, init);
+    });
+    await renderTimeline();
+    // The board stands on the events' own strength; the summary bar's
+    // counting slot stays empty while the chapters read is pending —
+    // not zeros (the vacuous fan), not the outage face (nothing failed).
+    await screen.findAllByTestId("timeline-card");
+    expect(screen.queryByTestId("timeline-counters")).toBeNull();
+    expect(screen.queryByTestId("timeline-counters-outage")).toBeNull();
+
+    // The landing completes the fan: the counters take their place.
+    resolveChapters({ data: CHAPTERS, response: ok() });
+    await waitFor(() => expect(screen.getByTestId("timeline-counters")).toBeTruthy());
+  });
+
+  it("an events-pending first load never shows the zero line — the wait stands alone", async () => {
+    let resolveEvents!: (answer: { data: unknown; response: Response }) => void;
+    api.GET.mockImplementation((path: string, init?: { params?: { path?: { chapter_id?: string } } }) => {
+      if (path === "/api/planning/novels/{novel_id}/timeline-events") {
+        return new Promise<{ data: unknown; response: Response }>((resolve) => {
+          resolveEvents = resolve;
+        });
+      }
+      return baseGet(path, init);
+    });
+    await renderTimeline();
+    // Chapters and the fan land while the events wait; the withoutDate
+    // count derives from that list, and „0 Ereignis ohne Datum" must not
+    // stand on a read that has not answered.
+    expect(screen.getByRole("status")).toBeTruthy();
+    expect(screen.queryByTestId("timeline-counters")).toBeNull();
+    expect(screen.queryByTestId("timeline-counters-outage")).toBeNull();
+
+    resolveEvents({ data: events, response: ok() });
+    await waitFor(() => expect(screen.getByTestId("timeline-counters")).toBeTruthy());
   });
 
   it("the events-failure retry carries the scene fan along", async () => {
@@ -509,6 +586,17 @@ describe("the CRUD round-trips through the page", () => {
     expect(within(dialog).getByText(de["planning.crud.createTitle"])).toBeTruthy();
   });
 
+  it("the undated placeholder carries the keyboard focus ring — the token itself, not its name", async () => {
+    await renderTimeline();
+    const placeholder = await screen.findByRole("button", {
+      name: new RegExp(de["planning.timeline.newUndated"]),
+    });
+    // A plain-string className once left the literal „${FOCUS}" standing
+    // where the ring classes belong.
+    expect(placeholder.className).toContain("focus-visible:ring-2");
+    expect(placeholder.className).not.toContain("${FOCUS}");
+  });
+
   it("a card opens the edit; the remove hands off to the confirm and DELETEs", async () => {
     await renderTimeline();
     const cards = await screen.findAllByTestId("timeline-card");
@@ -525,6 +613,21 @@ describe("the CRUD round-trips through the page", () => {
     ));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("a confirmed delete lands focus on the surviving page, never the dead card's opener", async () => {
+    await renderTimeline();
+    const cards = await screen.findAllByTestId("timeline-card");
+    fireEvent.click(within(cards[0]).getByText("Der Große Bruch"));
+    const edit = await screen.findByRole("dialog");
+    fireEvent.click(within(edit).getByRole("button", { name: de["planning.crud.remove"] }));
+    const confirm = await screen.findByRole("alertdialog");
+    fireEvent.click(within(confirm).getByRole("button", { name: de["planning.crud.deleteConfirm"] }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    // Both modals left in one commit; the landing must be the survivor —
+    // never the opener of the card the delete retired.
+    expect(document.activeElement?.id).toBe("timeline-page");
   });
 
   it("the destructive hand-off keeps the edit's answers — cancel restores them", async () => {
@@ -575,6 +678,145 @@ describe("the CRUD round-trips through the page", () => {
       },
     ));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+});
+
+describe("the novel switch", () => {
+  it("a switch to another novel's timeline leaves the old book's filters and dialogs behind", async () => {
+    const router = await renderTimeline();
+    await screen.findAllByTestId("timeline-card");
+    fireEvent.click(screen.getByRole("button", { name: "Maya Chen" }));
+    expect(screen.getByRole("button", { name: "Maya Chen" }).getAttribute("aria-pressed")).toBe("true");
+
+    await router.navigate({ to: TIMELINE_PATH, params: { novelId: OTHER_NOVEL_ID } });
+    await screen.findAllByTestId("timeline-card");
+    // The filter state belongs to the book it was chosen in: the chips
+    // stand unpressed, the quick filter back at Alle.
+    expect(screen.getByRole("button", { name: "Maya Chen" }).getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByRole("button", { name: de["planning.timeline.all"] }).getAttribute("aria-pressed")).toBe("true");
+
+    // An open dialog belongs to its book too — the switch closes it.
+    const cards = screen.getAllByTestId("timeline-card");
+    fireEvent.click(within(cards[0]).getByText("Der Große Bruch"));
+    await screen.findByRole("dialog");
+    await router.navigate({ to: TIMELINE_PATH, params: { novelId: NOVEL_ID } });
+    await screen.findAllByTestId("timeline-card");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("a switch that closes an open edit lands focus on the page survivor, not the body", async () => {
+    // The other book carries its own events: the edit's per-card opener
+    // is genuinely gone from the new book's DOM.
+    api.GET.mockImplementation(
+      (path: string, init?: { params?: { path?: { chapter_id?: string; novel_id?: string } } }) => {
+        if (
+          path === "/api/planning/novels/{novel_id}/timeline-events" &&
+          init?.params?.path?.novel_id === OTHER_NOVEL_ID
+        ) {
+          return Promise.resolve({
+            data: [
+              eventRow({
+                id: "ev-other",
+                position: 1,
+                title: "Fremdes Ufer",
+                chapter_id: null,
+                character_names: [],
+                date_label: "2290",
+              }),
+            ],
+            response: ok(),
+          });
+        }
+        return baseGet(path, init);
+      },
+    );
+    const router = await renderTimeline();
+    const cards = await screen.findAllByTestId("timeline-card");
+    fireEvent.click(within(cards[0]).getByText("Der Große Bruch"));
+    const edit = await screen.findByRole("dialog");
+    expect(document.activeElement).toBe(within(edit).getByLabelText(de["planning.crud.titleLabel"]));
+
+    await router.navigate({ to: TIMELINE_PATH, params: { novelId: OTHER_NOVEL_ID } });
+    await screen.findByText("Fremdes Ufer");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // The closed edit returns to the page that stands in the new book —
+    // never to a body its opener left behind.
+    expect(document.activeElement?.id).toBe("timeline-page");
+  });
+
+  it("a switch that closes a standing delete confirm lands focus on the page survivor", async () => {
+    // The other book carries its own events: the confirm's per-card
+    // opener is genuinely gone from the new book's DOM.
+    api.GET.mockImplementation(
+      (path: string, init?: { params?: { path?: { chapter_id?: string; novel_id?: string } } }) => {
+        if (
+          path === "/api/planning/novels/{novel_id}/timeline-events" &&
+          init?.params?.path?.novel_id === OTHER_NOVEL_ID
+        ) {
+          return Promise.resolve({
+            data: [
+              eventRow({ id: "ev-other", position: 1, title: "Fremdes Ufer", chapter_id: null, character_names: [] }),
+            ],
+            response: ok(),
+          });
+        }
+        return baseGet(path, init);
+      },
+    );
+    const router = await renderTimeline();
+    const cards = await screen.findAllByTestId("timeline-card");
+    fireEvent.click(within(cards[0]).getByText("Der Große Bruch"));
+    const edit = await screen.findByRole("dialog");
+    fireEvent.click(within(edit).getByRole("button", { name: de["planning.crud.remove"] }));
+    await screen.findByRole("alertdialog");
+
+    await router.navigate({ to: TIMELINE_PATH, params: { novelId: OTHER_NOVEL_ID } });
+    await screen.findByText("Fremdes Ufer");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // The closed confirm returns to the page that stands in the new
+    // book — its internal success flag never fired, so the landing must
+    // ride the page's retirement, not the write's.
+    expect(document.activeElement?.id).toBe("timeline-page");
+  });
+
+  it("a switch that closes a create opened from the board lands focus on the page survivor", async () => {
+    // The other book's answer is held back: the create closes while the
+    // loading face stands, its board-anchored opener absent from the DOM.
+    let deliverOther!: (answer: { data: unknown; response: Response }) => void;
+    api.GET.mockImplementation(
+      (path: string, init?: { params?: { path?: { chapter_id?: string; novel_id?: string } } }) => {
+        if (
+          path === "/api/planning/novels/{novel_id}/timeline-events" &&
+          init?.params?.path?.novel_id === OTHER_NOVEL_ID
+        ) {
+          return new Promise<{ data: unknown; response: Response }>((resolve) => {
+            deliverOther = resolve;
+          });
+        }
+        return baseGet(path, init);
+      },
+    );
+    const router = await renderTimeline();
+    await screen.findAllByTestId("timeline-card");
+    fireEvent.click(
+      screen.getByRole("button", { name: new RegExp(de["planning.timeline.newUndated"]) }),
+    );
+    await screen.findByRole("dialog");
+
+    await router.navigate({ to: TIMELINE_PATH, params: { novelId: OTHER_NOVEL_ID } });
+    expect(screen.getByRole("status")).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    // The undated placeholder's id returns with the new book's board —
+    // but the return fires now, behind the loading face. Only the page
+    // survivor stands to receive it.
+    expect(document.activeElement?.id).toBe("timeline-page");
+
+    deliverOther({
+      data: [eventRow({ id: "ev-other", position: 1, title: "Fremdes Ufer", chapter_id: null, character_names: [] })],
+      response: ok(),
+    });
+    await screen.findByText("Fremdes Ufer");
   });
 });
 
