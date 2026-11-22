@@ -18,12 +18,13 @@ your machine. The architecture is in
 
 ## Where it stands
 
-Six surfaces are real, with a backend and a browser test behind each: the shelf,
-welcome and setup, the scene-centric workspace, knowledge (dock, graph, dossiers,
-sources), planning (chronology, storyboard, causality strip), and the settings hub's
-Allgemein page. Settings is half a surface: Sprache & Aussehen and the Autoren-Profil
-are live, the AI-Regeln half is in flight on a branch, and providers, keys, models
-and per-task assignment still have no section. Prompts still has no surface at all.
+Six surfaces are real, with a backend and a browser test behind each — five whole,
+one half. The whole: the shelf, welcome and setup, the scene-centric workspace,
+knowledge (dock, graph, dossiers, sources), planning (chronology, storyboard,
+causality strip). The half: the settings hub, live so far only as its Allgemein
+page — Sprache & Aussehen and the Autoren-Profil — while the AI-Regeln half is in
+flight on a branch and providers, keys, models and per-task assignment still have
+no section. Prompts still has no surface at all.
 Chat answers a single question and does not remember it. Everything else — analysis,
 revision, import and export, production, series, notes, mobile — has designs, and no
 code.
@@ -56,16 +57,17 @@ Phase 2; that is a quality decision, not a scope one.
 - Closed W6: the chronology, the storyboard and the causality strip merged, with the
   capability's E2E suite and its gap ledger.
 - Archived the v1 corpus; the live inventory is the single list.
-- Decided what v1 never registered: audio dictation and the pocket app are parked,
-  each with its recorded reopen condition. The publishing area has its own open
-  decision, below.
+- Recorded what v1 never registered: audio dictation's scope verdict stands open in
+  the inventory's "Decided not now" table, with its reopen condition beside it; the
+  pocket app is planned as Phase 3's deliberate last wave. The publishing area has
+  its own open decision, below.
 
 **Exit:** every feature appears once, with a state; no document claims a surface that
 does not exist; no area is undecided by accident.
 
 ## Phase 1 — Finish the rebuild
 
-**Backend already there; the surfaces are missing.** After this phase the app is
+**Backend already there; the surfaces are mostly missing.** After this phase the app is
 usable without touching an API or a `.env` file.
 
 - **Settings.** The screen the gear opens: providers, keys, models, per-task

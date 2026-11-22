@@ -2,7 +2,7 @@
 
 > **Historical decision, superseded as the working list on 2026-11-20.** The live
 > inventory is [`docs/features/INDEX.md`](../features/INDEX.md) and the order is
-> [`roadmap.md`](../../roadmap.md); this page stays the record of the 2026-10-31
+> [`ROADMAP.md`](../../ROADMAP.md); this page stays the record of the 2026-10-31
 > verdict per v1 feature. The archived corpus it decided about is at
 > [`docs/archive/v1/features/`](../archive/v1/features/INDEX.md).
 >

@@ -63,7 +63,7 @@ The single-column `ix_llm_calls_user_id` dies in its own revision (schema change
 
 ### Task 6: The drift fix — post-W7 truth (PR)
 
-`roadmap.md` ("Where it stands", Phase 0/1) and `docs/features/INDEX.md` (settings rows) to the truth W7 left: the Allgemein surface is live, planning is closed, settings is half-done. Post-W8 truth is Task 13's.
+`ROADMAP.md` ("Where it stands", Phase 0/1) and `docs/features/INDEX.md` (settings rows) to the truth W7 left: the Allgemein surface is live, planning is closed, settings is half-done. Post-W8 truth is Task 13's.
 
 ### Task 7: PR 1 gate
 
@@ -103,7 +103,7 @@ The single-column `ix_llm_calls_user_id` dies in its own revision (schema change
 
 ### Task 13: Gap ledger + index + post-W8 truth (PR)
 
-`docs/design/stitch/gaps/2026-11-22-settings-ai-rules.md` (the round's retirements and omissions); the W8 index issue (`follow-up-index`) + the `docs/superpowers/follow-ups.md` row; surviving findings become child issues before merge; `roadmap.md` + `docs/features/INDEX.md` to post-W8 truth (settings and prompts live, Phase 1's settings/prompts items close).
+`docs/design/stitch/gaps/2026-11-22-settings-ai-rules.md` (the round's retirements and omissions); the W8 index issue (`follow-up-index`) + the `docs/superpowers/follow-ups.md` row; surviving findings become child issues before merge; `ROADMAP.md` + `docs/features/INDEX.md` to post-W8 truth (settings and prompts live, Phase 1's settings/prompts items close).
 
 ### Task 14: Wave gate
 

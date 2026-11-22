@@ -3,7 +3,7 @@
 One page for every feature Narrare will have, and the one question that matters about
 each: **does it exist today, and if not, what is missing?**
 
-- The **order** in which the gaps close is [`roadmap.md`](../../roadmap.md).
+- The **order** in which the gaps close is [`ROADMAP.md`](../../ROADMAP.md).
 - The **v1 detail** behind a name (user stories, acceptance criteria, old code paths)
   is in [`docs/archive/v1/features/`](../archive/v1/features/INDEX.md).
 - The **decision** that put a feature on the later pile is
