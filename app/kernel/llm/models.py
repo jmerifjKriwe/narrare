@@ -167,10 +167,18 @@ class LlmCall(UserOwned):
     __tablename__ = "llm_calls"
     # The newest-row read behind the settings page's failure mark asks
     # exactly this slice: user, model, newest first — the index is its
-    # shape, so the audit's growth never turns the mark into a scan.
+    # shape, so the audit's growth never turns the mark into a scan. The
+    # composite opens with user_id, so the base's single-column index would
+    # answer no read it does not — its write doubles for nothing (issue
+    # #749), which is why this table carries no ix_llm_calls_user_id.
     __table_args__ = (
         Index("ix_llm_calls_user_id_profile_id_created_at", "user_id", "profile_id", "created_at"),
     )
+
+    # Overrides ``UserOwned.user_id`` to drop the inherited ``index=True``:
+    # the composite above already leads with user_id, so the single-column
+    # index is pure write overhead on every call row.
+    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"))
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     # No FK on purpose: a log row outlives its novel (plan §3.4).
