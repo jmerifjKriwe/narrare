@@ -1,21 +1,22 @@
 /**
- * The book-settings dialog (W4 Task 19) — the round's dedicated
- * `workspace-book-settings` draft ported onto the shell's tokens: the
- * modal over the scrimmed workspace, five sections (book & metadata,
- * status & target, the KI partner family, the series context, the
- * atelier), the pinned header (the book's own chip) and footer (the
+ * The book-settings dialog (W4 Task 19; the atelier retired W7 Task 4) —
+ * the round's dedicated `workspace-book-settings` draft ported onto the
+ * shell's tokens: the modal over the scrimmed workspace, four sections
+ * (book & metadata, status & target, the KI partner family, the series
+ * context), the pinned header (the book's own chip) and footer (the
  * inheritance note — now TRUE: this surface edits what setup bound —
  * beside Abbrechen and Speichern).
  *
- * The fields read the REAL rows: the novel (metadata, status, target,
- * the four wizard answers, the series link), the settings row (the
- * atelier's author name and daily goal) and the user's series list.
- * Speichern carries the DIFF alone — the novel PATCH's `model_fields_set`
- * contract mirrored field by field, a carried null the honest clear —
- * and the atelier's changes ride the settings PATCH (the locale always
- * carried, the schema's own rule). A pristine save closes without a wire
- * ask. The series create lands inline (the row exists once the POST
- * lands; the link rides the save).
+ * The fields read the REAL rows: the novel (metadata, status, target, the
+ * four wizard answers, the series link) and the user's series list — the
+ * settings row left with the atelier section (the owner's W7 ruling: the
+ * row's home is /settings, no duplicate surface survives). Where the
+ * section stood, a slim door routes to /settings at the profile section's
+ * address, held while edits stand like every close path. Speichern
+ * carries the DIFF alone — the novel PATCH's `model_fields_set` contract
+ * mirrored field by field, a carried null the honest clear. A pristine
+ * save closes without a wire ask. The series create lands inline (the
+ * row exists once the POST lands; the link rides the save).
  *
  * The dirty-state rule is the tree dialogs' own (the whole-branch
  * review's ruling): any typed change holds the scrim/Escape and the
@@ -40,12 +41,14 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
+import { useNavigate } from "@tanstack/react-router";
+import type { UseQueryResult } from "@tanstack/react-query";
+
 import type { Novel, NovelChanges, Series } from "@shell/lib/api/client";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
-import { queryClient, useSettingsQuery } from "@shell/lib/query";
+import { queryClient } from "@shell/lib/query";
 import { Icon, type IconName } from "@shell/ui/icons";
 import { useModalKeys } from "@shell/ui/modalKeys";
-import type { UseQueryResult } from "@tanstack/react-query";
 
 import {
   formatGoalInput,
@@ -58,7 +61,7 @@ import {
 import { GENRE_PILL_DEFS, GENRE_CAP, wordBand, wouldOverflow, type Band } from "./newBook";
 import { progress } from "./shelf";
 import { ErrorLine, Spinner } from "./TreeDialogs";
-import { useCreateSeries, useSeriesQuery, useUpdateNovel, useUpdateSettings } from "./workspace";
+import { useCreateSeries, useSeriesQuery, useUpdateNovel } from "./workspace";
 
 /** The brand serif, the BookCover pattern: one stack, read from the token. */
 const SERIF = "[font-family:var(--font-serif)]";
@@ -219,9 +222,9 @@ function Segment({
   );
 }
 
-/** The loading face — the settings row is the boot's own read (cached),
- *  the series list the dialog's first ask; the panel stands labelled and
- *  busy until both settle, then the form mounts on the real values. */
+/** The loading face — the series list is the dialog's first ask (the
+ *  settings row left with the atelier section); the panel stands labelled
+ *  and busy until it settles, then the form mounts on the real values. */
 function LoadingPanel() {
   const t = useTranslation();
   const headingId = useId();
@@ -254,37 +257,29 @@ export function BookSettings({
   openerId: string;
   onClose: () => void;
 }) {
-  const settings = useSettingsQuery();
   const series = useSeriesQuery();
-  // The form mounts once the reads settle — its state initializers read
+  // The form mounts once the read settles — its state initializers read
   // the real rows, never a guessed baseline. A series refusal still
   // mounts the form (the section answers honestly with its retry).
-  if (!settings.isSuccess || series.isPending) return <LoadingPanel />;
+  if (series.isPending) return <LoadingPanel />;
   return (
-    <SettingsForm
-      novel={novel}
-      atelier={settings.data}
-      series={series}
-      openerId={openerId}
-      onClose={onClose}
-    />
+    <SettingsForm novel={novel} series={series} openerId={openerId} onClose={onClose} />
   );
 }
 
 function SettingsForm({
   novel,
-  atelier,
   series,
   openerId,
   onClose,
 }: {
   novel: Novel;
-  atelier: { locale: string | null; author_name: string | null; daily_goal_words: number | null };
   series: UseQueryResult<Series[]>;
   openerId: string;
   onClose: () => void;
 }) {
   const t = useTranslation();
+  const navigate = useNavigate();
 
   // --- The answers, transient against the stored baseline ---------------
   // The wizard baselines normalize undefined to null — the server's JSON
@@ -317,8 +312,6 @@ function SettingsForm({
   const seriesBaseline = useRef(seriesId);
   const seriesTouched = useRef(false);
   const [volumeRaw, setVolumeRaw] = useState(novel.series_volume != null ? String(novel.series_volume) : "");
-  const [atelierAuthor, setAtelierAuthor] = useState(atelier.author_name ?? "");
-  const [dailyRaw, setDailyRaw] = useState(formatGoalInput(atelier.daily_goal_words));
 
   // The series list may land after the form mounted (a retry after a
   // refusal): adopt the book's link once, until the writer touches the
@@ -340,13 +333,11 @@ function SettingsForm({
 
   // --- The save ----------------------------------------------------------
   const updateNovel = useUpdateNovel(novel.id);
-  const updateSettings = useUpdateSettings();
-  const busy = updateNovel.isPending || updateSettings.isPending || createSeries.isPending;
+  const busy = updateNovel.isPending || createSeries.isPending;
   const [error, setError] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<{ title?: boolean; target?: boolean; daily?: boolean; volume?: boolean }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ title?: boolean; target?: boolean; volume?: boolean }>({});
 
   const targetValue = parseWordGoal(targetRaw);
-  const dailyValue = parseWordGoal(dailyRaw);
   const volumeValue = parseVolume(volumeRaw);
   const genreValue = joinGenresWithRest(pills, genreRest.current);
 
@@ -363,9 +354,7 @@ function SettingsForm({
     role !== baseRole ||
     canon !== baseCanon ||
     seriesId !== seriesBaseline.current ||
-    (seriesId !== null && volumeValue !== novel.series_volume) ||
-    atelierAuthor !== (atelier.author_name ?? "") ||
-    dailyValue !== atelier.daily_goal_words;
+    (seriesId !== null && volumeValue !== novel.series_volume);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const titleRef = useRef<HTMLInputElement | null>(null);
@@ -389,22 +378,19 @@ function SettingsForm({
     if (!busy && !dirty) onClose();
   });
 
-  /** The one save: validate, build the diff, ride the two PATCHes in
-   *  order (the novel first, the atelier after), close on success. A
-   *  refusal keeps every answer and stands the family's error line —
-   *  the retry re-runs this very ask. */
+  /** The one save: validate, build the diff, ride the novel PATCH, close
+   *  on success. A refusal keeps every answer and stands the family's
+   *  error line — the retry re-runs this very ask. */
   async function save() {
     const errors: typeof fieldErrors = {};
     if (title.trim() === "") errors.title = true;
     if (targetValue === "invalid") errors.target = true;
-    if (dailyValue === "invalid") errors.daily = true;
     if (seriesId !== null && volumeValue === "invalid") errors.volume = true;
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
     // Past the guard the answers are numbers or the honest unset — the
     // "invalid" face returned above (the type narrowing the guard earns).
     const target = targetValue as number | null;
-    const daily = dailyValue as number | null;
     const volume = volumeValue as number | null;
 
     const changes: NovelChanges = {};
@@ -433,22 +419,14 @@ function SettingsForm({
       changes.series_volume = volume;
     }
 
-    const trimmedAtelierAuthor = atelierAuthor.trim() === "" ? null : atelierAuthor.trim();
-    const atelierChanges: { authorName?: string | null; dailyGoalWords?: number | null } = {};
-    if (trimmedAtelierAuthor !== atelier.author_name) atelierChanges.authorName = trimmedAtelierAuthor;
-    if (daily !== atelier.daily_goal_words) atelierChanges.dailyGoalWords = daily;
-
     // Nothing carried is no write — the pristine save closes honestly.
-    if (Object.keys(changes).length === 0 && Object.keys(atelierChanges).length === 0) {
+    if (Object.keys(changes).length === 0) {
       onClose();
       return;
     }
     setError(false);
     try {
-      if (Object.keys(changes).length > 0) await updateNovel.mutateAsync(changes);
-      if (Object.keys(atelierChanges).length > 0) {
-        await updateSettings.mutateAsync({ locale: atelier.locale, ...atelierChanges });
-      }
+      await updateNovel.mutateAsync(changes);
       onClose();
     } catch {
       setError(true);
@@ -1010,65 +988,34 @@ function SettingsForm({
             </div>
           </section>
 
-          {/* 5. Atelier & Globale Autorenebene */}
-          <section className="space-y-4 border-t border-rule pt-6">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <span className="text-primary">
+          {/* 5. The profile's door (W7 Task 4) — the atelier section
+              retired per the owner's ruling: the settings row's fields
+              (author name, daily goal) live on /settings now, and a
+              duplicate editing surface here would be the confusion the
+              ruling forbids. The door routes at the profile section's
+              address, held while edits stand like every close path. */}
+          <section aria-label={t("writing.settings.profileDoor.note")} className="border-t border-rule pt-6">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-border bg-surface-container p-4">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="shrink-0 text-primary">
                   <Icon name="person" size={17} />
                 </span>
-                <h3 className="text-emph font-semibold text-foreground">{t("writing.settings.atelier.heading")}</h3>
-                <span className="inline-flex items-center rounded-full bg-secondary-container px-2 py-0.5 text-meta font-semibold text-secondary-container-foreground">
-                  {t("writing.settings.atelier.badge")}
-                </span>
+                <p className="text-label leading-snug text-foreground">
+                  {t("writing.settings.profileDoor.note")}
+                </p>
               </div>
-              <span className="text-eyebrow font-semibold uppercase tracking-wider text-muted">
-                {t("writing.settings.atelier.eyebrow")}
-              </span>
-            </div>
-            <div className="rounded border border-border bg-surface-container p-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label htmlFor={`${headingId}-atelier-author`} className="mb-1.5 block text-label font-medium text-foreground">
-                    {t("writing.settings.atelierAuthorLabel")}
-                  </label>
-                  <input
-                    id={`${headingId}-atelier-author`}
-                    type="text"
-                    maxLength={200}
-                    value={atelierAuthor}
-                    onChange={(event) => setAtelierAuthor(event.target.value)}
-                    className={INPUT}
-                  />
-                  <p className="mt-1 text-meta text-muted">{t("writing.settings.atelierAuthorNote")}</p>
-                </div>
-                <div>
-                  <label htmlFor={`${headingId}-daily`} className="mb-1.5 block text-label font-medium text-foreground">
-                    {t("writing.settings.dailyGoalLabel")}
-                  </label>
-                  <div className="relative">
-                    <input
-                      id={`${headingId}-daily`}
-                      type="text"
-                      inputMode="numeric"
-                      value={dailyRaw}
-                      aria-invalid={fieldErrors.daily === true}
-                      onChange={(event) => setDailyRaw(event.target.value)}
-                      className={`${INPUT} pr-16 font-mono tabular-nums ${fieldErrors.daily ? "border-danger" : ""}`}
-                    />
-                    <span className="pointer-events-none absolute right-3 top-2 text-meta text-muted">
-                      {t("writing.settings.targetUnit")}
-                    </span>
-                  </div>
-                  {fieldErrors.daily ? (
-                    <p role="alert" className="mt-1 text-meta text-danger">
-                      {t("writing.settings.dailyGoalInvalid")}
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-meta text-muted">{t("writing.settings.dailyGoalNote")}</p>
-                  )}
-                </div>
-              </div>
+              <button
+                type="button"
+                disabled={busy || dirty}
+                onClick={() => {
+                  onClose();
+                  void navigate({ to: "/settings", hash: "profil-sektion" });
+                }}
+                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded border border-border bg-surface-container-lowest px-3 text-label font-medium text-primary transition-colors hover:bg-surface-container ${FOCUS} ${busy || dirty ? "cursor-not-allowed opacity-50" : ""}`}
+              >
+                {t("writing.settings.profileDoor.action")}
+                <Icon name="arrowRight" size={14} />
+              </button>
             </div>
           </section>
         </div>
