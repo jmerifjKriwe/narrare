@@ -10,8 +10,10 @@ The read is resolution only: it writes nothing and contacts no endpoint.
 import pytest
 from cryptography.fernet import Fernet
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 
 from app.api.main import app
+from app.kernel.db.session import Session
 from app.kernel.secrets import KeyUnavailableError
 
 pytestmark = pytest.mark.timeout(30)
@@ -71,6 +73,29 @@ async def test_a_fake_provider_still_answers_fake() -> None:
     assert response.json() == {"kind": "fake"}
 
 
+async def test_the_audit_only_key_never_counts_toward_the_word() -> None:
+    """The audit-only ruling, pinned: ``settings.test`` is audited but
+    never routed, so its row in the tasks read names no serving tier and
+    its stored assignment has no consumer. A fully fake instance with an
+    assignment parked on the audit-only key answers ``fake`` — the word
+    counts assignable tasks only, and an ``audit`` kind leaking into the
+    reduction would answer ``configured`` and fail here."""
+    async with _client() as client:
+        model = await _create_model(client, "Default")
+        stored = await client.put(
+            "/api/settings/assignments/settings.test", json={"profile_id": model["id"]}
+        )
+        assert stored.status_code == 200, stored.text
+        assignments = (await client.get("/api/settings/assignments")).json()
+        response = await client.get("/api/settings/driver")
+
+    # The landscape is real: the audit-only assignment stands on the books,
+    # and the word ignores it all the same.
+    assert assignments == [{"task_key": "settings.test", "profile_id": model["id"]}]
+    assert response.status_code == 200
+    assert response.json() == {"kind": "fake"}
+
+
 async def test_one_configured_provider_answers_configured() -> None:
     """One provider adapter on the default tier is enough: the instance is
     configured, whatever the remaining keys answer."""
@@ -109,13 +134,17 @@ async def test_a_configured_environment_tier_answers_configured(
 
 
 async def test_the_read_writes_nothing_and_audits_nothing() -> None:
-    """Resolution is a read: no assignment is created, no call is recorded."""
+    """Resolution is a read: no assignment is created, no call is recorded
+    — both halves probed, so the name's whole claim can fail."""
     async with _client() as client:
         await _create_model(client, "Default")
         assert (await client.get("/api/settings/driver")).status_code == 200
         assignments = (await client.get("/api/settings/assignments")).json()
 
     assert assignments == []
+    async with Session() as session:
+        calls = await session.scalar(text("SELECT count(*) FROM llm_calls"))
+    assert calls == 0
 
 
 async def test_a_lost_provider_key_is_a_named_502(monkeypatch: pytest.MonkeyPatch) -> None:
