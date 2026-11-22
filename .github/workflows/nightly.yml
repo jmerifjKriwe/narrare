@@ -141,9 +141,10 @@ jobs:
 
   # The Python suite — one definition for every workflow: `_test.yml`.
   # Same job name as ci.yml's caller, so `nightly-result` still names
-  # `tests`. Plain suite, no coverage: coverage is a main-push concern —
-  # the Codecov dashboard keys on those runs — so the nightly reports
-  # through its `ci/nightly` issue instead and never instruments here.
+  # `tests`. Plain suite, no coverage: CI's suite instruments because
+  # its SonarCloud scan reads the run's coverage report, and the nightly
+  # answers a different question — it reports through its `ci/nightly`
+  # issue instead and never instruments here.
   #
   # `./`, not `$/`: same trade as `_lint.yml`'s comment — the pinned
   # actionlint image (1.7.12) does not know the self-repository syntax

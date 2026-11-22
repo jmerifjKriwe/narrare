@@ -9,8 +9,10 @@ on:
     inputs:
       coverage:
         description: >-
-          Run `just test-cov` and, on a main push only, upload coverage.xml
-          and junit.xml to Codecov. Default: plain `just test`, no uploads.
+          Run `just test-cov`, stage coverage.xml as the backend-coverage
+          artifact the caller's SonarCloud scan imports, and upload the
+          reports to Codecov on a main push only. Default: plain
+          `just test`, no uploads.
         type: boolean
         required: false
         default: false
@@ -133,10 +135,12 @@ jobs:
           fail_ci_if_error: true
       # Upload the coverage report as an artifact so the downstream `sonar`
       # job in ci.yml can feed it to the SonarCloud scan (which needs both
-      # backend and frontend coverage in one place). `if-no-files-found`
+      # backend and frontend coverage in one place). Wherever the suite is
+      # instrumented, the artifact follows — a PR scan without it reads
+      # new_coverage as 0.0 and fails the quality gate. `if-no-files-found`
       # is not applicable here: coverage.xml is always produced by test-cov.
       - name: Upload coverage.xml artifact
-        if: ${{ !cancelled() && inputs.coverage && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        if: ${{ !cancelled() && inputs.coverage }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: backend-coverage
