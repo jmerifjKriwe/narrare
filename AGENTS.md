@@ -29,9 +29,12 @@ A gate counts only when its output was read.
 A finding that survives an implementation becomes a GitHub issue before the branch
 merges — one per finding, label `follow-up`, hung under its wave's index issue. The
 issue carries the trigger that makes it bite and where it lives; nothing is dropped
-for being minor. A fix closes it from its own commit (`Closes #<n>`); an issue that
-will not be acted on is closed with the condition that re-opens it, and an index
-closes with its last child.
+for being minor. A finding from a Lane B change (Frontend & UI) hangs under the
+wave index the worked issue hangs under, or stands alone when there is none;
+working it stays a Lane B change while it stays inside the lane's gate, so the
+recording stays cheap even when the finding is not. A fix closes it from its own
+commit (`Closes #<n>`); an issue that will not be acted on is closed with the
+condition that re-opens it, and an index closes with its last child.
 
 **Processing issues** (picking one up, triaging, or batch review) follows the
 `secure-issue-work` skill (`.agents/skills/secure-issue-work/SKILL.md`): duplicate
@@ -79,11 +82,43 @@ a mandatory rule or gate for tooling of this kind (the governance budget, spec �
 
 UI and frontend work is implemented and reviewed by subagents
 (superpowers:subagent-driven-development), never inline in the coordinating
-session: one implementer per task, one reviewer per task, one whole-branch
-review at the end. Every dispatch names its implementer and reviewer models
-explicitly — an omitted model silently inherits the session's most capable one
-and defeats the purpose. The coordinator picks the concrete models at dispatch
-time; the standing preference below is the default until the owner changes it.
+session. Every dispatch names its implementer and reviewer models explicitly — an
+omitted model silently inherits the session's most capable one and defeats the
+purpose. The coordinator picks the concrete models at dispatch time; the standing
+preference below is the default until the owner changes it.
+
+**Two lanes** (2026-11-22, owner decision). Which protocol a change runs is
+decided before the first dispatch, by the product surface it touches:
+
+- **Lane A — a capability change.** A new capability, a new route, a new API
+  endpoint, a schema change, or any new user-visible surface. Full protocol:
+  design doc, plan, one implementer and one reviewer per task, one whole-branch
+  review, a new E2E leg.
+- **Lane B — a bounded change.** A fix, a follow-up, a refactor or a UI correction
+  inside one capability folder that changes no surface. One task: one implementer,
+  one review of the whole diff, no design doc, no plan, no gap ledger, no index
+  issue. The capability's existing E2E leg must run green; if it does not cover the
+  change, the change is Lane A.
+
+Lane B holds only while all of this holds: one capability folder, at most 15
+hand-edited files and 400 changed lines (insertions plus deletions; generated files
+do not count), no new route, no new endpoint, no schema or migration change, no new
+user-visible surface. A surface is a screen, dialog or element the user could not
+reach before the diff; restyling or replacing what exists is not a new one. The
+counts are checkable from `git diff --stat` and the file list; whether a surface is
+new is the coordinator's routing call, made before the first dispatch and, in doubt,
+Lane A. A change that crosses one of these mid-flight is re-routed to Lane A on a
+fresh branch, not patched back into the lane.
+
+The line is deliberately conservative: a Lane B change cannot produce the failure
+Lane A's E2E leg exists to catch, because it cannot add reachability. Neither lane
+trades the E2E proof, the independent reviewer or a gate.
+
+**A task is a seam, not a file.** The surface, the code it retires and the E2E leg
+that proves it are one task and one commit: the leg lands with the surface, never
+as a cleanup task at the end. A plan has as many tasks as the change has seams,
+not as many as it has files — tasks that share files and a seam are one task too
+many.
 
 Standing preference (2026-11-14, owner decision, rev. 6; supersedes 2026-11-12):
 the agent-model assignment for narrare is — Coordinator
