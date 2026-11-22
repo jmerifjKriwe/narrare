@@ -224,10 +224,12 @@ History liest.
 ## PR Process
 
 1. Push your feature branch and open a Pull Request against `main`. Title it as the
-   sentence the change deserves: the same `type(scope): effect` grammar the commits
-   use. `Phase 0`, `Wave 1`, task ids and internal programme names say how the work
-   was planned, not what it does; they belong to the plan, and at most to the body as
-   a reference.
+   sentence the change deserves — plain language, not a commit subject: the title is
+   deliberately **not** conventional. GitHub writes it into the merge commit's body,
+   and release-please would parse a conventional title there as a second change.
+   `Phase 0`, `Wave 1`, task ids and internal programme names say how the work was
+   planned, not what it does; they belong to the plan, and at most to the body as a
+   reference.
 2. Fill in the PR template (`.github/PULL_REQUEST_TEMPLATE.md`). For UI or
    AI-touching changes, complete the **UX review** section; delete it otherwise.
 3. **PR checklist:**
