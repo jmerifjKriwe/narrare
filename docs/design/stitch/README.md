@@ -137,11 +137,13 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`audio-dictation-voice-to-lore`](screens/io/audio-dictation-voice-to-lore.webp) | Audio- & Diktat-Studio (Voice-to-Lore) | 2988 px |
 | Shell and settings | [`command-palette`](screens/shell/command-palette.webp) | Befehlspalette & Universalsuche (⌘K) | 2048 px |
 |  | [`settings-ai-rules`](screens/shell/settings-ai-rules.webp) | Atelier-Einstellungen (Neuentwurf 2026-11-15) | 2048 px |
-|  | [`ai-prompts-overrides`](screens/shell/ai-prompts-overrides.webp) | KI-Prompts anpassen (Neuentwurf 2026-11-15) | 2048 px |
+|  | [`settings-allgemein-2`](screens/shell/settings-allgemein-2.html) | Atelier-Einstellungen — Allgemein & Profil (W7-Split 2026-11-21; Hub-Chrome 2026-11-22 — nur HTML, keine Webp) | — |
+|  | [`settings-ai-rules-2`](screens/shell/settings-ai-rules-2.html) | KI-Regeln & Modell-Architektur (W7-Split 2026-11-21; Hub-Chrome + Ausgabe-Profile 2026-11-22 — nur HTML, keine Webp) | — |
+|  | [`ai-prompts-overrides`](screens/shell/ai-prompts-overrides.webp) | KI-Prompts anpassen (Neuentwurf 2026-11-15; Hub-Chrome-Runde 2026-11-22 ersetzt das HTML — Webp zeigt den Stand 2026-11-15) | 2048 px |
 |  | [`settings-ai-rules-dark`](screens/shell/settings-ai-rules-dark.webp) | Atelier-Einstellungen — Midnight Ink (2026-11-15) | 2048 px |
 |  | [`ai-prompts-overrides-dark`](screens/shell/ai-prompts-overrides-dark.webp) | KI-Prompts anpassen — Midnight Ink (2026-11-15) | 2048 px |
 |  | [`settings-states-reference`](screens/shell/settings-states-reference.webp) | Zustands-Referenz: Atelier-Einstellungen (2026-11-15) | 6040 px |
-|  | [`ai-prompts-states-reference`](screens/shell/ai-prompts-states-reference.webp) | Zustands-Referenz: KI-Prompts anpassen (2026-11-15) | 5094 px |
+|  | [`ai-prompts-states-reference`](screens/shell/ai-prompts-states-reference.webp) | Zustands-Referenz: KI-Prompts anpassen (2026-11-15; Hub-Chrome-Runde 2026-11-22 ersetzt das HTML — Webp zeigt den Stand 2026-11-15) | 5094 px |
 |  | [`help-center`](screens/shell/help-center.webp) | Hilfe-Zentrum & Kontext-Handbuch | 2144 px |
 |  | [`chrome-rail-topbar`](screens/shell/chrome-rail-topbar.webp) | App-weite Chrome: Rail + Topbar, inkl. Sprach-Varianten A/B — entschieden: A (Korrektur 2026-11-16: ehrliche Autosave-Sublabels) | 4794 px |
 |  | [`chrome-rail-topbar-dark`](screens/shell/chrome-rail-topbar-dark.webp) | App-weite Chrome: Rail + Topbar (Midnight Ink; Korrektur 2026-11-16: ehrliche Autosave-Sublabels) | 4590 px |

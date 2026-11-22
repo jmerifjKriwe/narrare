@@ -3,356 +3,427 @@
 <html class="h-full" lang="de"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Atelier-Einstellungen — Allgemein &amp; Profil — Narrare</title>
-<!-- Tailwind CSS v3 -->
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<title>Atelier-Einstellungen — Allgemein &amp; Profil (Hub-Chrome) — Narrare</title>
 <!-- Google Fonts: EB Garamond & Plus Jakarta Sans -->
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<!-- Tailwind Configuration with strict token set -->
+<!-- Google Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<!-- Tailwind CSS v3 with Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration for Narrare Literary Modernism -->
 <script>
     tailwind.config = {
       theme: {
         extend: {
+          fontFamily: {
+            serif: ['"EB Garamond"', 'Georgia', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+          },
           colors: {
             canvas: '#F6F3ED',
             panel: '#FDFCF9',
-            card: '#FFF8F2',
-            stroke: '#E0DEDA',
+            card: '#FFFFFF',
+            cardSoft: '#FFF8F2',
+            soft: '#EFEBE2',
+            borderBase: '#E0DEDA',
             hairline: '#EEEBE5',
             ink: '#1E1B16',
-            'ink-muted': '#6E6B65',
-            primary: '#743B1F',
-            'on-primary': '#FAF8F5'
+            muted: '#6E6B65',
+            sepia: {
+              DEFAULT: '#743B1F',
+              hover: '#5e3019',
+              light: '#FAF8F5',
+              tint: '#F5ECE6',
+            },
+            statusGreen: '#2E6930',
           },
-          fontFamily: {
-            serif: ['"EB Garamond"', 'Georgia', 'serif'],
-            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif']
+          borderRadius: {
+            DEFAULT: '4px',
+            sm: '4px',
+            md: '4px',
+            lg: '4px',
+            xl: '4px',
           },
           boxShadow: {
-            atelier: '0 4px 20px -2px rgba(30, 27, 22, 0.04)',
-            popover: '0 8px 30px -4px rgba(30, 27, 22, 0.08)'
+            subtle: '0 1px 2px 0 rgba(30, 27, 22, 0.04)',
+            card: '0 1px 3px 0 rgba(30, 27, 22, 0.05), 0 1px 2px -1px rgba(30, 27, 22, 0.05)',
           }
         }
       }
-    };
+    }
   </script>
-<style>
-    body {
-      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-      color: #1E1B16;
-      background-color: #F6F3ED;
-      -webkit-font-smoothing: antialiased;
+<!-- Custom Styles for Form Controls & Icons -->
+<style data-purpose="custom-elements">
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 22;
+      font-size: 20px;
+      line-height: 1;
     }
-    .font-serif-title {
-      font-family: "EB Garamond", Georgia, serif;
+    .material-symbols-outlined.fill-current {
+      font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 22;
     }
-    .active-rail-indicator {
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 2px;
+    /* Explicit custom styling for pristine radio checkmarks matching design tokens */
+    input[type="radio"]:checked {
       background-color: #743B1F;
+      border-color: #743B1F;
     }
-    input[type="number"]::-webkit-inner-spin-button,
-    input[type="number"]::-webkit-outer-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
+    input[type="checkbox"]:checked {
+      background-color: #743B1F;
+      border-color: #743B1F;
     }
   </style>
 </head>
-<body class="h-full flex overflow-hidden text-ink antialiased selection:bg-primary/10 selection:text-primary">
-<!-- BEGIN: LeftIconRail (64px) -->
-<aside aria-label="Atelier Navigation" class="w-16 shrink-0 bg-panel border-r border-stroke flex flex-col items-center justify-between py-4 z-30 select-none">
-<div class="flex flex-col items-center space-y-6 w-full">
-<!-- Narrare-Monogramm 'N' -->
-<a class="h-9 w-9 flex items-center justify-center rounded text-primary hover:bg-black/[0.03] transition-colors" href="#" title="Narrare Atelier">
-<span class="font-serif-title text-2xl font-semibold tracking-tight">N</span>
+<body class="bg-canvas text-ink font-sans min-h-full flex flex-col antialiased selection:bg-sepia-tint selection:text-sepia">
+<!-- BEGIN: MainLayout -->
+<div class="flex min-h-screen">
+<!-- BEGIN: LeftIconRail -->
+<!-- Fixed left vertical navigation rail with fixed 64px width -->
+<aside class="w-16 bg-panel border-r border-borderBase fixed inset-y-0 left-0 z-30 flex flex-col justify-between items-center py-4 select-none">
+<!-- Top Rail: Logo & App Anchors -->
+<div class="flex flex-col items-center gap-5 w-full">
+<!-- Monogram Seal -->
+<a class="w-9 h-9 bg-sepia text-sepia-light font-serif font-semibold text-xl rounded flex items-center justify-center shadow-subtle hover:bg-sepia-hover transition-colors" href="#" title="Narrare Atelier">
+          N
+        </a>
+<!-- Main Rail Navigation Items -->
+<nav aria-label="Hauptnavigation" class="flex flex-col items-center gap-1.5 w-full px-2">
+<!-- Bibliothek -->
+<a class="w-10 h-10 flex items-center justify-center rounded text-muted hover:text-ink hover:bg-soft transition-colors" href="#" title="Bibliothek">
+<span class="material-symbols-outlined">menu_book</span>
 </a>
-<!-- Hauptnavigations-Icons -->
-<nav class="flex flex-col items-center space-y-2 w-full">
-<!-- Bibliothek / Bücherregal -->
-<a class="relative w-full h-11 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.02] transition-colors" href="#" title="Bibliothek">
-<svg class="w-5 h-5 stroke-[1.5]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
+<!-- Manuskript -->
+<a class="w-10 h-10 flex items-center justify-center rounded text-muted hover:text-ink hover:bg-soft transition-colors" href="#" title="Manuskript">
+<span class="material-symbols-outlined">edit_note</span>
 </a>
-<!-- Manuskript / Feder -->
-<a class="relative w-full h-11 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.02] transition-colors" href="#" title="Manuskript-Editor">
-<svg class="w-5 h-5 stroke-[1.5]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
+<!-- Lore-Graph -->
+<a class="w-10 h-10 flex items-center justify-center rounded text-muted hover:text-ink hover:bg-soft transition-colors" href="#" title="Lore-Graph">
+<span class="material-symbols-outlined">hub</span>
 </a>
-<!-- Lore-Graph / Netzwerk -->
-<a class="relative w-full h-11 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.02] transition-colors" href="#" title="Lore-Graph">
-<svg class="w-5 h-5 stroke-[1.5]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
+<!-- Konsistenz -->
+<a class="w-10 h-10 flex items-center justify-center rounded text-muted hover:text-ink hover:bg-soft transition-colors" href="#" title="Konsistenzprüfung">
+<span class="material-symbols-outlined">fact_check</span>
 </a>
-<!-- Konsistenz / Timeline -->
-<a class="relative w-full h-11 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.02] transition-colors" href="#" title="Konsistenz &amp; Timeline">
-<svg class="w-5 h-5 stroke-[1.5]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
+<!-- Einstellungen: Active Item -->
+<a aria-current="page" class="w-10 h-10 flex items-center justify-center rounded bg-cardSoft text-sepia border border-borderBase/60 transition-colors relative" href="#" title="Einstellungen (Aktiv)">
+<span class="material-symbols-outlined">settings</span>
+<!-- Active marker bar -->
+<span class="absolute left-0 top-2 bottom-2 w-0.5 bg-sepia rounded-r"></span>
 </a>
 </nav>
 </div>
-<!-- Fußbereich: Einstellungen Aktiv -->
-<div class="w-full flex flex-col items-center">
-<a aria-current="page" class="relative w-full h-12 flex items-center justify-center text-primary bg-card transition-colors" href="#" title="Einstellungen (aktiv)">
-<span class="active-rail-indicator"></span>
-<svg class="w-5 h-5 stroke-[1.7]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" stroke-linecap="round" stroke-linejoin="round"></path>
-<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
+<!-- Bottom Rail: System Status & Meta Actions -->
+<div class="flex flex-col items-center gap-2 w-full px-2">
+<!-- Local Mode Status Indicator with Tooltip -->
+<div class="group relative flex items-center justify-center w-10 h-10">
+<div class="w-2.5 h-2.5 rounded-full bg-statusGreen shadow-sm ring-2 ring-statusGreen/20"></div>
+<span class="absolute left-14 bg-ink text-panel text-[11px] px-2 py-1 rounded shadow-md opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+            Lokalbetrieb aktiv
+          </span>
+</div>
+<!-- Documentation -->
+<a class="w-10 h-10 flex items-center justify-center rounded text-muted hover:text-ink hover:bg-soft transition-colors" href="#" title="Dokumentation">
+<span class="material-symbols-outlined">menu_book</span>
+</a>
+<!-- Help -->
+<a class="w-10 h-10 flex items-center justify-center rounded text-muted hover:text-ink hover:bg-soft transition-colors" href="#" title="Hilfe &amp; Kurzbefehle">
+<span class="material-symbols-outlined">help_outline</span>
+</a>
+<!-- Logout -->
+<a class="w-10 h-10 flex items-center justify-center rounded text-muted hover:text-ink hover:bg-soft transition-colors" href="#" title="Abmelden">
+<span class="material-symbols-outlined">logout</span>
 </a>
 </div>
 </aside>
 <!-- END: LeftIconRail -->
-<!-- BEGIN: MainContainer -->
-<div class="flex-1 flex flex-col h-full min-w-0 bg-canvas overflow-hidden">
-<!-- BEGIN: TopBar -->
-<header class="h-14 border-b border-stroke px-8 flex items-center justify-between bg-panel select-none shrink-0 relative z-20">
-<!-- Brotkrumen-Pfad -->
-<nav aria-label="Brotkrumen" class="flex items-center space-x-2 text-xs">
-<span class="text-ink-muted">Atelier</span>
-<span class="text-ink-muted/50">›</span>
-<span class="font-medium text-ink">Einstellungen</span>
-<span class="text-ink-muted/50">›</span>
-<span class="text-ink-muted">Allgemein</span>
-</nav>
-<!-- Profil-Menü / Geöffnetes Popover -->
-<div class="relative" data-purpose="user-menu-wrapper">
-<!-- Auslöser-Kachel -->
-<button aria-expanded="true" class="flex items-center gap-2 pl-2 pr-2.5 py-1 rounded border border-stroke bg-card text-left transition-colors shadow-atelier" type="button">
-<div class="w-6 h-6 rounded bg-hairline text-primary font-serif-title font-semibold text-xs flex items-center justify-center">
-            HC
-          </div>
-<span class="text-xs font-medium text-ink">H. Calder</span>
-<svg class="w-3.5 h-3.5 text-ink-muted ml-0.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
-</svg>
+<!-- Container for Topbar and Main Content shifted by Rail width -->
+<div class="flex-1 flex flex-col pl-16 min-w-0">
+<!-- BEGIN: Topbar -->
+<!-- Sticky top header bar with exact 56px height -->
+<header class="h-14 bg-panel border-b border-borderBase sticky top-0 z-20 px-6 flex items-center justify-between select-none">
+<!-- Left Breadcrumb -->
+<div class="flex items-center gap-2 text-xs">
+<span class="text-muted">Atelier</span>
+<span class="text-muted/60">›</span>
+<span class="text-muted">Einstellungen</span>
+<span class="text-muted/60">›</span>
+<span class="font-medium text-ink">Allgemein</span>
+</div>
+<!-- Right Utilities & Profile -->
+<div class="flex items-center gap-4">
+<!-- Language Selector Inline Pill -->
+<div class="flex items-center text-xs border border-borderBase rounded px-1 py-0.5 bg-canvas/60">
+<button aria-label="Deutsch" class="px-2 py-0.5 rounded font-semibold text-sepia bg-panel shadow-subtle text-[11px]">DE</button>
+<button aria-label="English" class="px-2 py-0.5 text-muted hover:text-ink text-[11px]">EN</button>
+<button aria-label="Français" class="px-2 py-0.5 text-muted hover:text-ink text-[11px]">FR</button>
+</div>
+<!-- Vertical Divider -->
+<div class="w-px h-4 bg-borderBase"></div>
+<!-- Theme Toggle Button -->
+<button class="w-8 h-8 flex items-center justify-center text-muted hover:text-ink rounded hover:bg-soft transition-colors" title="Farbschema anpassen">
+<span class="material-symbols-outlined">light_mode</span>
 </button>
-<!-- GEÖFFNETES Popover-Menü -->
-<div class="absolute right-0 mt-2 w-80 bg-card rounded border border-stroke shadow-popover py-2 z-50 text-xs">
-<!-- Benutzerinfo-Kopf -->
-<div class="px-4 py-2.5 border-b border-hairline mb-1">
-<div class="font-medium text-ink text-sm leading-tight">H. Calder</div>
-<div class="text-[11px] text-ink-muted font-mono mt-0.5">h.calder@station7.de</div>
-</div>
-<!-- Menüeinträge -->
-<div class="py-1">
-<a class="flex items-center justify-between px-4 py-2 text-ink hover:bg-canvas transition-colors" href="#">
-<span>Autorenname bearbeiten</span>
-<span class="text-[10px] text-ink-muted font-sans">Profil</span>
-</a>
-<a class="flex items-center justify-between px-4 py-2 text-ink hover:bg-canvas transition-colors" href="#">
-<span>Tagesziel festlegen</span>
-<span class="text-[10px] text-ink-muted">500 W</span>
-</a>
-<a class="flex items-center justify-between px-4 py-2 bg-canvas/70 text-primary font-medium transition-colors" href="#">
-<span class="flex items-center gap-2">
-<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                Einstellungen
-              </span>
-<span class="text-[10px] text-primary/80">Aktiv</span>
-</a>
-</div>
-<div class="my-1 border-t border-hairline"></div>
-<!-- Abmelden (Lokalbetrieb deaktiviert) -->
-<div class="px-4 py-2">
-<div class="flex items-center justify-between text-ink-muted/50 cursor-not-allowed">
-<span class="font-normal line-through">Abmelden</span>
-<span class="text-[9px] px-1.5 py-0.5 rounded bg-black/[0.04] text-ink-muted uppercase tracking-wider font-semibold">LOKAL</span>
-</div>
-<div class="text-[11px] leading-relaxed text-ink-muted mt-2 bg-panel p-2.5 rounded border border-hairline">
-              Lokalbetrieb — keine Cloud-Sitzung, Abmelden nicht verfügbar.
+<!-- Vertical Divider -->
+<div class="w-px h-4 bg-borderBase"></div>
+<!-- User Profile Dropdown Pill -->
+<button aria-expanded="false" aria-haspopup="true" class="flex items-center gap-2.5 py-1 px-1.5 rounded hover:bg-soft transition-colors text-left">
+<div class="w-7 h-7 rounded bg-sepia-tint text-sepia text-xs font-medium flex items-center justify-center border border-sepia/20">
+              HC
             </div>
+<div class="hidden sm:flex flex-col leading-tight">
+<span class="text-xs font-semibold text-ink">H. Calder</span>
+<span class="text-[11px] text-muted">h.calder@station7.de</span>
 </div>
-</div>
+<span class="material-symbols-outlined text-muted text-base">expand_more</span>
+</button>
 </div>
 </header>
-<!-- END: TopBar -->
-<!-- BEGIN: ScrollableContent -->
-<main class="flex-1 overflow-y-auto px-8 py-10" id="main-content">
-<div class="max-w-3xl mx-auto space-y-12 pb-24">
-<!-- Kopfzeile der Ansicht -->
-<div>
-<h1 class="text-3xl font-serif-title font-normal tracking-tight text-ink">Atelier-Einstellungen</h1>
-<p class="text-xs text-ink-muted mt-1.5 max-w-xl leading-relaxed">
-            Verwalte die Schreibumgebung, Sprachpräferenzen und Autorenangaben für deine lokalen Manuskripte.
-          </p>
+<!-- END: Topbar -->
+<!-- BEGIN: SubNavigationHub -->
+<!-- Secondary Tab Navigation Header with verified badge -->
+<nav aria-label="Einstellungsbereiche" class="bg-panel border-b border-borderBase px-6 py-0 flex items-center justify-between">
+<div class="flex items-center gap-1 -mb-px">
+<!-- Tab 1: Allgemein (Active) -->
+<a aria-current="page" class="flex items-center gap-2 px-4 py-3 text-xs font-semibold border-b-2 border-sepia text-sepia bg-cardSoft/50" href="#">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+<span>Allgemein</span>
+</a>
+<!-- Tab 2: KI-Regeln (Inactive) -->
+<a class="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 border-transparent text-muted hover:text-ink hover:border-borderBase transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">psychology</span>
+<span>KI-Regeln</span>
+</a>
+<!-- Tab 3: Prompts (Inactive) -->
+<a class="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 border-transparent text-muted hover:text-ink hover:border-borderBase transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">terminal</span>
+<span>Prompts</span>
+</a>
 </div>
-<!-- BEGIN: Section 'Sprache & Erscheinungsbild' -->
-<section aria-labelledby="heading-appearance" class="space-y-6">
-<div class="border-b border-stroke pb-2.5">
-<h2 class="font-serif-title text-xl text-ink font-normal" id="heading-appearance">Sprache &amp; Erscheinungsbild</h2>
-<p class="text-xs text-ink-muted mt-0.5">Sofort wirkende Optionen für Typografie und Oberfläche.</p>
+<!-- System Verification Pill -->
+<div class="flex items-center gap-1.5 py-1 px-2.5 rounded bg-soft/70 border border-borderBase/60 text-[11px] text-muted">
+<span class="w-1.5 h-1.5 rounded-full bg-statusGreen"></span>
+<span>Lokaler Speicher verifiziert</span>
 </div>
-<!-- Gruppe: OBERFLÄCHENSPRACHE -->
+</nav>
+<!-- END: SubNavigationHub -->
+<!-- BEGIN: MainContent -->
+<main class="flex-1 py-10 px-6 overflow-y-auto">
+<div class="max-w-4xl mx-auto space-y-8">
+<!-- Section 1: Page Header -->
+<div class="space-y-1.5">
+<h1 class="font-serif text-3xl md:text-[32px] text-ink font-normal tracking-tight leading-snug">
+              Atelier-Einstellungen
+            </h1>
+<p class="text-sm text-muted">
+              Verwalte die Schreibumgebung, Sprachpräferenzen und Autorenangaben für deine lokalen Manuskripte.
+            </p>
+</div>
+<!-- Section 2: Karte 1 - Sprache & Erscheinungsbild -->
+<section class="bg-card border border-borderBase rounded p-6 shadow-card space-y-6" data-purpose="card-appearance">
+<!-- Header -->
+<div class="border-b border-hairline pb-4">
+<h2 class="text-base font-semibold text-ink">Sprache &amp; Erscheinungsbild</h2>
+<p class="text-xs text-muted mt-0.5">Sofort wirkende Optionen für Typografie und Oberfläche.</p>
+</div>
+<!-- Group: Oberflächensprache -->
 <div class="space-y-3">
-<label class="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Oberflächensprache</label>
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-<!-- Karte 1: Deutsch (Aktiv-Radio gefüllt mit Primärton #743B1F, Badge: Aktiv) -->
-<label class="relative flex items-center justify-between p-3.5 rounded border border-primary bg-card shadow-atelier cursor-pointer">
-<div class="flex items-center gap-3">
-<div class="w-4 h-4 rounded-full border border-primary flex items-center justify-center">
-<div class="w-2 h-2 rounded-full bg-primary"></div>
+<div class="flex items-center justify-between">
+<label class="text-[11px] font-bold uppercase tracking-wider text-muted">Oberflächensprache</label>
 </div>
+<!-- Radio Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+<!-- Option 1: Deutsch (Active) -->
+<label class="relative flex items-center justify-between p-3.5 rounded border-2 border-sepia bg-cardSoft/60 cursor-pointer transition-all">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 text-sepia border-borderBase focus:ring-0 focus:ring-offset-0" name="ui_language" type="radio" value="de"/>
 <span class="text-sm font-medium text-ink">Deutsch</span>
 </div>
-<span class="text-[11px] text-primary font-medium">Aktiv</span>
+<span class="text-[11px] font-semibold bg-sepia text-sepia-light px-2 py-0.5 rounded">Aktiv</span>
 </label>
-<!-- Karte 2: English (Radio leer, Badge: EN) -->
-<label class="relative flex items-center justify-between p-3.5 rounded border border-stroke bg-card cursor-pointer hover:border-stroke hover:bg-panel transition-colors">
+<!-- Option 2: English -->
+<label class="relative flex items-center justify-between p-3.5 rounded border border-borderBase bg-card hover:bg-canvas/50 cursor-pointer transition-all">
 <div class="flex items-center gap-3">
-<div class="w-4 h-4 rounded-full border border-stroke"></div>
-<span class="text-sm font-normal text-ink">English</span>
+<input class="w-4 h-4 text-sepia border-borderBase focus:ring-0 focus:ring-offset-0" name="ui_language" type="radio" value="en"/>
+<span class="text-sm font-medium text-ink">English</span>
 </div>
-<span class="text-[11px] text-ink-muted">EN</span>
+<span class="text-[11px] font-medium text-muted bg-soft px-1.5 py-0.5 rounded">EN</span>
 </label>
-<!-- Karte 3: Français (Radio leer, Badge: FR) -->
-<label class="relative flex items-center justify-between p-3.5 rounded border border-stroke bg-card cursor-pointer hover:border-stroke hover:bg-panel transition-colors">
+<!-- Option 3: Français -->
+<label class="relative flex items-center justify-between p-3.5 rounded border border-borderBase bg-card hover:bg-canvas/50 cursor-pointer transition-all">
 <div class="flex items-center gap-3">
-<div class="w-4 h-4 rounded-full border border-stroke"></div>
-<span class="text-sm font-normal text-ink">Français</span>
+<input class="w-4 h-4 text-sepia border-borderBase focus:ring-0 focus:ring-offset-0" name="ui_language" type="radio" value="fr"/>
+<span class="text-sm font-medium text-ink">Français</span>
 </div>
-<span class="text-[11px] text-ink-muted">FR</span>
+<span class="text-[11px] font-medium text-muted bg-soft px-1.5 py-0.5 rounded">FR</span>
 </label>
 </div>
-<!-- Checkbox & Hinweistext -->
-<div class="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-ink-muted">
-<label class="inline-flex items-center gap-2 cursor-pointer select-none">
-<input checked="" class="rounded border-stroke text-primary focus:ring-primary/20 h-4 w-4" type="checkbox"/>
-<span class="text-ink">Dem Browser folgen (Spracherkennung beim Start)</span>
-</label>
-<span class="text-[11px] text-ink-muted italic">Änderung wird sofort angewendet.</span>
+<!-- Checkbox Option -->
+<div class="pt-1 flex items-start gap-2.5">
+<input checked="" class="mt-0.5 w-4 h-4 rounded text-sepia border-borderBase focus:ring-0 focus:ring-offset-0" id="browser_lang_sync" type="checkbox"/>
+<div class="flex flex-col">
+<label class="text-xs text-ink font-medium cursor-pointer" for="browser_lang_sync">
+                    Dem Browser folgen (Spracherkennung beim Start)
+                  </label>
+<span class="text-[11px] text-muted">Änderung wird sofort angewendet.</span>
 </div>
 </div>
-<!-- Gruppe: FARBTON & KONTRAST -->
-<div class="space-y-3 pt-3">
-<label class="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Farbton &amp; Kontrast</label>
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-<!-- Karte 1: Hell (Pergament) (Aktiv ausgewählt mit #743B1F Umrandung / Radio, Farbfelder Creme/Braun, Sublabel: Atelier) -->
-<label class="relative p-3.5 rounded border border-primary bg-card flex flex-col justify-between h-24 cursor-pointer shadow-atelier">
-<div class="flex items-center justify-between w-full">
-<span class="text-xs font-medium text-ink">Hell (Pergament)</span>
-<div class="w-3.5 h-3.5 rounded-full border border-primary flex items-center justify-center">
-<div class="w-2 h-2 rounded-full bg-primary"></div>
 </div>
+<!-- Group: Farbton & Kontrast -->
+<div class="space-y-3 pt-2">
+<label class="text-[11px] font-bold uppercase tracking-wider text-muted">Farbton &amp; Kontrast</label>
+<!-- Theme Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+<!-- Theme 1: Hell (Pergament) - Active -->
+<label class="relative flex flex-col p-3 rounded border-2 border-sepia bg-cardSoft/40 cursor-pointer transition-all">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2.5">
+<input checked="" class="w-4 h-4 text-sepia border-borderBase focus:ring-0 focus:ring-offset-0" name="theme_scheme" type="radio" value="parchment"/>
+<span class="text-xs font-semibold text-ink">Hell (Pergament)</span>
 </div>
-<div class="flex items-center justify-between pt-2">
+<span class="text-[11px] font-medium text-sepia bg-sepia-tint px-1.5 py-0.2 rounded">Atelier</span>
+</div>
+<!-- Swatch Preview -->
+<div class="h-10 w-full rounded border border-borderBase bg-[#FDFCF9] flex items-center justify-between px-3">
 <div class="flex items-center gap-1.5">
-<span class="h-3.5 w-5 rounded-sm bg-[#F6F3ED] border border-stroke inline-block"></span>
-<span class="h-3.5 w-3.5 rounded-sm bg-primary inline-block"></span>
+<span class="w-3.5 h-3.5 rounded-full bg-[#743B1F]"></span>
+<span class="text-[10px] text-muted">Sepia</span>
 </div>
-<span class="text-[11px] text-ink-muted font-serif-title italic">Atelier</span>
+<span class="text-[10px] text-ink font-serif">Leinwand</span>
 </div>
 </label>
-<!-- Karte 2: Dunkel (Tinte) (Farbfelder Schwarz/Kupfer, Sublabel: Midnight) -->
-<label class="relative p-3.5 rounded border border-stroke bg-card hover:bg-panel flex flex-col justify-between h-24 cursor-pointer transition-colors">
-<div class="flex items-center justify-between w-full">
-<span class="text-xs font-normal text-ink">Dunkel (Tinte)</span>
-<div class="w-3.5 h-3.5 rounded-full border border-stroke"></div>
+<!-- Theme 2: Dunkel (Tinte) -->
+<label class="relative flex flex-col p-3 rounded border border-borderBase bg-card hover:bg-canvas/50 cursor-pointer transition-all">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2.5">
+<input class="w-4 h-4 text-sepia border-borderBase focus:ring-0 focus:ring-offset-0" name="theme_scheme" type="radio" value="midnight"/>
+<span class="text-xs font-medium text-ink">Dunkel (Tinte)</span>
 </div>
-<div class="flex items-center justify-between pt-2">
+<span class="text-[11px] font-medium text-muted bg-soft px-1.5 py-0.2 rounded">Midnight</span>
+</div>
+<!-- Swatch Preview -->
+<div class="h-10 w-full rounded border border-[#33302A] bg-[#211F1A] flex items-center justify-between px-3">
 <div class="flex items-center gap-1.5">
-<span class="h-3.5 w-5 rounded-sm bg-[#16140F] border border-[#35332D] inline-block"></span>
-<span class="h-3.5 w-3.5 rounded-sm bg-[#C5825B] inline-block"></span>
+<span class="w-3.5 h-3.5 rounded-full bg-[#D39562]"></span>
+<span class="text-[10px] text-[#A6A29A]">Ocker</span>
 </div>
-<span class="text-[11px] text-ink-muted font-serif-title italic">Midnight</span>
+<span class="text-[10px] text-[#EFEBE2] font-serif">Nacht</span>
 </div>
 </label>
-<!-- Karte 3: Systemstandard (Icon/Split-Vorschau, Sublabel: Automatisch) -->
-<label class="relative p-3.5 rounded border border-stroke bg-card hover:bg-panel flex flex-col justify-between h-24 cursor-pointer transition-colors">
-<div class="flex items-center justify-between w-full">
-<span class="text-xs font-normal text-ink">Systemstandard</span>
-<div class="w-3.5 h-3.5 rounded-full border border-stroke"></div>
+<!-- Theme 3: Systemstandard -->
+<label class="relative flex flex-col p-3 rounded border border-borderBase bg-card hover:bg-canvas/50 cursor-pointer transition-all">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2.5">
+<input class="w-4 h-4 text-sepia border-borderBase focus:ring-0 focus:ring-offset-0" name="theme_scheme" type="radio" value="system"/>
+<span class="text-xs font-medium text-ink">Systemstandard</span>
 </div>
-<div class="flex items-center justify-between pt-2">
-<div class="flex items-center">
-<span class="h-3.5 w-5 rounded-sm bg-gradient-to-r from-[#F6F3ED] via-[#DCD5CB] to-[#16140F] border border-stroke inline-block"></span>
+<span class="text-[11px] font-medium text-muted bg-soft px-1.5 py-0.2 rounded">Auto</span>
 </div>
-<span class="text-[11px] text-ink-muted">Automatisch</span>
+<!-- Swatch Preview (Split) -->
+<div class="h-10 w-full rounded border border-borderBase overflow-hidden flex">
+<div class="w-1/2 bg-[#FDFCF9] flex items-center justify-center border-r border-borderBase">
+<span class="text-[10px] text-muted">Tag</span>
+</div>
+<div class="w-1/2 bg-[#211F1A] flex items-center justify-center">
+<span class="text-[10px] text-[#A6A29A]">Nacht</span>
+</div>
 </div>
 </label>
 </div>
 </div>
 </section>
-<!-- END: Section 'Sprache & Erscheinungsbild' -->
-<!-- BEGIN: Section 'Autoren-Profil' -->
-<section aria-labelledby="heading-author" class="space-y-6 pt-2">
-<div class="border-b border-stroke pb-2.5 flex items-baseline justify-between">
+<!-- Section 3: Karte 2 - Autoren-Profil -->
+<section class="bg-card border border-borderBase rounded p-6 shadow-card space-y-6" data-purpose="card-author-profile">
+<!-- Header with Unsaved status badge -->
+<div class="border-b border-hairline pb-4 flex items-start justify-between">
 <div>
-<h2 class="font-serif-title text-xl text-ink font-normal" id="heading-author">Autoren-Profil</h2>
-<p class="text-xs text-ink-muted mt-0.5">Diese Angaben erscheinen in Manuskript-Köpfen und Meta-Notizen.</p>
+<h2 class="text-base font-semibold text-ink">Autoren-Profil</h2>
+<p class="text-xs text-muted mt-0.5">Diese Angaben erscheinen in Manuskript-Köpfen und Meta-Notizen.</p>
 </div>
-<!-- Dirty State Badge -->
-<span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-primary bg-primary/[0.08] px-2.5 py-0.5 rounded-full">
-<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-              Ungespeicherte Eingaben
-            </span>
+<span class="inline-flex items-center gap-1.5 text-xs font-medium text-sepia bg-cardSoft border border-borderBase/70 px-2.5 py-1 rounded">
+<span class="w-1.5 h-1.5 rounded-full bg-sepia"></span>
+                Ungespeicherte Eingaben
+              </span>
 </div>
-<!-- Formular-Container -->
-<form class="bg-card rounded border border-stroke p-6 shadow-atelier space-y-6" onsubmit="event.preventDefault();">
-<!-- Feld: AUTORENNAME -->
+<!-- Form Fields Container -->
+<div class="space-y-5">
+<!-- Field 1: Autorenname -->
 <div class="space-y-1.5">
-<div class="flex justify-between items-center">
-<label class="block text-xs font-semibold uppercase tracking-wider text-ink" for="author_name">
-                  Autorenname
-                </label>
-<span class="text-[11px] text-ink-muted">Sichtbar im Editor &amp; Export</span>
+<div class="flex justify-between items-center text-xs">
+<label class="font-bold text-ink text-[11px] uppercase tracking-wider" for="author_name">
+                    Autorenname
+                  </label>
+<span class="text-muted text-[11px]">Sichtbar im Editor &amp; Export</span>
 </div>
-<input class="w-full text-sm rounded border-stroke bg-panel focus:border-primary focus:ring-1 focus:ring-primary text-ink px-3.5 py-2.5 transition-colors" id="author_name" name="author_name" placeholder="z. B. H. Calder" type="text" value="H. Calder"/>
-<p class="text-[11px] text-ink-muted leading-relaxed">
-                Leerlassen, damit die E-Mail-Adresse (<span class="font-mono text-ink">h.calder@station7.de</span>) als Bezeichner im Manuskript und Menü antwortet.
-              </p>
+<div class="relative">
+<input class="w-full bg-panel border border-borderBase rounded px-3 py-2 text-sm text-ink focus:border-sepia focus:ring-1 focus:ring-sepia" id="author_name" placeholder="Name oder Pseudonym" type="text" value="H. Calder"/>
 </div>
-<!-- Feld: TAGESZIEL (WÖRTER) -->
+<p class="text-[11px] text-muted leading-relaxed">
+                  Leerlassen, damit die E-Mail-Adresse (<span class="font-mono text-ink">h.calder@station7.de</span>) als Bezeichner im Manuskript und Menü antwortet.
+                </p>
+</div>
+<!-- Field 2: Tagesziel (Wörter) -->
 <div class="space-y-1.5">
-<div class="flex justify-between items-center">
-<label class="block text-xs font-semibold uppercase tracking-wider text-ink" for="daily_goal">
-                  Tagesziel (Wörter)
-                </label>
-<span class="text-[11px] text-ink-muted">Optionale Schreibdisziplin</span>
+<div class="flex justify-between items-center text-xs">
+<label class="font-bold text-ink text-[11px] uppercase tracking-wider" for="daily_goal">
+                    Tagesziel (Wörter)
+                  </label>
+<span class="text-muted text-[11px]">Optionale Schreibdisziplin</span>
 </div>
-<div class="relative w-48">
-<input class="w-full text-sm rounded border-stroke bg-panel focus:border-primary focus:ring-1 focus:ring-primary text-ink pl-3.5 pr-14 py-2.5 transition-colors" id="daily_goal" min="0" name="daily_goal" step="50" type="number" value="500"/>
-<span class="absolute inset-y-0 right-3 flex items-center text-xs text-ink-muted pointer-events-none">
-                  Wörter
-                </span>
+<div class="relative w-full sm:w-64">
+<input class="w-full bg-panel border border-borderBase rounded px-3 py-2 text-sm text-ink focus:border-sepia focus:ring-1 focus:ring-sepia pr-16" id="daily_goal" min="0" step="50" type="number" value="500"/>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-xs text-muted">
+                    Wörter
+                  </div>
 </div>
-<p class="text-[11px] text-ink-muted leading-relaxed">
-                Leerlassen für kein festes Tageslimit. Bei 0 wird kein Fortschrittsbalken im Schreibfokus eingeblendet.
-              </p>
+<p class="text-[11px] text-muted leading-relaxed">
+                  Leerlassen für kein festes Tageslimit. Bei 0 wird kein Fortschrittsbalken im Schreibfokus eingeblendet.
+                </p>
 </div>
-<!-- Formular-Fußzeile -->
-<div class="pt-4 border-t border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-<!-- Links: Uhr-Icon + Text -->
-<div class="flex items-center gap-2 text-xs text-ink-muted">
-<svg class="w-4 h-4 text-primary shrink-0 stroke-[1.8]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Wird beim Bestätigen direkt im Browser-Speicher abgelegt.</span>
 </div>
-<!-- Rechts: Buttons Verwerfen & Speichern -->
-<div class="flex items-center gap-3 self-end sm:self-auto">
-<button class="px-4 py-2 text-xs font-medium text-ink-muted hover:text-ink hover:bg-black/[0.03] rounded transition-colors" type="button">
+<!-- Footer Action Row -->
+<div class="pt-4 border-t border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<span class="text-xs text-muted">
+                Wird beim Bestätigen direkt im Browser-Speicher abgelegt.
+              </span>
+<div class="flex items-center gap-2">
+<!-- Secondary: Verwerfen -->
+<button class="px-4 py-2 text-xs font-medium text-muted hover:text-ink transition-colors" type="button">
                   Verwerfen
                 </button>
-<button class="px-4 py-2 text-xs font-semibold text-on-primary bg-primary hover:bg-[#5E2F18] rounded shadow-atelier transition-colors focus:ring-2 focus:ring-primary/40" type="submit">
-                  Änderungen speichern
-                </button>
+<!-- Primary: Änderungen speichern -->
+<button class="px-5 py-2 text-xs font-semibold bg-sepia text-sepia-light hover:bg-sepia-hover rounded shadow-subtle transition-colors flex items-center gap-1.5" type="button">
+<span>Änderungen speichern</span>
+</button>
 </div>
 </div>
-</form><div class="p-4 rounded border border-stroke bg-panel flex items-start gap-3 mt-4 text-xs"><svg class="w-4 h-4 text-primary shrink-0 mt-0.5 stroke-[1.8]" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" stroke-linecap="round" stroke-linejoin="round"></path></svg><div><h3 class="font-medium text-ink">Offline-Kompensation</h3><p class="text-ink-muted mt-0.5 leading-relaxed">Lokaler Fake-Treiber aktiv. Eingaben verbleiben auf diesem Rechner.</p></div></div>
 </section>
-<!-- END: Section 'Autoren-Profil' -->
+<!-- Section 4: Karte 3 - Offline-Kompensation -->
+<section class="bg-cardSoft border border-borderBase rounded p-4 flex items-center gap-3.5 shadow-subtle" data-purpose="card-offline-compensation">
+<span class="material-symbols-outlined text-muted text-xl flex-shrink-0">
+              info
+            </span>
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 w-full">
+<div class="flex flex-col">
+<span class="text-xs font-semibold text-ink">Offline-Kompensation</span>
+<span class="text-xs text-muted">Lokaler Fake-Treiber aktiv. Eingaben verbleiben auf diesem Rechner.</span>
+</div>
+<span class="text-[11px] font-mono text-muted bg-panel px-2 py-0.5 rounded border border-borderBase/60 self-start sm:self-auto">
+                IndexedDB: OK
+              </span>
+</div>
+</section>
+<!-- Section 5: Atelier Footer -->
+<footer class="border-t border-borderBase pt-6 pb-12 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-muted">
+<p>© Narrare Atelier. Written sovereignty guaranteed. Local.</p>
+<p class="text-right">
+              Design-System: Literary Modernism • Farb-Token: <span class="font-mono text-ink">#F6F3ED</span> / <span class="font-mono text-ink">#743B1F</span> • Keine Telemetrie
+            </p>
+</footer>
 </div>
 </main>
-<!-- END: ScrollableContent -->
+<!-- END: MainContent -->
 </div>
-<!-- END: MainContainer -->
+</div>
+<!-- END: MainLayout -->
 </body></html>

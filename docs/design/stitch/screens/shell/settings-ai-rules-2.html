@@ -1,793 +1,701 @@
 <!DOCTYPE html>
 
-<html class="h-full bg-[#F6F3ED]" lang="de"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Narrare — KI-Regeln &amp; Modell-Architektur</title>
-<!-- Tailwind CSS v3 with Plugins -->
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<!-- Google Fonts: EB Garamond & Plus Jakarta Sans -->
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<!-- Tailwind Configuration mit exakten Farb-Tokens -->
-<script data-purpose="tailwind-config" id="tailwind-config">
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            canvas: '#F6F3ED',
-            panel: '#FDFCF9',
-            card: '#FFF8F2',
-            border: '#E0DEDA',
-            divider: '#EEEBE5',
-            ink: '#1E1B16',
-            'ink-muted': '#6E6B65',
-            primary: '#743B1F',
-            'primary-text': '#FAF8F5'
-          },
-          fontFamily: {
-            serif: ['"EB Garamond"', 'Georgia', 'serif'],
-            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
-            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace']
-          }
-        }
-      }
-    };
-  </script>
-<style>
-    body {
-      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-      color: #1E1B16;
-      background-color: #F6F3ED;
-      -webkit-font-smoothing: antialiased;
-    }
-    .font-serif-heading {
-      font-family: "EB Garamond", Georgia, serif;
-    }
-    .rail-active-indicator {
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 2.5px;
-      background-color: #743B1F;
-    }
-    /* Feinste Custom Scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #F6F3ED;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #E0DEDA;
-      border-radius: 3px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #6E6B65;
-    }
-  </style>
-<meta content="web_dashboard" name="shell-type"/>
-</head>
-<body class="h-full flex overflow-hidden text-ink antialiased selection:bg-primary/15 selection:text-primary">
-<!-- BEGIN: LeftIconRail -->
-<aside aria-label="Atelier Navigation" class="w-14 shrink-0 bg-panel border-r border-border flex flex-col items-center justify-between py-3 z-30 select-none">
-<div class="flex flex-col items-center space-y-4 w-full">
-<!-- Atelier Siegel / Logo -->
-<a class="h-9 w-9 flex items-center justify-center rounded-md text-primary hover:bg-black/[0.03] transition-colors" href="#" title="Narrare Atelier">
-<span class="font-serif-heading font-semibold text-2xl tracking-tighter">N</span>
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"text-muted-light":"#6E6B65","state-success":"#21763C","inverse-surface":"#33302b","inverse-primary":"#ffb695","bg-soft-dark":"#2C2922","surface-dim":"#e0d9d1","border-dark":"#35332D","on-tertiary-fixed-variant":"#693c10","primary":"#58250b","tertiary":"#522900","rule-light":"#EEEBE5","area-settings":"#5A5549","secondary":"#74584e","area-knowledge":"#606127","error-container":"#ffdad6","cover-sepia":"#743B1F","cover-pale":"#EEEBE5","on-surface":"#1e1b16","primary-fixed":"#ffdbcc","on-secondary":"#ffffff","area-chat":"#3A637B","secondary-fixed-dim":"#e3bfb2","on-background":"#1e1b16","state-warning":"#9A6100","bg-soft-light":"#EFEBE2","on-primary-fixed":"#351000","border-light":"#E0DEDA","secondary-container":"#fed8ca","cover-ink":"#24211C","bg-card-light":"#FFFFFF","on-primary-fixed-variant":"#6f371c","surface-container-lowest":"#ffffff","rule-dark":"#302D28","on-secondary-fixed-variant":"#5a4137","surface-tint":"#8c4e30","error":"#ba1a1a","state-danger":"#AC3031","inverse-on-surface":"#f7f0e7","primary-fixed-dim":"#ffb695","secondary-fixed":"#ffdbce","amber-focus":"#8F4622","text-muted-dark":"#89867F","surface-container-high":"#eee7df","outline-variant":"#d8c2b9","surface":"#fff8f2","bg-panel-dark":"#1C1914","on-secondary-container":"#795c52","on-error":"#ffffff","on-primary-container":"#f8a884","background":"#fff8f2","on-tertiary-fixed":"#2f1500","on-error-container":"#93000a","on-secondary-fixed":"#2a170f","bg-card-dark":"#211F1A","tertiary-fixed":"#ffdcc3","surface-container-low":"#faf2ea","area-planning":"#834D7E","amber-focus-dark":"#F2AD73","on-surface-variant":"#53433d","area-writing":"#914F2F","surface-container-highest":"#e9e1d9","primary-container":"#743b1f","outline":"#86736c","on-tertiary":"#ffffff","bg-canvas-dark":"#16140F","on-primary":"#ffffff","tertiary-container":"#6e3f14","bg-canvas-light":"#F6F3ED","text-foreground-dark":"#DFDEDA","surface-variant":"#e9e1d9","surface-container":"#f4ede4","tertiary-fixed-dim":"#fcb882","on-tertiary-container":"#eead78","bg-panel-light":"#FDFCF9","surface-bright":"#fff8f2"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"prose-max-width":"34rem","gutter":"1rem","space-xl":"2rem","space-xs":"0.25rem","space-md":"1rem","dock-width":"21rem","container-max":"75rem","rail-collapsed":"3rem","margin":"1.5rem","space-sm":"0.5rem","space-lg":"1.5rem","rail-expanded":"10.5rem"},"fontFamily":{"meta-default":["Plus Jakarta Sans"],"prose-heading-2":["EB Garamond"],"headline-title":["Plus Jakarta Sans"],"headline-hero":["Plus Jakarta Sans"],"eyebrow-tracked":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"],"prose-editorial":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"]},"fontSize":{"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}],"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}]}}}}</script></head><body class="bg-bg-canvas-light text-on-surface font-body-default text-body-default min-h-screen selection:bg-secondary-container selection:text-on-secondary-container"><aside class="fixed left-0 top-0 h-full w-16 bg-bg-panel-light border-r border-border-light z-50 flex flex-col justify-between items-center py-4 select-none"><div class="flex flex-col items-center gap-6 w-full"><div class="w-10 h-10 rounded-lg bg-cover-sepia flex items-center justify-center shadow-[0_1px_3px_0_rgba(44,24,16,0.12)] border border-primary"><span class="font-prose-heading-1 text-on-primary text-xl font-bold tracking-tight select-none">N</span></div><nav class="w-full flex flex-col items-center gap-1.5 px-1.5" data-active-classes="border-l-2 border-primary-container bg-surface text-primary-container"><a class="w-11 h-11 flex items-center justify-center rounded-lg text-text-muted-light hover:bg-bg-soft-light hover:text-on-surface transition-colors" data-path="bibliothek" href="#" title="Bibliothek"><span class="material-symbols-outlined text-[20px]">local_library</span></a><a class="w-11 h-11 flex items-center justify-center rounded-lg text-text-muted-light hover:bg-bg-soft-light hover:text-on-surface transition-colors" data-path="manuskript" href="#" title="Manuskript"><span class="material-symbols-outlined text-[20px]">edit_note</span></a><a class="w-11 h-11 flex items-center justify-center rounded-lg text-text-muted-light hover:bg-bg-soft-light hover:text-on-surface transition-colors" data-path="lore-graph" href="#" title="Lore-Graph"><span class="material-symbols-outlined text-[20px]">account_tree</span></a><a class="w-11 h-11 flex items-center justify-center rounded-lg text-text-muted-light hover:bg-bg-soft-light hover:text-on-surface transition-colors" data-path="konsistenz" href="#" title="Konsistenz"><span class="material-symbols-outlined text-[20px]">fact_check</span></a><a aria-current="page" class="w-11 h-11 flex items-center justify-center rounded-lg transition-colors border-l-2 border-primary-container bg-surface text-primary-container" data-path="einstellungen" href="#" title="Einstellungen"><span class="material-symbols-outlined text-[20px]">settings</span></a></nav></div><div class="flex flex-col items-center gap-3 w-full border-t border-rule-light pt-4"><div class="flex flex-col items-center gap-1" title="Speicherstatus: Lokal gespeichert"><span class="w-2 h-2 rounded-full bg-state-success ring-2 ring-state-success/20"></span><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light scale-75 tracking-wider">Lokal</span></div><a class="w-10 h-10 flex items-center justify-center rounded-lg text-text-muted-light hover:bg-bg-soft-light hover:text-on-surface transition-colors" data-path="dokumentation" href="#" title="Dokumentation"><span class="material-symbols-outlined text-[19px]">menu_book</span></a><a class="w-10 h-10 flex items-center justify-center rounded-lg text-text-muted-light hover:bg-bg-soft-light hover:text-on-surface transition-colors" data-path="hilfe" href="#" title="Hilfe"><span class="material-symbols-outlined text-[19px]">help_outline</span></a><button class="w-10 h-10 flex items-center justify-center rounded-lg text-text-muted-light hover:bg-bg-soft-light hover:text-state-danger transition-colors" title="Abmelden" type="button"><span class="material-symbols-outlined text-[19px]">logout</span></button></div></aside><div class="pl-16"><header class="fixed top-0 left-16 right-0 h-14 bg-bg-panel-light border-b border-border-light z-40 flex items-center justify-between px-6"><div class="flex items-center gap-2 text-on-surface"><span class="font-meta-default text-meta-default font-medium text-text-muted-light">Atelier</span><span class="text-border-light select-none">/</span><span class="font-meta-default text-meta-default font-medium text-text-muted-light">Einstellungen</span><span class="text-border-light select-none">/</span><span class="font-label-default text-label-default font-semibold text-primary-container bg-surface-container-high px-2 py-0.5 rounded">KI-Regeln</span></div><div class="flex items-center gap-5"><div class="flex items-center bg-bg-canvas-light p-0.5 rounded border border-border-light text-meta-default font-meta-default font-medium"><span class="px-2 py-0.5 rounded bg-bg-panel-light text-primary-container shadow-[0_1px_2px_rgba(44,24,16,0.06)] font-semibold">DE</span><a class="px-2 py-0.5 text-text-muted-light hover:text-on-surface transition-colors" href="#">EN</a><a class="px-2 py-0.5 text-text-muted-light hover:text-on-surface transition-colors" href="#">FR</a></div><div class="h-4 w-px bg-rule-light"></div><button class="w-8 h-8 rounded flex items-center justify-center text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light transition-colors" title="Hell-Modus aktiv" type="button"><span class="material-symbols-outlined text-[19px]">light_mode</span></button><div class="relative flex items-center gap-3 pl-2 border-l border-rule-light"><div class="flex items-center gap-2.5 cursor-pointer"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="hidden sm:flex flex-col text-left"><div class="flex items-center gap-1.5"><span class="font-label-default text-label-default font-semibold text-on-surface">H. Calder</span><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase px-1.5 py-0.2 rounded bg-cover-pale text-text-muted-light border border-border-light">HC</span></div><span class="font-meta-default text-meta-default text-text-muted-light leading-none">h.calder@station7.de</span></div><span class="material-symbols-outlined text-text-muted-light text-[18px]">expand_more</span></div><div class="absolute right-0 top-full mt-2 w-72 bg-bg-panel-light border border-border-light rounded-lg shadow-[0_12px_24px_-4px_rgba(36,33,28,0.12)] p-2.5 hidden"><div class="px-2 py-1.5 border-b border-rule-light mb-1.5"><div class="font-label-default text-label-default font-semibold text-on-surface">Autoren-Konto</div><div class="font-meta-default text-meta-default text-text-muted-light truncate">h.calder@station7.de</div></div><a class="flex items-center gap-2.5 px-2 py-1.5 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface font-label-default text-label-default" data-path="autorenname" href="#"><span class="material-symbols-outlined text-[17px] text-text-muted-light">edit</span>Autorenname bearbeiten</a><div class="flex items-center justify-between px-2 py-1.5 rounded text-on-surface-variant hover:bg-bg-soft-light font-label-default text-label-default"><span>Tagesziel:</span><span class="font-semibold text-primary-container bg-surface-container-high px-1.5 py-0.5 rounded text-meta-default font-meta-default">500 Wörter</span></div><a class="flex items-center gap-2.5 px-2 py-1.5 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface font-label-default text-label-default" data-path="einstellungen" href="#"><span class="material-symbols-outlined text-[17px] text-text-muted-light">tune</span>Einstellungen</a><div class="border-t border-rule-light my-1.5"></div><div class="px-2 py-1.5 text-meta-default font-meta-default text-text-muted-light italic bg-bg-soft-light/60 rounded border border-rule-light">Lokalbetrieb — keine Cloud-Sitzung, Abmelden nicht verfügbar.</div></div></div></div></header><main class="relative pt-14 min-h-screen bg-bg-canvas-light"><div class="max-w-6xl mx-auto py-8 px-8"><div class="flex flex-col w-full space-y-10">
+<!-- Top Settings Hub Navigation Bar -->
+<header class="bg-bg-panel-light p-2 rounded shadow-sm flex flex-wrap items-center justify-between gap-4">
+<nav aria-label="Einstellungen Navigation" class="flex items-center gap-1.5">
+<a class="inline-flex items-center gap-2 px-3 py-1.5 rounded text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light font-label-default text-label-default transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+<span>Allgemein</span>
 </a>
-<!-- Hauptnavigations-Icons -->
-<nav class="flex flex-col items-center space-y-1 w-full pt-1">
-<!-- Bibliothek -->
-<a class="relative w-full h-10 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.03] transition-colors" href="#" title="Bibliothek">
-<svg class="w-5 h-5 stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
+<a aria-current="page" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded bg-primary-container text-on-primary font-label-default text-label-default shadow-sm transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">psychology</span>
+<span>KI-Regeln</span>
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-fixed"></span>
 </a>
-<!-- Editor / Manuskript -->
-<a class="relative w-full h-10 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.03] transition-colors" href="#" title="Manuskript-Editor">
-<svg class="w-5 h-5 stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</a>
-<!-- Lore-Graph -->
-<a class="relative w-full h-10 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.03] transition-colors" href="#" title="Lore-Graph">
-<svg class="w-5 h-5 stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</a>
-<!-- Zeitleiste / Planung -->
-<a class="relative w-full h-10 flex items-center justify-center text-ink-muted hover:text-ink hover:bg-black/[0.03] transition-colors" href="#" title="Zeitleiste &amp; Akte">
-<svg class="w-5 h-5 stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
+<a class="inline-flex items-center gap-2 px-3 py-1.5 rounded text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light font-label-default text-label-default transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">code</span>
+<span>Prompts</span>
 </a>
 </nav>
+<div class="flex items-center gap-2 pr-2">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface text-state-success font-meta-default text-meta-default shadow-sm">
+<span class="w-2 h-2 rounded-full bg-state-success"></span>
+<span class="font-medium">Lokaler Speicher verifiziert</span>
+</span>
 </div>
-<!-- Unterer Rail-Bereich: Einstellungen Aktiv -->
-<div class="w-full flex flex-col items-center">
-<a aria-current="page" class="relative w-full h-11 flex items-center justify-center text-primary bg-card" href="#" title="Einstellungen (aktiv)">
-<span class="rail-active-indicator"></span>
-<svg class="w-5 h-5 stroke-[1.8]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" stroke-linecap="round" stroke-linejoin="round"></path>
-<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
+</header>
+<!-- Hero & Section Anchor Area -->
+<section class="flex flex-col gap-6">
+<div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+<div class="max-w-2xl space-y-2">
+<div class="flex items-center gap-2 text-text-muted-light font-eyebrow-tracked text-eyebrow-tracked uppercase">
+<span>Inferenz &amp; Modell-Architektur</span>
+<span class="w-1 h-1 rounded-full bg-text-muted-light opacity-50"></span>
+<span>Atelier Engine</span>
+</div>
+<h1 class="font-prose-heading-1 text-prose-heading-1 text-on-surface tracking-tight">KI-Regeln &amp; Modell-Architektur</h1>
+<p class="font-body-default text-body-default text-text-muted-light max-w-xl">
+          Verwalte Schnittstellen, Inferenz-Modelle und Aufgaben-Bindungen für deine lokale Schreibumgebung. Ohne externe Provider antwortet der integrierte Offline-Treiber.
+        </p>
+</div>
+<!-- Pointer Card to Book Settings -->
+<a class="group relative flex items-center gap-3 p-3.5 rounded bg-surface hover:bg-surface-container transition-all shadow-sm max-w-md" href="#">
+<div class="w-9 h-9 rounded bg-cover-sepia/10 flex items-center justify-center text-primary-container shrink-0">
+<span class="material-symbols-outlined text-[20px]">auto_stories</span>
+</div>
+<div class="flex flex-col min-w-0 pr-2">
+<span class="font-label-default text-label-default font-semibold text-on-surface group-hover:text-primary-container transition-colors truncate">
+            Roman-Tonalität &amp; Kausalitätsregeln
+          </span>
+<span class="font-meta-default text-meta-default text-text-muted-light truncate">
+            Wohnen direkt in den Buch-Einstellungen →
+          </span>
+</div>
+<span class="material-symbols-outlined text-text-muted-light group-hover:translate-x-0.5 transition-transform text-[18px]">arrow_forward</span>
 </a>
 </div>
-</aside>
-<!-- END: LeftIconRail -->
-<!-- BEGIN: MainContainer -->
-<div class="flex-1 flex flex-col h-full min-w-0 bg-canvas overflow-hidden">
-<!-- BEGIN: TopBar -->
-<header class="h-14 border-b border-border px-8 flex items-center justify-between bg-panel select-none shrink-0 relative z-20">
-<!-- Brotkrumen-Pfad -->
-<nav aria-label="Brotkrumen" class="flex items-center space-x-2 text-[13px]">
-<span class="text-ink-muted">Atelier</span>
-<span class="text-ink-muted/50">›</span>
-<span class="text-ink-muted">Einstellungen</span>
-<span class="text-ink-muted/50">›</span>
-<span class="font-medium text-ink tracking-tight">KI-Regeln</span>
-</nav>
-<!-- Profil-Menü / Offenes Popover oben rechts -->
-<div class="relative" data-purpose="user-menu-wrapper">
-<button aria-expanded="true" class="flex items-center gap-2.5 pl-2.5 pr-2 py-1.5 rounded-md border border-border bg-panel hover:bg-card text-left transition-colors shadow-none" type="button">
-<div class="w-6 h-6 rounded bg-[#F2ECE4] border border-border text-primary font-serif-heading font-semibold text-xs flex items-center justify-center">
-            HC
-          </div>
-<span class="text-xs font-medium text-ink">H. Calder</span>
-<svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
-</svg>
-</button>
-<!-- Sichtbares Nutzerblock-Menü Popover -->
-<div class="absolute right-0 mt-2 w-72 bg-card rounded-lg border border-border shadow-lg py-2 z-50 text-xs">
-<!-- Benutzerinfo-Kopf -->
-<div class="px-3.5 py-2 border-b border-divider mb-1">
-<div class="font-medium text-ink text-[13px] leading-tight">H. Calder</div>
-<div class="text-[11px] text-ink-muted truncate font-mono mt-0.5">h.calder@station7.de</div>
+<!-- Segment Navigation Pills -->
+<div class="flex flex-wrap items-center gap-2 pt-2">
+<a class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-primary-container text-on-primary font-label-default text-label-default shadow-sm" href="#sektion-provider">
+<span class="font-semibold">1. Provider</span>
+<span class="text-secondary-fixed opacity-75">·</span>
+<span class="text-secondary-fixed">2 aktiv</span>
+</a>
+<a class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-bg-panel-light text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light font-label-default text-label-default transition-colors" href="#sektion-modelle">
+<span class="font-medium">2. Modelle</span>
+<span>·</span>
+<span class="font-medium text-on-surface">3 registriert</span>
+</a>
+<a class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-bg-panel-light text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light font-label-default text-label-default transition-colors" href="#sektion-aufgaben">
+<span class="font-medium">3. Aufgaben-Bindungen</span>
+<span>·</span>
+<span class="font-medium text-on-surface">4 Zuweisungen</span>
+</a>
+<a class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-bg-panel-light text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light font-label-default text-label-default transition-colors" href="#sektion-diagnose">
+<span class="font-medium">System-Diagnose</span>
+</a>
 </div>
-<!-- Menüeinträge -->
-<div class="py-1">
-<a class="flex items-center justify-between px-3.5 py-2 text-ink hover:bg-panel transition-colors" href="#">
-<span>Autorenname bearbeiten</span>
-<kbd class="text-[10px] text-ink-muted font-sans tracking-wide">Profil</kbd>
-</a>
-<a class="flex items-center justify-between px-3.5 py-2 text-ink hover:bg-panel transition-colors" href="#">
-<span>Tagesziel festlegen</span>
-<span class="text-[10px] text-ink-muted">500 W</span>
-</a>
-<a class="flex items-center justify-between px-3.5 py-2 bg-panel text-primary font-medium transition-colors" href="#">
-<span class="flex items-center gap-2">
-<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                Einstellungen
+</section>
+<!-- 1. PROVIDER & SCHNITTSTELLEN -->
+<section class="space-y-4" id="sektion-provider">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<h2 class="font-headline-title text-headline-title text-on-surface">1. Provider &amp; Schnittstellen</h2>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-primary-container font-meta-default text-meta-default font-semibold">
+          2 aktive Schnittstellen
+        </span>
+</div>
+</div>
+<!-- Guarantee Banner -->
+<div class="p-4 rounded bg-surface shadow-sm flex items-start gap-3.5">
+<div class="w-8 h-8 rounded bg-state-success/10 text-state-success flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[19px]">shield</span>
+</div>
+<div class="space-y-1">
+<div class="font-label-default text-label-default font-semibold text-on-surface">
+          Kein Provider zwingend erforderlich
+        </div>
+<p class="font-body-default text-body-default text-text-muted-light">
+          Solange keine Schnittstelle hinterlegt ist, antwortet Narrare mit dem lokalen Offline-Fake-Treiber — kostenfrei, vollkommen privat und ohne Datenabfluss. Deine Entwürfe verlassen niemals diesen Rechner, solange du es nicht explizit konfigurierst.
+        </p>
+</div>
+</div>
+<!-- Provider Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Card A: Local Ollama -->
+<article class="p-5 rounded bg-bg-card-light shadow-sm flex flex-col justify-between space-y-4">
+<div class="space-y-3">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded bg-bg-canvas-light text-on-surface flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">terminal</span>
+</div>
+<div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Lokaler Inferenz-Server</h3>
+<p class="font-meta-default text-meta-default text-text-muted-light">Lokale Ausführung auf eigenem Hauptprozessor / Metal-Shader</p>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container text-text-muted-light font-eyebrow-tracked text-eyebrow-tracked uppercase">
+              Ollama
+            </span>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded bg-surface font-meta-default text-meta-default text-state-success">
+<span class="w-2 h-2 rounded-full bg-state-success"></span>
+<span class="font-medium">Handshake erfolgreich (240 ms)</span>
+</div>
+<div class="space-y-2 pt-1">
+<div class="flex flex-col gap-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Endpunkt-URL</span>
+<div class="px-2.5 py-1.5 rounded bg-bg-canvas-light font-mono text-meta-default text-on-surface select-all">
+                http://localhost:11434/v1
+              </div>
+</div>
+<div class="flex items-center justify-between text-meta-default font-meta-default text-text-muted-light pt-1">
+<span class="inline-flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px]">lock_open</span>
+                Nicht erforderlich (Lokaler Socket)
               </span>
-<span class="text-[10px] text-primary/80">Aktiv</span>
-</a>
+<span>Zuletzt geprüft: Vor 3 Minuten</span>
 </div>
-<div class="my-1 border-t border-divider"></div>
-<!-- Abmelden (Lokalbetrieb deaktiviert) -->
-<div class="px-3.5 py-2">
-<div class="flex items-center justify-between text-ink-muted/70 cursor-not-allowed">
-<span class="font-normal line-through decoration-ink-muted/40">Abmelden</span>
-<span class="text-[9px] px-1.5 py-0.5 rounded bg-panel border border-border text-ink-muted uppercase tracking-wider font-semibold">Lokal</span>
 </div>
-<p class="text-[11px] leading-relaxed text-ink-muted mt-1.5 bg-panel p-2 rounded-md border border-divider">
-              Lokalbetrieb — keine Cloud-Sitzung, Abmelden nicht verfügbar.
+</div>
+<div class="flex items-center justify-end gap-2 pt-2">
+<button class="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-bg-soft-light text-on-surface font-label-default text-label-default hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">sync</span>
+<span>Verbindung testen</span>
+</button>
+<button class="px-3 py-1 rounded bg-bg-soft-light text-on-surface font-label-default text-label-default hover:bg-surface-container-high transition-colors" type="button">
+            Bearbeiten
+          </button>
+<button class="px-2.5 py-1 rounded text-state-danger hover:bg-error-container/40 font-label-default text-label-default transition-colors" title="Provider löschen" type="button">
+            Entfernen
+          </button>
+</div>
+</article>
+<!-- Card B: Anthropic Cloud -->
+<article class="p-5 rounded bg-bg-card-light shadow-sm flex flex-col justify-between space-y-4">
+<div class="space-y-3">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded bg-bg-canvas-light text-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">cloud</span>
+</div>
+<div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Anthropic Schnittstelle</h3>
+<p class="font-meta-default text-meta-default text-text-muted-light">Verbindung für Claude-Modellreihe</p>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container text-text-muted-light font-eyebrow-tracked text-eyebrow-tracked uppercase">
+              Direkter HTTP-Endpunkt
+            </span>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded bg-surface-container font-meta-default text-meta-default text-state-warning">
+<span class="w-2 h-2 rounded-full bg-state-warning animate-pulse"></span>
+<span class="font-medium">Sende Test-Heartbeat an Endpunkt… (Timeout: 15s)</span>
+</div>
+<div class="space-y-2 pt-1">
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Endpunkt-URL</span>
+<span class="inline-flex items-center gap-1 font-meta-default text-meta-default text-text-muted-light">
+<span class="material-symbols-outlined text-[13px]">lock</span>
+                  Schreibsperre aktiv
+                </span>
+</div>
+<div class="px-2.5 py-1.5 rounded bg-bg-canvas-light font-mono text-meta-default text-on-surface select-all">
+                https://api.anthropic.com/v1
+              </div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">API-Schlüssel (Maskiert)</span>
+<span class="inline-flex items-center gap-1 font-meta-default text-meta-default text-state-success">
+<span class="material-symbols-outlined text-[13px]">verified_user</span>
+                  Vault gesichert
+                </span>
+</div>
+<div class="px-2.5 py-1.5 rounded bg-bg-canvas-light font-mono text-meta-default text-text-muted-light select-all">
+                sk-ant-api03-••••••••••••••••••••3x9A
+              </div>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light pt-0.5">
+              Schlüssel verbleibt ausschließlich im sicheren OS-Keystore.
             </p>
 </div>
 </div>
-</div>
-</header>
-<!-- END: TopBar -->
-<!-- BEGIN: ScrollableContent -->
-<main class="flex-1 overflow-y-auto px-8 py-8" id="main-content">
-<div class="max-w-5xl mx-auto flex flex-col w-full pb-16">
-<!-- Status & Scope Banner -->
-<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-panel border border-border px-5 py-3 rounded-lg">
-<div class="flex items-center gap-3">
-<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-card border border-border text-primary text-[12px] font-medium">
-<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-              Lokalbetrieb aktiv
-            </span>
-<span class="text-ink-muted text-xs">
-              Keine Cloud-Pflicht · Sämtliche Schlüssel verbleiben verschlüsselt auf diesem Gerät
-            </span>
-</div>
-<div class="flex items-center gap-2">
-<span class="text-ink-muted text-xs">Atelier-Scope:</span>
-<code class="px-2 py-0.5 rounded bg-card border border-border text-primary font-mono text-[11px]">narrare.daemon.sock</code>
-</div>
-</div>
-<!-- Header des Inhaltsbereichs -->
-<div class="mb-8">
-<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-6 border-b border-border">
-<div class="space-y-1.5 max-w-2xl">
-<span class="text-primary font-sans text-[11px] uppercase font-semibold tracking-wider block">
-                Inferenz &amp; Maschinen-Dialog
-              </span>
-<h1 class="font-serif-heading text-[30px] leading-tight font-semibold text-ink">
-                KI-Regeln &amp; Modell-Architektur
-              </h1>
-<p class="font-sans text-[14px] leading-relaxed text-ink-muted pt-1">
-                Verwalte Schnittstellen, Inferenz-Modelle und Aufgaben-Bindungen für deine lokale Schreibumgebung. Ohne externe Provider antwortet der integrierte Offline-Treiber.
-              </p>
-</div>
-<!-- Zeiger-Link rechts -->
-<a class="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-panel border border-border text-primary hover:bg-card hover:border-primary/40 transition-all text-xs font-medium group shrink-0" href="#">
-<span class="material-symbols-outlined text-[17px] text-primary">auto_stories</span>
-<span>Roman-Tonalität &amp; Kausalitätsregeln wohnen in den Buch-Einstellungen</span>
-<span class="text-[14px] group-hover:translate-x-0.5 transition-transform">→</span>
-</a>
-</div>
-<!-- Sub-Tabs / Bereichs-Umschalter -->
-<div class="flex items-center gap-2 mt-6">
-<button class="px-3.5 py-2 rounded-md text-xs font-medium bg-primary text-primary-text transition-all flex items-center gap-2 shadow-sm" id="tab-btn-provider" onclick="switchTab('provider')" type="button">
-<span class="material-symbols-outlined text-[16px]">hub</span>
-<span>1. Provider</span>
-<span class="ml-1 px-1.5 py-0.2 rounded bg-white/20 text-white text-[10px] font-sans font-medium">2 aktiv</span>
+<div class="flex items-center justify-end gap-2 pt-2">
+<button class="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-bg-soft-light text-text-muted-light font-label-default text-label-default cursor-wait" type="button">
+<span class="material-symbols-outlined text-[16px] animate-spin">refresh</span>
+<span>Prüfung läuft…</span>
 </button>
-<button class="px-3.5 py-2 rounded-md text-xs font-medium bg-panel border border-border text-ink hover:bg-card transition-all flex items-center gap-2" id="tab-btn-models" onclick="switchTab('models')" type="button">
-<span class="material-symbols-outlined text-[16px] text-ink-muted">memory</span>
-<span>2. Modelle</span>
-<span class="ml-1 px-1.5 py-0.2 rounded bg-card border border-divider text-ink-muted text-[10px] font-sans">3 registriert</span>
-</button>
-<button class="px-3.5 py-2 rounded-md text-xs font-medium bg-panel border border-border text-ink hover:bg-card transition-all flex items-center gap-2" id="tab-btn-tasks" onclick="switchTab('tasks')" type="button">
-<span class="material-symbols-outlined text-[16px] text-ink-muted">alt_route</span>
-<span>3. Aufgaben-Bindungen</span>
-<span class="ml-1 px-1.5 py-0.2 rounded bg-card border border-divider text-ink-muted text-[10px] font-sans">4 Zuweisungen</span>
-</button>
+<button class="px-3 py-1 rounded bg-bg-soft-light text-on-surface font-label-default text-label-default hover:bg-surface-container-high transition-colors" type="button">
+            Bearbeiten
+          </button>
+<button class="px-2.5 py-1 rounded text-state-danger hover:bg-error-container/40 font-label-default text-label-default transition-colors" type="button">
+            Entfernen
+          </button>
 </div>
+</article>
 </div>
-<!-- TAB 1: PROVIDER -->
-<section class="space-y-6" id="tab-provider">
-<!-- Ehrliche Offline-Garantie-Box -->
-<div class="bg-card border border-border p-5 rounded-lg flex items-start gap-4">
-<div class="w-8 h-8 rounded-md bg-panel border border-border flex items-center justify-center text-primary shrink-0 mt-0.5">
-<span class="material-symbols-outlined text-[18px]">shield</span>
-</div>
-<div class="space-y-1">
-<h2 class="font-sans font-semibold text-xs tracking-tight text-ink">
-                Kein Provider zwingend erforderlich
-              </h2>
-<p class="font-sans text-xs leading-relaxed text-ink-muted">
-                Solange keine Schnittstelle hinterlegt ist, antwortet Narrare mit dem lokalen Offline-Fake-Treiber — kostenfrei, vollkommen privat und ohne Datenabfluss. Deine Entwürfe verlassen niemals diesen Rechner, solange du es nicht explizit konfigurierst.
-              </p>
-</div>
-</div>
-<!-- Provider-Karten Liste -->
-<div class="space-y-4">
-<!-- Karte 1: Lokaler Inferenz-Server (Ollama) -->
-<div class="bg-card border border-border p-6 rounded-lg space-y-4">
-<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-divider">
-<div class="flex items-center gap-3">
-<div class="w-9 h-9 rounded-md bg-panel border border-border flex items-center justify-center text-primary">
-<span class="material-symbols-outlined text-lg">terminal</span>
-</div>
-<div>
+<!-- Add Provider Form Card -->
+<div class="p-5 rounded bg-bg-panel-light shadow-sm space-y-4">
+<div class="flex items-center justify-between">
+<div class="space-y-0.5">
 <div class="flex items-center gap-2">
-<h3 class="font-serif-heading font-semibold text-[17px] text-ink">Lokaler Inferenz-Server</h3>
-<span class="px-2 py-0.5 rounded text-[11px] font-sans bg-panel border border-border text-ink-muted">Ollama</span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Neuen Provider anlegen</span>
+<span class="px-1.5 py-0.2 rounded bg-cover-pale text-text-muted-light font-eyebrow-tracked text-eyebrow-tracked uppercase">Erweiterbar</span>
 </div>
-<p class="text-xs font-sans text-ink-muted">Lokale Ausführung auf eigenem Hauptprozessor / Metal-Shader</p>
+<p class="font-meta-default text-meta-default text-text-muted-light">
+            Trage eine beliebige OpenAI-kompatible oder native API-Schnittstelle ein.
+          </p>
 </div>
-</div>
-<div class="flex items-center gap-2 self-start sm:self-auto">
-<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-panel border border-border text-emerald-700 text-xs font-medium">
-<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                    Handshake erfolgreich (240 ms)
-                  </span>
-</div>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
-<div class="space-y-1">
-<span class="text-ink-muted">Endpunkt-URL</span>
-<div class="font-mono text-xs text-ink bg-panel border border-border px-3 py-1.5 rounded-md">
-                    http://localhost:11434/v1
-                  </div>
-</div>
-<div class="space-y-1">
-<span class="text-ink-muted">Authentifizierung</span>
-<div class="font-sans text-xs text-ink-muted bg-panel border border-border px-3 py-1.5 rounded-md">
-                    Nicht erforderlich (Lokaler Socket)
-                  </div>
-</div>
-</div>
-<div class="flex items-center justify-between pt-2">
-<span class="text-[11px] font-sans text-ink-muted">Zuletzt geprüft: Vor 3 Minuten</span>
-<div class="flex items-center gap-2">
-<button class="px-3 py-1.5 rounded-md bg-panel border border-border text-ink hover:bg-card hover:border-ink-muted/50 transition-colors text-xs font-medium flex items-center gap-1.5" type="button">
-<span class="material-symbols-outlined text-xs">sync</span>
-                    Verbindung testen
-                  </button>
-<button class="px-3 py-1.5 rounded-md bg-panel border border-border text-ink hover:bg-card hover:border-ink-muted/50 transition-colors text-xs font-medium" type="button">
-                    Bearbeiten
-                  </button>
-<button class="px-3 py-1.5 rounded-md text-red-700 hover:bg-panel border border-transparent hover:border-border transition-colors text-xs font-medium" type="button">
-                    Entfernen
-                  </button>
-</div>
-</div>
-</div>
-<!-- Karte 2: Anthropic Schnittstelle mit asynchronem Test-Zustand -->
-<div class="bg-card border border-border p-6 rounded-lg space-y-4">
-<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-divider">
-<div class="flex items-center gap-3">
-<div class="w-9 h-9 rounded-md bg-panel border border-border flex items-center justify-center text-primary">
-<span class="material-symbols-outlined text-lg">cloud</span>
-</div>
-<div>
-<div class="flex items-center gap-2">
-<h3 class="font-serif-heading font-semibold text-[17px] text-ink">Anthropic Schnittstelle</h3>
-<span class="px-2 py-0.5 rounded text-[11px] font-sans bg-panel border border-border text-ink-muted">Direkter HTTP-Endpunkt</span>
-</div>
-<p class="text-xs font-sans text-ink-muted">Verbindung für Claude-Modellreihe</p>
-</div>
-</div>
-<!-- Handshake-Zustand: Aktiv simuliert -->
-<div class="flex items-center gap-2 self-start sm:self-auto">
-<span class="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-panel border border-border text-amber-700 text-xs font-medium">
-<span class="material-symbols-outlined text-xs animate-spin">progress_activity</span>
-                    Sende Test-Heartbeat an Endpunkt… (Timeout: 15s)
-                  </span>
-</div>
-</div>
-<!-- Gesperrte Eingabefelder während Handshake -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-<div class="space-y-1">
-<div class="flex items-center justify-between text-xs">
-<span class="text-ink-muted">Endpunkt-URL</span>
-<span class="text-ink-muted flex items-center gap-1 text-[11px]">
-<span class="material-symbols-outlined text-xs">lock</span> Schreibsperre aktiv
-                    </span>
-</div>
-<div class="font-mono text-xs text-ink/80 bg-panel/60 border border-border px-3 py-1.5 rounded-md cursor-not-allowed">
-                    https://api.anthropic.com/v1
-                  </div>
-</div>
-<div class="space-y-1">
-<div class="flex items-center justify-between text-xs">
-<span class="text-ink-muted">API-Schlüssel (Maskiert)</span>
-<span class="text-ink-muted flex items-center gap-1 text-[11px]">
-<span class="material-symbols-outlined text-xs">shield</span> Vault gesichert
-                    </span>
-</div>
-<div class="font-mono text-xs text-ink/80 bg-panel/60 border border-border px-3 py-1.5 rounded-md cursor-not-allowed">
-                    sk-ant-api03-••••••••••••••••••••3x9A
-                  </div>
-</div>
-</div>
-<div class="flex items-center justify-between pt-2">
-<span class="text-[11px] font-sans text-ink-muted">Schlüssel verbleibt ausschließlich im sicheren OS-Keystore</span>
-<div class="flex items-center gap-2">
-<button class="px-3 py-1.5 rounded-md bg-panel border border-border text-ink-muted opacity-50 cursor-not-allowed text-xs font-medium flex items-center gap-1.5" disabled="" type="button">
-<span class="material-symbols-outlined text-xs">sync</span>
-                    Prüfung läuft…
-                  </button>
-<button class="px-3 py-1.5 rounded-md bg-panel border border-border text-ink hover:bg-card transition-colors text-xs font-medium" type="button">
-                    Bearbeiten
-                  </button>
-<button class="px-3 py-1.5 rounded-md text-red-700 hover:bg-panel border border-transparent hover:border-border transition-colors text-xs font-medium" type="button">
-                    Entfernen
-                  </button>
-</div>
-</div>
-</div>
-</div>
-<!-- Sektion: Neuen Provider konfigurieren -->
-<div class="bg-card border border-border p-6 rounded-lg space-y-5">
-<div class="flex items-center justify-between pb-3 border-b border-divider">
-<div>
-<h3 class="font-serif-heading font-semibold text-[17px] text-ink">Neuen Provider anlegen</h3>
-<p class="text-xs font-sans text-ink-muted">Trage eine beliebige OpenAI-kompatible oder native API-Schnittstelle ein.</p>
-</div>
-<span class="text-[11px] font-mono text-ink-muted bg-panel px-2 py-0.5 rounded border border-border">HTTP / HTTPS</span>
 </div>
 <form class="space-y-4" onsubmit="event.preventDefault();">
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div class="space-y-1">
-<label class="block text-xs font-sans text-ink-muted" for="provider-name">Name des Providers</label>
-<input class="w-full h-8 px-2.5 rounded-md bg-panel border border-border text-ink text-xs focus:outline-none focus:border-primary transition-colors" id="provider-name" placeholder="z. B. Lokaler TextGen-WebUI oder Groq" type="text"/>
+<label class="font-label-default text-label-default font-medium text-on-surface" for="provider-name">Name des Providers</label>
+<input class="w-full h-8 px-2.5 rounded bg-bg-card-light text-on-surface font-body-default text-body-default placeholder:text-text-muted-light focus:outline-none focus:bg-surface-container-lowest" id="provider-name" placeholder="z. B. Lokaler vLLM Server oder Mistral AI" type="text"/>
 </div>
 <div class="space-y-1">
-<label class="block text-xs font-sans text-ink-muted" for="provider-type">Schnittstellen-Typ</label>
-<select class="w-full h-8 px-2.5 rounded-md bg-panel border border-border text-ink text-xs focus:outline-none focus:border-primary transition-colors" id="provider-type">
-<option value="ollama">Lokale Ollama-Instanz (Standard)</option>
-<option value="openai">OpenAI-kompatibler Endpunkt (v1/chat/completions)</option>
-<option value="anthropic">Anthropic Messages-API</option>
-<option value="custom">Benutzerdefinierte Inferenz-Pipeline</option>
+<label class="font-label-default text-label-default font-medium text-on-surface" for="provider-type">Schnittstellen-Typ</label>
+<select class="w-full h-8 px-2 rounded bg-bg-card-light text-on-surface font-body-default text-body-default focus:outline-none" id="provider-type">
+<option>Lokale Ollama-Instanz (Standard)</option>
+<option>OpenAI-kompatibler Endpunkt (v1/chat/completions)</option>
+<option>Anthropic Messages-API</option>
+<option>Benutzerdefinierte Inferenz-Pipeline</option>
 </select>
 </div>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div class="space-y-1">
-<label class="block text-xs font-sans text-ink-muted" for="provider-url">Basis-Endpunkt-URL</label>
-<input class="w-full h-8 px-2.5 rounded-md bg-panel border border-border text-ink font-mono text-xs focus:outline-none focus:border-primary transition-colors" id="provider-url" placeholder="http://127.0.0.1:8080/v1" type="url"/>
+<label class="font-label-default text-label-default font-medium text-on-surface" for="endpoint-url">Basis-Endpunkt-URL</label>
+<input class="w-full h-8 px-2.5 rounded bg-bg-card-light text-on-surface font-mono text-meta-default focus:outline-none" id="endpoint-url" type="url" value="https://api.openai.com/v1"/>
 </div>
 <div class="space-y-1">
-<div class="flex items-center justify-between text-xs">
-<label class="text-ink-muted" for="provider-key">API-Schlüssel</label>
-<span class="text-ink-muted text-[11px]">Optional bei lokalen Netzen</span>
-</div>
-<input class="w-full h-8 px-2.5 rounded-md bg-panel border border-border text-ink font-mono text-xs focus:outline-none focus:border-primary transition-colors" id="provider-key" placeholder="Wird maskiert gespeichert" type="password"/>
+<label class="font-label-default text-label-default font-medium text-on-surface" for="api-key">API-Schlüssel</label>
+<input class="w-full h-8 px-2.5 rounded bg-bg-card-light text-on-surface font-body-default text-body-default placeholder:text-text-muted-light" id="api-key" placeholder="Optional bei lokalen Netzen" type="password"/>
 </div>
 </div>
-<div class="flex items-center justify-end gap-3 pt-2">
-<button class="px-4 py-1.5 rounded-md bg-panel border border-border text-ink hover:bg-card transition-colors text-xs font-medium" type="button">
-                  Verbindungstest vor Speichern
-                </button>
-<button class="px-4 py-1.5 rounded-md bg-primary text-primary-text hover:bg-primary/90 transition-colors text-xs font-medium flex items-center gap-1.5" type="submit">
-<span class="material-symbols-outlined text-[16px]">add</span>
-                  Provider anlegen
-                </button>
+<div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+<label class="flex items-center gap-2 cursor-pointer select-none">
+<input checked="" class="rounded accent-primary-container w-4 h-4" type="checkbox"/>
+<span class="font-body-default text-body-default text-on-surface">Verbindungstest vor Speichern ausführen</span>
+</label>
+<button class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded bg-primary-container text-on-primary font-label-default text-label-default hover:bg-cover-sepia shadow-sm transition-colors" type="submit">
+<span class="material-symbols-outlined text-[17px]">add</span>
+<span>+ Provider anlegen</span>
+</button>
 </div>
 </form>
 </div>
 </section>
-<!-- TAB 2: MODELLE -->
-<section class="space-y-6 hidden" id="tab-models">
-<!-- Header Modellverwaltung -->
-<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-panel border border-border p-4 rounded-lg">
+<!-- 2. REGISTRIERTE SPRACHMODELLE -->
+<section class="space-y-4" id="sektion-modelle">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 <div class="space-y-0.5">
-<h2 class="font-serif-heading font-semibold text-[17px] text-ink">Registrierte Sprachmodelle</h2>
-<p class="text-xs font-sans text-ink-muted">
-                Modelle werden an Provider gekoppelt. Genau ein Modell fungiert als Atelier-Standard.
-              </p>
+<h2 class="font-headline-title text-headline-title text-on-surface">2. Registrierte Sprachmodelle</h2>
+<p class="font-meta-default text-meta-default text-text-muted-light">Modelle werden an Provider gekoppelt. Genau ein Modell fungiert als Atelier-Standard.</p>
 </div>
 <div class="flex items-center gap-2">
-<button class="px-3 py-1.5 rounded-md bg-card border border-border text-ink hover:bg-panel transition-colors text-xs font-medium flex items-center gap-1.5" type="button">
-<span class="material-symbols-outlined text-xs">travel_explore</span>
-                Vom Provider abrufen (Discovery)
-              </button>
-<button class="px-3 py-1.5 rounded-md bg-primary text-primary-text hover:bg-primary/90 transition-colors text-xs font-medium flex items-center gap-1.5" type="button">
-<span class="material-symbols-outlined text-xs">add</span>
-                Modell registrieren
-              </button>
+<button class="inline-flex items-center gap-1 px-3 py-1 rounded bg-bg-card-light text-on-surface font-label-default text-label-default shadow-sm hover:bg-bg-soft-light transition-colors" type="button">
+<span class="material-symbols-outlined text-[17px] text-primary-container">travel_explore</span>
+<span>Vom Provider abrufen (Discovery)</span>
+</button>
+<button class="inline-flex items-center gap-1 px-3 py-1 rounded bg-primary-container text-on-primary font-label-default text-label-default shadow-sm hover:bg-cover-sepia transition-colors" type="button">
+<span class="material-symbols-outlined text-[17px]">add</span>
+<span>Modell registrieren</span>
+</button>
 </div>
 </div>
-<!-- Modellkarten Raster -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-<!-- Modell 1: Claude 3.5 Sonnet (Standard-Modell) -->
-<div class="bg-card border border-border p-5 rounded-lg space-y-4 flex flex-col justify-between">
+<!-- Models Grid (3 Columns) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Card 1: Default -->
+<article class="p-5 rounded bg-bg-card-light shadow-sm flex flex-col justify-between space-y-4">
 <div class="space-y-3">
 <div class="flex items-start justify-between gap-2">
 <div>
-<div class="flex items-center gap-2">
-<h3 class="font-serif-heading font-semibold text-[16px] text-ink">Claude 3.5 Sonnet</h3>
-<span class="px-1.5 py-0.5 rounded text-[10px] bg-panel border border-border text-primary font-medium">Standard</span>
+<div class="flex items-center gap-1.5">
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Claude 3.5 Sonnet</h3>
+<span class="material-symbols-outlined text-state-success text-[16px]" title="Aktiv verifiziert">check_circle</span>
 </div>
-<span class="text-xs text-ink-muted">via Anthropic Schnittstelle</span>
+<p class="font-meta-default text-meta-default text-text-muted-light">via Anthropic Schnittstelle</p>
 </div>
-<span class="w-2 h-2 rounded-full bg-emerald-600 mt-1" title="Provider erreichbar"></span>
+<span class="px-2 py-0.5 rounded bg-primary-container text-on-primary font-eyebrow-tracked text-eyebrow-tracked uppercase">
+              Standard
+            </span>
 </div>
-<div class="space-y-1">
-<span class="text-[11px] text-ink-muted">Modell-ID</span>
-<div class="font-mono text-[11px] text-primary bg-panel border border-border px-2 py-1 rounded">
-                    claude-3-5-sonnet-20241022
-                  </div>
+<div class="px-2 py-1 rounded bg-bg-canvas-light font-mono text-meta-default text-text-muted-light truncate" title="claude-3-5-sonnet-20241022">
+            claude-3-5-sonnet-20241022
+          </div>
+<div class="grid grid-cols-2 gap-2 text-meta-default font-meta-default text-text-muted-light pt-1">
+<div class="p-2 rounded bg-surface">
+<span class="block font-eyebrow-tracked text-eyebrow-tracked uppercase">Kontext</span>
+<span class="font-semibold text-on-surface">200.000 Tok.</span>
 </div>
-<!-- Parameter-Kacheln -->
-<div class="grid grid-cols-2 gap-2 pt-1 text-xs">
-<div class="p-2 rounded bg-panel border border-divider">
-<span class="text-[10px] text-ink-muted block">Kontext</span>
-<span class="font-medium text-ink">200k Tokens</span>
+<div class="p-2 rounded bg-surface">
+<span class="block font-eyebrow-tracked text-eyebrow-tracked uppercase">Max Out</span>
+<span class="font-semibold text-on-surface">8.192 Tok.</span>
 </div>
-<div class="p-2 rounded bg-panel border border-divider">
-<span class="text-[10px] text-ink-muted block">Max Output</span>
-<span class="font-medium text-ink">8.192 Tokens</span>
+<div class="p-2 rounded bg-surface">
+<span class="block font-eyebrow-tracked text-eyebrow-tracked uppercase">Timeout</span>
+<span class="font-semibold text-on-surface">60 s</span>
 </div>
-<div class="p-2 rounded bg-panel border border-divider">
-<span class="text-[10px] text-ink-muted block">Latenz/Timeout</span>
-<span class="font-medium text-ink">60 s</span>
-</div>
-<div class="p-2 rounded bg-panel border border-divider">
-<span class="text-[10px] text-ink-muted block">Temperatur</span>
-<span class="font-medium text-ink">0.7</span>
+<div class="p-2 rounded bg-surface">
+<span class="block font-eyebrow-tracked text-eyebrow-tracked uppercase">Temperatur</span>
+<span class="font-semibold text-on-surface">0.7</span>
 </div>
 </div>
 </div>
-<div class="flex items-center justify-between pt-3 border-t border-divider">
-<span class="text-[11px] text-ink-muted">Gebunden an: 2 Aufgaben</span>
-<button class="px-2.5 py-1 rounded bg-panel border border-border text-ink hover:bg-card transition-colors text-xs font-medium" type="button">
-                  Bearbeiten
-                </button>
+<div class="flex items-center justify-between pt-3 border-t border-rule-light font-meta-default text-meta-default">
+<span class="text-primary-container font-medium">Gebunden an: 2 Aufgaben</span>
+<span class="inline-flex items-center gap-1 text-state-success font-medium">
+<span class="material-symbols-outlined text-[15px]">verified</span>
+            Primär-Check
+          </span>
 </div>
-</div>
-<!-- Modell 2: Claude 3 Opus -->
-<div class="bg-card border border-border p-5 rounded-lg space-y-4 flex flex-col justify-between">
+</article>
+<!-- Card 2: Claude Opus -->
+<article class="p-5 rounded bg-bg-card-light shadow-sm flex flex-col justify-between space-y-4">
 <div class="space-y-3">
 <div class="flex items-start justify-between gap-2">
 <div>
-<h3 class="font-serif-heading font-semibold text-[16px] text-ink">Claude 3 Opus</h3>
-<span class="text-xs text-ink-muted">via Anthropic Schnittstelle</span>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Claude 3 Opus</h3>
+<p class="font-meta-default text-meta-default text-text-muted-light">via Anthropic Schnittstelle</p>
 </div>
-<span class="w-2 h-2 rounded-full bg-emerald-600 mt-1" title="Provider erreichbar"></span>
+<button class="px-2 py-0.5 rounded bg-bg-soft-light text-text-muted-light hover:text-on-surface font-label-default text-label-default transition-colors" type="button">
+              Als Standard
+            </button>
 </div>
-<div class="space-y-1">
-<span class="text-[11px] text-ink-muted">Modell-ID</span>
-<div class="font-mono text-[11px] text-ink bg-panel border border-border px-2 py-1 rounded">
-                    claude-3-opus-20240229
-                  </div>
+<div class="px-2 py-1 rounded bg-bg-canvas-light font-mono text-meta-default text-text-muted-light truncate" title="claude-3-opus-20240229">
+            claude-3-opus-20240229
+          </div>
+<div class="grid grid-cols-2 gap-2 text-meta-default font-meta-default text-text-muted-light pt-1">
+<div class="p-2 rounded bg-surface">
+<span class="block font-eyebrow-tracked text-eyebrow-tracked uppercase">Kontext</span>
+<span class="font-semibold text-on-surface">200.000 Tok.</span>
 </div>
-<!-- Parameter-Kacheln -->
-<div class="grid grid-cols-2 gap-2 pt-1 text-xs">
-<div class="p-2 rounded bg-panel border border-divider">
-<span class="text-[10px] text-ink-muted block">Kontext</span>
-<span class="font-medium text-ink">200k Tokens</span>
+<div class="p-2 rounded bg-surface">
+<span class="block font-eyebrow-tracked text-eyebrow-tracked uppercase">Max Out</span>
+<span class="font-semibold text-on-surface">4.096 Tok.</span>
 </div>
-<div class="p-2 rounded bg-panel border border-divider">
-<span class="text-[10px] text-ink-muted block">Max Output</span>
-<span class="font-medium text-ink">4.096 Tokens</span>
+<div class="p-2 rounded bg-surface">
+<span class="block font-eyebrow-tracked text-eyebrow-tracked uppercase">Timeout</span>
+<span class="font-semibold text-on-surface">90 s</span>
 </div>
-<div class="p-2 rounded bg-panel border border-divider">
-<span class="text-[10px] text-ink-muted block">Latenz/Timeout</span>
-<span class="font-medium text-ink">90 s</span>
-</div>
-<div class="p-2 rounded bg-panel border border-divider">
-<span class="text-[10px] text-ink-muted block">Temperatur</span>
-<span class="font-medium text-ink">0.6</span>
+<div class="p-2 rounded bg-surface">
+<span class="block font-eyebrow-tracked text-eyebrow-tracked uppercase">Temperatur</span>
+<span class="font-semibold text-on-surface">0.6</span>
 </div>
 </div>
 </div>
-<div class="flex items-center justify-between pt-3 border-t border-divider">
-<button class="text-xs text-primary hover:underline font-medium" type="button">
-                  Als Standard
-                </button>
-<button class="px-2.5 py-1 rounded bg-panel border border-border text-ink hover:bg-card transition-colors text-xs font-medium" type="button">
-                  Bearbeiten
-                </button>
+<div class="flex items-center justify-between pt-3 border-t border-rule-light font-meta-default text-meta-default">
+<span class="text-text-muted-light">Gebunden: Frei wählbar</span>
+<a class="text-primary-container hover:underline" href="#">Konfigurieren</a>
 </div>
-</div>
-<!-- Modell 3: Lokales Llama 3 -->
-<div class="bg-card border border-border p-5 rounded-lg space-y-4 flex flex-col justify-between">
+</article>
+<!-- Card 3: Local Llama 3 -->
+<article class="p-5 rounded bg-bg-card-light shadow-sm flex flex-col justify-between space-y-4">
 <div class="space-y-3">
 <div class="flex items-start justify-between gap-2">
 <div>
-<h3 class="font-serif-heading font-semibold text-[16px] text-ink">Lokales Llama 3</h3>
-<span class="text-xs text-ink-muted">via Lokaler Inferenz-Server</span>
+<div class="flex items-center gap-1">
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Lokales Llama 3</h3>
+<span class="material-symbols-outlined text-state-success text-[15px]">eco</span>
 </div>
-<span class="w-2 h-2 rounded-full bg-emerald-600 mt-1" title="Provider erreichbar"></span>
+<p class="font-meta-default text-meta-default text-text-muted-light">via Lokaler Inferenz-Server</p>
 </div>
-<div class="space-y-1">
-<span class="text-[11px] text-ink-muted">Modell-ID</span>
-<div class="font-mono text-[11px] text-ink bg-panel border border-border px-2 py-1 rounded">
-                    llama3:8b-instruct-q8_0
-                  </div>
+<button class="px-2 py-0.5 rounded bg-bg-soft-light text-text-muted-light hover:text-on-surface font-label-default text-label-default transition-colors" type="button">
+              Als Standard
+            </button>
 </div>
-<!-- Parameter-Kacheln -->
-<div class="grid grid-cols-2 gap-2 pt-1 text-xs">
-<div class="p-2 rounded bg-panel border border-divider">
-<span class="text-[10px] text-ink-muted block">Kontext</span>
-<span class="font-medium text-ink">8.192 Tokens</span>
+<div class="px-2 py-1 rounded bg-bg-canvas-light font-mono text-meta-default text-text-muted-light truncate" title="llama3:8b-instruct-q8_0">
+            llama3:8b-instruct-q8_0
+          </div>
+<div class="grid grid-cols-2 gap-2 text-meta-default font-meta-default text-text-muted-light pt-1">
+<div class="p-2 rounded bg-surface">
+<span class="block font-eyebrow-tracked text-eyebrow-tracked uppercase">Kontext</span>
+<span class="font-semibold text-on-surface">8.192 Tok.</span>
 </div>
-<div class="p-2 rounded bg-panel border border-divider">
-<span class="text-[10px] text-ink-muted block">Max Output</span>
-<span class="font-medium text-ink">2.048 Tokens</span>
+<div class="p-2 rounded bg-surface">
+<span class="block font-eyebrow-tracked text-eyebrow-tracked uppercase">Max Out</span>
+<span class="font-semibold text-on-surface">2.048 Tok.</span>
 </div>
-<div class="p-2 rounded bg-panel border border-divider">
-<span class="text-[10px] text-ink-muted block">Latenz/Timeout</span>
-<span class="font-medium text-ink">45 s</span>
+<div class="p-2 rounded bg-surface">
+<span class="block font-eyebrow-tracked text-eyebrow-tracked uppercase">Timeout</span>
+<span class="font-semibold text-on-surface">45 s</span>
 </div>
-<div class="p-2 rounded bg-panel border border-divider">
-<span class="text-[10px] text-ink-muted block">Temperatur</span>
-<span class="font-medium text-ink">0.7</span>
-</div>
-</div>
-</div>
-<div class="flex items-center justify-between pt-3 border-t border-divider">
-<button class="text-xs text-primary hover:underline font-medium" type="button">
-                  Als Standard
-                </button>
-<button class="px-2.5 py-1 rounded bg-panel border border-border text-ink hover:bg-card transition-colors text-xs font-medium" type="button">
-                  Bearbeiten
-                </button>
+<div class="p-2 rounded bg-surface">
+<span class="block font-eyebrow-tracked text-eyebrow-tracked uppercase">Inferenz</span>
+<span class="font-semibold text-state-success">100% lokal</span>
 </div>
 </div>
+</div>
+<div class="flex items-center justify-between pt-3 border-t border-rule-light font-meta-default text-meta-default">
+<span class="inline-flex items-center gap-1 text-state-success font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+            Offline verfügbar
+          </span>
+<a class="text-primary-container hover:underline" href="#">Parameter</a>
+</div>
+</article>
 </div>
 </section>
-<!-- TAB 3: AUFGABEN-BINDUNGEN -->
-<section class="space-y-6 hidden" id="tab-tasks">
-<div class="bg-panel border border-border p-5 rounded-lg space-y-1">
-<h2 class="font-serif-heading font-semibold text-[17px] text-ink">Kaskadierte Modell-Zuweisung nach Aufgaben</h2>
-<p class="font-sans text-xs text-ink-muted">
-              Hier delegierst du die vier Kern-Aufgaben des Ateliers an spezifische Modelle oder behältst den kostenfreien Offline-Treiber bei.
+<!-- 3. KASKADIERTE MODELL-ZUWEISUNG NACH AUFGABEN -->
+<section class="space-y-4" id="sektion-aufgaben">
+<div class="space-y-0.5">
+<h2 class="font-headline-title text-headline-title text-on-surface">3. Kaskadierte Modell-Zuweisung nach Aufgaben</h2>
+<p class="font-meta-default text-meta-default text-text-muted-light max-w-3xl">
+        Hier delegierst du die vier Kern-Aufgaben des Ateliers an spezifische Modelle oder behältst den kostenfreien Offline-Treiber bei. Das Ausgabe-Profil legt die maximale Länge der Inferenz fest.
+      </p>
+</div>
+<div class="space-y-3">
+<!-- Task Row 1: Ghost-Writing -->
+<article class="p-4 rounded bg-bg-card-light shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+<div class="flex items-start gap-3.5 max-w-md">
+<div class="w-9 h-9 rounded bg-cover-sepia/10 text-primary-container flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[20px]">edit_note</span>
+</div>
+<div class="space-y-0.5">
+<h3 class="font-headline-emph text-headline-emph text-on-surface">1. Text fortsetzen</h3>
+<p class="font-body-default text-body-default text-text-muted-light">
+              Ghost-Writing, dynamische Szenen-Fortführung und syntaktische Vorschläge direkt im Fließtext.
             </p>
 </div>
-<div class="space-y-4">
-<!-- Aufgabe 1: Text fortsetzen -->
-<div class="bg-card border border-border p-5 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
-<div class="space-y-1 max-w-xl">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-[18px] text-primary">edit_note</span>
-<h3 class="font-serif-heading font-semibold text-[16px] text-ink">1. Text fortsetzen</h3>
 </div>
-<p class="font-sans text-xs text-ink-muted leading-relaxed">
-                  Ghost-Writing, dynamische Szenen-Fortführung und syntaktische Vorschläge direkt im Fließtext.
-                </p>
-<div class="pt-1 flex items-center gap-2">
-<span class="text-[11px] text-ink-muted">Effektiv aktiv:</span>
-<code class="font-mono text-[11px] text-primary px-1.5 py-0.5 rounded bg-panel border border-border">claude-3-5-sonnet-20241022</code>
-</div>
-</div>
-<div class="w-full md:w-64 space-y-1 shrink-0">
-<label class="block text-[11px] font-sans text-ink-muted" for="task-1-select">Zugewiesenes Modell</label>
-<select class="w-full h-8 px-2.5 rounded-md bg-panel border border-border text-ink text-xs focus:outline-none focus:border-primary transition-colors" id="task-1-select">
+<div class="flex flex-col sm:flex-row sm:items-center gap-3 shrink-0">
+<div class="flex flex-col gap-1 min-w-[210px]">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Zugewiesenes Modell</span>
+<select class="h-8 px-2.5 rounded bg-bg-canvas-light text-on-surface font-label-default text-label-default focus:outline-none">
 <option selected="">Claude 3.5 Sonnet</option>
 <option>Claude 3 Opus</option>
 <option>Lokales Llama 3</option>
 <option>Lokaler Fake-Treiber (Offline)</option>
 </select>
 </div>
-</div>
-<!-- Aufgabe 2: Chat & Recherche -->
-<div class="bg-card border border-border p-5 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
-<div class="space-y-1 max-w-xl">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-[18px] text-primary">forum</span>
-<h3 class="font-serif-heading font-semibold text-[16px] text-ink">2. Chat &amp; Recherche</h3>
-</div>
-<p class="font-sans text-xs text-ink-muted leading-relaxed">
-                  Dialogische Befragung von Manuskript-Notizen, Historien und weltbaulichen Zusammenhängen im rechten Inspector Dock.
-                </p>
-<div class="pt-1 flex items-center gap-2">
-<span class="text-[11px] text-ink-muted">Effektiv aktiv:</span>
-<code class="font-mono text-[11px] text-primary px-1.5 py-0.5 rounded bg-panel border border-border">claude-3-5-sonnet-20241022</code>
-</div>
-</div>
-<div class="w-full md:w-64 space-y-1 shrink-0">
-<label class="block text-[11px] font-sans text-ink-muted" for="task-2-select">Zugewiesenes Modell</label>
-<select class="w-full h-8 px-2.5 rounded-md bg-panel border border-border text-ink text-xs focus:outline-none focus:border-primary transition-colors" id="task-2-select">
-<option selected="">Claude 3.5 Sonnet</option>
-<option>Claude 3 Opus</option>
-<option>Lokales Llama 3</option>
-<option>Lokaler Fake-Treiber (Offline)</option>
+<div class="flex flex-col gap-1 min-w-[220px]">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Ausgabe-Profil</span>
+<select class="h-8 px-2.5 rounded bg-bg-canvas-light text-on-surface font-label-default text-label-default focus:outline-none">
+<option>Schnell (1.024 Tokens)</option>
+<option selected="">Ausgewogen (4.096 Tokens)</option>
+<option>Lange Texte (12.288 Tokens)</option>
+<option>Umfassend (32.768 Tokens)</option>
+<option>Benutzerdefiniert (eigener Wert)</option>
 </select>
 </div>
-</div>
-<!-- Aufgabe 3: Entitäten extrahieren -->
-<div class="bg-card border border-border p-5 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-2 border-l-emerald-600">
-<div class="space-y-1 max-w-xl">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-[18px] text-emerald-700">account_tree</span>
-<h3 class="font-serif-heading font-semibold text-[16px] text-ink">3. Entitäten extrahieren</h3>
-</div>
-<p class="font-sans text-xs text-ink-muted leading-relaxed">
-                  Erkennung von auftauchenden Figuren, Orten, Artefakten und Fraktionen im Text zur Befüllung des Wissens-Graphen.
-                </p>
-<div class="pt-1 flex items-center gap-2">
-<span class="text-[11px] text-ink-muted">Effektiv aktiv:</span>
-<span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-800 bg-panel border border-border px-2 py-0.5 rounded">
-<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                    Offline-Treiber aktiv (0 Kosten · 100% lokal)
-                  </span>
-</div>
-</div>
-<div class="w-full md:w-64 space-y-1 shrink-0">
-<label class="block text-[11px] font-sans text-ink-muted" for="task-3-select">Zugewiesenes Modell</label>
-<select class="w-full h-8 px-2.5 rounded-md bg-panel border border-border text-ink text-xs focus:outline-none focus:border-primary transition-colors" id="task-3-select">
-<option selected="">Lokaler Fake-Treiber (Offline)</option>
-<option>Claude 3.5 Sonnet</option>
-<option>Claude 3 Opus</option>
-<option>Lokales Llama 3</option>
-</select>
-</div>
-</div>
-<!-- Aufgabe 4: Konsistenz prüfen -->
-<div class="bg-card border border-border p-5 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
-<div class="space-y-1 max-w-xl">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-[18px] text-primary">rule</span>
-<h3 class="font-serif-heading font-semibold text-[16px] text-ink">4. Konsistenz prüfen</h3>
-</div>
-<p class="font-sans text-xs text-ink-muted leading-relaxed">
-                  Kausalitäts-Audit, Zeitleisten-Abgleich und Erkennung von Widersprüchen (z. B. Augenfarben, Entfernungen, tote Figuren).
-                </p>
-<div class="pt-1 flex items-center gap-2">
-<span class="text-[11px] text-ink-muted">Effektiv aktiv:</span>
-<code class="font-mono text-[11px] text-ink-muted px-1.5 py-0.5 rounded bg-panel border border-border">claude-3-5-sonnet-20241022 (Standard ererbt)</code>
-</div>
-</div>
-<div class="w-full md:w-64 space-y-1 shrink-0">
-<label class="block text-[11px] font-sans text-ink-muted" for="task-4-select">Zugewiesenes Modell</label>
-<select class="w-full h-8 px-2.5 rounded-md bg-panel border border-border text-ink text-xs focus:outline-none focus:border-primary transition-colors" id="task-4-select">
-<option selected="">[ Standard-Modell übernehmen ]</option>
-<option>Claude 3.5 Sonnet</option>
-<option>Claude 3 Opus</option>
-<option>Lokales Llama 3</option>
-<option>Lokaler Fake-Treiber (Offline)</option>
-</select>
-</div>
-</div>
-</div>
-</section>
-<!-- System-Diagnose & Reale Fehlertoleranz -->
-<div class="mt-12 pt-8 border-t border-divider space-y-4">
-<div class="flex items-center justify-between">
-<span class="font-sans text-[11px] uppercase tracking-wider font-semibold text-ink-muted">
-              System-Diagnose &amp; Reale Fehlertoleranz
+<div class="flex flex-col justify-end pt-1 sm:pt-4 min-w-[130px]">
+<span class="px-2.5 py-1 rounded bg-surface font-mono text-meta-default text-on-surface font-medium text-center">
+              Effektiv: 4.096 Tok.
             </span>
-<span class="text-[11px] font-sans text-ink-muted">Echtzeit-Rückmeldungen der Schnittstellen</span>
 </div>
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-<!-- Zustand A -->
-<div class="p-4 rounded-lg bg-card border border-border border-l-2 border-l-amber-600 space-y-2">
-<div class="flex items-center gap-2 text-amber-800">
-<span class="material-symbols-outlined text-base">key_off</span>
-<h4 class="font-sans font-semibold text-xs">Authentifizierungsfehler (401)</h4>
 </div>
-<p class="font-sans text-[11px] text-ink-muted leading-relaxed">
-                Der hinterlegte API-Schlüssel wurde vom Provider abgewiesen oder ist abgelaufen.
-              </p>
-<button class="mt-2 px-2.5 py-1 rounded bg-panel border border-border text-ink hover:bg-card transition-colors text-[11px] font-medium" type="button">
-                Schlüssel korrigieren
-              </button>
+</article>
+<!-- Task Row 2: Chat & Research -->
+<article class="p-4 rounded bg-bg-card-light shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+<div class="flex items-start gap-3.5 max-w-md">
+<div class="w-9 h-9 rounded bg-cover-sepia/10 text-primary-container flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[20px]">forum</span>
 </div>
-<!-- Zustand B -->
-<div class="p-4 rounded-lg bg-card border border-border border-l-2 border-l-red-600 space-y-2">
-<div class="flex items-center gap-2 text-red-800">
-<span class="material-symbols-outlined text-base">wifi_off</span>
-<h4 class="font-sans font-semibold text-xs">Endpunkt nicht erreichbar (502)</h4>
+<div class="space-y-0.5">
+<h3 class="font-headline-emph text-headline-emph text-on-surface">2. Chat &amp; Recherche</h3>
+<p class="font-body-default text-body-default text-text-muted-light">
+              Dialogische Befragung von Manuskript-Notizen, Historien und weltbaulichen Zusammenhängen im rechten Inspector Dock.
+            </p>
 </div>
-<p class="font-sans text-[11px] text-ink-muted leading-relaxed">
-                Verbindung zu <code class="font-mono text-ink">127.0.0.1:11434</code> fehlgeschlagen. Läuft <code class="font-mono text-ink">ollama serve</code> im Terminal?
-              </p>
-<button class="mt-2 px-2.5 py-1 rounded bg-panel border border-border text-ink hover:bg-card transition-colors text-[11px] font-medium" type="button">
-                Erneut anpingen
-              </button>
 </div>
-<!-- Zustand C -->
-<div class="p-4 rounded-lg bg-card border border-border border-l-2 border-l-primary space-y-2">
-<div class="flex items-center gap-2 text-primary">
-<span class="material-symbols-outlined text-base">offline_bolt</span>
-<h4 class="font-sans font-semibold text-xs">Standard: Offline-Betrieb</h4>
+<div class="flex flex-col sm:flex-row sm:items-center gap-3 shrink-0">
+<div class="flex flex-col gap-1 min-w-[210px]">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Zugewiesenes Modell</span>
+<select class="h-8 px-2.5 rounded bg-bg-canvas-light text-on-surface font-label-default text-label-default focus:outline-none">
+<option>Claude 3.5 Sonnet</option>
+<option>Claude 3 Opus</option>
+<option>Lokales Llama 3</option>
+<option selected="">Lokaler Fake-Treiber (Offline)</option>
+</select>
 </div>
-<p class="font-sans text-[11px] text-ink-muted leading-relaxed">
-                Du kannst sofort schreiben. Narrare nutzt standardmäßig den lokalen Offline-Treiber ohne jedwede API-Kosten.
-              </p>
-<span class="inline-block mt-2 text-[11px] text-ink-muted">
-                Keine Aktion erforderlich
+<div class="flex flex-col gap-1 min-w-[220px]">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Ausgabe-Profil</span>
+<select class="h-8 px-2.5 rounded bg-bg-canvas-light text-on-surface font-label-default text-label-default focus:outline-none">
+<option>Schnell (1.024 Tokens)</option>
+<option selected="">Ausgewogen (4.096 Tokens)</option>
+<option>Lange Texte (12.288 Tokens)</option>
+<option>Umfassend (32.768 Tokens)</option>
+</select>
+</div>
+<div class="flex flex-col justify-end pt-1 sm:pt-4 min-w-[130px]">
+<span class="px-2.5 py-1 rounded bg-state-success/10 font-mono text-meta-default text-state-success font-medium text-center truncate" title="Effektiv: Offline-Generierung (0 Tokens verbraucht)">
+              0 Tok. (Offline)
+            </span>
+</div>
+</div>
+</article>
+<!-- Task Row 3: Entity Extraction -->
+<article class="p-4 rounded bg-bg-card-light shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+<div class="flex items-start gap-3.5 max-w-md">
+<div class="w-9 h-9 rounded bg-cover-sepia/10 text-primary-container flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[20px]">account_tree</span>
+</div>
+<div class="space-y-0.5">
+<h3 class="font-headline-emph text-headline-emph text-on-surface">3. Entitäten extrahieren</h3>
+<p class="font-body-default text-body-default text-text-muted-light">
+              Erkennung von auftauchenden Figuren, Orten, Artefakten und Fraktionen im Text zur Befüllung des Wissens-Graphen.
+            </p>
+</div>
+</div>
+<div class="flex flex-col sm:flex-row sm:items-center gap-3 shrink-0">
+<div class="flex flex-col gap-1 min-w-[210px]">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Zugewiesenes Modell</span>
+<select class="h-8 px-2.5 rounded bg-bg-canvas-light text-on-surface font-label-default text-label-default focus:outline-none">
+<option>Claude 3.5 Sonnet</option>
+<option selected="">Offline-Treiber aktiv (0 Kosten · 100% lokal)</option>
+<option>Lokales Llama 3</option>
+</select>
+</div>
+<div class="flex flex-col gap-1 min-w-[220px]">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Ausgabe-Profil</span>
+<select class="h-8 px-2.5 rounded bg-bg-canvas-light text-on-surface font-label-default text-label-default focus:outline-none">
+<option selected="">Schnell (1.024 Tokens)</option>
+<option>Ausgewogen (4.096 Tokens)</option>
+<option>Lange Texte (12.288 Tokens)</option>
+<option>Umfassend (32.768 Tokens)</option>
+</select>
+</div>
+<div class="flex flex-col justify-end pt-1 sm:pt-4 min-w-[130px]">
+<span class="px-2.5 py-1 rounded bg-surface font-mono text-meta-default text-on-surface font-medium text-center">
+              Effektiv: 1.024 Tok.
+            </span>
+</div>
+</div>
+</article>
+<!-- Task Row 4: Consistency Audit -->
+<article class="p-4 rounded bg-bg-card-light shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+<div class="flex items-start gap-3.5 max-w-md">
+<div class="w-9 h-9 rounded bg-cover-sepia/10 text-primary-container flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[20px]">rule</span>
+</div>
+<div class="space-y-0.5">
+<div class="flex items-center gap-2">
+<h3 class="font-headline-emph text-headline-emph text-on-surface">4. Konsistenz prüfen</h3>
+<span class="px-1.5 py-0.2 rounded bg-cover-pale text-text-muted-light font-eyebrow-tracked text-eyebrow-tracked uppercase">Audit</span>
+</div>
+<p class="font-body-default text-body-default text-text-muted-light">
+              Kausalitäts-Audit, Zeitleisten-Abgleich und Erkennung von Widersprüchen (z. B. Augenfarben, Entfernungen, verstorbene Figuren).
+            </p>
+</div>
+</div>
+<div class="flex flex-col sm:flex-row sm:items-center gap-3 shrink-0">
+<div class="flex flex-col gap-1 min-w-[210px]">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Zugewiesenes Modell</span>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-primary-container">Ererbt</span>
+</div>
+<div class="flex items-center gap-1.5">
+<select class="h-8 px-2.5 rounded bg-bg-canvas-light text-on-surface font-label-default text-label-default focus:outline-none w-full">
+<option selected="">claude-3-5-sonnet-20241022 (Standard ererbt)</option>
+<option>Claude 3 Opus</option>
+<option>Lokales Llama 3</option>
+</select>
+</div>
+</div>
+<div class="flex flex-col gap-1 min-w-[220px]">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Ausgabe-Profil</span>
+<select class="h-8 px-2.5 rounded bg-bg-canvas-light text-on-surface font-label-default text-label-default focus:outline-none">
+<option>Schnell (1.024 Tokens)</option>
+<option>Ausgewogen (4.096 Tokens)</option>
+<option>Lange Texte (12.288 Tokens)</option>
+<option selected="">Umfassend (32.768 Tokens)</option>
+</select>
+</div>
+<div class="flex flex-col justify-end pt-1 sm:pt-4 min-w-[130px]">
+<div class="flex flex-col items-center">
+<span class="px-2 py-0.5 rounded bg-state-warning/15 font-mono text-meta-default text-state-warning font-semibold text-center" title="Gewählt: 32.768 Tokens, aber durch Modell-Deckel bei 8.192 begrenzt">
+                Effektiv: 8.192 Tok.*
+              </span>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light text-[9px] mt-0.5">
+                *am Modell-Deckel begrenzt
               </span>
 </div>
 </div>
 </div>
+</article>
 </div>
-</main>
-<!-- END: ScrollableContent -->
+</section>
+<!-- 4. SYSTEM-DIAGNOSE & REALE FEHLERTOLERANZ -->
+<section class="space-y-4" id="sektion-diagnose">
+<div class="space-y-0.5">
+<h2 class="font-headline-title text-headline-title text-on-surface">System-Diagnose &amp; Reale Fehlertoleranz</h2>
+<p class="font-meta-default text-meta-default text-text-muted-light">Echtzeit-Rückmeldungen der Schnittstellen und automatische Schutzmechanismen.</p>
 </div>
-<!-- END: MainContainer -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Diagnostic 1: Error -->
+<article class="p-4 rounded bg-bg-card-light shadow-sm flex flex-col justify-between space-y-3">
+<div class="space-y-2">
+<div class="flex items-center gap-2 text-state-danger">
+<span class="material-symbols-outlined text-[20px]">key_off</span>
+<span class="font-headline-emph text-headline-emph">Authentifizierungsfehler (401)</span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light">
+            Der hinterlegte API-Schlüssel wurde vom Provider abgewiesen oder ist abgelaufen. Keine unverschlüsselte Übermittlung.
+          </p>
+</div>
+<button class="w-full py-1.5 rounded bg-bg-soft-light text-on-surface font-label-default text-label-default hover:bg-surface-container-high transition-colors" type="button">
+          Schlüssel korrigieren
+        </button>
+</article>
+<!-- Diagnostic 2: Warning -->
+<article class="p-4 rounded bg-bg-card-light shadow-sm flex flex-col justify-between space-y-3">
+<div class="space-y-2">
+<div class="flex items-center gap-2 text-state-warning">
+<span class="material-symbols-outlined text-[20px]">wifi_off</span>
+<span class="font-headline-emph text-headline-emph">Endpunkt nicht erreichbar (502)</span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light">
+            Verbindung zu 127.0.0.1:11434 fehlgeschlagen. Läuft <code class="font-mono text-meta-default bg-surface px-1 rounded">ollama serve</code> im Terminal?
+          </p>
+</div>
+<button class="w-full py-1.5 rounded bg-bg-soft-light text-on-surface font-label-default text-label-default hover:bg-surface-container-high transition-colors" type="button">
+          Erneut anpingen
+        </button>
+</article>
+<!-- Diagnostic 3: Success -->
+<article class="p-4 rounded bg-bg-card-light shadow-sm flex flex-col justify-between space-y-3">
+<div class="space-y-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-state-success">
+<span class="material-symbols-outlined text-[20px]">offline_bolt</span>
+<span class="font-headline-emph text-headline-emph">Standard: Offline-Betrieb</span>
+</div>
+<span class="w-2 h-2 rounded-full bg-state-success"></span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light">
+            Du kannst sofort schreiben. Narrare nutzt standardmäßig den lokalen Offline-Treiber ohne jedwede API-Kosten.
+          </p>
+</div>
+<div class="py-1.5 px-3 rounded bg-surface font-meta-default text-meta-default text-center text-state-success font-medium">
+          Keine Aktion erforderlich · Aktiv
+        </div>
+</article>
+</div>
+</section>
+<!-- Editorial Atmospheric Card -->
+<div class="p-6 rounded bg-cover-sepia text-on-primary shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
+<div class="space-y-1 text-center sm:text-left">
+<div class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-secondary-fixed">Atelier Disziplin</div>
+<p class="font-prose-heading-2 text-prose-heading-2 text-surface-bright">
+        „Die Maschine ergänzt den Stift — sie ersetzt nicht den Willen des Autors.“
+      </p>
+<p class="font-meta-default text-meta-default text-secondary-fixed-dim">
+        Alle KI-Vorschläge verbleiben temporär im Ghost-Buffer, bis du sie mit [Tab] bestätigst.
+      </p>
+</div>
+<div class="flex items-center gap-3 shrink-0">
+<div class="w-12 h-12 rounded bg-surface/10 flex items-center justify-center text-surface-bright">
+<span class="material-symbols-outlined text-[26px]">ink_pen</span>
+</div>
+</div>
+</div>
+<!-- Footer Bar -->
+<footer class="pt-6 pb-2 border-t border-rule-light flex flex-col sm:flex-row items-center justify-between gap-4 font-meta-default text-meta-default text-text-muted-light">
+<div>
+      © Narrare Atelier. Written sovereignty guaranteed. Local.
+    </div>
+<div class="flex items-center gap-4">
+<a class="hover:text-on-surface hover:underline transition-colors" href="#">Souveränitäts-Manifest</a>
+<span>·</span>
+<a class="hover:text-on-surface hover:underline transition-colors" href="#">Kausalitäts-Garantie</a>
+<span>·</span>
+<a class="hover:text-on-surface hover:underline transition-colors" href="#">OS-Keystore Schnittstelle</a>
+</div>
+</footer>
+</div>
 <script>
-    function switchTab(tabKey) {
-      // Hide all tabs
-      document.getElementById('tab-provider').classList.add('hidden');
-      document.getElementById('tab-models').classList.add('hidden');
-      document.getElementById('tab-tasks').classList.add('hidden');
-
-      // Reset button classes
-      const defaultBtnClass = 'px-3.5 py-2 rounded-md text-xs font-medium bg-panel border border-border text-ink hover:bg-card transition-all flex items-center gap-2';
-      const activeBtnClass = 'px-3.5 py-2 rounded-md text-xs font-medium bg-primary text-primary-text transition-all flex items-center gap-2 shadow-sm';
-
-      const btnProvider = document.getElementById('tab-btn-provider');
-      const btnModels = document.getElementById('tab-btn-models');
-      const btnTasks = document.getElementById('tab-btn-tasks');
-
-      btnProvider.className = defaultBtnClass;
-      btnModels.className = defaultBtnClass;
-      btnTasks.className = defaultBtnClass;
-
-      // Show selected tab & set active button
-      if (tabKey === 'provider') {
-        document.getElementById('tab-provider').classList.remove('hidden');
-        btnProvider.className = activeBtnClass;
-      } else if (tabKey === 'models') {
-        document.getElementById('tab-models').classList.remove('hidden');
-        btnModels.className = activeBtnClass;
-      } else if (tabKey === 'tasks') {
-        document.getElementById('tab-tasks').classList.remove('hidden');
-        btnTasks.className = activeBtnClass;
-      }
-    }
-  </script>
-</body></html>
+  // Micro-interaction: Dynamic Token Ceiling calculation feedback
+  document.querySelectorAll('article select').forEach(select => {
+    select.addEventListener('change', function() {
+      // Visual feedback cue
+      this.classList.add('bg-surface-container-high');
+      setTimeout(() => {
+        this.classList.remove('bg-surface-container-high');
+      }, 350);
+    });
+  });
+</script></div></main></div></body></html>
