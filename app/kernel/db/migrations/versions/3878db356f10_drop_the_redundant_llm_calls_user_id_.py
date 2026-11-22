@@ -4,8 +4,9 @@ The marks' composite index (``ef142b5c359a``) opens with ``user_id``, so the
 baseline's single-column ``ix_llm_calls_user_id`` answers no read the
 composite does not already serve — every query it could key is per user, per
 model, newest first — while costing its own write on every ``llm_calls`` row
-(issue #749). The models never declared the single-column index, so this
-drop is also the point where the two schema paths stop differing about it.
+(issue #749). The models carry the same change in the same commit
+(``LlmCall`` overrides the inherited ``index=True``), so the
+models-vs-history gate stays equal: neither schema path declares the index.
 
 Revision ID: 3878db356f10
 Revises: 58fcdeca1503

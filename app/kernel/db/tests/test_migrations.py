@@ -280,12 +280,13 @@ async def test_the_redundant_single_column_index_is_gone(url: str) -> None:
 
     The marks' composite index (``ef142b5c359a``) opens with ``user_id``, so
     the baseline's single-column index answers no read the composite does not
-    and costs its write on every call row. The diff gate stays silent about
-    this index either way — the models never declared it, and alembic spares
-    an index a composite already covers — so the pin is a catalog query, the
-    provider-FK pin's precedent above. The composite's own presence is
-    asserted beside it: a drop that took the wrong index with it must fail
-    here too.
+    and costs its write on every call row. The models carry the same change
+    in the same commit — ``LlmCall`` overrides the inherited ``index=True``
+    — so neither schema path declares the index and the diff gate stays
+    equal; the pin is a catalog query, the provider-FK pin's precedent
+    above, reading the revision's effect straight from the catalog instead
+    of the diff's silence. The composite's own presence is asserted beside
+    it: a drop that took the wrong index with it must fail here too.
     """
     await drop_every_table(url)
     await asyncio.to_thread(command.upgrade, alembic_config(url), "head")
