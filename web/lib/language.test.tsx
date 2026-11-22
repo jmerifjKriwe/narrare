@@ -15,6 +15,7 @@
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./api/client", () => ({
@@ -32,7 +33,7 @@ import { catalogs } from "./generated/catalogs";
 import { LanguageChip, LanguageSwitcher, useLanguageChoice } from "./language";
 import { activeLocale, applyLocale, chosenLocale } from "./locale";
 import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
-import { queryClient, useSettingsQuery } from "./query";
+import { queryClient, useSettings, useSettingsQuery } from "./query";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
 const api = client as unknown as Record<
@@ -596,5 +597,128 @@ describe("the null choice — „Dem Browser folgen“ (W7)", () => {
     expect(api.PATCH).not.toHaveBeenCalled();
     expect(readPreSetupLocale()).toBe("de"); // the mirror stands untouched
     expect(screen.getByTestId("chosen").textContent).toBe("de");
+  });
+});
+
+// --- The optimistic cache patch — a choice stands before its refetch --------
+
+/**
+ * #939: the choice's write and its invalidation refetch take moments, and
+ * both save surfaces (the profile form, the GoalSetter) read the row's
+ * cache at click time. The choice must move the cached rows at choice
+ * time — the strict `["settings", "read"]` entry whenever it holds a row,
+ * the tolerant `["settings"]` entry when it carries a locale — so a save
+ * in that window carries the pending choice, never the pre-switch answer.
+ * `SaveSurfaceProbe` mounts both reads the way the surfaces do, and the
+ * held GET keeps the choice's refetch in flight for the whole window.
+ */
+
+function SaveSurfaceProbe() {
+  useSettings();
+  useSettingsQuery();
+  return null;
+}
+
+describe("the optimistic cache patch — a choice stands before its refetch (#939)", () => {
+  /** Both reads answered, then the window: every further settings read
+   *  hangs, exactly the in-flight state a save can click inside. */
+  async function renderSurfacesHeld(face: ReactNode) {
+    let held = false;
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") {
+        if (held) return new Promise(() => {});
+        return { data: { locale: storedLocale, theme: null }, response: ok() };
+      }
+      throw new Error(`unexpected request: ${path}`);
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SaveSurfaceProbe />
+        {face}
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(queryClient.getQueryState(["settings", "read"])?.status).toBe("success"));
+    await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
+    held = true;
+  }
+
+  it("a choice stands in the cached rows before its refetch lands", async () => {
+    setUp = true;
+    storedLocale = "de";
+    applyLocale("de");
+    await renderSurfacesHeld(<LanguageSwitcher variant="welcome" />);
+
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
+    await waitFor(() =>
+      expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "en" } }),
+    );
+    // The strict entry — both save surfaces' click-time source — and the
+    // chrome's tolerant entry wear the pending choice already.
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("en");
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings"])?.locale).toBe("en");
+  });
+
+  it("the follow-browser null moves the cached rows too — the choice asserts the null", async () => {
+    setUp = true;
+    storedLocale = "de";
+    applyLocale("de");
+    await renderSurfacesHeld(<NullChoiceProbe />);
+
+    fireEvent.click(screen.getByRole("button", { name: "follow" }));
+    await waitFor(() =>
+      expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: null } }),
+    );
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBeNull();
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings"])?.locale).toBeNull();
+  });
+
+  it("a choice invents no row — entries that hold nothing stay empty", async () => {
+    setUp = true;
+    applyLocale("de");
+    let held = false;
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") {
+        if (held) return new Promise(() => {});
+        return { data: { locale: null, theme: null }, response: ok() };
+      }
+      throw new Error(`unexpected request: ${path}`);
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SettingsProbe />
+        <LanguageSwitcher variant="welcome" />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
+    held = true;
+
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
+    await waitFor(() =>
+      expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "en" } }),
+    );
+    // The strict entry never answered: the choice creates none — the
+    // strict family holds real answers only.
+    expect(queryClient.getQueryData(["settings", "read"])).toBeUndefined();
+    // The tolerant entry carries no locale (the outage's dressed nulls
+    // read exactly like a stored follow): nothing is set on it here —
+    // the landed refetch is what reconciles it.
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings"])?.locale).toBeNull();
+    expect(queryClient.getQueryData<{ theme: string | null }>(["settings"])?.theme).toBeNull();
+  });
+
+  it("a refusal puts the moved entries back — the patch never outlives its write", async () => {
+    setUp = true;
+    storedLocale = "de";
+    applyLocale("de");
+    await renderSurfacesHeld(<LanguageSwitcher variant="welcome" />);
+    api.PATCH.mockResolvedValueOnce({
+      error: { detail: "refused" },
+      response: new Response(null, { status: 503 }),
+    });
+
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
+    await waitFor(() => expect(activeLocale()).toBe("de")); // the store restored
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("de");
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings"])?.locale).toBe("de");
   });
 });

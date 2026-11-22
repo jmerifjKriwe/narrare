@@ -99,6 +99,15 @@ export function useLanguageChoice({ preSetup = false }: { preSetup?: boolean } =
     if (preSetup && next === null) return;
     const previous = chosenLocale();
     applyLocale(next);
+    // The choice stands in the settings caches at once (#939): a save
+    // whose click lands while the write is in flight reads the row's
+    // cache at that moment and must see the pending choice, never the
+    // pre-switch answer. A refusal puts the moved entries back; the
+    // landed refetch answers the written truth and simply replaces the
+    // patch. (The structural 409 below patches nothing: pre-setup the
+    // strict entry cannot exist — the row never answered — and the
+    // tolerant entry holds no locale.)
+    const moved = patchCachedLocale(next);
     if (preSetup && next !== null) storePreSetupLocale(next);
     try {
       const { response } = await client.PATCH("/api/settings", { body: { locale: next } });
@@ -110,11 +119,45 @@ export function useLanguageChoice({ preSetup = false }: { preSetup?: boolean } =
       void queryClient.invalidateQueries({ queryKey: ["settings"] });
     } catch {
       applyLocale(previous);
+      restoreCachedLocale(moved);
       if (preSetup && previous !== null) storePreSetupLocale(previous);
     }
   }
 
   return { locale, chosen, choose };
+}
+
+/**
+ * The settings cache entries a choice moves at once (#939): the strict
+ * `["settings", "read"]` entry whenever it holds a row — both save
+ * surfaces (the profile form, the GoalSetter) read it at click time — and
+ * the chrome's tolerant `["settings"]` entry when IT carries a locale.
+ * Only an entry that holds a row is patched: a choice invents no row (the
+ * strict family holds real answers only), and a tolerant entry without a
+ * locale — the outage's dressed nulls read exactly like a stored follow —
+ * is left for the landed refetch to reconcile. A `null` choice is a real
+ * assertion (the row now follows the browser) and moves the entries like
+ * any other. Returns the moved entries' prior data, so a refusal can put
+ * them back exactly.
+ */
+function patchCachedLocale(next: Locale | null): Array<{ key: readonly unknown[]; prior: unknown }> {
+  const moved: Array<{ key: readonly unknown[]; prior: unknown }> = [];
+  const patch = (key: readonly unknown[], tolerant: boolean) => {
+    const cached = queryClient.getQueryData<{ locale: string | null }>(key);
+    if (cached === undefined) return;
+    if (tolerant && cached.locale === null) return;
+    moved.push({ key, prior: cached });
+    queryClient.setQueryData(key, { ...cached, locale: next });
+  };
+  patch(["settings", "read"], false);
+  patch(["settings"], true);
+  return moved;
+}
+
+/** Undo a patch: the exact prior data goes back, byte for byte — the
+ *  refusal contract's restore, carried into the caches. */
+function restoreCachedLocale(moved: Array<{ key: readonly unknown[]; prior: unknown }>): void {
+  for (const entry of moved) queryClient.setQueryData(entry.key, entry.prior);
 }
 
 /** The radio face's drafted geometries — each door's port, kept verbatim. */

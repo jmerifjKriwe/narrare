@@ -482,6 +482,42 @@ describe("the profile form — one dirty form", () => {
     expect(settingsPatches()[0][1].body).toEqual({ locale: "en", author_name: "Neuer Name" });
   });
 
+  it("a save right after a language choice carries the chosen locale — the in-flight window", async () => {
+    // #939, the window a landed cache answer cannot close: the choice
+    // applies at once, PATCHes, and only the landed refetch moves the
+    // settings caches. While that refetch stands in flight the cached row
+    // still wears the pre-switch answer, and a save in exactly this window
+    // used to send it back — reverting the choice if it committed later.
+    // The choice itself must move the caches at choice time, so the save's
+    // click-time read sees the pending choice.
+    let reads = 0;
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") {
+        reads += 1;
+        // The page's two reads answer; everything after — the choice's
+        // invalidation refetch — never lands. The window stays open.
+        if (reads > 2) return new Promise(() => {});
+        return { data: { ...settingsRow }, response: ok() };
+      }
+      if (path === "/api/setup/status") return { data: { complete: true }, response: ok() };
+      if (path === "/api/settings/driver") return { data: { kind: driverKind }, response: ok() };
+      throw new Error(`unexpected request: ${path}`);
+    });
+    await open();
+
+    fireEvent.click(localeRadio("English"));
+    await waitFor(() => expect(settingsPatches().length).toBe(1));
+    expect(settingsPatches()[0][1].body).toEqual({ locale: "en" });
+
+    // The page speaks the choice at once; the form's typed answer stands.
+    fireEvent.change(screen.getByLabelText(en["settings.author.label"]), {
+      target: { value: "Neuer Name" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: en["settings.save"] }));
+    await waitFor(() => expect(settingsPatches().length).toBe(2));
+    expect(settingsPatches()[1][1].body).toEqual({ locale: "en", author_name: "Neuer Name" });
+  });
+
   it("an out-of-bounds goal answers on its field and writes nothing", async () => {
     await open();
     fireEvent.change(authorInput(), { target: { value: "Neuer Name" } });
