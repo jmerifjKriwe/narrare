@@ -8,6 +8,16 @@ under the Coding Plan's terms, and the form says so while that preset is
 chosen. The vendor strings are the models.dev catalog's own prefixes, so
 :func:`app.kernel.llm.catalog.vendor_models` fills each preset's picker from
 the same snapshot the pricing reads.
+
+The table rots by design: the preset URLs and the suggested model ids are a
+hand-kept snapshot of the vendors' endpoints and of the catalog's ids, and
+nothing at runtime corrects either. Re-check the nine entries against the
+vendors' docs whenever the catalog snapshot is refreshed by hand
+(:mod:`app.kernel.llm.data.refresh` — the pickers fill from the new ids, so
+a stale ``model`` here saves a model the vendor no longer lists), and
+whenever a vendor renames an endpoint between refreshes. The form shows the
+snapshot's date beside the picker as the honesty mark, so a reader can see
+how old the table's facts are.
 """
 
 from dataclasses import dataclass
