@@ -480,6 +480,27 @@ describe("the profile form — one dirty form", () => {
     expect(settingsPatches()[0][1].body).toEqual({ locale: "de", daily_goal_words: 750 });
   });
 
+  it("the save reads the row's freshest cache answer at click time — the language race", async () => {
+    await open();
+    // A language choice landed between the render and this save: the row's
+    // refetch answered the cache, the form still wears the pre-switch row.
+    // The save reads the cache at click time and carries the freshest known
+    // locale — the choice set up here must survive this very save (#933).
+    const cached = queryClient.getQueryData<{
+      locale: string | null;
+      theme: string | null;
+      author_name: string | null;
+      daily_goal_words: number | null;
+      email: string | null;
+    }>(["settings", "read"]);
+    expect(cached?.locale).toBe("de");
+    fireEvent.change(authorInput(), { target: { value: "Neuer Name" } });
+    queryClient.setQueryData(["settings", "read"], { ...cached, locale: "en" });
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(settingsPatches().length).toBe(1));
+    expect(settingsPatches()[0][1].body).toEqual({ locale: "en", author_name: "Neuer Name" });
+  });
+
   it("an out-of-bounds goal answers on its field and writes nothing", async () => {
     await open();
     fireEvent.change(authorInput(), { target: { value: "Neuer Name" } });

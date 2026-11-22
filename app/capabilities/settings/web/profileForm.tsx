@@ -9,7 +9,9 @@
  * carries only the fields the writer changed — an absent field keeps, a
  * carried null clears (the name back to the email label, the goal back to
  * no goal). The locale rides along always carried (the schema's own rule),
- * handed through from the row untouched. A value reverted to the stored
+ * read from the row's cache at click time — the freshest known truth, so
+ * a language choice that landed moments earlier is never reverted by the
+ * rendered answer (#933). A value reverted to the stored
  * one is no change; a pristine save makes no ask at all. Refusals keep
  * every answer: a 422 names itself as the atelier's refusal, anything else
  * wears the family's loss-free line, and the retry re-runs the very ask.
@@ -28,7 +30,7 @@ import { useState } from "react";
 
 import { formatNumber } from "@shell/lib/format";
 import { useTranslation } from "@shell/lib/i18n";
-import { useUpdateSettings } from "@shell/lib/query";
+import { queryClient, useUpdateSettings } from "@shell/lib/query";
 import { Icon } from "@shell/ui/icons";
 
 import { useSettingsTasksQuery } from "./tasksQuery";
@@ -105,7 +107,13 @@ export function ProfileForm({ row }: { row: ProfileRow }) {
     tasks.isSuccess && tasks.data.every((task) => (task.assignable ? task.kind === "fake" : true));
 
   /** The one save: validate, diff against the row, ride the mutation with
-   *  only the dirtied fields. The locale always rides (the schema's rule). */
+   *  only the dirtied fields. The locale always rides (the schema's rule),
+   *  read from the row's cache at click time (#933): a language choice
+   *  whose refetch answered between the render and this click stands in
+   *  the cache first, and the save carries it — never the rendered
+   *  stalemate that would revert the choice. A MISSING cache answer falls
+   *  back to the rendered row; a CACHED null is the row's own answer (the
+   *  follow-browser choice) and rides as it is. */
   function save() {
     const goal = parseDailyGoal(goalRaw);
     if (goal === "invalid") {
@@ -120,8 +128,9 @@ export function ProfileForm({ row }: { row: ProfileRow }) {
     // Nothing carried is no write — the pristine save rests honestly.
     if (Object.keys(changes).length === 0) return;
     setError(null);
+    const fresh = queryClient.getQueryData<ProfileRow>(["settings", "read"]);
     updateSettings.mutate(
-      { locale: row.locale, ...changes },
+      { locale: fresh === undefined ? row.locale : fresh.locale, ...changes },
       {
         // The saved truth stands in the fields at once; the invalidated
         // row answers with exactly the same values.

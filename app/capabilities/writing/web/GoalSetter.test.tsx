@@ -140,6 +140,73 @@ describe("the chapter goal setter", () => {
   });
 });
 
+describe("the locale the daily save carries — #933", () => {
+  function saveButton(): HTMLButtonElement {
+    return screen.getByRole("button", { name: de["writing.workspace.crud.save"] }) as HTMLButtonElement;
+  }
+
+  it("over an outage the save honestly waits — a dressed-up null never rides", async () => {
+    // The chrome's tolerant read answers an outage with dressed-up nulls;
+    // the save's read is the strict one, so an outage is no answer and the
+    // gate waits — no PATCH may carry {locale: null} over the stored choice.
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") throw new TypeError("settings unreachable");
+      throw new Error(`unexpected GET: ${path}`);
+    });
+    renderWithOpener((openerId, onClose) => (
+      <GoalSetterDialog kind="daily" initial={500} openerId={openerId} onClose={onClose} />
+    ));
+    await screen.findByLabelText(de["writing.workspace.goal.dailyLabel"]);
+    await waitFor(() => expect(api.GET.mock.calls.length).toBeGreaterThan(0));
+    await waitFor(() => expect(saveButton().disabled).toBe(true));
+    fireEvent.change(screen.getByLabelText(de["writing.workspace.goal.dailyLabel"]), {
+      target: { value: "750" },
+    });
+    fireEvent.click(saveButton());
+    expect(api.PATCH).not.toHaveBeenCalled();
+  });
+
+  it("a stored follow-browser null still rides — the row's own answer, not an outage's", async () => {
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") {
+        return { data: { locale: null, theme: null, author_name: null, daily_goal_words: 500, email: null }, response: ok() };
+      }
+      throw new Error(`unexpected GET: ${path}`);
+    });
+    renderWithOpener((openerId, onClose) => (
+      <GoalSetterDialog kind="daily" initial={500} openerId={openerId} onClose={onClose} />
+    ));
+    const field = await screen.findByLabelText(de["writing.workspace.goal.dailyLabel"]);
+    await waitFor(() => expect(saveButton().disabled).toBe(false));
+    fireEvent.change(field, { target: { value: "750" } });
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
+    expect(api.PATCH.mock.calls[0][1].body).toEqual({ locale: null, daily_goal_words: 750 });
+  });
+
+  it("the save carries the freshest cached locale, not the rendered answer", async () => {
+    renderWithOpener((openerId, onClose) => (
+      <GoalSetterDialog kind="daily" initial={500} openerId={openerId} onClose={onClose} />
+    ));
+    const field = await screen.findByLabelText(de["writing.workspace.goal.dailyLabel"]);
+    await waitFor(() => expect(saveButton().disabled).toBe(false));
+    // A language choice landed between the render and this click: the row's
+    // cache answer moved on, the dialog still wears the older one. The save
+    // reads the cache at click time and carries the freshest known truth —
+    // so the choice set up here must survive this very save.
+    const cached = queryClient.getQueryData<{ locale: string | null }>(["settings", "read"]);
+    expect(cached?.locale).toBe("de");
+    fireEvent.change(field, { target: { value: "750" } });
+    queryClient.setQueryData<{ locale: string | null }>(["settings", "read"], {
+      ...cached,
+      locale: "en",
+    });
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
+    expect(api.PATCH.mock.calls[0][1].body).toEqual({ locale: "en", daily_goal_words: 750 });
+  });
+});
+
 describe("the shared discipline", () => {
   it("a goal outside the bounds is refused before the wire", async () => {
     renderWithOpener((openerId, onClose) => (
