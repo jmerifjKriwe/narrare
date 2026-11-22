@@ -40,6 +40,14 @@ const SERIF = "[font-family:var(--font-serif)]";
 /** The switcher's drafted order — DE|EN|FR, the one contract's order. */
 const LANGUAGE_CARDS: readonly Locale[] = ["de", "en", "fr"];
 
+/** The hash address table (the user block's doors and deep links): a
+ *  section address names the field that answers it. A hash outside the
+ *  table — or none — lands nowhere. */
+const SECTION_FIELD: Record<string, string> = {
+  "tagesziel-feld": "settings-daily-goal",
+  "profil-sektion": "settings-author-name",
+};
+
 export function SettingsPage() {
   const t = useTranslation();
   usePageTitle(t("settings.heading"));
@@ -50,12 +58,14 @@ export function SettingsPage() {
 
   // The menu's addresses: a hash navigation (deep link or the user block's
   // doors) focuses the field it names once the row stands — the landing is
-  // the field, not just a scroll.
+  // the field, not just a scroll. The map is the address table: a hash
+  // that names no field (or no hash at all) lands nowhere, and the ids are
+  // the fields' own.
   const ready = settings.isSuccess;
   useEffect(() => {
     if (!ready) return;
-    if (hash === "tagesziel-feld") document.getElementById("settings-daily-goal")?.focus();
-    else if (hash === "profil-sektion") document.getElementById("settings-author-name")?.focus();
+    const fieldId = SECTION_FIELD[hash];
+    if (fieldId !== undefined) document.getElementById(fieldId)?.focus();
   }, [hash, ready]);
 
   // The theme cycle's states: the row's null is the system's own.
