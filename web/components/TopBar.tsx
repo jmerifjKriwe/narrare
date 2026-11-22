@@ -79,6 +79,10 @@ function UserBlock() {
   const goal = settings.data?.daily_goal_words ?? null;
   const userName = authorName ?? email ?? t("shell.rail.user");
   const initials = initialsFrom(authorName ?? (email !== null ? email.split("@")[0] : null));
+  // The trigger's name carries the chip's initials, as the switcher's does
+  // („Aktives Buch: {monogram} {title}"): the glyphs are the tile's visible
+  // text, so the accessible name says them too (WCAG 2.5.3 label-in-name).
+  const userNameLabel = initials !== null ? `${initials} ${userName}` : userName;
   const onSettings = pathname === "/settings";
 
   const [open, setOpen] = useState(false);
@@ -166,15 +170,25 @@ function UserBlock() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
-        aria-label={t("shell.rail.user.named", { name: userName })}
+        aria-label={t("shell.rail.user.named", { name: userNameLabel })}
         onClick={() => setOpen((previous) => !previous)}
         onKeyDown={triggerKey}
-        title={t("shell.rail.user.named", { name: userName })}
+        title={t("shell.rail.user.named", { name: userNameLabel })}
         className={`flex items-center gap-2 rounded border border-border bg-surface-container-low py-1 pl-1.5 pr-2 text-left transition-colors hover:border-outline-variant ${FOCUS}`}
       >
+        {/* The initials chip: a presentational duplicate of the name beside
+            it — the label below carries the same glyphs (the switcher's
+            contract, „Aktives Buch: {monogram} {title}"), so what the tile
+            shows is what the name says (WCAG 2.5.3). */}
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-soft text-[10px] font-bold text-primary">
           {initials ?? <Icon name="person" size={14} />}
         </span>
+        {/* The space keeps the initials and the name separate words in the
+            visible text — the name carries both, in order. Without it the
+            concatenated „EQErika Quell" is one pseudo-word no label can
+            contain, and label-in-name (WCAG 2.5.3) reads the tile as
+            mislabelled — the switcher's own finding, here too. */}
+        {" "}
         <span className="max-w-[10rem] truncate text-meta font-medium text-foreground">{userName}</span>
         <span className="text-muted">
           <Icon name={open ? "expandLess" : "chevronDown"} size={14} />
