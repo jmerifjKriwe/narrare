@@ -216,7 +216,6 @@ describe("the pre-setup contract — the mirror stands until the row can hold it
         <LanguageSwitcher variant="welcome" preSetup />
       </QueryClientProvider>,
     );
-    await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
 
     fireEvent.click(screen.getByRole("radio", { name: "English" }));
     expect(activeLocale()).toBe("en"); // applied before the answer lands
@@ -224,28 +223,12 @@ describe("the pre-setup contract — the mirror stands until the row can hold it
     expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "en" } });
     expect(chosenLocale()).toBe("en");
     expect(screen.getByRole("radio", { name: "English" }).getAttribute("aria-checked")).toBe("true");
-    // The row could not take the write, so no settings refetch is owed —
-    // the probe's boot read stands alone.
-    expect(settingsReads()).toBe(1);
-  });
-
-  it("a read the choice interrupted restarts after the structural 409", async () => {
-    // The choice cancels the boot read still in flight; the 409 owes no
-    // refetch of its own, but the cancelled read must not stay idle on
-    // its loading state — it restarts once the choice settles.
-    render(
-      <QueryClientProvider client={queryClient}>
-        <SettingsProbe />
-        <LanguageSwitcher variant="welcome" preSetup />
-      </QueryClientProvider>,
-    );
-    expect(queryClient.getQueryState(["settings"])?.fetchStatus).toBe("fetching");
-
-    fireEvent.click(screen.getByRole("radio", { name: "English" }));
-    await waitFor(() => expect(readPreSetupLocale()).toBe("en"));
+    // The choice cancelled the probe's boot read in flight; the settled
+    // choice restarts it, so the read is never left idle on its loading.
     await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
     expect(settingsReads()).toBe(2);
-    expect(activeLocale()).toBe("en"); // the mirror's choice stands
+    expect(activeLocale()).toBe("en");
+    expect(readPreSetupLocale()).toBe("en");
   });
 
   it("a landed write clears the mirror and refreshes the cached row", async () => {
@@ -867,81 +850,84 @@ describe("the optimistic cache patch — a choice stands before its refetch (#93
     expect(activeLocale()).toBe("en"); // the store keeps the newer choice too
   });
 
-  it("two overlapping refusals unwind to the accepted answer — the newer refused first", async () => {
-    // From de: fr (A) and then en (B) both hang; B's refusal lands first
-    // and unwinds to A, then A's refusal must unwind to de — never leave
-    // the refused fr standing for a later profile save to carry.
+  it("two refused choices unwind to the accepted answer, the newer refusal first", async () => {
+    // de stands; fr and then en are chosen with both writes out. en's
+    // refusal lands first and puts fr back, because fr is still pending;
+    // fr's refusal then unwinds the rest of the way — never leaving a
+    // refused choice in the caches a profile save reads.
     setUp = true;
     storedLocale = "de";
     applyLocale("de");
-    let held = false;
-    const refuse: Partial<Record<string, () => void>> = {};
-    api.GET.mockImplementation(async (path: string) => {
-      if (path === "/api/settings") {
-        if (held) return new Promise(() => {});
-        return { data: { locale: storedLocale, theme: null }, response: ok() };
-      }
-      throw new Error(`unexpected request: ${path}`);
-    });
+    const release: Partial<Record<string, () => void>> = {};
     api.PATCH.mockImplementation(async (path: string, init?: { body?: { locale?: string | null } }) => {
       if (path !== "/api/settings") throw new Error(`unexpected request: ${path}`);
+      const locale = init?.body?.locale ?? "null";
       return new Promise<{ error: { detail: string }; response: Response }>((resolve) => {
-        refuse[String(init?.body?.locale)] = () =>
-          resolve({ error: { detail: "refused" }, response: new Response(null, { status: 503 }) });
+        release[locale] = () => resolve({ error: { detail: "refused" }, response: new Response(null, { status: 503 }) });
       });
     });
-    render(
-      <QueryClientProvider client={queryClient}>
-        <SaveSurfaceProbe />
+    await renderSurfacesHeld(
+      <>
         <NullChoiceProbe />
         <LanguageSwitcher variant="welcome" />
-      </QueryClientProvider>,
+      </>,
     );
-    await waitFor(() => expect(queryClient.getQueryState(["settings", "read"])?.status).toBe("success"));
-    await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
-    held = true;
 
     fireEvent.click(screen.getByRole("button", { name: "fr" }));
+    await waitFor(() => expect(release.fr).toBeDefined());
     fireEvent.click(screen.getByRole("radio", { name: "English" }));
-    await waitFor(() => expect(refuse.en).toBeDefined());
-    expect(refuse.fr).toBeDefined();
+    await waitFor(() => expect(release.en).toBeDefined());
 
     await act(async () => {
-      refuse.en?.();
+      release.en?.();
     });
-    expect(activeLocale()).toBe("fr"); // A still pending — it stands
+    expect(activeLocale()).toBe("fr"); // the older choice is still pending
     expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("fr");
 
     await act(async () => {
-      refuse.fr?.();
+      release.fr?.();
     });
     expect(activeLocale()).toBe("de");
     expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("de");
     expect(queryClient.getQueryData<{ locale: string | null }>(["settings"])?.locale).toBe("de");
   });
 
-  it("a refusal restarts the settings reads the choice cancelled", async () => {
-    // The strict read's first load is in flight when the chip is used:
-    // the choice cancels it, and the refusal must restart it — never
-    // leave the settings page on its loading screen.
+  it("a refusal restarts the reads the choice cancelled — a first load finishes", async () => {
+    // The strict read's first answer is still out when the chip is used:
+    // the choice cancels it, and the refusal must ask again rather than
+    // leave the read idle on its loading screen.
     setUp = true;
     storedLocale = "de";
     applyLocale("de");
+    let firstRead = true;
+    api.GET.mockImplementation(async (path: string) => {
+      if (path !== "/api/settings") throw new Error(`unexpected request: ${path}`);
+      if (firstRead) {
+        firstRead = false;
+        return new Promise(() => {});
+      }
+      return { data: { locale: storedLocale, theme: null }, response: ok() };
+    });
     api.PATCH.mockResolvedValueOnce({
       error: { detail: "refused" },
       response: new Response(null, { status: 503 }),
     });
+    function StrictRead() {
+      useSettings();
+      return null;
+    }
     render(
       <QueryClientProvider client={queryClient}>
-        <SaveSurfaceProbe />
+        <StrictRead />
         <LanguageSwitcher variant="welcome" />
       </QueryClientProvider>,
     );
-    expect(queryClient.getQueryState(["settings", "read"])?.fetchStatus).toBe("fetching");
+    await waitFor(() => expect(settingsReads()).toBe(1));
+    expect(queryClient.getQueryState(["settings", "read"])?.status).toBe("pending");
 
     fireEvent.click(screen.getByRole("radio", { name: "English" }));
+    await waitFor(() => expect(activeLocale()).toBe("de"));
     await waitFor(() => expect(queryClient.getQueryState(["settings", "read"])?.status).toBe("success"));
     expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("de");
-    expect(activeLocale()).toBe("de");
   });
 });

@@ -896,10 +896,7 @@ jobs:
   # are unconditional: `tests` and `frontend` instrument on every event
   # too, so the artifacts are always here when this job runs — a PR scan
   # without them has no new_coverage, reads 0.0, and fails the quality
-  # gate on every PR. A run without the scanner token — a fork's or a
-  # Dependabot pull request, which GitHub hands no repository secrets —
-  # skips the analysis with a notice instead of failing the check; branch
-  # and main-push runs carry the token and scan as before.
+  # gate on every PR.
   sonar:
     needs: [changes, tests, frontend]
     if: >-
@@ -910,31 +907,36 @@ jobs:
       contents: read
     timeout-minutes: 15
     steps:
-      - name: Check scanner authentication
-        id: auth
+      # A fork or Dependabot pull request gets no SONAR_TOKEN, and the scan
+      # cannot authenticate without it: such a PR skips the analysis with a
+      # notice instead of reporting a red check. Every other event scans
+      # unconditionally, so a token missing on main still fails loudly.
+      - id: auth
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [ -n "$SONAR_TOKEN" ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT_NAME" = pull_request ] && [ -z "$SONAR_TOKEN" ]; then
+            echo "::notice::No SONAR_TOKEN for this pull request (fork or Dependabot); the SonarCloud scan is skipped."
+            echo "scan=false" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::SONAR_TOKEN is not available to this run; SonarCloud analysis skipped"
+            echo "scan=true" >> "$GITHUB_OUTPUT"
           fi
-      - if: steps.auth.outputs.available == 'true'
+      - if: steps.auth.outputs.scan == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - if: steps.auth.outputs.available == 'true'
+      - if: steps.auth.outputs.scan == 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: backend-coverage
           path: .
-      - if: steps.auth.outputs.available == 'true'
+      - if: steps.auth.outputs.scan == 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: frontend-coverage
           path: web/coverage
-      - if: steps.auth.outputs.available == 'true'
+      - if: steps.auth.outputs.scan == 'true'
         uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
