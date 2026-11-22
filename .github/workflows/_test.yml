@@ -20,11 +20,7 @@ on:
           Codecov upload token. Used only by the coverage uploads; passed
           explicitly by the caller, never through inherit-all-secrets.
         required: false
-      SONAR_TOKEN:
-        description: >-
-          SonarCloud token. Used only by the SonarCloud scan; passed
-          explicitly by the caller, never through inherit-all-secrets.
-        required: false
+
 
 # Deny by default: the job below grants the one scope it uses.
 permissions: {}
@@ -135,18 +131,17 @@ jobs:
           files: coverage.xml
           version: v11.3.2
           fail_ci_if_error: true
-      # SonarCloud scan: CI-based analysis with coverage, on a main push only
-      # (analogous to the Codecov upload above). Reads sonar-project.properties
-      # for project key, organization and coverage report paths; the token is
-      # the only secret. Running a CI analysis disables SonarCloud's automatic
-      # analysis for this project on the first run, so there is no double
-      # analysis. `fail_ci_if_error` stays default: a scan failure must not
-      # red an otherwise green suite, but it is reported in the step log.
-      - name: SonarCloud scan
+      # Upload the coverage report as an artifact so the downstream `sonar`
+      # job in ci.yml can feed it to the SonarCloud scan (which needs both
+      # backend and frontend coverage in one place). `if-no-files-found`
+      # is not applicable here: coverage.xml is always produced by test-cov.
+      - name: Upload coverage.xml artifact
         if: ${{ !cancelled() && inputs.coverage && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: backend-coverage
+          path: coverage.xml
+          retention-days: 1
       # A second run of the same action with `report_type`, not Codecov's
       # separate test-results-action: that one is deprecated in favor of
       # this (it says so on every run) and would be the only Node-20

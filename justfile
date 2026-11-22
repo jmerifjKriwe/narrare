@@ -133,6 +133,10 @@ fuzz seconds="300":
 test-frontend:
     pnpm --dir web test
 
+# Web unit tests with V8 coverage (LCOV in web/coverage). Used for SonarCloud.
+test-frontend-cov:
+    pnpm --dir web test:coverage
+
 # Only the web tests the working tree's change reaches — the inner loop for
 # frontend work, mirroring the pre-commit hook. Full suite via test-frontend.
 test-frontend-changed:

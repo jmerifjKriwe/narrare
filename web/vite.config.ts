@@ -41,6 +41,11 @@ export default defineConfig({
       "**/*.{test,spec}.?(c|m)[jt]s?(x)",
       "../app/capabilities/*/web/**/*.{test,spec}.?(c|m)[jt]s?(x)",
     ],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov"],
+      reportsDirectory: "coverage",
+    },
   },
   resolve: {
     alias: {
