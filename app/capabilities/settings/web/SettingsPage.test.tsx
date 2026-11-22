@@ -25,7 +25,7 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, configure, fireEvent, render, screen, waitFor, act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -516,6 +516,92 @@ describe("the profile form — one dirty form", () => {
     fireEvent.click(screen.getByRole("button", { name: en["settings.save"] }));
     await waitFor(() => expect(settingsPatches().length).toBe(2));
     expect(settingsPatches()[1][1].body).toEqual({ locale: "en", author_name: "Neuer Name" });
+  });
+
+  it("a settings read already in flight cannot land its older answer over the choice", async () => {
+    // #940: a read that STARTED before the choice — another write's
+    // invalidation refetch, a stale-expired remount — lands after the
+    // optimistic patch and used to replace the pending choice with
+    // pre-choice truth; a save in that window carried the stale locale.
+    // The choice cancels the reads in flight before it patches, so the
+    // older answer's write is abandoned: landing it below must change
+    // nothing, and the save still carries the chosen locale.
+    let reads = 0;
+    let releaseStale: (() => void) | null = null;
+    let releaseChoiceWrite: (() => void) | null = null;
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") {
+        reads += 1;
+        // The page's two reads answer; the third — the refetch started
+        // below, already in flight at choice moment — hangs until the
+        // test lands its stale answer.
+        if (reads === 3) {
+          const frozen = { ...settingsRow, locale: "de" as const };
+          return new Promise<{ data: typeof frozen; response: Response }>((resolve) => {
+            releaseStale = () => resolve({ data: frozen, response: ok() });
+          });
+        }
+        return { data: { ...settingsRow }, response: ok() };
+      }
+      if (path === "/api/setup/status") return { data: { complete: true }, response: ok() };
+      if (path === "/api/settings/driver") return { data: { kind: driverKind }, response: ok() };
+      throw new Error(`unexpected request: ${path}`);
+    });
+    api.PATCH.mockImplementation(async (path: string, init?: { body?: Record<string, unknown> }) => {
+      if (path === "/api/settings") {
+        const body = init?.body as Partial<typeof settingsRow> | undefined;
+        // The choice's write hangs — the flagged window is exactly the
+        // span before this write commits. The profile save (its body
+        // names a field beside the locale) answers normally.
+        if (body !== undefined && !("author_name" in body) && !("daily_goal_words" in body)) {
+          return new Promise<{ data: typeof settingsRow; response: Response }>((resolve) => {
+            releaseChoiceWrite = () => {
+              const written = { ...settingsRow, locale: body.locale ?? null };
+              resolve({ data: written, response: ok() });
+            };
+          });
+        }
+        settingsRow = { ...settingsRow, ...(body as Partial<typeof settingsRow>) };
+        return { data: { ...settingsRow }, response: ok() };
+      }
+      if (path === "/api/settings/theme") {
+        settingsRow = { ...settingsRow, theme: (init?.body?.theme as string | null) ?? null };
+        return { data: { theme: settingsRow.theme }, response: ok() };
+      }
+      throw new Error(`unexpected request: ${path}`);
+    });
+    await open();
+
+    // A settings read starts now and is in flight at choice moment.
+    void queryClient.refetchQueries({ queryKey: ["settings"] });
+    await waitFor(() => expect(releaseStale).not.toBeNull());
+
+    fireEvent.click(localeRadio("English"));
+    await waitFor(() =>
+      expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("en"),
+    );
+
+    // The older answer lands while the choice's write is still out —
+    // exactly the window before the write's own invalidation would
+    // cancel it. It must not stick.
+    await act(async () => {
+      releaseStale?.();
+    });
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("en");
+
+    // The page speaks the choice; the save carries it, not the stale read.
+    fireEvent.change(screen.getByLabelText(en["settings.author.label"]), {
+      target: { value: "Neuer Name" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: en["settings.save"] }));
+    await waitFor(() => expect(settingsPatches().length).toBe(2));
+    expect(settingsPatches()[1][1].body).toEqual({ locale: "en", author_name: "Neuer Name" });
+
+    // The choice's write commits behind the save; its refetch follows.
+    await act(async () => {
+      releaseChoiceWrite?.();
+    });
+    await waitFor(() => expect(settingsRow.locale).toBe("en"));
   });
 
   it("an out-of-bounds goal answers on its field and writes nothing", async () => {

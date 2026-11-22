@@ -14,7 +14,7 @@
  * are real — the contract is their composition, not a mock's behavior.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -720,5 +720,130 @@ describe("the optimistic cache patch — a choice stands before its refetch (#93
     await waitFor(() => expect(activeLocale()).toBe("de")); // the store restored
     expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("de");
     expect(queryClient.getQueryData<{ locale: string | null }>(["settings"])?.locale).toBe("de");
+  });
+
+  it("a read already in flight cannot land its older answer over the choice", async () => {
+    // #940: a read that started before the choice is cancelled at patch
+    // time — its older answer's cache write is abandoned. The choice's
+    // write hangs below, so the stale answer is landed exactly in the
+    // window before the write commits (its invalidation would cancel the
+    // read only after). Landing it must leave the pending choice standing
+    // in both entries.
+    setUp = true;
+    storedLocale = "de";
+    applyLocale("de");
+    let held = false;
+    let releaseStale: (() => void) | null = null;
+    let releaseWrite: (() => void) | null = null;
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") {
+        if (held) {
+          return new Promise<{ data: { locale: string | null; theme: string | null }; response: Response }>((resolve) => {
+            releaseStale = () => resolve({ data: { locale: "de", theme: null }, response: ok() });
+          });
+        }
+        return { data: { locale: storedLocale, theme: null }, response: ok() };
+      }
+      throw new Error(`unexpected request: ${path}`);
+    });
+    api.PATCH.mockImplementation(async (path: string, init?: { body?: { locale?: string | null } }) => {
+      if (path !== "/api/settings") throw new Error(`unexpected request: ${path}`);
+      return new Promise<{ data: { locale: string | null; theme: string | null }; response: Response }>((resolve) => {
+        releaseWrite = () => {
+          storedLocale = init?.body?.locale ?? null;
+          resolve({ data: { locale: storedLocale, theme: null }, response: ok() });
+        };
+      });
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SaveSurfaceProbe />
+        <LanguageSwitcher variant="welcome" />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(queryClient.getQueryState(["settings", "read"])?.status).toBe("success"));
+    await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
+    held = true;
+
+    // A settings read starts now and is in flight at choice moment.
+    void queryClient.refetchQueries({ queryKey: ["settings"] });
+    await waitFor(() => expect(releaseStale).not.toBeNull());
+
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
+    await waitFor(() =>
+      expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("en"),
+    );
+
+    await act(async () => {
+      releaseStale?.(); // the older answer lands while the write is out
+    });
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("en");
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings"])?.locale).toBe("en");
+
+    // The write commits behind the window; its refetch answers the truth.
+    await act(async () => {
+      releaseWrite?.();
+    });
+    await waitFor(() => expect(storedLocale).toBe("en"));
+  });
+
+  it("a refused earlier choice never unwinds a newer choice — it stands", async () => {
+    // #940's mirror variant: choice A (fr) hangs in flight, choice B (en)
+    // is chosen and commits, then A's refusal arrives. A's snapshot is
+    // obsolete the moment B patched — the restore must compare-and-swap
+    // against the seam's last patch and leave B's value standing in the
+    // caches, on the store, everywhere the choice wrote.
+    setUp = true;
+    storedLocale = "de";
+    applyLocale("de");
+    let held = false;
+    let releaseFirstWrite: ((answer: { error: { detail: string }; response: Response }) => void) | null = null;
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") {
+        if (held) return new Promise(() => {});
+        return { data: { locale: storedLocale, theme: null }, response: ok() };
+      }
+      throw new Error(`unexpected request: ${path}`);
+    });
+    api.PATCH.mockImplementation(async (path: string, init?: { body?: { locale?: string | null } }) => {
+      if (path !== "/api/settings") throw new Error(`unexpected request: ${path}`);
+      if (init?.body?.locale === "fr") {
+        return new Promise<{ error: { detail: string }; response: Response }>((resolve) => {
+          releaseFirstWrite = () => resolve({ error: { detail: "refused" }, response: new Response(null, { status: 503 }) });
+        });
+      }
+      storedLocale = init?.body?.locale ?? null;
+      return { data: { locale: storedLocale, theme: null }, response: ok() };
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SaveSurfaceProbe />
+        <NullChoiceProbe />
+        <LanguageSwitcher variant="welcome" />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(queryClient.getQueryState(["settings", "read"])?.status).toBe("success"));
+    await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
+    held = true; // the writes' invalidation refetches never land
+
+    // A: fr, its write hanging.
+    fireEvent.click(screen.getByRole("button", { name: "fr" }));
+    await waitFor(() =>
+      expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("fr"),
+    );
+    // B: en, chosen while A's write is still out — and it commits.
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
+    await waitFor(() =>
+      expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("en"),
+    );
+
+    // A's refusal lands now — B must stand everywhere.
+    await act(async () => {
+      releaseFirstWrite?.({ error: { detail: "refused" }, response: new Response(null, { status: 503 }) });
+    });
+    await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(2));
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("en");
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings"])?.locale).toBe("en");
+    expect(activeLocale()).toBe("en"); // the store keeps the newer choice too
   });
 });
