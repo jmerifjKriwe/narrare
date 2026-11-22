@@ -1381,11 +1381,13 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(screen.getByRole("button", { name: EXIT })).toBeTruthy();
     // The failed flush lifted the swap window — the room's prose edits
-    // again (the pin: a failed flush leaves editing ON).
+    // again (the pin: a failed flush leaves editing ON). Wait for the
+    // editable state to land instead of asserting it synchronously, so a
+    // slow remount under load cannot false-fail the pin.
     const stayedBox = screen.getByRole("textbox", { name: PROSE });
-    expect(stayedBox.getAttribute("contenteditable")).toBe("true");
+    await waitFor(() => expect(stayedBox.getAttribute("contenteditable")).toBe("true"));
     await typeIntoProse(" Bleibt.");
-    expect(stayedBox.textContent).toContain("Bleibt.");
+    await waitFor(() => expect(stayedBox.textContent).toContain("Bleibt."));
     // The next exit ask fails again — the draft is still unsaved.
     fireEvent.keyDown(document, { key: "Escape" });
     expect(await screen.findByRole("alertdialog")).toBeTruthy();
@@ -1398,11 +1400,16 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     // The discard exit returns the desk's focus (the healthy exit's own
     // rule) — the guard's opener-restore no-ops on the detached zen node,
     // so the exit carries it. The door's ref takes the pending flag exactly
-    // at remount (Task 21's deterministic return, no rAF race).
-    await waitFor(() =>
-      expect(document.activeElement).toBe(
-        screen.getByRole("button", { name: de["writing.workspace.ribbon.focus"] }),
-      ),
+    // at remount (Task 21's deterministic return, no rAF race). Poll the
+    // condition with an explicit ceiling: the remount lands in React's async
+    // commit, which can run past the suite's implicit asyncUtilTimeout under
+    // full-suite load.
+    await waitFor(
+      () =>
+        expect(document.activeElement).toBe(
+          screen.getByRole("button", { name: de["writing.workspace.ribbon.focus"] }),
+        ),
+      { timeout: 10000 },
     );
   });
 
