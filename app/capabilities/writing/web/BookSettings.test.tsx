@@ -594,10 +594,24 @@ describe("the profile's door (W7)", () => {
     expect(screen.getByText("settings")).toBeTruthy();
   });
 
-  it("the door holds while edits stand — only Abbrechen and Speichern answer", async () => {
+  it("the door answers the dirty rule both ways — enabled clean, held while edits stand", async () => {
     await openDialog();
-    fireEvent.change(screen.getByLabelText(de["writing.settings.titleLabel"]), { target: { value: "Anders" } });
     const door = screen.getByRole("button", { name: de["writing.settings.profileDoor.action"] }) as HTMLButtonElement;
+    // The clean dialog answers: the door is a live choice at rest.
+    expect(door.disabled).toBe(false);
+    // Any typed change holds it — only Abbrechen and Speichern answer.
+    fireEvent.change(screen.getByLabelText(de["writing.settings.titleLabel"]), { target: { value: "Anders" } });
     expect(door.disabled).toBe(true);
+    // And back: the reverted field is pristine again, the door answers.
+    fireEvent.change(screen.getByLabelText(de["writing.settings.titleLabel"]), { target: { value: "Dead Signal" } });
+    expect(door.disabled).toBe(false);
+  });
+
+  it("the door's section is named for the scan — the short label, not the sentence", async () => {
+    await openDialog();
+    // A named section is a region: its accessible name is the scannable
+    // word („Profil"), the note stays the visible secondary text.
+    expect(screen.getByRole("region", { name: de["writing.settings.profileDoor.label"] })).toBeTruthy();
+    expect(screen.getByText(de["writing.settings.profileDoor.note"])).toBeTruthy();
   });
 });

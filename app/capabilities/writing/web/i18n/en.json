@@ -74,6 +74,7 @@
   "writing.settings.languageLabel": "Manuscript language",
   "writing.settings.loading": "Loading settings …",
   "writing.settings.profileDoor.action": "Open the profile in the settings",
+  "writing.settings.profileDoor.label": "Profile",
   "writing.settings.profileDoor.note": "The author name and your personal daily goal live in the settings — they apply to your whole atelier.",
   "writing.settings.roleArchivarLabel": "Quiet archivist",
   "writing.settings.roleArchivarMeta": "Fact check & consistency",

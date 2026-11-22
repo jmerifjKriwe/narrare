@@ -994,7 +994,7 @@ function SettingsForm({
               duplicate editing surface here would be the confusion the
               ruling forbids. The door routes at the profile section's
               address, held while edits stand like every close path. */}
-          <section aria-label={t("writing.settings.profileDoor.note")} className="border-t border-rule pt-6">
+          <section aria-label={t("writing.settings.profileDoor.label")} className="border-t border-rule pt-6">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-border bg-surface-container p-4">
               <div className="flex min-w-0 items-center gap-2.5">
                 <span className="shrink-0 text-primary">
