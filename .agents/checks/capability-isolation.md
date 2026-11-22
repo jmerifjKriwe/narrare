@@ -25,15 +25,20 @@ which E2E suites a change owes by capability folder. A hidden coupling
 therefore also means a change in one capability can break another capability
 whose suite never ran.
 
+Tests and E2E are in scope: a test that reaches into another capability's internals is the same hidden coupling, and `scripts/affected.py` keys E2E suites off capability folders.
+
 ## What breaks the requirement
 
 - Python under `app/capabilities/<a>/` imports from `app.capabilities.<b>`
   (any module: `models`, `schemas`, `service`, `repository`, `prompts`),
   including inside a function body or under `TYPE_CHECKING`.
-- Python under `app/kernel/` imports from `app.capabilities.*`. The one
-  sanctioned route is the generated registry: code that iterates
-  `app.generated.capabilities.CAPABILITIES` and loads modules by id, as
-  `app/kernel/db/migrate.py` and `app/api/main.py` do.
+- Python under `app/kernel/` imports from `app.capabilities.*`. The
+  sanctioned routes are the generated registry, iterated as
+  `app.generated.capabilities.CAPABILITIES` with modules loaded by id
+  (`app/kernel/db/migrate.py`), and discovery by filesystem convention
+  (`app/api/main.py` mounts routers; `app/kernel/prompts/registry.py`
+  imports each capability's `prompts.py`). Any other kernel import of a
+  capability is capability logic that belongs in that capability.
 - Capability logic placed in `app/kernel/` so that two capabilities can share
   it. Only shared domain belongs in the kernel (the contracts in
   `app/kernel/contracts/`, LLM, prompts, jobs, interchange). A function that

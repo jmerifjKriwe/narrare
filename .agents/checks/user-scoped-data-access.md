@@ -54,8 +54,9 @@ as `NotFoundError`.
 
 Some code legitimately acts without a requesting user: the job worker claiming
 and reclaiming `Job` rows by id (`app/kernel/jobs/worker.py`), setup creating
-the local user, and migrations. That is fine as long as the work it then does
-for a job stays inside that job's `user_id`.
+the local user (and reading back a novel it just created while importing a
+demo archive, in the same transaction), and migrations. That is fine as long
+as the work it then does for a job stays inside that job's `user_id`.
 
 ## Example
 
