@@ -197,3 +197,8 @@ check-generated:
 # Scaffold a capability folder: just new-capability notes
 new-capability name:
     uv run python -m scripts.new_capability {{name}}
+
+# SonarCloud: just sonar qg | issues [--all] [--severity ...] | measures | hotspots
+[positional-arguments]
+sonar *args:
+    uv run python -m scripts.sonar "$@"
