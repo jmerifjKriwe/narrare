@@ -106,11 +106,11 @@ roadmap's design-debt section.
 
 | Feature | What it is | State | Phase |
 |---|---|---|---|
-| Chronology (PLAN-004) | Events on a timeline, linked to chapters | `building` | `0` |
-| Storyboard (PLAN-005) | Chapters in stages, five structures, remap, scene drill-in | `building` | `0` |
-| Causality strip | Each scene's conflict and resolution as a chain | `building` | `0` |
+| Chronology (PLAN-004) | Events on a timeline, linked to chapters | `live` | `0` |
+| Storyboard (PLAN-005) | Chapters in stages, five structures, remap, scene drill-in | `live` | `0` |
+| Causality strip | Each scene's conflict and resolution as a chain | `live` | `0` |
 | Scene planning (PLAN-001) | Goal, conflict, resolution and beats per scene, before writing | `live` | `0` |
-| Structure view (PLAN-003) | Acts and their share of the book, read from the storyboard | `building` | `0` |
+| Structure view (PLAN-003) | Acts and their share of the book, read from the storyboard | `live` | `0` |
 | Narrative gap analysis (PLAN-002) | Missing transitions, dropped threads, unused entities | `idea` | `3` |
 | Character arc (PLAN-006) | A character's development in phases, against the plan | `idea` | `3` |
 | AI scene drafts | A scene breakdown proposed from chapter and canon | `idea` | `3` |
@@ -178,7 +178,7 @@ roadmap's design-debt section.
 
 | Feature | What it is | State | Phase |
 |---|---|---|---|
-| Settings screen (SET-001) | The hub the gear opens: providers, models, tasks, theme | `backend` | `1` |
+| Settings screen (SET-001) | The hub the gear opens: Allgemein live (Sprache & Aussehen, Autoren-Profil, offline card); the AI-Regeln half on a branch; providers, models and tasks still backend | `building` | `1` |
 | Provider profiles and presets | Several endpoints, keys in the OS keychain or encrypted | `backend` | `1` |
 | Per-task model (SET-003) | Each task pointed at its own model | `backend` | `1` |
 | Theme and language | Light, dark or system; three languages, du or Sie | `live` | `0` |
