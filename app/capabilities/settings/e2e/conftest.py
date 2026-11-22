@@ -162,9 +162,12 @@ def goto_settings(page: Page) -> Page:
 
 
 def expect_settings(page: Page) -> None:
-    """The page's own testid, then the form: the row stood, the fields open."""
+    """The page's own testid, then the form: the row stood, the fields open.
+    The submit button is the language-independent ready face — the form only
+    renders once the strict read answered (the isolation leg boots in
+    English, every other leg in German)."""
     expect(page.get_by_test_id("settings-page")).to_be_visible()
-    expect(page.get_by_label("Autorenname")).to_be_visible()
+    expect(page.locator('form button[type="submit"]')).to_be_visible()
 
 
 @pytest.fixture(scope="module")

@@ -4,13 +4,17 @@
 capability's first page, proven over browser, API and Postgres.
 
 The profile round-trip walks the one dirty form's own contract — a pristine
-save makes no ask, the save carries only the dirtied fields, a carried null
-clears and an absent field keeps — and asks the server back after every leg,
+save makes no ask (the wire listener proves the silence, not just the row's
+equality), the save carries only the dirtied fields, a carried null clears
+and an absent field keeps — and asks the server back after every leg,
 so the fields the browser holds and the users row Postgres keeps are proven
 to be one truth. The immediate controls ride the existing seams: a language
-card re-renders the chrome at once through the one language contract, the
-theme cards and the rail's toggle share the one theme write, and the boot
-re-adopts what the row keeps. The user-block menu's doors and the gear in the
+card re-renders the chrome at once through the one language contract (the
+rail's own gear label flips with the page's), the theme cards and the rail's
+toggle share the one theme write, and the boot re-adopts what the row keeps —
+and no write ever wipes a standing sibling: a language choice keeps the dark
+theme, a profile save keeps both, a theme write keeps the profile (the
+isolation leg). The user-block menu's doors and the gear in the
 rail land on `/settings` at the section addresses, focused; the deep links
 are the settings side of the retired Buch-Einstellungen door, whose walk from
 the dialog lives in the writing suite (test_workspace_e2e). The offline card
@@ -19,14 +23,14 @@ shows it, a provider with a default model hides it — and the refusals keep
 every answer: the field's own parse face in the browser, the wire's 422s
 asked directly (the UI's contract never sends them — the 422 alert face
 itself is the vitest suite's pin). Every face the page shows also clears the
-axe WCAG A/AA floor, light and dark.
+axe WCAG A/AA floor, light and dark, the standing menu included.
 """
 
 import re
 from typing import TYPE_CHECKING
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page, Request, expect
 
 from app.capabilities.settings.e2e.conftest import (
     DATABASE,
@@ -102,8 +106,20 @@ def test_the_profile_round_trip_lands_on_the_row(page: Page, installed: Stack) -
     expect(page.get_by_text(OFFLINE_TITLE)).to_be_visible()
     expect(page.get_by_text(DIRTY)).to_have_count(0)
 
-    # The pristine save rests: no diff, no ask — the row stays as it was.
+    # The pristine save rests: no diff, no ask — the row stays as it was,
+    # and the wire listener heard nothing reach /api at all (the silence is
+    # heard, not inferred from the row's equality).
+    api_asks: list[str] = []
+
+    def _record_asks(request: Request) -> None:
+        if "/api/" in request.url:
+            api_asks.append(f"{request.method} {request.url}")
+
+    page.on("request", _record_asks)
     page.get_by_role("button", name=SAVE).click()
+    page.wait_for_timeout(300)  # a beat: a bug's ask would fire inside it
+    page.remove_listener("request", _record_asks)
+    assert api_asks == [], f"the pristine save asked the wire: {api_asks}"
     row = read_settings()
     assert row["author_name"] is None
     assert row["daily_goal_words"] is None
@@ -154,9 +170,13 @@ def test_the_language_cards_flip_at_once_and_carry_the_wire(page: Page, installe
     # English: the heading flips AT ONCE, then the PATCH answers — the wire
     # carries the locale alone, and the checkbox ends (the row holds a
     # choice now). The card's visible face is clicked, not the sr-only
-    # input beneath it.
+    # input beneath it. The re-render reaches the whole chrome: the rail's
+    # own gear label flips with the page's — the chrome speaks the choice,
+    # not just the surface.
     page.get_by_text("English", exact=True).click()
     expect(page.get_by_role("heading", name=HEADING_EN)).to_be_visible()
+    rail = page.locator("aside").filter(has=page.get_by_role("navigation", name="Navigation"))
+    expect(rail.get_by_role("link", name="Settings")).to_be_visible()
     await_settings(locale="en")
     assert read_settings()["theme"] is None  # one mechanism: no theme ride-along
     follow_en = page.get_by_role("checkbox", name=FOLLOW_EN)
@@ -171,12 +191,14 @@ def test_the_language_cards_flip_at_once_and_carry_the_wire(page: Page, installe
 
     # English again over the stored choice, then „Dem Browser folgen": the
     # carried null hands the choice back — German answers at once, the row
-    # keeps the null, Deutsch is the resolved face.
+    # keeps the null, Deutsch is the resolved face, and the rail's gear
+    # label walks back with it.
     page.get_by_text("English", exact=True).click()
     await_settings(locale="en")
     follow_en.check()
     expect(page.get_by_role("heading", name=HEADING_DE)).to_be_visible()
     await_settings(locale=None)
+    expect(rail.get_by_role("link", name="Einstellungen")).to_be_visible()
     follow = page.get_by_role("checkbox", name=FOLLOW_DE)
     expect(follow).to_be_checked()
     expect(page.get_by_role("radio", name="Deutsch")).to_be_checked()
@@ -360,17 +382,55 @@ def test_the_refusals_keep_every_answer(page: Page, installed: Stack) -> None:
     expect(page.get_by_text(DIRTY)).to_have_count(0)
 
 
+def test_the_writes_never_wipe_a_standing_sibling(page: Page, installed: Stack) -> None:
+    """The three writes are three doors, not one switch: a language choice
+    leaves the standing theme dark, a profile save leaves the language and
+    the theme standing, a theme write leaves the profile standing — every
+    sibling read back from the row it lives on, after the write landed."""
+    set_theme("dark")
+    seed_settings(locale="en")
+    goto_settings(page)
+    expect(page.get_by_role("heading", name=HEADING_EN)).to_be_visible()
+    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+
+    # The language write over the standing theme: Deutsch lands, the dark
+    # boot stays on the document and on the row.
+    page.get_by_text("Deutsch", exact=True).click()
+    expect(page.get_by_role("heading", name=HEADING_DE)).to_be_visible()
+    await_settings(locale="de", theme="dark")
+    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+
+    # The profile save over both: the name and the goal land, and the row's
+    # language and theme are exactly what they were.
+    _author(page).fill("Erika Quell")
+    _goal(page).fill("500")
+    page.get_by_role("button", name=SAVE).click()
+    expect(page.get_by_text(DIRTY)).to_have_count(0)
+    await_settings(author_name="Erika Quell", daily_goal_words=500, locale="de", theme="dark")
+
+    # The theme write over the standing profile: the carried null lands on
+    # the theme door alone, the profile and the language keep their answers.
+    page.get_by_text("Systemstandard", exact=True).click()
+    await_settings(theme=None, author_name="Erika Quell", daily_goal_words=500, locale="de")
+    expect(page.locator("html")).not_to_have_attribute("data-theme", ".+")
+
+
 def test_the_dark_settings_clear_the_axe_floor(page: Page, installed: Stack) -> None:
     """The surface and the standing user menu on the tokens' dark halves —
     the same WCAG A/AA floor the light face clears, with the dark boot
-    adopted from the row. No exclusion: the menu's inks ride the pairs the
-    tokens gate pins (the muted row over the lowest ground, the muted
-    badge on the card ground)."""
+    adopted from the row and an author name standing, so the initials
+    chip's text face and the label-in-name trigger are floored too. No
+    exclusion: the menu's inks ride the pairs the tokens gate pins (the
+    muted row over the lowest ground, the muted badge on the card
+    ground)."""
     set_theme("dark")
+    seed_settings(author_name="Erika Quell")
     goto_settings(page)
     expect(page.locator("html")).to_have_attribute("data-theme", "dark")
     assert_accessible(page)
 
-    page.get_by_role("button", name=MENU_TRIGGER).click()
+    trigger = page.get_by_role("button", name=MENU_TRIGGER)
+    expect(trigger).to_have_accessible_name("Benutzerprofil: EQ Erika Quell")
+    trigger.click()
     expect(page.get_by_role("menu", name="Benutzerprofil")).to_be_visible()
     assert_accessible(page)
