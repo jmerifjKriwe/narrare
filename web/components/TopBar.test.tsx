@@ -16,7 +16,10 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+
+// Full-suite load: see WorkspacePage.test.tsx.
+configure({ asyncUtilTimeout: 5000 });
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@shell/lib/api/client", () => ({

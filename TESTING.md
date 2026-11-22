@@ -105,6 +105,12 @@ tool is introduced by this document — it states expectations, not mechanisms.
   suite and every E2E stack at its own Postgres; the per-run names are minted
   on whichever server that door opens.
 - Frontend tests mock only the API client; the logic under test runs unmocked.
+- **Frontend wait budgets.** A test file that renders a heavy surface (page
+  chrome, router, TipTap) must either call `configure({ asyncUtilTimeout: 5000 })`
+  with a one-line reason, or contain no timing-sensitive `findBy`/`waitFor` calls.
+  The default 1 s budget is a load allowance only for light components; relying
+  on it for a heavy render is a flake source under the full suite. See
+  `docs/superpowers/plans/2026-11-22-web-unit-flakes.md`.
 - E2E suites create their own databases and their own port pair per xdist worker;
   see the capability conftests — setup's is the first one back, more return with
   each rebuilt suite — and `app/kernel/testing/stack.py`.
