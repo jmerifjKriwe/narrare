@@ -12,13 +12,13 @@ window gate and the assignments round out the surface.
 
 import asyncio
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 import pytest
 from cryptography.fernet import Fernet
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
+from sqlalchemy import Select, text
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 import app.kernel.llm.catalog as catalog
@@ -970,6 +970,41 @@ async def test_an_interrupted_stream_leaves_the_model_unmarked(client: AsyncClie
     )
     assert row["last_error_code"] == "provider-auth"
     assert row["last_error_at"] is not None
+
+
+async def test_the_failure_mark_reads_three_columns_never_the_whole_row(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The failure query is a projection: ``status``, ``error_code``, ``created_at``.
+
+    One newest-first query runs per listed model on every settings load, and
+    a revert to a whole-entity ``select(LlmCall)`` would drag ``prompt`` and
+    ``response`` — up to 64 KB each of text no mark reads — across the wire
+    times every model, while staying green. The pin is the statement's own
+    column list, captured where the service runs it.
+    """
+    provider = await _create_provider(client)
+    model = await _create(client, str(provider["id"]))
+    async with Session() as session:
+        await _audit_call(session, profile_id=str(model["id"]), error_code="provider-auth")
+
+    async with Session() as session:
+        service = ModelService(session, LOCAL_USER_ID)
+        pairs = await service.list()
+        captured: list[Select[Any]] = []
+        original_execute = session.execute
+
+        async def spy(statement: Select[Any]) -> object:
+            captured.append(statement)
+            return await original_execute(statement)
+
+        monkeypatch.setattr(session, "execute", spy)
+        states = await service.states(pairs)
+
+    [statement] = captured  # one newest-first query per listed model
+    assert set(statement.selected_columns.keys()) == {"status", "error_code", "created_at"}
+    # And the projection still answers: the planted failure marks the row.
+    assert states[UUID(str(model["id"]))].last_error_code == "provider-auth"
 
 
 async def test_the_model_read_names_whether_the_catalog_prices_it(
