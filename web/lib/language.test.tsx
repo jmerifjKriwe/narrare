@@ -223,9 +223,12 @@ describe("the pre-setup contract — the mirror stands until the row can hold it
     expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "en" } });
     expect(chosenLocale()).toBe("en");
     expect(screen.getByRole("radio", { name: "English" }).getAttribute("aria-checked")).toBe("true");
-    // The row could not take the write, so no settings refetch is owed —
-    // the probe's boot read stands alone.
-    expect(settingsReads()).toBe(1);
+    // The choice cancelled the probe's boot read in flight; the settled
+    // choice restarts it, so the read is never left idle on its loading.
+    await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
+    expect(settingsReads()).toBe(2);
+    expect(activeLocale()).toBe("en");
+    expect(readPreSetupLocale()).toBe("en");
   });
 
   it("a landed write clears the mirror and refreshes the cached row", async () => {
@@ -845,5 +848,86 @@ describe("the optimistic cache patch — a choice stands before its refetch (#93
     expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("en");
     expect(queryClient.getQueryData<{ locale: string | null }>(["settings"])?.locale).toBe("en");
     expect(activeLocale()).toBe("en"); // the store keeps the newer choice too
+  });
+
+  it("two refused choices unwind to the accepted answer, the newer refusal first", async () => {
+    // de stands; fr and then en are chosen with both writes out. en's
+    // refusal lands first and puts fr back, because fr is still pending;
+    // fr's refusal then unwinds the rest of the way — never leaving a
+    // refused choice in the caches a profile save reads.
+    setUp = true;
+    storedLocale = "de";
+    applyLocale("de");
+    const release: Partial<Record<string, () => void>> = {};
+    api.PATCH.mockImplementation(async (path: string, init?: { body?: { locale?: string | null } }) => {
+      if (path !== "/api/settings") throw new Error(`unexpected request: ${path}`);
+      const locale = init?.body?.locale ?? "null";
+      return new Promise<{ error: { detail: string }; response: Response }>((resolve) => {
+        release[locale] = () => resolve({ error: { detail: "refused" }, response: new Response(null, { status: 503 }) });
+      });
+    });
+    await renderSurfacesHeld(
+      <>
+        <NullChoiceProbe />
+        <LanguageSwitcher variant="welcome" />
+      </>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "fr" }));
+    await waitFor(() => expect(release.fr).toBeDefined());
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
+    await waitFor(() => expect(release.en).toBeDefined());
+
+    await act(async () => {
+      release.en?.();
+    });
+    expect(activeLocale()).toBe("fr"); // the older choice is still pending
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("fr");
+
+    await act(async () => {
+      release.fr?.();
+    });
+    expect(activeLocale()).toBe("de");
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("de");
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings"])?.locale).toBe("de");
+  });
+
+  it("a refusal restarts the reads the choice cancelled — a first load finishes", async () => {
+    // The strict read's first answer is still out when the chip is used:
+    // the choice cancels it, and the refusal must ask again rather than
+    // leave the read idle on its loading screen.
+    setUp = true;
+    storedLocale = "de";
+    applyLocale("de");
+    let firstRead = true;
+    api.GET.mockImplementation(async (path: string) => {
+      if (path !== "/api/settings") throw new Error(`unexpected request: ${path}`);
+      if (firstRead) {
+        firstRead = false;
+        return new Promise(() => {});
+      }
+      return { data: { locale: storedLocale, theme: null }, response: ok() };
+    });
+    api.PATCH.mockResolvedValueOnce({
+      error: { detail: "refused" },
+      response: new Response(null, { status: 503 }),
+    });
+    function StrictRead() {
+      useSettings();
+      return null;
+    }
+    render(
+      <QueryClientProvider client={queryClient}>
+        <StrictRead />
+        <LanguageSwitcher variant="welcome" />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(settingsReads()).toBe(1));
+    expect(queryClient.getQueryState(["settings", "read"])?.status).toBe("pending");
+
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
+    await waitFor(() => expect(activeLocale()).toBe("de"));
+    await waitFor(() => expect(queryClient.getQueryState(["settings", "read"])?.status).toBe("success"));
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("de");
   });
 });
