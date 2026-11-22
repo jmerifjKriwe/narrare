@@ -248,6 +248,7 @@ jobs:
       coverage: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   # The suites the changes job named, one runner per capability, side by
   # side — writing is the slowest and becomes the wall clock. `fail-fast:
