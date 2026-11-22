@@ -97,8 +97,6 @@ export function useLanguageChoice({ preSetup = false }: { preSetup?: boolean } =
   async function choose(next: Locale | null) {
     if (next === chosenLocale()) return;
     if (preSetup && next === null) return;
-    const previous = chosenLocale();
-    applyLocale(next);
     // The choice stands in the settings caches at once (#939): a save
     // whose click lands while the write is in flight reads the row's
     // cache at that moment and must see the pending choice, never the
@@ -106,33 +104,72 @@ export function useLanguageChoice({ preSetup = false }: { preSetup?: boolean } =
     // (#940) — an older answer landing after the patch would replace the
     // pending choice with pre-choice truth, and the cancellation's own
     // revert writes the pre-fetch state down, so the patch must come
-    // after it. The abandoned answers' writes are dropped; the choice's
-    // own invalidation refetch follows the write with the fresher truth.
-    // A refusal unwinds only the patch that is still the seam's last one
-    // — a newer choice's value stands everywhere the choice wrote (the
-    // caches, the store, the mirror). (The structural 409 below patches
-    // nothing: pre-setup the strict entry cannot exist — the row never
-    // answered — and the tolerant entry holds no locale.)
+    // after it. The cancelled reads are remembered: once no choice is
+    // left in flight, every exit restarts them (or the landed write's
+    // invalidation does), so neither a first load nor another saved
+    // preference is left behind by the cancellation. A refusal unwinds to
+    // the newest choice still standing — a pending or landed newer one, or
+    // the accepted answer from before the overlap. (The structural 409
+    // below patches nothing: pre-setup the strict entry cannot exist —
+    // the row never answered — and the tolerant entry holds no locale.)
+    const generation = beginChoice(next);
+    applyLocale(next);
     void queryClient.cancelQueries({ queryKey: ["settings"] });
-    const generation = patchCachedLocale(next);
+    patchCachedLocale(generation, next);
     if (preSetup && next !== null) storePreSetupLocale(next);
     try {
       const { response } = await client.PATCH("/api/settings", { body: { locale: next } });
       // Setup required: the row cannot hold the choice yet — the mirror
       // stands, and no settings refetch is owed (the row did not change).
-      if (preSetup && response.status === 409) return;
+      if (preSetup && response.status === 409) {
+        settleChoice(generation, "kept");
+        return;
+      }
       if (!response.ok) throw new Error(`refused: ${response.status}`);
       if (preSetup) storePreSetupLocale(null);
-      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+      settleChoice(generation, "landed");
     } catch {
-      restoreCachedLocale(generation, () => {
-        applyLocale(previous);
-        if (preSetup && previous !== null) storePreSetupLocale(previous);
+      settleChoice(generation, "refused", (standing) => {
+        applyLocale(standing);
+        if (preSetup && standing !== null) storePreSetupLocale(standing);
       });
     }
   }
 
   return { locale, chosen, choose };
+}
+
+/**
+ * The choices in flight, across every face — one seam, because the store
+ * and the caches are one. Each choice takes the next generation; `accepted`
+ * is the newest answer that stands without a pending write behind it (the
+ * stored answer before the overlap began, or a landed / mirror-kept
+ * choice). A refusal of the newest choice unwinds to the newest of what is
+ * left — a choice still pending, or `accepted` — so two overlapping
+ * refusals in either order end on the accepted answer, and a refused older
+ * choice never unwinds a newer one. `cancelled` holds the settings reads
+ * the choices interrupted; `landed` notes that a write changed the row.
+ * The seam resets once the last choice settles.
+ */
+type Moved = Array<{ key: readonly unknown[] }>;
+let lastGeneration = 0;
+const inFlight = new Map<number, { next: Locale | null; moved: Moved }>();
+let accepted: { generation: number; locale: Locale | null } = { generation: 0, locale: null };
+let landed = false;
+const cancelled = new Map<string, readonly unknown[]>();
+
+function beginChoice(next: Locale | null): number {
+  if (inFlight.size === 0) {
+    accepted = { generation: lastGeneration, locale: chosenLocale() };
+    landed = false;
+    cancelled.clear();
+  }
+  for (const query of queryClient.getQueryCache().findAll({ queryKey: ["settings"] })) {
+    if (query.state.fetchStatus === "fetching") cancelled.set(query.queryHash, query.queryKey);
+  }
+  lastGeneration += 1;
+  inFlight.set(lastGeneration, { next, moved: [] });
+  return lastGeneration;
 }
 
 /**
@@ -145,44 +182,62 @@ export function useLanguageChoice({ preSetup = false }: { preSetup?: boolean } =
  * locale — the outage's dressed nulls read exactly like a stored follow —
  * is left for the landed refetch to reconcile. A `null` choice is a real
  * assertion (the row now follows the browser) and moves the entries like
- * any other. Each patch takes the seam's next generation, so a refusal
- * can tell whether its own patch is still the last one written.
+ * any other.
  */
-let lastLocalePatch: {
-  generation: number;
-  moved: Array<{ key: readonly unknown[]; prior: unknown }>;
-} | null = null;
-
-function patchCachedLocale(next: Locale | null): number {
-  const generation = (lastLocalePatch?.generation ?? 0) + 1;
-  const moved: Array<{ key: readonly unknown[]; prior: unknown }> = [];
+function patchCachedLocale(generation: number, next: Locale | null): void {
+  const moved = inFlight.get(generation)?.moved ?? [];
   const patch = (key: readonly unknown[], tolerant: boolean) => {
     const cached = queryClient.getQueryData<{ locale: string | null }>(key);
     if (cached === undefined) return;
     if (tolerant && cached.locale === null) return;
-    moved.push({ key, prior: cached });
+    moved.push({ key });
     queryClient.setQueryData(key, { ...cached, locale: next });
   };
   patch(["settings", "read"], false);
   patch(["settings"], true);
-  lastLocalePatch = { generation, moved };
-  return generation;
 }
 
-/** Undo a patch — but only its OWN (#940's mirror variant): a refusal
- *  whose patch has been superseded by a newer choice's patch must not
- *  restore its snapshot over the newer value. The comparison is by
- *  GENERATION, not by value: a later choice can re-assert the same
- *  locale, and the snapshots' row halves are identical when no refetch
- *  landed in between, so equality alone cannot tell "this request's
- *  write" from "a newer choice that wrote the same thing". The
- *  generation is exactly the "a newer choice stands" predicate. `onOwn`
- *  runs the store's restore under the same guard — the caches, the
- *  visible language and the mirror move together or not at all. */
-function restoreCachedLocale(generation: number, onOwn: () => void): void {
-  if (lastLocalePatch === null || lastLocalePatch.generation !== generation) return;
-  for (const entry of lastLocalePatch.moved) queryClient.setQueryData(entry.key, entry.prior);
-  onOwn();
+/** Settle a choice's write. A landed write and a mirror-kept 409 become
+ *  the accepted answer unless a newer one already is; a refusal of the
+ *  newest choice still standing moves the caches it patched, the visible
+ *  language and the mirror (`onUnwind`) to the newest answer left. When
+ *  the last choice settles, the reads are reconciled: a landed write
+ *  refreshes every settings read, otherwise only the cancelled ones
+ *  restart — no newer optimistic choice is left for them to overwrite. */
+function settleChoice(
+  generation: number,
+  outcome: "landed" | "kept" | "refused",
+  onUnwind?: (standing: Locale | null) => void,
+): void {
+  const choice = inFlight.get(generation);
+  inFlight.delete(generation);
+  if (choice === undefined) return;
+  if (outcome !== "refused") {
+    if (outcome === "landed") landed = true;
+    if (generation > accepted.generation) accepted = { generation, locale: choice.next };
+  } else {
+    const newerPending = [...inFlight.keys()].some((pending) => pending > generation);
+    if (!newerPending && generation > accepted.generation) {
+      let standing = accepted;
+      for (const [pending, { next }] of inFlight) {
+        if (pending > standing.generation) standing = { generation: pending, locale: next };
+      }
+      for (const { key } of choice.moved) {
+        const cached = queryClient.getQueryData<{ locale: string | null }>(key);
+        if (cached !== undefined) queryClient.setQueryData(key, { ...cached, locale: standing.locale });
+      }
+      onUnwind?.(standing.locale);
+    }
+  }
+  if (inFlight.size > 0) return;
+  if (landed) {
+    void queryClient.invalidateQueries({ queryKey: ["settings"] });
+  } else {
+    for (const queryKey of cancelled.values()) {
+      void queryClient.invalidateQueries({ queryKey, exact: true });
+    }
+  }
+  cancelled.clear();
 }
 
 /** The radio face's drafted geometries — each door's port, kept verbatim. */
