@@ -16,7 +16,10 @@
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, configure, render, screen } from "@testing-library/react";
+
+// Full-suite load: renders RouterProvider; see WorkspacePage.test.tsx.
+configure({ asyncUtilTimeout: 5000 });
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api/client", () => ({

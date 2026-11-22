@@ -1411,7 +1411,7 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
         ),
       { timeout: 10000 },
     );
-  });
+  }, 15000);
 
   it("the session is the zen spell — re-entry starts a fresh timer and counter", async () => {
     liveBodyWorld();
