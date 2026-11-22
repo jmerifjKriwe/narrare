@@ -369,14 +369,16 @@ async def test_a_refused_delete_never_touches_the_keychain(
 async def test_a_failed_erase_stops_the_delete_and_the_row_stays_listed(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The erase runs after the flush, and a failure there aborts the delete.
+    """A key-store failure at the erase aborts the delete: 503, row intact.
 
-    The delete's order — flush first, erase second, commit last — rests on
-    this pin: moving ``erase_key`` after the commit keeps every other test
-    green, and a key store that fails at the erase must leave the row
-    standing. The session never commits, so the provider is still listed
-    and its key still loads from its column; the 503 is the router's
-    mapping of the named key-store refusal.
+    What the pin forces is the erase before the commit: a key store that
+    fails at the erase must leave the provider standing — still listed, its
+    key still loading from its column, the session never committed — and
+    the 503 is the router's mapping of the named key-store refusal. Moving
+    ``erase_key`` after the commit fails here. The rest of the order is not
+    this test's: an erase moved before the flush would pass, and
+    guard-before-erase rests on the sibling test that refuses a delete
+    whose provider still has models.
     """
 
     def broken_erase(provider_id: UUID) -> None:

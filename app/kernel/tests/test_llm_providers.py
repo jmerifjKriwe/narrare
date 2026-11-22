@@ -138,13 +138,14 @@ async def test_ordered_returns_the_users_providers_by_name_and_nobody_elses() ->
 
 @pytest.mark.usefixtures("owner")
 async def test_update_applies_the_given_columns_and_flushes() -> None:
-    """The patch lands at the flush; the commit stays with the caller.
+    """The given columns land and are durable through the caller's commit.
 
-    The API answer can hide the flush/commit split: a repository that
-    dropped the flush still passes every service test that commits right
-    after, and one that committed would steal the transaction's scope from
-    its caller. A fresh session sees the patch only after the caller's
-    commit, which is the contract the services build on.
+    The contract the services rely on: the columns update() is handed are
+    applied and survive the caller's commit. The test looks only after it
+    commits, so it pins neither the flush itself (a commit autoflushes
+    pending writes, so a dropped flush passes here) nor the rule that the
+    commit stays with the caller (an internal commit would pass here too) —
+    those halves rest on the services' tests and review.
     """
     async with Session() as session:
         providers = ProviderRepository(session, OWNER)
