@@ -45,6 +45,12 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "lcov"],
       reportsDirectory: "coverage",
+      // Capability components live outside this root, in
+      // app/capabilities/*/web — the test include above reaches them, but
+      // Vitest drops every file outside the root from the report unless
+      // coverage.allowExternal is set (default false), so the LCOV report
+      // SonarCloud consumes never saw them.
+      allowExternal: true,
     },
   },
   resolve: {
