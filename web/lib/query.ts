@@ -7,7 +7,7 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   client,
@@ -32,6 +32,7 @@ import {
   type TimelineEventCreate,
   type TimelineEventUpdate,
 } from "./api/client";
+import { applyTheme, type Theme } from "./theme";
 
 /**
  * The one query client. `retry: false` because the backend is a local
@@ -89,6 +90,118 @@ export function useSettingsQuery(): UseQueryResult<{
       }
     },
   });
+}
+
+/**
+ * The settings surface's own read (W7 Task 3): the strict one. The chrome's
+ * `useSettingsQuery` above answers an outage with nulls so the boot gate can
+ * open — the right contract for the shell, and the wrong one for a settings
+ * page, whose whole job is showing the row's truth: dressed-up nulls would
+ * render the outage as an empty profile. This hook demands the answer — a
+ * refusal or a dead service is an error, and the page answers with the
+ * outage face and its retry. The key sits under the `["settings"]` prefix,
+ * so every write's invalidation (the language contract's, the theme door's,
+ * `useUpdateSettings`'s) refetches both reads together. `refetchOnWindowFocus`
+ * rides the chrome read's reason: a focus refetch while the service is down
+ * would erase the answers the form holds.
+ */
+export function useSettings(): UseQueryResult<{
+  locale: string | null;
+  theme: string | null;
+  author_name: string | null;
+  daily_goal_words: number | null;
+  email: string | null;
+}> {
+  return useQuery({
+    queryKey: ["settings", "read"],
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data, response } = await client.GET("/api/settings");
+      if (!response.ok || !data) throw new Error(`settings unavailable: ${response.status}`);
+      return {
+        locale: data.locale ?? null,
+        theme: data.theme ?? null,
+        author_name: data.author_name ?? null,
+        daily_goal_words: data.daily_goal_words ?? null,
+        email: data.email ?? null,
+      };
+    },
+  });
+}
+
+/** The fields a profile save may carry: only these reach the PATCH body,
+ *  beside the locale every settings write carries (the schema's own rule).
+ *  `null` is the cleared state for both — the name back to the email label,
+ *  the goal back to no goal; an absent field keeps the stored answer. */
+export type SettingsChanges = { authorName?: string | null; dailyGoalWords?: number | null };
+
+/**
+ * The preference row's write (the writing capability's GoalSetter and book
+ * settings ride this same endpoint through their own hook — the settings
+ * surface's home is here, beside the row's reads): the locale is ALWAYS
+ * carried, present and nullable, so the caller hands the stored one through
+ * unchanged; the profile fields ride only when carried. The write
+ * invalidates the whole `["settings"]` prefix — the chrome's row and the
+ * surface's strict read move together — and the activity aggregate, whose
+ * daily goal the row carries. A refusal carries its status and the 422's
+ * detail, so the form can name a field refusal as the field refusal it is.
+ */
+export function useUpdateSettings(): UseMutationResult<
+  void,
+  Error,
+  { locale: string | null } & SettingsChanges
+> {
+  return useMutation({
+    mutationFn: async ({ locale, authorName, dailyGoalWords }) => {
+      const body: {
+        locale: string | null;
+        author_name?: string | null;
+        daily_goal_words?: number | null;
+      } = { locale };
+      if (authorName !== undefined) body.author_name = authorName;
+      if (dailyGoalWords !== undefined) body.daily_goal_words = dailyGoalWords;
+      const { error, response } = await client.PATCH("/api/settings", { body });
+      if (!response.ok) {
+        throw Object.assign(new Error(`settings update refused: ${response.status}`), {
+          status: response.status,
+          detail: (error as { detail?: unknown } | null | undefined)?.detail,
+        });
+      }
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+      void queryClient.invalidateQueries({ queryKey: ["activity"] });
+    },
+  });
+}
+
+/**
+ * The one theme write (W7 Task 3) — the rail's tri-state toggle and the
+ * settings page's three appearance cards share this seam, so there is no
+ * second mechanism: the choice paints at once (`applyTheme`, the mirror
+ * its cache), PATCHes the theme's own door, and a refusal restores the prior
+ * appearance — the exact discipline the rail's inline toggle rode before
+ * the page needed the write too. The theme rides the chrome's tolerant read:
+ * on an outage the chrome keeps its appearance and the toggle still answers.
+ */
+export function useTheme(): {
+  theme: string | null;
+  setTheme: (next: Theme | null) => Promise<void>;
+} {
+  const settings = useSettingsQuery();
+  const theme = settings.data?.theme ?? null;
+  const setTheme = useCallback(async (next: Theme | null) => {
+    const previous = theme;
+    applyTheme(next);
+    try {
+      const { response } = await client.PATCH("/api/settings/theme", { body: { theme: next } });
+      if (!response.ok) throw new Error(`refused: ${response.status}`);
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+    } catch {
+      applyTheme(previous === "light" || previous === "dark" ? previous : null);
+    }
+  }, [theme]);
+  return { theme, setTheme };
 }
 
 /**

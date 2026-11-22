@@ -228,6 +228,19 @@ const causalityRoute = createRoute({
   ),
 });
 
+/** The settings surface's harness face (W7 Task 3): the gear door's target —
+ *  the one global route (no book param), where the door wears its active face. */
+const settingsRoute = createRoute({
+  getParentRoute: () => testRoot,
+  path: "/settings",
+  component: () => (
+    <>
+      <p>settings</p>
+      <IconRail />
+    </>
+  ),
+});
+
 function renderRail(path = "/rail-test") {
   const router = createRouter({
     routeTree: testRoot.addChildren([
@@ -240,6 +253,7 @@ function renderRail(path = "/rail-test") {
       timelineRoute,
       storyboardRoute,
       causalityRoute,
+      settingsRoute,
     ]),
     history: createMemoryHistory({ initialEntries: [path] }),
   });
@@ -405,7 +419,7 @@ describe("the rail — nav", () => {
     ).toBeTruthy();
   });
 
-  it("with no book standing the editor waits disabled — the three later-wave doors keep their notes", async () => {
+  it("with no book standing the editor waits disabled — the two later-wave doors keep their notes", async () => {
     novelsAnswer = async () => ({ data: [], response: ok() });
     renderRail();
     const editor = await screen.findByRole("button", { name: de["shell.nav.editor"] });
@@ -414,12 +428,14 @@ describe("the rail — nav", () => {
     for (const [label, note] of [
       [de["shell.nav.knowledge"], de["shell.nav.knowledge.note"]],
       [de["shell.nav.planning"], de["shell.nav.planning.note"]],
-      [de["shell.nav.settings"], de["shell.nav.settings.note"]],
     ] as const) {
       const button = screen.getByRole("button", { name: label });
       expect(button.hasAttribute("disabled")).toBe(true);
       expect(button.getAttribute("title")).toBe(note);
     }
+    // Einstellungen is global — it opens with no book standing (W7 Task 3).
+    const gear = screen.getByRole("link", { name: de["shell.nav.settings"] });
+    expect(gear.getAttribute("href")).toBe("/settings");
   });
 
   it("the Wissen door opens the active book's lore graph — current on the graph route (Task 3)", async () => {
@@ -483,14 +499,17 @@ describe("the rail — nav", () => {
     expect(current.getAttribute("href")).toBe(`/novels/${WINTERHAUS.id}/planning/timeline`);
   });
 
-  it("the one remaining later-wave door stays honestly disabled with its note while books stand", async () => {
+  it("the gear door goes live — it opens /settings and wears the active face there (W7 Task 3)", async () => {
     renderRail();
-    // Wait for the books so the active-book doors have settled to their live
-    // faces — Wissen and Planung are links now; Einstellungen still waits.
-    await screen.findByRole("link", { name: de["shell.nav.planning"] });
-    const button = screen.getByRole("button", { name: de["shell.nav.settings"] });
-    expect(button.hasAttribute("disabled")).toBe(true);
-    expect(button.getAttribute("title")).toBe(de["shell.nav.settings.note"]);
+    // The last later-wave door is live: the settings capability's own route.
+    const gear = await screen.findByRole("link", { name: de["shell.nav.settings"] });
+    expect(gear.getAttribute("href")).toBe("/settings");
+    expect(gear.getAttribute("aria-current")).toBeNull();
+    cleanup();
+    renderRail("/settings");
+    const current = await screen.findByRole("link", { name: de["shell.nav.settings"] });
+    expect(current.getAttribute("aria-current")).toBe("page");
+    expect(current.getAttribute("href")).toBe("/settings");
   });
 });
 

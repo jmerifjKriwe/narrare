@@ -18,20 +18,33 @@
  * (INTERIM #882 — the command palette is a later shell wave's; the chip
  * keeps its geometry and its note, never a pretend door), the real word
  * chip (the rows' own Σ, the family's dash on a failure, never an invented
- * zero), and the language chip as the REAL switcher (D17 — the shared
- * contract's fifth face, `@shell/lib/language`).
+ * zero), the language chip as the REAL switcher (D17 — the shared
+ * contract's fifth face, `@shell/lib/language`), and the user block (W7
+ * Task 3) — the settings-allgemein draft's wired tile: initials, the
+ * author_name → email fallback name, and the menu whose rows door into the
+ * settings surface at their sections (Autorenname → `#profil-sektion`,
+ * Tagesziel → `#tagesziel-feld`, Einstellungen → `/settings`), Abmelden
+ * honestly disabled with its no-backend note.
  *
  * Icon faces (spec §6.9): search → search, the draft's `edit` → write
  * (the light stage's pencil; the dark's `draw` yields to the light).
  */
-import { Link } from "@tanstack/react-router";
-import { useId } from "react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 
 import { useTranslation } from "../lib/i18n";
 import { LanguageChip } from "../lib/language";
+import { useSettingsQuery } from "../lib/query";
 import { SAVE_FACES, SAVE_TONE_CLASS, useSaveStatus } from "../lib/saveStatus";
 import { Icon } from "../ui/icons";
-import { useChromeNovels } from "./chrome";
+import { initialsFrom, useChromeNovels } from "./chrome";
 
 /** The brand serif, the BookCover pattern: one stack, read from the token.
  *  Book titles wear it — the typographic discipline reserves it for them. */
@@ -41,9 +54,243 @@ const SERIF = "[font-family:var(--font-serif)]";
 const FOCUS =
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
 
+/**
+ * The user block (W7 Task 3) — the settings-allgemein draft's wired tile.
+ * The closed chip names the profile (initials, the author_name → email
+ * fallback, the honest neutral when neither stands); opening docks the
+ * draft's menu under it: the user info header, the three rows that door
+ * into the settings surface (Autorenname → the profile section's address,
+ * Tagesziel → the goal field's address, Einstellungen → the surface), and
+ * Abmelden honestly disabled — no cloud session exists to end, and the
+ * note says so instead of pretending. The menu keeps the quick menu's
+ * popover discipline: opening moves focus to the first row, arrows walk
+ * with wrap, Home/End jump, Enter/Space choose, Escape closes and returns
+ * the focus, an outside press closes without stealing it. The disabled row
+ * stays out of the walk — a dead row is not a choice.
+ */
+function UserBlock() {
+  const t = useTranslation();
+  const navigate = useNavigate();
+  const settings = useSettingsQuery();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  const authorName = settings.data?.author_name ?? null;
+  const email = settings.data?.email ?? null;
+  const goal = settings.data?.daily_goal_words ?? null;
+  const userName = authorName ?? email ?? t("shell.rail.user");
+  const initials = initialsFrom(authorName ?? (email !== null ? email.split("@")[0] : null));
+  // The trigger's name carries the chip's initials, as the switcher's does
+  // („Aktives Buch: {monogram} {title}"): the glyphs are the tile's visible
+  // text, so the accessible name says them too (WCAG 2.5.3 label-in-name).
+  const userNameLabel = initials !== null ? `${initials} ${userName}` : userName;
+  const onSettings = pathname === "/settings";
+
+  const [open, setOpen] = useState(false);
+  const menuId = useId();
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const itemCount = 3; // the walk: the two profile doors and Einstellungen
+
+  const close = useCallback((returnFocus: boolean) => {
+    setOpen(false);
+    if (returnFocus) triggerRef.current?.focus();
+  }, []);
+
+  /** One door: close with the focus returned, then walk to the settings
+   *  surface at the row's own section address. */
+  function go(hash?: string) {
+    close(true);
+    void navigate({ to: "/settings", hash });
+  }
+
+  // While the menu stands: Escape closes innermost-first, an outside press
+  // closes without stealing focus — the quick menu's discipline.
+  useEffect(() => {
+    if (!open) return;
+    function onKey(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      close(true);
+    }
+    function onDown(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, [open, close]);
+
+  // Opening moves focus to the menu's first row — the draft's lead.
+  useEffect(() => {
+    if (open) itemRefs.current[0]?.focus();
+  }, [open]);
+
+  /** The trigger's keyboard: ArrowDown/ArrowUp open the menu. */
+  function triggerKey(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    event.preventDefault();
+    setOpen(true);
+  }
+
+  /** The rows' keyboard — the walk described above. */
+  function itemKey(event: KeyboardEvent<HTMLButtonElement>, at: number) {
+    let next: number;
+    if (event.key === "ArrowDown") next = (at + 1) % itemCount;
+    else if (event.key === "ArrowUp") next = (at - 1 + itemCount) % itemCount;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = itemCount - 1;
+    else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      event.currentTarget.click();
+      return;
+    } else if (event.key === "Tab") {
+      close(true);
+      return;
+    } else return;
+    event.preventDefault();
+    itemRefs.current[next]?.focus();
+  }
+
+  const itemClass = (active: boolean) =>
+    `flex w-full items-center justify-between gap-2 rounded px-4 py-2 text-left text-meta transition-colors ${FOCUS} ${
+      active ? "bg-surface-container font-semibold text-primary" : "text-foreground hover:bg-surface-container"
+    }`;
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <button
+        type="button"
+        ref={triggerRef}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={menuId}
+        aria-label={t("shell.rail.user.named", { name: userNameLabel })}
+        onClick={() => setOpen((previous) => !previous)}
+        onKeyDown={triggerKey}
+        title={t("shell.rail.user.named", { name: userNameLabel })}
+        className={`flex items-center gap-2 rounded border border-border bg-surface-container-low py-1 pl-1.5 pr-2 text-left transition-colors hover:border-outline-variant ${FOCUS}`}
+      >
+        {/* The initials chip: a presentational duplicate of the name beside
+            it — the label below carries the same glyphs (the switcher's
+            contract, „Aktives Buch: {monogram} {title}"), so what the tile
+            shows is what the name says (WCAG 2.5.3). */}
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-soft text-[10px] font-bold text-primary">
+          {initials ?? <Icon name="person" size={14} />}
+        </span>
+        {/* The space keeps the initials and the name separate words in the
+            visible text — the name carries both, in order. Without it the
+            concatenated „EQErika Quell" is one pseudo-word no label can
+            contain, and label-in-name (WCAG 2.5.3) reads the tile as
+            mislabelled — the switcher's own finding, here too. */}
+        {" "}
+        <span className="max-w-[10rem] truncate text-meta font-medium text-foreground">{userName}</span>
+        <span className="text-muted">
+          <Icon name={open ? "expandLess" : "chevronDown"} size={14} />
+        </span>
+      </button>
+      {open && (
+        <div
+          id={menuId}
+          role="menu"
+          aria-label={t("shell.rail.user")}
+          className="absolute right-0 top-full z-50 mt-1.5 w-80 rounded-lg border border-border bg-surface-container-lowest py-2 shadow-overlay"
+        >
+          {/* The user info header — the row's own answers, mono email. */}
+          <div className="mb-1 border-b border-rule px-4 py-2.5">
+            <div className="truncate text-label font-semibold leading-tight text-foreground">{userName}</div>
+            {email !== null && (
+              <div className="mt-0.5 truncate font-mono text-[11px] text-muted">{email}</div>
+            )}
+          </div>
+          <div className="py-1">
+            <button
+              type="button"
+              role="menuitem"
+              ref={(node) => {
+                itemRefs.current[0] = node;
+              }}
+              onKeyDown={(event) => itemKey(event, 0)}
+              onClick={() => go("profil-sektion")}
+              className={itemClass(false)}
+            >
+              <span>{t("shell.menu.authorName")}</span>
+              <span className="text-[10px] text-muted">{t("shell.menu.profileMeta")}</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              ref={(node) => {
+                itemRefs.current[1] = node;
+              }}
+              onKeyDown={(event) => itemKey(event, 1)}
+              onClick={() => go("tagesziel-feld")}
+              className={itemClass(false)}
+            >
+              <span>{t("shell.menu.goal")}</span>
+              {/* The row's real goal, the dash when none stands — never a
+                  mock figure (the draft's 500 W is its example row). */}
+              <span className="font-mono text-[10px] text-muted">
+                {goal !== null ? t("shell.menu.goalMeta", { count: goal }) : "—"}
+              </span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              aria-current={onSettings ? "true" : undefined}
+              ref={(node) => {
+                itemRefs.current[2] = node;
+              }}
+              onKeyDown={(event) => itemKey(event, 2)}
+              onClick={() => go()}
+              className={itemClass(onSettings)}
+            >
+              <span className="flex items-center gap-2">
+                {onSettings && (
+                  <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-primary" />
+                )}
+                {t("shell.menu.settings")}
+              </span>
+              {onSettings && (
+                <span className="text-[10px] text-primary">{t("shell.menu.settingsActive")}</span>
+              )}
+            </button>
+          </div>
+          <div aria-hidden="true" className="mx-0 my-1 border-t border-rule" />
+          {/* Abmelden: honestly disabled — the local instance holds no
+              cloud session to end. Out of the walk, the note carries the
+              reason (the draft's LOKAL row and its box). The inks stay on
+              the AA pairs the tokens gate pins: the muted row over the
+              menu's lowest ground (the 60% dim composites the ink to
+              2.6:1 dark, 2.4:1 light — the strike-through and the cursor
+              carry the disabled reading), the muted badge on the card
+              ground (soft measures 3.99:1 dark and 4.46:1 light). */}
+          <div className="px-4 py-2">
+            <div className="flex cursor-not-allowed items-center justify-between text-muted">
+              <span className="font-normal line-through">{t("shell.menu.signOut")}</span>
+              <span className="rounded bg-card px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted">
+                {t("shell.menu.localBadge")}
+              </span>
+            </div>
+            <div className="mt-2 rounded border border-rule bg-panel p-2.5 text-[11px] leading-relaxed text-muted">
+              {t("shell.menu.localNote")}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TopBar() {
   const t = useTranslation();
   const { novels, active, bookId } = useChromeNovels();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   // The live sync owner — one state with the rail foot and the editor foot
   // (Task 12). The face is the draft's tile-3 vocabulary, the honest sub-label
   // rides as the tooltip.
@@ -53,6 +300,10 @@ export function TopBar() {
   const searchNoteId = useId();
 
   const bookFace = bookId !== null;
+  // The settings face (W7 Task 3): the draft's „Atelier › Einstellungen"
+  // crumb on its surface — a global page wears no book, so the shelf face
+  // would name the wrong place.
+  const settingsFace = !bookFace && pathname === "/settings";
   const rows = (novels.data ?? []).filter((novel) => novel.archived_at == null);
   const totalWords = rows.reduce((sum, novel) => sum + novel.word_count, 0);
 
@@ -95,6 +346,16 @@ export function TopBar() {
                 {t("shell.topbar.volume", { volume: active.series_volume })}
               </span>
             )}
+          </>
+        ) : settingsFace ? (
+          <>
+            <Link to="/" className={`shrink-0 text-muted transition-colors hover:text-foreground ${FOCUS}`}>
+              {t("shell.topbar.atelier")}
+            </Link>
+            <span aria-hidden="true" className="text-outline-variant">
+              /
+            </span>
+            <span className="truncate font-semibold text-foreground">{t("shell.nav.settings")}</span>
           </>
         ) : (
           <>
@@ -175,6 +436,10 @@ export function TopBar() {
         {/* The language chip: the real switcher (D17), the shared
             contract's chrome face — not the pre-checkpoint passive DE. */}
         <LanguageChip />
+
+        {/* The user block: the wired tile (W7 Task 3) — initials and name,
+            the menu that doors into the settings surface. */}
+        <UserBlock />
       </div>
     </header>
   );

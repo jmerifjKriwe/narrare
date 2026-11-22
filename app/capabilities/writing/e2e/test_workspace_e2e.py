@@ -283,10 +283,12 @@ def test_the_book_settings_edit_the_real_family(page: Page, installed: Stack) ->
     expect(dialog.get_by_label("Romantitel", exact=True)).to_have_value(KLANG)
     expect(dialog.get_by_label("Autor", exact=True)).to_have_value(AUTHOR)
     expect(dialog.get_by_label("Zielumfang (Wörter gesamt)", exact=True)).to_have_value("85.000")
-    expect(dialog.get_by_label("Persönliches Tagesziel", exact=True)).to_have_value("2.000")
     expect(dialog.get_by_role("radio", name="Entwurf", exact=True)).to_have_attribute(
         "aria-checked", "true"
     )
+    # The atelier section retired (W7): the profile's fields live on
+    # /settings — the retired section's door stands in its place.
+    expect(dialog.get_by_role("button", name="Profil in den Einstellungen öffnen")).to_be_visible()
 
     # The diff rides the save — the target and the status change.
     dialog.get_by_label("Zielumfang (Wörter gesamt)", exact=True).fill("90000")
@@ -370,11 +372,14 @@ def test_the_light_book_settings_clear_the_axe_floor(page: Page, installed: Stac
 
 
 def test_the_settings_save_lands_on_the_db_rows(page: Page, installed: Stack) -> None:
-    """Task 21's fidelity gate: the dialog's save is not a UI echo — it lands
-    on the real rows. The status, target and per-book author ride the novel
-    PATCH; the series create lands its own user-owned row and the link +
-    volume ride the novel; the atelier's author name and daily goal ride the
-    settings PATCH. Every field is read back from Postgres, not the form."""
+    """Task 21's fidelity gate, W7's split: the dialog's save is not a UI
+    echo — it lands on the real rows. The status, target and per-book
+    author ride the novel PATCH; the series create lands its own user-owned
+    row and the link + volume ride the novel. The atelier's author name and
+    daily goal retired from the dialog (W7): they walk the settings surface
+    through the dialog's own door, at the profile section's address, and
+    land on the users row there. Every field is read back from Postgres,
+    not the form."""
     novel = _seed_klang()
     novel_id = str(novel["id"])
     patch_novel(novel_id, status="draft")
@@ -397,10 +402,6 @@ def test_the_settings_save_lands_on_the_db_rows(page: Page, installed: Stack) ->
         dialog.get_by_label("Zugehörige Buchreihe", exact=True).locator("option:checked")
     ).to_have_text("Tiefsee-Chroniken")
     dialog.get_by_label("Band", exact=True).fill("2")
-
-    # The atelier: the profile's author name and the daily goal (user scope).
-    dialog.get_by_label("Standard-Autorenname", exact=True).fill("M. Reyes Atelier")
-    dialog.get_by_label("Persönliches Tagesziel", exact=True).fill("2500")
 
     dialog.get_by_role("button", name="Speichern", exact=True).click()
     expect(page.get_by_role("dialog")).to_have_count(0)
@@ -426,6 +427,25 @@ def test_the_settings_save_lands_on_the_db_rows(page: Page, installed: Stack) ->
         {"id": str(series_id)},
     )
     assert series_row == [("Tiefsee-Chroniken", LOCAL_USER_ID)]
+
+    # The profile (W7): the dialog's door routes to the settings surface at
+    # the profile section's address — the landing is the name field — and
+    # the atelier's author name and daily goal land on the users row there.
+    page.get_by_role("button", name="Buch-Einstellungen", exact=True).click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_role("button", name="Profil in den Einstellungen öffnen").click()
+    expect(page).to_have_url(re.compile(r"/settings#profil-sektion"))
+    author_name = page.get_by_label("Autorenname", exact=True)
+    expect(author_name).to_be_focused()
+    author_name.fill("M. Reyes Atelier")
+    page.get_by_label("Tagesziel (Wörter)", exact=True).fill("2500")
+    page.get_by_role("button", name="Änderungen speichern", exact=True).click()
+    # The saved truth stands in the fields: the dirty badge retires once the
+    # invalidated row answered, and the goal reads back the grouped figure —
+    # the local PATCH answers inside one frame, so a busy-window wait would
+    # race it.
+    expect(page.get_by_text("Ungespeicherte Eingaben")).to_have_count(0)
+    expect(page.get_by_label("Tagesziel (Wörter)", exact=True)).to_have_value("2.500")
 
     # The atelier row: the profile's author name and the daily goal landed.
     user_row = rows(

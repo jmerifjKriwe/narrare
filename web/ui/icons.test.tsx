@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The icon set's contract, pinned as records rather than single samples:
- * `icons` carries exactly the sixty-eight names (the wave's whole vocabulary
+ * `icons` carries exactly the sixty-nine names (the wave's whole vocabulary
  * — a name that drifts in or out breaks a P9 consumer), and every one of
  * them renders through `Icon` as the same hidden 16×16 svg — stroked in
  * the ink around it, filled with nothing, sized by `size` alone. The
@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Icon, icons, type IconName } from "./icons";
 
 /**
- * The sixty-eight names, verbatim: the set is exactly this and no more.
+ * The sixty-nine names, verbatim: the set is exactly this and no more.
  *
  * The first twenty are the app's own vocabulary (the library, the
  * editor, the knowledge base, the chat, the settings, the shell's
@@ -114,6 +114,9 @@ const THE_SET = [
   "soundOff",
   "fullscreen",
   "fullscreenExit",
+  // The settings surface's info card (W7 settings-allgemein-2 — the draft's
+  // info-circle mark on the Offline-Kompensation card).
+  "info",
 ] as const satisfies readonly IconName[];
 
 /** Every attribute a rendered glyph carries, with its pinned value at the default size. */
@@ -314,7 +317,7 @@ function geometryValues(svg: SVGSVGElement): number[] {
 afterEach(cleanup);
 
 describe("icons", () => {
-  it("carries exactly the sixty-eight names of the set, verbatim", () => {
+  it("carries exactly the sixty-nine names of the set, verbatim", () => {
     expect(Object.keys(icons).sort()).toEqual([...THE_SET].sort());
   });
 
@@ -349,10 +352,10 @@ describe("icons", () => {
     ).toEqual([]);
   });
 
-  it("keeps all sixty-eight drawings distinct — cross dismisses, close folds a panel", () => {
+  it("keeps all sixty-nine drawings distinct — cross dismisses, close folds a panel", () => {
     // cross and close must never converge on the same ✕: a dismissal drops
     // content, a close folds a panel away — and no two names may share a drawing.
-    expect(new Set(THE_SET.map((name) => JSON.stringify(icons[name]))).size).toBe(68);
+    expect(new Set(THE_SET.map((name) => JSON.stringify(icons[name]))).size).toBe(69);
     expect(icons.close).not.toEqual(icons.cross);
   });
 

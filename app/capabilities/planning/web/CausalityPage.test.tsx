@@ -528,6 +528,13 @@ describe("the chain renders the novel's real scenes", () => {
     expect(within(bento).getByText(de["planning.causality.bento2Title"])).toBeTruthy();
     expect(within(bento).getByText(de["planning.causality.bento3Title"])).toBeTruthy();
 
+    // The bottom disclaimer renders its one honest line — the draft's
+    // retired sentence, reworded without its banned vocabulary (even
+    // negated, the words stay out).
+    const note = screen.getByTestId("causality-note");
+    expect(within(note).getByText(de["planning.causality.laterNote"])).toBeTruthy();
+    expect(note.textContent ?? "").not.toMatch(/Simulation|Verzweigung|Divergenz|Paradox|Twist|What-If/i);
+
     // The draft's Zum Manuskript door walks to the workspace.
     fireEvent.click(screen.getByTestId("causality-manuscript-door"));
     await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}`));

@@ -4,8 +4,9 @@
  * `three-act-storyboard-2` draft onto the shell's tokens. The novel's real
  * StoryboardRead stands the board:
  *
- * - The structure switcher offers the five real ids (three-act the default
- *   every unremapped novel reads); picking another stands the remap
+ * - The structure switcher offers the generated registry's rows (the
+ *   server's own five structures — three-act the default every unremapped
+ *   novel reads); picking another stands the remap
  *   notice, whose apply opens the server's own two-step contract — the
  *   preview (`confirm: false`), then the confirm that writes exactly the
  *   previewed mapping. An unknown structure id surfaces the API's refusal
@@ -32,8 +33,8 @@
  * The page reads the real API through the shell's query seam and imports
  * no other capability (rule 1).
  */
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useCallback, useMemo, useState } from "react";
+import { Link, useBlocker, useNavigate, useParams } from "@tanstack/react-router";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
@@ -49,16 +50,13 @@ import { FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 
 import type { StoryboardChapter, StoryboardStage } from "@shell/lib/api/client";
+import { structures } from "@shell/lib/generated/structures";
+
 import { SceneDrillIn } from "./sceneDrillIn";
 import { DiscardDraftDialog, RemapDialog, stageLabel } from "./storyboardDialogs";
 
 const TIMELINE_PATH = "/novels/$novelId/planning/timeline";
 const CAUSALITY_PATH = "/novels/$novelId/planning/causality";
-
-/** The five real structure ids, the switcher's own order — the client's
- *  mirror of the server registry for the labels alone; the stages, the
- *  default and the remap all stay the server's own answer. */
-const STRUCTURE_IDS = ["three-act", "heros-journey", "save-the-cat", "five-act", "seven-point"] as const;
 
 /** The sync dot's tone per real status — the mark, the label names it. */
 const SYNC_DOT: Record<string, string> = {
@@ -131,6 +129,25 @@ export function StoryboardPage() {
   const [switchGuardId, setSwitchGuardId] = useState<string | null>(null);
   const handleDirtyChange = useCallback((dirty: boolean) => setDockDirty(dirty), []);
 
+  // The blocker reads the live dirtiness through a ref, so its callbacks
+  // stay stable (a fresh closure per render would re-register the history
+  // block — the workspace LeaveGuard's own pattern).
+  const dockDirtyRef = useRef(false);
+  dockDirtyRef.current = dockDirty;
+
+  /** The route-leave guard (#928): the workspace door, a sub-nav sibling
+   *  and the browser's back are router navigations, and while the copy
+   *  stands dirty each of them asks first — the same confirm the chapter
+   *  switch speaks (the workspace LeaveGuard's blocker; the browser's own
+   *  beforeunload rides along for a refresh, which no dialog can catch).
+   *  Cancelling resets the leave, the copy keeps standing; a named loss
+   *  proceeds and folds with the page. */
+  const blocker = useBlocker({
+    shouldBlockFn: () => dockDirtyRef.current,
+    enableBeforeUnload: () => dockDirtyRef.current,
+    withResolver: true,
+  });
+
   /** The drill-in's selection door: a clean switch walks straight, a
    *  dirty one hands the click to the discard confirm. */
   const selectChapter = useCallback(
@@ -154,6 +171,16 @@ export function StoryboardPage() {
     [stageList],
   );
   const structureId = data?.structure_id ?? "three-act";
+  // The selected chapter and its display title — both dirty-copy guards
+  // name the loss through it (an empty title says so, never an empty
+  // string in the dialog's body).
+  const selectedChapter = boardChapters.find((chapter) => chapter.chapter_id === selectedId) ?? null;
+  const selectedTitle =
+    selectedChapter === null
+      ? ""
+      : selectedChapter.title.trim() === ""
+        ? t("planning.crud.untitledChapter")
+        : selectedChapter.title;
 
   // The fan's per-chapter scene counts — only a complete, error-free fan
   // may count (the timeline counters' own rule).
@@ -367,23 +394,25 @@ export function StoryboardPage() {
             )}
           </div>
         </div>
-        {/* The structure switcher — the five real ids, the standing one
-            lifted; picking another prepares the remap without writing. */}
+        {/* The structure switcher — the generated registry's rows, one
+            option per structure the server registers (a new structure
+            appears by existing, zero switcher edits); picking another
+            prepares the remap without writing. */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-rule/70 pt-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted">
               <Icon name="schema" size={14} /> {t("planning.storyboard.structureLabel")}
             </span>
             <div data-testid="storyboard-structure-switcher" className="flex flex-wrap gap-1">
-              {STRUCTURE_IDS.map((id) => {
-                const active = id === structureId;
+              {structures.map((structure) => {
+                const active = structure.id === structureId;
                 return (
                   <button
-                    key={id}
+                    key={structure.id}
                     type="button"
                     aria-pressed={active}
                     onClick={() => {
-                      if (!active) setPendingStructure(id);
+                      if (!active) setPendingStructure(structure.id);
                     }}
                     className={`flex items-center gap-1 rounded-[var(--radius-control)] px-2.5 py-0.5 text-label shadow-sm transition-colors ${FOCUS} ${
                       active
@@ -392,7 +421,7 @@ export function StoryboardPage() {
                     }`}
                   >
                     {active && <Icon name="check" size={13} />}
-                    {t(`storyboard.structure.${id}` as MessageKey)}
+                    {t(structure.titleKey)}
                   </button>
                 );
               })}
@@ -521,20 +550,38 @@ export function StoryboardPage() {
       )}
 
       {/* The dirty-copy guard — a confirmed switch folds the copy into
-          the new chapter's clean rows; a cancel keeps both standing. */}
+          the new chapter's clean rows; a cancel keeps both standing.
+          It is the standing ask: a route leave fired while it stands is
+          held by the leave blocker and asks after it — the guards queue,
+          one dialog at a time, never stacked (#928's pin). A confirm
+          that folds the copy while a leave stands held releases that
+          leave too: the loss it waited to name was already given, and a
+          fresh leave from the folded dock walks clean. */}
       {switchGuardId !== null && selectedId !== null && (
         <DiscardDraftDialog
-          chapterTitle={
-            boardChapters.find((chapter) => chapter.chapter_id === selectedId)?.title.trim() === ""
-              ? t("planning.crud.untitledChapter")
-              : (boardChapters.find((chapter) => chapter.chapter_id === selectedId)?.title ?? "")
-          }
+          chapterTitle={selectedTitle}
           openerId={`storyboard-select-${switchGuardId}`}
           onCancel={() => setSwitchGuardId(null)}
           onDiscard={() => {
             setSelectedId(switchGuardId);
             setSwitchGuardId(null);
+            if (blocker.status === "blocked") blocker.reset();
           }}
+        />
+      )}
+
+      {/* The route-leave guard (#928) — the dirty copy's second trigger:
+          any navigation away asks the same confirm before the copy folds
+          behind a silent route change. The scrim does not dismiss; focus
+          lands on the safe answer and returns to the page on a cancel.
+          It stands down while the chapter-switch guard's own ask stands
+          over the page — the held leave asks once that answer is given. */}
+      {blocker.status === "blocked" && switchGuardId === null && selectedId !== null && (
+        <DiscardDraftDialog
+          chapterTitle={selectedTitle}
+          openerId="storyboard-page"
+          onCancel={() => blocker.reset()}
+          onDiscard={() => blocker.proceed()}
         />
       )}
 

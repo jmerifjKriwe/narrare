@@ -34,6 +34,7 @@ vi.mock("@shell/lib/api/client", () => ({
 
 import { client, type Chapter, type Novel, type Storyboard } from "@shell/lib/api/client";
 import { catalogs } from "@shell/lib/generated/catalogs";
+import { structures } from "@shell/lib/generated/structures";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 
@@ -60,13 +61,15 @@ function ok(status = 200): Response {
   return new Response(null, { status });
 }
 
-// The five real ids, the switcher's own order (the client mirror of the
-// server registry — the labels are the corrected draft wording).
-const STRUCTURE_IDS = ["three-act", "heros-journey", "save-the-cat", "five-act", "seven-point"] as const;
+// The generated registry is the only list: the test derives its ids from
+// the same import the switcher reads (#929), so a structure added or
+// retired server-side moves every copy at once.
+type StructureId = (typeof structures)[number]["id"];
+const STRUCTURE_IDS: StructureId[] = structures.map((structure) => structure.id);
 
 /** The registry's stage keys per structure — the column order the server
  *  answers, mirrored for building fixtures. */
-const STAGE_KEYS: Record<(typeof STRUCTURE_IDS)[number], string[]> = {
+const STAGE_KEYS: Record<StructureId, string[]> = {
   "three-act": ["setup", "confrontation", "resolution"],
   "heros-journey": [
     "ordinary-world", "call-to-adventure", "refusal", "mentor", "threshold",
@@ -159,7 +162,7 @@ let BOARD_CHAPTERS: Record<string, BoardChapter> = freshBoardChapters();
 
 /** The real interval tiles per structure — three-act is the registry's own
  *  hand-set 25/50/25 split, the rest tile evenly (the backend's own rule). */
-const STAGE_RATIOS: Record<(typeof STRUCTURE_IDS)[number], Array<[number, number]>> = {
+const STAGE_RATIOS: Record<StructureId, Array<[number, number]>> = {
   "three-act": [
     [0.0, 0.25],
     [0.25, 0.75],
@@ -173,7 +176,7 @@ const STAGE_RATIOS: Record<(typeof STRUCTURE_IDS)[number], Array<[number, number
 
 /** The storyboard answer under one structure: every chapter standing in
  *  the column its stage_key names, the stage defs tiling [0,1]. */
-function storyboardRow(structureId: (typeof STRUCTURE_IDS)[number], overrides: Partial<Storyboard> = {}): Storyboard {
+function storyboardRow(structureId: StructureId, overrides: Partial<Storyboard> = {}): Storyboard {
   const keys = STAGE_KEYS[structureId];
   const ratios = STAGE_RATIOS[structureId];
   const chapters = Object.values(BOARD_CHAPTERS);
@@ -251,7 +254,7 @@ const AGGREGATES = new Map([
 
 // The mutable scenario: the standing structure the storyboard answers
 // with, the remap answers, and the outage toggles.
-let structure: (typeof STRUCTURE_IDS)[number];
+let structure: StructureId;
 let storyboardFail: boolean;
 let chaptersFail: boolean;
 let scenesFail: boolean;
@@ -307,7 +310,7 @@ function baseGet(path: string, init?: { params?: { path?: { chapter_id?: string 
  *  to the target structure's even suggestion (the fixtures' positions are
  *  0, 1, 2 of a three-chapter novel, so the ratio thirds decide). */
 function remapAnswer(target: string, confirm: boolean) {
-  const keys = STAGE_KEYS[target as (typeof STRUCTURE_IDS)[number]];
+  const keys = STAGE_KEYS[target as StructureId];
   const chapters = Object.values(BOARD_CHAPTERS);
   const mapping = chapters.map((chapter) => ({
     chapter_id: chapter.chapter_id,
@@ -403,7 +406,7 @@ beforeEach(() => {
       }
       const target = init?.body?.structure_id ?? "three-act";
       const confirm = init?.body?.confirm ?? false;
-      if (confirm) structure = target as (typeof STRUCTURE_IDS)[number];
+      if (confirm) structure = target as StructureId;
       return Promise.resolve({ data: remapAnswer(target, confirm), response: ok() });
     }
     throw new Error(`unexpected POST: ${_path}`);
@@ -1408,5 +1411,132 @@ describe("the catalogs", () => {
     expect(catalogs.en["planning.storyboard.stageShare"]).toContain("words");
     expect(catalogs.en["planning.storyboard.stageShare"]).not.toContain("W.");
     expect(catalogs.fr["planning.storyboard.stageShare"]).toContain("mots");
+  });
+});
+
+describe("the route-leave guard (#928)", () => {
+  /** Chapter 2's copy, dirtied through the edit dialog — the shared
+   *  preamble of the route-leave pins. */
+  async function dirtySignalCopy() {
+    const cards = await screen.findAllByTestId("storyboard-card");
+    fireEvent.click(within(cards[1]).getByText("Das Signal im Permafrost"));
+    const dock = await screen.findByTestId("drill-in");
+    const scenes = await within(dock).findAllByTestId("drill-in-scene");
+    fireEvent.click(within(scenes[0]).getByRole("button", { name: de["planning.storyboard.editScene"] }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(de["planning.storyboard.purpose"]), {
+      target: { value: "Wähle mich." },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: de["planning.crud.saveChanges"] }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    return dock;
+  }
+
+  it("a dirty draft asks before any route leave — the same confirm the chapter switch speaks", async () => {
+    const router = await renderStoryboard();
+    const dock = await dirtySignalCopy();
+
+    // The dock's workspace door (a Link) fires a route leave: the blocker
+    // holds it and the confirm stands, naming the chapter the copy belongs
+    // to — the page never folds the draft behind a silent navigation.
+    fireEvent.click(within(dock).getByRole("link", { name: de["planning.storyboard.openWorkspace"] }));
+    const guard = await screen.findByRole("alertdialog");
+    expect(within(guard).getByText(/Das Signal im Permafrost/)).toBeTruthy();
+    expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/planning/storyboard`);
+
+    // The safe answer keeps BOTH: the page and the copy.
+    fireEvent.click(within(guard).getByRole("button", { name: de["planning.crud.cancel"] }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/planning/storyboard`);
+    expect(within(screen.getByTestId("drill-in")).getByText(/Wähle mich\./)).toBeTruthy();
+
+    // The named loss proceeds — the route completes, the copy folds with
+    // the page it belonged to.
+    fireEvent.click(within(screen.getByTestId("drill-in")).getByRole("link", { name: de["planning.storyboard.openWorkspace"] }));
+    const second = await screen.findByRole("alertdialog");
+    fireEvent.click(within(second).getByRole("button", { name: de["planning.storyboard.discardDraftConfirm"] }));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}`));
+    expect(await screen.findByText("workspace face")).toBeTruthy();
+  });
+
+  it("a sub-nav sibling door asks too, and a clean draft leaves without a dialog", async () => {
+    const router = await renderStoryboard();
+    await dirtySignalCopy();
+
+    // The subbar's timeline door is a route leave like any other.
+    fireEvent.click(screen.getByTestId("storyboard-timeline-door"));
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: de["planning.storyboard.discardDraftConfirm"] }));
+    await waitFor(() => expect(router.state.location.pathname).toContain("/planning/timeline"));
+
+    // A clean draft never asks: a fresh page walks straight out.
+    await renderStoryboard();
+    await screen.findAllByTestId("storyboard-card");
+    fireEvent.click(screen.getByTestId("storyboard-timeline-door"));
+    await waitFor(() => expect(router.state.location.pathname).toContain("/planning/timeline"));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("a leave fired while the switch guard stands queues behind it — one dialog at a time", async () => {
+    const router = await renderStoryboard();
+    await dirtySignalCopy();
+
+    // The chapter-switch guard's ask stands.
+    const ankunft = screen.getAllByTestId("storyboard-card").find((card) =>
+      within(card).queryByText("Ankunft auf Horizon Station") !== null,
+    ) as HTMLElement;
+    fireEvent.click(within(ankunft).getByText("Ankunft auf Horizon Station"));
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+
+    // A programmatic route leave fires mid-dialog: the resolver holds it
+    // exactly like a dock-door click, and the standing ask stays standing
+    // — exactly ONE alertdialog, the switch confirm, no leave dialog
+    // stacking a second question over the first.
+    void router.navigate({ to: WORKSPACE_PATH, params: { novelId: NOVEL_ID } });
+    await waitFor(() => expect(screen.getAllByRole("alertdialog")).toHaveLength(1));
+    expect(within(screen.getByRole("alertdialog")).getByText(/Das Signal im Permafrost/)).toBeTruthy();
+    expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/planning/storyboard`);
+
+    // The first ask answered (cancel: the copy keeps standing), the held
+    // leave now asks its own — still exactly one at a time, the page
+    // never moved.
+    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: de["planning.crud.cancel"] }));
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    expect(screen.getAllByRole("alertdialog")).toHaveLength(1);
+    expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/planning/storyboard`);
+
+    // The leave's own safe answer stands everything down: page and copy.
+    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: de["planning.crud.cancel"] }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/planning/storyboard`);
+    expect(within(screen.getByTestId("drill-in")).getByText(/Wähle mich\./)).toBeTruthy();
+    expect(within(screen.getByTestId("drill-in")).getByText(/KAPITEL 2/)).toBeTruthy();
+  });
+
+  it("a confirmed switch releases a held leave cleanly — no second ask over the folded copy", async () => {
+    const router = await renderStoryboard();
+    await dirtySignalCopy();
+
+    // The switch ask stands, then a programmatic leave is held behind it.
+    const ankunft = screen.getAllByTestId("storyboard-card").find((card) =>
+      within(card).queryByText("Ankunft auf Horizon Station") !== null,
+    ) as HTMLElement;
+    fireEvent.click(within(ankunft).getByText("Ankunft auf Horizon Station"));
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    void router.navigate({ to: WORKSPACE_PATH, params: { novelId: NOVEL_ID } });
+    await waitFor(() => expect(screen.getAllByRole("alertdialog")).toHaveLength(1));
+
+    // The named loss is given to the switch ask: the copy folds into
+    // chapter 1, and the held leave dies with it — the loss it waited to
+    // name was already given, so its dialog never mounts, no spurious
+    // ask stands over the now-clean chapter, and the page stays where
+    // the confirmed switch put it.
+    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: de["planning.storyboard.discardDraftConfirm"] }));
+    await waitFor(() => expect(within(screen.getByTestId("drill-in")).getByText(/KAPITEL 1/)).toBeTruthy());
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.queryAllByRole("alertdialog")).toHaveLength(0);
+    expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/planning/storyboard`);
+    // The fold took the copy with the switch — chapter 1's clean rows stand.
+    expect(within(screen.getByTestId("drill-in")).queryByText(/Wähle mich\./)).toBeNull();
   });
 });

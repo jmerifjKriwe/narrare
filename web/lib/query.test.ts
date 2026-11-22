@@ -9,7 +9,7 @@
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createElement, type ReactNode } from "react";
-import { renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor, act } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./api/client", async (importOriginal) => {
@@ -41,8 +41,12 @@ import {
   useNovelScenes,
   useNovelsQuery,
   usePassageSearch,
+  useSettings,
+  useSettingsQuery,
   useSourceSearch,
+  useTheme,
   useTimelineEvents,
+  useUpdateSettings,
   useUpdateTimelineEvent,
   useUploadDocument,
   invalidateChapterScenes,
@@ -572,5 +576,156 @@ describe("sameNovelPlaceholder", () => {
 
   it("answers undefined when there is no previous query", () => {
     expect(placeholder(previous, undefined)).toBeUndefined();
+  });
+});
+
+// --- The settings surface's seams (W7 Task 3) -------------------------------
+
+const SETTINGS_ROW = {
+  locale: "de",
+  theme: "light",
+  author_name: "H. Calder",
+  daily_goal_words: 500,
+  email: "h.calder@station7.de",
+};
+
+describe("useSettings — the settings surface's strict read", () => {
+  it("fills [\"settings\",\"read\"] with the row a 200 carried", async () => {
+    api.GET.mockResolvedValueOnce({ data: SETTINGS_ROW, response: ok() });
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual(SETTINGS_ROW);
+    expect(queryClient.getQueryData(["settings", "read"])).toEqual(SETTINGS_ROW);
+  });
+
+  it("keeps a refusal as the error it is — never dressed-up nulls", async () => {
+    api.GET.mockResolvedValueOnce({ data: undefined, response: new Response(null, { status: 500 }) });
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.data).toBeUndefined();
+  });
+
+  it("a network failure is an error too — the outage face's own trigger", async () => {
+    api.GET.mockRejectedValueOnce(new Error("offline"));
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+
+  it("the chrome's write invalidation reaches this key — one family, one refetch", async () => {
+    api.GET.mockImplementation(async () => ({ data: SETTINGS_ROW, response: ok() }));
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const before = api.GET.mock.calls.filter(([path]) => path === "/api/settings").length;
+    await queryClient.invalidateQueries({ queryKey: ["settings"] });
+    await waitFor(() =>
+      expect(api.GET.mock.calls.filter(([path]) => path === "/api/settings").length).toBeGreaterThan(
+        before,
+      ),
+    );
+  });
+});
+
+describe("useUpdateSettings — the preference write, the novel-update rule", () => {
+  it("carries the locale always and only the dirtied profile fields", async () => {
+    api.PATCH.mockResolvedValueOnce({ data: SETTINGS_ROW, response: ok() });
+    const { result } = renderHook(() => useUpdateSettings(), { wrapper });
+    result.current.mutate({ locale: "de", authorName: "Neuer Name" });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const call = api.PATCH.mock.calls.find(([path]) => path === "/api/settings");
+    expect(call?.[1].body).toEqual({ locale: "de", author_name: "Neuer Name" });
+    // Absent keeps: the body names no goal key at all — the server's
+    // model_fields_set reads the absence as "no change".
+    expect("daily_goal_words" in (call?.[1].body ?? {})).toBe(false);
+  });
+
+  it("a carried null clears — the name back to the email label, the goal to no goal", async () => {
+    api.PATCH.mockResolvedValueOnce({ data: { ...SETTINGS_ROW, author_name: null }, response: ok() });
+    const { result } = renderHook(() => useUpdateSettings(), { wrapper });
+    result.current.mutate({ locale: null, authorName: null, dailyGoalWords: null });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const call = api.PATCH.mock.calls.find(([path]) => path === "/api/settings");
+    expect(call?.[1].body).toEqual({ locale: null, author_name: null, daily_goal_words: null });
+  });
+
+  it("a settled write invalidates the settings prefix beside the activity key", async () => {
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") return { data: SETTINGS_ROW, response: ok() };
+      if (path === "/api/writing/activity") {
+        return { data: { points: [], streak_days: 0, weekly_average: 0, today_words: 0, daily_goal_words: null, goal_met: false, goal_remaining: 0 }, response: ok() };
+      }
+      throw new Error(`unexpected request: ${path}`);
+    });
+    api.PATCH.mockResolvedValue({ data: SETTINGS_ROW, response: ok() });
+    const settings = renderHook(() => useSettings(), { wrapper });
+    const activity = renderHook(() => useActivityQuery(), { wrapper });
+    await waitFor(() => expect(settings.result.current.isSuccess).toBe(true));
+    await waitFor(() => expect(activity.result.current.isSuccess).toBe(true));
+    const reads = () => api.GET.mock.calls.length;
+    const before = reads();
+    const { result } = renderHook(() => useUpdateSettings(), { wrapper });
+    result.current.mutate({ locale: "de", dailyGoalWords: 750 });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await waitFor(() => expect(reads()).toBeGreaterThan(before + 1));
+  });
+
+  it("a 422 refusal carries status and detail across the mutation boundary", async () => {
+    api.PATCH.mockResolvedValueOnce({
+      error: { detail: [{ loc: ["body", "daily_goal_words"], msg: "out of bounds" }] },
+      response: new Response(null, { status: 422 }),
+    });
+    const { result } = renderHook(() => useUpdateSettings(), { wrapper });
+    result.current.mutate({ locale: "de", dailyGoalWords: 0 });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect((result.current.error as Error & { status?: number }).status).toBe(422);
+    expect((result.current.error as Error & { detail?: unknown }).detail).toEqual([
+      { loc: ["body", "daily_goal_words"], msg: "out of bounds" },
+    ]);
+  });
+});
+
+describe("useTheme — the one theme write, the rail's and the page's seam", () => {
+  it("applies at once, PATCHes the theme door, refreshes the cached row", async () => {
+    api.GET.mockResolvedValue({ data: SETTINGS_ROW, response: ok() });
+    const probe = renderHook(() => useSettingsQuery(), { wrapper });
+    await waitFor(() => expect(probe.result.current.isSuccess).toBe(true));
+    api.PATCH.mockResolvedValueOnce({ data: { theme: "dark" }, response: ok() });
+    const { result } = renderHook(() => useTheme(), { wrapper });
+    expect(result.current.theme).toBe("light");
+    const before = api.GET.mock.calls.filter(([path]) => path === "/api/settings").length;
+    await act(async () => {
+      await result.current.setTheme("dark");
+    });
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(api.PATCH).toHaveBeenCalledWith("/api/settings/theme", { body: { theme: "dark" } });
+    // The invalidation is the row's refetch — the next reader sees the write.
+    await waitFor(() =>
+      expect(api.GET.mock.calls.filter(([path]) => path === "/api/settings").length).toBeGreaterThan(
+        before,
+      ),
+    );
+  });
+
+  it("Systemstandard clears the attribute and writes the carried null", async () => {
+    queryClient.setQueryData(["settings"], { ...SETTINGS_ROW, theme: "dark" });
+    api.GET.mockResolvedValue({ data: { ...SETTINGS_ROW, theme: null }, response: ok() });
+    api.PATCH.mockResolvedValueOnce({ data: { theme: null }, response: ok() });
+    const { result } = renderHook(() => useTheme(), { wrapper });
+    await act(async () => {
+      await result.current.setTheme(null);
+    });
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+    expect(api.PATCH).toHaveBeenCalledWith("/api/settings/theme", { body: { theme: null } });
+  });
+
+  it("a refusal restores the prior appearance — never a half-applied choice", async () => {
+    queryClient.setQueryData(["settings"], { ...SETTINGS_ROW, theme: "light" });
+    api.PATCH.mockResolvedValueOnce({ data: undefined, response: new Response(null, { status: 503 }) });
+    const { result } = renderHook(() => useTheme(), { wrapper });
+    await act(async () => {
+      await result.current.setTheme("dark");
+    });
+    expect(document.documentElement.dataset.theme).toBe("light");
+    // A refused write asks nothing: no invalidation follows a refusal.
+    expect(api.GET.mock.calls.length).toBe(0);
   });
 });

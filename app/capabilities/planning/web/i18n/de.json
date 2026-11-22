@@ -16,6 +16,7 @@
   "planning.causality.eyebrow": "Dramaturgische Logik",
   "planning.causality.forces": "Erzwingt",
   "planning.causality.gapStatus": "Status: {count, plural, one {# offene Lücke} other {# offene Lücken}}",
+  "planning.causality.laterNote": "Die Kausalitätsleiste spiegelt ausschließlich deine realen Szeneneinträge wider — alles darüber hinaus kommt mit dem weiteren Aufbau.",
   "planning.causality.loadFailed": "Die Kausalitätsleiste ist nicht erreichbar.",
   "planning.causality.loading": "Lädt…",
   "planning.causality.manuscriptDoor": "Zum Manuskript",

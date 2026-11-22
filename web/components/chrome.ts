@@ -24,6 +24,23 @@ export interface ChromeNovels {
   bookId: string | null;
 }
 
+/**
+ * The initials the chrome's two user blocks wear (the rail's avatar, the
+ * topbar's menu tile): the first and last word's initial of the author
+ * name, or of the email's local part — „H. Calder" and „h.calder@…" both
+ * read HC. No source, no initials (the person glyph answers). One
+ * definition here, because two faces rendering different initials for one
+ * row would be a lie one of them tells.
+ */
+export function initialsFrom(source: string | null): string | null {
+  if (source === null) return null;
+  const words = source.trim().split(/[\s._-]+/).filter((word) => word.length > 0);
+  if (words.length === 0) return null;
+  const first = Array.from(words[0].toUpperCase())[0] ?? "";
+  const last = words.length > 1 ? (Array.from(words[words.length - 1].toUpperCase())[0] ?? "") : "";
+  return first + last || null;
+}
+
 export function useChromeNovels(): ChromeNovels {
   const novels = useNovelsQuery();
   const bookId = useRouterState({
