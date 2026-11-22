@@ -366,6 +366,37 @@ async def test_a_refused_delete_never_touches_the_keychain(
     assert erased == [UUID(str(provider["id"]))]
 
 
+async def test_a_failed_erase_stops_the_delete_and_the_row_stays_listed(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The erase runs after the flush, and a failure there aborts the delete.
+
+    The delete's order — flush first, erase second, commit last — rests on
+    this pin: moving ``erase_key`` after the commit keeps every other test
+    green, and a key store that fails at the erase must leave the row
+    standing. The session never commits, so the provider is still listed
+    and its key still loads from its column; the 503 is the router's
+    mapping of the named key-store refusal.
+    """
+
+    def broken_erase(provider_id: UUID) -> None:
+        raise KeyringError("the backend died at the erase")
+
+    monkeypatch.setattr(providers_service, "erase_key", broken_erase)
+    provider = await _create(client)
+
+    refused = await client.delete(f"/api/settings/providers/{provider['id']}")
+    assert refused.status_code == 503
+    assert "key store" in refused.json()["detail"]
+
+    listed = (await client.get("/api/settings/providers")).json()
+    assert [entry["name"] for entry in listed] == [provider["name"]]
+    # The stored key is intact: nothing was erased behind a refused delete.
+    provider_id = UUID(str(provider["id"]))
+    [column] = await _stored(provider_id, "api_key")
+    assert load_key(provider_id, str(column)) == SECRET
+
+
 async def test_a_delete_the_guard_cannot_see_still_refuses_as_a_409(
     client: AsyncClient,
 ) -> None:
