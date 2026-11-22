@@ -575,11 +575,16 @@ async def test_a_missing_scene_is_still_a_404_on_the_plain_tier() -> None:
     """Resolution first moved the builder behind it; the normal paths keep 404.
 
     No profile anywhere and the environment tier resolving to the fake: the
-    missing scene is refused with HTTP 404 exactly as before the reorder.
+    missing scene is refused with HTTP 404 and the door's own detail string,
+    exactly as before the reorder, and no audit row claims a call that never
+    ran.
     """
     async with _client() as client:
         response = await client.post(f"/api/writing/scenes/{uuid4()}/continue")
     assert response.status_code == 404
+    assert response.json()["detail"] == "scene not found"
+    async with Session() as session:
+        assert await session.scalar(text("SELECT count(*) FROM llm_calls")) == 0
 
 
 async def test_a_broken_key_wins_over_a_missing_scene(

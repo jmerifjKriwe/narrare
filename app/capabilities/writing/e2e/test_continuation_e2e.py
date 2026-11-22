@@ -1,11 +1,14 @@
 """Scene continuation on the real stack (W4 §5): the SSE door, end to end.
 
-The endpoint ``POST /api/writing/scenes/{id}/continue`` is driven through the
-real API and the real Postgres, the fake provider the one permitted boundary
-fake (rule 2): the stream's data frames add up to its deterministic prose, the
-done event closes it, and the call leaves its audit row. The missing scene is
-the honest 404. The coded refusal frames (key-unavailable, prompt-refused incl.
-budget) and the foreign-user boundary are pinned byte-for-byte by the
+The endpoint ``POST /api/writing/scenes/{id}/continue`` is driven on the real
+server and the real Postgres, the fake provider the one permitted boundary
+fake (rule 2) — what the in-process oracle cannot prove: the stream's data
+frames add up to its deterministic prose, the done event closes it, the call
+leaves its audit row, and the response carries the door's own cache-control.
+Everything else about the door — the
+missing scene's 404, the over-long prompt's 422, the coded refusal frames
+(key-unavailable, prompt-refused incl. budget), the prompt that reaches the
+provider byte for byte, and the foreign-user boundary — is pinned by the
 integration oracle (``tests/test_continuation.py``).
 
 The UI legs (W4 Task 16, design G4) ride the same stack: the prompt bar's ask
@@ -23,7 +26,6 @@ and owe no write. Every face clears the axe WCAG A/AA floor, light and dark.
 import json
 import re
 from typing import TYPE_CHECKING
-from uuid import uuid4
 
 import pytest
 from playwright.sync_api import Dialog, Page, Request, expect
@@ -88,55 +90,6 @@ def test_the_scene_continuation_streams_and_audits(installed: object) -> None:
     assert str(novel_id) == str(novel["id"])
     assert response_text == "".join(FakeProvider.CHUNKS)
     assert cost_usd == 0.0
-
-
-def test_a_missing_scene_is_a_404_on_the_real_stack(installed: object) -> None:
-    """The plain tier resolves to the fake; a scene that does not exist is the
-    honest 404, never a stream."""
-    response = continue_scene(str(uuid4()))
-    assert response.status_code == 404
-    assert response.json()["detail"] == "scene not found"
-    assert rows(DATABASE, "SELECT count(*) FROM llm_calls") == [(0,)]
-
-
-def test_a_prompt_rides_the_real_stack_stream(installed: object) -> None:
-    """The optional body (W4 D5) is accepted on the real stack: the stream's
-    frames and the audit row are the bare continuation's own — the prompt
-    changes the prompt alone, and the fake answers it the same way."""
-    novel = create_novel("Der Nebel")
-    chapter = create_chapter(str(novel["id"]), "Ankunft")
-    scene = write_scene(str(chapter["id"]), "Der Nebel kam von See.")
-
-    response = continue_scene(str(scene["id"]), prompt="Lass Mira am Ufer zögern.")
-
-    assert response.status_code == 200
-    assert "".join(_deltas(response.text)) == "".join(FakeProvider.CHUNKS)
-    assert "event: done" in response.text
-    assert "event: error" not in response.text
-    audit = rows(DATABASE, "SELECT task_key, status, novel_id, cost_usd FROM llm_calls")
-    assert len(audit) == 1
-    task_key, status, novel_id, cost_usd = audit[0]
-    assert task_key == "writing.continuation"
-    assert status == "ok"
-    assert str(novel_id) == str(novel["id"])
-    assert cost_usd == 0.0
-
-
-def test_an_overlong_prompt_is_a_422_on_the_real_stack(installed: object) -> None:
-    """The bound refusal is the schema's own on the real stack: a JSON 422
-    naming the field before any stream — no partial answer, no audit row.
-    The public helper carries the over-long prompt (the private-client raw
-    post it replaced asked the identical request)."""
-    novel = create_novel("Der Nebel")
-    chapter = create_chapter(str(novel["id"]), "Ankunft")
-    scene = write_scene(str(chapter["id"]), "Der Nebel kam von See.")
-
-    response = continue_scene(str(scene["id"]), prompt="X" * 2001)
-
-    assert response.status_code == 422
-    assert response.headers["content-type"].startswith("application/json")
-    assert response.json()["detail"][0]["loc"] == ["body", "prompt"]
-    assert rows(DATABASE, "SELECT count(*) FROM llm_calls") == [(0,)]
 
 
 # --- The UI legs (W4 Task 16): ghost text + the prompt bar -----------------
