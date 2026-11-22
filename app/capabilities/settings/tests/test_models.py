@@ -532,6 +532,55 @@ async def test_moving_a_model_to_another_provider_stores_the_new_pointer(
     assert str(stored_provider) == geist.json()["id"]
 
 
+async def test_a_patch_sets_every_column_the_schema_can_patch(client: AsyncClient) -> None:
+    """Every column ``ModelUpdate`` can patch survives one full patch.
+
+    The update's copy list is hand-written, so a column added to the schema
+    and missed there is silently not patched — this exact class bit twice in
+    one wave. The patch below names every schema field, so the first assert
+    fails when a field joins the schema without joining this table — and the
+    stored row at the end fails when it joins this table without joining the
+    service's copy list.
+    """
+    first = await _create_provider(client, "Erster")
+    second = await _create_provider(client, "Zweiter")
+    holder = await _create(client, str(first["id"]), "Träger")  # the first model is the default
+    model = await _create(client, str(first["id"]), "Vorher")
+    patch = {
+        "name": "Nachher",
+        "provider_id": second["id"],
+        "model": "vendor-max",
+        "context_window": 8192,
+        "max_output_tokens": 2048,
+        "temperature": 1.5,
+        "request_timeout": 120.0,
+        "is_default": True,
+    }
+    assert set(patch) == set(ModelUpdate.model_fields)
+
+    patched = await client.patch(f"/api/settings/models/{model['id']}", json=patch)
+    assert patched.status_code == 200, patched.text
+
+    # The stored row carries every patched column, fresh from the table.
+    stored = dict(
+        zip(sorted(patch), await _stored(UUID(str(model["id"])), *sorted(patch)), strict=True)
+    )
+    assert stored == {
+        "context_window": 8192,
+        "is_default": True,
+        "max_output_tokens": 2048,
+        "model": "vendor-max",
+        "name": "Nachher",
+        "provider_id": UUID(str(second["id"])),
+        "request_timeout": 120.0,
+        "temperature": 1.5,
+    }
+    # And the default moved with the flag: the old holder stands down.
+    listed = (await client.get("/api/settings/models")).json()
+    holder_row = next(entry for entry in listed if entry["id"] == holder["id"])
+    assert holder_row["is_default"] is False
+
+
 async def test_a_model_cannot_be_patched_onto_another_users_provider(
     client: AsyncClient,
 ) -> None:
