@@ -2,10 +2,11 @@
 
 The endpoint ``POST /api/writing/scenes/{id}/continue`` is driven on the real
 server and the real Postgres, the fake provider the one permitted boundary
-fake (rule 2) — what the in-process oracle cannot prove: the stream's data
-frames add up to its deterministic prose, the done event closes it, the call
-leaves its audit row, and the response carries the door's own cache-control.
-Everything else about the door — the
+fake (rule 2). The frames, the done event and the audit row are already pinned
+in process; this leg proves they survive a real HTTP server — the SSE framing
+and the door's own content-type and cache-control headers on the wire, and the
+audit row written by the deployed stack. The response is read whole, so it
+does not prove incremental delivery. Everything else about the door — the
 missing scene's 404, the over-long prompt's 422, the coded refusal frames
 (key-unavailable, prompt-refused incl. budget), the prompt that reaches the
 provider byte for byte, and the foreign-user boundary — is pinned by the
@@ -73,7 +74,7 @@ def test_the_scene_continuation_streams_and_audits(installed: object) -> None:
     assert response.headers["content-type"].startswith("text/event-stream")
     assert response.headers["cache-control"] == "no-cache"
     deltas = _deltas(response.text)
-    assert len(deltas) > 1  # streamed, not one buffered blob
+    assert len(deltas) > 1  # framed per chunk, not one data frame
     assert "".join(deltas) == "".join(FakeProvider.CHUNKS)
     assert "event: done" in response.text
     assert "event: error" not in response.text
