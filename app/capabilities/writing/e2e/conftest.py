@@ -139,18 +139,15 @@ def patch_scene(scene_id: str, **fields: Any) -> dict[str, Any]:
     return scene
 
 
-def continue_scene(scene_id: str, *, prompt: str | None = None) -> httpx.Response:
+def continue_scene(scene_id: str) -> httpx.Response:
     """Stream a scene continuation through the real stack — the SSE door (W4 §5).
 
     The fake provider answers deterministically, so the response carries the
     whole frame sequence (data deltas, then done or error). The response is
-    returned read: status, headers and text survive the client's close. A
-    carried prompt rides the optional body (W4 D5); without one the request
-    keeps today's bare shape — no body at all."""
+    returned read: status, headers and text survive the client's close. The
+    request is bare — no body at all."""
     with _client() as client:
-        if prompt is None:
-            return client.post(f"/api/writing/scenes/{scene_id}/continue")
-        return client.post(f"/api/writing/scenes/{scene_id}/continue", json={"prompt": prompt})
+        return client.post(f"/api/writing/scenes/{scene_id}/continue")
 
 
 def get_novel(novel_id: str) -> dict[str, Any]:
