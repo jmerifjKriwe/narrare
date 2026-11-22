@@ -12,13 +12,13 @@ window gate and the assignments round out the surface.
 
 import asyncio
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 import pytest
 from cryptography.fernet import Fernet
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
+from sqlalchemy import Select, text
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 import app.kernel.llm.catalog as catalog
@@ -532,6 +532,55 @@ async def test_moving_a_model_to_another_provider_stores_the_new_pointer(
     assert str(stored_provider) == geist.json()["id"]
 
 
+async def test_a_patch_sets_every_column_the_schema_can_patch(client: AsyncClient) -> None:
+    """Every column ``ModelUpdate`` can patch survives one full patch.
+
+    The update's copy list is hand-written, so a column added to the schema
+    and missed there is silently not patched — this exact class bit twice in
+    one wave. The patch below names every schema field, so the first assert
+    fails when a field joins the schema without joining this table — and the
+    stored row at the end fails when it joins this table without joining the
+    service's copy list.
+    """
+    first = await _create_provider(client, "Erster")
+    second = await _create_provider(client, "Zweiter")
+    holder = await _create(client, str(first["id"]), "Träger")  # the first model is the default
+    model = await _create(client, str(first["id"]), "Vorher")
+    patch = {
+        "name": "Nachher",
+        "provider_id": second["id"],
+        "model": "vendor-max",
+        "context_window": 8192,
+        "max_output_tokens": 2048,
+        "temperature": 1.5,
+        "request_timeout": 120.0,
+        "is_default": True,
+    }
+    assert set(patch) == set(ModelUpdate.model_fields)
+
+    patched = await client.patch(f"/api/settings/models/{model['id']}", json=patch)
+    assert patched.status_code == 200, patched.text
+
+    # The stored row carries every patched column, fresh from the table.
+    stored = dict(
+        zip(sorted(patch), await _stored(UUID(str(model["id"])), *sorted(patch)), strict=True)
+    )
+    assert stored == {
+        "context_window": 8192,
+        "is_default": True,
+        "max_output_tokens": 2048,
+        "model": "vendor-max",
+        "name": "Nachher",
+        "provider_id": UUID(str(second["id"])),
+        "request_timeout": 120.0,
+        "temperature": 1.5,
+    }
+    # And the default moved with the flag: the old holder stands down.
+    listed = (await client.get("/api/settings/models")).json()
+    holder_row = next(entry for entry in listed if entry["id"] == holder["id"])
+    assert holder_row["is_default"] is False
+
+
 async def test_a_model_cannot_be_patched_onto_another_users_provider(
     client: AsyncClient,
 ) -> None:
@@ -921,6 +970,41 @@ async def test_an_interrupted_stream_leaves_the_model_unmarked(client: AsyncClie
     )
     assert row["last_error_code"] == "provider-auth"
     assert row["last_error_at"] is not None
+
+
+async def test_the_failure_mark_reads_three_columns_never_the_whole_row(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The failure query is a projection: ``status``, ``error_code``, ``created_at``.
+
+    One newest-first query runs per listed model on every settings load, and
+    a revert to a whole-entity ``select(LlmCall)`` would drag ``prompt`` and
+    ``response`` — up to 64 KB each of text no mark reads — across the wire
+    times every model, while staying green. The pin is the statement's own
+    column list, captured where the service runs it.
+    """
+    provider = await _create_provider(client)
+    model = await _create(client, str(provider["id"]))
+    async with Session() as session:
+        await _audit_call(session, profile_id=str(model["id"]), error_code="provider-auth")
+
+    async with Session() as session:
+        service = ModelService(session, LOCAL_USER_ID)
+        pairs = await service.list()
+        captured: list[Select[Any]] = []
+        original_execute = session.execute
+
+        async def spy(statement: Select[Any]) -> object:
+            captured.append(statement)
+            return await original_execute(statement)
+
+        monkeypatch.setattr(session, "execute", spy)
+        states = await service.states(pairs)
+
+    [statement] = captured  # one newest-first query per listed model
+    assert set(statement.selected_columns.keys()) == {"status", "error_code", "created_at"}
+    # And the projection still answers: the planted failure marks the row.
+    assert states[UUID(str(model["id"]))].last_error_code == "provider-auth"
 
 
 async def test_the_model_read_names_whether_the_catalog_prices_it(

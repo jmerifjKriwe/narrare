@@ -42,6 +42,7 @@ from app.capabilities.settings.providers_service import (
 from app.capabilities.settings.schemas import (
     AssignmentRead,
     AssignmentUpdate,
+    DriverRead,
     ModelCreate,
     ModelRead,
     ModelTestResult,
@@ -380,3 +381,21 @@ async def list_tasks(service: ModelServiceDep) -> list[TaskEffectiveRead]:
         )
         for row in rows
     ]
+
+
+@router.get("/driver", response_model=DriverRead)
+async def get_driver(service: ModelServiceDep) -> DriverRead:
+    """The instance's driver kind as one word: ``fake`` while every
+    assignable task's serving tier is the fake adapter, else
+    ``configured``.
+
+    The offline card's one-word truth, the tasks read's own resolution
+    reduced — so its failure is the tasks read's failure: a provider whose
+    key its tier can no longer produce fails the read by name (502, the
+    same mapping as the tasks read), and the card claims nothing.
+    """
+    try:
+        kind = await service.driver()
+    except KeyUnavailableError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from None
+    return DriverRead(kind=kind)

@@ -9,7 +9,9 @@
  * carries only the fields the writer changed — an absent field keeps, a
  * carried null clears (the name back to the email label, the goal back to
  * no goal). The locale rides along always carried (the schema's own rule),
- * handed through from the row untouched. A value reverted to the stored
+ * read from the row's cache at click time — the freshest known truth, so
+ * a language choice that landed moments earlier is never reverted by the
+ * rendered answer (#933). A value reverted to the stored
  * one is no change; a pristine save makes no ask at all. Refusals keep
  * every answer: a 422 names itself as the atelier's refusal, anything else
  * wears the family's loss-free line, and the retry re-runs the very ask.
@@ -28,10 +30,10 @@ import { useState } from "react";
 
 import { formatNumber } from "@shell/lib/format";
 import { useTranslation } from "@shell/lib/i18n";
-import { useUpdateSettings } from "@shell/lib/query";
+import { queryClient, useUpdateSettings } from "@shell/lib/query";
 import { Icon } from "@shell/ui/icons";
 
-import { useSettingsTasksQuery } from "./tasksQuery";
+import { useDriver } from "./driverQuery";
 
 /** The shell's focus ring on every control the form offers. */
 const FOCUS =
@@ -95,17 +97,21 @@ export function ProfileForm({ row }: { row: ProfileRow }) {
   const dirty = name.trim() !== storedName || goalAnswer !== row.daily_goal_words;
   const busy = updateSettings.isPending;
 
-  /** The offline card's backend truth: it stands only while every
-   *  assignable task answers the local fake driver. A task served by a
-   *  configured provider hides it; an audit-only row has no driver and
-   *  contradicts nothing; a failed read hides it too — no claim without
-   *  an answer. */
-  const tasks = useSettingsTasksQuery();
-  const localDriver =
-    tasks.isSuccess && tasks.data.every((task) => (task.assignable ? task.kind === "fake" : true));
+  /** The offline card's backend truth: the driver read's one word. The card
+   *  stands only while the instance answers `fake`; a configured instance
+   *  hides it, and a pending or failed read hides it too — no claim
+   *  without an answer. */
+  const driver = useDriver();
+  const localDriver = driver.isSuccess && driver.data.kind === "fake";
 
   /** The one save: validate, diff against the row, ride the mutation with
-   *  only the dirtied fields. The locale always rides (the schema's rule). */
+   *  only the dirtied fields. The locale always rides (the schema's rule),
+   *  read from the row's cache at click time (#933): a language choice
+   *  whose refetch answered between the render and this click stands in
+   *  the cache first, and the save carries it — never the rendered
+   *  stalemate that would revert the choice. A MISSING cache answer falls
+   *  back to the rendered row; a CACHED null is the row's own answer (the
+   *  follow-browser choice) and rides as it is. */
   function save() {
     const goal = parseDailyGoal(goalRaw);
     if (goal === "invalid") {
@@ -120,8 +126,9 @@ export function ProfileForm({ row }: { row: ProfileRow }) {
     // Nothing carried is no write — the pristine save rests honestly.
     if (Object.keys(changes).length === 0) return;
     setError(null);
+    const fresh = queryClient.getQueryData<ProfileRow>(["settings", "read"]);
     updateSettings.mutate(
-      { locale: row.locale, ...changes },
+      { locale: fresh === undefined ? row.locale : fresh.locale, ...changes },
       {
         // The saved truth stands in the fields at once; the invalidated
         // row answers with exactly the same values.
@@ -276,9 +283,9 @@ export function ProfileForm({ row }: { row: ProfileRow }) {
       </form>
 
       {/* The offline note: the draft's Offline-Kompensation card, shown
-          only while the backend's own tasks read answers the local fake
-          driver for every assignable task — a configured provider hides
-          it, and a failed read claims nothing. */}
+          only while the backend's own driver read answers the local fake
+          driver — a configured instance hides it, and a read without an
+          answer claims nothing. */}
       {localDriver && (
         <div className="mt-4 flex items-start gap-3 rounded-lg border border-border bg-panel p-4 text-meta">
           <span className="mt-0.5 shrink-0 text-primary">

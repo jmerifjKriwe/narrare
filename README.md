@@ -9,7 +9,7 @@
 [![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-blue.svg)](https://www.python.org/downloads/)
 [![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![codecov](https://codecov.io/gh/jmerifjKriwe/narrare/branch/main/graph/badge.svg)](https://codecov.io/gh/jmerifjKriwe/narrare)
-
+[![Downloads](https://img.shields.io/github/downloads/jmerifjKriwe/narrare/total?label=Downloads&color=blue)](https://github.com/jmerifjKriwe/narrare/releases)
 <img src="assets/logo/lockup.svg" alt="Narrare logo" width="180" />
 
 > Local-first, AI-assisted creative writing. Bring your own model — cloud or local.
@@ -111,7 +111,7 @@ and no `.env`.
 To write with a real model, add an OpenAI-compatible endpoint as a provider profile;
 each task — the continuation, the chat, the extraction, the check — can be pointed at
 its own profile. The settings screen that makes this a form is Phase 1 of the
-[roadmap](roadmap.md); until then `.env` configures the whole process, which is what a
+[roadmap](ROADMAP.md); until then `.env` configures the whole process, which is what a
 headless run wants anyway.
 
 ## Status
@@ -126,14 +126,14 @@ What *is* built is proven the expensive way: every capability carries an end-to-
 test that drives a real browser against the real API and a real Postgres, and the only
 fake in the system is the model at its boundary.
 
-What is missing, in which order: [roadmap.md](roadmap.md).
+What is missing, in which order: [ROADMAP.md](ROADMAP.md).
 
 ## Documentation
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — getting started, branch model, commit convention, PR process
 - [SECURITY.md](SECURITY.md) — the supported version and how to report a vulnerability
 - [AGENTS.md](AGENTS.md) — the rules of the codebase and the agent layer
-- [roadmap.md](roadmap.md) — where the product stands and what comes next
+- [ROADMAP.md](ROADMAP.md) — where the product stands and what comes next
 - [v2 architecture spec](docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md)
   — the authority for structure and boundaries
 - [docs/user/INDEX.md](docs/user/INDEX.md) — the app's surfaces, generated from the

@@ -18,14 +18,16 @@ your machine. The architecture is in
 
 ## Where it stands
 
-Four surfaces are real, with a backend and a browser test behind each: the shelf,
-welcome and setup, the scene-centric workspace, and knowledge (dock, graph, dossiers,
-sources). Planning is landing: the chronology is merged, the storyboard is in review,
-the causality strip is still open, and the capability's E2E suite is owed by the last
-of the three. Two more have a complete backend and no surface at all: settings and
-prompts. Chat answers a single question and does not remember it. Everything else —
-analysis, revision, import and export, production, series, notes, mobile — has
-designs, and no code.
+Six surfaces are real, with a backend and a browser test behind each — five whole,
+one half. The whole: the shelf, welcome and setup, the scene-centric workspace,
+knowledge (dock, graph, dossiers, sources), planning (chronology, storyboard,
+causality strip). The half: the settings hub, live so far only as its Allgemein
+page — Sprache & Aussehen and the Autoren-Profil — while the AI-Regeln half is in
+flight on a branch and providers, keys, models and per-task assignment still have
+no section. Prompts still has no surface at all.
+Chat answers a single question and does not remember it. Everything else — analysis,
+revision, import and export, production, series, notes, mobile — has designs, and no
+code.
 
 That is the honest baseline: the rebuild replaced the frontend of what existed, and
 added the scene model underneath it. It did not add whole feature families.
@@ -50,25 +52,29 @@ Phase 2; that is a quality decision, not a scope one.
 
 ## Phase 0 — Settle the record
 
-**Now.** The rebuild's last tasks, and one honest inventory.
+**Done.** The rebuild's last tasks, and one honest inventory.
 
-- Close W6: the storyboard PR, then the causality strip with its E2E and its gap
-  ledger.
-- Archive the v1 corpus; make the live inventory the single list.
-- Decide what v1 never registered: audio dictation and the pocket app. The publishing
-  area has its own open decision, below.
+- Closed W6: the chronology, the storyboard and the causality strip merged, with the
+  capability's E2E suite and its gap ledger.
+- Archived the v1 corpus; the live inventory is the single list.
+- Recorded what v1 never registered: audio dictation's scope verdict stands open in
+  the inventory's "Decided not now" table, with its reopen condition beside it; the
+  pocket app is planned as Phase 3's deliberate last wave. The publishing area has
+  its own open decision, below.
 
 **Exit:** every feature appears once, with a state; no document claims a surface that
 does not exist; no area is undecided by accident.
 
 ## Phase 1 — Finish the rebuild
 
-**Backend already there; the surfaces are missing.** After this phase the app is
-usable without touching an API or a `.env` file.
+**Backend already there; the surfaces are mostly missing.** After this phase
+the app is usable without touching an API or a `.env` file.
 
 - **Settings.** The screen the gear opens: providers, keys, models, per-task
-  assignment, token budgets, theme, language. Needs a prompt preview endpoint
-  (what a prompt renders before it runs).
+  assignment, token budgets, theme, language. The Allgemein half is live — Sprache &
+  Aussehen, the Autoren-Profil, the offline card — and the AI-Regeln half is in
+  flight on a branch; the provider, model and task sections still wait. Needs a
+  prompt preview endpoint (what a prompt renders before it runs).
 - **Prompts.** The override editor with its diff against the shipped prompt, from
   the 2026-11-15 drafts.
 - **Assistant sessions.** A conversation that ends in a typed proposal the user
@@ -145,7 +151,7 @@ gap ledger, one index of follow-ups.
 
 E2E for every capability, an accessibility sweep, the French catalogs, user
 documentation and in-app help, a packaged install (not only a container image), and
-the follow-up indices closed or consciously parked. The 108 open follow-ups are paid
+the follow-up indices closed or consciously parked. The 110 open follow-ups are paid
 inside the waves that own them; this phase is the remainder.
 
 ## Why this order

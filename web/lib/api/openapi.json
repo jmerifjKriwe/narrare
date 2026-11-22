@@ -468,6 +468,24 @@
         "title": "DocumentRead",
         "type": "object"
       },
+      "DriverRead": {
+        "description": "The instance's driver kind as one word: what actually answers.\n\n``fake`` while every assignable task's serving tier is the local fake\nadapter — the cascade's floor or a stored fake row; ``configured`` once\nany provider adapter serves one. The offline card claims a local driver\nonly on ``fake``. The read is the tasks read's own resolution reduced to\nthis word, never a second derivation, so it can never disagree with the\ntask list's rows — and it fails as the tasks read fails: a provider\nwhose key its tier can no longer produce is the 502 the router maps.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "fake",
+              "configured"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "DriverRead",
+        "type": "object"
+      },
       "EmbeddingMismatchDetail": {
         "description": "Identify incompatible stored and current embedding widths.",
         "properties": {
@@ -6388,6 +6406,28 @@
           }
         },
         "summary": "Put Assignment",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/driver": {
+      "get": {
+        "description": "The instance's driver kind as one word: ``fake`` while every\nassignable task's serving tier is the fake adapter, else\n``configured``.\n\nThe offline card's one-word truth, the tasks read's own resolution\nreduced — so its failure is the tasks read's failure: a provider whose\nkey its tier can no longer produce fails the read by name (502, the\nsame mapping as the tasks read), and the card claims nothing.",
+        "operationId": "get_driver_api_settings_driver_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Driver",
         "tags": [
           "settings"
         ]

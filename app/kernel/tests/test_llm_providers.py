@@ -110,3 +110,76 @@ async def test_deleting_a_provider_models_point_at_is_refused_at_the_database() 
     async with Session() as session:
         assert await ProfileRepository(session, OWNER).get(profile_id) is not None
         assert await ProviderRepository(session, OWNER).get(provider_id) is not None
+
+
+@pytest.mark.usefixtures("owner")
+async def test_ordered_returns_the_users_providers_by_name_and_nobody_elses() -> None:
+    """``ordered`` reads by name, the owner's rows only.
+
+    The read is the settings list's and the provider names lookup's source,
+    so a regression to insertion order — or a lost ``user_id`` scope that
+    mixes a stranger's row into the list — lands unseen: until now the
+    suite pinned the shape only through the API. The pin is the
+    repository's own.
+    """
+    stranger = uuid4()
+    await seed_user(stranger)
+    async with Session() as session:
+        await ProviderRepository(session, OWNER).create(name="Zweit", kind="fake")
+        await ProviderRepository(session, OWNER).create(name="Erst", kind="fake")
+        await ProviderRepository(session, stranger).create(name="AAA", kind="fake")
+        await session.commit()
+
+    async with Session() as session:
+        names = [provider.name for provider in await ProviderRepository(session, OWNER).ordered()]
+
+    assert names == ["Erst", "Zweit"]
+
+
+@pytest.mark.usefixtures("owner")
+async def test_update_applies_the_given_columns_and_flushes() -> None:
+    """The given columns land and are durable through the caller's commit.
+
+    The contract the services rely on: the columns update() is handed are
+    applied and survive the caller's commit. The test looks only after it
+    commits, so it pins neither the flush itself (a commit autoflushes
+    pending writes, so a dropped flush passes here) nor the rule that the
+    commit stays with the caller (an internal commit would pass here too) —
+    those halves rest on the services' tests and review.
+    """
+    async with Session() as session:
+        providers = ProviderRepository(session, OWNER)
+        provider = await providers.create(name="Alt", kind="fake")
+        provider_id = provider.id
+        await providers.update(provider, name="Neu", base_url="https://vendor.example/v1")
+        await session.commit()
+
+    async with Session() as session:
+        found = await ProviderRepository(session, OWNER).get(provider_id)
+
+    assert found is not None
+    assert (found.name, found.base_url) == ("Neu", "https://vendor.example/v1")
+
+
+@pytest.mark.usefixtures("owner")
+async def test_update_refuses_the_identity_columns_by_name() -> None:
+    """``id`` and ``user_id`` are refused, together and spelled in the message.
+
+    A patch that could move the row to another id or another owner is a
+    caller bug, not a choice: the refusal names the columns so the bug is
+    readable at its raise, and no column is applied when it fires.
+    """
+    async with Session() as session:
+        providers = ProviderRepository(session, OWNER)
+        provider = await providers.create(name="Fest", kind="fake")
+        await session.commit()
+
+        stranger = uuid4()
+        with pytest.raises(ValueError, match="cannot change id"):
+            await providers.update(provider, id=stranger)
+        with pytest.raises(ValueError, match="cannot change user_id"):
+            await providers.update(provider, user_id=stranger)
+        with pytest.raises(ValueError) as refused:
+            await providers.update(provider, id=stranger, user_id=stranger)
+        assert str(refused.value) == "update() cannot change id, user_id"
+        assert provider.name == "Fest"  # the refusal applied nothing

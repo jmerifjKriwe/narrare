@@ -12,6 +12,7 @@ all — it names a provider, and the provider holds the secret.
 """
 
 from datetime import datetime  # noqa: TC003  Pydantic resolves these at runtime
+from typing import Literal
 from uuid import UUID  # noqa: TC003
 
 from pydantic import BaseModel, Field, field_validator
@@ -277,3 +278,18 @@ class TaskEffectiveRead(BaseModel):
     profile_name: str | None
     kind: str
     assignable: bool
+
+
+class DriverRead(BaseModel):
+    """The instance's driver kind as one word: what actually answers.
+
+    ``fake`` while every assignable task's serving tier is the local fake
+    adapter — the cascade's floor or a stored fake row; ``configured`` once
+    any provider adapter serves one. The offline card claims a local driver
+    only on ``fake``. The read is the tasks read's own resolution reduced to
+    this word, never a second derivation, so it can never disagree with the
+    task list's rows — and it fails as the tasks read fails: a provider
+    whose key its tier can no longer produce is the 502 the router maps.
+    """
+
+    kind: Literal["fake", "configured"]

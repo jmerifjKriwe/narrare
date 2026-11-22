@@ -120,14 +120,14 @@ export function LoreGraphPage() {
   const parallelSlot = useMemo(() => {
     const groups = new Map<string, string[]>();
     for (const relation of relationList) {
-      const key = [relation.from_entity_id, relation.to_entity_id].sort().join("\u0000");
+      const key = [relation.from_entity_id, relation.to_entity_id].sort((a, b) => a.localeCompare(b)).join("\u0000");
       const group = groups.get(key);
       if (group === undefined) groups.set(key, [relation.id]);
       else group.push(relation.id);
     }
     const slots = new Map<string, { index: number; count: number }>();
     for (const group of groups.values()) {
-      group.sort();
+      group.sort((a, b) => a.localeCompare(b));
       group.forEach((id, index) => slots.set(id, { index, count: group.length }));
     }
     return slots;

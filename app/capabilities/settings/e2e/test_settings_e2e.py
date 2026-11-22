@@ -18,8 +18,9 @@ isolation leg). The user-block menu's doors and the gear in the
 rail land on `/settings` at the section addresses, focused; the deep links
 are the settings side of the retired Buch-Einstellungen door, whose walk from
 the dialog lives in the writing suite (test_workspace_e2e). The offline card
-answers the cascade's own truth — the default instance's all-fake answer
-shows it, a provider with a default model hides it — and the refusals keep
+answers the driver read's own word — the default instance's ``fake`` answer
+shows it, a provider with a default model makes the instance ``configured``
+and hides it — and the refusals keep
 every answer: the field's own parse face in the browser, the wire's 422s
 asked directly (the UI's contract never sends them — the 422 alert face
 itself is the vitest suite's pin). Every face the page shows also clears the
@@ -40,8 +41,8 @@ from app.capabilities.settings.e2e.conftest import (
     expect_settings,
     goto_settings,
     patch_settings,
+    read_driver,
     read_settings,
-    read_tasks,
     seed_settings,
     set_theme,
 )
@@ -312,26 +313,24 @@ def test_the_doors_land_focused_on_the_addresses(page: Page, installed: Stack) -
     assert_accessible(page)
 
 
-def test_the_offline_card_answers_the_cascade(page: Page, installed: Stack) -> None:
-    """The card stands only while every assignable task answers the local
-    fake driver — the default instance's own answer — and hides once a
-    provider with the default model serves; the tasks read's rows are the
-    card's truth, asked directly. No configured endpoint is contacted: the
-    read is pure resolution."""
+def test_the_offline_card_answers_the_driver_read(page: Page, installed: Stack) -> None:
+    """The card stands only while the driver read answers ``fake`` — the
+    default instance's own answer — and hides once a provider with the
+    default model makes the instance configured; the driver read's word is
+    the card's truth, asked directly. No configured endpoint is contacted:
+    the read is pure resolution."""
     goto_settings(page)
     expect(page.get_by_text(OFFLINE_TITLE)).to_be_visible()
     expect(page.get_by_text(OFFLINE_BODY)).to_be_visible()
 
-    tasks = read_tasks()
-    assert tasks
-    assert all(task["kind"] == "fake" for task in tasks if task["assignable"])
+    assert read_driver() == {"kind": "fake"}
 
     # A provider and its default model: the cascade's default leg answers
-    # every routed key through it — the card's claim is no longer true.
+    # every routed key through it — the instance is configured, and the
+    # card's claim is no longer true.
     provider_id = create_provider()
     create_default_model(provider_id)
-    tasks = read_tasks()
-    assert all(task["kind"] == "openai-chat" for task in tasks if task["assignable"])
+    assert read_driver() == {"kind": "configured"}
 
     # The page asks again on a fresh load: the card is gone.
     page.reload()

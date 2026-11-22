@@ -277,7 +277,7 @@ respectful and constructive.
   [v2 architecture spec](docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md)
   — §14 records where the built system is simpler than it describes
 - **Architecture decisions:** [`docs/architecture/decisions/`](docs/architecture/decisions/)
-- **Where the product stands:** [`roadmap.md`](roadmap.md) for the order, and
+- **Where the product stands:** [`ROADMAP.md`](ROADMAP.md) for the order, and
   [`docs/features/INDEX.md`](docs/features/INDEX.md) for every feature's state
 - **Product history of the v1 era:** [`docs/archive/v1/features/`](docs/archive/v1/features/)
   (kept as an archive; v2 capability documentation is generated, not migrated)

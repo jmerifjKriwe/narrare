@@ -18,7 +18,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { useTranslation } from "@shell/lib/i18n";
-import { useSettingsQuery } from "@shell/lib/query";
+import { queryClient, useSettings } from "@shell/lib/query";
 import { useModalKeys } from "@shell/ui/modalKeys";
 
 import { formatGoalInput, parseWordGoal } from "./bookSettings";
@@ -55,7 +55,12 @@ export function GoalSetterDialog({
   onClose: () => void;
 }) {
   const t = useTranslation();
-  const settings = useSettingsQuery();
+  // The row, read STRICTLY (the settings surface's own read): the chrome's
+  // tolerant read answers an outage with dressed-up nulls, and a gate and
+  // a save built on that answer would carry `locale: null` over the stored
+  // choice (#933). The strict read refuses — so over an outage the save
+  // honestly waits, and the answer it eventually carries is a real one.
+  const settings = useSettings();
   const updateSettings = useUpdateSettings();
   const updateChapter = useUpdateChapter(novelId ?? "");
   const busy = updateSettings.isPending || updateChapter.isPending;
@@ -105,10 +110,15 @@ export function GoalSetterDialog({
     }
     const settle = { onSuccess: onClose, onError: () => setError(true) };
     if (kind === "daily") {
-      updateSettings.mutate(
-        { locale: settings.data?.locale ?? null, dailyGoalWords: value },
-        settle,
-      );
+      // The locale rides the row's freshest known truth, read from the
+      // cache at click time (#933): a choice that landed between the
+      // render and this click stands in the cache first, and the rendered
+      // answer never reverts it. A MISSING cache answer falls back to the
+      // mounted read's answer; a CACHED null is the row's own choice (the
+      // follow-browser) and rides as it is.
+      const fresh = queryClient.getQueryData<{ locale: string | null }>(["settings", "read"]);
+      const locale = fresh === undefined ? (settings.data?.locale ?? null) : fresh.locale;
+      updateSettings.mutate({ locale, dailyGoalWords: value }, settle);
     } else if (chapterId !== undefined) {
       updateChapter.mutate({ chapterId, targetWords: value }, settle);
     }

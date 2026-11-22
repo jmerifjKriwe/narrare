@@ -1,18 +1,17 @@
 /**
- * The tasks read (W7 Task 3's review fix): every known task key with the
- * tier that actually serves it. The settings surface's offline card reads
- * it for the backend's own truth — the card may claim „local fake driver
- * active" only while every assignable task answers `kind: "fake"`; a task
- * served by a configured provider hides the card, and an audit-only row
- * (kind `"audit"`, no serving tier, `assignable: false`) contradicts
- * nothing because no driver answers it at all.
+ * The tasks read (W8 Task 8 extends it): every known task key with the
+ * tier that actually serves it. The settings surface's task face renders
+ * it — the backend's own cascade truth, one row per known key. The
+ * offline card no longer infers its claim from these rows; it reads the
+ * driver read (`useDriver`, W8 Task 5), the same resolution reduced to
+ * one word.
  *
  * Capability-local (the setup gate's `setupStatusQuery` precedent): only
  * this surface reads it, so it does not join the shell's shared seam. The
  * key stands OUTSIDE the `["settings"]` prefix on purpose — the profile
  * row's writes invalidate that prefix, and a name or goal change never
- * moves the cascade. A refusal or an outage throws: the page hides the
- * card rather than claim a driver it could not see.
+ * moves the cascade. A refusal or an outage throws: the face never
+ * renders rows the wire did not answer.
  */
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 

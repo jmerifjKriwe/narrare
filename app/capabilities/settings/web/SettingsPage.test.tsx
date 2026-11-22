@@ -25,7 +25,7 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, configure, fireEvent, render, screen, waitFor, act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -63,25 +63,10 @@ let settingsRow: {
   email: string | null;
 };
 
-/** The mock instance's tasks — the backend's cascade truth for the card. */
-let tasksRows: {
-  task_key: string;
-  profile_id: string | null;
-  profile_name: string | null;
-  kind: string;
-  assignable: boolean;
-}[];
-
-function taskRow(overrides: Partial<(typeof tasksRows)[number]> = {}): (typeof tasksRows)[number] {
-  return {
-    task_key: "write.prose",
-    profile_id: null,
-    profile_name: null,
-    kind: "fake",
-    assignable: true,
-    ...overrides,
-  };
-}
+/** The mock instance's driver kind — the backend's one-word truth for the
+ *  card: `fake` while the fake adapter serves, `configured` once a
+ *  provider does. */
+let driverKind: "fake" | "configured";
 
 function row(overrides: Partial<typeof settingsRow> = {}): typeof settingsRow {
   return {
@@ -98,7 +83,7 @@ function scriptApi() {
   api.GET.mockImplementation(async (path: string) => {
     if (path === "/api/settings") return { data: { ...settingsRow }, response: ok() };
     if (path === "/api/setup/status") return { data: { complete: true }, response: ok() };
-    if (path === "/api/settings/tasks") return { data: tasksRows.map((task) => ({ ...task })), response: ok() };
+    if (path === "/api/settings/driver") return { data: { kind: driverKind }, response: ok() };
     throw new Error(`unexpected request: ${path}`);
   });
   api.PATCH.mockImplementation(async (path: string, init?: { body?: Record<string, unknown> }) => {
@@ -170,11 +155,7 @@ beforeEach(() => {
   api.GET.mockReset();
   api.PATCH.mockReset();
   settingsRow = row();
-  tasksRows = [
-    taskRow(),
-    taskRow({ task_key: "write.scene", profile_name: "Local", profile_id: "11111111-1111-1111-1111-111111111111" }),
-    taskRow({ task_key: "audit.text", kind: "audit", assignable: false }),
-  ];
+  driverKind = "fake";
   scriptApi();
   localStorage.clear();
   queryClient.clear();
@@ -208,7 +189,7 @@ describe("the Allgemein surface — the draft's geometry", () => {
     // The email answers as the fallback label — the hint names it.
     expect(screen.getByText(t("settings.author.hint.email", { email: "h.calder@station7.de" }))).toBeTruthy();
     // The offline note: the draft's card, title and body — it stands once
-    // the tasks read has answered the local driver for every task.
+    // the driver read has answered the local fake driver for the instance.
     expect(await screen.findByText(de["settings.offline.title"])).toBeTruthy();
     expect(screen.getByText(de["settings.offline.body"])).toBeTruthy();
     expect(screen.getByText(de["settings.subtitle"])).toBeTruthy();
@@ -480,6 +461,149 @@ describe("the profile form — one dirty form", () => {
     expect(settingsPatches()[0][1].body).toEqual({ locale: "de", daily_goal_words: 750 });
   });
 
+  it("the save reads the row's freshest cache answer at click time — the language race", async () => {
+    await open();
+    // A language choice landed between the render and this save: the row's
+    // refetch answered the cache, the form still wears the pre-switch row.
+    // The save reads the cache at click time and carries the freshest known
+    // locale — the choice set up here must survive this very save (#933).
+    const cached = queryClient.getQueryData<{
+      locale: string | null;
+      theme: string | null;
+      author_name: string | null;
+      daily_goal_words: number | null;
+      email: string | null;
+    }>(["settings", "read"]);
+    expect(cached?.locale).toBe("de");
+    fireEvent.change(authorInput(), { target: { value: "Neuer Name" } });
+    queryClient.setQueryData(["settings", "read"], { ...cached, locale: "en" });
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(settingsPatches().length).toBe(1));
+    expect(settingsPatches()[0][1].body).toEqual({ locale: "en", author_name: "Neuer Name" });
+  });
+
+  it("a save right after a language choice carries the chosen locale — the in-flight window", async () => {
+    // #939, the window a landed cache answer cannot close: the choice
+    // applies at once, PATCHes, and only the landed refetch moves the
+    // settings caches. While that refetch stands in flight the cached row
+    // still wears the pre-switch answer, and a save in exactly this window
+    // used to send it back — reverting the choice if it committed later.
+    // The choice itself must move the caches at choice time, so the save's
+    // click-time read sees the pending choice.
+    let reads = 0;
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") {
+        reads += 1;
+        // The page's two reads answer; everything after — the choice's
+        // invalidation refetch — never lands. The window stays open.
+        if (reads > 2) return new Promise(() => {});
+        return { data: { ...settingsRow }, response: ok() };
+      }
+      if (path === "/api/setup/status") return { data: { complete: true }, response: ok() };
+      if (path === "/api/settings/driver") return { data: { kind: driverKind }, response: ok() };
+      throw new Error(`unexpected request: ${path}`);
+    });
+    await open();
+
+    fireEvent.click(localeRadio("English"));
+    await waitFor(() => expect(settingsPatches().length).toBe(1));
+    expect(settingsPatches()[0][1].body).toEqual({ locale: "en" });
+
+    // The page speaks the choice at once; the form's typed answer stands.
+    fireEvent.change(screen.getByLabelText(en["settings.author.label"]), {
+      target: { value: "Neuer Name" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: en["settings.save"] }));
+    await waitFor(() => expect(settingsPatches().length).toBe(2));
+    expect(settingsPatches()[1][1].body).toEqual({ locale: "en", author_name: "Neuer Name" });
+  });
+
+  it("a settings read already in flight cannot land its older answer over the choice", async () => {
+    // #940: a read that STARTED before the choice — another write's
+    // invalidation refetch, a stale-expired remount — lands after the
+    // optimistic patch and used to replace the pending choice with
+    // pre-choice truth; a save in that window carried the stale locale.
+    // The choice cancels the reads in flight before it patches, so the
+    // older answer's write is abandoned: landing it below must change
+    // nothing, and the save still carries the chosen locale.
+    let reads = 0;
+    let releaseStale: (() => void) | null = null;
+    let releaseChoiceWrite: (() => void) | null = null;
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") {
+        reads += 1;
+        // The page's two reads answer; the third — the refetch started
+        // below, already in flight at choice moment — hangs until the
+        // test lands its stale answer.
+        if (reads === 3) {
+          const frozen = { ...settingsRow, locale: "de" as const };
+          return new Promise<{ data: typeof frozen; response: Response }>((resolve) => {
+            releaseStale = () => resolve({ data: frozen, response: ok() });
+          });
+        }
+        return { data: { ...settingsRow }, response: ok() };
+      }
+      if (path === "/api/setup/status") return { data: { complete: true }, response: ok() };
+      if (path === "/api/settings/driver") return { data: { kind: driverKind }, response: ok() };
+      throw new Error(`unexpected request: ${path}`);
+    });
+    api.PATCH.mockImplementation(async (path: string, init?: { body?: Record<string, unknown> }) => {
+      if (path === "/api/settings") {
+        const body = init?.body as Partial<typeof settingsRow> | undefined;
+        // The choice's write hangs — the flagged window is exactly the
+        // span before this write commits. The profile save (its body
+        // names a field beside the locale) answers normally.
+        if (body !== undefined && !("author_name" in body) && !("daily_goal_words" in body)) {
+          return new Promise<{ data: typeof settingsRow; response: Response }>((resolve) => {
+            releaseChoiceWrite = () => {
+              const written = { ...settingsRow, locale: body.locale ?? null };
+              resolve({ data: written, response: ok() });
+            };
+          });
+        }
+        settingsRow = { ...settingsRow, ...(body as Partial<typeof settingsRow>) };
+        return { data: { ...settingsRow }, response: ok() };
+      }
+      if (path === "/api/settings/theme") {
+        settingsRow = { ...settingsRow, theme: (init?.body?.theme as string | null) ?? null };
+        return { data: { theme: settingsRow.theme }, response: ok() };
+      }
+      throw new Error(`unexpected request: ${path}`);
+    });
+    await open();
+
+    // A settings read starts now and is in flight at choice moment.
+    void queryClient.refetchQueries({ queryKey: ["settings"] });
+    await waitFor(() => expect(releaseStale).not.toBeNull());
+
+    fireEvent.click(localeRadio("English"));
+    await waitFor(() =>
+      expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("en"),
+    );
+
+    // The older answer lands while the choice's write is still out —
+    // exactly the window before the write's own invalidation would
+    // cancel it. It must not stick.
+    await act(async () => {
+      releaseStale?.();
+    });
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("en");
+
+    // The page speaks the choice; the save carries it, not the stale read.
+    fireEvent.change(screen.getByLabelText(en["settings.author.label"]), {
+      target: { value: "Neuer Name" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: en["settings.save"] }));
+    await waitFor(() => expect(settingsPatches().length).toBe(2));
+    expect(settingsPatches()[1][1].body).toEqual({ locale: "en", author_name: "Neuer Name" });
+
+    // The choice's write commits behind the save; its refetch follows.
+    await act(async () => {
+      releaseChoiceWrite?.();
+    });
+    await waitFor(() => expect(settingsRow.locale).toBe("en"));
+  });
+
   it("an out-of-bounds goal answers on its field and writes nothing", async () => {
     await open();
     fireEvent.change(authorInput(), { target: { value: "Neuer Name" } });
@@ -566,39 +690,26 @@ describe("the profile form — one dirty form", () => {
   });
 });
 
-describe("the offline card — the driver's truth, not a printed claim", () => {
-  it("stands while every assignable task answers the local fake driver", async () => {
+describe("the offline card — the driver read's word, not a printed claim", () => {
+  it("stands while the driver read answers the local fake driver", async () => {
     renderSettings();
     await screen.findByLabelText(de["settings.author.label"]);
     expect(await screen.findByText(de["settings.offline.title"])).toBeTruthy();
     expect(screen.getByText(de["settings.offline.body"])).toBeTruthy();
   });
 
-  it("hides once any assignable task answers a configured provider", async () => {
-    tasksRows = [
-      taskRow(),
-      taskRow({ task_key: "write.scene", kind: "openai-chat", profile_name: "Cloud", profile_id: "22222222-2222-2222-2222-222222222222" }),
-    ];
+  it("hides once the driver read names a configured instance", async () => {
+    driverKind = "configured";
     renderSettings();
     await screen.findByLabelText(de["settings.author.label"]);
-    // Let the tasks answer settle, then assert the absence.
-    await waitFor(() => expect(api.GET.mock.calls.filter(([path]) => path === "/api/settings/tasks").length).toBeGreaterThan(0));
+    // Let the driver read settle, then assert the absence.
+    await waitFor(() => expect(api.GET.mock.calls.filter(([path]) => path === "/api/settings/driver").length).toBeGreaterThan(0));
     expect(screen.queryByText(de["settings.offline.title"])).toBeNull();
   });
 
-  it("an audit-only row hides nothing — no driver answers it at all", async () => {
-    tasksRows = [
-      taskRow(),
-      taskRow({ task_key: "audit.text", kind: "audit", assignable: false }),
-    ];
-    renderSettings();
-    await screen.findByLabelText(de["settings.author.label"]);
-    expect(await screen.findByText(de["settings.offline.title"])).toBeTruthy();
-  });
-
-  it("no answer, no claim — a failed tasks read hides the card", async () => {
+  it("no answer, no claim — a failed driver read hides the card", async () => {
     api.GET.mockImplementation(async (path: string) => {
-      if (path === "/api/settings/tasks") {
+      if (path === "/api/settings/driver") {
         return { data: undefined, response: new Response(null, { status: 500 }) };
       }
       if (path === "/api/settings") return { data: { ...settingsRow }, response: ok() };
@@ -606,7 +717,7 @@ describe("the offline card — the driver's truth, not a printed claim", () => {
     });
     renderSettings();
     await screen.findByLabelText(de["settings.author.label"]);
-    await waitFor(() => expect(api.GET.mock.calls.filter(([path]) => path === "/api/settings/tasks").length).toBeGreaterThan(0));
+    await waitFor(() => expect(api.GET.mock.calls.filter(([path]) => path === "/api/settings/driver").length).toBeGreaterThan(0));
     expect(screen.queryByText(de["settings.offline.title"])).toBeNull();
   });
 });

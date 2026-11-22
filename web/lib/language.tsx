@@ -99,6 +99,22 @@ export function useLanguageChoice({ preSetup = false }: { preSetup?: boolean } =
     if (preSetup && next === null) return;
     const previous = chosenLocale();
     applyLocale(next);
+    // The choice stands in the settings caches at once (#939): a save
+    // whose click lands while the write is in flight reads the row's
+    // cache at that moment and must see the pending choice, never the
+    // pre-switch answer. The reads already in flight are cancelled first
+    // (#940) — an older answer landing after the patch would replace the
+    // pending choice with pre-choice truth, and the cancellation's own
+    // revert writes the pre-fetch state down, so the patch must come
+    // after it. The abandoned answers' writes are dropped; the choice's
+    // own invalidation refetch follows the write with the fresher truth.
+    // A refusal unwinds only the patch that is still the seam's last one
+    // — a newer choice's value stands everywhere the choice wrote (the
+    // caches, the store, the mirror). (The structural 409 below patches
+    // nothing: pre-setup the strict entry cannot exist — the row never
+    // answered — and the tolerant entry holds no locale.)
+    void queryClient.cancelQueries({ queryKey: ["settings"] });
+    const generation = patchCachedLocale(next);
     if (preSetup && next !== null) storePreSetupLocale(next);
     try {
       const { response } = await client.PATCH("/api/settings", { body: { locale: next } });
@@ -109,12 +125,64 @@ export function useLanguageChoice({ preSetup = false }: { preSetup?: boolean } =
       if (preSetup) storePreSetupLocale(null);
       void queryClient.invalidateQueries({ queryKey: ["settings"] });
     } catch {
-      applyLocale(previous);
-      if (preSetup && previous !== null) storePreSetupLocale(previous);
+      restoreCachedLocale(generation, () => {
+        applyLocale(previous);
+        if (preSetup && previous !== null) storePreSetupLocale(previous);
+      });
     }
   }
 
   return { locale, chosen, choose };
+}
+
+/**
+ * The settings cache entries a choice moves at once (#939): the strict
+ * `["settings", "read"]` entry whenever it holds a row — both save
+ * surfaces (the profile form, the GoalSetter) read it at click time — and
+ * the chrome's tolerant `["settings"]` entry when IT carries a locale.
+ * Only an entry that holds a row is patched: a choice invents no row (the
+ * strict family holds real answers only), and a tolerant entry without a
+ * locale — the outage's dressed nulls read exactly like a stored follow —
+ * is left for the landed refetch to reconcile. A `null` choice is a real
+ * assertion (the row now follows the browser) and moves the entries like
+ * any other. Each patch takes the seam's next generation, so a refusal
+ * can tell whether its own patch is still the last one written.
+ */
+let lastLocalePatch: {
+  generation: number;
+  moved: Array<{ key: readonly unknown[]; prior: unknown }>;
+} | null = null;
+
+function patchCachedLocale(next: Locale | null): number {
+  const generation = (lastLocalePatch?.generation ?? 0) + 1;
+  const moved: Array<{ key: readonly unknown[]; prior: unknown }> = [];
+  const patch = (key: readonly unknown[], tolerant: boolean) => {
+    const cached = queryClient.getQueryData<{ locale: string | null }>(key);
+    if (cached === undefined) return;
+    if (tolerant && cached.locale === null) return;
+    moved.push({ key, prior: cached });
+    queryClient.setQueryData(key, { ...cached, locale: next });
+  };
+  patch(["settings", "read"], false);
+  patch(["settings"], true);
+  lastLocalePatch = { generation, moved };
+  return generation;
+}
+
+/** Undo a patch — but only its OWN (#940's mirror variant): a refusal
+ *  whose patch has been superseded by a newer choice's patch must not
+ *  restore its snapshot over the newer value. The comparison is by
+ *  GENERATION, not by value: a later choice can re-assert the same
+ *  locale, and the snapshots' row halves are identical when no refetch
+ *  landed in between, so equality alone cannot tell "this request's
+ *  write" from "a newer choice that wrote the same thing". The
+ *  generation is exactly the "a newer choice stands" predicate. `onOwn`
+ *  runs the store's restore under the same guard — the caches, the
+ *  visible language and the mirror move together or not at all. */
+function restoreCachedLocale(generation: number, onOwn: () => void): void {
+  if (lastLocalePatch === null || lastLocalePatch.generation !== generation) return;
+  for (const entry of lastLocalePatch.moved) queryClient.setQueryData(entry.key, entry.prior);
+  onOwn();
 }
 
 /** The radio face's drafted geometries — each door's port, kept verbatim. */

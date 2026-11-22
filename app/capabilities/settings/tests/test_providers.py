@@ -20,6 +20,7 @@ from sqlalchemy import text
 
 from app.api.main import app
 from app.capabilities.settings import providers_service
+from app.capabilities.settings.schemas import ProviderUpdate
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
@@ -243,6 +244,51 @@ async def test_an_update_renames_the_provider(client: AsyncClient) -> None:
     assert stored["name"] == "Neuer Name"
 
 
+async def test_a_patch_sets_every_column_the_schema_can_patch(client: AsyncClient) -> None:
+    """Every column ``ProviderUpdate`` can patch survives one full patch.
+
+    The update's copy list is hand-written, so a column added to the schema
+    and missed there is silently not patched — this exact class bit twice in
+    one wave (a base URL normalization, a dropped name). The patch below
+    names every schema field, so the first assert fails when a field joins
+    the schema without joining this table — and the stored row at the end
+    fails when it joins this table without joining the service's copy list.
+    """
+    provider = await _create(client, "Vorher", base_url=REMOTE)
+    patch = {
+        "name": "Nachher",
+        "base_url": "https://other.vendor.example/v2/",
+        "models_url": "https://other.vendor.example/v2/models",
+        "vendor": "other",
+        "api_key": "sk-ersatz-key-42",
+    }
+    assert set(patch) == set(ProviderUpdate.model_fields)
+
+    response = await client.patch(f"/api/settings/providers/{provider['id']}", json=patch)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["name"] == patch["name"]
+    assert body["base_url"] == "https://other.vendor.example/v2"  # the stored normalization
+    assert body["models_url"] == patch["models_url"]
+    assert body["vendor"] == patch["vendor"]
+    assert body["api_key_mask"] == "sk-…y-42"  # the new key's last four
+
+    # The row itself carries every patched column — the plaintext key by
+    # loading from its column, the rest at the spelling the row stores.
+    provider_id = UUID(str(provider["id"]))
+    (column, hint) = await _stored(provider_id, "api_key", "api_key_hint")
+    assert load_key(provider_id, str(column)) == patch["api_key"]
+    assert hint == "y-42"
+    plain = sorted(set(patch) - {"api_key"})
+    stored = dict(zip(plain, await _stored(provider_id, *plain), strict=True))
+    assert stored == {
+        "base_url": "https://other.vendor.example/v2",  # the gate's stripped form
+        "models_url": "https://other.vendor.example/v2/models",
+        "name": "Nachher",
+        "vendor": "other",
+    }
+
+
 async def test_an_update_with_an_empty_key_keeps_the_stored_one(client: AsyncClient) -> None:
     """An empty ``api_key`` in an update means "keep the stored key", not "clear"."""
     provider = await _create(client)
@@ -318,6 +364,39 @@ async def test_a_refused_delete_never_touches_the_keychain(
     deleted = await client.delete(f"/api/settings/providers/{provider['id']}")
     assert deleted.status_code == 204
     assert erased == [UUID(str(provider["id"]))]
+
+
+async def test_a_failed_erase_stops_the_delete_and_the_row_stays_listed(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A key-store failure at the erase aborts the delete: 503, row intact.
+
+    What the pin forces is the erase before the commit: a key store that
+    fails at the erase must leave the provider standing — still listed, its
+    key still loading from its column, the session never committed — and
+    the 503 is the router's mapping of the named key-store refusal. Moving
+    ``erase_key`` after the commit fails here. The rest of the order is not
+    this test's: an erase moved before the flush would pass, and
+    guard-before-erase rests on the sibling test that refuses a delete
+    whose provider still has models.
+    """
+
+    def broken_erase(provider_id: UUID) -> None:
+        raise KeyringError("the backend died at the erase")
+
+    monkeypatch.setattr(providers_service, "erase_key", broken_erase)
+    provider = await _create(client)
+
+    refused = await client.delete(f"/api/settings/providers/{provider['id']}")
+    assert refused.status_code == 503
+    assert "key store" in refused.json()["detail"]
+
+    listed = (await client.get("/api/settings/providers")).json()
+    assert [entry["name"] for entry in listed] == [provider["name"]]
+    # The stored key is intact: nothing was erased behind a refused delete.
+    provider_id = UUID(str(provider["id"]))
+    [column] = await _stored(provider_id, "api_key")
+    assert load_key(provider_id, str(column)) == SECRET
 
 
 async def test_a_delete_the_guard_cannot_see_still_refuses_as_a_409(

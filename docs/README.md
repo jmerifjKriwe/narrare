@@ -9,7 +9,7 @@ Where everything lives, and what each place is for.
 
 ## Where it is going
 
-- [Roadmap](../roadmap.md) — where the product stands, what feature complete means,
+- [Roadmap](../ROADMAP.md) — where the product stands, what feature complete means,
   and the order in which the gaps close.
 
 ## Installing and running it

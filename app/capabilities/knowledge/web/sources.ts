@@ -57,5 +57,5 @@ export function titleExtensions(titles: readonly string[]): string[] {
       extensions.add(extension);
     }
   }
-  return [...extensions].sort();
+  return [...extensions].sort((a, b) => a.localeCompare(b));
 }

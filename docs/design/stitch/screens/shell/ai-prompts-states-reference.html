@@ -1,833 +1,848 @@
 <!DOCTYPE html>
-
-<html class="h-full" lang="de"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Zustands-Referenz: KI-Prompts anpassen • Narrare</title>
-<!-- Google Fonts: EB Garamond, Plus Jakarta Sans, Space Mono -->
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet"/>
-<!-- Material Symbols Outlined -->
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<!-- Tailwind CSS Play CDN with plugins -->
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<!-- Tailwind Config verbatim -->
-<script id="tailwind-config">
+<html lang="de" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zustands-Referenz: KI-Prompts anpassen • Narrare (Hub-Chrome)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <script>
     tailwind.config = {
-      darkMode: "class",
       theme: {
         extend: {
-          "colors": {
-            "surface-container-low": "#faf2ea",
-            "on-background": "#1e1b16",
-            "primary-fixed": "#ffdbcc",
-            "cover-ink": "#24211C",
-            "on-error": "#ffffff",
-            "on-primary": "#ffffff",
-            "bg-canvas-light": "#F6F3ED",
-            "area-knowledge": "#606127",
-            "on-primary-fixed": "#351000",
-            "state-warning": "#9A6100",
-            "on-secondary": "#ffffff",
-            "bg-panel-light": "#FDFCF9",
-            "surface": "#fff8f2",
-            "surface-container-lowest": "#ffffff",
-            "border-light": "#E0DEDA",
-            "inverse-primary": "#ffb695",
-            "text-muted-light": "#6E6B65",
-            "inverse-on-surface": "#f7f0e7",
-            "tertiary-fixed": "#ffdcc3",
-            "secondary-container": "#fed8ca",
-            "error-container": "#ffdad6",
-            "state-danger": "#AC3031",
-            "on-secondary-fixed-variant": "#5a4137",
-            "outline": "#86736c",
-            "rule-light": "#EEEBE5",
-            "secondary-fixed": "#ffdbce",
-            "bg-card-dark": "#211F1A",
-            "surface-dim": "#e0d9d1",
-            "area-chat": "#3A637B",
-            "on-secondary-container": "#795c52",
-            "on-tertiary-fixed": "#2f1500",
-            "tertiary-container": "#6e3f14",
-            "text-foreground-dark": "#DFDEDA",
-            "surface-tint": "#8c4e30",
-            "secondary": "#74584e",
-            "tertiary-fixed-dim": "#fcb882",
-            "on-primary-fixed-variant": "#6f371c",
-            "surface-container-highest": "#e9e1d9",
-            "on-tertiary-fixed-variant": "#693c10",
-            "on-surface-variant": "#53433d",
-            "on-secondary-fixed": "#2a170f",
-            "surface-container": "#f4ede4",
-            "rule-dark": "#302D28",
-            "on-surface": "#1e1b16",
-            "cover-sepia": "#743B1F",
-            "surface-container-high": "#eee7df",
-            "error": "#ba1a1a",
-            "bg-soft-dark": "#2C2922",
-            "on-tertiary": "#ffffff",
-            "state-success": "#21763C",
-            "background": "#fff8f2",
-            "on-primary-container": "#f8a884",
-            "surface-bright": "#fff8f2",
-            "bg-soft-light": "#EFEBE2",
-            "area-planning": "#834D7E",
-            "secondary-fixed-dim": "#e3bfb2",
-            "outline-variant": "#d8c2b9",
-            "cover-pale": "#EEEBE5",
-            "inverse-surface": "#33302b",
-            "bg-card-light": "#FFFFFF",
-            "on-tertiary-container": "#eead78",
-            "tertiary": "#522900",
-            "on-error-container": "#93000a",
-            "amber-focus": "#8F4622",
-            "primary-fixed-dim": "#ffb695",
-            "bg-panel-dark": "#1C1914",
-            "surface-variant": "#e9e1d9",
-            "border-dark": "#35332D",
-            "text-muted-dark": "#89867F",
-            "bg-canvas-dark": "#16140F",
-            "area-writing": "#914F2F",
-            "primary": "#58250b",
-            "amber-focus-dark": "#F2AD73",
-            "area-settings": "#5A5549",
-            "primary-container": "#743b1f"
+          colors: {
+            canvas: '#F6F3ED',
+            panel: '#FDFCF9',
+            card: '#FFFFFF',
+            surface: '#FFF8F2',
+            surfaceSoft: '#EFEBE2',
+            borderMain: '#E0DEDA',
+            hairline: '#EEEBE5',
+            ink: '#1E1B16',
+            muted: '#6E6B65',
+            accent: '#743B1F',
+            accentHover: '#5e2f18',
+            accentText: '#FAF8F5',
+            success: '#21763C',
+            warning: '#9A6100',
+            danger: '#AC3031',
+            dangerBg: '#FDF2F2',
+            warningBg: '#FFFDF0',
+            successBg: '#F2F8F4'
           },
-          "borderRadius": {
-            "DEFAULT": "0.125rem",
-            "lg": "0.25rem",
-            "xl": "0.5rem",
-            "full": "0.75rem"
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            serif: ['"EB Garamond"', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
           },
-          "spacing": {
-            "container-max": "75rem",
-            "gutter": "1rem",
-            "space-xl": "2rem",
-            "rail-expanded": "10.5rem",
-            "margin": "1.5rem",
-            "space-xs": "0.25rem",
-            "rail-collapsed": "3rem",
-            "prose-max-width": "34rem",
-            "dock-width": "21rem",
-            "space-lg": "1.5rem",
-            "space-sm": "0.5rem",
-            "space-md": "1rem"
-          },
-          "fontFamily": {
-            "headline-title": ["Plus Jakarta Sans"],
-            "label-default": ["Plus Jakarta Sans"],
-            "prose-heading-2": ["EB Garamond"],
-            "prose-heading-1": ["EB Garamond"],
-            "meta-default": ["Plus Jakarta Sans"],
-            "eyebrow-tracked": ["Plus Jakarta Sans"],
-            "headline-emph": ["Plus Jakarta Sans"],
-            "prose-editorial": ["EB Garamond"],
-            "body-default": ["Plus Jakarta Sans"],
-            "headline-hero": ["Plus Jakarta Sans"],
-            "mono": ["Space Mono", "monospace"]
-          },
-          "fontSize": {
-            "headline-title": [
-              "20px",
-              {
-                "lineHeight": "26px",
-                "letterSpacing": "-0.015em",
-                "fontWeight": "600"
-              }
-            ],
-            "label-default": [
-              "13px",
-              {
-                "lineHeight": "18px",
-                "fontWeight": "500"
-              }
-            ],
-            "prose-heading-2": [
-              "21px",
-              {
-                "lineHeight": "28px",
-                "fontWeight": "600"
-              }
-            ],
-            "prose-heading-1": [
-              "26px",
-              {
-                "lineHeight": "34px",
-                "letterSpacing": "-0.01em",
-                "fontWeight": "600"
-              }
-            ],
-            "meta-default": [
-              "12px",
-              {
-                "lineHeight": "17px",
-                "fontWeight": "400"
-              }
-            ],
-            "eyebrow-tracked": [
-              "11px",
-              {
-                "lineHeight": "16px",
-                "letterSpacing": "0.08em",
-                "fontWeight": "600"
-              }
-            ],
-            "headline-emph": [
-              "15px",
-              {
-                "lineHeight": "22px",
-                "fontWeight": "600"
-              }
-            ],
-            "prose-editorial": [
-              "18px",
-              {
-                "lineHeight": "31.5px",
-                "letterSpacing": "0.01em",
-                "fontWeight": "400"
-              }
-            ],
-            "body-default": [
-              "14px",
-              {
-                "lineHeight": "22px",
-                "fontWeight": "400"
-              }
-            ],
-            "headline-hero": [
-              "28px",
-              {
-                "lineHeight": "32px",
-                "letterSpacing": "-0.02em",
-                "fontWeight": "700"
-              }
-            ]
+          borderRadius: {
+            DEFAULT: '4px',
+            'sm': '2px',
+            'md': '4px',
+            'lg': '4px',
+            'xl': '6px',
+            '2xl': '8px'
           }
-        },
-      },
+        }
+      }
     }
   </script>
-<style>
-    /* Custom subtle pulsing effect for live cursor */
-    @keyframes cursor-blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
+  <style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+      vertical-align: middle;
     }
-    .animate-cursor {
-      animation: cursor-blink 0.9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    .material-symbols-outlined.filled {
+      font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+    }
+    body {
+      background-color: #F6F3ED;
+      color: #1E1B16;
+      font-family: 'Plus Jakarta Sans', sans-serif;
     }
   </style>
 </head>
-<body class="bg-surface text-on-surface font-body-default min-h-screen flex flex-col antialiased selection:bg-secondary-container selection:text-primary">
-<!-- ================= TOP NAV BAR (Shared Component Anchor) ================= -->
-<header class="w-full h-14 px-6 flex items-center justify-between border-b border-border-light bg-bg-panel-light z-40 shrink-0">
-<div class="flex items-center gap-6">
-<div class="flex items-center gap-3">
-<span class="font-prose-heading-1 text-prose-heading-1 tracking-tight text-primary font-semibold">Narrare</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono tracking-wider bg-bg-soft-light text-text-muted-light border border-border-light">ATELIER SPEC</span>
-</div>
-<!-- Links from JSON -->
-<nav aria-label="Hauptnavigation" class="hidden md:flex items-center gap-6 ml-4">
-<a class="text-text-muted-light font-medium py-4 hover:text-amber-focus transition-colors duration-150 font-label-default text-label-default" href="#manuscripts">Manuscripts</a>
-<a class="text-text-muted-light font-medium py-4 hover:text-amber-focus transition-colors duration-150 font-label-default text-label-default" href="#loregraph">Lore Graph</a>
-<a class="text-text-muted-light font-medium py-4 hover:text-amber-focus transition-colors duration-150 font-label-default text-label-default" href="#causality">Causality Engine</a>
-<a class="text-primary font-semibold border-b-2 border-primary py-4 transition-colors duration-150 font-label-default text-label-default" href="#ateliers">Ateliers</a>
-</nav>
-</div>
-<div class="flex items-center gap-4">
-<span class="text-text-muted-light text-xs font-mono font-medium tracking-wide">DE | EN | FR</span>
-<div class="h-4 w-px bg-border-light"></div>
-<div class="flex items-center gap-2">
-<button aria-label="Kognitive Psychologie Werkzeuge" class="p-1.5 text-text-muted-light hover:text-amber-focus transition-colors" type="button">
-<span class="material-symbols-outlined text-[20px]" data-icon="psychology">psychology</span>
-</button>
-<button aria-label="Geschichten Archiv" class="p-1.5 text-text-muted-light hover:text-amber-focus transition-colors" type="button">
-<span class="material-symbols-outlined text-[20px]" data-icon="auto_stories">auto_stories</span>
-</button>
-<button aria-label="Atelier Konfiguration" class="p-1.5 text-text-muted-light hover:text-amber-focus transition-colors" type="button">
-<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
-</button>
-</div>
-<div class="w-7 h-7 rounded-full bg-secondary-container flex items-center justify-center text-primary font-bold text-xs ring-1 ring-border-light" title="Archivist portrait avatar">
-        NA
+<body class="min-h-full flex flex-col bg-canvas text-ink antialiased">
+
+  <!-- APP SHELL CHROME -->
+  <div class="flex flex-1 min-h-screen">
+    
+    <!-- LEFT ICON-RAIL -->
+    <aside class="w-16 bg-panel border-r border-borderMain flex flex-col items-center py-4 justify-between shrink-0 select-none z-30">
+      <div class="flex flex-col items-center gap-6 w-full">
+        <!-- Brand Siegel -->
+        <a href="#" class="w-9 h-9 rounded bg-accent text-accentText flex items-center justify-center font-serif text-xl font-bold tracking-tight shadow-sm" title="Narrare Atelier">
+          N
+        </a>
+        
+        <!-- Navigation Icons -->
+        <nav class="flex flex-col items-center gap-1 w-full px-2">
+          <a href="#" class="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-surfaceSoft transition-colors" title="Bücherregal">
+            <span class="material-symbols-outlined text-[22px]">auto_stories</span>
+          </a>
+          <a href="#" class="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-surfaceSoft transition-colors" title="Schreib-Workspace">
+            <span class="material-symbols-outlined text-[22px]">edit_note</span>
+          </a>
+          <a href="#" class="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-surfaceSoft transition-colors" title="Entitäten- & Lore-Graph">
+            <span class="material-symbols-outlined text-[22px]">hub</span>
+          </a>
+          <a href="#" class="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-surfaceSoft transition-colors" title="Chronologie & Timeline">
+            <span class="material-symbols-outlined text-[22px]">calendar_view_day</span>
+          </a>
+          <a href="#" class="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-surfaceSoft transition-colors" title="Dramaturgische Struktur">
+            <span class="material-symbols-outlined text-[22px]">view_timeline</span>
+          </a>
+        </nav>
       </div>
-</div>
-</header>
-<!-- ================= MAIN DOCUMENT CANVAS ================= -->
-<main class="flex-1 w-full max-w-[1400px] mx-auto px-4 md:px-8 py-8 space-y-10">
-<!-- HEADER SPEC SECTION -->
-<section class="border-b border-border-light pb-8">
-<!-- Breadcrumb & Badge -->
-<div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-<div class="flex items-center gap-2 text-text-muted-light font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider">
-<span>NARRARE ATELIER SPEC</span>
-<span>•</span>
-<span class="text-primary font-bold">V2.4</span>
-<span>•</span>
-<span>KI-PROMPTS &amp; DIRECTIVES</span>
-<span>•</span>
-<span class="inline-flex items-center gap-1 text-state-success font-medium">
-<span class="material-symbols-outlined text-[15px]" data-icon="check_circle">check_circle</span>
-            Spezifikation Verifiziert
+
+      <div class="flex flex-col items-center gap-3 w-full px-2">
+        <a href="#" class="w-10 h-10 rounded flex items-center justify-center text-accent bg-surfaceSoft border border-borderMain transition-colors" title="Atelier-Einstellungen">
+          <span class="material-symbols-outlined text-[22px]">tune</span>
+        </a>
+        <div class="w-8 h-px bg-hairline"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-success ring-4 ring-successBg" title="Lokalbetrieb verifiziert (Kein Cloud-Zwang)"></div>
+      </div>
+    </aside>
+
+    <!-- MAIN COLUMN -->
+    <div class="flex-1 flex flex-col min-w-0">
+      
+      <!-- TOPBAR -->
+      <header class="h-14 bg-panel border-b border-borderMain px-6 flex items-center justify-between shrink-0 sticky top-0 z-20">
+        <!-- Breadcrumb -->
+        <div class="flex items-center gap-2 text-xs">
+          <span class="text-muted">Atelier</span>
+          <span class="text-muted/60">›</span>
+          <span class="text-muted">Einstellungen</span>
+          <span class="text-muted/60">›</span>
+          <span class="font-semibold text-ink">KI-Prompts</span>
+          <span class="ml-3 px-2 py-0.5 rounded text-[11px] font-medium bg-surface text-accent border border-borderMain">
+            Zustands-Referenz V2.4
           </span>
-</div>
-<div class="flex items-center gap-2 text-xs font-mono text-text-muted-light bg-surface-container-low px-2.5 py-1 rounded border border-border-light">
-<span class="w-2 h-2 rounded-full bg-state-success"></span>
-<span>DETERMINISTISCHER STATUS: 15 / 15 ZUSTÄNDE</span>
-</div>
-</div>
-<!-- Monumental Headline -->
-<h1 class="font-prose-heading-1 text-4xl lg:text-[42px] leading-tight text-primary font-semibold tracking-tight">
-        Zustands-Referenz: KI-Prompts anpassen
-      </h1>
-<!-- Subtitle -->
-<p class="mt-3 text-text-muted-light font-prose-editorial text-prose-editorial max-w-4xl text-[#3d3832]">
-        Deterministische Spezifikation aller 15 Systemzustände für deine Prompt-Templates, Scope-Vererbung, 422-Validierungsregeln und Live-Werkzeuge. Kontemplative Fehlertoleranz und absolute Datensouveränität in deutscher Du-Form.
-      </p>
-<!-- Token & Color Legend Bar -->
-<div class="mt-6 pt-5 border-t border-rule-light flex flex-wrap items-center gap-y-3 gap-x-6 text-xs font-mono">
-<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">TOKEN-LEGENDE:</span>
-<div class="flex items-center gap-2 bg-surface-container-low px-2.5 py-1 rounded border border-border-light">
-<span class="w-3.5 h-3.5 rounded bg-[#FAF2EA] border border-border-light shrink-0"></span>
-<span class="text-on-surface">Pergament #FAF2EA</span>
-<span class="text-text-muted-light font-body-default text-[11px]">(Canvas Ground)</span>
-</div>
-<div class="flex items-center gap-2 bg-surface-container-low px-2.5 py-1 rounded border border-border-light">
-<span class="w-3.5 h-3.5 rounded bg-[#743B1F] shrink-0"></span>
-<span class="text-on-surface">Fokal #743B1F</span>
-<span class="text-text-muted-light font-body-default text-[11px]">(Primär Terracotta)</span>
-</div>
-<div class="flex items-center gap-2 bg-surface-container-low px-2.5 py-1 rounded border border-border-light">
-<span class="w-3.5 h-3.5 rounded bg-[#21763C] shrink-0"></span>
-<span class="text-on-surface">Kausal #2E6930</span>
-<span class="text-text-muted-light font-body-default text-[11px]">(Erfolg / Genehmigt)</span>
-</div>
-<div class="flex items-center gap-2 bg-surface-container-low px-2.5 py-1 rounded border border-border-light">
-<span class="w-3.5 h-3.5 rounded bg-[#AC3031] shrink-0"></span>
-<span class="text-on-surface">422-Fehler #AC3031</span>
-<span class="text-text-muted-light font-body-default text-[11px]">(Abbruchkante)</span>
-</div>
-<div class="flex items-center gap-2 bg-surface-container-low px-2.5 py-1 rounded border border-border-light">
-<span class="w-3.5 h-3.5 rounded bg-[#9A6100] shrink-0"></span>
-<span class="text-on-surface">Warnung #B46B12</span>
-<span class="text-text-muted-light font-body-default text-[11px]">(Token-Transparenz)</span>
-</div>
-</div>
-</section>
-<!-- ================= BEREICH I: SCOPE- & VERERBUNGS-ZUSTÄNDE ================= -->
-<section class="space-y-4">
-<div class="flex items-baseline justify-between border-b border-rule-light pb-2">
-<div class="flex items-center gap-2">
-<span class="text-xs font-mono font-bold text-primary-container bg-secondary-container px-2 py-0.5 rounded">BEREICH I</span>
-<h2 class="font-prose-heading-2 text-prose-heading-2 text-primary font-semibold">Scope- &amp; Vererbungs-Zustände</h2>
-</div>
-<span class="text-xs font-mono text-text-muted-light">Zustände 01 bis 04 • Hierarchische Kaskade</span>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-<!-- PANEL 1: Kein Override -->
-<article class="border border-border-light bg-surface-container-lowest rounded-lg p-5 flex flex-col justify-between hover:border-outline-variant transition-colors">
-<div class="space-y-3">
-<div class="flex items-center justify-between">
-<span class="text-xs font-mono font-bold text-text-muted-light">STATE 01</span>
-<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono bg-bg-soft-light text-text-muted-light border border-border-light">
-<span class="material-symbols-outlined text-[13px]" data-icon="lock">lock</span> Standard
-              </span>
-</div>
-<h3 class="font-headline-title text-base text-on-surface font-semibold">Kein Override</h3>
-<div class="flex flex-wrap gap-1.5">
-<span class="px-2 py-0.5 rounded text-[11px] font-mono bg-surface-container text-on-surface-variant">Global: Standard</span>
-<span class="px-2 py-0.5 rounded text-[11px] font-mono bg-surface-container-low text-text-muted-light">Roman: Dead Signal erbt</span>
-</div>
-<p class="text-xs text-text-muted-light font-body-default">
-              Keine lokalen Modifikationen hinterlegt. Der Text-Generator stützt sich direkt auf die schreibgeschützte Atelier-Urversion.
-            </p>
-<div class="bg-surface-container-low p-2.5 rounded border border-rule-light font-mono text-[11px] text-text-muted-light">
-<span class="text-primary font-semibold">system_directive:</span> "Schreibe im Präsens mit strenger Kausalität."
+        </div>
+
+        <!-- Trailing Tools & User -->
+        <div class="flex items-center gap-4">
+          <!-- Language Selector -->
+          <div class="flex items-center border border-borderMain rounded bg-surface divide-x divide-hairline text-[11px] font-medium text-muted">
+            <button class="px-2 py-1 text-ink font-bold bg-card rounded-l">DE</button>
+            <button class="px-2 py-1 hover:text-ink">EN</button>
+            <button class="px-2 py-1 hover:text-ink rounded-r">FR</button>
+          </div>
+
+          <!-- Mode Toggle -->
+          <button class="w-8 h-8 rounded border border-borderMain flex items-center justify-center text-muted hover:text-ink bg-card" title="Heller Modus aktiv">
+            <span class="material-symbols-outlined text-[18px]">light_mode</span>
+          </button>
+
+          <!-- User Block -->
+          <div class="flex items-center gap-2 pl-2 border-l border-hairline">
+            <div class="w-7 h-7 rounded bg-surfaceSoft border border-borderMain text-accent font-semibold text-xs flex items-center justify-center">
+              HC
             </div>
-</div>
-<div class="mt-4 pt-3 border-t border-rule-light flex items-center justify-between text-xs font-label-default text-text-muted-light">
-<span class="italic">System-Standard aktiv</span>
-<span class="font-mono text-[11px]">read-only</span>
-</div>
-</article>
-<!-- PANEL 2: Globaler Override aktiv -->
-<article class="border border-border-light bg-surface-container-lowest rounded-lg p-5 flex flex-col justify-between hover:border-outline-variant transition-colors ring-1 ring-border-light">
-<div class="space-y-3">
-<div class="flex items-center justify-between">
-<span class="text-xs font-mono font-bold text-primary">STATE 02</span>
-<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono bg-primary-container text-primary-fixed">
-<span class="material-symbols-outlined text-[13px]" data-icon="public">public</span> Global aktiv
-              </span>
-</div>
-<h3 class="font-headline-title text-base text-on-surface font-semibold">Globaler Override aktiv</h3>
-<div class="flex flex-wrap gap-1.5">
-<span class="px-2 py-0.5 rounded text-[11px] font-mono bg-secondary-container text-primary font-semibold">Global: Eigene Direktive</span>
-<span class="px-2 py-0.5 rounded text-[11px] font-mono bg-surface-container-low text-text-muted-light">Gilt für alle Werke</span>
-</div>
-<p class="text-xs text-text-muted-light font-body-default">
-              Du hast die Atelier-Standardvorlage global ersetzt. Diese Direktiven gelten übergreifend für sämtliche Werke ohne eigene Definition.
-            </p>
-<div class="bg-surface-container-low p-2.5 rounded border border-rule-light font-mono text-[11px] text-on-surface">
-<span class="text-primary font-semibold">atelier_override:</span> "Füge jedem Absatz mikroskopische Sinnesdetails hinzu."
+            <div class="flex flex-col text-left">
+              <span class="text-xs font-semibold leading-tight text-ink">H. Calder</span>
+              <span class="text-[10px] text-muted leading-tight">h.calder@station7.de</span>
             </div>
-</div>
-<div class="mt-4 pt-3 border-t border-rule-light flex items-center justify-between text-xs font-label-default">
-<span class="text-primary font-medium">Geltungsbereich: Atelier</span>
-<span class="font-mono text-[11px] text-text-muted-light">Jinja2 aktiv</span>
-</div>
-</article>
-<!-- PANEL 3: Roman-Override aktiv -->
-<article class="border border-border-light bg-surface-container-lowest rounded-lg p-5 flex flex-col justify-between hover:border-outline-variant transition-colors ring-1 ring-primary/20">
-<div class="space-y-3">
-<div class="flex items-center justify-between">
-<span class="text-xs font-mono font-bold text-cover-sepia">STATE 03</span>
-<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono bg-secondary-container text-primary font-semibold">
-<span class="material-symbols-outlined text-[13px]" data-icon="book">book</span> Roman aktiv
-              </span>
-</div>
-<h3 class="font-headline-title text-base text-on-surface font-semibold">Roman-Override aktiv</h3>
-<div class="flex flex-wrap gap-1.5">
-<span class="px-2 py-0.5 rounded text-[11px] font-mono bg-primary-container text-primary-fixed font-bold">Dieser Roman: Dead Signal</span>
-<span class="px-2 py-0.5 rounded text-[11px] font-mono bg-surface-container-low text-text-muted-light">Global maskiert</span>
-</div>
-<p class="text-xs text-text-muted-light font-body-default">
-              Spezifische Direktive für dein Werk <em>Dead Signal</em>. Jinja2-Tags werden strikt mit den Lore-Entitäten dieses Romans verknüpft.
-            </p>
-<div class="bg-surface-container-low p-2.5 rounded border border-rule-light font-mono text-[11px] text-on-surface">
-<span class="text-cover-sepia font-semibold">{{ tone_directive }}</span> = "Klaustrophobische Hard-SF, Arktis 2041."
+          </div>
+        </div>
+      </header>
+
+      <!-- EINSTELLUNGS-HUB NAVIGATION (NEU: DURCHGEHEND 3 REITER) -->
+      <nav class="bg-panel border-b border-borderMain px-6 py-2.5 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2">
+          <!-- Allgemein -->
+          <a href="#" class="px-3.5 py-1.5 rounded text-xs font-medium text-muted hover:text-ink hover:bg-surface transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-[16px]">tune</span>
+            <span>Allgemein</span>
+          </a>
+
+          <!-- KI-Regeln -->
+          <a href="#" class="px-3.5 py-1.5 rounded text-xs font-medium text-muted hover:text-ink hover:bg-surface transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-[16px]">account_tree</span>
+            <span>KI-Regeln</span>
+          </a>
+
+          <!-- Prompts (AKTIV) -->
+          <a href="#" class="px-3.5 py-1.5 rounded text-xs font-semibold text-accentText bg-accent shadow-sm flex items-center gap-2">
+            <span class="material-symbols-outlined text-[16px]">code</span>
+            <span>Prompts</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-accentText/70 ml-0.5"></span>
+          </a>
+        </div>
+
+        <div class="flex items-center gap-3 text-xs text-muted">
+          <span class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-success"></span>
+            <span>Lokaler Speicher verifiziert</span>
+          </span>
+          <span class="text-hairline">|</span>
+          <span class="font-mono text-[11px] text-muted">.narrare/prompts/</span>
+        </div>
+      </nav>
+
+      <!-- MAIN CONTENT SCROLL AREA -->
+      <main class="flex-1 p-8 max-w-7xl w-full mx-auto space-y-12">
+        
+        <!-- PAGE HEADER -->
+        <div class="border-b border-borderMain pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div class="text-[11px] font-mono tracking-wider uppercase text-muted mb-1 flex items-center gap-2">
+              <span>System-Direktiven & Schablonen-Kanon</span>
+              <span class="px-1.5 py-0.2 rounded bg-surfaceSoft text-[10px] text-muted border border-borderMain">V2.4 SPEC</span>
             </div>
-</div>
-<div class="mt-4 pt-3 border-t border-rule-light flex items-center justify-between text-xs font-label-default">
-<span class="text-cover-sepia font-medium">Kontext: Dead Signal</span>
-<span class="font-mono text-[11px] text-state-success">Lokal vorrangig</span>
-</div>
-</article>
-<!-- PANEL 4: Roman-Scope geerbt -->
-<article class="border border-dashed border-border-light bg-surface-container-low/60 rounded-lg p-5 flex flex-col justify-between hover:border-outline transition-colors">
-<div class="space-y-3">
-<div class="flex items-center justify-between">
-<span class="text-xs font-mono font-bold text-text-muted-light">STATE 04</span>
-<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono bg-surface-container text-text-muted-light">
-<span class="material-symbols-outlined text-[13px]" data-icon="subdirectory_arrow_right">subdirectory_arrow_right</span> Geerbt
-              </span>
-</div>
-<h3 class="font-headline-title text-base text-on-surface font-semibold">Roman-Scope geerbt</h3>
-<div class="flex flex-wrap gap-1.5">
-<span class="px-2 py-0.5 rounded text-[11px] font-mono bg-bg-soft-light text-text-muted-light">erbt: Global / Standard</span>
-</div>
-<p class="text-xs text-text-muted-light font-body-default">
-              Für <em>Dead Signal</em> ist noch kein eigener Text hinterlegt. Du siehst die effektive Vorschau der übergeordneten Hierarchieebene.
+            <h1 class="font-serif text-3xl md:text-4xl text-ink font-normal tracking-tight">
+              Zustands-Referenz: KI-Prompts anpassen
+            </h1>
+            <p class="text-sm text-muted mt-2 max-w-3xl leading-relaxed">
+              Vollständige Matrix aller 15 deterministischen System-, Vererbungs- und Validierungszustände des Prompt-Editors. 
+              Garantierte lokale Daten-Souveränität, ehrliche 422-Fehlerkontrakte und providerfreie Textdiagnostik.
             </p>
-<button class="w-full h-8 px-3 rounded bg-bg-card-light hover:bg-bg-soft-light text-primary border border-border-light text-xs font-label-default font-medium flex items-center justify-center gap-1.5 transition-colors shadow-sm" type="button">
-<span class="material-symbols-outlined text-[16px]" data-icon="content_copy">content_copy</span>
-              Aus effektivem Text anlegen
-            </button>
-</div>
-<div class="mt-4 pt-3 border-t border-rule-light flex items-center justify-between text-xs text-text-muted-light font-meta-default">
-<span>Kein lokaler Override</span>
-<span class="font-mono text-[11px]">0 Bytes</span>
-</div>
-</article>
-</div>
-</section>
-<!-- ================= BEREICH II: VALIDIERUNG & SPEICHER-ABBRUCH ================= -->
-<section class="space-y-4">
-<div class="flex items-baseline justify-between border-b border-rule-light pb-2">
-<div class="flex items-center gap-2">
-<span class="text-xs font-mono font-bold text-white bg-state-danger px-2 py-0.5 rounded">BEREICH II</span>
-<h2 class="font-prose-heading-2 text-prose-heading-2 text-primary font-semibold">Validierung &amp; Speicher-Abbruch (422 Rejection Contract)</h2>
-</div>
-<span class="text-xs font-mono text-state-danger font-semibold">HTTP 422 Unprocessable Entity • Kausalitätsgarantie</span>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-<!-- PANEL 5: Syntax-Fehler -->
-<article class="border border-state-danger/40 bg-error-container/20 rounded-lg p-4 flex flex-col justify-between">
-<div class="space-y-2.5">
-<div class="flex items-center justify-between">
-<span class="text-xs font-mono font-bold text-state-danger">STATE 05</span>
-<span class="text-[11px] font-mono px-1.5 py-0.2 rounded bg-state-danger text-white font-bold">422 SYNTAX</span>
-</div>
-<h3 class="font-headline-title text-sm text-on-surface font-semibold">Speichern abgelehnt: Syntax</h3>
-<p class="text-xs text-text-muted-light font-body-default">
-              Jinja2-Parser hat einen unvollständigen Kontrollfluss-Block festgestellt.
-            </p>
-<div class="bg-surface-container-lowest p-2.5 rounded border border-state-danger/30 font-mono text-[11px] text-state-danger space-y-1">
-<div class="font-bold">TemplateSyntaxError:</div>
-<div class="text-[10px] text-on-surface-variant font-mono">Zeile 14: Unerwartetes Dateiende. Fehlender schließender Block: <code class="text-state-danger font-bold">{% endif %}</code> erwartet.</div>
-</div>
-</div>
-<div class="mt-3 pt-2.5 border-t border-state-danger/20 flex items-center justify-between text-[11px] font-mono text-state-danger">
-<span>AST-Abbruch</span>
-<span>Zeile 14:2</span>
-</div>
-</article>
-<!-- PANEL 6: Unbekannte Variable -->
-<article class="border border-state-danger/40 bg-error-container/20 rounded-lg p-4 flex flex-col justify-between">
-<div class="space-y-2.5">
-<div class="flex items-center justify-between">
-<span class="text-xs font-mono font-bold text-state-danger">STATE 06</span>
-<span class="text-[11px] font-mono px-1.5 py-0.2 rounded bg-state-danger text-white font-bold">422 VARIABLE</span>
-</div>
-<h3 class="font-headline-title text-sm text-on-surface font-semibold">Speichern abgelehnt: Unbekannte Variable</h3>
-<p class="text-xs text-text-muted-light font-body-default">
-              Nicht deklarierte Variable in der Domäne <em>Text fortsetzen</em> verwendet.
-            </p>
-<div class="bg-surface-container-lowest p-2.5 rounded border border-state-danger/30 font-mono text-[11px] text-state-danger space-y-1">
-<div class="font-bold">UndeclaredVariable:</div>
-<div class="text-[10px] text-on-surface-variant font-mono">
-<code class="text-state-danger font-bold">{{protagonist_mood}}</code> existiert nicht.
-                <div class="text-text-muted-light mt-1">Erlaubt: {{chapter_title}}, {{tail}}, {{entities_section}}</div>
-</div>
-</div>
-</div>
-<div class="mt-3 pt-2.5 border-t border-state-danger/20 flex items-center justify-between text-[11px] font-mono text-state-danger">
-<span>Typ-Katalog verletzt</span>
-<span>Domäne: writing</span>
-</div>
-</article>
-<!-- PANEL 7: Include-Zyklus -->
-<article class="border border-state-danger/40 bg-error-container/20 rounded-lg p-4 flex flex-col justify-between">
-<div class="space-y-2.5">
-<div class="flex items-center justify-between">
-<span class="text-xs font-mono font-bold text-state-danger">STATE 07</span>
-<span class="text-[11px] font-mono px-1.5 py-0.2 rounded bg-state-danger text-white font-bold">422 REKURSION</span>
-</div>
-<h3 class="font-headline-title text-sm text-on-surface font-semibold">Speichern abgelehnt: Include-Zyklus</h3>
-<p class="text-xs text-text-muted-light font-body-default">
-              Zirkuläre Vorlagen-Verschachtelung verhindert deterministisches Rendern.
-            </p>
-<div class="bg-surface-container-lowest p-2.5 rounded border border-state-danger/30 font-mono text-[11px] text-state-danger space-y-1">
-<div class="font-bold">CircularIncludeError:</div>
-<div class="text-[10px] text-on-surface-variant font-mono">
-<code class="text-state-danger">{% include 'writing.continuation' %}</code> ruft sich selbst zyklisch auf. Rekursionstiefe &gt; 1 verboten.
-              </div>
-</div>
-</div>
-<div class="mt-3 pt-2.5 border-t border-state-danger/20 flex items-center justify-between text-[11px] font-mono text-state-danger">
-<span>Stack Overflow Guard</span>
-<span>Tiefe: 2</span>
-</div>
-</article>
-<!-- PANEL 8: Fehlender Marker -->
-<article class="border border-state-danger/40 bg-error-container/20 rounded-lg p-4 flex flex-col justify-between">
-<div class="space-y-2.5">
-<div class="flex items-center justify-between">
-<span class="text-xs font-mono font-bold text-state-danger">STATE 08</span>
-<span class="text-[11px] font-mono px-1.5 py-0.2 rounded bg-state-danger text-white font-bold">422 CONTRACT</span>
-</div>
-<h3 class="font-headline-title text-sm text-on-surface font-semibold">Speichern abgelehnt: Fehlender Marker</h3>
-<p class="text-xs text-text-muted-light font-body-default">
-              Obligatorischer Kausalitäts-Anker wurde aus dem Prompt gelöscht.
-            </p>
-<div class="bg-surface-container-lowest p-2.5 rounded border border-state-danger/30 font-mono text-[11px] text-state-danger space-y-1">
-<div class="font-bold">ContractViolation:</div>
-<div class="text-[10px] text-on-surface-variant font-mono">
-                Der System-Marker <code class="text-state-danger font-bold">{{tail}}</code> ist verpflichtend, um Manuskriptfragmente anzuhängen.
-              </div>
-</div>
-</div>
-<div class="mt-3 pt-2.5 border-t border-state-danger/20 flex items-center justify-between text-[11px] font-mono text-state-danger">
-<span>Marker Pflicht</span>
-<span>Anchor: tail</span>
-</div>
-</article>
-<!-- PANEL 9: Scope-Regel verletzt -->
-<article class="border border-state-danger/40 bg-error-container/20 rounded-lg p-4 flex flex-col justify-between">
-<div class="space-y-2.5">
-<div class="flex items-center justify-between">
-<span class="text-xs font-mono font-bold text-state-danger">STATE 09</span>
-<span class="text-[11px] font-mono px-1.5 py-0.2 rounded bg-state-danger text-white font-bold">422 SCOPE</span>
-</div>
-<h3 class="font-headline-title text-sm text-on-surface font-semibold">Speichern abgelehnt: Scope-Regel</h3>
-<p class="text-xs text-text-muted-light font-body-default">
-              Unzulässige lokale Überschreibung einer global geschützten Direktive.
-            </p>
-<div class="bg-surface-container-lowest p-2.5 rounded border border-state-danger/30 font-mono text-[11px] text-state-danger space-y-1">
-<div class="font-bold">ScopeLockViolation:</div>
-<div class="text-[10px] text-on-surface-variant font-mono">
-                Die Direktive <code class="text-on-surface font-bold">"Chat &amp; Recherche"</code> ist atelierweit verankert und gestattet keinen Roman-Override.
-              </div>
-</div>
-</div>
-<div class="mt-3 pt-2.5 border-t border-state-danger/20 flex items-center justify-between text-[11px] font-mono text-state-danger">
-<span>Sicherheits-Lock</span>
-<span>Geltung: Global</span>
-</div>
-</article>
-</div>
-</section>
-<!-- ================= BEREICH III: VORSCHAU & LIVE-TEST WERKZEUGE ================= -->
-<section class="space-y-4">
-<div class="flex items-baseline justify-between border-b border-rule-light pb-2">
-<div class="flex items-center gap-2">
-<span class="text-xs font-mono font-bold text-on-primary bg-primary px-2 py-0.5 rounded">BEREICH III</span>
-<h2 class="font-prose-heading-2 text-prose-heading-2 text-primary font-semibold">Vorschau &amp; Live-Test Werkzeuge</h2>
-</div>
-<span class="text-xs font-mono text-text-muted-light">Zustände 10 bis 14 • Provider-Transparenz &amp; Sandboxing</span>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-<!-- PANEL 10: Vorschau (providerfrei) -->
-<article class="border border-border-light bg-surface-container-lowest rounded-lg p-4 flex flex-col justify-between">
-<div class="space-y-2.5">
-<div class="flex items-center justify-between">
-<span class="text-xs font-mono font-bold text-state-success">STATE 10</span>
-<span class="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded bg-state-success/10 text-state-success font-semibold border border-state-success/20">
-<span class="material-symbols-outlined text-[13px]" data-icon="terminal">terminal</span> Lokal
-              </span>
-</div>
-<h3 class="font-headline-title text-sm text-on-surface font-semibold">Vorschau (providerfrei)</h3>
-<p class="text-xs text-text-muted-light font-body-default">
-              Deterministisch gerendert ohne externen API-Aufruf. Keine Daten verlassen dein System.
-            </p>
-<div class="bg-surface-container-low p-2 rounded border border-rule-light text-[11px] font-mono text-on-surface space-y-1">
-<div class="text-[10px] text-state-success font-bold">Variablen aufgelöst:</div>
-<div class="text-text-muted-light truncate">• tone_directive: <span class="text-on-surface">Dead Signal Metadaten</span></div>
-<div class="text-text-muted-light truncate">• entities: <span class="text-on-surface">Station 7 (Lore-Graph)</span></div>
-</div>
-<div class="flex items-center justify-between text-[11px] font-mono text-text-muted-light bg-bg-soft-light px-2 py-1 rounded">
-<span>Länge: 842 Zeichen</span>
-<span>~214 Tokens</span>
-</div>
-</div>
-<div class="mt-3 pt-2.5 border-t border-rule-light flex items-center justify-between text-[11px] text-state-success font-medium">
-<span>Zero-Leakage Sandbox</span>
-<span class="font-mono">0ms Net</span>
-</div>
-</article>
-<!-- PANEL 11: Live-Test — Warnung -->
-<article class="border border-state-warning/50 bg-[#fffbf2] rounded-lg p-4 flex flex-col justify-between">
-<div class="space-y-2.5">
-<div class="flex items-center justify-between">
-<span class="text-xs font-mono font-bold text-state-warning">STATE 11</span>
-<span class="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded bg-state-warning/15 text-state-warning font-semibold border border-state-warning/30">
-<span class="material-symbols-outlined text-[13px]" data-icon="security">security</span> Vorwarnung
-              </span>
-</div>
-<h3 class="font-headline-title text-sm text-on-surface font-semibold">Live-Test — Warnung</h3>
-<p class="text-xs text-on-surface-variant font-body-default">
-              Externe Übertragung steht bevor. Volle Souveränität über API-Aufrufe.
-            </p>
-<div class="bg-white/80 p-2.5 rounded border border-state-warning/30 text-xs font-body-default text-on-surface space-y-1.5">
-<div class="font-semibold text-state-warning flex items-center gap-1">
-<span class="material-symbols-outlined text-[14px]" data-icon="info">info</span> Externe API-Verbindung
-              </div>
-<div class="text-[11px] text-text-muted-light leading-snug">
-                Dieser Test überträgt <strong>214 Tokens</strong> deines Manuskripts an den konfigurierten Provider <code class="font-mono bg-surface-container px-1 py-0.5 rounded text-[10px]">sk-ant-...v4</code>.
-              </div>
-</div>
-</div>
-<div class="mt-3 pt-2.5 border-t border-state-warning/20 flex items-center justify-between">
-<button class="w-full h-7 rounded bg-primary text-white text-xs font-label-default font-medium hover:bg-cover-sepia transition-colors" type="button">
-              Übertragung bestätigen
-            </button>
-</div>
-</article>
-<!-- PANEL 12: Live-Test — Streaming -->
-<article class="border border-primary/30 bg-surface-container-lowest rounded-lg p-4 flex flex-col justify-between">
-<div class="space-y-2.5">
-<div class="flex items-center justify-between">
-<span class="text-xs font-mono font-bold text-primary">STATE 12</span>
-<span class="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded bg-primary-fixed text-primary font-bold">
-<span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span> Live-Stream
-              </span>
-</div>
-<h3 class="font-headline-title text-sm text-on-surface font-semibold">Live-Test — Streaming</h3>
-<p class="text-xs text-text-muted-light font-body-default">
-              Progressive Generierung im Atelier-Editor mit kontinuierlichem Cursor.
-            </p>
-<div class="bg-surface-container-low p-2.5 rounded border border-rule-light font-prose-editorial text-xs text-on-surface leading-relaxed relative min-h-[58px]">
-              "Das Thermoelement an Station 7 verstummte. Nur das Rauschen des ewigen Eises blieb zurück..."
-              <span class="inline-block w-1.5 h-3.5 bg-primary ml-0.5 align-middle animate-cursor"></span>
-</div>
-</div>
-<div class="mt-3 pt-2.5 border-t border-rule-light flex items-center justify-between">
-<button class="w-full h-7 rounded border border-state-danger text-state-danger hover:bg-state-danger hover:text-white text-xs font-label-default font-medium flex items-center justify-center gap-1 transition-colors" type="button">
-<span class="material-symbols-outlined text-[14px]" data-icon="cancel">cancel</span>
-              Generierung abbrechen
-            </button>
-</div>
-</article>
-<!-- PANEL 13: Live-Test — Rate-Limit -->
-<article class="border border-state-warning/50 bg-surface-container-lowest rounded-lg p-4 flex flex-col justify-between">
-<div class="space-y-2.5">
-<div class="flex items-center justify-between">
-<span class="text-xs font-mono font-bold text-state-warning">STATE 13</span>
-<span class="text-[11px] font-mono px-2 py-0.5 rounded bg-state-warning/15 text-state-warning font-bold">
-                HTTP 429
-              </span>
-</div>
-<h3 class="font-headline-title text-sm text-on-surface font-semibold">Live-Test — Rate-Limit</h3>
-<p class="text-xs text-text-muted-light font-body-default">
-              Provider meldet temporäre Auslastung oder Token-Erschöpfung.
-            </p>
-<div class="bg-surface-container-low p-2.5 rounded border border-state-warning/30 text-xs font-body-default space-y-1">
-<div class="font-semibold text-state-warning flex items-center gap-1 font-mono text-[11px]">
-                Claude API: Too Many Requests
-              </div>
-<div class="text-[11px] text-text-muted-light leading-snug">
-                Dein lokaler Atelier-Cache bleibt unberührt. Erneuter Versuch automatisch möglich in <strong>18 Sekunden</strong>.
-              </div>
-</div>
-</div>
-<div class="mt-3 pt-2.5 border-t border-rule-light flex items-center justify-between text-xs font-mono text-state-warning">
-<span>Cooldown aktiv</span>
-<span class="font-bold">18s</span>
-</div>
-</article>
-<!-- PANEL 14: Live-Test — kein Provider -->
-<article class="border border-border-light bg-surface-container-low/40 rounded-lg p-4 flex flex-col justify-between opacity-90">
-<div class="space-y-2.5">
-<div class="flex items-center justify-between">
-<span class="text-xs font-mono font-bold text-text-muted-light">STATE 14</span>
-<span class="text-[11px] font-mono px-2 py-0.5 rounded bg-surface-container text-text-muted-light">
-                Kein Provider
-              </span>
-</div>
-<h3 class="font-headline-title text-sm text-on-surface font-semibold">Live-Test — kein Provider</h3>
-<p class="text-xs text-text-muted-light font-body-default">
-              Schaltfläche deaktiviert, bis ein gültiger API-Schlüssel hinterlegt ist.
-            </p>
-<div class="bg-surface-container-lowest p-2.5 rounded border border-border-light text-[11px] text-text-muted-light leading-snug">
-              Hinterlege zuerst einen Schlüssel in <span class="font-medium text-on-surface">Atelier › Einstellungen › Provider</span>, um Live-Tests durchzuführen.
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="text-right text-xs">
+              <div class="font-medium text-ink">Geltungsbereich-Kaskade</div>
+              <div class="text-muted">Global ➔ Roman (Dead Signal)</div>
             </div>
-</div>
-<div class="mt-3 pt-2.5 border-t border-rule-light">
-<button class="w-full h-7 rounded bg-bg-soft-light text-text-muted-light border border-border-light text-xs font-label-default font-medium cursor-not-allowed flex items-center justify-center gap-1" disabled="" type="button">
-<span class="material-symbols-outlined text-[14px]" data-icon="key_off">key_off</span>
-              Live-Test inaktiv
-            </button>
-</div>
-</article>
-</div>
-</section>
-<!-- ================= BEREICH IV: DIFF & SYSTEM-HARMONISIERUNG ================= -->
-<section class="space-y-4">
-<div class="flex items-baseline justify-between border-b border-rule-light pb-2">
-<div class="flex items-center gap-2">
-<span class="text-xs font-mono font-bold text-primary-container bg-secondary-container px-2 py-0.5 rounded">BEREICH IV</span>
-<h2 class="font-prose-heading-2 text-prose-heading-2 text-primary font-semibold">Diff &amp; System-Harmonisierung</h2>
-</div>
-<span class="text-xs font-mono text-text-muted-light">Zustand 15 • Side-by-Side Kausalitätsprüfung</span>
-</div>
-<!-- PANEL 15: Grosses Split-View Diff Panel -->
-<article class="border border-border-light bg-surface-container-lowest rounded-lg p-6 shadow-sm">
-<div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-rule-light">
-<div>
-<div class="flex items-center gap-2">
-<span class="text-xs font-mono font-bold text-cover-sepia">STATE 15</span>
-<span class="text-[11px] font-mono px-2 py-0.5 rounded bg-primary-container text-primary-fixed font-semibold">HARMONISIERUNG</span>
-<h3 class="font-headline-title text-lg text-on-surface font-semibold ml-2">Diff: Standard vs. Override</h3>
-</div>
-<p class="text-xs text-text-muted-light mt-1 font-body-default">
-              Visuelle Überprüfung aller lokalen Änderungen für dein Werk <em>Dead Signal</em> gegenüber der unveränderten Atelier-Grundvorlage.
-            </p>
-</div>
-<div class="flex items-center gap-3">
-<button class="h-8 px-3 rounded border border-border-light hover:bg-bg-soft-light text-xs font-label-default font-medium text-on-surface transition-colors flex items-center gap-1.5" type="button">
-<span class="material-symbols-outlined text-[16px]" data-icon="history">history</span>
-              Verlauf
-            </button>
-<button class="h-8 px-3 rounded bg-surface-container-low hover:bg-error-container text-state-danger border border-border-light text-xs font-label-default font-medium transition-colors flex items-center gap-1.5" type="button">
-<span class="material-symbols-outlined text-[16px]" data-icon="restart_alt">restart_alt</span>
-              Auf Standard zurücksetzen
-            </button>
-</div>
-</div>
-<!-- Split View Grid -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-<!-- Linke Spalte: Standard Vorlage -->
-<div class="space-y-3">
-<div class="flex items-center justify-between pb-2 border-b border-rule-light">
-<span class="text-xs font-mono font-bold text-text-muted-light uppercase tracking-wide flex items-center gap-1.5">
-<span class="material-symbols-outlined text-[16px]" data-icon="inventory_2">inventory_2</span>
-                Standard-Vorlage (Atelier Global)
-              </span>
-<span class="text-[11px] font-mono text-text-muted-light">SHA: d41d8c • read-only</span>
-</div>
-<div class="font-mono text-xs rounded bg-surface-container-low p-4 border border-rule-light space-y-1.5 leading-relaxed text-on-surface">
-<div class="text-text-muted-light opacity-60">01  # Basiskontext &amp; Kausalität</div>
-<div>02  Du bist der narrative Assistent des Ateliers.</div>
-<div class="bg-state-danger/15 text-state-danger px-1 rounded -mx-1 border-l-2 border-state-danger">
-                03 - Antworte in neutralem, sachlichem Tonfall ohne Pathos.
+            <div class="p-2 rounded bg-card border border-borderMain text-muted">
+              <span class="material-symbols-outlined text-[20px]">layers</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- ABSCHNITT 1: Scope- & Vererbungs-Zustände -->
+        <!-- ========================================== -->
+        <section class="space-y-4">
+          <div class="flex items-center justify-between border-b border-hairline pb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-sm bg-accent"></span>
+              <h2 class="text-xs font-mono uppercase tracking-wider text-muted font-bold">Scope- & Vererbungs-Zustände</h2>
+              <span class="text-xs text-muted">(4 kanonische Systemzustände)</span>
+            </div>
+            <span class="text-xs font-mono text-muted">Hierarchie: Atelier ➔ Roman</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <!-- Karte 1: Kein Override -->
+            <div class="bg-card border border-borderMain rounded p-4 flex flex-col justify-between hover:border-muted/50 transition-colors shadow-sm">
+              <div>
+                <div class="text-[10px] font-mono uppercase tracking-wider text-muted mb-2 flex items-center justify-between">
+                  <span>Zustand 01</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-surfaceSoft text-muted border border-borderMain">Standard</span>
+                </div>
+                <h3 class="font-serif text-lg text-ink font-medium leading-snug">Kein Override</h3>
+                <p class="text-xs text-muted mt-1 leading-relaxed">
+                  Katalog-Eintrag verharrt auf dem Atelier-Kanon. Der Editor zeigt die unveränderliche, schreibgeschützte Basis.
+                </p>
+
+                <!-- UI-Mockup Fragment -->
+                <div class="mt-4 p-3 rounded bg-surface border border-borderMain space-y-2 text-xs">
+                  <div class="flex items-center justify-between">
+                    <span class="font-semibold text-ink">Text fortsetzen</span>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-surfaceSoft text-muted border border-borderMain">Global: Standard</span>
+                  </div>
+                  <div class="p-2 rounded bg-card border border-hairline font-mono text-[10.5px] text-muted leading-tight">
+                    <div class="flex items-center gap-1 text-[10px] text-muted/80 pb-1 mb-1 border-b border-hairline">
+                      <span class="material-symbols-outlined text-[13px]">lock</span> Standard-Vorlage (Global)
+                    </div>
+                    # System-Direktive: Ghost-Writing...
+                  </div>
+                </div>
               </div>
-<div>04  Beziehe folgende Szenenanker mit ein:</div>
-<div class="text-primary font-semibold">05  {{chapter_title}}</div>
-<div class="bg-state-danger/15 text-state-danger px-1 rounded -mx-1 border-l-2 border-state-danger">
-                06 - Führe die Handlung fort, sobald der Befehl erteilt wird.
+
+              <div class="mt-4 pt-3 border-t border-hairline flex items-center justify-between text-[11px]">
+                <span class="text-muted">Editor-Modus:</span>
+                <span class="font-mono text-ink font-medium">schreibgeschützt</span>
               </div>
-<div class="text-primary font-semibold">07  {{tail}}</div>
-<div class="text-text-muted-light opacity-60">08  ### Verifizierte Figuren</div>
-<div class="text-primary font-semibold">09  {{entities_section}}</div>
-</div>
-<div class="text-[11px] font-mono text-text-muted-light flex justify-between px-1">
-<span>9 Zeilen • 324 Zeichen</span>
-<span class="text-state-danger font-medium">- 2 Zeilen entfernt</span>
-</div>
-</div>
-<!-- Rechte Spalte: Aktiver Override -->
-<div class="space-y-3">
-<div class="flex items-center justify-between pb-2 border-b border-rule-light">
-<span class="text-xs font-mono font-bold text-cover-sepia uppercase tracking-wide flex items-center gap-1.5">
-<span class="material-symbols-outlined text-[16px] text-cover-sepia" data-icon="edit_note">edit_note</span>
-                Aktiver Override (Dead Signal)
-              </span>
-<span class="text-[11px] font-mono px-2 py-0.5 rounded bg-primary-container text-primary-fixed font-bold">LOKAL VORRANGIG</span>
-</div>
-<div class="font-mono text-xs rounded bg-surface-container-low p-4 border border-rule-light space-y-1.5 leading-relaxed text-on-surface">
-<div class="text-text-muted-light opacity-60">01  # Basiskontext &amp; Kausalität</div>
-<div>02  Du bist der narrative Assistent des Ateliers.</div>
-<div class="bg-state-success/15 text-state-success px-1 rounded -mx-1 border-l-2 border-state-success">
-                03 + {{tone_directive}} (Klaustrophobische Arktis-Kälte, paranoider Fokus)
+            </div>
+
+            <!-- Karte 2: Globaler Override aktiv -->
+            <div class="bg-card border border-borderMain rounded p-4 flex flex-col justify-between hover:border-muted/50 transition-colors shadow-sm">
+              <div>
+                <div class="text-[10px] font-mono uppercase tracking-wider text-accent mb-2 flex items-center justify-between">
+                  <span>Zustand 02</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-surface text-accent font-semibold border border-borderMain">Global aktiv</span>
+                </div>
+                <h3 class="font-serif text-lg text-ink font-medium leading-snug">Globaler Override aktiv</h3>
+                <p class="text-xs text-muted mt-1 leading-relaxed">
+                  Gilt atelierweit für alle Romane ohne Einzelspezifikation. Verändert den Grundton aller Werke.
+                </p>
+
+                <!-- UI-Mockup Fragment -->
+                <div class="mt-4 p-3 rounded bg-surface border border-borderMain space-y-2 text-xs">
+                  <div class="flex items-center justify-between">
+                    <span class="font-semibold text-ink">Text fortsetzen</span>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-accent text-accentText">Global: Eigener Override aktiv</span>
+                  </div>
+                  <div class="flex items-center justify-between pt-1">
+                    <div class="inline-flex rounded border border-borderMain text-[11px] overflow-hidden">
+                      <span class="px-2 py-0.5 bg-accent text-accentText font-semibold">Global</span>
+                      <span class="px-2 py-0.5 bg-card text-muted">Dead Signal</span>
+                    </div>
+                    <button class="text-[11px] text-danger hover:underline flex items-center gap-0.5">
+                      <span class="material-symbols-outlined text-[12px]">delete</span>
+                      <span>Override löschen</span>
+                    </button>
+                  </div>
+                </div>
               </div>
-<div>04  Beziehe folgende Szenenanker mit ein:</div>
-<div class="text-primary font-semibold">05  {{chapter_title}}</div>
-<div class="bg-state-success/15 text-state-success px-1 rounded -mx-1 border-l-2 border-state-success">
-                06 + Führe den Satz unmittelbar aus der Perspektive von Dr. Vanhouten weiter.
+
+              <div class="mt-4 pt-3 border-t border-hairline flex items-center justify-between text-[11px]">
+                <span class="text-muted">Geltung:</span>
+                <span class="font-mono text-ink font-medium">Atelier-Scope (Alle Werke)</span>
               </div>
-<div class="text-primary font-semibold">07  {{tail}}</div>
-<div class="text-text-muted-light opacity-60">08  ### Verifizierte Figuren</div>
-<div class="text-primary font-semibold">09  {{entities_section}}</div>
-</div>
-<div class="text-[11px] font-mono text-text-muted-light flex justify-between px-1">
-<span>9 Zeilen • 398 Zeichen</span>
-<span class="text-state-success font-medium">+ 2 Modifikationen aktiv</span>
-</div>
-</div>
-</div>
-<!-- Diff Summary Action Bar -->
-<div class="mt-6 pt-4 border-t border-rule-light flex flex-wrap items-center justify-between text-xs font-mono text-text-muted-light gap-2">
-<div class="flex items-center gap-4">
-<span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded bg-state-success"></span> Grüne Zeilen: Lokale Tonalitäts-Injektion</span>
-<span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded bg-state-danger"></span> Rote Zeilen: Generische Atelier-Phrasen verworfen</span>
-</div>
-<div class="flex items-center gap-2">
-<span class="text-state-success font-bold">Kausalitätsprüfung bestanden</span>
-<span>(Marker {{tail}} unversehrt)</span>
-</div>
-</div>
-</article>
-</section>
-</main>
-<!-- ================= FOOTER (Shared Component Anchor) ================= -->
-<footer class="w-full py-8 px-8 border-t border-border-light bg-bg-panel-light flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left mt-16 shrink-0">
-<div class="flex flex-col gap-1">
-<div class="flex items-center justify-center md:justify-start gap-2">
-<span class="font-prose-heading-2 text-prose-heading-2 text-primary">Narrare</span>
-<span class="text-xs font-mono text-text-muted-light">· Atelier Sovereign</span>
-</div>
-<p class="text-xs text-text-muted-light font-prose-editorial text-prose-editorial max-w-xl">
-        © Narrare Atelier. Written sovereignty guaranteed. Local-first, zero-surveillance manuscript vault.
-      </p>
-</div>
-<!-- Links from JSON -->
-<div class="flex flex-wrap items-center justify-center gap-6 text-xs font-label-default">
-<a class="text-text-muted-light hover:text-primary transition-colors duration-150" href="#manifest">Sovereignty Manifest</a>
-<a class="text-text-muted-light hover:text-primary transition-colors duration-150" href="#canon">Causality Canon</a>
-<a class="text-text-muted-light hover:text-primary transition-colors duration-150" href="#typography">Typography Rigor</a>
-<a class="text-text-muted-light hover:text-primary transition-colors duration-150" href="#export">Export Lexicon</a>
-</div>
-</footer>
-</body></html>
+            </div>
+
+            <!-- Karte 3: Roman-Override aktiv -->
+            <div class="bg-card border-2 border-accent/40 rounded p-4 flex flex-col justify-between hover:border-accent transition-colors shadow-sm relative">
+              <div class="absolute -top-2.5 right-3 px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-accent text-accentText">
+                Aktive Konfiguration
+              </div>
+              <div>
+                <div class="text-[10px] font-mono uppercase tracking-wider text-accent mb-2 flex items-center justify-between">
+                  <span>Zustand 03</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-surface text-accent font-semibold border border-borderMain">Roman aktiv</span>
+                </div>
+                <h3 class="font-serif text-lg text-ink font-medium leading-snug">Roman-Override aktiv</h3>
+                <p class="text-xs text-muted mt-1 leading-relaxed">
+                  Exklusiv für den Roman <em>Dead Signal</em> hinterlegt. Überschreibt atelierweite Direktiven deterministisch.
+                </p>
+
+                <!-- UI-Mockup Fragment -->
+                <div class="mt-4 p-3 rounded bg-surface border border-borderMain space-y-2 text-xs">
+                  <div class="flex items-center justify-between">
+                    <span class="font-semibold text-ink">Text fortsetzen</span>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-accent text-accentText">Dead Signal: Eigener Override aktiv</span>
+                  </div>
+                  <div class="inline-flex rounded border border-borderMain text-[11px] overflow-hidden">
+                    <span class="px-2 py-0.5 bg-card text-muted">Global</span>
+                    <span class="px-2 py-0.5 bg-accent text-accentText font-semibold">Dieser Roman: Dead Signal</span>
+                  </div>
+                  <div class="p-2 rounded bg-card border border-hairline text-[11px] text-muted italic flex items-start gap-1.5 leading-snug">
+                    <span class="material-symbols-outlined text-[14px] text-accent shrink-0 mt-0.5">info</span>
+                    <span>Aktuell ist für Dead Signal ein spezifischer Roman-Override angelegt. (Standard-Text bleibt unverändert im Global-Scope).</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-hairline flex items-center justify-between text-[11px]">
+                <span class="text-muted">Speicherort:</span>
+                <span class="font-mono text-ink font-medium">books/dead-signal/prompt.j2</span>
+              </div>
+            </div>
+
+            <!-- Karte 4: Roman-Scope geerbt -->
+            <div class="bg-card border border-borderMain rounded p-4 flex flex-col justify-between hover:border-muted/50 transition-colors shadow-sm">
+              <div>
+                <div class="text-[10px] font-mono uppercase tracking-wider text-muted mb-2 flex items-center justify-between">
+                  <span>Zustand 04</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-surfaceSoft text-muted border border-borderMain">Vererbung</span>
+                </div>
+                <h3 class="font-serif text-lg text-ink font-medium leading-snug">Roman-Scope geerbt</h3>
+                <p class="text-xs text-muted mt-1 leading-relaxed">
+                  Ein Werk besitzt keinen eigenen Override und bezieht die effektiven Prompts transparent aus der oberen Ebene.
+                </p>
+
+                <!-- UI-Mockup Fragment -->
+                <div class="mt-4 p-3 rounded bg-surface border border-borderMain space-y-2 text-xs">
+                  <div class="flex items-center justify-between">
+                    <span class="font-semibold text-ink">Text fortsetzen</span>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] bg-surfaceSoft text-muted border border-borderMain">Dead Signal: erbt Global</span>
+                  </div>
+                  <div class="p-2.5 rounded bg-card border border-dashed border-borderMain text-center space-y-2">
+                    <div class="text-[11px] text-muted">Keine lokale Abweichung für diesen Roman definiert.</div>
+                    <button class="px-2.5 py-1 rounded border border-borderMain bg-surface text-ink text-[11px] font-medium hover:border-accent hover:text-accent transition-colors flex items-center gap-1 mx-auto">
+                      <span class="material-symbols-outlined text-[13px]">content_copy</span>
+                      <span>Aus effektivem Text neu anlegen</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-hairline flex items-center justify-between text-[11px]">
+                <span class="text-muted">Priorität:</span>
+                <span class="font-mono text-muted font-medium">Kaskadierend (Ebene 1)</span>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+
+        <!-- ============================================================= -->
+        <!-- ABSCHNITT 2: Validierung & Speicher-Abbruch (422 Rejection)  -->
+        <!-- ============================================================= -->
+        <section class="space-y-4">
+          <div class="flex items-center justify-between border-b border-hairline pb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-sm bg-danger"></span>
+              <h2 class="text-xs font-mono uppercase tracking-wider text-danger font-bold">Validierung & Speicher-Abbruch (422 Rejection Contract)</h2>
+              <span class="text-xs text-muted">(HTTP 422 Unprocessable Entity Schutzschirm)</span>
+            </div>
+            <span class="text-xs font-mono text-danger font-medium">Garantie: Null fehlerhafte Prompts im Speicher</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            
+            <!-- Fehler 1: Syntax -->
+            <div class="bg-card border border-borderMain rounded p-4 flex flex-col justify-between hover:border-danger/60 transition-colors shadow-sm">
+              <div>
+                <div class="text-[10px] font-mono uppercase tracking-wider text-danger mb-2 flex items-center justify-between">
+                  <span>Rejection 01</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-dangerBg text-danger font-bold">422 Syntax</span>
+                </div>
+                <h3 class="font-serif text-base text-ink font-semibold leading-snug">Speichern abgelehnt: Syntax</h3>
+                
+                <div class="mt-3 p-2.5 rounded bg-dangerBg/50 border border-danger/20 text-xs text-danger flex items-start gap-2">
+                  <span class="material-symbols-outlined text-[16px] text-danger shrink-0 mt-0.5">error</span>
+                  <div class="leading-relaxed">
+                    <span class="font-semibold">Jinja-Syntaxfehler:</span> Nicht geschlossene Tags wie <code class="font-mono text-[10.5px] bg-card px-1 rounded">{% if %}</code> ohne <code class="font-mono text-[10.5px] bg-card px-1 rounded">{% endif %}</code>.
+                  </div>
+                </div>
+
+                <div class="mt-3 p-2 rounded bg-surface border border-hairline font-mono text-[10px] text-muted">
+                  Parser: AST-Generierung fehlgeschlagen auf Zeile 14.
+                </div>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-hairline">
+                <button disabled class="w-full py-1.5 rounded bg-surfaceSoft text-muted/60 text-xs font-medium cursor-not-allowed border border-borderMain flex items-center justify-center gap-1">
+                  <span class="material-symbols-outlined text-[14px]">save</span>
+                  <span>Speichern (mit Prüfung)</span>
+                </button>
+                <div class="text-center text-[10px] text-danger mt-1 font-mono">Button gesperrt</div>
+              </div>
+            </div>
+
+            <!-- Fehler 2: Unbekannte Variable -->
+            <div class="bg-card border border-borderMain rounded p-4 flex flex-col justify-between hover:border-danger/60 transition-colors shadow-sm">
+              <div>
+                <div class="text-[10px] font-mono uppercase tracking-wider text-danger mb-2 flex items-center justify-between">
+                  <span>Rejection 02</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-dangerBg text-danger font-bold">422 Variable</span>
+                </div>
+                <h3 class="font-serif text-base text-ink font-semibold leading-snug">Speichern abgelehnt: Unbekannte Variable</h3>
+                
+                <div class="mt-3 p-2.5 rounded bg-dangerBg/50 border border-danger/20 text-xs text-danger flex items-start gap-2">
+                  <span class="material-symbols-outlined text-[16px] text-danger shrink-0 mt-0.5">error</span>
+                  <div class="leading-relaxed">
+                    Verwendung von Bezeichnern außerhalb der deklarierten Legende.
+                  </div>
+                </div>
+
+                <div class="mt-3 p-2 rounded bg-surface border border-hairline font-mono text-[10px] text-muted">
+                  Erlaubt: <span class="text-ink">&#123;&#123;chapter_title&#125;&#125;</span>, <span class="text-ink">&#123;&#123;tail&#125;&#125;</span>, <span class="text-ink">&#123;&#123;entities&#125;&#125;</span>.
+                </div>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-hairline">
+                <button disabled class="w-full py-1.5 rounded bg-surfaceSoft text-muted/60 text-xs font-medium cursor-not-allowed border border-borderMain flex items-center justify-center gap-1">
+                  <span class="material-symbols-outlined text-[14px]">save</span>
+                  <span>Speichern (mit Prüfung)</span>
+                </button>
+                <div class="text-center text-[10px] text-danger mt-1 font-mono">Button gesperrt</div>
+              </div>
+            </div>
+
+            <!-- Fehler 3: Include-Zyklus -->
+            <div class="bg-card border border-borderMain rounded p-4 flex flex-col justify-between hover:border-danger/60 transition-colors shadow-sm">
+              <div>
+                <div class="text-[10px] font-mono uppercase tracking-wider text-danger mb-2 flex items-center justify-between">
+                  <span>Rejection 03</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-dangerBg text-danger font-bold">422 Zyklus</span>
+                </div>
+                <h3 class="font-serif text-base text-ink font-semibold leading-snug">Speichern abgelehnt: Include-Zyklus</h3>
+                
+                <div class="mt-3 p-2.5 rounded bg-dangerBg/50 border border-danger/20 text-xs text-danger flex items-start gap-2">
+                  <span class="material-symbols-outlined text-[16px] text-danger shrink-0 mt-0.5">error</span>
+                  <div class="leading-relaxed">
+                    Zirkuläre Referenzen über Makro-Aufrufe.
+                  </div>
+                </div>
+
+                <div class="mt-3 p-2 rounded bg-surface border border-hairline font-mono text-[10px] text-muted">
+                  Rekursions-Wächter aktiv: Max Include-Tiefe (2) überschritten.
+                </div>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-hairline">
+                <button disabled class="w-full py-1.5 rounded bg-surfaceSoft text-muted/60 text-xs font-medium cursor-not-allowed border border-borderMain flex items-center justify-center gap-1">
+                  <span class="material-symbols-outlined text-[14px]">save</span>
+                  <span>Speichern (mit Prüfung)</span>
+                </button>
+                <div class="text-center text-[10px] text-danger mt-1 font-mono">Button gesperrt</div>
+              </div>
+            </div>
+
+            <!-- Fehler 4: Fehlender Marker -->
+            <div class="bg-card border border-borderMain rounded p-4 flex flex-col justify-between hover:border-danger/60 transition-colors shadow-sm">
+              <div>
+                <div class="text-[10px] font-mono uppercase tracking-wider text-danger mb-2 flex items-center justify-between">
+                  <span>Rejection 04</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-dangerBg text-danger font-bold">422 Pflichtfeld</span>
+                </div>
+                <h3 class="font-serif text-base text-ink font-semibold leading-snug">Speichern abgelehnt: Fehlender Marker</h3>
+                
+                <div class="mt-3 p-2.5 rounded bg-dangerBg/50 border border-danger/20 text-xs text-danger flex items-start gap-2">
+                  <span class="material-symbols-outlined text-[16px] text-danger shrink-0 mt-0.5">error</span>
+                  <div class="leading-relaxed">
+                    <code class="font-mono text-[10.5px] bg-card px-1 rounded font-bold">&#123;&#123;tail&#125;&#125;</code> muss für die Fortführung zwingend vorhanden sein.
+                  </div>
+                </div>
+
+                <div class="mt-3 p-2 rounded bg-surface border border-hairline font-mono text-[10px] text-muted">
+                  Kontrakt: Ohne Text-Puffer bricht der Ghost-Stream ab.
+                </div>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-hairline">
+                <button disabled class="w-full py-1.5 rounded bg-surfaceSoft text-muted/60 text-xs font-medium cursor-not-allowed border border-borderMain flex items-center justify-center gap-1">
+                  <span class="material-symbols-outlined text-[14px]">save</span>
+                  <span>Speichern (mit Prüfung)</span>
+                </button>
+                <div class="text-center text-[10px] text-danger mt-1 font-mono">Button gesperrt</div>
+              </div>
+            </div>
+
+            <!-- Fehler 5: Scope-Regel -->
+            <div class="bg-card border border-borderMain rounded p-4 flex flex-col justify-between hover:border-danger/60 transition-colors shadow-sm">
+              <div>
+                <div class="text-[10px] font-mono uppercase tracking-wider text-danger mb-2 flex items-center justify-between">
+                  <span>Rejection 05</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-dangerBg text-danger font-bold">422 Scope</span>
+                </div>
+                <h3 class="font-serif text-base text-ink font-semibold leading-snug">Speichern abgelehnt: Scope-Regel</h3>
+                
+                <div class="mt-3 p-2.5 rounded bg-dangerBg/50 border border-danger/20 text-xs text-danger flex items-start gap-2">
+                  <span class="material-symbols-outlined text-[16px] text-danger shrink-0 mt-0.5">error</span>
+                  <div class="leading-relaxed">
+                    <code class="font-mono text-[10.5px] bg-card px-1 rounded">chat.ask</code> ist nur im Global-Scope gültig (kein Roman-Scope).
+                  </div>
+                </div>
+
+                <div class="mt-3 p-2 rounded bg-surface border border-hairline font-mono text-[10px] text-muted">
+                  Architektur-Regel: Dialogische Abfragen erben immer das globale Modell.
+                </div>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-hairline">
+                <button disabled class="w-full py-1.5 rounded bg-surfaceSoft text-muted/60 text-xs font-medium cursor-not-allowed border border-borderMain flex items-center justify-center gap-1">
+                  <span class="material-symbols-outlined text-[14px]">save</span>
+                  <span>Speichern (mit Prüfung)</span>
+                </button>
+                <div class="text-center text-[10px] text-danger mt-1 font-mono">Button gesperrt</div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+
+        <!-- ========================================== -->
+        <!-- ABSCHNITT 3: Vorschau & Live-Test Werkzeuge -->
+        <!-- ========================================== -->
+        <section class="space-y-4">
+          <div class="flex items-center justify-between border-b border-hairline pb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-sm bg-success"></span>
+              <h2 class="text-xs font-mono uppercase tracking-wider text-muted font-bold">Vorschau & Live-Test Werkzeuge</h2>
+              <span class="text-xs text-muted">(Sandboxing, Zero-Data-Leakage & Provider-Rückmeldungen)</span>
+            </div>
+            <span class="text-xs font-mono text-muted">Lokale Ausführung & Diagnostik</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            
+            <!-- Tool 1: Vorschau (providerfrei) -->
+            <div class="bg-card border border-borderMain rounded p-4 flex flex-col justify-between hover:border-muted/50 transition-colors shadow-sm xl:col-span-2">
+              <div>
+                <div class="text-[10px] font-mono uppercase tracking-wider text-success mb-2 flex items-center justify-between">
+                  <span>Werkzeug 01</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-successBg text-success font-semibold border border-success/30 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[11px]">security</span>
+                    <span>Providerfrei</span>
+                  </span>
+                </div>
+                <h3 class="font-serif text-lg text-ink font-medium leading-snug">Vorschau (providerfrei)</h3>
+                
+                <div class="mt-2.5 p-2.5 rounded bg-surfaceSoft border border-borderMain flex items-center justify-between text-xs">
+                  <div class="flex items-center gap-2 text-ink">
+                    <span class="material-symbols-outlined text-[16px] text-success">lock</span>
+                    <span class="font-medium">Diagnostik: Providerfrei gerendert. Kein API-Aufruf, keine Datenübertragung.</span>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-4 mt-2 text-[11px] font-mono text-muted">
+                  <span>String-Länge: <strong class="text-ink">842 Zeichen</strong></span>
+                  <span>•</span>
+                  <span>Geschätzte Prompt-Tokens: <strong class="text-ink">~214 Tokens</strong></span>
+                </div>
+
+                <!-- Beispieltext mit Herkunfts-Markierungen -->
+                <div class="mt-3 p-3 rounded bg-surface border border-borderMain font-mono text-[11px] leading-relaxed text-ink space-y-2">
+                  <div class="text-muted text-[10px]"># Hydriertes Prompt-Fragment:</div>
+                  <p>
+                    Du bist das narrative Schreibatelier für den Roman &laquo;Dead Signal&raquo;.
+                    <span class="inline-block px-1 py-0.2 rounded bg-surfaceSoft text-[9.5px] text-muted border border-borderMain">
+                      Herkunft: Roman-Metadaten
+                    </span>
+                  </p>
+                  <p>
+                    Akteure: Dr. Maya Chen (Bio-Physikerin), ARIA (Schiffs-KI).
+                    <span class="inline-block px-1 py-0.2 rounded bg-surfaceSoft text-[9.5px] text-accent border border-borderMain">
+                      Herkunft: Lore-Graph (Dead Signal)
+                    </span>
+                  </p>
+                  <p class="text-muted/80">
+                    &raquo;Er tastete nach der Schaltung des Diktiergeräts im Kragenaufschlag...&laquo;
+                    <span class="inline-block px-1 py-0.2 rounded bg-surfaceSoft text-[9.5px] text-muted border border-borderMain">
+                      Herkunft: Manuskript-Puffer (Cursor-Position)
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-hairline flex items-center justify-between text-[11px] text-muted">
+                <span>Rendering-Latenz: &lt;1 ms</span>
+                <span class="text-success font-medium">100% offline verifiziert</span>
+              </div>
+            </div>
+
+            <!-- Tool 2: Live-Test — Warnung -->
+            <div class="bg-card border border-borderMain rounded p-4 flex flex-col justify-between hover:border-muted/50 transition-colors shadow-sm">
+              <div>
+                <div class="text-[10px] font-mono uppercase tracking-wider text-warning mb-2 flex items-center justify-between">
+                  <span>Werkzeug 02</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-warningBg text-warning font-semibold border border-warning/30 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[11px]">shield</span>
+                    <span>Hinweis</span>
+                  </span>
+                </div>
+                <h3 class="font-serif text-lg text-ink font-medium leading-snug">Live-Test — Warnung</h3>
+                
+                <div class="mt-3 p-3 rounded bg-warningBg/60 border border-warning/30 text-xs text-ink space-y-2">
+                  <div class="flex items-center gap-1.5 font-semibold text-warning">
+                    <span class="material-symbols-outlined text-[16px]">info</span>
+                    <span>Vor erstem Lauf:</span>
+                  </div>
+                  <p class="text-[11.5px] leading-relaxed text-muted">
+                    Testdaten werden an deinen konfigurierten Provider übermittelt. Das Ergebnis erscheint ausschließlich in dieser Test-Vorschau und wird niemals automatisch in dein Manuskript übernommen.
+                  </p>
+                </div>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-hairline flex items-center gap-2">
+                <button class="flex-1 py-1.5 rounded bg-accent text-accentText text-xs font-semibold hover:bg-accentHover transition-colors flex items-center justify-center gap-1 shadow-sm">
+                  <span class="material-symbols-outlined text-[14px]">send</span>
+                  <span>Prompt testen</span>
+                </button>
+                <button class="px-3 py-1.5 rounded border border-borderMain bg-card text-muted hover:text-ink text-xs font-medium">
+                  Abbrechen
+                </button>
+              </div>
+            </div>
+
+            <!-- Tool 3: Live-Test — Streaming -->
+            <div class="bg-card border border-borderMain rounded p-4 flex flex-col justify-between hover:border-muted/50 transition-colors shadow-sm">
+              <div>
+                <div class="text-[10px] font-mono uppercase tracking-wider text-accent mb-2 flex items-center justify-between">
+                  <span>Werkzeug 03</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-surface text-accent font-semibold border border-borderMain flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+                    <span>Streaming</span>
+                  </span>
+                </div>
+                <h3 class="font-serif text-lg text-ink font-medium leading-snug">Live-Test — Streaming</h3>
+                
+                <div class="mt-3 p-3 rounded bg-panel border border-borderMain font-serif text-xs leading-relaxed text-ink space-y-2 min-h-[120px]">
+                  <div class="text-[10px] font-mono text-muted flex items-center justify-between pb-1 border-b border-hairline">
+                    <span>Test-Antwort (Antik-Terminal Streaming)</span>
+                    <span class="text-accent font-mono text-[9px]">Sonnet 3.5</span>
+                  </div>
+                  <p class="italic text-ink/90">
+                    &raquo;Das Relais schnappte nicht zu, es fraß sich fest. Drei Sekunden Stille, in denen die Luft im Schacht nach altem Ozon und kaltem Eisen schmeckte...<span class="inline-block w-1.5 h-3.5 bg-accent ml-0.5 align-middle animate-pulse"></span>
+                  </p>
+                </div>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-hairline flex items-center justify-between text-[11px]">
+                <span class="text-muted">Generierung läuft:</span>
+                <span class="font-mono text-accent font-semibold">18 W/s • 0.8s</span>
+              </div>
+            </div>
+
+            <!-- Tool 4: Live-Test — Rate-Limit & Tool 5: Kein Provider -->
+            <div class="space-y-4 xl:col-span-1">
+              
+              <!-- Sub-Karte: Rate-Limit -->
+              <div class="bg-card border border-borderMain rounded p-3 hover:border-warning/60 transition-colors shadow-sm">
+                <div class="text-[10px] font-mono uppercase tracking-wider text-warning mb-1 flex items-center justify-between">
+                  <span>Werkzeug 04</span>
+                  <span class="text-warning font-semibold text-[10px]">HTTP 429</span>
+                </div>
+                <div class="font-serif text-sm text-ink font-semibold">Live-Test — Rate-Limit</div>
+                <div class="mt-1.5 text-xs text-muted leading-tight">
+                  Zu viele Testläufe in kurzer Folge. Bitte kurz warten.
+                </div>
+                <div class="mt-2.5 flex items-center justify-between text-[11px] pt-2 border-t border-hairline">
+                  <span class="text-muted">Cooldown:</span>
+                  <span class="font-mono text-warning font-semibold">14 Sekunden</span>
+                </div>
+              </div>
+
+              <!-- Sub-Karte: Kein Provider -->
+              <div class="bg-card border border-borderMain rounded p-3 hover:border-muted/50 transition-colors shadow-sm">
+                <div class="text-[10px] font-mono uppercase tracking-wider text-muted mb-1 flex items-center justify-between">
+                  <span>Werkzeug 05</span>
+                  <span class="px-1.5 py-0.2 rounded text-[9.5px] bg-surfaceSoft text-ink font-mono font-medium border border-borderMain">Fake</span>
+                </div>
+                <div class="font-serif text-sm text-ink font-semibold">Live-Test — kein Provider</div>
+                <div class="mt-1.5 text-xs text-muted leading-tight">
+                  Kein Provider konfiguriert — der lokale Fake-Treiber antwortet. Kennzeichnung: Fake.
+                </div>
+                <div class="mt-2.5 flex items-center justify-between text-[11px] pt-2 border-t border-hairline">
+                  <span class="text-muted">Treiber:</span>
+                  <span class="font-mono text-ink font-medium">mock.internal</span>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </section>
+
+
+        <!-- ============================================== -->
+        <!-- ABSCHNITT 4: Diff & System-Harmonisierung     -->
+        <!-- ============================================== -->
+        <section class="space-y-4">
+          <div class="flex items-center justify-between border-b border-hairline pb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-sm bg-ink"></span>
+              <h2 class="text-xs font-mono uppercase tracking-wider text-muted font-bold">Diff & System-Harmonisierung</h2>
+              <span class="text-xs text-muted">(Reversible Abweichungsanalyse & Reset-Pfad)</span>
+            </div>
+            <span class="text-xs font-mono text-muted">Auditsicherheit</span>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Diff: Standard vs. Override (2 Spalten breit) -->
+            <div class="lg:col-span-2 bg-card border border-borderMain rounded p-5 shadow-sm space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-[10px] font-mono uppercase tracking-wider text-muted">Harmonisierung 01</div>
+                  <h3 class="font-serif text-xl text-ink font-medium">Diff: Standard vs. Override</h3>
+                </div>
+                <span class="px-2 py-0.5 rounded text-xs font-mono bg-surface text-ink border border-borderMain">
+                  2 Modifikationen aktiv
+                </span>
+              </div>
+
+              <!-- Diff Visualisierung -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                <!-- Standard-Spalte -->
+                <div class="p-3 rounded bg-surfaceSoft border border-borderMain space-y-1.5">
+                  <div class="text-[10.5px] font-semibold text-muted pb-1 border-b border-borderMain flex items-center justify-between">
+                    <span>Standard-Vorlage (Global)</span>
+                    <span class="text-[9.5px] text-muted/60">Atelier-Basis</span>
+                  </div>
+                  <div class="text-muted/80 leading-relaxed space-y-1">
+                    <div>01 # Standard Ghost-Writing</div>
+                    <div>02 Du bist ein literarischer Ghost-</div>
+                    <div class="bg-dangerBg text-danger line-through px-1 rounded">03 Writing-Assistent. Führe das Manuskript nahtlos fort.</div>
+                    <div>04 Kapitel: &#123;&#123;chapter_title&#125;&#125;</div>
+                    <div class="bg-dangerBg text-danger line-through px-1 rounded">05 Achte auf einen konsistenten Erzählstil.</div>
+                  </div>
+                </div>
+
+                <!-- Override-Spalte -->
+                <div class="p-3 rounded bg-surface border border-accent/30 space-y-1.5">
+                  <div class="text-[10.5px] font-semibold text-accent pb-1 border-b border-borderMain flex items-center justify-between">
+                    <span>Dead Signal Override Template</span>
+                    <span class="text-[9.5px] text-accent font-bold">Lokal vorrangig</span>
+                  </div>
+                  <div class="text-ink leading-relaxed space-y-1">
+                    <div>01 # Hard Sci-Fi Noir Fortführung</div>
+                    <div>02 Du bist das narrative Atelier für Dead Signal.</div>
+                    <div class="bg-successBg text-success font-semibold px-1 rounded">03 Sprachstil: &#123;&#123;tone_directive&#125;&#125;</div>
+                    <div>04 Kapitel: &#123;&#123;chapter_title&#125;&#125;</div>
+                    <div class="bg-successBg text-success font-semibold px-1 rounded">05 Schreibe maximal 2 bis 3 lakonische Sätze.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between pt-2 text-xs text-muted">
+                <span class="flex items-center gap-1.5">
+                  <span class="w-2.5 h-2.5 rounded-sm bg-successBg border border-success/40"></span>
+                  <span>Spezifischer Tonfall injiziert</span>
+                </span>
+                <span class="font-mono text-[11px]">Jinja2-Kompilierung: Valide</span>
+              </div>
+            </div>
+
+            <!-- Zurücksetzen auf Global -->
+            <div class="bg-card border border-borderMain rounded p-5 shadow-sm flex flex-col justify-between">
+              <div>
+                <div class="text-[10px] font-mono uppercase tracking-wider text-muted">Harmonisierung 02</div>
+                <h3 class="font-serif text-xl text-ink font-medium">Zurücksetzen auf Global</h3>
+                
+                <div class="mt-4 p-3.5 rounded bg-surface border border-borderMain space-y-3">
+                  <div class="flex items-start gap-2.5 text-xs text-ink leading-relaxed">
+                    <span class="material-symbols-outlined text-[20px] text-accent shrink-0 mt-0.5">restart_alt</span>
+                    <div>
+                      Löscht den spezifischen Override für <strong>Dead Signal</strong> und kehrt zum geerbten Global-Standard zurück.
+                    </div>
+                  </div>
+
+                  <div class="p-2.5 rounded bg-card border border-hairline text-[11.5px] text-muted space-y-1">
+                    <div class="font-semibold text-ink">Konsequenz:</div>
+                    <ul class="list-disc list-inside space-y-0.5 text-muted">
+                      <li>Die Datei <code class="font-mono text-[10px]">dead-signal.j2</code> wird archiviert.</li>
+                      <li>Roman erbt sofort wieder den globalen Kanon.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-6 pt-4 border-t border-hairline space-y-2">
+                <button class="w-full py-2 rounded border border-borderMain bg-card text-ink text-xs font-semibold hover:border-danger hover:text-danger transition-colors flex items-center justify-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+                  <span>Auf Standard zurücksetzen</span>
+                </button>
+                <div class="text-center text-[10.5px] text-muted">
+                  Erfordert einmalige Bestätigung im Dialog
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </main>
+
+      <!-- FOOTER -->
+      <footer class="bg-panel border-t border-borderMain py-4 px-8 mt-12 shrink-0 flex flex-col sm:flex-row items-center justify-between text-xs text-muted">
+        <div>
+          &copy; Narrare Atelier. Written sovereignty guaranteed. Local.
+        </div>
+        <div class="flex items-center gap-4 mt-2 sm:mt-0 font-mono text-[11px]">
+          <span>Design-System: Literary Modernism</span>
+          <span>•</span>
+          <span>Farb-Token: #F6F3ED / #743B1F</span>
+          <span>•</span>
+          <span>Keine Telemetrie</span>
+        </div>
+      </footer>
+
+    </div>
+  </div>
+
+</body>
+</html>

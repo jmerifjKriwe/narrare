@@ -227,8 +227,11 @@ jobs:
 
   # The Python suite — one definition for every workflow: `_test.yml`.
   # Same job name, so `ci-required` still names `tests`; the check it
-  # reports is `tests / tests`. Coverage is a main-push concern — the
-  # Codecov dashboard keys on those runs — and `CODECOV_TOKEN` is passed
+  # reports is `tests / tests`. Every run instruments: the SonarCloud
+  # quality gate requires coverage on new code, and a PR scan without
+  # the report reads new_coverage as 0.0 and fails the gate on every
+  # PR. The Codecov uploads stay a main-push affair inside `_test.yml`
+  # — the dashboard keys on those runs — and `CODECOV_TOKEN` is passed
   # explicitly, never via `secrets: inherit` (spec: reusable workflows).
   #
   # `./`, not `$/`: same trade as `_lint.yml`'s comment — the pinned
@@ -245,7 +248,7 @@ jobs:
     permissions:
       contents: read
     with:
-      coverage: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      coverage: true
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -873,7 +876,51 @@ jobs:
       - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.12 rejects `$/`
         with:
           python: "false"
-      - run: just test-frontend
+      # One instrumented run on every event: the suite is the same, and the
+      # lcov report is what the `sonar` job's scan reads — a PR without it
+      # has no new_coverage and fails the quality gate. The artifact upload
+      # keeps `!cancelled()` for the same reason the backend one does: a
+      # report that stays away is worse than a red one.
+      - name: Tests with coverage
+        run: just test-frontend-cov
+      - name: Upload lcov.info artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: frontend-coverage
+          path: web/coverage/lcov.info
+          retention-days: 1
+
+  # SonarCloud analysis: single scan combining backend + frontend coverage.
+  # Runs on every event (PRs get analysis/decoration), and the downloads
+  # are unconditional: `tests` and `frontend` instrument on every event
+  # too, so the artifacts are always here when this job runs — a PR scan
+  # without them has no new_coverage, reads 0.0, and fails the quality
+  # gate on every PR.
+  sonar:
+    needs: [changes, tests, frontend]
+    if: >-
+      github.event_name != 'pull_request_review'
+      && needs.changes.outputs.release_pr != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: backend-coverage
+          path: .
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: frontend-coverage
+          path: web/coverage
+      - uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   build:
     needs: changes
