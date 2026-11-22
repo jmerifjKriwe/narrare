@@ -108,27 +108,36 @@ export function useLanguageChoice({ preSetup = false }: { preSetup?: boolean } =
     // revert writes the pre-fetch state down, so the patch must come
     // after it. The abandoned answers' writes are dropped; the choice's
     // own invalidation refetch follows the write with the fresher truth.
-    // A refusal unwinds only the patch that is still the seam's last one
-    // — a newer choice's value stands everywhere the choice wrote (the
-    // caches, the store, the mirror). (The structural 409 below patches
+    // A refusal unwinds only up to the newest choice that still stands —
+    // a newer pending or landed choice keeps its value everywhere the
+    // choice wrote (the caches, the store, the mirror), and refusals that
+    // pile up under it unwind together once it falls too. Every exit
+    // settles the choice, and the last one to settle restarts the reads
+    // owed a fresh answer: those a cancellation abandoned, and every read
+    // once a write landed. (The structural 409 below patches
     // nothing: pre-setup the strict entry cannot exist — the row never
     // answered — and the tolerant entry holds no locale.)
+    if (queryClient.isFetching({ queryKey: ["settings"] }) > 0) settingsReadsOwed = true;
     void queryClient.cancelQueries({ queryKey: ["settings"] });
-    const generation = patchCachedLocale(next);
+    const choice = patchCachedLocale(next, () => {
+      applyLocale(previous);
+      if (preSetup && previous !== null) storePreSetupLocale(previous);
+    });
     if (preSetup && next !== null) storePreSetupLocale(next);
     try {
       const { response } = await client.PATCH("/api/settings", { body: { locale: next } });
       // Setup required: the row cannot hold the choice yet — the mirror
-      // stands, and no settings refetch is owed (the row did not change).
-      if (preSetup && response.status === 409) return;
+      // stands, so the choice does too.
+      if (preSetup && response.status === 409) {
+        settleLocaleChoice(choice, true);
+        return;
+      }
       if (!response.ok) throw new Error(`refused: ${response.status}`);
       if (preSetup) storePreSetupLocale(null);
-      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+      settingsReadsOwed = true;
+      settleLocaleChoice(choice, true);
     } catch {
-      restoreCachedLocale(generation, () => {
-        applyLocale(previous);
-        if (preSetup && previous !== null) storePreSetupLocale(previous);
-      });
+      settleLocaleChoice(choice, false);
     }
   }
 
@@ -145,17 +154,24 @@ export function useLanguageChoice({ preSetup = false }: { preSetup?: boolean } =
  * locale — the outage's dressed nulls read exactly like a stored follow —
  * is left for the landed refetch to reconcile. A `null` choice is a real
  * assertion (the row now follows the browser) and moves the entries like
- * any other. Each patch takes the seam's next generation, so a refusal
- * can tell whether its own patch is still the last one written.
+ * any other. Each patch joins the seam's stack of unsettled choices,
+ * oldest first, so a refusal can tell which choice is still the newest.
  */
-let lastLocalePatch: {
-  generation: number;
+type LocaleChoice = {
   moved: Array<{ key: readonly unknown[]; prior: unknown }>;
-} | null = null;
+  /** Put the store (and the mirror) back to the answer before this choice. */
+  restore: () => void;
+  state: "pending" | "accepted" | "refused";
+};
 
-function patchCachedLocale(next: Locale | null): number {
-  const generation = (lastLocalePatch?.generation ?? 0) + 1;
-  const moved: Array<{ key: readonly unknown[]; prior: unknown }> = [];
+let localeChoices: LocaleChoice[] = [];
+
+/** Whether the settings reads must restart once the choices settle: a
+ *  choice cancelled a read in flight, or a write landed on the row. */
+let settingsReadsOwed = false;
+
+function patchCachedLocale(next: Locale | null, restore: () => void): LocaleChoice {
+  const moved: LocaleChoice["moved"] = [];
   const patch = (key: readonly unknown[], tolerant: boolean) => {
     const cached = queryClient.getQueryData<{ locale: string | null }>(key);
     if (cached === undefined) return;
@@ -165,24 +181,45 @@ function patchCachedLocale(next: Locale | null): number {
   };
   patch(["settings", "read"], false);
   patch(["settings"], true);
-  lastLocalePatch = { generation, moved };
-  return generation;
+  const choice: LocaleChoice = { moved, restore, state: "pending" };
+  localeChoices.push(choice);
+  return choice;
 }
 
-/** Undo a patch — but only its OWN (#940's mirror variant): a refusal
- *  whose patch has been superseded by a newer choice's patch must not
- *  restore its snapshot over the newer value. The comparison is by
- *  GENERATION, not by value: a later choice can re-assert the same
- *  locale, and the snapshots' row halves are identical when no refetch
- *  landed in between, so equality alone cannot tell "this request's
- *  write" from "a newer choice that wrote the same thing". The
- *  generation is exactly the "a newer choice stands" predicate. `onOwn`
- *  runs the store's restore under the same guard — the caches, the
- *  visible language and the mirror move together or not at all. */
-function restoreCachedLocale(generation: number, onOwn: () => void): void {
-  if (lastLocalePatch === null || lastLocalePatch.generation !== generation) return;
-  for (const entry of lastLocalePatch.moved) queryClient.setQueryData(entry.key, entry.prior);
-  onOwn();
+/** Settle a choice's write. A landed choice stands over every older one —
+ *  their answers can no longer surface, so they leave the stack. A refusal
+ *  under a newer unsettled or landed choice changes nothing visible yet;
+ *  a refusal at the top unwinds every refused choice from the top down,
+ *  each snapshot in reverse order, and the lowest one's restore puts the
+ *  store back to the answer that now stands: the newest surviving choice,
+ *  or the accepted baseline before them all. Order matters over values: a
+ *  later choice can re-assert the same locale, so the stack — not
+ *  equality — is the "a newer choice stands" predicate. The caches, the
+ *  visible language and the mirror move together or not at all. When the
+ *  last choice settles, the settings reads restart if a write landed or a
+ *  choice cancelled one in flight — a cancelled read stays idle, a first
+ *  load on its loading screen, a refetch's other fields stale, until
+ *  something asks again. Waiting for the last choice keeps an older
+ *  answer from landing over a newer pending choice. */
+function settleLocaleChoice(choice: LocaleChoice, accepted: boolean): void {
+  choice.state = accepted ? "accepted" : "refused";
+  const at = localeChoices.indexOf(choice);
+  if (at !== -1 && accepted) {
+    localeChoices = localeChoices.slice(at);
+  } else if (at !== -1) {
+    let lowest: LocaleChoice | null = null;
+    while (localeChoices.at(-1)?.state === "refused") {
+      const top = localeChoices.pop() as LocaleChoice;
+      for (const entry of top.moved) queryClient.setQueryData(entry.key, entry.prior);
+      lowest = top;
+    }
+    lowest?.restore();
+  }
+  if (localeChoices.some((pending) => pending.state === "pending")) return;
+  localeChoices = [];
+  if (!settingsReadsOwed) return;
+  settingsReadsOwed = false;
+  void queryClient.invalidateQueries({ queryKey: ["settings"] });
 }
 
 /** The radio face's drafted geometries — each door's port, kept verbatim. */
