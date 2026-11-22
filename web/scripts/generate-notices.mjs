@@ -334,7 +334,7 @@ export function formatNotices(licenses) {
       throw new Error(`expected the packages of "${id}" to be an array`);
     }
   }
-  const ids = Object.keys(licenses).sort();
+  const ids = Object.keys(licenses).sort((a, b) => a.localeCompare(b));
   const missing = ids.filter((id) => !LICENSE_TEXTS[id]);
   if (missing.length > 0) {
     throw new Error(

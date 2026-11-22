@@ -211,9 +211,9 @@ export function graphSignature(
   entities: readonly LayoutEntity[],
   relations: readonly LayoutRelation[],
 ): string {
-  const ids = entities.map((entity) => entity.id).sort();
+  const ids = entities.map((entity) => entity.id).sort((a, b) => a.localeCompare(b));
   const edges = relations
     .map((relation) => `${relation.from_entity_id}\u0000${relation.to_entity_id}`)
-    .sort();
+    .sort((a, b) => a.localeCompare(b));
   return `${ids.join("\u0001")}\u0002${edges.join("\u0001")}`;
 }
