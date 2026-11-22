@@ -49,14 +49,30 @@ day. This check stands in for the test that cannot exist yet.
 
 Queries start from the scoped base or carry the predicate explicitly. A parent
 from the path is resolved through a `require_*` lookup that is narrowed to the
-user. A bulk `delete`/`update` filters on `user_id` and treats a rowcount of 0
-as `NotFoundError`.
+user. Every bulk `delete`/`update` filters on `user_id`. Where the statement
+targets a row the caller named and an absent row is an error, such as deleting
+a scene by id, a rowcount of 0 raises `NotFoundError`. Where an empty set is
+valid, a rowcount of 0 is fine: `_Scenes.replace_for_chapter` in
+`app/kernel/interchange/engine.py` may delete no scenes from a chapter that has
+none, and the scoped updates in `touch_exported` and the `renumber` methods of
+`app/capabilities/writing/repository.py` need no existence error.
 
-Some code legitimately acts without a requesting user: the job worker claiming
-and reclaiming `Job` rows by id (`app/kernel/jobs/worker.py`), setup creating
-the local user (and reading back a novel it just created while importing a
-demo archive, in the same transaction), and migrations. That is fine as long
-as the work it then does for a job stays inside that job's `user_id`.
+Some code legitimately acts without a requesting user, and is not a finding:
+
+- The job runtime: the worker claiming and reclaiming `Job` rows by id
+  (`app/kernel/jobs/worker.py`), and `reset_stuck_running` in
+  `app/kernel/jobs/runtime.py` requeueing stale running `Job` rows of every
+  user at startup and during periodic recovery.
+- Setup's first-run transaction, `SetupService.complete` in
+  `app/capabilities/setup/service.py`: checking for and creating the local
+  user, creating the first novel through
+  `NovelRepository(self.session, LOCAL_USER_ID)` or importing a demo archive
+  for `LOCAL_USER_ID`, and reading the imported novel back with
+  `session.get(Novel, report.novel_id)` in the same transaction.
+- Migrations.
+
+That is fine as long as setup acts only for `LOCAL_USER_ID`, and the work a
+job handler then does for a job stays inside that job's `user_id`.
 
 ## Example
 
