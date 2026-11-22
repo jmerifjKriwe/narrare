@@ -9,7 +9,7 @@
 [![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-blue.svg)](https://www.python.org/downloads/)
 [![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![codecov](https://codecov.io/gh/jmerifjKriwe/narrare/branch/main/graph/badge.svg)](https://codecov.io/gh/jmerifjKriwe/narrare)
-
+[![Downloads](https://img.shields.io/github/downloads/jmerifjKriwe/narrare/total?label=Downloads&color=blue)](https://github.com/jmerifjKriwe/narrare/releases)
 <img src="assets/logo/lockup.svg" alt="Narrare logo" width="180" />
 
 > Local-first, AI-assisted creative writing. Bring your own model — cloud or local.
