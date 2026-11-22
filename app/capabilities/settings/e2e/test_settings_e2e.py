@@ -280,6 +280,13 @@ def test_the_doors_land_focused_on_the_addresses(page: Page, installed: Stack) -
     settings_row.click()
     expect(page).to_have_url(f"{BASE}/settings")
     expect_settings(page)
+
+    # The standing menu on the light face clears the same floor — the
+    # disabled row's and the badge's inks included.
+    open_menu()
+    assert_accessible(page)
+    page.keyboard.press("Escape")
+    expect(page.get_by_role("menu", name="Benutzerprofil")).to_have_count(0)
     assert_accessible(page)
 
 
@@ -354,14 +361,16 @@ def test_the_refusals_keep_every_answer(page: Page, installed: Stack) -> None:
 
 
 def test_the_dark_settings_clear_the_axe_floor(page: Page, installed: Stack) -> None:
-    """The surface on the tokens' dark halves — the same WCAG A/AA floor the
-    light face clears, with the dark boot adopted from the row.
-
-    The standing user menu is deliberately not floored here: axe flags its
-    struck-through „Abmelden" row and its „Lokal" badge below AA on the dark
-    tokens — the finding is reported to the owner, and a contrast exemption
-    is an owner decision, not this suite's to grant."""
+    """The surface and the standing user menu on the tokens' dark halves —
+    the same WCAG A/AA floor the light face clears, with the dark boot
+    adopted from the row. No exclusion: the menu's inks ride the pairs the
+    tokens gate pins (the muted row over the lowest ground, the muted
+    badge on the card ground)."""
     set_theme("dark")
     goto_settings(page)
     expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+    assert_accessible(page)
+
+    page.get_by_role("button", name=MENU_TRIGGER).click()
+    expect(page.get_by_role("menu", name="Benutzerprofil")).to_be_visible()
     assert_accessible(page)

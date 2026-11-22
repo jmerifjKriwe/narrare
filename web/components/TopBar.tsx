@@ -264,11 +264,16 @@ function UserBlock() {
           <div aria-hidden="true" className="mx-0 my-1 border-t border-rule" />
           {/* Abmelden: honestly disabled — the local instance holds no
               cloud session to end. Out of the walk, the note carries the
-              reason (the draft's LOKAL row and its box). */}
+              reason (the draft's LOKAL row and its box). The inks stay on
+              the AA pairs the tokens gate pins: the muted row over the
+              menu's lowest ground (the 60% dim composites the ink to
+              2.6:1 dark, 2.4:1 light — the strike-through and the cursor
+              carry the disabled reading), the muted badge on the card
+              ground (soft measures 3.99:1 dark and 4.46:1 light). */}
           <div className="px-4 py-2">
-            <div className="flex cursor-not-allowed items-center justify-between text-muted opacity-60">
+            <div className="flex cursor-not-allowed items-center justify-between text-muted">
               <span className="font-normal line-through">{t("shell.menu.signOut")}</span>
-              <span className="rounded bg-soft px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted">
+              <span className="rounded bg-card px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted">
                 {t("shell.menu.localBadge")}
               </span>
             </div>

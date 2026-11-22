@@ -295,6 +295,10 @@ const TEXT_PAIRS: [string, string, number][] = [
   ["muted", "background", 4.5],
   ["muted", "panel", 4.5],
   ["muted", "card", 4.5],
+  // The user-block menu's disabled row: the menu floats on the lowest
+  // surface, and its muted ink rides it (W7's axe catch, fixed on the
+  // tokens — the 60% dim it rode before composited to 2.6:1 dark).
+  ["muted", "surface-container-lowest", 4.5],
   ["primary", "background", 4.5],
   ["primary", "card", 4.5],
   ["primary-foreground", "primary", 4.5],
