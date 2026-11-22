@@ -67,8 +67,8 @@ does not exist; no area is undecided by accident.
 
 ## Phase 1 — Finish the rebuild
 
-**Backend already there; the surfaces are mostly missing.** After this phase the app is
-usable without touching an API or a `.env` file.
+**Backend already there; the surfaces are mostly missing.** After this phase
+the app is usable without touching an API or a `.env` file.
 
 - **Settings.** The screen the gear opens: providers, keys, models, per-task
   assignment, token budgets, theme, language. The Allgemein half is live — Sprache &
