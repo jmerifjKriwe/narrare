@@ -782,6 +782,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings/driver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Driver
+         * @description The instance's driver kind as one word: ``fake`` while every
+         *     assignable task's serving tier is the fake adapter, else
+         *     ``configured``.
+         *
+         *     The offline card's one-word truth, the tasks read's own resolution
+         *     reduced — so its failure is the tasks read's failure: a provider whose
+         *     key its tier can no longer produce fails the read by name (502, the
+         *     same mapping as the tasks read), and the card claims nothing.
+         */
+        get: operations["get_driver_api_settings_driver_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings/models": {
         parameters: {
             query?: never;
@@ -1668,6 +1695,25 @@ export interface components {
             id: string;
             /** Title */
             title: string;
+        };
+        /**
+         * DriverRead
+         * @description The instance's driver kind as one word: what actually answers.
+         *
+         *     ``fake`` while every assignable task's serving tier is the local fake
+         *     adapter — the cascade's floor or a stored fake row; ``configured`` once
+         *     any provider adapter serves one. The offline card claims a local driver
+         *     only on ``fake``. The read is the tasks read's own resolution reduced to
+         *     this word, never a second derivation, so it can never disagree with the
+         *     task list's rows — and it fails as the tasks read fails: a provider
+         *     whose key its tier can no longer produce is the 502 the router maps.
+         */
+        DriverRead: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "fake" | "configured";
         };
         /**
          * EmbeddingMismatchDetail
@@ -4739,6 +4785,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_driver_api_settings_driver_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DriverRead"];
                 };
             };
         };

@@ -11,9 +11,9 @@ seeds exactly the population it asserts on through the settings API.
 The helpers drive the same HTTP surface the browser uses — real API, real
 Postgres, never a database insert. Settings is pure CRUD (no LLM tier), so no
 provider fake is needed at all; even the offline card's hide path runs without
-a configured endpoint, because the tasks read is pure resolution — a provider
+a configured endpoint, because the driver read is pure resolution — a provider
 and a default model created through the API are enough for the cascade to
-answer a non-fake driver, and no network call ever leaves.
+answer ``configured``, and no network call ever leaves.
 
 ``DATABASE`` is defined here once; the tests import it and the API helpers
 from this module.
@@ -101,13 +101,13 @@ def set_theme(theme: str | None) -> None:
     response.raise_for_status()
 
 
-def read_tasks() -> list[dict[str, Any]]:
-    """The cascade's answer per known task key — the offline card's truth."""
+def read_driver() -> dict[str, Any]:
+    """The instance's driver kind as one word — the offline card's truth."""
     with _client() as client:
-        response = client.get("/api/settings/tasks")
+        response = client.get("/api/settings/driver")
     response.raise_for_status()
-    tasks: list[dict[str, Any]] = response.json()
-    return tasks
+    driver: dict[str, Any] = response.json()
+    return driver
 
 
 def create_provider(name: str = "Cloud", api_key: str = "sk-e2e-hide-key") -> str:

@@ -33,7 +33,7 @@ import { useTranslation } from "@shell/lib/i18n";
 import { queryClient, useUpdateSettings } from "@shell/lib/query";
 import { Icon } from "@shell/ui/icons";
 
-import { useSettingsTasksQuery } from "./tasksQuery";
+import { useDriver } from "./driverQuery";
 
 /** The shell's focus ring on every control the form offers. */
 const FOCUS =
@@ -97,14 +97,12 @@ export function ProfileForm({ row }: { row: ProfileRow }) {
   const dirty = name.trim() !== storedName || goalAnswer !== row.daily_goal_words;
   const busy = updateSettings.isPending;
 
-  /** The offline card's backend truth: it stands only while every
-   *  assignable task answers the local fake driver. A task served by a
-   *  configured provider hides it; an audit-only row has no driver and
-   *  contradicts nothing; a failed read hides it too — no claim without
-   *  an answer. */
-  const tasks = useSettingsTasksQuery();
-  const localDriver =
-    tasks.isSuccess && tasks.data.every((task) => (task.assignable ? task.kind === "fake" : true));
+  /** The offline card's backend truth: the driver read's one word. The card
+   *  stands only while the instance answers `fake`; a configured instance
+   *  hides it, and a pending or failed read hides it too — no claim
+   *  without an answer. */
+  const driver = useDriver();
+  const localDriver = driver.isSuccess && driver.data.kind === "fake";
 
   /** The one save: validate, diff against the row, ride the mutation with
    *  only the dirtied fields. The locale always rides (the schema's rule),
@@ -285,9 +283,9 @@ export function ProfileForm({ row }: { row: ProfileRow }) {
       </form>
 
       {/* The offline note: the draft's Offline-Kompensation card, shown
-          only while the backend's own tasks read answers the local fake
-          driver for every assignable task — a configured provider hides
-          it, and a failed read claims nothing. */}
+          only while the backend's own driver read answers the local fake
+          driver — a configured instance hides it, and a read without an
+          answer claims nothing. */}
       {localDriver && (
         <div className="mt-4 flex items-start gap-3 rounded-lg border border-border bg-panel p-4 text-meta">
           <span className="mt-0.5 shrink-0 text-primary">

@@ -63,25 +63,10 @@ let settingsRow: {
   email: string | null;
 };
 
-/** The mock instance's tasks — the backend's cascade truth for the card. */
-let tasksRows: {
-  task_key: string;
-  profile_id: string | null;
-  profile_name: string | null;
-  kind: string;
-  assignable: boolean;
-}[];
-
-function taskRow(overrides: Partial<(typeof tasksRows)[number]> = {}): (typeof tasksRows)[number] {
-  return {
-    task_key: "write.prose",
-    profile_id: null,
-    profile_name: null,
-    kind: "fake",
-    assignable: true,
-    ...overrides,
-  };
-}
+/** The mock instance's driver kind — the backend's one-word truth for the
+ *  card: `fake` while the fake adapter serves, `configured` once a
+ *  provider does. */
+let driverKind: "fake" | "configured";
 
 function row(overrides: Partial<typeof settingsRow> = {}): typeof settingsRow {
   return {
@@ -98,7 +83,7 @@ function scriptApi() {
   api.GET.mockImplementation(async (path: string) => {
     if (path === "/api/settings") return { data: { ...settingsRow }, response: ok() };
     if (path === "/api/setup/status") return { data: { complete: true }, response: ok() };
-    if (path === "/api/settings/tasks") return { data: tasksRows.map((task) => ({ ...task })), response: ok() };
+    if (path === "/api/settings/driver") return { data: { kind: driverKind }, response: ok() };
     throw new Error(`unexpected request: ${path}`);
   });
   api.PATCH.mockImplementation(async (path: string, init?: { body?: Record<string, unknown> }) => {
@@ -170,11 +155,7 @@ beforeEach(() => {
   api.GET.mockReset();
   api.PATCH.mockReset();
   settingsRow = row();
-  tasksRows = [
-    taskRow(),
-    taskRow({ task_key: "write.scene", profile_name: "Local", profile_id: "11111111-1111-1111-1111-111111111111" }),
-    taskRow({ task_key: "audit.text", kind: "audit", assignable: false }),
-  ];
+  driverKind = "fake";
   scriptApi();
   localStorage.clear();
   queryClient.clear();
@@ -208,7 +189,7 @@ describe("the Allgemein surface — the draft's geometry", () => {
     // The email answers as the fallback label — the hint names it.
     expect(screen.getByText(t("settings.author.hint.email", { email: "h.calder@station7.de" }))).toBeTruthy();
     // The offline note: the draft's card, title and body — it stands once
-    // the tasks read has answered the local driver for every task.
+    // the driver read has answered the local fake driver for the instance.
     expect(await screen.findByText(de["settings.offline.title"])).toBeTruthy();
     expect(screen.getByText(de["settings.offline.body"])).toBeTruthy();
     expect(screen.getByText(de["settings.subtitle"])).toBeTruthy();
@@ -587,39 +568,26 @@ describe("the profile form — one dirty form", () => {
   });
 });
 
-describe("the offline card — the driver's truth, not a printed claim", () => {
-  it("stands while every assignable task answers the local fake driver", async () => {
+describe("the offline card — the driver read's word, not a printed claim", () => {
+  it("stands while the driver read answers the local fake driver", async () => {
     renderSettings();
     await screen.findByLabelText(de["settings.author.label"]);
     expect(await screen.findByText(de["settings.offline.title"])).toBeTruthy();
     expect(screen.getByText(de["settings.offline.body"])).toBeTruthy();
   });
 
-  it("hides once any assignable task answers a configured provider", async () => {
-    tasksRows = [
-      taskRow(),
-      taskRow({ task_key: "write.scene", kind: "openai-chat", profile_name: "Cloud", profile_id: "22222222-2222-2222-2222-222222222222" }),
-    ];
+  it("hides once the driver read names a configured instance", async () => {
+    driverKind = "configured";
     renderSettings();
     await screen.findByLabelText(de["settings.author.label"]);
-    // Let the tasks answer settle, then assert the absence.
-    await waitFor(() => expect(api.GET.mock.calls.filter(([path]) => path === "/api/settings/tasks").length).toBeGreaterThan(0));
+    // Let the driver read settle, then assert the absence.
+    await waitFor(() => expect(api.GET.mock.calls.filter(([path]) => path === "/api/settings/driver").length).toBeGreaterThan(0));
     expect(screen.queryByText(de["settings.offline.title"])).toBeNull();
   });
 
-  it("an audit-only row hides nothing — no driver answers it at all", async () => {
-    tasksRows = [
-      taskRow(),
-      taskRow({ task_key: "audit.text", kind: "audit", assignable: false }),
-    ];
-    renderSettings();
-    await screen.findByLabelText(de["settings.author.label"]);
-    expect(await screen.findByText(de["settings.offline.title"])).toBeTruthy();
-  });
-
-  it("no answer, no claim — a failed tasks read hides the card", async () => {
+  it("no answer, no claim — a failed driver read hides the card", async () => {
     api.GET.mockImplementation(async (path: string) => {
-      if (path === "/api/settings/tasks") {
+      if (path === "/api/settings/driver") {
         return { data: undefined, response: new Response(null, { status: 500 }) };
       }
       if (path === "/api/settings") return { data: { ...settingsRow }, response: ok() };
@@ -627,7 +595,7 @@ describe("the offline card — the driver's truth, not a printed claim", () => {
     });
     renderSettings();
     await screen.findByLabelText(de["settings.author.label"]);
-    await waitFor(() => expect(api.GET.mock.calls.filter(([path]) => path === "/api/settings/tasks").length).toBeGreaterThan(0));
+    await waitFor(() => expect(api.GET.mock.calls.filter(([path]) => path === "/api/settings/driver").length).toBeGreaterThan(0));
     expect(screen.queryByText(de["settings.offline.title"])).toBeNull();
   });
 });

@@ -20,7 +20,7 @@ from collections.abc import Sequence  # noqa: TC003
 from dataclasses import dataclass
 from datetime import datetime  # noqa: TC003  the state's field annotation
 from time import monotonic
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from uuid import UUID  # noqa: TC003  the service's parameter annotations name it
 
 from sqlalchemy import select
@@ -411,6 +411,20 @@ class ModelService:
                 )
             )
         return rows
+
+    async def driver(self) -> Literal["fake", "configured"]:
+        """The instance's driver kind: the tasks read's own answer, reduced.
+
+        ``"fake"`` while every assignable task's serving tier is the fake
+        adapter — the cascade's floor or a stored fake row — else
+        ``"configured"``. The reduction runs over :meth:`tasks`, the one
+        resolution path: no second cascade exists to drift from it, and a
+        provider whose key its tier can no longer produce fails here as it
+        fails there, before the word is spoken. Audit-only keys name no
+        driver and are skipped, as there.
+        """
+        kinds = {row.kind for row in await self.tasks() if row.assignable}
+        return "fake" if kinds <= {"fake"} else "configured"
 
     async def assign(self, task_key: str, profile_id: UUID | None) -> TaskAssignment | None:
         """Point the task at one of the user's models, or clear it with ``None``.

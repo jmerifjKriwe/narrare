@@ -37,10 +37,14 @@ export type SceneUpsert = components["schemas"]["SceneUpsert"];
 export type KnowledgeDocument = components["schemas"]["DocumentRead"];
 export type Hit = components["schemas"]["SearchHit"];
 export type Job = components["schemas"]["JobRead"];
-/** One task's effective tier (the settings page's driver card reads it):
+/** One task's effective tier (the settings page's task face reads it):
  *  `kind` names the serving adapter — `fake` is the local driver, `audit`
  *  an audit-only key with no serving tier at all (`assignable: false`). */
 export type TaskEffective = components["schemas"]["TaskEffectiveRead"];
+/** The instance's driver kind as one word (the offline card's truth):
+ *  `fake` while the local fake adapter serves every assignable task,
+ *  `configured` once any provider adapter answers. */
+export type Driver = components["schemas"]["DriverRead"];
 export type Entity = components["schemas"]["EntityRead"];
 export type Suggestion = components["schemas"]["SuggestionRead"];
 export type Relation = components["schemas"]["RelationRead"];
