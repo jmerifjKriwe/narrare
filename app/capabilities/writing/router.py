@@ -48,7 +48,7 @@ from app.capabilities.writing.service import (
     WritingService,
 )
 from app.kernel.auth import SetupRequiredError, current_user_id
-from app.kernel.context import DEFAULT_MAX_OUTPUT_TOKENS, BudgetImpossibleError
+from app.kernel.context import BudgetImpossibleError
 from app.kernel.contracts.models import Chapter, Scene
 from app.kernel.db.session import get_session
 from app.kernel.llm.audit import audited_stream
@@ -101,19 +101,18 @@ async def _continuation_events(
     The editor appends what arrived and autosaves it; a silent close would look
     like a finished continuation. The request carries the wire facts: the
     resolved profile's temperature where it sets one, and ``max_tokens`` always
-    — the output reservation is a wire cap, so the profile's value rides, or
-    the kernel default when the facts leave it unset. However the stream ends
-    — done, error, disconnect, cancel — the call is audited (§3.4): success and
-    failure alike leave their row, a disconnect records "stream interrupted".
+    — the output reservation is a wire cap, so the task's resolved output
+    rides: the assignment's profile target, capped by the model's stored
+    ceiling where one exists (W8). A profile always answers a number, so no
+    default is invented when the facts leave the ceiling unknown. However the
+    stream ends — done, error, disconnect, cancel — the call is audited
+    (§3.4): success and failure alike leave their row, a disconnect records
+    "stream interrupted".
     """
     request = CompletionRequest(
         messages=(Message(role="user", content=prompt),),
         temperature=resolved.temperature,
-        max_tokens=(
-            resolved.max_output_tokens
-            if resolved.max_output_tokens is not None
-            else DEFAULT_MAX_OUTPUT_TOKENS
-        ),
+        max_tokens=resolved.resolved_output_tokens,
     )
     events = audited_stream(
         resolved,
@@ -736,14 +735,17 @@ async def continue_scene(
         )
     # The builder sizes its slices from the resolved facts; a pair whose output
     # reserve fills the window refused there — mapped like the lost key above:
-    # the one coded error frame, no provider call, no audit row. A prompt the
-    # effective chain refuses (an override whose frame cannot hold its budget)
-    # is mapped the same way, refused by name and never truncated.
+    # the one coded error frame, no provider call, no audit row. The reserve is
+    # the task's resolved output (the profile, capped at a stored ceiling), so
+    # a profile can turn a pair the raw ceiling allowed into a refusal — the
+    # honest answer, never a clamp. A prompt the effective chain refuses (an
+    # override whose frame cannot hold its budget) is mapped the same way,
+    # refused by name and never truncated.
     try:
         prompt = await service.continuation_prompt(
             scene_id,
             context_window=resolved.context_window,
-            max_output_tokens=resolved.max_output_tokens,
+            max_output_tokens=resolved.resolved_output_tokens,
             model=resolved.model,
             prompt=payload.prompt if payload is not None else None,
         )

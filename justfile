@@ -134,8 +134,15 @@ test-frontend:
     pnpm --dir web test
 
 # Web unit tests with V8 coverage (LCOV in web/coverage). Used for SonarCloud.
+# The V8 reporter writes SF paths relative to web/ (vitest's root): capability
+# components appear as ../app/capabilities/... and SonarCloud's scanner fails
+# to resolve that form against the repo root — every capability web file has
+# read 0% since allowExternal turned them on. The normalization rewrites every
+# SF to a repo-root-relative path (../app/x -> app/x, bare web paths ->
+# web/x), the form sonar-scanner documents; web/-rooted entries keep matching.
 test-frontend-cov:
     pnpm --dir web test:coverage
+    python3 scripts/sonar_lcov.py web/coverage/lcov.info
 
 # Only the web tests the working tree's change reaches — the inner loop for
 # frontend work, mirroring the pre-commit hook. Full suite via test-frontend.

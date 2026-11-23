@@ -15,8 +15,10 @@ and the catalog prices the model under the provider's vendor. The resolved
 structure is what the call is audited with and what later work consumes: the
 model that served, its kind and model string, and the numeric tunables — the
 model's stored columns where set, the catalog's where it knows the model,
-``None`` where neither does. ``settings.test`` sits in :data:`KNOWN_TASK_KEYS`
-because the settings surface audits its probe calls under it; an unlisted key
+``None`` where neither does. The task's output profile rides the same
+structure (W8): the serving assignment's choice, resolved to the number a
+call may reserve. ``settings.test`` sits in :data:`KNOWN_TASK_KEYS` because
+the settings surface audits its probe calls under it; an unlisted key
 resolves all the same, so a new capability ships before its key is listed.
 """
 
@@ -31,7 +33,15 @@ from app.kernel.llm.anthropic_messages import AnthropicMessagesProvider
 from app.kernel.llm.catalog import ModelInfo, effective_info
 from app.kernel.llm.contract import TextProvider  # noqa: TC001  the dataclass field names it
 from app.kernel.llm.fake import FakeProvider
-from app.kernel.llm.models import PROVIDER_KINDS, LLMProvider, ProviderProfile
+from app.kernel.llm.models import (
+    CUSTOM_OUTPUT_PROFILE,
+    DEFAULT_OUTPUT_PROFILE,
+    OUTPUT_PROFILES,
+    PROVIDER_KINDS,
+    LLMProvider,
+    ProviderProfile,
+    TaskAssignment,
+)
 from app.kernel.llm.openai_chat import DEFAULT_BASE_URL, OpenAIChatProvider
 from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository, ProviderRepository
 from app.kernel.secrets import load_key
@@ -66,6 +76,53 @@ ENV_PROVIDERS: dict[str, Callable[[], TextProvider]] = {
 
 
 @dataclass(frozen=True)
+class OutputProfile:
+    """One task's stored output-profile choice, before any ceiling is applied.
+
+    ``name`` is an :data:`app.kernel.llm.models.OUTPUT_PROFILES` key — its
+    target is the vocabulary's own number — or ``custom``, where ``custom``
+    carries the explicit number the assignment stored. The default is the
+    vocabulary's default: an assignment without a stored choice and no
+    assignment at all both mean ``balanced`` (the column has no two-state
+    semantics, W8).
+    """
+
+    name: str = DEFAULT_OUTPUT_PROFILE
+    custom: int | None = None
+
+    @property
+    def target(self) -> int:
+        """The profile's own output-token target, uncapped."""
+        if self.name == CUSTOM_OUTPUT_PROFILE:
+            if self.custom is None:
+                raise ValueError("the custom output profile carries no number")
+            return self.custom
+        return OUTPUT_PROFILES[self.name]
+
+    def resolved(self, ceiling: int | None) -> int:
+        """The number a call may reserve: ``min(target, ceiling)`` at a ceiling.
+
+        The ceiling is the model row's *stored* ``max_output_tokens`` — the
+        one ceiling that exists; what the catalog knows prices the call and
+        is no ceiling (W8 ruling 5). An unknown ceiling invents nothing: the
+        target stands uncapped and every read shows it as is.
+        """
+        target = self.target
+        return min(target, ceiling) if ceiling is not None else target
+
+
+def assignment_output_profile(assignment: TaskAssignment | None) -> OutputProfile:
+    """The assignment's stored choice as the kernel's type, the default when none.
+
+    The cascade's first hit decides — the task's own assignment or the
+    segment stand-in — and its profile rides whatever model that tier chose.
+    """
+    if assignment is None:
+        return OutputProfile()
+    return OutputProfile(assignment.output_profile, assignment.output_profile_custom)
+
+
+@dataclass(frozen=True)
 class ResolvedProvider:
     """One task's provider for one user, with the facts the call is audited with.
 
@@ -78,6 +135,14 @@ class ResolvedProvider:
     the plaintext the provider's tier produced; it never reaches a log line,
     a response, an audit row, or a repr — the dataclass keeps it out of the
     generated one.
+
+    The output profile is the task's, not the model's (W8):
+    ``output_profile`` names the choice the serving assignment carried
+    (``balanced`` when none did), and ``resolved_output_tokens`` is the
+    number a call may reserve — the profile's target, ``min``-ed with the
+    model's stored ``max_output_tokens`` where one is stored, standing
+    uncapped where none is. ``max_output_tokens`` keeps its own meaning: the
+    model's ceiling as the merge knows it, never the task's reservation.
     """
 
     provider: TextProvider
@@ -91,6 +156,8 @@ class ResolvedProvider:
     base_url: str | None
     api_key: str | None = field(default=None, repr=False)
     info: ModelInfo | None = None
+    output_profile: str = DEFAULT_OUTPUT_PROFILE
+    resolved_output_tokens: int = OUTPUT_PROFILES[DEFAULT_OUTPUT_PROFILE]
 
 
 async def resolve_provider(session: AsyncSession, user_id: UUID, task_key: str) -> ResolvedProvider:
@@ -102,7 +169,9 @@ async def resolve_provider(session: AsyncSession, user_id: UUID, task_key: str) 
     the model with its provider) falls through to the next tier without a
     sound, and a provider whose key its tier can no longer produce raises
     :class:`app.kernel.secrets.KeyUnavailableError` — the message names the
-    row, never the key — before any call runs.
+    row, never the key — before any call runs. The assignment that hit also
+    carries the task's output profile; the resolved structure states the
+    choice and the number it reserves (:meth:`OutputProfile.resolved`).
     """
     assignments = AssignmentRepository(session, user_id)
     assignment = await assignments.for_task(task_key)
@@ -116,7 +185,9 @@ async def resolve_provider(session: AsyncSession, user_id: UUID, task_key: str) 
     if profile is not None:
         provider = await ProviderRepository(session, user_id).get(profile.provider_id)
         if provider is not None:
-            return from_profile(profile, provider)
+            return from_profile(
+                profile, provider, output_profile=assignment_output_profile(assignment)
+            )
     return environment_provider()
 
 
@@ -157,18 +228,27 @@ def environment_provider() -> ResolvedProvider:
         base_url=base_url,
         api_key=api_key,
         info=info,
+        # No assignment anywhere: the default profile answers, and with no
+        # stored ceiling it stands uncapped at its target.
+        output_profile=DEFAULT_OUTPUT_PROFILE,
+        resolved_output_tokens=OutputProfile().resolved(None),
     )
 
 
-def from_profile(profile: ProviderProfile, provider: LLMProvider) -> ResolvedProvider:
+def from_profile(
+    profile: ProviderProfile,
+    provider: LLMProvider,
+    output_profile: OutputProfile | None = None,
+) -> ResolvedProvider:
     """The model tiers' resolution: the provider row carries the endpoint.
 
-    The cascade calls this with the model it chose and that model's provider;
-    the settings surface calls it with the model a probe names, so both build
-    the identical adapter from the identical rows. The kind, the endpoint and
-    the key are the provider's — a model never carries them — and the
-    vendor names the catalog tier the model is priced under. A provider whose
-    key its tier can no longer produce raises
+    The cascade calls this with the model it chose, that model's provider and
+    the assignment's output profile; the settings surface calls it with the
+    model a probe names and no profile, so both build the identical adapter
+    from the identical rows. The kind, the endpoint and the key are the
+    provider's — a model never carries them — and the vendor names the
+    catalog tier the model is priced under. A provider whose key its tier
+    can no longer produce raises
     :class:`app.kernel.secrets.KeyUnavailableError` before any call runs —
     except a local endpoint configured without a key, which never had one to
     lose (the settings gate allows exactly that).
@@ -209,6 +289,10 @@ def from_profile(profile: ProviderProfile, provider: LLMProvider) -> ResolvedPro
     info, context_window, max_output_tokens = _merged(
         model, provider.vendor, profile.context_window, profile.max_output_tokens
     )
+    # The task's output reservation: the assignment's target, capped by the
+    # model row's stored ceiling where one is stored (W8). No assignment —
+    # the settings probe's path — means the default profile.
+    choice = output_profile if output_profile is not None else OutputProfile()
     return ResolvedProvider(
         provider=adapter,
         profile_id=profile.id,
@@ -222,6 +306,8 @@ def from_profile(profile: ProviderProfile, provider: LLMProvider) -> ResolvedPro
         base_url=base_url or None,
         api_key=api_key or None,
         info=info,
+        output_profile=choice.name,
+        resolved_output_tokens=choice.resolved(profile.max_output_tokens),
     )
 
 
