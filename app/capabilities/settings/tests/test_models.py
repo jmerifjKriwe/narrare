@@ -1140,6 +1140,9 @@ async def test_the_model_read_names_whether_the_catalog_prices_it(
     stranger = await _create_provider(client, name="Stranger", vendor="other")
     # No tier reaches "mini-xl": not this vendor's, not the bare, not folded.
     unknown = await _create(client, str(stranger["id"]), "Unknown", model="mini-xl")
+    # The one row with stored overrides: presence never depended on them —
+    # the lookup applies them to the numbers after the tiers decide.
+    await _create(client, str(acme["id"]), "Capped", model="mini", max_output_tokens=2_048)
 
     assert known["in_catalog"] is True
     assert unknown["in_catalog"] is False
@@ -1151,7 +1154,10 @@ async def test_the_model_read_names_whether_the_catalog_prices_it(
         after = await session.scalar(text("SELECT count(*) FROM llm_calls"))
     assert before == after == 0
     flags = {entry["name"]: entry["in_catalog"] for entry in listed}
-    assert flags == {"Known": True, "Unknown": False}
+    assert flags == {"Known": True, "Unknown": False, "Capped": True}
+    # The stored-override row's own answer, stated beside the dict pin.
+    by_name = {entry["name"]: entry for entry in listed}
+    assert by_name["Capped"]["in_catalog"] is True
 
 
 async def test_the_model_read_carries_the_catalogs_known_output_limit(

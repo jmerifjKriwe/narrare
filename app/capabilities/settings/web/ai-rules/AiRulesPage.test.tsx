@@ -930,6 +930,106 @@ describe("the aufgaben rows — the cascade's honest faces", () => {
     expect((screen.getByLabelText(de["settings.ai.profile.customInput"]) as HTMLInputElement).value).toBe("7000");
   });
 
+  it("an over-limit custom holds the model switch too — the editor never stores the value its own face refuses", async () => {
+    // A parsed-but-over-limit custom (100.000 against the catalog's
+    // 64.000): the blur and the Enter refuse it, and so must the model
+    // switch — otherwise the PUT would store the very value the editor's
+    // own face calls invalid. The number drops to the limit: the held
+    // switch rides the save it can carry.
+    models = [
+      model({ max_output_tokens: null, catalog_max_output_tokens: 64_000 }),
+      model({ id: "m-2", name: "Zweit", is_default: false, max_output_tokens: null, catalog_max_output_tokens: 64_000 }),
+    ];
+    assignments = [{ task_key: "writing.continuation", profile_id: "m-1", output_profile: "custom", output_profile_custom: 6_000 }];
+    tasks = [
+      task({ profile_id: "m-1", profile_name: "Cloud-Schreiber", kind: "openai-chat", output_profile: "custom", resolved_output_tokens: 6_000 }),
+      ...freshTasks().slice(1),
+    ];
+    api.PUT.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/assignments/{task_key}") {
+        const [, init] = api.PUT.mock.calls.at(-1) as unknown as [string, { body: Record<string, unknown> }];
+        return {
+          data: {
+            task_key: "writing.continuation",
+            profile_id: init.body.profile_id,
+            output_profile: typeof init.body.output_profile === "number" ? "custom" : init.body.output_profile,
+            output_profile_custom: typeof init.body.output_profile === "number" ? init.body.output_profile : null,
+          },
+          response: ok(),
+        };
+      }
+      throw new Error(`unexpected PUT: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    const row = taskRow("writing.continuation");
+    const input = await screen.findByLabelText(de["settings.ai.profile.customInput"]);
+    fireEvent.change(input, { target: { value: "100000" } });
+    fireEvent.change(modelSelect(row), { target: { value: "m-2" } });
+    await waitFor(() => expect(modelSelect(row).value).toBe("m-2")); // the editor moved, the wire did not
+    expect(puts().length).toBe(0);
+    expect((input as HTMLInputElement).getAttribute("aria-invalid")).toBe("true");
+    expect(row.textContent).toContain(t("settings.ai.profile.customOverLimit", { tokens: "64.000" }));
+
+    // The number drops to the limit: the held switch rides the save.
+    fireEvent.change(input, { target: { value: "64000" } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(puts().length).toBe(1));
+    expect(puts()[0][1].body).toEqual({ profile_id: "m-2", output_profile: 64_000 });
+    expect((input as HTMLInputElement).getAttribute("aria-invalid")).toBe("false");
+  });
+
+  it("a value only the target's limit refuses stays off the wire — the switch measures against the model it names", async () => {
+    // The stored model prices no known limit, so „100000" passes its face;
+    // the target's 64.000 refuses it. The hold reads the TARGET — the save
+    // names that model, and its face flags the number one render later, so
+    // a source-model read would store what the editor itself calls invalid.
+    models = [
+      model({ catalog_max_output_tokens: null }),
+      model({ id: "m-2", name: "Zweit", is_default: false, catalog_max_output_tokens: 64_000 }),
+    ];
+    assignments = [{ task_key: "writing.continuation", profile_id: "m-1", output_profile: "custom", output_profile_custom: 6_000 }];
+    tasks = [
+      task({ profile_id: "m-1", profile_name: "Cloud-Schreiber", kind: "openai-chat", output_profile: "custom", resolved_output_tokens: 6_000 }),
+      ...freshTasks().slice(1),
+    ];
+    api.PUT.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/assignments/{task_key}") {
+        const [, init] = api.PUT.mock.calls.at(-1) as unknown as [string, { body: Record<string, unknown> }];
+        return {
+          data: {
+            task_key: "writing.continuation",
+            profile_id: init.body.profile_id,
+            output_profile: typeof init.body.output_profile === "number" ? "custom" : init.body.output_profile,
+            output_profile_custom: typeof init.body.output_profile === "number" ? init.body.output_profile : null,
+          },
+          response: ok(),
+        };
+      }
+      throw new Error(`unexpected PUT: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    const row = taskRow("writing.continuation");
+    const input = await screen.findByLabelText(de["settings.ai.profile.customInput"]);
+    fireEvent.change(input, { target: { value: "100000" } });
+    expect((input as HTMLInputElement).getAttribute("aria-invalid")).toBe("false"); // the source asks nothing
+    fireEvent.change(modelSelect(row), { target: { value: "m-2" } });
+    await waitFor(() => expect(modelSelect(row).value).toBe("m-2")); // the editor moved, the wire did not
+    expect(puts().length).toBe(0);
+    expect((input as HTMLInputElement).getAttribute("aria-invalid")).toBe("true");
+    expect(row.textContent).toContain(t("settings.ai.profile.customOverLimit", { tokens: "64.000" }));
+
+    // The refused number's own blur sends nothing either; the number the
+    // target can take lands the held switch.
+    fireEvent.blur(input);
+    await waitFor(() => expect(puts().length).toBe(0));
+    fireEvent.change(input, { target: { value: "64000" } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(puts().length).toBe(1));
+    expect(puts()[0][1].body).toEqual({ profile_id: "m-2", output_profile: 64_000 });
+  });
+
   it("a named profile change saves at once and carries the stored model beside it", async () => {
     assignments = [{ task_key: "writing.continuation", profile_id: "m-1", output_profile: "balanced", output_profile_custom: null }];
     models = [model()];
