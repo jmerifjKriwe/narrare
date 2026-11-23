@@ -11,12 +11,20 @@ overrides onto this; nothing else enters here.
 
 from app.kernel.prompts.registry import (
     REASONS,
+    AssembledContext,
+    LiveContextMissingError,
+    LiveTestContext,
     PromptRegistry,
     PromptRenderError,
     PromptSpec,
     get_registry,
 )
-from app.kernel.prompts.rendering import MAX_INCLUDE_DEPTH, render, render_source
+from app.kernel.prompts.rendering import (
+    MAX_INCLUDE_DEPTH,
+    referenced_names,
+    render,
+    render_source,
+)
 
 
 def no_includes(key: str) -> str:
@@ -27,10 +35,14 @@ def no_includes(key: str) -> str:
 __all__ = [
     "MAX_INCLUDE_DEPTH",
     "REASONS",
+    "AssembledContext",
+    "LiveContextMissingError",
+    "LiveTestContext",
     "PromptRegistry",
     "PromptRenderError",
     "PromptSpec",
     "get_registry",
+    "referenced_names",
     "render",
     "render_source",
 ]

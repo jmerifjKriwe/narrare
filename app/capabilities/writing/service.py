@@ -9,7 +9,7 @@ from typing import Literal
 from uuid import UUID  # noqa: TC003
 from zipfile import BadZipFile
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.writing.metadata import (
@@ -461,6 +461,7 @@ class WritingService:
         max_output_tokens: int | None = None,
         model: str | None = None,
         prompt: str | None = None,
+        source: str | None = None,
     ) -> str:
         """The prompt for a scene continuation, or NotFoundError if the scene is not ours.
 
@@ -472,6 +473,10 @@ class WritingService:
         when an override's glue grows past the immediate slice. Read-only: the
         streamed answer comes back to the editor, whose autosave writes it.
         The request that streams has no side effect of its own (D14).
+
+        An explicit `source` renders instead of the chain's pick (W8's live
+        test): the editor draft under test is what reaches the provider,
+        budgeted and refused exactly as a saved override would be.
 
         The unit is the scene (W4 §5). The tail is the active scene's own prose;
         the predecessors are the book's earlier scenes in reading order walked
@@ -532,6 +537,27 @@ class WritingService:
             blurb=novel.blurb if novel else None,
             active_chapter_id=chapter.id,
             prompt=prompt,
+            source=source,
+        )
+
+    async def latest_scene(self, novel_id: UUID | None) -> Scene | None:
+        """The user's most recently touched scene, or ``None`` when none exists.
+
+        The live test's continuation edge (W8): production names the scene the
+        editor has open, and this endpoint carries no scene — the freshest
+        prose is the honest stand-in, scoped to one novel when the request
+        names one. ``updated_at`` answers "touched": a rework of an early
+        chapter outranks a newer but untouched one, the way the editor's
+        cursor would. ``None`` is the assembly's no-context refusal, never a
+        sample swap.
+        """
+        statement = select(Scene).where(Scene.user_id == self.user_id)
+        if novel_id is not None:
+            statement = statement.join(Chapter, Chapter.id == Scene.chapter_id).where(
+                Chapter.novel_id == novel_id
+            )
+        return await self.session.scalar(
+            statement.order_by(Scene.updated_at.desc(), Scene.id.desc()).limit(1)
         )
 
     async def _continuation_predecessors(

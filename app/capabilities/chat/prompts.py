@@ -12,10 +12,25 @@ from collections.abc import Sequence  # noqa: TC003
 from typing import Final
 
 from app.kernel.llm import SOURCE_PREFIX
-from app.kernel.prompts import get_registry, no_includes, render_source
-from app.kernel.retrieval import Passage  # noqa: TC001
+from app.kernel.prompts import (
+    AssembledContext,
+    LiveTestContext,
+    get_registry,
+    no_includes,
+    render,
+    render_source,
+)
+from app.kernel.retrieval import Passage, PassageRepository
 
 CHAT_KEY: Final = "chat.ask"
+
+RETRIEVAL_LIMIT: Final = 5
+"""How many passages the assembled prompt may cite.
+
+The request schema's default and the live test's retrieval share it, so the
+editor's test rides what a real ask rides. The schema imports it from here
+— this module is the one home, and importing it back would be a cycle.
+"""
 
 CHAT_TEMPLATE = (
     "Answer the question using only the sources below. Quote the passage that "
@@ -89,10 +104,38 @@ def chat_prompt(*, question: str, passages: Sequence[Passage]) -> str:
     )
 
 
+async def _assemble_live(context: LiveTestContext) -> AssembledContext:
+    """The live test's chat: real retrieval, the sample question named in the facts.
+
+    Chat writes nothing (D14), so no stored question exists to reuse — the
+    sample question drives the retrieval query and rides the prompt's
+    ``question`` variable where the facts frame shows it verbatim; the
+    sources are the user's corpus as a real ask retrieves them. The draft
+    (or the effective chain) is the source; the import-free assembly reads
+    only the kernel, so the registry's import-time build never cycles.
+    """
+    [vector] = await context.embeddings.embed([_SAMPLE_QUESTION])
+    passages = await PassageRepository(context.session, context.user_id).search(
+        vector, RETRIEVAL_LIMIT
+    )
+    prompt = await render(
+        context.session,
+        context.user_id,
+        CHAT_KEY,
+        {"question": _SAMPLE_QUESTION, "sources": sources_block(passages)},
+        source=context.source,
+    )
+    return AssembledContext(
+        prompt=prompt,
+        facts={"question": _SAMPLE_QUESTION, "passages": str(len(passages))},
+    )
+
+
 get_registry().register(
     CHAT_KEY,
     template=CHAT_TEMPLATE,
     sample_variables=sample_variables,
     contract=chat_contract,
     novel_scopable=False,
+    assemble=_assemble_live,
 )

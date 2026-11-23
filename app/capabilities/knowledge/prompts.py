@@ -26,10 +26,22 @@ and this module imports it from there like every other consumer.
 
 from collections.abc import Callable, Sequence  # noqa: TC003  signatures evaluate
 from typing import Final, NamedTuple
+from uuid import UUID  # noqa: TC003  signatures evaluate
 
-from app.kernel.contracts.models import ENTITY_TYPES
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002  the assemblies' context
+
+from app.kernel.contracts.models import ENTITY_TYPES, Chapter, Novel
 from app.kernel.llm import PURPOSE_PREFIX, SOURCE_PREFIX
-from app.kernel.prompts import get_registry, no_includes, render_source
+from app.kernel.prompts import (
+    AssembledContext,
+    LiveContextMissingError,
+    LiveTestContext,
+    get_registry,
+    no_includes,
+    render,
+    render_source,
+)
 
 EXTRACTION_KEY: Final = "knowledge.extract-entities"
 CONSISTENCY_KEY: Final = "knowledge.check-consistency"
@@ -237,12 +249,129 @@ def consistency_prompt(
     )
 
 
+async def _latest_chapter(
+    session: AsyncSession, user_id: UUID, novel_id: UUID | None
+) -> Chapter | None:
+    """The user's most recently touched chapter — the live test's extraction unit.
+
+    Scoped to one novel when the request names one; across the whole atelier
+    otherwise. ``updated_at`` answers "touched", the same writer's-edge rule
+    the writing assembly's scene pick runs.
+    """
+    statement = select(Chapter).where(Chapter.user_id == user_id)
+    if novel_id is not None:
+        statement = statement.where(Chapter.novel_id == novel_id)
+    return await session.scalar(
+        statement.order_by(Chapter.updated_at.desc(), Chapter.id.desc()).limit(1)
+    )
+
+
+async def _latest_novel(
+    session: AsyncSession, user_id: UUID, novel_id: UUID | None
+) -> Novel | None:
+    """The scope's novel, or the user's most recently touched one."""
+    statement = select(Novel).where(Novel.user_id == user_id)
+    if novel_id is not None:
+        statement = statement.where(Novel.id == novel_id)
+    return await session.scalar(
+        statement.order_by(Novel.updated_at.desc(), Novel.id.desc()).limit(1)
+    )
+
+
+async def _assemble_extraction(context: LiveTestContext) -> AssembledContext:
+    """The live test's extraction: the latest chapter's prose, the real scope.
+
+    The same variables the extraction job builds — the chapter title, the
+    prose its scenes carry, the body cut to the bound at the caller, never
+    the template — rendered at the request's scope with the draft (or the
+    effective chain) as the source. The import is deferred: this module
+    registers at import time and the jobs module imports it.
+    """
+    from app.capabilities.knowledge.jobs import BODY_LIMIT, prose_by_chapter
+
+    chapter = await _latest_chapter(context.session, context.user_id, context.novel_id)
+    if chapter is None:
+        raise LiveContextMissingError("no chapter to extract from yet — write a chapter first")
+    prose = (await prose_by_chapter(context.session, context.user_id, [chapter.id])).get(
+        chapter.id, ""
+    )
+    prompt = await render(
+        context.session,
+        context.user_id,
+        EXTRACTION_KEY,
+        extraction_variables(chapter_title=chapter.title, body=prose[:BODY_LIMIT]),
+        novel_id=context.novel_id,
+        source=context.source,
+    )
+    novel = await context.session.get(Novel, chapter.novel_id)
+    facts = {"chapter": chapter.title, "chars": str(min(len(prose), BODY_LIMIT))}
+    if novel is not None:
+        facts = {"novel": novel.title, **facts}
+    return AssembledContext(prompt=prompt, facts=facts)
+
+
+async def _assemble_consistency(context: LiveTestContext) -> AssembledContext:
+    """The live test's consistency: one real pass over the scope's book.
+
+    The same assembly the consistency job runs — the novel's accepted
+    entities as the canon, its chapters packed greedily under the body bound
+    — reduced to the first group: one pass is one provider call, what the
+    live test's rate limit and audit budget for. The facts name the novel,
+    the chapters the pass carries and the canon's size, so a reader sees
+    the pass's reach.
+    """
+    from app.capabilities.knowledge.jobs import chapter_groups, prose_by_chapter
+    from app.capabilities.knowledge.repository import EntityRepository
+
+    novel = await _latest_novel(context.session, context.user_id, context.novel_id)
+    if novel is None:
+        raise LiveContextMissingError("no novel to check yet — create a book with chapters first")
+    chapters = (
+        await context.session.scalars(
+            select(Chapter)
+            .where(Chapter.novel_id == novel.id, Chapter.user_id == context.user_id)
+            .order_by(Chapter.position)
+        )
+    ).all()
+    entities = await EntityRepository(context.session, context.user_id).list_for_novel(novel.id)
+    canon = [(entity.name, entity.type) for entity in entities]
+    prose = await prose_by_chapter(
+        context.session, context.user_id, [chapter.id for chapter in chapters]
+    )
+    groups, _skipped = chapter_groups(chapters, prose)
+    if not groups:
+        raise LiveContextMissingError(
+            "no chapter fits one pass — every chapter is over the consistency bound"
+        )
+    group = groups[0]
+    prompt = await render(
+        context.session,
+        context.user_id,
+        CONSISTENCY_KEY,
+        consistency_variables(
+            entities=canon,
+            chapters=[(chapter.title, prose.get(chapter.id, "")) for chapter in group],
+        ),
+        novel_id=context.novel_id,
+        source=context.source,
+    )
+    return AssembledContext(
+        prompt=prompt,
+        facts={
+            "novel": novel.title,
+            "chapters": str(len(group)),
+            "entities": str(len(canon)),
+        },
+    )
+
+
 get_registry().register(
     EXTRACTION_KEY,
     template=EXTRACTION_TEMPLATE,
     sample_variables=sample_variables_extraction,
     contract=extraction_contract,
     novel_scopable=True,
+    assemble=_assemble_extraction,
 )
 
 get_registry().register(
@@ -251,4 +380,5 @@ get_registry().register(
     sample_variables=sample_variables_consistency,
     contract=consistency_contract,
     novel_scopable=True,
+    assemble=_assemble_consistency,
 )

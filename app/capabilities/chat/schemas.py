@@ -5,10 +5,12 @@ from uuid import UUID  # noqa: TC003
 
 from pydantic import BaseModel, Field
 
+from app.capabilities.chat.prompts import RETRIEVAL_LIMIT
+
 
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
-    limit: int = Field(default=5, ge=1, le=20)
+    limit: int = Field(default=RETRIEVAL_LIMIT, ge=1, le=20)
 
 
 class SourceRead(BaseModel):

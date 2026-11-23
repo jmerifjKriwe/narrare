@@ -286,7 +286,7 @@ def parse_findings(answer: str) -> list[ParsedFinding]:
     return findings
 
 
-async def _prose_by_chapter(
+async def prose_by_chapter(
     session: AsyncSession, user_id: UUID, chapter_ids: Sequence[UUID]
 ) -> dict[UUID, str]:
     """Each chapter's prose as its scenes carry it (W4 §5): the scene bodies
@@ -345,7 +345,7 @@ async def extract_entities(
         # as a failed row the user can see, not disappear from the lane.
         raise ValueError(f"chapter {chapter_id} is gone or not the job owner's")
 
-    body = (await _prose_by_chapter(session, job.user_id, [chapter.id])).get(chapter.id, "")
+    body = (await prose_by_chapter(session, job.user_id, [chapter.id])).get(chapter.id, "")
     truncated = len(body) > BODY_LIMIT
     # The prompt renders through the registry's effective chain — the novel's
     # override, else the user's global one, else the bundled template. The cut
@@ -406,7 +406,7 @@ async def extract_entities(
     return {"suggestions": len(entities), "truncated": truncated}
 
 
-def _chapter_groups(
+def chapter_groups(
     chapters: Sequence[Chapter],
     prose: dict[UUID, str],
 ) -> tuple[list[list[Chapter]], list[dict[str, object]]]:
@@ -414,7 +414,7 @@ def _chapter_groups(
 
     A group carries at most ``BODY_LIMIT`` characters of prose, so a pass cannot
     overflow a real model's window. The prose is the chapter's scenes joined
-    (``_prose_by_chapter``), not a chapter column. Chapters over the bound on
+    (:func:`prose_by_chapter`), not a chapter column. Chapters over the bound on
     their own come back as skipped: a chapter half-read would yield findings
     that claim a completeness the check does not have.
     """
@@ -489,8 +489,8 @@ async def check_consistency(
     entities = await EntityRepository(session, job.user_id).list_for_novel(novel_id)
 
     canon = [(entity.name, entity.type) for entity in entities]
-    prose = await _prose_by_chapter(session, job.user_id, [chapter.id for chapter in chapters])
-    groups, skipped = _chapter_groups(chapters, prose)
+    prose = await prose_by_chapter(session, job.user_id, [chapter.id for chapter in chapters])
+    groups, skipped = chapter_groups(chapters, prose)
     resolved = await resolve_provider(session, job.user_id, "knowledge.check-consistency")
 
     async def audit(call: AuditedCall) -> None:

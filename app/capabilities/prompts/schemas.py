@@ -86,6 +86,72 @@ class ValidationItem(BaseModel):
     type: str
 
 
+class PromptPreviewBody(BaseModel):
+    """The preview's optional body: the editor draft to render.
+
+    Absent (or carrying no ``content``) previews the saved effective source.
+    ``novel_id`` rides the query string, beside the other reads.
+    """
+
+    content: str | None = None
+
+
+class PromptVariableProvenance(BaseModel):
+    """One declared variable: its sample value, and whether the source reads it.
+
+    ``used`` is the AST's own verdict — a load context in the parsed source —
+    so a variable the source names inside a comment-style construct counts
+    as little as the render itself counts it.
+    """
+
+    name: str
+    value: str
+    used: bool
+
+
+class PromptPreviewDiagnostics(BaseModel):
+    """What the render found beyond the text: its size and the contract's verdict.
+
+    ``contract_ok`` is ``None`` for a key without a contract, ``False`` for a
+    draft that renders but would fail its key's save-time gate — the preview
+    shows both facts, the refusal stays the save's.
+    """
+
+    chars: int
+    lines: int
+    contract_ok: bool | None
+
+
+class PromptPreview(BaseModel):
+    """The editor's preview: the rendered text, the provenance, the diagnostics."""
+
+    rendered: str
+    variables: list[PromptVariableProvenance]
+    diagnostics: PromptPreviewDiagnostics
+
+
+class PromptLiveTestBody(BaseModel):
+    """The live test's body: the editor draft (absent = the saved effective)
+    and the scope. An absent body altogether tests the saved effective too."""
+
+    content: str | None = None
+    novel_id: UUID | None = None
+
+
+class PromptCodedDetail(BaseModel):
+    """The live test's coded face: the code the surfaces localize, the detail
+    behind it — the chat frames' vocabulary, one spelling for both routers."""
+
+    code: str
+    detail: str
+
+
+class PromptCodedError(BaseModel):
+    """The live test's HTTP faces (409, 429, 502, 503): the coded detail body."""
+
+    detail: PromptCodedDetail
+
+
 class ValidationBody(BaseModel):
     """The framework's own 422 body, mirrored for the union beside the
     refusal — FastAPI builds its schema from a dict, so nothing imports."""
