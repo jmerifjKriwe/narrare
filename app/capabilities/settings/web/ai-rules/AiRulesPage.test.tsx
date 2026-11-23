@@ -535,7 +535,7 @@ describe("the modelle section — defaults, test faces, discovery, the delete", 
     renderPage();
     await screen.findAllByTestId("task-row");
     const cards = screen.getAllByTestId("model-card");
-    expect(cards[0]?.textContent).toContain("200.000".replace(".", String.fromCharCode(46))); // locale grouping, asserted loosely below
+    expect(cards[0]?.textContent).toContain("200.000");
     expect(cards[0]?.textContent).toContain(de["settings.ai.stat.temperature"]);
     // The freed model's unset columns: the dash, never a drafted number.
     expect(cards[1]?.textContent).toContain(de["settings.ai.stat.local"]);
