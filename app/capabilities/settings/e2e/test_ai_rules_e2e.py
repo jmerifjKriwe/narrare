@@ -230,13 +230,18 @@ def test_the_assignment_rides_with_its_profile_and_the_resolved_number(
     expect(row.get_by_text(EFFECTIVE_8192)).to_be_visible()
     expect(row.get_by_text(CAPPED_NOTE)).to_be_visible()
 
-    # The custom choice above the stored ceiling: the wire refuses (422
-    # naming the field), the answers stay, the family face stands.
+    # The custom choice above the stored ceiling: the EDITOR refuses it
+    # before any PUT (the stored 8.192 is the effective cap) — the field's
+    # own over-limit face stands, the stored truth keeps the last landed
+    # choice. A server-side refusal needs an in-cap value the API rejects;
+    # that family is pinned in the unit suite.
     profile_select.select_option(label="Benutzerdefiniert (eigener Wert)")
     custom = row.get_by_label("Eigene Token-Zahl")
     custom.fill("999999")
     custom.blur()
-    expect(row.get_by_text(REFUSED)).to_be_visible()
+    expect(
+        row.get_by_text("Über dem bekannten Ausgabe-Limit des Modells (8.192 Tokens)")
+    ).to_be_visible()
     expect(custom).to_have_value("999999")  # a refusal never eats the answer
     # The stored truth keeps the last landed choice.
     assert await_tasks(
