@@ -82,6 +82,11 @@ type RowState = {
   profile: string | null;
   customRaw: string;
   error: WireError | null;
+  /** A switch whose save was held (custom target incomplete or over the
+   *  target model's cap): the select shows a choice nothing stores until
+   *  the writer completes the number. The face says so — a silent hold
+   *  would look saved and vanish on the next load. */
+  held?: boolean;
 };
 
 export function TasksSection({
@@ -134,10 +139,17 @@ export function TasksSection({
     const state = rows[task.task_key];
     if (!task.assignable || state === undefined) continue;
     if (state.profileId === null || modelIds.has(state.profileId)) continue;
-    if (assignments.some((entry) => entry.task_key === task.task_key)) continue;
+    // A stored selection waits for BOTH reads before the cascade resets
+    // it (a stale models read must not clear a real assignment). A HELD
+    // switch is different: its id was never stored — the assignments read
+    // still carries the OLDER model. If that id is gone from the models,
+    // the held choice can never land; reconciling now prevents the 404 a
+    // later completion of the custom field would otherwise get.
+    const stored = assignments.find((entry) => entry.task_key === task.task_key);
+    if (stored !== undefined && stored.profile_id === state.profileId) continue;
     if (state.error !== null) continue;
     if (assignTask.isPending && assignTask.variables?.taskKey === task.task_key) continue;
-    setRow(task.task_key, { profileId: null, profile: "balanced", customRaw: "", error: null });
+    setRow(task.task_key, { profileId: null, profile: "balanced", customRaw: "", error: null, held: false });
   }
 
   /** The carried profile choice as the wire's shape: a vocabulary name, or
@@ -172,8 +184,9 @@ export function TasksSection({
                 ? ""
                 : String(assignment.output_profile_custom),
             error: null,
+            held: false,
           }),
-        onError: (cause) => setRow(taskKey, { error: cause }),
+        onError: (cause) => setRow(taskKey, { error: cause, held: false }),
       },
     );
   }
@@ -252,8 +265,15 @@ export function TasksSection({
           // it at the provider. The kernel refuses and never clamps; the
           // editor matches that ethic: the refusal names the limit,
           // nothing is altered behind the writer's back.
-          const knownMax =
-            models.find((model) => model.id === state.profileId)?.catalog_max_output_tokens ?? null;
+          // The cap the editor enforces: the larger of the catalog's fact
+          // and the model's own stored override. A stored ceiling above
+          // the catalog is what the API accepts and the resolver permits —
+          // refusing it here would lock the writer out of a saved config.
+          const selected = models.find((model) => model.id === state.profileId);
+          const selectedCaps = [selected?.catalog_max_output_tokens, selected?.max_output_tokens].filter(
+            (value): value is number => typeof value === "number",
+          );
+          const knownMax = selectedCaps.length === 0 ? null : Math.max(...selectedCaps);
           const parsedCustom = state.profile === "custom" ? parseDailyGoal(state.customRaw) : null;
           const customInvalid =
             state.profile === "custom" &&
@@ -312,14 +332,20 @@ export function TasksSection({
                         // decisive whatever the field holds — a cleared
                         // assignment stores nothing, the profile rides
                         // meaningless.
-                        const targetMax =
-                          models.find((model) => model.id === next.profileId)?.catalog_max_output_tokens ??
-                          null;
+                        const target = models.find((model) => model.id === next.profileId);
+                        const targetCaps = [target?.catalog_max_output_tokens, target?.max_output_tokens].filter(
+                          (value): value is number => typeof value === "number",
+                        );
+                        const targetMax = targetCaps.length === 0 ? null : Math.max(...targetCaps);
                         const parsed = parseDailyGoal(state.customRaw);
                         const held =
                           next.profileId !== null &&
                           state.profile === "custom" &&
                           (typeof parsed !== "number" || (targetMax !== null && parsed > targetMax));
+                        // The held state is shown, not silently kept: the
+                        // select wears a choice nothing stores until the
+                        // number completes (or a named profile is chosen).
+                        setRow(task.task_key, { ...next, held });
                         if (!held) saveRow(task.task_key, next);
                       }}
                       className={`${COMPACT_SELECT} appearance-none pr-8`}
@@ -335,6 +361,11 @@ export function TasksSection({
                       <Icon name="selectChevron" size={13} />
                     </span>
                   </div>
+                  {state.held === true && (
+                    <span data-testid="task-held-note" className="block text-[11px] leading-relaxed text-muted">
+                      {t("settings.ai.task.switchHeld")}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex min-w-[220px] flex-col gap-1">
@@ -355,7 +386,7 @@ export function TasksSection({
                       value={state.profile ?? "balanced"}
                       onChange={(event) => {
                         const nextName = event.target.value === "custom" ? "custom" : event.target.value;
-                        const next = { ...state, profile: nextName, error: null };
+                        const next = { ...state, profile: nextName, error: null, held: false };
                         setRow(task.task_key, next);
                         // A named profile saves at once; the custom choice
                         // waits for its number (an invalid one rides the

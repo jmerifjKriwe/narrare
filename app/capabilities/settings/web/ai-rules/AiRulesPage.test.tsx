@@ -985,7 +985,7 @@ describe("the aufgaben rows — the cascade's honest faces", () => {
     // names that model, and its face flags the number one render later, so
     // a source-model read would store what the editor itself calls invalid.
     models = [
-      model({ catalog_max_output_tokens: null }),
+      model({ catalog_max_output_tokens: null, max_output_tokens: null }),
       model({ id: "m-2", name: "Zweit", is_default: false, catalog_max_output_tokens: 64_000 }),
     ];
     assignments = [{ task_key: "writing.continuation", profile_id: "m-1", output_profile: "custom", output_profile_custom: 6_000 }];
@@ -1228,7 +1228,10 @@ describe("the aufgaben rows — the cascade's honest faces", () => {
   });
 
   it("a refused assignment (422, the custom above the ceiling) keeps the answers and names itself", async () => {
-    models = [model()];
+    // No editor-side cap here (neither catalog nor stored ceiling) — the
+    // number must cross the wire so the server's 422 face is what this
+    // pin exercises.
+    models = [model({ catalog_max_output_tokens: null, max_output_tokens: null })];
     assignments = [{ task_key: "writing.continuation", profile_id: "m-1", output_profile: "balanced", output_profile_custom: null }];
     api.PUT.mockImplementation(async (path: string) => {
       if (path === "/api/settings/assignments/{task_key}") {
@@ -1287,6 +1290,96 @@ describe("the system diagnose — only what the reads answer", () => {
     expect(card.textContent).toContain(t("settings.ai.diag.errorTitle", { code: "auth" }));
     fireEvent.click(screen.getByRole("button", { name: de["settings.ai.diag.retest"] }));
     await waitFor(() => expect(posts().some(([path]) => path === "/api/settings/models/{model_id}/test")).toBe(true));
+  });
+
+  it("a switch held by an empty target says so — the shown model is not saved", async () => {
+    // The held face: a model switch under an incomplete custom target must
+    // not look saved. It carries a note and writes nothing until the
+    // number lands; the note then goes away with the landed echo.
+    models = [model(), model({ id: "m-2", name: "Zweiter", is_default: false })];
+    assignments = [{ task_key: "writing.continuation", profile_id: "m-1", output_profile: "balanced", output_profile_custom: null }];
+    api.PUT.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/assignments/{task_key}") {
+        const [, init] = api.PUT.mock.calls.at(-1) as unknown as [string, { body: Record<string, unknown> }];
+        const value = init.body.output_profile;
+        return {
+          data: {
+            task_key: "writing.continuation",
+            profile_id: init.body.profile_id,
+            output_profile: typeof value === "number" ? "custom" : value,
+            output_profile_custom: typeof value === "number" ? value : null,
+          },
+          response: ok(),
+        };
+      }
+      throw new Error(`unexpected PUT: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    const row = taskRow("writing.continuation");
+    fireEvent.change(profileSelect(row), { target: { value: "custom" } });
+    fireEvent.change(modelSelect(row), { target: { value: "m-2" } });
+    expect(screen.getByTestId("task-held-note").textContent).toContain(de["settings.ai.task.switchHeld"]);
+    expect(puts()).toHaveLength(0);
+    // Completing the target lands BOTH answers; the hold face retires.
+    fireEvent.change(within(row).getByLabelText(de["settings.ai.profile.customInput"]), { target: { value: "7000" } });
+    fireEvent.blur(within(row).getByLabelText(de["settings.ai.profile.customInput"]));
+    await waitFor(() => expect(puts().some(([, init]) => init.body.profile_id === "m-2")).toBe(true));
+    await waitFor(() => expect(screen.queryByTestId("task-held-note")).toBeNull());
+  });
+
+  it("a deleted held model reconciles even while an older assignment stands — completion cannot PUT a dead id", async () => {
+    // The assignee read still carries the OLDER model (m-1) because the
+    // held switch (m-2) never crossed the wire. When m-2 disappears from
+    // the models read, the held id must fold to the cascade — otherwise
+    // the next number lands a 404 against a model that no longer exists.
+    models = [model(), model({ id: "m-2", name: "Zweiter", is_default: false })];
+    assignments = [{ task_key: "writing.continuation", profile_id: "m-1", output_profile: "balanced", output_profile_custom: null }];
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    const row = taskRow("writing.continuation");
+    fireEvent.change(profileSelect(row), { target: { value: "custom" } });
+    fireEvent.change(modelSelect(row), { target: { value: "m-2" } });
+    expect(modelSelect(row).value).toBe("m-2");
+    await waitFor(() => queryClient.setQueryData(["settings-models"], [model()]));
+    await waitFor(() => expect(modelSelect(row).value).toBe(""));
+    expect(profileSelect(row).value).toBe("balanced");
+    // The custom field is gone with the cascade; no dead-id PUT is possible.
+    fireEvent.change(modelSelect(row), { target: { value: "m-1" } });
+    await waitFor(() => expect(puts().every(([, init]) => init.body.profile_id !== "m-2")).toBe(true));
+  });
+
+  it("a stored ceiling above the catalog's number is the cap the editor enforces", async () => {
+    // The read answers both numbers: catalog 4.096, stored override 64.000.
+    // The API accepts 30.000 and the resolver permits it — the editor must
+    // not lock the writer out of a saved configuration.
+    models = [model({ catalog_max_output_tokens: 4_096, max_output_tokens: 64_000 })];
+    assignments = [{ task_key: "writing.continuation", profile_id: "m-1", output_profile: "balanced", output_profile_custom: null }];
+    api.PUT.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/assignments/{task_key}") {
+        const [, init] = api.PUT.mock.calls.at(-1) as unknown as [string, { body: Record<string, unknown> }];
+        const value = init.body.output_profile;
+        return {
+          data: {
+            task_key: "writing.continuation",
+            profile_id: init.body.profile_id,
+            output_profile: typeof value === "number" ? "custom" : value,
+            output_profile_custom: typeof value === "number" ? value : null,
+          },
+          response: ok(),
+        };
+      }
+      throw new Error(`unexpected PUT: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    const row = taskRow("writing.continuation");
+    fireEvent.change(profileSelect(row), { target: { value: "custom" } });
+    const input = within(row).getByLabelText(de["settings.ai.profile.customInput"]);
+    fireEvent.change(input, { target: { value: "30000" } });
+    expect(row.textContent).not.toContain(t("settings.ai.profile.customOverLimit", { tokens: "4.096" }));
+    fireEvent.blur(input);
+    await waitFor(() => expect(puts().some(([, init]) => init.body.output_profile === 30000)).toBe(true));
   });
 });
 

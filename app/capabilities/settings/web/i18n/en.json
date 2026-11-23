@@ -131,6 +131,7 @@
   "settings.ai.task.profileNeedsModel": "An output profile is stored with the model assignment; without one, the task follows the cascade.",
   "settings.ai.task.serving": "Answers: {name}",
   "settings.ai.task.servingFake": "Answers: the local fake driver",
+  "settings.ai.task.switchHeld": "The model choice is held, not saved yet — complete the output target or it will disappear on reload.",
   "settings.ai.tasks.sub": "Here you delegate the atelier's four core tasks to specific models or keep the free offline driver. The output profile sets the length target of the inference.",
   "settings.appearance.heading": "Language & appearance",
   "settings.appearance.sub": "Options that take effect at once, for typography and surface.",

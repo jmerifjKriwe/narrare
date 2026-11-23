@@ -131,6 +131,7 @@
   "settings.ai.task.profileNeedsModel": "Un profil de sortie s'enregistre avec l'affectation de modèle ; sans affectation, la tâche suit la cascade.",
   "settings.ai.task.serving": "Répond : {name}",
   "settings.ai.task.servingFake": "Répond : le pilote factice local",
+  "settings.ai.task.switchHeld": "Le choix du modèle est en attente, pas encore enregistré — complète la cible de sortie, sinon il disparaîtra au rechargement.",
   "settings.ai.tasks.sub": "Ici, tu délègues les quatre tâches centrales de l'atelier à des modèles précis ou tu gardes le pilote hors ligne gratuit. Le profil de sortie fixe l'objectif de longueur de l'inférence.",
   "settings.appearance.heading": "Langue & apparence",
   "settings.appearance.sub": "Options immédiates pour la typographie et l'interface.",

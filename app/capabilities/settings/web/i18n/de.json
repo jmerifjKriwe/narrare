@@ -131,6 +131,7 @@
   "settings.ai.task.profileNeedsModel": "Ein Ausgabe-Profil speichert mit der Modell-Zuweisung; ohne Zuweisung läuft die Aufgabe über die Kaskade.",
   "settings.ai.task.serving": "Antwortet: {name}",
   "settings.ai.task.servingFake": "Antwortet: der lokale Fake-Treiber",
+  "settings.ai.task.switchHeld": "Die Modellwahl ist vorgemerkt, aber noch nicht gespeichert — ergänze das Ausgabe-Ziel, sonst verschwindet sie beim Neuladen.",
   "settings.ai.tasks.sub": "Hier delegierst du die vier Kern-Aufgaben des Ateliers an spezifische Modelle oder behältst den kostenfreien Offline-Treiber bei. Das Ausgabe-Profil legt das Längenziel der Inferenz fest.",
   "settings.appearance.heading": "Sprache & Erscheinungsbild",
   "settings.appearance.sub": "Sofort wirkende Optionen für Typografie und Oberfläche.",
