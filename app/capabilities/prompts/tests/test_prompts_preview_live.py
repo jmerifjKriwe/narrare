@@ -176,7 +176,7 @@ async def test_the_preview_renders_the_saved_effective_and_never_calls_the_model
         saved = await client.put(f"/api/prompts/{CONTINUATION}", json={"content": "P: {{ tail }}"})
         assert saved.status_code == 200, saved.text
 
-        preview = await client.get(f"/api/prompts/{CONTINUATION}/preview")
+        preview = await client.post(f"/api/prompts/{CONTINUATION}/preview")
         assert preview.status_code == 200, preview.text
         body = preview.json()
 
@@ -202,8 +202,8 @@ async def test_the_preview_prefers_the_body_draft_over_the_saved() -> None:
     """A carried draft renders; the saved override stays the save's business."""
     async with _client() as client:
         await client.put(f"/api/prompts/{CONTINUATION}", json={"content": "SAVED {{ tail }}"})
-        preview = await client.request(
-            "GET", f"/api/prompts/{CONTINUATION}/preview", json={"content": "DRAFT {{ tail }}"}
+        preview = await client.post(
+            f"/api/prompts/{CONTINUATION}/preview", json={"content": "DRAFT {{ tail }}"}
         )
         assert preview.status_code == 200, preview.text
 
@@ -215,7 +215,7 @@ async def test_the_preview_of_an_untouched_key_renders_the_bundled_template() ->
     spec = get_registry().spec(CONTINUATION)
     golden = render_source(spec.template, spec.sample_variables(), include=no_includes)
     async with _client() as client:
-        preview = await client.get(f"/api/prompts/{CONTINUATION}/preview")
+        preview = await client.post(f"/api/prompts/{CONTINUATION}/preview")
         assert preview.status_code == 200, preview.text
 
     assert preview.json()["rendered"] == golden
@@ -224,8 +224,8 @@ async def test_the_preview_of_an_untouched_key_renders_the_bundled_template() ->
 async def test_a_broken_draft_is_refused_by_the_render_s_own_reason() -> None:
     """The preview cannot render what the save would refuse: the 422 names it."""
     async with _client() as client:
-        preview = await client.request(
-            "GET", f"/api/prompts/{CONTINUATION}/preview", json={"content": "Hello {{ nope }}"}
+        preview = await client.post(
+            f"/api/prompts/{CONTINUATION}/preview", json={"content": "Hello {{ nope }}"}
         )
         assert preview.status_code == 422
         body = preview.json()["detail"]
@@ -236,8 +236,8 @@ async def test_a_broken_draft_is_refused_by_the_render_s_own_reason() -> None:
 async def test_a_contract_failure_is_a_diagnostic_not_a_refusal() -> None:
     """A draft that renders but drops the chat sources previews, marked unclean."""
     async with _client() as client:
-        preview = await client.request(
-            "GET", f"/api/prompts/{CHAT}/preview", json={"content": "Q {{ question }}"}
+        preview = await client.post(
+            f"/api/prompts/{CHAT}/preview", json={"content": "Q {{ question }}"}
         )
         assert preview.status_code == 200, preview.text
 
@@ -247,16 +247,15 @@ async def test_a_contract_failure_is_a_diagnostic_not_a_refusal() -> None:
 async def test_the_provenance_names_exactly_the_variables_the_source_reads() -> None:
     """The AST's load contexts decide `used`; the sample value rides beside it."""
     async with _client() as client:
-        preview = await client.request(
-            "GET", f"/api/prompts/{CONTINUATION}/preview", json={"content": "No variables at all."}
+        preview = await client.post(
+            f"/api/prompts/{CONTINUATION}/preview", json={"content": "No variables at all."}
         )
         assert preview.status_code == 200, preview.text
         empty = {variable["name"]: variable["used"] for variable in preview.json()["variables"]}
         assert set(empty) >= {"novel_title", "tail"}
         assert not any(empty.values())
 
-        named = await client.request(
-            "GET",
+        named = await client.post(
             f"/api/prompts/{CONTINUATION}/preview",
             json={"content": "{{ novel_title }} {{ tail }}"},
         )
@@ -277,10 +276,10 @@ async def test_the_preview_404s_on_an_unknown_key_and_validates_the_novel() -> N
         foreign_id = foreign.id
 
     async with _client() as client:
-        unknown = await client.get("/api/prompts/nope.nope/preview")
+        unknown = await client.post("/api/prompts/nope.nope/preview")
         assert unknown.status_code == 404
 
-        preview = await client.get(
+        preview = await client.post(
             f"/api/prompts/{CONTINUATION}/preview", params={"novel_id": str(foreign_id)}
         )
         assert preview.status_code == 422
@@ -595,6 +594,38 @@ async def test_the_second_immediate_call_is_refused_with_the_wait() -> None:
             retry_after.isdigit()
             and 0 < int(retry_after) <= prompts_service.LIVE_TEST_COOLDOWN_SECONDS
         )
+
+
+async def test_a_rate_limited_request_never_reaches_the_embed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The window is peeked before the assembly: the refusal precedes the cost.
+
+    Chat's assembly is the witness — its retrieval embeds the query before
+    anything else runs. The first test claims the window; the second is
+    refused with zero embedding calls, the peek having fired before the
+    assembly could start.
+    """
+    await _passage("Notizen", PASSAGE)
+
+    async with _client() as client:
+        first = await client.post(f"/api/prompts/{CHAT}/live-test")
+        assert first.status_code == 200, first.text
+
+    calls = 0
+    original = FakeEmbeddingProvider.embed
+
+    async def counting(self: FakeEmbeddingProvider, texts: list[str]) -> list[list[float]]:
+        nonlocal calls
+        calls += 1
+        return await original(self, texts)
+
+    monkeypatch.setattr(FakeEmbeddingProvider, "embed", counting)
+    async with _client() as client:
+        second = await client.post(f"/api/prompts/{CHAT}/live-test")
+        assert second.status_code == 429, second.text
+        assert second.json()["detail"]["code"] == "rate-limited"
+    assert calls == 0
 
 
 async def test_the_live_test_404s_and_holds_the_scope_rules() -> None:
