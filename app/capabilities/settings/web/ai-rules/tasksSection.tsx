@@ -12,7 +12,10 @@
  *   `resolved_output_tokens` is the number the next call reserves, shown as
  *   is — uncapped when no ceiling is stored, `min`-ed with the model's
  *   stored ceiling when one is (the asterisk's own condition, computed from
- *   the chosen target, never invented). The fake driver's mark rides the
+ *   the effective pair — the read's own stored profile, the assignments
+ *   read's custom number where the read can only say `custom` — never from
+ *   the editor's selection, so a pick in flight or refused can neither
+ *   invent a cap nor hide one). The fake driver's mark rides the
  *   chip when the cascade's answer is the local fake — never the draft's
  *   „0 Tok. (Offline)“ invention.
  *
@@ -190,10 +193,21 @@ export function TasksSection({
           }
 
           const fake = task.kind === "fake";
+          // The cap note derives from the EFFECTIVE pair, never the editor's
+          // selection: the tasks read names the stored choice beside the
+          // number a call reserves, so a named profile compares against its
+          // own constant, and where the read can only say „custom“ the
+          // stored number is the assignments read's `output_profile_custom`
+          // — the two reads are one invalidation family, so they never
+          // disagree about what is stored. A pick in flight or refused names
+          // nothing the chip can compare against: a refusal cannot dress a
+          // mismatched selection up as a ceiling's cap, and a true cap
+          // survives a mismatched selection untold.
+          const storedAssignment = assignments.find((entry) => entry.task_key === task.task_key);
           const target =
-            state.profile === "custom"
-              ? parseDailyGoal(state.customRaw)
-              : (PROFILE_OPTIONS.find((entry) => entry.name === state.profile)?.target ?? null);
+            task.output_profile === "custom"
+              ? (storedAssignment?.output_profile_custom ?? null)
+              : (PROFILE_OPTIONS.find((entry) => entry.name === task.output_profile)?.target ?? null);
           const capped =
             typeof target === "number" &&
             task.resolved_output_tokens !== null &&

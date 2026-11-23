@@ -828,6 +828,88 @@ describe("the aufgaben rows — the cascade's honest faces", () => {
     expect(chat.textContent).toContain(t("settings.ai.task.effective", { tokens: "4.096" }));
   });
 
+  it("a refused save under a mismatched selection shows no cap note nothing caused", async () => {
+    // Stored: balanced, uncapped at 4.096 — the effective pair's own truth.
+    // The editor picks comprehensive and the write dies behind the wire:
+    // nothing capped anything, so the refusal face stands alone — the chip
+    // compares the stored pair, never the editor's unanswered pick.
+    assignments = [{ task_key: "writing.continuation", profile_id: "m-1", output_profile: "balanced", output_profile_custom: null }];
+    tasks = [
+      task({ profile_id: "m-1", profile_name: "Cloud-Schreiber", kind: "openai-chat", output_profile: "balanced", resolved_output_tokens: 4_096 }),
+      ...freshTasks().slice(1),
+    ];
+    api.PUT.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/assignments/{task_key}") {
+        return { error: { detail: "the write died behind the wire" }, response: new Response(null, { status: 500 }) };
+      }
+      throw new Error(`unexpected PUT: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    const row = taskRow("writing.continuation");
+    fireEvent.change(profileSelect(row), { target: { value: "comprehensive" } });
+    expect(await screen.findByText(de["settings.ai.errors.generic"])).toBeTruthy();
+    expect(profileSelect(row).value).toBe("comprehensive"); // a refusal keeps the answers
+    expect(row.textContent).not.toContain(de["settings.ai.task.capped"]);
+    expect(row.textContent).toContain(t("settings.ai.task.effective", { tokens: "4.096" }));
+  });
+
+  it("a true cap survives a selection the stored world does not carry", async () => {
+    // Stored: comprehensive capped at the model's 8.192. The editor moves
+    // the select to quick and the wire refuses: the effective pair stands
+    // untouched, and 8.192 < 32.768 stays the ceiling's own doing — the
+    // note keeps standing beside the refusal face.
+    assignments = [{ task_key: "writing.continuation", profile_id: "m-1", output_profile: "comprehensive", output_profile_custom: null }];
+    tasks = [
+      task({ profile_id: "m-1", profile_name: "Cloud-Schreiber", kind: "openai-chat", output_profile: "comprehensive", resolved_output_tokens: 8_192 }),
+      ...freshTasks().slice(1),
+    ];
+    api.PUT.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/assignments/{task_key}") {
+        return { error: { detail: "the write died behind the wire" }, response: new Response(null, { status: 500 }) };
+      }
+      throw new Error(`unexpected PUT: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    const row = taskRow("writing.continuation");
+    expect(row.textContent).toContain(de["settings.ai.task.capped"]);
+    fireEvent.change(profileSelect(row), { target: { value: "quick" } });
+    expect(await screen.findByText(de["settings.ai.errors.generic"])).toBeTruthy();
+    expect(row.textContent).toContain(de["settings.ai.task.capped"]);
+  });
+
+  it("a refused custom edit keeps the note honest about the stored number, not the typed one", async () => {
+    // Stored: custom 6.000, no ceiling — 6.000 stands uncapped. The writer
+    // types 40000 and the wire refuses: the typed number stores nothing, so
+    // the chip compares the stored 6.000 against itself — no false cap note
+    // rides the refusal (the editor's live number would have shown one).
+    assignments = [{ task_key: "writing.continuation", profile_id: "m-1", output_profile: "custom", output_profile_custom: 6_000 }];
+    tasks = [
+      task({ profile_id: "m-1", profile_name: "Cloud-Schreiber", kind: "openai-chat", output_profile: "custom", resolved_output_tokens: 6_000 }),
+      ...freshTasks().slice(1),
+    ];
+    api.PUT.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/assignments/{task_key}") {
+        return {
+          error: { detail: [{ loc: ["body", "output_profile"], msg: "above the model's stored ceiling" }] },
+          response: new Response(null, { status: 422 }),
+        };
+      }
+      throw new Error(`unexpected PUT: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    const row = taskRow("writing.continuation");
+    const input = await screen.findByLabelText(de["settings.ai.profile.customInput"]);
+    fireEvent.change(input, { target: { value: "40000" } });
+    fireEvent.blur(input);
+    expect(await screen.findByText(de["settings.refused"])).toBeTruthy();
+    expect((screen.getByLabelText(de["settings.ai.profile.customInput"]) as HTMLInputElement).value).toBe("40000");
+    expect(row.textContent).not.toContain(de["settings.ai.task.capped"]);
+    expect(row.textContent).toContain(t("settings.ai.task.effective", { tokens: "6.000" }));
+  });
+
   it("a refused assignment (422, the custom above the ceiling) keeps the answers and names itself", async () => {
     models = [model()];
     assignments = [{ task_key: "writing.continuation", profile_id: "m-1", output_profile: "balanced", output_profile_custom: null }];
