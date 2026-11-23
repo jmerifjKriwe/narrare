@@ -45,6 +45,23 @@ export type TaskEffective = components["schemas"]["TaskEffectiveRead"];
  *  `fake` while the local fake adapter serves every assignable task,
  *  `configured` once any provider adapter answers. */
 export type Driver = components["schemas"]["DriverRead"];
+/** One saved provider endpoint as every read shows it: the mask
+ *  (`sk-…` plus the last four characters), never the key. */
+export type Provider = components["schemas"]["ProviderRead"];
+/** The provider create's one answer: the full key rides exactly once,
+ *  `null` when nothing was stored (a local endpoint without one). */
+export type ProviderCreated = components["schemas"]["ProviderCreated"];
+/** One saved model as every read shows it: its provider named, no key
+ *  anywhere, the `in_catalog`/`last_error_code` marks read-only facts. */
+export type Model = components["schemas"]["ModelRead"];
+/** One provider preset as the create form reads it: the endpoint facts,
+ *  the vendor's catalog model ids and the snapshot's honesty date. */
+export type Preset = components["schemas"]["PresetRead"];
+/** One stored task assignment: the model and the output-profile choice. */
+export type Assignment = components["schemas"]["AssignmentRead"];
+/** What one model connection test found: it ran, and it either answered
+ *  or named why. */
+export type ModelTestResult = components["schemas"]["ModelTestResult"];
 export type Entity = components["schemas"]["EntityRead"];
 export type Suggestion = components["schemas"]["SuggestionRead"];
 export type Relation = components["schemas"]["RelationRead"];

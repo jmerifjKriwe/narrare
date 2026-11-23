@@ -140,6 +140,92 @@ def create_default_model(provider_id: str, name: str = "Cloud-Schreiber") -> str
     return str(model["id"])
 
 
+def create_fake_provider(name: str = "Lokal-E2E") -> str:
+    """One fake-kind provider: no endpoint, no key — the gate passes it, and
+    its models answer locally (the honest 100%-lokal tile's own fact)."""
+    with _client() as client:
+        response = client.post("/api/settings/providers", json={"name": name, "kind": "fake"})
+    assert response.status_code == 201, response.text
+    provider: dict[str, Any] = response.json()
+    assert provider["api_key_mask"] is None
+    return str(provider["id"])
+
+
+def create_model(
+    provider_id: str,
+    name: str = "Cloud-Schreiber",
+    model_id: str = "test-model",
+    **tunables: Any,
+) -> str:
+    """One model with stored tunables (``max_output_tokens`` and friends) —
+    the stored ceiling is the only one resolution caps a profile at."""
+    with _client() as client:
+        response = client.post(
+            "/api/settings/models",
+            json={"name": name, "provider_id": provider_id, "model": model_id, **tunables},
+        )
+    assert response.status_code == 201, response.text
+    model: dict[str, Any] = response.json()
+    return str(model["id"])
+
+
+def read_providers() -> list[dict[str, Any]]:
+    """The provider rows as every read shows them — the mask, never a key."""
+    with _client() as client:
+        response = client.get("/api/settings/providers")
+    response.raise_for_status()
+    providers: list[dict[str, Any]] = response.json()
+    return providers
+
+
+def read_tasks() -> list[dict[str, Any]]:
+    """The effective view: one row per known task key, the cascade's answer."""
+    with _client() as client:
+        response = client.get("/api/settings/tasks")
+    response.raise_for_status()
+    tasks: list[dict[str, Any]] = response.json()
+    return tasks
+
+
+def read_assignments() -> list[dict[str, Any]]:
+    """The stored assignment rows: the model and the profile choice."""
+    with _client() as client:
+        response = client.get("/api/settings/assignments")
+    response.raise_for_status()
+    assignments: list[dict[str, Any]] = response.json()
+    return assignments
+
+
+def _task_row(task_key: str) -> dict[str, Any]:
+    for row in read_tasks():
+        if row["task_key"] == task_key:
+            return row
+    raise AssertionError(f"no tasks row for {task_key}")
+
+
+def await_tasks(task_key: str, **fields: Any) -> dict[str, Any]:
+    """Poll the tasks read until one task's row answers ``fields`` — a
+    browser write's landing on the cascade, not a sleep-and-hope. The last
+    read rides the failure so a wrong expectation names itself."""
+    deadline = time.monotonic() + 10.0
+    row = _task_row(task_key)
+    while time.monotonic() < deadline:
+        if all(row[key] == value for key, value in fields.items()):
+            return row
+        time.sleep(0.1)
+        row = _task_row(task_key)
+    raise AssertionError(f"the tasks row {task_key} never answered {fields!r}; last: {row!r}")
+
+
+def create_novel(title: str = "Das Atelier-Buch") -> str:
+    """One book through the writing API — the pointer door's target."""
+    with _client() as client:
+        response = client.post("/api/writing/novels", json={"title": title})
+    assert response.status_code == 201, response.text
+    novel: dict[str, Any] = response.json()
+    return str(novel["id"])
+
+
 def await_settings(**fields: Any) -> dict[str, Any]:
     """Poll the settings read until the row answers ``fields`` — a browser
     write's landing on the wire, not a sleep-and-hope. The last read rides
@@ -159,6 +245,27 @@ def goto_settings(page: Page) -> Page:
     page.goto(f"{WEB_URL}/settings")
     expect_settings(page)
     return page
+
+
+# The AI page's hero heading (de-DE context) — the ready face leans on it.
+AI_HEADING_DE = "KI-Regeln & Modell-Architektur"
+
+
+def goto_ai_rules(page: Page) -> Page:
+    """Open the AI-Regeln surface and wait for its ready-state surface: the
+    page's testid, then the hero heading, then the provider section's — the
+    sections only render once the five strict reads answered."""
+    page.goto(f"{WEB_URL}/settings/ai-regeln")
+    expect_ai_rules(page)
+    return page
+
+
+def expect_ai_rules(page: Page) -> None:
+    """The AI page's own ready face: the testid stood, the reads answered
+    (the provider section's heading is behind the read gate)."""
+    expect(page.get_by_test_id("ai-rules-page")).to_be_visible()
+    expect(page.get_by_role("heading", name=AI_HEADING_DE)).to_be_visible()
+    expect(page.get_by_role("heading", name="1. Provider & Schnittstellen")).to_be_visible()
 
 
 def expect_settings(page: Page) -> None:
