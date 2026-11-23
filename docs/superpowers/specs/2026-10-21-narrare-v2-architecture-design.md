@@ -247,8 +247,11 @@ scoped to changed paths.
 
 **Local — commit hooks, target under 60 s:** format, lint, the changed-files
 typecheck, the secret scan, the commit-message check, the changed web tests.
-The full suites and the unconditional typecheck moved to CI (2026-11-23): a
-local push verifies the changed files, `just verify` the whole tree.
+On push: `uv-lock` always, and `pyright-full` when Python or dependency files
+are touched — no hook runs pytest. The full suites moved to CI (2026-11-23);
+CI triggers on PRs and main pushes only, with E2E narrowed to the PR's affected
+capabilities. A green local push verifies the hooks that fired, `just verify`
+the whole tree.
 
 **CI — seven job definitions:** five functional gates (`lint-types`; `tests`, which
 also uploads the coverage on a `main` push; `e2e-suites`, the per-capability

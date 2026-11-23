@@ -185,9 +185,13 @@ change ships as two files in **one commit** — the model change and its revisio
 
 Git hooks are installed by `just dev-setup`: format, lint, the typecheck of the
 changed files, the secret scan, the commit-message check and the web tests the
-change reaches run on every commit. The full suites (Python, web, E2E) and the
-unconditional full typecheck run in CI on every push and PR — a green local
-commit has verified the changed files, not the whole tree; `just verify` is the
+change reaches run on every commit. On push, `uv-lock` always checks the lockfile
+and the full typecheck (`pyright-full`) runs when the push touches Python or
+dependency files; no hook runs the Python suites. CI runs on pull requests and on
+pushes to `main` only — not on feature-branch pushes without a PR. Its unit and
+web suites run in full on both; the browser E2E matrix covers the capabilities
+the PR touches (`--none` on a main push), not a complete sweep. A green local
+commit or push has verified only what its hooks reached; `just verify` is the
 local full gate. Bypassing a hook
 (`--no-verify`) is forbidden. A new hook type reaches an existing clone through
 `pre-commit install --install-hooks` once.
