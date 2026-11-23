@@ -2147,7 +2147,7 @@
         "type": "object"
       },
       "PromptPreviewBody": {
-        "description": "The preview's optional body: the editor draft to render.\n\nAbsent (or carrying no ``content``) previews the saved effective source.\n``novel_id`` rides the query string, beside the other reads.",
+        "description": "The preview's optional body: the editor draft to render.\n\nAbsent (or carrying no ``content``) previews the saved effective source.\n``novel_id`` rides the query string, beside the other reads; the body is\nthe POST's optional draft — a browser's ``fetch`` refuses a GET body, so\nthe render computation posts.",
         "properties": {
           "content": {
             "anyOf": [
@@ -6590,7 +6590,15 @@
                 }
               }
             },
-            "description": "The user's live-test window is still closed."
+            "description": "The user's live-test window is still closed.",
+            "headers": {
+              "Retry-After": {
+                "description": "The remaining seconds, whole, until the next test.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           },
           "502": {
             "content": {
@@ -6620,9 +6628,9 @@
       }
     },
     "/api/prompts/{key}/preview": {
-      "get": {
-        "description": "Render the draft (or the scope's saved effective) at sample scope.\n\nNo model call, nothing persisted; a draft the sandbox refuses is the\nnamed 422, a contract failure the diagnostic inside the 200.",
-        "operationId": "preview_prompt_api_prompts__key__preview_get",
+      "post": {
+        "description": "Render the draft (or the scope's saved effective) at sample scope.\n\nA POST, not a GET: the draft rides the body, and a browser's ``fetch``\nrefuses a GET body outright — the editor's preview loop would die at\nruntime. A render computation is no cacheable resource; the query's\n``novel_id`` and the optional-body semantics stay the reads' shape.\n\nNo model call, nothing persisted; a draft the sandbox refuses is the\nnamed 422, a contract failure the diagnostic inside the 200.",
+        "operationId": "preview_prompt_api_prompts__key__preview_post",
         "parameters": [
           {
             "in": "path",
@@ -6702,7 +6710,7 @@
                       "$ref": "#/components/schemas/ValidationBody"
                     }
                   ],
-                  "title": "Response 422 Preview Prompt Api Prompts  Key  Preview Get"
+                  "title": "Response 422 Preview Prompt Api Prompts  Key  Preview Post"
                 }
               }
             },

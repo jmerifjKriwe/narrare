@@ -748,16 +748,21 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        get?: never;
+        put?: never;
         /**
          * Preview Prompt
          * @description Render the draft (or the scope's saved effective) at sample scope.
          *
+         *     A POST, not a GET: the draft rides the body, and a browser's ``fetch``
+         *     refuses a GET body outright — the editor's preview loop would die at
+         *     runtime. A render computation is no cacheable resource; the query's
+         *     ``novel_id`` and the optional-body semantics stay the reads' shape.
+         *
          *     No model call, nothing persisted; a draft the sandbox refuses is the
          *     named 422, a contract failure the diagnostic inside the 200.
          */
-        get: operations["preview_prompt_api_prompts__key__preview_get"];
-        put?: never;
-        post?: never;
+        post: operations["preview_prompt_api_prompts__key__preview_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2438,7 +2443,9 @@ export interface components {
          * @description The preview's optional body: the editor draft to render.
          *
          *     Absent (or carrying no ``content``) previews the saved effective source.
-         *     ``novel_id`` rides the query string, beside the other reads.
+         *     ``novel_id`` rides the query string, beside the other reads; the body is
+         *     the POST's optional draft — a browser's ``fetch`` refuses a GET body, so
+         *     the render computation posts.
          */
         PromptPreviewBody: {
             /** Content */
@@ -4907,6 +4914,8 @@ export interface operations {
             /** @description The user's live-test window is still closed. */
             429: {
                 headers: {
+                    /** @description The remaining seconds, whole, until the next test. */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -4933,7 +4942,7 @@ export interface operations {
             };
         };
     };
-    preview_prompt_api_prompts__key__preview_get: {
+    preview_prompt_api_prompts__key__preview_post: {
         parameters: {
             query?: {
                 novel_id?: string | null;
