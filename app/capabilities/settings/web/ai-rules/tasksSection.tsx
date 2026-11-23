@@ -21,8 +21,12 @@
  *
  * The PUT is whole: a save carries the model AND the profile choice, because
  * the assignment's profile column has no two-state semantics — an omitted
- * profile states `balanced` by that fact. `settings.test` is audit-only and
- * never a dropdown: its row states the fact, no selects, no chip.
+ * profile states `balanced` by that fact. That shape is why a model switch
+ * under an incomplete custom choice HOLDS: it sends nothing rather than
+ * carrying `balanced` in behind the writer's back, and rides the save the
+ * completed number (or a named profile) lands. `settings.test` is
+ * audit-only and never a dropdown: its row states the fact, no selects,
+ * no chip.
  *
  * The rows reconcile against the reads that land behind them (a model
  * delete cascades its assignments at the database): a row whose model
@@ -277,7 +281,24 @@ export function TasksSection({
                       onChange={(event) => {
                         const next = { ...state, profileId: event.target.value === "" ? null : event.target.value, error: null };
                         setRow(task.task_key, next);
-                        saveRow(task.task_key, next);
+                        // The hold: an assignment save cannot carry an
+                        // incomplete custom choice — the wire has no
+                        // „custom without its number" (an omitted profile
+                        // states `balanced`, a choice the writer did not
+                        // make), so switching models while the number
+                        // does not parse sends nothing: the stored row
+                        // keeps its last valid answer, and the held
+                        // switch rides the save that lands when the
+                        // number completes (blur/Enter) or a named
+                        // profile is chosen. Clearing to the cascade is
+                        // decisive whatever the field holds — a cleared
+                        // assignment stores nothing, the profile rides
+                        // meaningless.
+                        const held =
+                          next.profileId !== null &&
+                          state.profile === "custom" &&
+                          typeof parseDailyGoal(state.customRaw) !== "number";
+                        if (!held) saveRow(task.task_key, next);
                       }}
                       className={`${COMPACT_SELECT} appearance-none pr-8`}
                     >
