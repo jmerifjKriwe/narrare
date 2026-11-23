@@ -465,9 +465,11 @@ class _RequestProbe:
 @pytest.mark.parametrize(
     ("window", "output", "temperature", "expected_max_tokens"),
     [
-        # The fake/env tier's facts are unset: the default reservation rides.
-        (None, None, None, 1024),
-        # A profile's facts: its own value, its temperature.
+        # The fake tier's facts are unset: no ceiling is invented — the
+        # default profile's target stands uncapped.
+        (None, None, None, 4_096),
+        # A stored ceiling caps the profile at the minimum: balanced's 4 096
+        # reserves the stored 777.
         (8192, 777, 0.3, 777),
     ],
 )
@@ -478,8 +480,9 @@ async def test_the_continuation_request_carries_the_reservation_and_set_facts_on
     temperature: float | None,
     expected_max_tokens: int,
 ) -> None:
-    """max_tokens is always on the wire: the profile's value, else the default;
-    temperature rides only when the resolved facts set it."""
+    """max_tokens is always on the wire: the task's resolved output — the
+    profile's target, capped by the model's stored ceiling; temperature rides
+    only when the resolved facts set it."""
     probe = _RequestProbe()
     resolved = ResolvedProvider(
         provider=probe,
@@ -492,6 +495,8 @@ async def test_the_continuation_request_carries_the_reservation_and_set_facts_on
         request_timeout=None,
         base_url=None,
         api_key=None,
+        output_profile="balanced",
+        resolved_output_tokens=expected_max_tokens,
     )
 
     async def _resolved_probe(
@@ -1350,6 +1355,7 @@ async def test_a_prompt_the_window_cannot_hold_is_the_budget_frame(
         request_timeout=None,
         base_url=None,
         api_key=None,
+        resolved_output_tokens=900,
     )
 
     async def _small_window(

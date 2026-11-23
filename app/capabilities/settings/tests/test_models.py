@@ -823,14 +823,132 @@ async def test_assignments_accept_unknown_forward_compatible_task_keys(client: A
     assert assigned.json() == {
         "task_key": "brandnew.task",
         "profile_id": model["id"],
+        "output_profile": "balanced",
+        "output_profile_custom": None,
     }
 
     listed = (await client.get("/api/settings/assignments")).json()
-    assert listed == [{"task_key": "brandnew.task", "profile_id": model["id"]}]
+    assert listed == [
+        {
+            "task_key": "brandnew.task",
+            "profile_id": model["id"],
+            "output_profile": "balanced",
+            "output_profile_custom": None,
+        }
+    ]
 
     cleared = await client.put("/api/settings/assignments/brandnew.task", json={"profile_id": None})
     assert cleared.status_code == 200
     assert cleared.json()["profile_id"] is None
+    assert (await client.get("/api/settings/assignments")).json() == []
+
+
+async def test_an_assignment_stores_the_output_profile_it_names(client: AsyncClient) -> None:
+    """The profile rides the PUT and every later read of the assignment."""
+    provider = await _create_provider(client)
+    model = await _create(client, str(provider["id"]))
+    put = await client.put(
+        "/api/settings/assignments/chat.ask",
+        json={"profile_id": model["id"], "output_profile": "long_texts"},
+    )
+    assert put.status_code == 200
+    assert put.json() == {
+        "task_key": "chat.ask",
+        "profile_id": model["id"],
+        "output_profile": "long_texts",
+        "output_profile_custom": None,
+    }
+    listed = (await client.get("/api/settings/assignments")).json()
+    assert listed == [put.json()]
+
+
+async def test_an_absent_or_null_profile_saves_balanced(client: AsyncClient) -> None:
+    """The profile column has no two-state semantics: absent and null both
+    mean balanced — a save that carries no profile resets the task to it."""
+    provider = await _create_provider(client)
+    model = await _create(client, str(provider["id"]))
+    balanced = {
+        "task_key": "chat.ask",
+        "profile_id": model["id"],
+        "output_profile": "balanced",
+        "output_profile_custom": None,
+    }
+
+    absent = await client.put(
+        "/api/settings/assignments/chat.ask", json={"profile_id": model["id"]}
+    )
+    assert absent.status_code == 200
+    assert absent.json() == balanced
+
+    named = await client.put(
+        "/api/settings/assignments/chat.ask",
+        json={"profile_id": model["id"], "output_profile": "quick"},
+    )
+    assert named.status_code == 200
+    assert named.json()["output_profile"] == "quick"
+
+    nulled = await client.put(
+        "/api/settings/assignments/chat.ask",
+        json={"profile_id": model["id"], "output_profile": None},
+    )
+    assert nulled.status_code == 200
+    assert nulled.json() == balanced
+
+
+async def test_a_custom_profile_is_bounded_to_the_models_stored_ceiling(
+    client: AsyncClient,
+) -> None:
+    """A custom number above a stored ceiling is refused with the field; at or
+    under it stores; without a stored ceiling nothing bounds it — it stands."""
+    provider = await _create_provider(client)
+    capped = await _create(client, str(provider["id"]), "Capped", max_output_tokens=8_192)
+
+    fit = await client.put(
+        "/api/settings/assignments/chat.ask",
+        json={"profile_id": capped["id"], "output_profile": 6_000},
+    )
+    assert fit.status_code == 200
+    assert fit.json() == {
+        "task_key": "chat.ask",
+        "profile_id": capped["id"],
+        "output_profile": "custom",
+        "output_profile_custom": 6_000,
+    }
+
+    above = await client.put(
+        "/api/settings/assignments/chat.ask",
+        json={"profile_id": capped["id"], "output_profile": 9_001},
+    )
+    assert above.status_code == 422
+    assert "output_profile" in above.text
+    # The refusal changed nothing: the last stored choice still answers.
+    listed = (await client.get("/api/settings/assignments")).json()
+    assert listed[0]["output_profile_custom"] == 6_000
+
+    # No stored ceiling: no known bound exists, the save passes.
+    free = await _create(client, str(provider["id"]), "Free")
+    unbounded = await client.put(
+        "/api/settings/assignments/knowledge.extract-entities",
+        json={"profile_id": free["id"], "output_profile": 50_000},
+    )
+    assert unbounded.status_code == 200
+    assert unbounded.json()["output_profile"] == "custom"
+    assert unbounded.json()["output_profile_custom"] == 50_000
+
+
+async def test_an_output_profile_outside_the_vocabulary_is_refused(client: AsyncClient) -> None:
+    """A name the vocabulary does not carry is a 422 naming the field — and
+    ``custom`` itself is not a name: the number is its carrier."""
+    provider = await _create_provider(client)
+    model = await _create(client, str(provider["id"]))
+    for carried in ("huge", "custom", True):
+        put = await client.put(
+            "/api/settings/assignments/chat.ask",
+            json={"profile_id": model["id"], "output_profile": carried},
+        )
+        assert put.status_code == 422, carried
+        assert "output_profile" in put.text, carried
+    # Nothing unusable was stored.
     assert (await client.get("/api/settings/assignments")).json() == []
 
 

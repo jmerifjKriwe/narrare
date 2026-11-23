@@ -62,7 +62,11 @@ from app.capabilities.settings.service import SettingsService
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.contracts.models import User
 from app.kernel.db.session import get_session
-from app.kernel.llm.models import LLMProvider, ProviderProfile
+from app.kernel.llm.models import (
+    DEFAULT_OUTPUT_PROFILE,
+    LLMProvider,
+    ProviderProfile,
+)
 from app.kernel.secrets import KeyUnavailableError, NoKeyStoreError
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -334,7 +338,12 @@ async def list_provider_models(provider_id: UUID, service: ProviderServiceDep) -
 async def list_assignments(service: ModelServiceDep) -> list[AssignmentRead]:
     """Every task assignment of the user's, ordered by task key."""
     return [
-        AssignmentRead(task_key=assignment.task_key, profile_id=assignment.profile_id)
+        AssignmentRead(
+            task_key=assignment.task_key,
+            profile_id=assignment.profile_id,
+            output_profile=assignment.output_profile,
+            output_profile_custom=assignment.output_profile_custom,
+        )
         for assignment in await service.assignments()
     ]
 
@@ -348,13 +357,19 @@ async def put_assignment(
     """Point the task at a model, or clear it with ``profile_id: null``.
 
     Any non-empty task key is accepted — unknown keys are forward-compatible.
+    The output profile rides the save; a body that omits it states
+    ``balanced`` (the profile column has no two-state semantics, W8).
     """
     try:
-        assignment = await service.assign(task_key, payload.profile_id)
+        assignment = await service.assign(task_key, payload.profile_id, payload.output_choice())
     except (ProfileNotFoundError, ProfileRefusedError) as error:
         raise _profile_errors(error) from None
     return AssignmentRead(
-        task_key=task_key, profile_id=assignment.profile_id if assignment else None
+        task_key=task_key,
+        profile_id=assignment.profile_id if assignment else None,
+        # A cleared assignment stores nothing: the default profile answers.
+        output_profile=assignment.output_profile if assignment else DEFAULT_OUTPUT_PROFILE,
+        output_profile_custom=assignment.output_profile_custom if assignment else None,
     )
 
 
@@ -378,6 +393,8 @@ async def list_tasks(service: ModelServiceDep) -> list[TaskEffectiveRead]:
             profile_name=row.profile_name,
             kind=row.kind,
             assignable=row.assignable,
+            output_profile=row.output_profile,
+            resolved_output_tokens=row.resolved_output_tokens,
         )
         for row in rows
     ]

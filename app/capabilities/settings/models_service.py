@@ -30,11 +30,19 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.catalog import effective_info
 from app.kernel.llm.contract import CompletionRequest
-from app.kernel.llm.models import ERROR, LlmCall, LLMProvider, ProviderProfile, TaskAssignment
+from app.kernel.llm.models import (
+    CUSTOM_OUTPUT_PROFILE,
+    ERROR,
+    LlmCall,
+    LLMProvider,
+    ProviderProfile,
+    TaskAssignment,
+)
 from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository, ProviderRepository
 from app.kernel.llm.resolution import (
     AUDIT_ONLY_TASK_KEYS,
     KNOWN_TASK_KEYS,
+    OutputProfile,
     from_profile,
     resolve_provider,
 )
@@ -98,13 +106,22 @@ class ModelState:
 
 @dataclass(frozen=True)
 class TaskEffective:
-    """One known task key and the provider the cascade actually serves it."""
+    """One known task key and the provider the cascade actually serves it.
+
+    ``output_profile`` and ``resolved_output_tokens`` carry the task's
+    output choice (W8): the serving assignment's profile and the number a
+    call reserves — the profile's target, capped by the assigned model's
+    stored ceiling where one is stored. ``None`` where no profile applies:
+    the audit-only key routes to no model and reserves nothing.
+    """
 
     task_key: str
     profile_id: UUID | None
     profile_name: str | None
     kind: str
     assignable: bool
+    output_profile: str | None
+    resolved_output_tokens: int | None
 
 
 class ModelService:
@@ -379,12 +396,14 @@ class ModelService:
         through the same cascade a generation uses, so the answer is what the
         next call will get: the exact assignment, a sibling's segment
         assignment, the default model, or the environment tier.
-        ``profile_name`` is ``None`` exactly when no model serves.
-        Audit-only keys (:data:`AUDIT_ONLY_TASK_KEYS`) are never routed — the
-        settings probe audits its call under ``settings.test`` but tests the
-        clicked model — so they report ``kind="audit"`` and are not
-        assignable, without consulting the cascade. Resolution never writes,
-        so reading the list creates no assignment and audits no call.
+        ``profile_name`` is ``None`` exactly when no model serves. The row's
+        ``resolved_output_tokens`` is the same number the next call reserves
+        — one truth, never a second derivation. Audit-only keys
+        (:data:`AUDIT_ONLY_TASK_KEYS`) are never routed — the settings probe
+        audits its call under ``settings.test`` but tests the clicked model —
+        so they report ``kind="audit"`` and are not assignable, without
+        consulting the cascade. Resolution never writes, so reading the list
+        creates no assignment and audits no call.
         """
         names = {profile.id: profile.name for profile, _ in await self.list()}
         rows: list[TaskEffective] = []
@@ -397,6 +416,8 @@ class ModelService:
                         profile_name=None,
                         kind="audit",
                         assignable=False,
+                        output_profile=None,
+                        resolved_output_tokens=None,
                     )
                 )
                 continue
@@ -408,6 +429,8 @@ class ModelService:
                     profile_name=names.get(resolved.profile_id) if resolved.profile_id else None,
                     kind=resolved.kind,
                     assignable=True,
+                    output_profile=resolved.output_profile,
+                    resolved_output_tokens=resolved.resolved_output_tokens,
                 )
             )
         return rows
@@ -426,12 +449,26 @@ class ModelService:
         kinds = {row.kind for row in await self.tasks() if row.assignable}
         return "fake" if kinds <= {"fake"} else "configured"
 
-    async def assign(self, task_key: str, profile_id: UUID | None) -> TaskAssignment | None:
+    async def assign(
+        self,
+        task_key: str,
+        profile_id: UUID | None,
+        output_profile: OutputProfile | None = None,
+    ) -> TaskAssignment | None:
         """Point the task at one of the user's models, or clear it with ``None``.
 
         Any non-empty task key is accepted — the known keys are a kernel
         constant for readers, not a format; a new capability's key can be
         assigned before its list entry ships.
+
+        The output profile rides the assignment (W8). A choice the caller did
+        not carry is the vocabulary's default — absent and null both mean
+        ``balanced``, no two-state semantics. A custom choice is bounded to a
+        known ceiling at save: a number above the assigned model's stored
+        ``max_output_tokens`` is refused with the field (never silently
+        clamped, the allocator's own rule), and with no stored ceiling
+        nothing bounds it — the number stands, uncapped, the same rule
+        resolution reads by.
         """
         if not task_key:
             raise ProfileRefusedError(("task_key",), "a task key cannot be empty")
@@ -443,7 +480,16 @@ class ModelService:
         profile = await self._profiles().get(profile_id)
         if profile is None:
             raise ProfileNotFoundError(f"no profile {profile_id}")
-        assignment = await assignments.set(task_key, profile.id)
+        choice = output_profile if output_profile is not None else OutputProfile()
+        ceiling = profile.max_output_tokens
+        if choice.name == CUSTOM_OUTPUT_PROFILE and ceiling is not None and choice.target > ceiling:
+            raise ProfileRefusedError(
+                ("output_profile",),
+                f"a custom output of {choice.target} tokens is above the model's"
+                f" stored ceiling of {ceiling}; pick a number at or under it,"
+                " a named profile, or raise the model's max_output_tokens",
+            )
+        assignment = await assignments.set(task_key, profile.id, choice.name, choice.custom)
         await self.session.commit()
         return assignment
 

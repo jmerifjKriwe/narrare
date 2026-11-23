@@ -99,6 +99,8 @@ async def test_an_exact_assignment_names_that_model() -> None:
         "profile_name": "Second",
         "kind": "fake",
         "assignable": True,
+        "output_profile": "balanced",
+        "resolved_output_tokens": 4_096,
     }
     # The keys without an assignment still follow the default model.
     assert _row(rows, "writing.continuation")["profile_name"] == "Default"
@@ -116,6 +118,8 @@ async def test_the_audit_only_key_is_not_routed_and_not_assignable() -> None:
         "profile_name": None,
         "kind": "audit",
         "assignable": False,
+        "output_profile": None,
+        "resolved_output_tokens": None,
     }
     assert all(row["assignable"] is True for row in rows if row["task_key"] != "settings.test")
 
@@ -161,6 +165,54 @@ async def test_listing_tasks_writes_nothing_and_audits_nothing() -> None:
     async with Session() as session:
         calls = await session.scalar(text("SELECT count(*) FROM llm_calls"))
     assert calls == 0
+
+
+async def test_task_rows_carry_the_profile_and_the_resolved_number() -> None:
+    """The honesty seam: each row names the task's profile and the number a
+    call reserves — min(target, the model's stored ceiling), the target
+    uncapped when no ceiling is stored."""
+    async with _client() as client:
+        await _create_model(client, "Default")
+        provider = await client.post(
+            "/api/settings/providers", json={"name": "Capped Anbieter", "kind": "fake"}
+        )
+        assert provider.status_code == 201, provider.text
+        created = await client.post(
+            "/api/settings/models",
+            json={
+                "name": "Capped",
+                "provider_id": provider.json()["id"],
+                "model": "fake-model",
+                "max_output_tokens": 512,
+            },
+        )
+        assert created.status_code == 201, created.text
+        await client.put(
+            "/api/settings/assignments/knowledge.extract-entities",
+            json={"profile_id": created.json()["id"], "output_profile": "comprehensive"},
+        )
+        await client.put(
+            "/api/settings/assignments/chat.ask",
+            json={"profile_id": created.json()["id"], "output_profile": 300},
+        )
+        rows = (await client.get("/api/settings/tasks")).json()
+
+    # 32 768 capped at the model's stored 512.
+    extraction = _row(rows, "knowledge.extract-entities")
+    assert (extraction["output_profile"], extraction["resolved_output_tokens"]) == (
+        "comprehensive",
+        512,
+    )
+    # The custom 300 rides: under the ceiling, the number itself answers.
+    chat = _row(rows, "chat.ask")
+    assert (chat["output_profile"], chat["resolved_output_tokens"]) == ("custom", 300)
+    # No assignment: balanced — and the default model stores no ceiling, so
+    # the target stands uncapped, shown as is.
+    continuation = _row(rows, "writing.continuation")
+    assert (continuation["output_profile"], continuation["resolved_output_tokens"]) == (
+        "balanced",
+        4_096,
+    )
 
 
 async def test_a_lost_provider_key_is_a_named_502(monkeypatch: pytest.MonkeyPatch) -> None:

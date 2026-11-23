@@ -44,6 +44,10 @@ TASK_ASSIGNMENT_COLUMNS = {
     "user_id",
     "task_key",
     "profile_id",
+    # The output profile (W8): the vocabulary name (or "custom") and the
+    # explicit number a custom choice stores beside it.
+    "output_profile",
+    "output_profile_custom",
     "created_at",
     "updated_at",
 }

@@ -773,6 +773,8 @@ export interface paths {
          * @description Point the task at a model, or clear it with ``profile_id: null``.
          *
          *     Any non-empty task key is accepted — unknown keys are forward-compatible.
+         *     The output profile rides the save; a body that omits it states
+         *     ``balanced`` (the profile column has no two-state semantics, W8).
          */
         put: operations["put_assignment_api_settings_assignments__task_key__put"];
         post?: never;
@@ -1536,8 +1538,18 @@ export interface components {
             /** Reason */
             reason: string;
         };
-        /** AssignmentRead */
+        /**
+         * AssignmentRead
+         * @description A stored assignment as every read shows it: the model and the profile.
+         *
+         *     The profile fields mirror the row's columns — ``custom`` beside its
+         *     number, the vocabulary's default where no choice was stored.
+         */
         AssignmentRead: {
+            /** Output Profile */
+            output_profile: string;
+            /** Output Profile Custom */
+            output_profile_custom: number | null;
             /** Profile Id */
             profile_id: string | null;
             /** Task Key */
@@ -1546,8 +1558,19 @@ export interface components {
         /**
          * AssignmentUpdate
          * @description ``profile_id: null`` clears the task's assignment (back down the cascade).
+         *
+         *     ``output_profile`` is the task's output-length choice (W8): a vocabulary
+         *     name (:data:`OUTPUT_PROFILES`) or an explicit number — the number *is*
+         *     the custom profile's carrier, there is no ``"custom"`` string. Absent
+         *     and carried null both mean ``balanced``: the profile column has no
+         *     two-state semantics, so a save that omits the field states ``balanced``
+         *     by that fact. A custom number above the assigned model's stored
+         *     ``max_output_tokens`` is refused by the service's gate (422 naming the
+         *     field); with no stored ceiling nothing bounds it.
          */
         AssignmentUpdate: {
+            /** Output Profile */
+            output_profile?: string | number | null;
             /** Profile Id */
             profile_id: string | null;
         };
@@ -3011,16 +3034,28 @@ export interface components {
          *     say what answers without claiming the cascade's stored choice. An
          *     audit-only key has no serving tier: ``kind`` is ``audit``, the model
          *     fields are ``None``, and ``assignable`` is ``False``.
+         *
+         *     The output profile is the honesty seam (W8): ``output_profile`` names the
+         *     choice the serving assignment carried (``balanced`` when none did) and
+         *     ``resolved_output_tokens`` is the number a call reserves — the target,
+         *     ``min``-ed with the model's stored ``max_output_tokens`` where one is
+         *     stored, the target itself where none is (an unknown ceiling is never
+         *     invented). An audit-only key names no profile and reserves nothing:
+         *     both fields are ``None`` there.
          */
         TaskEffectiveRead: {
             /** Assignable */
             assignable: boolean;
             /** Kind */
             kind: string;
+            /** Output Profile */
+            output_profile: string | null;
             /** Profile Id */
             profile_id: string | null;
             /** Profile Name */
             profile_name: string | null;
+            /** Resolved Output Tokens */
+            resolved_output_tokens: number | null;
             /** Task Key */
             task_key: string;
         };

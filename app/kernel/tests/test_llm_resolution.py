@@ -29,7 +29,12 @@ from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.catalog import ModelInfo
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
 from app.kernel.llm.fake import FakeProvider
-from app.kernel.llm.models import ProviderProfile  # noqa: TC001  the helper's return annotation
+from app.kernel.llm.models import (
+    CUSTOM_OUTPUT_PROFILE,
+    DEFAULT_OUTPUT_PROFILE,
+    OUTPUT_PROFILES,
+    ProviderProfile,
+)
 from app.kernel.llm.openai_chat import OpenAIChatProvider
 from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository, ProviderRepository
 from app.kernel.llm.resolution import (
@@ -248,6 +253,8 @@ async def test_without_models_and_environment_the_fake_serves(
     assert resolved.profile_id is None
     assert (resolved.kind, resolved.model) == ("fake", "fake")
     assert (resolved.context_window, resolved.max_output_tokens) == (None, None)
+    # No assignment anywhere: the default profile answers, uncapped.
+    assert (resolved.output_profile, resolved.resolved_output_tokens) == ("balanced", 4_096)
     assert (resolved.temperature, resolved.request_timeout) == (None, None)
     assert resolved.base_url is None
     assert resolved.api_key is None
@@ -646,6 +653,119 @@ async def test_an_unknown_task_key_resolves_through_the_cascade() -> None:
 
     resolved = await _resolve(OWNER, "brandnew.task")
     assert (resolved.profile_id, resolved.model) == (default.id, "default-model")
+
+
+def test_the_output_profile_vocabulary_carries_the_named_targets() -> None:
+    """The W8 vocabulary, pinned: four realistic targets, balanced the default.
+
+    ``custom`` is not a dictionary entry — it is the name for an explicit
+    number the assignment stores beside it.
+    """
+    assert OUTPUT_PROFILES == {
+        "quick": 1_024,
+        "balanced": 4_096,
+        "long_texts": 12_288,
+        "comprehensive": 32_768,
+    }
+    assert DEFAULT_OUTPUT_PROFILE == "balanced"
+    assert CUSTOM_OUTPUT_PROFILE == "custom"
+    assert "custom" not in OUTPUT_PROFILES
+
+
+@pytest.mark.usefixtures("two_users")
+@pytest.mark.parametrize(("name", "target"), sorted(OUTPUT_PROFILES.items()))
+async def test_each_named_profile_resolves_to_its_target(name: str, target: int) -> None:
+    """A model without a stored ceiling invents none: the target stands as is."""
+    async with Session() as session:
+        profile = await _fake_profile(session, OWNER, name="Model", model="free-model")
+        await AssignmentRepository(session, OWNER).set("chat.ask", profile.id, output_profile=name)
+        await session.commit()
+
+    resolved = await _resolve(OWNER, "chat.ask")
+    assert resolved.output_profile == name
+    assert resolved.resolved_output_tokens == target
+    # The merged ceiling fact is untouched by the profile: still None here.
+    assert resolved.max_output_tokens is None
+
+
+@pytest.mark.usefixtures("two_users")
+@pytest.mark.parametrize(
+    ("name", "target", "ceiling", "expected"),
+    [
+        ("balanced", 4_096, 2_048, 2_048),
+        ("comprehensive", 32_768, 8_192, 8_192),
+        ("quick", 1_024, 512, 512),
+        # Under the ceiling the target rides unchanged.
+        ("long_texts", 12_288, 16_384, 12_288),
+    ],
+)
+async def test_a_stored_ceiling_caps_the_profile_at_the_minimum(
+    name: str, target: int, ceiling: int, expected: int
+) -> None:
+    """min(profile, ceiling): never above the model row's stored max_output_tokens."""
+    assert expected == min(target, ceiling)
+    async with Session() as session:
+        profile = await _fake_profile(
+            session, OWNER, name="Model", model="free-model", max_output_tokens=ceiling
+        )
+        await AssignmentRepository(session, OWNER).set("chat.ask", profile.id, output_profile=name)
+        await session.commit()
+
+    resolved = await _resolve(OWNER, "chat.ask")
+    assert resolved.output_profile == name
+    assert resolved.resolved_output_tokens == expected
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_the_catalogs_ceiling_never_caps_a_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The cap is the model row's stored column only: what the catalog knows
+    prices the call, it is no ceiling — the target stands above it uncapped."""
+    monkeypatch.setattr(catalog, "load_catalog", lambda: {"acme/turbo-3": ACME})
+    async with Session() as session:
+        profile = await _fake_profile(session, OWNER, name="Catalogued", model="acme/turbo-3")
+        await AssignmentRepository(session, OWNER).set(
+            "chat.ask", profile.id, output_profile="comprehensive"
+        )
+        await session.commit()
+
+    resolved = await _resolve(OWNER, "chat.ask")
+    # The catalog's 4 096 still price the call; the profile's 32 768 stand.
+    assert resolved.max_output_tokens == 4_096
+    assert resolved.resolved_output_tokens == 32_768
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_a_custom_profile_carries_its_number() -> None:
+    """custom stores the explicit number; an unknown ceiling leaves it standing."""
+    async with Session() as session:
+        profile = await _fake_profile(session, OWNER, name="Model", model="free-model")
+        await AssignmentRepository(session, OWNER).set(
+            "chat.ask", profile.id, output_profile="custom", output_profile_custom=6_000
+        )
+        await session.commit()
+
+    resolved = await _resolve(OWNER, "chat.ask")
+    assert (resolved.output_profile, resolved.resolved_output_tokens) == ("custom", 6_000)
+
+    # A ceiling appearing later caps it — the same min() a named profile gets.
+    async with Session() as session:
+        stored = await ProfileRepository(session, OWNER).get(profile.id)
+        assert stored is not None
+        await ProfileRepository(session, OWNER).update(stored, max_output_tokens=4_096)
+        await session.commit()
+    capped = await _resolve(OWNER, "chat.ask")
+    assert capped.resolved_output_tokens == 4_096
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_without_an_assignment_the_default_profile_serves() -> None:
+    """No assignment on the task or its segment: balanced, uncapped."""
+    async with Session() as session:
+        await _fake_profile(session, OWNER, name="Default", model="free-model", is_default=True)
+        await session.commit()
+
+    resolved = await _resolve(OWNER, "chat.ask")
+    assert (resolved.output_profile, resolved.resolved_output_tokens) == ("balanced", 4_096)
 
 
 class _ScriptedProvider:

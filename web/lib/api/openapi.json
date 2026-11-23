@@ -122,7 +122,23 @@
         "type": "object"
       },
       "AssignmentRead": {
+        "description": "A stored assignment as every read shows it: the model and the profile.\n\nThe profile fields mirror the row's columns — ``custom`` beside its\nnumber, the vocabulary's default where no choice was stored.",
         "properties": {
+          "output_profile": {
+            "title": "Output Profile",
+            "type": "string"
+          },
+          "output_profile_custom": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Profile Custom"
+          },
           "profile_id": {
             "anyOf": [
               {
@@ -142,14 +158,30 @@
         },
         "required": [
           "task_key",
-          "profile_id"
+          "profile_id",
+          "output_profile",
+          "output_profile_custom"
         ],
         "title": "AssignmentRead",
         "type": "object"
       },
       "AssignmentUpdate": {
-        "description": "``profile_id: null`` clears the task's assignment (back down the cascade).",
+        "description": "``profile_id: null`` clears the task's assignment (back down the cascade).\n\n``output_profile`` is the task's output-length choice (W8): a vocabulary\nname (:data:`OUTPUT_PROFILES`) or an explicit number — the number *is*\nthe custom profile's carrier, there is no ``\"custom\"`` string. Absent\nand carried null both mean ``balanced``: the profile column has no\ntwo-state semantics, so a save that omits the field states ``balanced``\nby that fact. A custom number above the assigned model's stored\n``max_output_tokens`` is refused by the service's gate (422 naming the\nfield); with no stored ceiling nothing bounds it.",
         "properties": {
+          "output_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Profile"
+          },
           "profile_id": {
             "anyOf": [
               {
@@ -3563,7 +3595,7 @@
         "type": "object"
       },
       "TaskEffectiveRead": {
-        "description": "One known task key and the tier that actually serves it.\n\n``profile_id`` and ``profile_name`` are ``None`` exactly when no model\nserves — the environment tier answers. ``kind`` names the serving adapter\neither way (``fake``, ``openai-chat`` or ``anthropic``), so the page can\nsay what answers without claiming the cascade's stored choice. An\naudit-only key has no serving tier: ``kind`` is ``audit``, the model\nfields are ``None``, and ``assignable`` is ``False``.",
+        "description": "One known task key and the tier that actually serves it.\n\n``profile_id`` and ``profile_name`` are ``None`` exactly when no model\nserves — the environment tier answers. ``kind`` names the serving adapter\neither way (``fake``, ``openai-chat`` or ``anthropic``), so the page can\nsay what answers without claiming the cascade's stored choice. An\naudit-only key has no serving tier: ``kind`` is ``audit``, the model\nfields are ``None``, and ``assignable`` is ``False``.\n\nThe output profile is the honesty seam (W8): ``output_profile`` names the\nchoice the serving assignment carried (``balanced`` when none did) and\n``resolved_output_tokens`` is the number a call reserves — the target,\n``min``-ed with the model's stored ``max_output_tokens`` where one is\nstored, the target itself where none is (an unknown ceiling is never\ninvented). An audit-only key names no profile and reserves nothing:\nboth fields are ``None`` there.",
         "properties": {
           "assignable": {
             "title": "Assignable",
@@ -3572,6 +3604,17 @@
           "kind": {
             "title": "Kind",
             "type": "string"
+          },
+          "output_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Profile"
           },
           "profile_id": {
             "anyOf": [
@@ -3596,6 +3639,17 @@
             ],
             "title": "Profile Name"
           },
+          "resolved_output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved Output Tokens"
+          },
           "task_key": {
             "title": "Task Key",
             "type": "string"
@@ -3606,7 +3660,9 @@
           "profile_id",
           "profile_name",
           "kind",
-          "assignable"
+          "assignable",
+          "output_profile",
+          "resolved_output_tokens"
         ],
         "title": "TaskEffectiveRead",
         "type": "object"
@@ -6359,7 +6415,7 @@
     },
     "/api/settings/assignments/{task_key}": {
       "put": {
-        "description": "Point the task at a model, or clear it with ``profile_id: null``.\n\nAny non-empty task key is accepted — unknown keys are forward-compatible.",
+        "description": "Point the task at a model, or clear it with ``profile_id: null``.\n\nAny non-empty task key is accepted — unknown keys are forward-compatible.\nThe output profile rides the save; a body that omits it states\n``balanced`` (the profile column has no two-state semantics, W8).",
         "operationId": "put_assignment_api_settings_assignments__task_key__put",
         "parameters": [
           {

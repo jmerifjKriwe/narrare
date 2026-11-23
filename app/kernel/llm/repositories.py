@@ -13,7 +13,12 @@ from uuid import UUID  # noqa: TC003
 from sqlalchemy import func, select
 
 from app.kernel.db.base import ScopedRepository
-from app.kernel.llm.models import LLMProvider, ProviderProfile, TaskAssignment
+from app.kernel.llm.models import (
+    DEFAULT_OUTPUT_PROFILE,
+    LLMProvider,
+    ProviderProfile,
+    TaskAssignment,
+)
 
 
 class ProviderRepository(ScopedRepository[LLMProvider]):
@@ -159,16 +164,34 @@ class AssignmentRepository(ScopedRepository[TaskAssignment]):
         )
         return result.first()
 
-    async def set(self, task_key: str, profile_id: UUID) -> TaskAssignment:
-        """Point the user's task at a profile, replacing an earlier choice."""
+    async def set(
+        self,
+        task_key: str,
+        profile_id: UUID,
+        output_profile: str = DEFAULT_OUTPUT_PROFILE,
+        output_profile_custom: int | None = None,
+    ) -> TaskAssignment:
+        """Point the user's task at a profile, replacing an earlier choice.
+
+        The output profile rides every set: both columns are written, so a
+        custom choice that becomes a named one leaves no stale number behind.
+        The default is the vocabulary's — a caller that names no profile
+        stores ``balanced`` (the column has no two-state semantics, W8).
+        """
         assignment = await self.for_task(task_key)
         if assignment is None:
             assignment = TaskAssignment(
-                user_id=self.user_id, task_key=task_key, profile_id=profile_id
+                user_id=self.user_id,
+                task_key=task_key,
+                profile_id=profile_id,
+                output_profile=output_profile,
+                output_profile_custom=output_profile_custom,
             )
             self.session.add(assignment)
         else:
             assignment.profile_id = profile_id
+            assignment.output_profile = output_profile
+            assignment.output_profile_custom = output_profile_custom
         await self.session.flush()
         return assignment
 
