@@ -747,6 +747,87 @@ describe("the aufgaben rows — the cascade's honest faces", () => {
     expect(row.getAttribute("title")).toBeNull();
   });
 
+  it("a deleted model's ghost cannot stand in the row — the selects fall to the stored answer", async () => {
+    // writing.continuation is bound to the non-default m-2.
+    assignments = [{ task_key: "writing.continuation", profile_id: "m-2", output_profile: "long_texts", output_profile_custom: null }];
+    tasks = [
+      task({ profile_id: "m-2", profile_name: "Bound", kind: "fake", output_profile: "long_texts", resolved_output_tokens: 12_288 }),
+      ...freshTasks().slice(1),
+    ];
+    models = [model(), model({ id: "m-2", name: "Bound", is_default: false })];
+    api.DELETE.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/models/{model_id}") return { response: ok(204) };
+      throw new Error(`unexpected DELETE: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    const row = taskRow("writing.continuation");
+    expect(modelSelect(row).value).toBe("m-2");
+    expect(profileSelect(row).disabled).toBe(false);
+
+    // The delete lands: the database cascades the assignment, the whole
+    // cascade family re-asks — and the row reconciles to what is stored
+    // NOW (nothing): the cascade option and the resting profile select.
+    // A ghost id the select cannot show and the next save would submit
+    // to a 404 is no honest face.
+    models = [model()];
+    assignments = [];
+    tasks = [
+      task({ profile_id: "m-1", profile_name: "Cloud-Schreiber", kind: "openai-chat", output_profile: "balanced", resolved_output_tokens: 4_096 }),
+      ...freshTasks().slice(1),
+    ];
+    fireEvent.click(screen.getByRole("button", { name: de["settings.ai.models.remove"] }));
+    await waitFor(() => expect(profileSelect(row).disabled).toBe(true));
+    expect(modelSelect(row).value).toBe("");
+    expect(profileSelect(row).value).toBe("balanced");
+    expect(row.textContent).toContain(de["settings.ai.task.profileNeedsModel"]);
+  });
+
+  it("a refused row keeps its answers even when its model vanishes behind the refusal", async () => {
+    // The writer's save dies behind the wire; the row holds the refused
+    // answers beside the face. Then the model is deleted by the cards:
+    // reconciliation waits — a refusal on display keeps its answers, the
+    // writer's next action re-runs the ask.
+    assignments = [{ task_key: "writing.continuation", profile_id: "m-2", output_profile: "quick", output_profile_custom: null }];
+    tasks = [
+      task({ profile_id: "m-2", profile_name: "Bound", kind: "fake", output_profile: "quick", resolved_output_tokens: 1_024 }),
+      ...freshTasks().slice(1),
+    ];
+    models = [model(), model({ id: "m-2", name: "Bound", is_default: false })];
+    api.PUT.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/assignments/{task_key}") {
+        return { error: { detail: "the write died behind the wire" }, response: new Response(null, { status: 500 }) };
+      }
+      throw new Error(`unexpected PUT: ${path}`);
+    });
+    api.DELETE.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/models/{model_id}") return { response: ok(204) };
+      throw new Error(`unexpected DELETE: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    const row = taskRow("writing.continuation");
+    fireEvent.change(profileSelect(row), { target: { value: "comprehensive" } });
+    expect(await screen.findByText(de["settings.ai.errors.generic"])).toBeTruthy();
+    expect(profileSelect(row).value).toBe("comprehensive"); // the refusal keeps the answers
+
+    models = [model()];
+    assignments = [];
+    tasks = [
+      task({ profile_id: "m-1", profile_name: "Cloud-Schreiber", kind: "openai-chat", output_profile: "balanced", resolved_output_tokens: 4_096 }),
+      ...freshTasks().slice(1),
+    ];
+    fireEvent.click(screen.getByRole("button", { name: de["settings.ai.models.remove"] }));
+    // The delete's re-ask landed (the select's vocabulary dropped to one
+    // model); the refusal is on display, so reconciliation waits — the
+    // writer's refused answers stand until their next action re-runs
+    // the ask.
+    await waitFor(() => expect(modelSelect(row).options.length).toBe(2));
+    expect(screen.getByText(de["settings.ai.errors.generic"])).toBeTruthy();
+    expect(profileSelect(row).value).toBe("comprehensive");
+    expect(profileSelect(row).disabled).toBe(false);
+  });
+
   it("a model change rides the PUT whole: the model AND the carried profile", async () => {
     assignments = [{ task_key: "writing.continuation", profile_id: "m-1", output_profile: "comprehensive", output_profile_custom: null }];
     models = [model(), model({ id: "m-2", name: "Zweit", is_default: false })];

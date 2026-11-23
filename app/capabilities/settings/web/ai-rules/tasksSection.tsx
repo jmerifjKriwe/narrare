@@ -23,6 +23,11 @@
  * the assignment's profile column has no two-state semantics — an omitted
  * profile states `balanced` by that fact. `settings.test` is audit-only and
  * never a dropdown: its row states the fact, no selects, no chip.
+ *
+ * The rows reconcile against the reads that land behind them (a model
+ * delete cascades its assignments at the database): a row whose model
+ * vanished re-seeds from the assignments read's current answer, while a
+ * save in flight or a refusal on display keeps the writer's answers.
  */
 import { useState } from "react";
 
@@ -106,6 +111,28 @@ export function TasksSection({
 
   function setRow(taskKey: string, patch: Partial<RowState>) {
     setRows((current) => ({ ...current, [taskKey]: { ...current[taskKey], ...patch } }));
+  }
+
+  // The rows reconcile against the reads that land behind them: an
+  // assignment the database cascaded away (its model was deleted) cannot
+  // keep standing in the editor — the select would wear an id that is
+  // neither an option nor a stored truth, and the row's next save would
+  // submit it to a 404. The trigger is both reads' answer: the
+  // assignments read carries no row for the task any more, and the
+  // editor's id names a model the models read no longer carries — the
+  // reset is the cascade's honest answer (the cascade option, the named
+  // default, resting). A row whose own save stands in flight or whose
+  // refusal is on display keeps the writer's answers: reconciliation
+  // waits, and the writer's next action re-runs the ask.
+  const modelIds = new Set(models.map((model) => model.id));
+  for (const task of tasks) {
+    const state = rows[task.task_key];
+    if (!task.assignable || state === undefined) continue;
+    if (state.profileId === null || modelIds.has(state.profileId)) continue;
+    if (assignments.some((entry) => entry.task_key === task.task_key)) continue;
+    if (state.error !== null) continue;
+    if (assignTask.isPending && assignTask.variables?.taskKey === task.task_key) continue;
+    setRow(task.task_key, { profileId: null, profile: "balanced", customRaw: "", error: null });
   }
 
   /** The carried profile choice as the wire's shape: a vocabulary name, or
