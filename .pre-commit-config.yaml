@@ -5,7 +5,7 @@
 #
 # A commit checks the staged files; a push checks the pushed tree. The web
 # suite follows that split: the commit runs only the tests the change reaches,
-# a push that touches web runs all of them.
+# the full suite runs in CI. Locally, push runs typecheck + lock only.
 default_install_hook_types: [pre-commit, pre-push, commit-msg]
 
 repos:
@@ -43,10 +43,10 @@ repos:
       # `app/capabilities/.*/web/`, not `app/capabilities/`: a backend-only
       # capability commit owes neither tsc nor vitest (issue #446). One hook
       # runs both: the types first, then the tests the working tree's change
-      # reaches — not all of them, because the full suite runs on a
-      # web-touching push (`web-tests-full`) and in CI's `frontend` job, which
-      # no path filter can skip. A missed generated-input change is caught in
-      # CI by `just check-generated`; the hook stays out of it because
+      # reaches. The full web suite runs in CI's `frontend` job (required via
+      # `ci-required`); it no longer runs on push locally. A missed
+      # generated-input change is caught in CI by `just check-generated`; the
+      # hook stays out of it because
       # `pnpm dlx` needs the network and the run is not sub-second (issue
       # #622).
       - id: web
@@ -68,8 +68,8 @@ repos:
         stages: [commit-msg]
 
       # The lockfile check is first at push: a stale lock costs nothing to
-      # find and two minutes to wait for behind the suites. A push hook runs
-      # against the index (pre-commit stashes unstaged changes), so the guard
+      # find. A push hook runs against the index (pre-commit stashes unstaged
+      # changes), so the guard
       # refuses a lock update that is staged but not committed; `uv lock
       # --check` then reads the pair the push actually carries.
       - id: uv-lock
@@ -85,27 +85,10 @@ repos:
         entry: uv run pyright
         language: system
         pass_filenames: false
-        always_run: true
+        files: \.py$|^pyproject\.toml$|^uv\.lock$
         stages: [pre-push]
 
-      - id: pytest
-        name: Tests
-        entry: bash
-        args:
-          # `-v`, not `-q`: the header is the only place pytest-randomly prints
-          # its seed, and an order-dependent failure at push is unreproducible
-          # without it.
-          - "-c"
-          - "{ exec 3<>/dev/tcp/localhost/5433; } 2>/dev/null || { echo 'dev services not running — run: just dev-services'; exit 2; }; exec 3>&-; uv run pytest app -v"
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-push]
-
-      - id: web-tests-full
-        name: Web tests (all)
-        entry: pnpm --dir web test
-        language: system
-        pass_filenames: false
-        files: (^web/|^app/capabilities/.*/web/|^i18n/)
-        stages: [pre-push]
+      # Full Python + web suites moved to CI (`tests` and `frontend` jobs,
+      # required via `ci-required`). Local push keeps typecheck + lock only.
+      # Run `just test` / `just test-frontend` before pushing when touching
+      # risky code. The commit hook still runs the changed web tests.
