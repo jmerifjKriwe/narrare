@@ -1957,6 +1957,38 @@
         "title": "PresetRead",
         "type": "object"
       },
+      "PromptCodedDetail": {
+        "description": "The live test's coded face: the code the surfaces localize, the detail\nbehind it — the chat frames' vocabulary, one spelling for both routers.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "detail"
+        ],
+        "title": "PromptCodedDetail",
+        "type": "object"
+      },
+      "PromptCodedError": {
+        "description": "The live test's HTTP faces (409, 429, 502, 503): the coded detail body.",
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/PromptCodedDetail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "PromptCodedError",
+        "type": "object"
+      },
       "PromptDetail": {
         "description": "One key as the editor shows it: the bundled source, the variable\nlegend, the override in force, the source a render would use.",
         "properties": {
@@ -2035,6 +2067,36 @@
         "title": "PromptKeyNotFound",
         "type": "object"
       },
+      "PromptLiveTestBody": {
+        "description": "The live test's body: the editor draft (absent = the saved effective)\nand the scope. An absent body altogether tests the saved effective too.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "novel_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Novel Id"
+          }
+        },
+        "title": "PromptLiveTestBody",
+        "type": "object"
+      },
       "PromptOverride": {
         "description": "The override in force for the scope: which tier answered, its content.",
         "properties": {
@@ -2056,6 +2118,81 @@
           "content"
         ],
         "title": "PromptOverride",
+        "type": "object"
+      },
+      "PromptPreview": {
+        "description": "The editor's preview: the rendered text, the provenance, the diagnostics.",
+        "properties": {
+          "diagnostics": {
+            "$ref": "#/components/schemas/PromptPreviewDiagnostics"
+          },
+          "rendered": {
+            "title": "Rendered",
+            "type": "string"
+          },
+          "variables": {
+            "items": {
+              "$ref": "#/components/schemas/PromptVariableProvenance"
+            },
+            "title": "Variables",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rendered",
+          "variables",
+          "diagnostics"
+        ],
+        "title": "PromptPreview",
+        "type": "object"
+      },
+      "PromptPreviewBody": {
+        "description": "The preview's optional body: the editor draft to render.\n\nAbsent (or carrying no ``content``) previews the saved effective source.\n``novel_id`` rides the query string, beside the other reads.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          }
+        },
+        "title": "PromptPreviewBody",
+        "type": "object"
+      },
+      "PromptPreviewDiagnostics": {
+        "description": "What the render found beyond the text: its size and the contract's verdict.\n\n``contract_ok`` is ``None`` for a key without a contract, ``False`` for a\ndraft that renders but would fail its key's save-time gate — the preview\nshows both facts, the refusal stays the save's.",
+        "properties": {
+          "chars": {
+            "title": "Chars",
+            "type": "integer"
+          },
+          "contract_ok": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Ok"
+          },
+          "lines": {
+            "title": "Lines",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chars",
+          "lines",
+          "contract_ok"
+        ],
+        "title": "PromptPreviewDiagnostics",
         "type": "object"
       },
       "PromptRefusal": {
@@ -2154,6 +2291,30 @@
           "example"
         ],
         "title": "PromptVariable",
+        "type": "object"
+      },
+      "PromptVariableProvenance": {
+        "description": "One declared variable: its sample value, and whether the source reads it.\n\n``used`` is the AST's own verdict — a load context in the parsed source —\nso a variable the source names inside a comment-style construct counts\nas little as the render itself counts it.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "used": {
+            "title": "Used",
+            "type": "boolean"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "value",
+          "used"
+        ],
+        "title": "PromptVariableProvenance",
         "type": "object"
       },
       "ProposedRelationRead": {
@@ -6333,6 +6494,222 @@
           }
         },
         "summary": "Get Prompt Diff",
+        "tags": [
+          "prompts"
+        ]
+      }
+    },
+    "/api/prompts/{key}/live-test": {
+      "post": {
+        "description": "Test the draft against the live wire over the capability's real context.\n\nAbsent body (or content) tests the saved effective. The draft passes the\nsave gate before any provider call and is never persisted; the call\nrides the key's task assignment and its own real context assembly; the\nanswer streams and lands only in the audit row the task's calls share.",
+        "operationId": "live_test_prompt_api_prompts__key__live_test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/PromptLiveTestBody"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "description": "Server-sent events: one context frame, then the answer's deltas, then one terminal event: done or error.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptKeyNotFound"
+                }
+              }
+            },
+            "description": "No bundled prompt carries this key."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptCodedError"
+                }
+              }
+            },
+            "description": "No real context to assemble, or a corpus mismatch."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PromptRefusal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationBody"
+                    }
+                  ],
+                  "title": "Response 422 Live Test Prompt Api Prompts  Key  Live Test Post"
+                }
+              }
+            },
+            "description": "Refused by name — or the request failed validation."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptCodedError"
+                }
+              }
+            },
+            "description": "The user's live-test window is still closed."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptCodedError"
+                }
+              }
+            },
+            "description": "The provider failed before its first token."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptCodedError"
+                }
+              }
+            },
+            "description": "The key store cannot produce the provider's key."
+          }
+        },
+        "summary": "Live Test Prompt",
+        "tags": [
+          "prompts"
+        ]
+      }
+    },
+    "/api/prompts/{key}/preview": {
+      "get": {
+        "description": "Render the draft (or the scope's saved effective) at sample scope.\n\nNo model call, nothing persisted; a draft the sandbox refuses is the\nnamed 422, a contract failure the diagnostic inside the 200.",
+        "operationId": "preview_prompt_api_prompts__key__preview_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "novel_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/PromptPreviewBody"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptPreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptKeyNotFound"
+                }
+              }
+            },
+            "description": "No bundled prompt carries this key."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PromptRefusal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationBody"
+                    }
+                  ],
+                  "title": "Response 422 Preview Prompt Api Prompts  Key  Preview Get"
+                }
+              }
+            },
+            "description": "Refused by name — or the request failed validation."
+          }
+        },
+        "summary": "Preview Prompt",
         "tags": [
           "prompts"
         ]
