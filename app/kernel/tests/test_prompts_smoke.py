@@ -130,3 +130,10 @@ def test_the_registry_holds_exactly_the_pinned_keys() -> None:
     failed import, a refused duplicate) leaves a golden without a prompt; a
     new bundled key without its golden leaves a prompt without a pin."""
     assert set(get_registry().keys()) == set(GOLDENS)
+
+
+@pytest.mark.parametrize("key", get_registry().keys())
+def test_every_bundled_prompt_carries_its_live_assembly(key: str) -> None:
+    """The live test rides the capability's own assembly; a key without one
+    would refuse at the endpoint — a registration gap named here first."""
+    assert get_registry().spec(key).assemble is not None
