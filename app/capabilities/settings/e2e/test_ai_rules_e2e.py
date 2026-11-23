@@ -258,6 +258,12 @@ def test_the_pointer_door_walks_to_the_book_settings_dialog(page: Page, installe
     page.wait_for_url(f"**/novels/{novel_id}#buch-einstellungen")
     dialog = page.get_by_role("dialog")
     expect(dialog.get_by_role("heading", name="Buch-Einstellungen")).to_be_visible()
+    # The dialog opens on its busy loading face while the series read stands
+    # (the fresh boot's ["series"] ask is never cached) — that face holds Esc
+    # by the family's own contract (aria-busy, no modal keys bound). Esc
+    # answers only once the form stands, so the ready face is waited here
+    # exactly like every other read-gated assertion in this suite.
+    expect(dialog.get_by_role("button", name="Speichern")).to_be_visible()
 
     # The walk home is the dialog's own door: Esc closes it, the workspace
     # stays — the AI page carried no editor of its own.
