@@ -121,10 +121,23 @@ export function TasksSection({
     assignTask.mutate(
       { taskKey, profileId: next.profileId, outputProfile: carriedProfile(next) },
       {
-        onSuccess: () => setRow(taskKey, { error: null }),
-        // The refusal keeps every answer: the selects stay as the writer
-        // set them, the family face names the why, nothing is reverted
-        // behind their back. The next save re-runs the very ask.
+        // The landed ask's own echo is the row's next state: a cleared
+        // assignment stores nothing and the backend answers the default —
+        // the select re-syncs to that (the cascade option, balanced,
+        // resting), so the editor never shows a choice nothing stores. A
+        // refusal keeps every answer: the selects stay as the writer set
+        // them, the family face names the why, nothing is reverted behind
+        // their back. The next save re-runs the very ask.
+        onSuccess: (assignment) =>
+          setRow(taskKey, {
+            profileId: assignment.profile_id,
+            profile: assignment.output_profile,
+            customRaw:
+              assignment.output_profile_custom === null || assignment.output_profile_custom === undefined
+                ? ""
+                : String(assignment.output_profile_custom),
+            error: null,
+          }),
         onError: (cause) => setRow(taskKey, { error: cause }),
       },
     );

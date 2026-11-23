@@ -730,14 +730,16 @@ describe("the aufgaben rows — the cascade's honest faces", () => {
     expect(init.body).toEqual({ profile_id: "m-2", output_profile: "comprehensive" });
   });
 
-  it("clearing the model PUTs the cascade floor with the carried profile", async () => {
+  it("clearing the model PUTs the cascade floor with the carried profile, and the row re-syncs to the wire's echo", async () => {
     assignments = [{ task_key: "chat.ask", profile_id: "m-1", output_profile: "quick", output_profile_custom: null }];
     models = [model()];
     api.PUT.mockImplementation(async (path: string) => {
       if (path === "/api/settings/assignments/{task_key}") {
-        const [, init] = api.PUT.mock.calls.at(-1) as unknown as [string, { body: Record<string, unknown> }];
+        // The real backend's echo: a cleared assignment stores nothing —
+        // profile_id null and the default profile answer, whatever the
+        // save carried (the router's own rule).
         return {
-          data: { task_key: "chat.ask", profile_id: null, output_profile: init.body.output_profile, output_profile_custom: null },
+          data: { task_key: "chat.ask", profile_id: null, output_profile: "balanced", output_profile_custom: null },
           response: ok(),
         };
       }
@@ -748,6 +750,16 @@ describe("the aufgaben rows — the cascade's honest faces", () => {
     fireEvent.change(modelSelect(taskRow("chat.ask")), { target: { value: "" } });
     await waitFor(() => expect(puts().length).toBe(1));
     expect(puts()[0][1].body).toEqual({ profile_id: null, output_profile: "quick" });
+
+    // The row re-syncs to the wire's truth, not the carried wish: the
+    // select opens on the cascade option, the profile reads the default,
+    // resting disabled with its note — a choice nothing stores is never
+    // shown as stored.
+    const row = taskRow("chat.ask");
+    await waitFor(() => expect(modelSelect(row).value).toBe(""));
+    expect(profileSelect(row).value).toBe("balanced");
+    expect(profileSelect(row).disabled).toBe(true);
+    expect(row.textContent).toContain(de["settings.ai.task.profileNeedsModel"]);
   });
 
   it("a named profile change saves at once and carries the stored model beside it", async () => {
@@ -792,6 +804,10 @@ describe("the aufgaben rows — the cascade's honest faces", () => {
     fireEvent.blur(input);
     await waitFor(() => expect(puts().length).toBe(1));
     expect(puts()[0][1].body).toEqual({ profile_id: "m-1", output_profile: 2000 });
+    // The echo re-syncs the row: the stored choice rides back as the word
+    // beside its number, and the editor faces exactly that.
+    expect(profileSelect(row).value).toBe("custom");
+    expect((screen.getByLabelText(de["settings.ai.profile.customInput"]) as HTMLInputElement).value).toBe("2000");
   });
 
   it("the cap note stands when the ceiling bounds the target — and never otherwise", async () => {

@@ -75,7 +75,9 @@ export function AiRulesPage() {
       : null;
 
   /** The retry re-asks every read that answered nothing — the outage face's
-   *  own door, applied to the page's whole family. */
+   *  own door, applied to the page's whole family, the driver read's word
+   *  included (the diagnose card hides on its failure; the retry recovers
+   *  it too). */
   function retry() {
     for (const read of reads) {
       if (read.isError) void read.refetch();
@@ -87,6 +89,7 @@ export function AiRulesPage() {
     void queryClient.invalidateQueries({ queryKey: ["settings-models"] });
     void queryClient.invalidateQueries({ queryKey: ["settings-tasks"] });
     void queryClient.invalidateQueries({ queryKey: ["settings-assignments"] });
+    void queryClient.invalidateQueries({ queryKey: ["settings-driver"] });
   }
 
   return (

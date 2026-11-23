@@ -122,7 +122,7 @@ export function ProvidersSection({ providers, presets }: { providers: Provider[]
   const selected: Selection =
     presetId === ""
       ? { kind: "custom" }
-      : { kind: "preset", preset: presets.find((entry) => entry.id === presetId) as Preset };
+      : { kind: "preset", preset: presets.find((entry) => entry.id === presetId) ?? presets[0] };
 
   function choosePreset(next: string) {
     setPresetId(next);
