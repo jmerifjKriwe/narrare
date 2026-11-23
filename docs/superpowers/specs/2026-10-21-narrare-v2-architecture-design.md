@@ -245,7 +245,10 @@ gates fall under §8.
 changed files, secrets. Format and lint work on changed files only; the typecheck is
 scoped to changed paths.
 
-**Local — pre-push, target under 60 s, two hooks:** full typecheck, unit tests.
+**Local — commit hooks, target under 60 s:** format, lint, the changed-files
+typecheck, the secret scan, the commit-message check, the changed web tests.
+The full suites and the unconditional typecheck moved to CI (2026-11-23): a
+local push verifies the changed files, `just verify` the whole tree.
 
 **CI — seven job definitions:** five functional gates (`lint-types`; `tests`, which
 also uploads the coverage on a `main` push; `e2e-suites`, the per-capability

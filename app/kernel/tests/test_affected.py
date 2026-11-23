@@ -52,7 +52,8 @@ def _no_ambient_git_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Hide git's location variables from the test process itself.
 
     Git exports GIT_DIR (and, in some versions, GIT_INDEX_FILE) while it
-    runs hooks, and the pre-push hook runs this suite: with a leaked
+    runs hooks, and the commit hooks run Python suites through the same
+    environment: with a leaked
     GIT_DIR, git resolves every call — the fixtures', and the resolver's
     in-process ones — to the repository whose hook is running instead of
     the miniature one in tmp_path.

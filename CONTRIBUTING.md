@@ -185,8 +185,10 @@ change ships as two files in **one commit** — the model change and its revisio
 
 Git hooks are installed by `just dev-setup`: format, lint, the typecheck of the
 changed files, the secret scan, the commit-message check and the web tests the
-change reaches run on every commit; the full typecheck and the Python suite run
-on every push, the full web suite on a push that touches web. Bypassing a hook
+change reaches run on every commit. The full suites (Python, web, E2E) and the
+unconditional full typecheck run in CI on every push and PR — a green local
+commit has verified the changed files, not the whole tree; `just verify` is the
+local full gate. Bypassing a hook
 (`--no-verify`) is forbidden. A new hook type reaches an existing clone through
 `pre-commit install --install-hooks` once.
 
