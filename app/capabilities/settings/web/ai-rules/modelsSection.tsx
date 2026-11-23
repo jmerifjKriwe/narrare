@@ -20,6 +20,13 @@
  *   provider's endpoint, and the header named none — the door lives in the
  *   register form, beside the provider select it asks about (the 409 fake
  *   face, the 502 unreachable face, the empty answer's own line).
+ * - The register form's provider select resolves its selection against
+ *   the CURRENT list: a selection that names nothing (the first visit's
+ *   empty answer before any provider existed, a provider since deleted)
+ *   falls to the first available one — the shown first row is the value
+ *   the submit and the discovery door send, never a ghost the guards
+ *   silently swallow. The discovery's answers ride the provider they
+ *   were asked about: a selection change hides them by derivation.
  */
 import { useState, type FormEvent } from "react";
 
@@ -95,8 +102,12 @@ export function ModelsSection({
   const [name, setName] = useState("");
   const [providerId, setProviderId] = useState(providers[0]?.id ?? "");
   const [modelId, setModelId] = useState("");
-  const [discovered, setDiscovered] = useState<string[] | null>(null);
-  const [discoverError, setDiscoverError] = useState<WireError | null>(null);
+  // The discovery's answers, keyed to the provider they were asked about:
+  // a face never outlives the selection it belongs to — a provider change
+  // (the select, or the list moving beneath the form) hides the stale
+  // ids and the stale refusal by derivation, nothing cleared by hand.
+  const [discovered, setDiscovered] = useState<{ providerId: string; ids: string[] } | null>(null);
+  const [discoverError, setDiscoverError] = useState<{ providerId: string; error: WireError } | null>(null);
   const [formError, setFormError] = useState<WireError | null>(null);
 
   // The test faces and the delete's refusals, per model id — one card's
@@ -115,11 +126,25 @@ export function ModelsSection({
     }
   }
 
-  const provider = providers.find((entry) => entry.id === providerId);
+  // The selection, resolved against the current list: a stored selection
+  // that names nothing — the empty answer the form was opened under (the
+  // first visit, before any provider existed), a provider since deleted —
+  // falls to the first available one. The select's visible first row IS
+  // the value the submit and the discovery door send: a shown selection
+  // that silently returns is the dishonest face this surface does not
+  // wear.
+  const selectedId = providers.some((entry) => entry.id === providerId)
+    ? providerId
+    : (providers[0]?.id ?? "");
+  const provider = providers.find((entry) => entry.id === selectedId);
   // The chosen provider's vendor row in the kernel's preset table: its
   // catalog vocabulary feeds the model-id datalist, the snapshot date is
   // the mark that says how old that knowledge is.
   const vendorPreset = presets.find((entry) => entry.vendor === provider?.vendor) ?? null;
+  // The discovery faces, read only for the provider they belong to.
+  const discoveredIds = discovered !== null && discovered.providerId === selectedId ? discovered.ids : null;
+  const discoverErrorForForm =
+    discoverError !== null && discoverError.providerId === selectedId ? discoverError.error : null;
 
   function askEndpoint() {
     if (provider === undefined) return;
@@ -128,11 +153,11 @@ export function ModelsSection({
       { id: provider.id },
       {
         onSuccess: (ids) => {
-          setDiscovered(ids);
+          setDiscovered({ providerId: provider.id, ids });
         },
         onError: (cause) => {
           setDiscovered(null);
-          setDiscoverError(cause);
+          setDiscoverError({ providerId: provider.id, error: cause });
         },
       },
     );
@@ -387,12 +412,8 @@ export function ModelsSection({
                 <span className="block text-label font-medium text-foreground">{t("settings.ai.models.registerProvider")}</span>
                 <div className="relative">
                   <select
-                    value={providerId}
-                    onChange={(event) => {
-                      setProviderId(event.target.value);
-                      setDiscovered(null);
-                      setDiscoverError(null);
-                    }}
+                    value={selectedId}
+                    onChange={(event) => setProviderId(event.target.value)}
                     className={`${INPUT} appearance-none pr-8`}
                   >
                     {providers.map((entry) => (
@@ -432,7 +453,7 @@ export function ModelsSection({
                   />
                 </label>
                 <datalist id="ai-rules-model-ids">
-                  {(discovered ?? vendorPreset?.models ?? []).map((id) => (
+                  {(discoveredIds ?? vendorPreset?.models ?? []).map((id) => (
                     <option key={id} value={id} />
                   ))}
                 </datalist>
@@ -447,11 +468,13 @@ export function ModelsSection({
                     {t("settings.ai.models.snapshot", { date: vendorPreset.snapshot_date })}
                   </span>
                 )}
-                {discoverError !== null && <FamilyFace error={discoverError} family={discoverFamily(discoverError.status)} />}
-                {discovered !== null && discovered.length === 0 && discoverError === null && (
+                {discoverErrorForForm !== null && (
+                  <FamilyFace error={discoverErrorForForm} family={discoverFamily(discoverErrorForForm.status)} />
+                )}
+                {discoveredIds !== null && discoveredIds.length === 0 && discoverErrorForForm === null && (
                   <span className="block text-[11px] text-muted">{t("settings.ai.models.discoverEmpty")}</span>
                 )}
-                {discovered !== null && discovered.length > 0 && (
+                {discoveredIds !== null && discoveredIds.length > 0 && (
                   <span className="block text-[11px] text-muted">{t("settings.ai.models.discoverNote")}</span>
                 )}
               </div>

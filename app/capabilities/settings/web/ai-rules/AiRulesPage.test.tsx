@@ -656,6 +656,45 @@ describe("the modelle section — defaults, test faces, discovery, the delete", 
     expect(await screen.findByText(de["settings.refused"])).toBeTruthy();
     expect((screen.getByLabelText(de["settings.ai.models.registerName"]) as HTMLInputElement).value).toBe("Neu");
   });
+
+  it("the register form resolves the provider the list answers — the first create lands a working select", async () => {
+    // The page mounts with no providers: the register door opens on the
+    // empty answer's own line, its select seeded on nothing. (The describe's
+    // beforeEach stands rows down for the card pins — this case resets to
+    // the first-visit answer.)
+    providers = [];
+    api.POST.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/providers") {
+        return { data: { ...provider({ id: "prov-2", name: "Erster" }), api_key: "sk-first-key" }, response: ok(201) };
+      }
+      if (path === "/api/settings/models") return { data: model({ id: "m-9", name: "Neu" }), response: ok(201) };
+      throw new Error(`unexpected POST: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    fireEvent.click(screen.getByRole("button", { name: de["settings.ai.models.register"] }));
+    expect(screen.getByText(de["settings.ai.models.registerNoProvider"])).toBeTruthy();
+
+    // The first provider is created in the Provider section; the list's
+    // next ask answers the new row.
+    providers = [provider({ id: "prov-2", name: "Erster", api_key_mask: null })];
+    fireEvent.change(screen.getByLabelText(de["settings.ai.create.name"]), { target: { value: "Erster" } });
+    fireEvent.change(screen.getByLabelText(de["settings.ai.create.baseUrl"]), { target: { value: "https://llm.example.com/v1" } });
+    fireEvent.click(screen.getByRole("button", { name: de["settings.ai.create.submit"] }));
+    // The register form's select now shows the created provider — and the
+    // submit rides exactly it: a shown selection that silently returns is
+    // the face this surface does not wear.
+    await waitFor(() => expect(screen.getByText(de["settings.ai.models.registerProvider"])).toBeTruthy());
+    fireEvent.change(screen.getByLabelText(de["settings.ai.models.registerName"]), { target: { value: "Erstes Modell" } });
+    fireEvent.change(screen.getByLabelText(de["settings.ai.models.registerModel"]), { target: { value: "gpt-5.4" } });
+    fireEvent.click(screen.getByRole("button", { name: de["settings.ai.models.registerSubmit"] }));
+    await waitFor(() => expect(posts().some(([path]) => path === "/api/settings/models")).toBe(true));
+    const entry = posts().find(([path]) => path === "/api/settings/models") as [
+      string,
+      { body?: Record<string, unknown> },
+    ];
+    expect(entry[1]?.body).toEqual({ name: "Erstes Modell", provider_id: "prov-2", model: "gpt-5.4" });
+  });
 });
 
 describe("the aufgaben rows — the cascade's honest faces", () => {
