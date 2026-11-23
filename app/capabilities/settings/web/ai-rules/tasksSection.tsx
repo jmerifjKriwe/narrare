@@ -243,13 +243,22 @@ export function TasksSection({
             typeof target === "number" &&
             task.resolved_output_tokens !== null &&
             task.resolved_output_tokens < target;
-          // The field's own face: a typed answer that parses to no whole
+          // The field's own faces: a typed answer that parses to no whole
           // number within the column's bounds is invalid here, before any
-          // wire ask.
+          // wire ask — and a parsed number above the assigned model's
+          // KNOWN output limit (the models read's catalog answer, not the
+          // stored ceiling) is refused here too, before the call dies on
+          // it at the provider. The kernel refuses and never clamps; the
+          // editor matches that ethic: the refusal names the limit,
+          // nothing is altered behind the writer's back.
+          const knownMax =
+            models.find((model) => model.id === state.profileId)?.catalog_max_output_tokens ?? null;
+          const parsedCustom = state.profile === "custom" ? parseDailyGoal(state.customRaw) : null;
           const customInvalid =
             state.profile === "custom" &&
             state.customRaw.trim() !== "" &&
-            parseDailyGoal(state.customRaw) === "invalid";
+            parsedCustom === "invalid";
+          const customOverLimit = typeof parsedCustom === "number" && knownMax !== null && parsedCustom > knownMax;
 
           return (
             <article
@@ -367,22 +376,34 @@ export function TasksSection({
                         inputMode="numeric"
                         aria-label={t("settings.ai.profile.customInput")}
                         value={state.customRaw}
-                        aria-invalid={customInvalid}
+                        aria-invalid={customInvalid || customOverLimit}
                         placeholder={t("settings.ai.profile.customPlaceholder")}
                         onChange={(event) => setRow(task.task_key, { customRaw: event.target.value })}
                         onBlur={() => {
                           const parsed = parseDailyGoal(state.customRaw);
-                          if (typeof parsed === "number") saveRow(task.task_key, { ...state, error: null });
+                          if (typeof parsed === "number" && (knownMax === null || parsed <= knownMax))
+                            saveRow(task.task_key, { ...state, error: null });
                         }}
                         onKeyDown={(event) => {
                           if (event.key === "Enter") {
                             event.preventDefault();
                             const parsed = parseDailyGoal(state.customRaw);
-                            if (typeof parsed === "number") saveRow(task.task_key, { ...state, error: null });
+                            if (typeof parsed === "number" && (knownMax === null || parsed <= knownMax))
+                              saveRow(task.task_key, { ...state, error: null });
                           }
                         }}
                         className="h-8 rounded bg-background px-2.5 font-mono text-label text-foreground outline-none transition-shadow focus:border-focus focus:ring-1 focus:ring-focus"
                       />
+                      {customOverLimit && knownMax !== null && (
+                        <span className="block text-[11px] leading-relaxed text-danger">
+                          {t("settings.ai.profile.customOverLimit", { tokens: formatNumber(knownMax) })}
+                        </span>
+                      )}
+                      {knownMax !== null && (
+                        <span className="block text-[11px] leading-relaxed text-muted">
+                          {t("settings.ai.profile.knownMax", { tokens: formatNumber(knownMax) })}
+                        </span>
+                      )}
                       <span className="block text-[11px] leading-relaxed text-muted">
                         {t("settings.ai.profile.customHint")}
                       </span>

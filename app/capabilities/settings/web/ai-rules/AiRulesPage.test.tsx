@@ -104,6 +104,7 @@ function model(overrides: Record<string, unknown> = {}): Record<string, unknown>
     is_default: true,
     context_window: 200_000,
     max_output_tokens: 8_192,
+    catalog_max_output_tokens: null,
     temperature: 0.7,
     request_timeout: 60,
     in_catalog: true,
@@ -1075,6 +1076,55 @@ describe("the aufgaben rows — the cascade's honest faces", () => {
     expect((screen.getByLabelText(de["settings.ai.profile.customInput"]) as HTMLInputElement).value).toBe("40000");
     expect(row.textContent).not.toContain(de["settings.ai.task.capped"]);
     expect(row.textContent).toContain(t("settings.ai.task.effective", { tokens: "6.000" }));
+  });
+
+  it("the custom field names the catalog's known limit and refuses above it — nothing clamped", async () => {
+    // A catalogued model without a stored ceiling: the models read answers
+    // the catalog's known output limit, the stored column stays unset.
+    // The editor names the known limit, and a number above it is refused
+    // BEFORE the wire — the kernel never clamps, and neither does this
+    // field: the refusal names the limit, the writer picks.
+    models = [model({ max_output_tokens: null, catalog_max_output_tokens: 64_000 })];
+    assignments = [{ task_key: "writing.continuation", profile_id: "m-1", output_profile: "custom", output_profile_custom: 6_000 }];
+    tasks = [
+      task({ profile_id: "m-1", profile_name: "Cloud-Schreiber", kind: "openai-chat", output_profile: "custom", resolved_output_tokens: 6_000 }),
+      ...freshTasks().slice(1),
+    ];
+    api.PUT.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/assignments/{task_key}") {
+        const [, init] = api.PUT.mock.calls.at(-1) as unknown as [string, { body: Record<string, unknown> }];
+        return {
+          data: {
+            task_key: "writing.continuation",
+            profile_id: init.body.profile_id,
+            output_profile: typeof init.body.output_profile === "number" ? "custom" : init.body.output_profile,
+            output_profile_custom: typeof init.body.output_profile === "number" ? init.body.output_profile : null,
+          },
+          response: ok(),
+        };
+      }
+      throw new Error(`unexpected PUT: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    const row = taskRow("writing.continuation");
+    expect(row.textContent).toContain(t("settings.ai.profile.knownMax", { tokens: "64.000" }));
+    const input = await screen.findByLabelText(de["settings.ai.profile.customInput"]);
+
+    // Above the known limit: the invalid face with the named refusal, and
+    // the blur sends nothing.
+    fireEvent.change(input, { target: { value: "100000" } });
+    fireEvent.blur(input);
+    await waitFor(() => expect((input as HTMLInputElement).value).toBe("100000"));
+    expect(puts().length).toBe(0);
+    expect((input as HTMLInputElement).getAttribute("aria-invalid")).toBe("true");
+    expect(row.textContent).toContain(t("settings.ai.profile.customOverLimit", { tokens: "64.000" }));
+
+    // At the limit the number rides as is.
+    fireEvent.change(input, { target: { value: "64000" } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(puts().length).toBe(1));
+    expect(puts()[0][1].body).toEqual({ profile_id: "m-1", output_profile: 64_000 });
   });
 
   it("a refused assignment (422, the custom above the ceiling) keeps the answers and names itself", async () => {

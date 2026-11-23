@@ -1131,8 +1131,19 @@
         "type": "object"
       },
       "ModelRead": {
-        "description": "A model as every read shows it: its provider named, no key anywhere.\n\nThe key and its mask live on the provider; the model carries none. The\nthree state fields are the settings row's marks, read-only facts:\n``in_catalog`` is the resolution lookup's own answer (:func:`effective_info`\nwith the provider's vendor — no second lookup path), and the\n``last_error_*`` pair is the model's newest audit row, kept only when that\ncall failed, so a later success clears the mark.",
+        "description": "A model as every read shows it: its provider named, no key anywhere.\n\nThe key and its mask live on the provider; the model carries none. The\nfour state fields are the settings row's marks, read-only facts:\n``in_catalog`` is the resolution lookup's own answer (:func:`effective_info`\nwith the provider's vendor — no second lookup path), and the\n``last_error_*`` pair is the model's newest audit row, kept only when that\ncall failed, so a later success clears the mark. ``catalog_max_output_tokens``\nis that same lookup's own output ceiling for the model string — beside,\nnever merged into, the model's stored ``max_output_tokens``, whose column\nkeeps its own meaning (the one ceiling a custom choice is bounded by).",
         "properties": {
+          "catalog_max_output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Max Output Tokens"
+          },
           "context_window": {
             "anyOf": [
               {
@@ -1250,6 +1261,7 @@
           "is_default",
           "context_window",
           "max_output_tokens",
+          "catalog_max_output_tokens",
           "temperature",
           "request_timeout",
           "in_catalog",

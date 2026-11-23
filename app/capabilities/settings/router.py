@@ -110,6 +110,7 @@ def _masked(profile: ProviderProfile, provider_name: str, state: ModelState) -> 
         is_default=profile.is_default,
         context_window=profile.context_window,
         max_output_tokens=profile.max_output_tokens,
+        catalog_max_output_tokens=state.catalog_max_output_tokens,
         temperature=profile.temperature,
         request_timeout=profile.request_timeout,
         in_catalog=state.in_catalog,

@@ -28,7 +28,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.kernel.llm.audit import audited_stream
-from app.kernel.llm.catalog import effective_info
+from app.kernel.llm.catalog import ModelInfo, effective_info
 from app.kernel.llm.contract import CompletionRequest
 from app.kernel.llm.models import (
     CUSTOM_OUTPUT_PROFILE,
@@ -94,12 +94,19 @@ class ModelState:
     ``in_catalog`` is the resolution-side lookup's own answer — the same
     :func:`app.kernel.llm.catalog.effective_info` tiers a generation prices
     with — so the page never derives a second truth about what the catalog
-    carries. ``last_error_code`` and ``last_error_at`` are the model's newest
-    audit row's, present only when that call failed: a later success clears
-    the mark, because the mark speaks about the *last* call, not the worst.
+    carries. ``catalog_max_output_tokens`` is that lookup's own output
+    ceiling for the model string, read-only: the assignment gate bounds a
+    custom choice by the model's stored ``max_output_tokens`` alone (the
+    catalog prices the call and is no ceiling, W8 ruling 5), so the
+    Aufgaben editor needs this answer beside it to name — and refuse
+    above — the one limit the provider is known to enforce. ``last_error_code``
+    and ``last_error_at`` are the model's newest audit row's, present only
+    when that call failed: a later success clears the mark, because the
+    mark speaks about the *last* call, not the worst.
     """
 
     in_catalog: bool
+    catalog_max_output_tokens: int | None
     last_error_code: str | None
     last_error_at: datetime | None
 
@@ -358,8 +365,10 @@ class ModelService:
         half-filled row.
         """
         last_error_code, last_error_at = await self._last_failure(profile.id)
+        info = self._catalog_info(profile, provider)
         return ModelState(
-            in_catalog=self._in_catalog(profile, provider),
+            in_catalog=info is not None,
+            catalog_max_output_tokens=info.max_output_tokens if info is not None else None,
             last_error_code=last_error_code,
             last_error_at=last_error_at,
         )
@@ -378,8 +387,10 @@ class ModelService:
         states: dict[UUID, ModelState] = {}
         for profile, provider in pairs:
             last_error_code, last_error_at = await self._last_failure(profile.id)
+            info = self._catalog_info(profile, provider)
             states[profile.id] = ModelState(
-                in_catalog=self._in_catalog(profile, provider),
+                in_catalog=info is not None,
+                catalog_max_output_tokens=info.max_output_tokens if info is not None else None,
                 last_error_code=last_error_code,
                 last_error_at=last_error_at,
             )
@@ -493,23 +504,22 @@ class ModelService:
         await self.session.commit()
         return assignment
 
-    def _in_catalog(self, profile: ProviderProfile, provider: LLMProvider) -> bool:
-        """Whether a catalog tier reaches this model — the resolution lookup itself.
+    def _catalog_info(self, profile: ProviderProfile, provider: LLMProvider) -> ModelInfo | None:
+        """The catalog's own fact sheet for the model string — or None.
 
-        The same :func:`effective_info` call the resolver's merge makes, with
-        the same arguments (the provider's vendor, the row's two stored
-        windows), so the settings mark can never disagree with what a call
-        is priced by. There is one lookup in the kernel; this is it, not a
-        second path.
+        The same :func:`effective_info` tiers a generation prices with, the
+        same vendor spelling the resolver tries first — asked without the
+        row's stored overrides, which the lookup applies to the numbers
+        AFTER the tiers decide and so never touched the presence the
+        ``in_catalog`` mark states. The known-limit answer must be the
+        catalog's own number, not the model row's: the stored ceiling has
+        its own column on every read.
         """
-        return (
-            effective_info(
-                profile.model or "",
-                vendor=provider.vendor,
-                profile_context_window=profile.context_window,
-                profile_max_output_tokens=profile.max_output_tokens,
-            )
-            is not None
+        return effective_info(
+            profile.model or "",
+            vendor=provider.vendor,
+            profile_context_window=None,
+            profile_max_output_tokens=None,
         )
 
     async def _last_failure(self, profile_id: UUID) -> tuple[str | None, datetime | None]:

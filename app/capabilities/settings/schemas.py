@@ -141,11 +141,14 @@ class ModelRead(BaseModel):
     """A model as every read shows it: its provider named, no key anywhere.
 
     The key and its mask live on the provider; the model carries none. The
-    three state fields are the settings row's marks, read-only facts:
+    four state fields are the settings row's marks, read-only facts:
     ``in_catalog`` is the resolution lookup's own answer (:func:`effective_info`
     with the provider's vendor — no second lookup path), and the
     ``last_error_*`` pair is the model's newest audit row, kept only when that
-    call failed, so a later success clears the mark.
+    call failed, so a later success clears the mark. ``catalog_max_output_tokens``
+    is that same lookup's own output ceiling for the model string — beside,
+    never merged into, the model's stored ``max_output_tokens``, whose column
+    keeps its own meaning (the one ceiling a custom choice is bounded by).
     """
 
     id: UUID
@@ -156,6 +159,7 @@ class ModelRead(BaseModel):
     is_default: bool
     context_window: int | None
     max_output_tokens: int | None
+    catalog_max_output_tokens: int | None
     temperature: float | None
     request_timeout: float | None
     in_catalog: bool

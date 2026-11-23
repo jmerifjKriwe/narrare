@@ -1152,3 +1152,37 @@ async def test_the_model_read_names_whether_the_catalog_prices_it(
     assert before == after == 0
     flags = {entry["name"]: entry["in_catalog"] for entry in listed}
     assert flags == {"Known": True, "Unknown": False}
+
+
+async def test_the_model_read_carries_the_catalogs_known_output_limit(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``catalog_max_output_tokens`` is the catalog's own ceiling, beside the stored one.
+
+    The assignment gate bounds a custom choice by the model's STORED
+    ``max_output_tokens`` alone — the catalog prices the call and is no
+    ceiling (W8 ruling 5) — and the UI's create form stores no tunables,
+    so from the surface a catalogued model never carries a stored
+    ceiling. The read must still answer the catalog's known output limit,
+    or the Aufgaben editor cannot name (and refuse above) the one limit
+    the provider is known to enforce before a call dies on it.
+    """
+    monkeypatch.setattr(catalog, "load_catalog", lambda: {"acme/mini": ACME})
+    acme = await _create_provider(client, vendor="acme")
+    await _create(client, str(acme["id"]), "Known", model="mini")
+    stranger = await _create_provider(client, name="Stranger", vendor="other")
+    await _create(client, str(stranger["id"]), "Unknown", model="mini-xl")
+    await _create(client, str(acme["id"]), "Capped", model="mini", max_output_tokens=2_048)
+
+    listed = {entry["name"]: entry for entry in (await client.get("/api/settings/models")).json()}
+    # No stored ceiling: the honest unset column stands, and the catalog's
+    # known limit answers beside it.
+    assert listed["Known"]["max_output_tokens"] is None
+    assert listed["Known"]["catalog_max_output_tokens"] == 4_096
+    # No catalog tier reaches the model: no known limit is invented.
+    assert listed["Unknown"]["max_output_tokens"] is None
+    assert listed["Unknown"]["catalog_max_output_tokens"] is None
+    # A stored ceiling keeps its own column; the catalog's answer sits
+    # beside it, never merged into it.
+    assert listed["Capped"]["max_output_tokens"] == 2_048
+    assert listed["Capped"]["catalog_max_output_tokens"] == 4_096
