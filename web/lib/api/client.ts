@@ -80,6 +80,13 @@ export type TimelineEventUpdate = components["schemas"]["TimelineEventUpdate"];
 /** Planning's scene aggregate (W6): one chapter's scenes in position
  *  order, with the chapter's stamp as the version a drill-in compares. */
 export type SceneAggregate = components["schemas"]["SceneAggregateRead"];
+/** The prompts surface's reads (W8 Task 12): the catalog row with its two
+ *  override tiers' facts, the editor's detail, the provider-free preview
+ *  and the saved diff. */
+export type PromptSummary = components["schemas"]["PromptSummary"];
+export type PromptDetail = components["schemas"]["PromptDetail"];
+export type PromptDiff = components["schemas"]["PromptDiff"];
+export type PromptPreview = components["schemas"]["PromptPreview"];
 
 /**
  * The one failure the UI can name a fix for: the corpus was embedded by a

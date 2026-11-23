@@ -15,10 +15,9 @@ target, the cap noted, the custom number above the ceiling refused by the
 wire and the answers kept. ``settings.test`` renders as the audit row it is:
 never a dropdown. The pointer door walks to the book's workspace with the
 dialog's deep link and the Buch-Einstellungen dialog stands open — the
-ruling-1 record, no second editor. The hub chrome carries the two routes
-that exist on BOTH settings pages, the active face exact — no Prompts item,
-no dead door. Every rendered face also clears the axe WCAG A/AA floor, light
-and dark.
+ruling-1 record, no second editor. The hub chrome carries the settings
+area's three routes on BOTH settings pages, the active face exact. Every
+rendered face also clears the axe WCAG A/AA floor, light and dark.
 """
 
 import re
@@ -79,17 +78,17 @@ def _task_row(page: Page, task_key: str):
     return page.locator(f'[data-testid="task-row"][data-task-key="{task_key}"]')
 
 
-def test_the_hub_chrome_carries_the_two_routes_on_both_pages(page: Page, installed: Stack) -> None:
-    """The shared nav: Allgemein + KI-Regeln, the active face exact on the
-    route each page stands on, the Allgemein content untouched below it —
-    and no Prompts item anywhere in the interim (no dead door)."""
+def test_the_hub_chrome_carries_the_area_routes_on_both_pages(page: Page, installed: Stack) -> None:
+    """The shared nav: Allgemein + KI-Regeln + Prompts (the third door went
+    live with its surface in the same commit), the active face exact on the
+    route each page stands on, the Allgemein content untouched below it."""
     goto_settings(page)
     nav = page.get_by_role("navigation", name=HUB_LABEL)
     links = nav.get_by_role("link")
-    expect(links).to_have_count(2)
+    expect(links).to_have_count(3)
     expect(nav.get_by_role("link", name=GENERAL)).to_have_attribute("aria-current", "page")
     expect(nav.get_by_role("link", name=AI_RULES)).not_to_have_attribute("aria-current", "page")
-    assert "Prompts" not in (nav.text_content() or "")
+    expect(nav.get_by_role("link", name="Prompts")).not_to_have_attribute("aria-current", "page")
     # The Allgemein content stands below the chrome, byte-stable: the strict
     # read answered, the form opened (the W7 legs' own ready face).
     expect(page.get_by_test_id("settings-page")).to_be_visible()

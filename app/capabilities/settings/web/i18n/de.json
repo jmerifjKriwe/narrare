@@ -151,6 +151,7 @@
   "settings.hub.aiRules": "KI-Regeln",
   "settings.hub.general": "Allgemein",
   "settings.hub.label": "Einstellungen Navigation",
+  "settings.hub.prompts": "Prompts",
   "settings.language.active": "Aktiv",
   "settings.language.followBrowser": "Dem Browser folgen (Spracherkennung beim Start)",
   "settings.language.instant": "Änderung wird sofort angewendet.",

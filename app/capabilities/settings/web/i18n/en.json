@@ -151,6 +151,7 @@
   "settings.hub.aiRules": "AI rules",
   "settings.hub.general": "General",
   "settings.hub.label": "Settings navigation",
+  "settings.hub.prompts": "Prompts",
   "settings.language.active": "Active",
   "settings.language.followBrowser": "Follow the browser (language detection at start)",
   "settings.language.instant": "The change applies at once.",

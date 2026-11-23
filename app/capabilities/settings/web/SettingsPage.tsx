@@ -30,6 +30,7 @@
 import { useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 
+import { SettingsHub } from "@shell/components/SettingsHub";
 import { catalogs, type Locale } from "@shell/lib/generated/catalogs";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
@@ -38,7 +39,6 @@ import { useSettings, useTheme } from "@shell/lib/query";
 import { FOCUS } from "@shell/ui/card";
 
 import { ProfileForm } from "./profileForm";
-import { SettingsHub } from "./SettingsHub";
 
 const SERIF = "[font-family:var(--font-serif)]";
 

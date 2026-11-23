@@ -1,11 +1,16 @@
 /**
  * The settings hub chrome (W8 ruling 4): the shared section nav across the
- * settings capability's own pages, ported from the owner-approved
+ * settings area's pages, ported from the owner-approved
  * `settings-ai-rules-2` draft's header — its geometry, its active face, its
- * doors. The draft draws three items; this chrome carries the two whose
- * routes exist (Allgemein, KI-Regeln): the Prompts item waits for its PR 3
- * route — a door to nowhere is a dead promise, and the hub grows the item
- * in the commit that mounts the surface behind it.
+ * doors. It lives in the shell (`web/components/`) since W8 PR 3: the area's
+ * three authorities span two capabilities (Allgemein and KI-Regeln belong to
+ * `settings`, Prompts to `prompts`), and a capability never imports another
+ * (rule 1) — the shared chrome is the shell's, each page renders it above
+ * its own content.
+ *
+ * The draft draws three items; all three routes exist (the Prompts surface
+ * joined in PR 3, the commit this item's door went live in — the door and
+ * the surface behind it land together, never a door to nowhere).
  *
  * The draft's right-hand chip („Lokaler Speicher verifiziert") is not
  * ported: it is invented chrome, a claim no read answers (the Stitch round
@@ -16,17 +21,22 @@
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 
-import { useTranslation } from "@shell/lib/i18n";
-import { Icon, type IconName } from "@shell/ui/icons";
+import { useTranslation } from "../lib/i18n";
+import { Icon, type IconName } from "../ui/icons";
 
 const FOCUS =
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
 
 /** The hub's items in the draft's order, each with its glyph and its own
- *  route. A third item joins when its surface exists — never before. */
-const ITEMS: ReadonlyArray<{ to: string; labelKey: "settings.hub.general" | "settings.hub.aiRules"; icon: IconName }> = [
+ *  route. */
+const ITEMS: ReadonlyArray<{
+  to: string;
+  labelKey: "settings.hub.general" | "settings.hub.aiRules" | "settings.hub.prompts";
+  icon: IconName;
+}> = [
   { to: "/settings", labelKey: "settings.hub.general", icon: "tune" },
   { to: "/settings/ai-regeln", labelKey: "settings.hub.aiRules", icon: "spark" },
+  { to: "/settings/prompts", labelKey: "settings.hub.prompts", icon: "document" },
 ];
 
 export function SettingsHub() {

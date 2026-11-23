@@ -11,8 +11,8 @@
  * key store's 503), `settings.test` never a dropdown, the resolved number
  * shown as is (uncapped when no ceiling is stored, the cap noted when one
  * bounds it), the fake driver's honest mark instead of the draft's invented
- * „0 Tok. (Offline)“, and the hub chrome that carries the two routes that
- * exist — no Prompts item, no dead door.
+ * „0 Tok. (Offline)“, and the hub chrome that carries the area's three
+ * routes with the active face on the route the page stands on.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -257,17 +257,20 @@ afterEach(() => {
   localStorage.clear();
 });
 
-describe("the hub chrome — the two routes that exist", () => {
-  it("carries Allgemein and KI-Regeln, the active face on the route the page stands on, no Prompts item", async () => {
+describe("the hub chrome — the three routes of the settings area", () => {
+  it("carries Allgemein, KI-Regeln and Prompts, the active face on the route the page stands on", async () => {
     renderPage();
     await screen.findAllByTestId("task-row");
     const nav = screen.getByRole("navigation", { name: de["settings.hub.label"] });
     const links = Array.from(nav.querySelectorAll("a"));
-    expect(links.map((link) => link.textContent)).toEqual([de["settings.hub.general"], de["settings.hub.aiRules"]]);
+    expect(links.map((link) => link.textContent)).toEqual([
+      de["settings.hub.general"],
+      de["settings.hub.aiRules"],
+      de["settings.hub.prompts"],
+    ]);
     expect(links[1]?.getAttribute("aria-current")).toBe("page");
     expect(links[0]?.getAttribute("aria-current")).toBeNull();
-    // The draft's third item waits for its route — no dead door.
-    expect(nav.textContent).not.toContain("Prompts");
+    expect(links[2]?.getAttribute("aria-current")).toBeNull();
   });
 
   it("stands on the Allgemein page too, its active face there", async () => {
