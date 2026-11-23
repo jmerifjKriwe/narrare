@@ -142,7 +142,7 @@ test-frontend:
 # web/x), the form sonar-scanner documents; web/-rooted entries keep matching.
 test-frontend-cov:
     pnpm --dir web test:coverage
-    uv run python -c "from scripts.sonar_lcov import normalize; normalize('web/coverage/lcov.info')"
+    python3 scripts/sonar_lcov.py web/coverage/lcov.info
 
 # Only the web tests the working tree's change reaches — the inner loop for
 # frontend work, mirroring the pre-commit hook. Full suite via test-frontend.
