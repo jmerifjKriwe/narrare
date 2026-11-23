@@ -90,7 +90,9 @@ class PromptPreviewBody(BaseModel):
     """The preview's optional body: the editor draft to render.
 
     Absent (or carrying no ``content``) previews the saved effective source.
-    ``novel_id`` rides the query string, beside the other reads.
+    ``novel_id`` rides the query string, beside the other reads; the body is
+    the POST's optional draft — a browser's ``fetch`` refuses a GET body, so
+    the render computation posts.
     """
 
     content: str | None = None

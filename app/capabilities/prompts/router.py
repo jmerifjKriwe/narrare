@@ -169,7 +169,7 @@ async def get_prompt_diff(
         raise _errors(error) from None
 
 
-@router.get("/{key}/preview", response_model=PromptPreview, responses=_KEY_RESPONSES)
+@router.post("/{key}/preview", response_model=PromptPreview, responses=_KEY_RESPONSES)
 async def preview_prompt(
     service: ServiceDep,
     key: Annotated[str, Path(min_length=1)],
@@ -177,6 +177,11 @@ async def preview_prompt(
     body: PromptPreviewBody | None = None,
 ) -> PromptPreview:
     """Render the draft (or the scope's saved effective) at sample scope.
+
+    A POST, not a GET: the draft rides the body, and a browser's ``fetch``
+    refuses a GET body outright — the editor's preview loop would die at
+    runtime. A render computation is no cacheable resource; the query's
+    ``novel_id`` and the optional-body semantics stay the reads' shape.
 
     No model call, nothing persisted; a draft the sandbox refuses is the
     named 422, a contract failure the diagnostic inside the 200.
@@ -208,7 +213,16 @@ def _live_test_responses() -> dict[int | str, dict[str, Any]]:
             }
         },
         409: coded | {"description": "No real context to assemble, or a corpus mismatch."},
-        429: coded | {"description": "The user's live-test window is still closed."},
+        429: coded
+        | {
+            "description": "The user's live-test window is still closed.",
+            "headers": {
+                "Retry-After": {
+                    "schema": {"type": "integer"},
+                    "description": "The remaining seconds, whole, until the next test.",
+                }
+            },
+        },
         502: coded | {"description": "The provider failed before its first token."},
         503: coded | {"description": "The key store cannot produce the provider's key."},
     }

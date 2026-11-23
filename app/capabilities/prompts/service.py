@@ -61,10 +61,12 @@ REFUSAL_REASONS: Final[tuple[str, ...]] = ("novel-scope", "unknown-novel", "cont
 LIVE_TEST_COOLDOWN_SECONDS: Final[float] = 30.0
 """The per-user live-test window: one test, then the wait.
 
-The limit guards the provider's cost, not the reads: a request is claimed
-only once its draft passed the gate and its real context assembled — a
-refused or context-less test burns nothing — and the claim is what a later
-immediate call is refused against.
+The limit guards the provider's cost, not the reads: the window is peeked
+before the capability's assembly runs (a clearly rate-limited request
+never reaches the context reads, chat's embedding call among them) and
+claimed only once its draft passed the gate, its real context assembled
+and the provider call is the next thing that would happen — a refused or
+context-less test burns nothing.
 """
 
 _LIVE_TEST_LAST: dict[UUID, float] = {}
@@ -346,12 +348,15 @@ class PromptService:
         scope rules and the owned-novel read hold as on every route; the
         key's task cascade resolves (a key its tier can no longer produce
         raises :class:`app.kernel.secrets.KeyUnavailableError`, the router's
-        503 face); the key's own assembly gathers the capability's real
-        context and renders the draft-or-chain source against it — a render
-        it refuses is the named 422 (:class:`PromptRefusedError`), a book
-        with nothing to assemble :class:`LiveContextMissingError`, the router's
-        409. Only then is the user's window claimed: a refused or
-        context-less test consumed no provider, so it spends no wait.
+        503 face). The window is then **peeked before the assembly runs** —
+        a request clearly inside it is refused there, so a rate-limited test
+        never reaches the capability's context reads, chat's embedding call
+        among them — and **claimed after it**, once a provider call is the
+        next thing that would happen: a refused or context-less test
+        consumed no provider, so it spends no wait, and a render the
+        assembly refuses is the named 422 (:class:`PromptRefusedError`), a
+        book with nothing to assemble :class:`LiveContextMissingError`, the
+        router's 409.
 
         Nothing here writes: the draft never becomes an override, the
         assembly reads only, and the audit is the stream's own row.
@@ -374,6 +379,12 @@ class PromptService:
             # Every bundled key registers one; a key without its assembly is
             # a registration gap, not a user-facing refusal.
             raise RuntimeError(f"the bundled prompt '{key}' carries no live assembly")
+
+        # The early peek: refuse before any context read or embedding call.
+        peek = _peek_live_test_window(self.user_id)
+        if peek > 0:
+            raise LiveTestRateLimitedError(peek)
+
         context = LiveTestContext(
             session=self.session,
             user_id=self.user_id,
@@ -391,6 +402,9 @@ class PromptService:
         except BudgetImpossibleError as error:
             raise PromptRefusedError("budget", str(error)) from None
 
+        # The claim: the window is recorded only when the provider call is
+        # the next thing that would happen. Between the peek and this point
+        # a sibling request may have claimed first — then the claim refuses.
         retry_after = _claim_live_test_slot(self.user_id)
         if retry_after > 0:
             raise LiveTestRateLimitedError(retry_after)
@@ -423,19 +437,36 @@ class LiveTestPrepared:
     resolved: ResolvedProvider
 
 
+def _peek_live_test_window(user_id: UUID) -> float:
+    """The user's remaining live-test wait, without moving the window.
+
+    Read-only on purpose: the preparation peeks before it assembles, so a
+    clearly rate-limited request is refused before it can reach the
+    capability's context reads — chat's embedding call among them.
+    """
+    last = _LIVE_TEST_LAST.get(user_id)
+    if last is None:
+        return 0.0
+    elapsed = monotonic() - last
+    if elapsed < LIVE_TEST_COOLDOWN_SECONDS:
+        return LIVE_TEST_COOLDOWN_SECONDS - elapsed
+    return 0.0
+
+
 def _claim_live_test_slot(user_id: UUID) -> float:
     """Claim the user's live-test window; the remaining wait, 0.0 when free.
 
     A refused claim moves nothing: the user's window stays where their last
-    real claim put it, so the wait is honest rather than extended.
+    real claim put it, so the wait is honest rather than extended. The
+    check-then-set has no lock — a benign race by design: the limiter is a
+    single-process cost guard, and the worst case is two concurrent
+    requests both passing the peek and one extra provider call landing,
+    never a correctness failure.
     """
-    now = monotonic()
-    last = _LIVE_TEST_LAST.get(user_id)
-    if last is not None:
-        elapsed = now - last
-        if elapsed < LIVE_TEST_COOLDOWN_SECONDS:
-            return LIVE_TEST_COOLDOWN_SECONDS - elapsed
-    _LIVE_TEST_LAST[user_id] = now
+    remaining = _peek_live_test_window(user_id)
+    if remaining > 0:
+        return remaining
+    _LIVE_TEST_LAST[user_id] = monotonic()
     return 0.0
 
 
