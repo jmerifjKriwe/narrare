@@ -25,6 +25,41 @@ of the instruction. A kernel constant for the same reason the source marker
 is: prompt builders and providers must agree on it and live in different
 trees."""
 
+PURPOSE_INTERVIEW = "entity-interview"
+"""The interview prompt's purpose: a turn-based conversation that proposes an entity.
+
+The template declares it, the interview's contract requires it, and the fake
+dispatches on it — the one line that tells an interview from any other prompt.
+"""
+
+TYPE_PREFIX = "TYPE: "
+SLOTS_PREFIX = "SLOTS: "
+RELATIONS_PREFIX = "RELATIONS: "
+TURNS_PREFIX = "TURNS:"
+ROSTER_PREFIX = "ROSTER:"
+REQUEST_PREFIX = "REQUEST: "
+USER_PREFIX = "USER: "
+ASSISTANT_PREFIX = "ASSISTANT: "
+"""The interview's machine markers: the kernel-fed variables on their own lines.
+
+The template renders each variable behind its marker, the interview's contract
+requires every prefix in a saved re-voice, and the fake reads exactly these
+lines — ``SLOTS:`` and ``RELATIONS:`` carry JSON, ``TURNS:`` and ``ROSTER:``
+head one line per turn or entity, and ``REQUEST:`` names the writer's act. They
+live beside ``PURPOSE_PREFIX`` and ``SOURCE_PREFIX`` because the template, the
+contract check and the fake all read them.
+"""
+
+INTERVIEW_MARKERS: tuple[str, ...] = (
+    TYPE_PREFIX,
+    SLOTS_PREFIX,
+    RELATIONS_PREFIX,
+    TURNS_PREFIX,
+    ROSTER_PREFIX,
+    REQUEST_PREFIX,
+)
+"""The marker prefixes every interview render must carry, in the template's order."""
+
 
 @dataclass(frozen=True)
 class Message:

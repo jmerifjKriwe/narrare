@@ -58,6 +58,7 @@ const KEY_ICONS: Readonly<Record<string, IconName>> = {
   "chat.ask": "chat",
   "knowledge.extract-entities": "knowledge",
   "knowledge.check-consistency": "balance",
+  "knowledge.entity-interview": "person",
 };
 
 /** The context frame's fact keys the catalogs localize; anything else the
@@ -71,6 +72,9 @@ const FACT_KEYS: ReadonlySet<string> = new Set([
   "chars",
   "chapters",
   "entities",
+  "type",
+  "turns",
+  "roster",
 ]);
 
 export interface EditorScope {

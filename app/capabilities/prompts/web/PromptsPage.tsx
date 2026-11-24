@@ -3,7 +3,7 @@
  * `/settings/prompts`, ported from the owner-approved `ai-prompts-overrides`
  * draft onto the shell's tokens, under the hub chrome. The draft's geometry,
  * in its order: the header row with the Geltungsbereich selector and the
- * novel-scope override badge, then the two-column core — the four-key
+ * novel-scope override badge, then the two-column core — the five-key
  * catalog left (its override marks read the list's real fields), the editor
  * right — and the Souveränitäts-Garantie card below the catalog.
  *
@@ -48,6 +48,7 @@ const KEY_ICONS: Readonly<Record<string, IconName>> = {
   "chat.ask": "chat",
   "knowledge.extract-entities": "knowledge",
   "knowledge.check-consistency": "balance",
+  "knowledge.entity-interview": "person",
 };
 
 /** The editor's first face: the draft draws Text fortsetzen as the selected

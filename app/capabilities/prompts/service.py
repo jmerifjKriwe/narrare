@@ -377,7 +377,9 @@ class PromptService:
             # names its novel), executing a template the editor never showed.
             source, mode = (row.content if row is not None else spec.template), "effective"
 
-        resolved = await resolve_provider(self.session, self.user_id, key)
+        # The spec may ride another task's assignment: the interview is a key
+        # of its own but a chat task, so the resolution uses `spec.task_key`.
+        resolved = await resolve_provider(self.session, self.user_id, spec.task_key)
         assemble = spec.assemble
         if assemble is None:
             # Every bundled key registers one; a key without its assembly is
@@ -414,6 +416,7 @@ class PromptService:
             raise LiveTestRateLimitedError(retry_after)
         return LiveTestPrepared(
             key=key,
+            task_key=spec.task_key,
             novel_id=novel_id,
             source_mode=mode,
             facts=assembled.facts,
@@ -431,9 +434,13 @@ class LiveTestPrepared:
     call rides and the audit names. ``source_mode`` says which source the
     prompt rendered — ``draft`` when the request carried one, ``effective``
     when the chain's pick served (an override, or the bundled template).
+    ``task_key`` is the assignment key the call rode (the spec's, not
+    necessarily the prompt key); ``key`` stays the prompt key the editor
+    named and the audit records.
     """
 
     key: str
+    task_key: str
     novel_id: UUID | None
     source_mode: str
     facts: dict[str, str]

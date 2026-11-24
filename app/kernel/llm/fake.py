@@ -9,13 +9,22 @@ import asyncio
 import json
 import re
 from collections.abc import AsyncIterator  # noqa: TC003
+from typing import cast
 
 from app.kernel.context import CHARS_PER_TOKEN
 from app.kernel.contracts.models import ENTITY_TYPES
 from app.kernel.llm.contract import (
     DONE,
+    PURPOSE_INTERVIEW,
     PURPOSE_PREFIX,
+    RELATIONS_PREFIX,
+    REQUEST_PREFIX,
+    ROSTER_PREFIX,
+    SLOTS_PREFIX,
     SOURCE_PREFIX,
+    TURNS_PREFIX,
+    TYPE_PREFIX,
+    USER_PREFIX,
     CompletionEvent,
     CompletionRequest,
     Delta,
@@ -25,9 +34,12 @@ from app.kernel.llm.contract import (
 PURPOSE_EXTRACT = "extract-entities"
 PURPOSE_CHECK = "check-consistency"
 # Kept in step with the job kinds whose prompts carry the purpose marker
-# (knowledge's extraction and consistency checks). A purpose the fake does
-# not know gets the default prose, whose shape the handler's parse refuses
-# loudly — a drifted kind fails at its first job instead of silently.
+# (knowledge's extraction and consistency checks) and with the interview's
+# purpose. A purpose the fake does not know gets the default prose, whose
+# shape the handler's parse refuses loudly — a drifted kind fails at its
+# first job instead of silently. PURPOSE_INTERVIEW is imported: the constant
+# belongs beside the markers because the template and its contract read it
+# too.
 
 PROPOSED_LIMIT = 8
 # The answer's ceiling is the vocabulary it cycles: an extraction proposes
@@ -158,16 +170,176 @@ def _findings_answer(text: str) -> str:
     return json.dumps({"items": findings}, ensure_ascii=False)
 
 
+_INTERVIEW_SUGGESTION = "Ein Name, der zur Geschichte passt, wäre ein guter Anfang."
+_INTERVIEW_NOTED = "Notiert."
+_INTERVIEW_SUGGESTED = "Hier ist ein Vorschlag."
+_INTERVIEW_FILLED = "Alles vorgeschlagen."
+
+_FILL_NAME = "Unbenannt"
+_FILL_ALIASES = ("Der Namenlose",)
+_FILL_TAGS = ("neu",)
+_FILL_CONTENT = "Ein Vorschlag des Fake-Treibers."
+"""The canned values ``fill-all`` puts into every open slot — deterministic,
+never derived from the story, because the fake stands in for a model."""
+
+_INTERVIEW_SECTION_MARKERS = (
+    PURPOSE_PREFIX,
+    TYPE_PREFIX,
+    SLOTS_PREFIX,
+    RELATIONS_PREFIX,
+    TURNS_PREFIX,
+    ROSTER_PREFIX,
+    REQUEST_PREFIX,
+)
+
+
+def _line_after(prompt: str, prefix: str) -> str | None:
+    """The value behind one marked line, stripped; None when the line is absent."""
+    for line in prompt.splitlines():
+        if line.startswith(prefix):
+            return line.removeprefix(prefix).strip()
+    return None
+
+
+def _json_line(prompt: str, prefix: str, default: object) -> object:
+    """The JSON payload on a marked line, or ``default`` when absent or broken."""
+    raw = _line_after(prompt, prefix)
+    if raw is None:
+        return default
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return default
+
+
+def _section_lines(prompt: str, header: str) -> list[str]:
+    """The non-empty lines after a section header, up to the next marker or blank."""
+    lines = prompt.splitlines()
+    start = next((index for index, line in enumerate(lines) if line.startswith(header)), None)
+    if start is None:
+        return []
+    found: list[str] = []
+    for line in lines[start + 1 :]:
+        if not line.strip():
+            if found:
+                break
+            continue
+        if line.startswith(_INTERVIEW_SECTION_MARKERS):
+            break
+        found.append(line)
+    return found
+
+
+def _last_user_text(prompt: str) -> str:
+    """The last ``USER:`` line's text — the writer's latest turn."""
+    text = ""
+    for line in prompt.splitlines():
+        if line.startswith(USER_PREFIX):
+            text = line.removeprefix(USER_PREFIX).strip()
+    return text
+
+
+def _split_labels(raw: str) -> list[str]:
+    """Comma-separated labels, trimmed, blank entries dropped."""
+    return [part.strip() for part in raw.split(",") if part.strip()]
+
+
+def _apply_interview_line(
+    text: str, slots: dict[str, object], relations: list[dict[str, str]]
+) -> None:
+    """Apply the one recognized key line a writer's turn may carry."""
+    if text.startswith("Name: "):
+        slots["name"] = text.removeprefix("Name: ").strip()
+    elif text.startswith("Beschreibung: "):
+        slots["content"] = text.removeprefix("Beschreibung: ").strip()
+    elif text.startswith("Schlagworte: "):
+        slots["tags"] = _split_labels(text.removeprefix("Schlagworte: "))
+    elif text.startswith("Alias: "):
+        slots["aliases"] = _split_labels(text.removeprefix("Alias: "))
+    elif text.startswith("Beziehung: "):
+        target, _, label = text.removeprefix("Beziehung: ").partition("|")
+        target, label = target.strip(), label.strip()
+        if target and label:
+            relations.append({"target": target, "type": label})
+
+
+def _fill_open_slots(slots: dict[str, object]) -> None:
+    """Fill every open slot with its canned value; closed slots keep what they hold."""
+    if not slots.get("name"):
+        slots["name"] = _FILL_NAME
+    if not slots.get("aliases"):
+        slots["aliases"] = list(_FILL_ALIASES)
+    if not slots.get("tags"):
+        slots["tags"] = list(_FILL_TAGS)
+    if not slots.get("content"):
+        slots["content"] = _FILL_CONTENT
+
+
+def _interview_json(
+    reply: str,
+    slots: dict[str, object],
+    relations: list[dict[str, str]],
+    suggestion: str | None,
+) -> str:
+    """The interview's answer shape: the cumulative slots and the proposed relations."""
+    answer: dict[str, object] = {"reply": reply, "slots": slots, "relations": relations}
+    if suggestion is not None:
+        answer["suggestion"] = suggestion
+    return json.dumps(answer, ensure_ascii=False)
+
+
+def _interview_answer(prompt: str) -> str:
+    """The interview's deterministic turn, read from the marked lines.
+
+    The answer is always the cumulative slots: the ones the prompt carried,
+    updated by the writer's recognized key line or by ``fill-all``'s canned
+    values. ``no-idea`` offers a suggestion and leaves the slots as received;
+    ``fill-all`` also proposes one ``related_to`` to the first roster entry;
+    ``accept-suggestion`` and every other act acknowledge the turn. A last
+    user turn of ``unparseable`` answers prose, so the structured ask's parse
+    fails loudly instead of deriving a proposal from nothing.
+    """
+    parsed_slots = _json_line(prompt, SLOTS_PREFIX, {})
+    slots = cast("dict[str, object]", parsed_slots) if isinstance(parsed_slots, dict) else {}
+    parsed_relations = _json_line(prompt, RELATIONS_PREFIX, [])
+    relations: list[dict[str, str]] = []
+    if isinstance(parsed_relations, list):
+        relations = [
+            cast("dict[str, str]", relation)
+            for relation in cast("list[object]", parsed_relations)
+            if isinstance(relation, dict)
+        ]
+
+    user_text = _last_user_text(prompt)
+    if user_text == "unparseable":
+        return "".join(FakeProvider.CHUNKS)
+
+    request = _line_after(prompt, REQUEST_PREFIX) or "answer"
+    if request == "no-idea":
+        return _interview_json(_INTERVIEW_SUGGESTED, slots, relations, _INTERVIEW_SUGGESTION)
+    if request == "fill-all":
+        _fill_open_slots(slots)
+        roster = _section_lines(prompt, ROSTER_PREFIX)
+        if roster:
+            target = roster[0].split(" (", 1)[0].strip()
+            if target and not any(relation.get("target") == target for relation in relations):
+                relations.append({"target": target, "type": RELATION_TYPE})
+        return _interview_json(_INTERVIEW_FILLED, slots, relations, None)
+    _apply_interview_line(user_text, slots, relations)
+    return _interview_json(_INTERVIEW_NOTED, slots, relations, None)
+
+
 class FakeProvider:
     """Deterministic prose, streamed in pieces, so the wire is visible end to end.
 
-    Three shapes, because the pipeline has three. A prompt without a purpose
+    Four shapes, because the pipeline has four. A prompt without a purpose
     marker keeps the chat behavior: a fixed continuation, or the first marked
     source quoted back (what lets a test see that retrieval reached the model
     boundary). A prompt that declares its purpose gets the answer that purpose
-    contracts, derived from the marked passages: extraction proposes entities
+    contracts, derived from the marked lines: extraction proposes entities
     from its passage, the consistency check derives contradictions from every
-    one of them.
+    one of them, and the interview answers one turn from its marked slots and
+    the writer's key line.
     """
 
     CHUNKS = (
@@ -204,6 +376,8 @@ class FakeProvider:
             answer: str | None = _entities_answer("\n".join(passages).strip())
         elif purpose == PURPOSE_CHECK:
             answer = _findings_answer("\n".join(passages))
+        elif purpose == PURPOSE_INTERVIEW:
+            answer = _interview_answer(prompt)
         else:
             answer = None
         if answer is not None:

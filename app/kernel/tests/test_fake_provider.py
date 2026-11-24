@@ -10,6 +10,8 @@ the ``CompletionRequest`` shape every consumer builds.
 
 import json
 
+import pytest
+
 from app.kernel.context import CHARS_PER_TOKEN
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
 from app.kernel.llm.fake import FakeProvider
@@ -23,6 +25,30 @@ async def _events(prompt: str) -> list[CompletionEvent]:
 async def _answer(prompt: str) -> str:
     """The whole completion's text, joined — what a consumer accumulates on the wire."""
     return "".join(event.text for event in await _events(prompt) if isinstance(event, Delta))
+
+
+def _interview_prompt(
+    *,
+    request: str = "answer",
+    user: str = "Name: Jona",
+    slots: dict[str, object] | None = None,
+    relations: list[dict[str, str]] | None = None,
+    roster: str = "Mira (character; Die Wanderin)",
+) -> str:
+    """One marked interview prompt in the template's marker order."""
+    return (
+        "PURPOSE: entity-interview\n\n"
+        "Interview the writer.\n\n"
+        "TYPE: character\n"
+        f"SLOTS: {json.dumps(slots or {}, ensure_ascii=False)}\n"
+        f"RELATIONS: {json.dumps(relations or [], ensure_ascii=False)}\n"
+        "TURNS:\n"
+        "ASSISTANT: Wer ist sie?\n"
+        f"USER: {user}\n"
+        "ROSTER:\n"
+        f"{roster}\n"
+        f"REQUEST: {request}\n"
+    )
 
 
 async def test_an_extraction_prompt_proposes_entities_from_its_passage() -> None:
@@ -167,6 +193,105 @@ async def test_a_name_with_one_reading_is_no_finding() -> None:
     )
 
     assert json.loads(await _answer(prompt)) == {"items": []}
+
+
+async def test_fake_interview_answers_each_act() -> None:
+    """Verify the interview's acts and key lines: cumulative slots, one relation."""
+    # A plain answer: the key line sets its slot; the other slots arrive whole.
+    answered = json.loads(
+        await _answer(_interview_prompt(user="Name: Jona", slots={"tags": ["wanderer"]}))
+    )
+    assert answered["reply"] == "Notiert."
+    assert answered["slots"] == {"tags": ["wanderer"], "name": "Jona"}
+    assert answered["relations"] == []
+    assert "suggestion" not in answered
+
+    # Each recognized key line sets its part.
+    content = json.loads(await _answer(_interview_prompt(user="Beschreibung: Jona lebt am See.")))
+    assert content["slots"]["content"] == "Jona lebt am See."
+    tags = json.loads(await _answer(_interview_prompt(user="Schlagworte: wachsam, still")))
+    assert tags["slots"]["tags"] == ["wachsam", "still"]
+    aliases = json.loads(await _answer(_interview_prompt(user="Alias: Der Wächter, Jona")))
+    assert aliases["slots"]["aliases"] == ["Der Wächter", "Jona"]
+    related = json.loads(
+        await _answer(
+            _interview_prompt(
+                user="Beziehung: Mira | knows",
+                relations=[{"target": "Haus", "type": "near"}],
+            )
+        )
+    )
+    assert related["relations"] == [
+        {"target": "Haus", "type": "near"},
+        {"target": "Mira", "type": "knows"},
+    ]
+
+    # No idea: a suggestion, the slots untouched.
+    no_idea = json.loads(
+        await _answer(
+            _interview_prompt(request="no-idea", user="Keine Ahnung", slots={"name": "Jona"})
+        )
+    )
+    assert no_idea["suggestion"]
+    assert no_idea["slots"] == {"name": "Jona"}
+
+    # Accepting the suggestion records the turn; nothing else moves.
+    accepted = json.loads(
+        await _answer(
+            _interview_prompt(
+                request="accept-suggestion", user="Übernehmen", slots={"name": "Jona"}
+            )
+        )
+    )
+    assert accepted["reply"] == "Notiert."
+    assert accepted["slots"] == {"name": "Jona"}
+    assert "suggestion" not in accepted
+
+    # Fill all: every open slot from the canned values, one relation to the roster.
+    filled = json.loads(
+        await _answer(
+            _interview_prompt(
+                request="fill-all", user="Alles vorschlagen lassen", slots={"name": "Jona"}
+            )
+        )
+    )
+    assert set(filled["slots"]) == {"name", "aliases", "tags", "content"}
+    assert filled["slots"]["name"] == "Jona"
+    assert filled["relations"] == [{"target": "Mira", "type": "related_to"}]
+
+    # A complete proposal changes nothing: closed slots stay, the relation stays.
+    complete_slots: dict[str, object] = {
+        "name": "Jona",
+        "aliases": ["Der Wächter"],
+        "tags": ["Verbündeter"],
+        "content": "Ein Wächter am See.",
+    }
+    complete = json.loads(
+        await _answer(
+            _interview_prompt(
+                request="fill-all",
+                user="Alles vorschlagen lassen",
+                slots=complete_slots,
+                relations=[{"target": "Mira", "type": "knows"}],
+            )
+        )
+    )
+    assert complete["slots"] == complete_slots
+    assert complete["relations"] == [{"target": "Mira", "type": "knows"}]
+
+
+async def test_fake_interview_unparseable_answers_prose() -> None:
+    """Verify the last USER line ``unparseable`` gets prose, not JSON.
+
+    The structured ask's repair retry reads the same prompt, so the fake keeps
+    answering prose and the second parse fails as the named 502, never an
+    empty proposal.
+    """
+    answer = await _answer(_interview_prompt(user="unparseable"))
+
+    assert answer == "".join(FakeProvider.CHUNKS)
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(answer)
 
 
 async def test_an_unmarked_prompt_keeps_the_chat_answer() -> None:

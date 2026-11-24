@@ -139,6 +139,7 @@ def test_the_catalog_marks_the_states_and_the_novel_filter_composes(
         "writing.continuation",
         "knowledge.extract-entities",
         "knowledge.check-consistency",
+        "knowledge.entity-interview",
     ):
         expect(_card(page, key).get_by_text(GLOBAL_STANDARD)).to_be_visible()
     chat = _card(page, "chat.ask")
@@ -165,7 +166,7 @@ def test_the_catalog_marks_the_states_and_the_novel_filter_composes(
     novel_override = save_override("writing.continuation", HONEST_DRAFT, novel_id=global_id)
     assert novel_override.status_code == 200, novel_override.text
     page.reload()
-    expect(page.get_by_test_id("prompt-card")).to_have_count(4)
+    expect(page.get_by_test_id("prompt-card")).to_have_count(5)
     _select_novel(page, global_id)
     expect(page.get_by_test_id("override-badge")).to_have_text(
         re.compile("1 roman-spezifischer Override aktiv")
@@ -397,4 +398,32 @@ def test_chat_ask_is_global_only_and_the_no_context_door_stands(
     _run_live_test(page, _editor(page))
     expect(_editor(page).get_by_test_id("live-context")).to_contain_text(PASSAGES_ZERO)
     expect(_editor(page).get_by_test_id("live-done")).to_contain_text(LIVE_DONE)
+    assert_accessible(page)
+
+
+def test_interview_key_previews_and_tests_live(page: Page, installed: Stack) -> None:
+    """The fifth key's preview shows the machine markers; the fake answers a turn."""
+    provider_id = create_fake_provider()
+    create_model(provider_id)
+    goto_prompts(page)
+
+    _card(page, "knowledge.entity-interview").click()
+    editor = _editor(page)
+
+    # The provider-free preview renders the sample: the purpose line names the
+    # interview, the request line names a plain turn.
+    editor.get_by_test_id("preview-button").click()
+    rendered = page.get_by_test_id("preview-rendered")
+    expect(rendered).to_contain_text("PURPOSE: entity-interview")
+    expect(rendered).to_contain_text("REQUEST: answer")
+
+    # The live test rides the fake: the facts name the sample type, its turns
+    # and the roster, and the answer is the JSON object with a reply.
+    _run_live_test(page, editor)
+    context = editor.get_by_test_id("live-context")
+    expect(context).to_contain_text("Typ: character")
+    expect(context).to_contain_text("Beiträge: 2")
+    expect(context).to_contain_text("Roster: 2")
+    expect(editor.get_by_test_id("live-answer")).to_contain_text('"reply"')
+    expect(editor.get_by_test_id("live-done")).to_contain_text(LIVE_DONE)
     assert_accessible(page)

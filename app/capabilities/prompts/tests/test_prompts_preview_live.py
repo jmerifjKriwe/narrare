@@ -51,6 +51,7 @@ CONTINUATION = "writing.continuation"
 CHAT = "chat.ask"
 EXTRACT = "knowledge.extract-entities"
 CONSISTENCY = "knowledge.check-consistency"
+INTERVIEW = "knowledge.entity-interview"
 
 SAMPLE_TAIL = "Der Nebel kam von See."
 # The writing sample factory's tail — what a SAMPLE-scope render would carry.
@@ -400,6 +401,38 @@ async def test_the_chat_live_test_retrieves_real_passages() -> None:
     assert row["task_key"] == CHAT
     assert PASSAGE in row["prompt_text"]
     assert "Wo war der Leuchtturm?" in row["prompt_text"]
+
+
+async def test_interview_live_test_resolves_and_audits_chat_ask() -> None:
+    """The fifth key rides chat.ask but audits under its own prompt key.
+
+    The resolution follows ``spec.task_key``; the audit names the task the
+    call rode and the prompt that produced it — ``chat.ask`` and
+    ``knowledge.entity-interview`` — and the facts name the sample type, its
+    two turns and the novel's real roster.
+    """
+    novel_id = await _novel("Die Reisende")
+    await _entity(novel_id, "Mira", "character")
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/prompts/{INTERVIEW}/live-test", json={"novel_id": str(novel_id)}
+        )
+        assert response.status_code == 200, response.text
+
+    frames = _frames(response.text)
+    facts = frames[0]["context"]["facts"]
+    assert facts["type"] == "character"
+    assert facts["turns"] == "2"
+    assert facts["roster"] == "1"
+
+    [row] = await _audit_rows()
+    assert row["task_key"] == CHAT
+    assert row["prompt_key"] == INTERVIEW
+    assert "PURPOSE: entity-interview" in row["prompt_text"]
+    assert "Mira (character; none)" in row["prompt_text"]
+    assert 'novel "Die Reisende"' in row["prompt_text"]
+    assert '"reply"' in row["response_text"]
 
 
 async def test_the_knowledge_live_tests_assemble_the_latest_chapters() -> None:

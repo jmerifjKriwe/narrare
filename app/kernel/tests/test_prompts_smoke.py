@@ -84,6 +84,58 @@ GOLDENS: dict[str, str] = {
         "Text:\n"
         "SOURCE: Mira betrat das alte Haus.\n"
     ),
+    "knowledge.entity-interview": (
+        "PURPOSE: entity-interview\n"
+        "\n"
+        "You are interviewing the writer to build one new entity for the novel "
+        '"Der Nebel" in the genre Mystery.\n'
+        "Ask exactly one question per turn — the most useful one for this entity — and\n"
+        "never tell the writer what type of entity it is. When nothing useful is left\n"
+        "to ask, say so in your reply and stop.\n"
+        "\n"
+        "Question tracks by entity type; use the one the TYPE line names:\n"
+        "- name and role: what is the character called, and what part do they play?\n"
+        "- appearance: what does the writer see when this character enters a scene?\n"
+        "- want and fear: what do they want, and what are they afraid of?\n"
+        "- how they speak: what do their words sound like on the page?\n"
+        "- who they trust and who they oppose: who stands with them, who against?\n"
+        "- what they hide: what do they keep from the other figures?\n"
+        "\n"
+        "Ask about the writer's own story, not about writing craft in general. Propose\n"
+        "relations only to names on the roster below or to names the writer has already\n"
+        "given; never invent a target. The roster is capped at 200 names — a list that\n"
+        "stops at 200 is cut, so say so and ask instead of assuming it is complete.\n"
+        "\n"
+        "The writer's request for this turn; the REQUEST line names the act:\n"
+        "- answer: the writer replied. Take what the reply says and ask the next question.\n"
+        "- accept-suggestion: the writer takes your last suggestion. Record it as the\n"
+        "  writer's own answer and continue.\n"
+        "- no-idea: the writer has no idea. Offer one concrete suggestion for the open\n"
+        "  slot that fits the story so far.\n"
+        "- fill-all: propose every open slot at once from the story so far and this\n"
+        "  type's track, plus one relation to a roster name when one fits.\n"
+        "\n"
+        'Answer with a JSON object and nothing else: {"reply": string, "slots":\n'
+        '{"name": string, "aliases": [string], "tags": [string], "content": string},\n'
+        '"relations": [{"target": string, "type": string, "note": string}],\n'
+        '"suggestion": string}. "slots" is the complete state so far: every value known,\n'
+        'not only what changed, and a slot with no value is left out. "suggestion" is\n'
+        'present only after no-idea. "relations" carries every proposal so far, and an\n'
+        "empty list when there is none.\n"
+        "\n"
+        "TYPE: character\n"
+        'SLOTS: {"name": "Jona", "aliases": ["Der Wächter"], "tags": ["Verbündeter"], '
+        '"content": "Ein schweigsamer Wächter am See."}\n'
+        'RELATIONS: [{"target": "Mira", "type": "knows", '
+        '"note": "Er kennt sie aus dem Winter."}]\n'
+        "TURNS:\n"
+        "ASSISTANT: Wie heißt die Figur, und welche Rolle spielt sie in der Geschichte?\n"
+        "USER: Jona ist der Wächter am See.\n"
+        "ROSTER:\n"
+        "Mira (character; Die Wanderin)\n"
+        "Haus (location; Das Haus am See)\n"
+        "REQUEST: answer\n"
+    ),
     "writing.continuation": (
         "Novel: Der Nebel\n"
         "Chapter: Ankunft\n"

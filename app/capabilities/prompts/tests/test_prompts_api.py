@@ -34,6 +34,7 @@ CONTINUATION = "writing.continuation"
 CHAT = "chat.ask"
 EXTRACT = "knowledge.extract-entities"
 CONSISTENCY = "knowledge.check-consistency"
+INTERVIEW = "knowledge.entity-interview"
 
 
 def _client() -> AsyncClient:
@@ -156,16 +157,17 @@ async def test_the_diff_shows_the_bundled_against_the_override() -> None:
         assert changed.json()["override_content"] == content
 
 
-async def test_the_list_shows_all_four_keys_with_their_facts() -> None:
-    """Four bundled keys; ``chat.ask`` alone carries no novel scope."""
+async def test_the_list_shows_all_five_keys_with_their_facts() -> None:
+    """Five bundled keys; ``chat.ask`` alone carries no novel scope."""
     async with _client() as client:
         listed = (await client.get("/api/prompts")).json()
 
     by_key = {row["key"]: row for row in listed}
-    assert set(by_key) == {CONTINUATION, CHAT, EXTRACT, CONSISTENCY}
+    assert set(by_key) == {CONTINUATION, CHAT, EXTRACT, CONSISTENCY, INTERVIEW}
     assert by_key[CONTINUATION]["novel_scopable"] is True
     assert by_key[EXTRACT]["novel_scopable"] is True
     assert by_key[CONSISTENCY]["novel_scopable"] is True
+    assert by_key[INTERVIEW]["novel_scopable"] is True
     assert by_key[CHAT]["novel_scopable"] is False
     for row in listed:
         assert row["override_global"] is False

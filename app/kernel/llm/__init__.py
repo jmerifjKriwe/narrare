@@ -18,12 +18,36 @@ loop and its retries that nothing in v2 asks for. Revisit this module if tool
 use or agent orchestration appears — not before.
 """
 
-from app.kernel.llm.contract import PURPOSE_PREFIX, SOURCE_PREFIX, TextProvider
+from app.kernel.llm.contract import (
+    ASSISTANT_PREFIX,
+    INTERVIEW_MARKERS,
+    PURPOSE_INTERVIEW,
+    PURPOSE_PREFIX,
+    RELATIONS_PREFIX,
+    REQUEST_PREFIX,
+    ROSTER_PREFIX,
+    SLOTS_PREFIX,
+    SOURCE_PREFIX,
+    TURNS_PREFIX,
+    TYPE_PREFIX,
+    USER_PREFIX,
+    TextProvider,
+)
 from app.kernel.llm.structured import AuditedCall, MalformedAnswerError, ask_structured
 
 __all__ = [
+    "ASSISTANT_PREFIX",
+    "INTERVIEW_MARKERS",
+    "PURPOSE_INTERVIEW",
     "PURPOSE_PREFIX",
+    "RELATIONS_PREFIX",
+    "REQUEST_PREFIX",
+    "ROSTER_PREFIX",
+    "SLOTS_PREFIX",
     "SOURCE_PREFIX",
+    "TURNS_PREFIX",
+    "TYPE_PREFIX",
+    "USER_PREFIX",
     "AuditedCall",
     "MalformedAnswerError",
     "TextProvider",
