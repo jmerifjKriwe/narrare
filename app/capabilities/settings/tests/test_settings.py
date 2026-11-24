@@ -27,15 +27,19 @@ pytestmark = pytest.mark.timeout(30)
 
 OTHER_USER = UUID("00000000-0000-0000-0000-000000000002")
 
-# The unset row every read of a fresh instance answers: no choice, no label,
-# no goal, no email — the browser, the email and the neutral decide from there.
+# The unset row every read of an installed instance answers: no choice, no
+# label, no goal, no email — the browser, the email and the neutral decide from
+# there. The update interval is never unset once installed: seven is the
+# product default. An uninstalled instance answers ``None`` for it too (FRESH).
 UNSET = {
     "locale": None,
     "theme": None,
     "author_name": None,
     "daily_goal_words": None,
+    "update_check_interval_days": 7,
     "email": None,
 }
+FRESH = UNSET | {"update_check_interval_days": None}
 
 
 def _client() -> AsyncClient:
@@ -227,6 +231,55 @@ async def test_the_largest_daily_goal_the_column_holds_is_accepted() -> None:
         assert written.json()["daily_goal_words"] == 2_147_483_647
 
 
+async def test_the_update_check_interval_round_trips_and_null_resets_to_seven() -> None:
+    """The interval joins the preference write (design 2026-11-24): it is the
+    user's answer on the same row, and a carried null hands it back to the
+    product default of seven days."""
+    async with _client() as client:
+        written = await client.patch(
+            "/api/settings", json={"locale": None, "update_check_interval_days": 3}
+        )
+        assert written.status_code == 200
+        assert written.json() == UNSET | {"update_check_interval_days": 3}
+        assert (await client.get("/api/settings")).json() == UNSET | {
+            "update_check_interval_days": 3
+        }
+
+        reset = await client.patch(
+            "/api/settings", json={"locale": None, "update_check_interval_days": None}
+        )
+        assert reset.status_code == 200
+        assert reset.json()["update_check_interval_days"] == 7
+
+    async with Session() as session:
+        user = await session.get(User, LOCAL_USER_ID)
+        assert user is not None
+        assert user.update_check_interval_days == 7
+
+
+@pytest.mark.parametrize("value", [0, 366])
+async def test_an_update_check_interval_outside_the_bounds_is_refused(value: int) -> None:
+    async with _client() as client:
+        await client.patch("/api/settings", json={"locale": None, "update_check_interval_days": 3})
+        refused = await client.patch(
+            "/api/settings", json={"locale": None, "update_check_interval_days": value}
+        )
+        assert refused.status_code == 422
+        assert any(
+            entry["loc"] == ["body", "update_check_interval_days"]
+            for entry in refused.json()["detail"]
+        )
+        assert (await client.get("/api/settings")).json()["update_check_interval_days"] == 3
+
+
+async def test_an_absent_update_check_interval_keeps_the_stored_answer() -> None:
+    async with _client() as client:
+        await client.patch("/api/settings", json={"locale": None, "update_check_interval_days": 3})
+        switched = await client.patch("/api/settings", json={"locale": "de"})
+        assert switched.status_code == 200
+        assert switched.json()["update_check_interval_days"] == 3
+
+
 @pytest.mark.parametrize("field", ["author_name", "daily_goal_words"])
 async def test_an_absent_profile_field_keeps_the_stored_answer(field: str) -> None:
     """Absent ≠ null on the profile fields: a body that does not carry one
@@ -269,7 +322,7 @@ async def test_reading_a_fresh_instance_creates_nothing() -> None:
     await _forget_the_user()
 
     async with _client() as client:
-        assert (await client.get("/api/settings")).json() == UNSET
+        assert (await client.get("/api/settings")).json() == FRESH
 
     async with Session() as session:
         assert await session.get(User, LOCAL_USER_ID) is None
@@ -384,4 +437,4 @@ async def test_a_theme_write_before_setup_is_refused() -> None:
     async with _client() as client:
         refused = await client.patch("/api/settings/theme", json={"theme": "dark"})
         assert refused.status_code == 409
-        assert (await client.get("/api/settings")).json() == UNSET
+        assert (await client.get("/api/settings")).json() == FRESH

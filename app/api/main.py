@@ -30,6 +30,7 @@ from app.kernel.db.migrate import prepare_database
 from app.kernel.db.session import CONFIG, DATABASE_URL
 from app.kernel.jobs.router import router as jobs_router
 from app.kernel.jobs.runtime import start_worker, stop_worker
+from app.kernel.updates.router import router as updates_router
 from app.kernel.version import __version__
 
 if TYPE_CHECKING:
@@ -174,9 +175,11 @@ def create_app(dist: Path | None = None) -> FastAPI:
         app.include_router(import_module(f"app.capabilities.{folder.name}.router").router)
 
     # Kernel machinery beside the capability routers: the jobs lane's one read
-    # route, which every capability's UI shares (spec §12.1 keeps capability
-    # folders self-contained; this route belongs to no capability).
+    # route and the update check's two routes, which every capability's UI shares
+    # (spec §12.1 keeps capability folders self-contained; these routes belong to
+    # no capability).
     app.include_router(jobs_router)
+    app.include_router(updates_router)
 
     @app.get("/api/health", include_in_schema=False)
     async def health() -> dict[str, str]:

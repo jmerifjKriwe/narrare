@@ -3252,6 +3252,17 @@
               }
             ],
             "title": "Theme"
+          },
+          "update_check_interval_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Update Check Interval Days"
           }
         },
         "required": [
@@ -3259,6 +3270,7 @@
           "theme",
           "author_name",
           "daily_goal_words",
+          "update_check_interval_days",
           "email"
         ],
         "title": "SettingsRead",
@@ -3340,6 +3352,19 @@
               }
             ],
             "title": "Locale"
+          },
+          "update_check_interval_days": {
+            "anyOf": [
+              {
+                "maximum": 365,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Update Check Interval Days"
           }
         },
         "required": [
@@ -4036,6 +4061,95 @@
           }
         },
         "title": "TimelineEventUpdate",
+        "type": "object"
+      },
+      "UpdateDismiss": {
+        "description": "The version the reader asked to ignore; a newer one announces again.\n\nWidths are the columns': the tag is at most 64 characters, so an over-long\nvalue is the gate's 422, never a Postgres error at the write.",
+        "properties": {
+          "version": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "UpdateDismiss",
+        "type": "object"
+      },
+      "UpdateRead": {
+        "description": "The answer the shell renders: the version, the last known release, and\nwhether that release is still worth announcing.\n\n``latest_version``, the notes and the link are the last known release, so\nan offline instance still shows what it heard before. ``update_available``\nis computed on the server — newer than the running version and not the\ndismissed one — and ``dismissed`` names the banner the reader asked to stop.",
+        "properties": {
+          "checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "current_version": {
+            "title": "Current Version",
+            "type": "string"
+          },
+          "dismissed": {
+            "title": "Dismissed",
+            "type": "boolean"
+          },
+          "latest_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version"
+          },
+          "release_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release Notes"
+          },
+          "release_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release Url"
+          },
+          "update_available": {
+            "title": "Update Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "current_version",
+          "latest_version",
+          "update_available",
+          "release_notes",
+          "release_url",
+          "dismissed",
+          "checked_at"
+        ],
+        "title": "UpdateRead",
         "type": "object"
       },
       "ValidationBody": {
@@ -7440,6 +7554,92 @@
         "summary": "Status",
         "tags": [
           "setup"
+        ]
+      }
+    },
+    "/api/updates": {
+      "get": {
+        "description": "The last known release.\n\n``force`` bypasses the interval; the source is still only asked when the\nin-memory cache has no fresh answer, so a reload cannot spend the quota.",
+        "operationId": "get_updates_api_updates_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Force",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Updates",
+        "tags": [
+          "updates"
+        ]
+      }
+    },
+    "/api/updates/dismiss": {
+      "post": {
+        "description": "Stop announcing the carried version; a newer one announces again.",
+        "operationId": "dismiss_update_api_updates_dismiss_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDismiss"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dismiss Update",
+        "tags": [
+          "updates"
         ]
       }
     },
