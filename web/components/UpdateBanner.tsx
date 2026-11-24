@@ -7,9 +7,11 @@
  * ignores the version for good (the dialog's answer, which posts the
  * dismissal and writes the server's answer into the cache). The start toast
  * is the transient notice — one per version per mount, eight seconds, then
- * gone; the banner remains. Nothing renders while the check is pending or
- * failed, or when no newer release exists: offline shows the last known
- * answer or nothing, never an error.
+ * gone; the banner remains. Only the toast is a live region, so the
+ * availability is announced once; the strip is a plain standing surface.
+ * Nothing renders while the check is pending or failed, or when no newer
+ * release exists: offline shows the last known answer or nothing, never an
+ * error.
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -81,7 +83,6 @@ export function UpdateBanner() {
     <>
       {visible ? (
         <div
-          role="status"
           data-testid="update-banner"
           className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-container-low px-4 py-2"
         >

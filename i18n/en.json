@@ -76,6 +76,7 @@
   "shell.update.heading": "What changed in {version}",
   "shell.update.ignore": "Ignore this version",
   "shell.update.later": "Later",
+  "shell.update.noNotes": "No release notes were provided.",
   "shell.update.notes": "Release notes",
   "shell.update.openRelease": "Open the release on GitHub",
   "shell.update.toast": "A newer release is available — {version}"

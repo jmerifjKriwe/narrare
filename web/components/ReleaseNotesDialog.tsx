@@ -7,7 +7,9 @@
  * `react-markdown` with no raw-HTML plugin: the default escaping is the
  * security boundary — a `<script>` in a release body stays text. The explicit
  * `components` map styles the headings, lists, links and code without a
- * typography plugin, so the shell keeps one design surface.
+ * typography plugin, so the shell keeps one design surface. An image becomes a
+ * link rather than an `<img>`: the modal must not fetch a third-party URL on
+ * open, so only the release lookup leaves the machine.
  *
  * Two answers beyond the close door: "Ignore this version" hands the version
  * to the caller (the banner posts the dismissal), and the release link opens
@@ -60,6 +62,19 @@ const MARKDOWN: Components = {
     <code className="rounded bg-surface-container-low px-1 py-0.5 font-mono text-meta text-foreground">
       {children}
     </code>
+  ),
+  // A release body's image is remote: an <img> would fetch it as the modal
+  // opens, an outbound request the update check alone is allowed to make. The
+  // alt text links out instead, and the reader's click is the request.
+  img: ({ alt, src }) => (
+    <a
+      href={src}
+      target="_blank"
+      rel="noreferrer"
+      className={`text-primary underline underline-offset-2 hover:text-foreground ${FOCUS}`}
+    >
+      {alt !== undefined && alt.trim() !== "" ? alt : src}
+    </a>
   ),
   pre: ({ children }) => (
     <pre className="mb-3 overflow-x-auto rounded bg-surface-container-low p-3 font-mono text-meta text-foreground">
@@ -135,7 +150,13 @@ export function ReleaseNotesDialog({
         </div>
 
         <div className="overflow-y-auto px-6 py-4">
-          <ReactMarkdown components={MARKDOWN}>{update.release_notes ?? ""}</ReactMarkdown>
+          {update.release_notes !== null && update.release_notes.trim() !== "" ? (
+            <ReactMarkdown components={MARKDOWN}>{update.release_notes}</ReactMarkdown>
+          ) : (
+            <p className="text-body leading-relaxed text-foreground">
+              {t("shell.update.noNotes")}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rule px-6 py-4">

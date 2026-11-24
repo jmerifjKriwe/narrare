@@ -140,7 +140,9 @@ describe("UpdateBanner — the persistent strip", () => {
     renderBanner(AVAILABLE);
 
     const banner = screen.getByTestId("update-banner");
-    expect(banner.getAttribute("role")).toBe("status");
+    // The strip is not a live region: the toast alone announces availability.
+    expect(banner.getAttribute("role")).toBeNull();
+    expect(banner.getAttribute("aria-live")).toBeNull();
     expect(within(banner).getByText("Narrare v999.0.0 is available")).toBeTruthy();
     expect(within(banner).getByRole("button", { name: "Release notes" })).toBeTruthy();
     expect(within(banner).getByRole("button", { name: "Later" })).toBeTruthy();
@@ -211,6 +213,27 @@ describe("ReleaseNotesDialog — the markdown and the two answers", () => {
     // The security boundary: Markdown's raw HTML is text, never a live node.
     expect(dialog.querySelector("script")).toBeNull();
     expect(dialog.textContent).toContain("<script>");
+  });
+
+  it("renders an image in the release body as a link, never an <img>", async () => {
+    renderBanner({
+      ...AVAILABLE,
+      release_notes: "![A screenshot](https://example.test/shot.png)",
+    });
+    const dialog = await openNotes();
+
+    // No auto-fetch: the modal must not request a third-party URL on open.
+    expect(dialog.querySelector("img")).toBeNull();
+    const link = within(dialog).getByRole("link", { name: "A screenshot" });
+    expect(link.getAttribute("href")).toBe("https://example.test/shot.png");
+    expect(link.getAttribute("rel")).toBe("noreferrer");
+  });
+
+  it("says so when the release has no body", async () => {
+    renderBanner({ ...AVAILABLE, release_notes: null });
+    const dialog = await openNotes();
+
+    expect(within(dialog).getByText("No release notes were provided.")).toBeTruthy();
   });
 
   it("Ignore this version posts the version, caches the answer and closes the strip", async () => {
