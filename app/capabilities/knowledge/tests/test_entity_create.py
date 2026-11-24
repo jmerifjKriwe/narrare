@@ -124,6 +124,7 @@ async def test_foreign_novel_is_404() -> None:
     async with _client() as client:
         foreign_response = await client.post("/api/knowledge/entities", json=_body(foreign.id))
         assert foreign_response.status_code == 404
+        assert _coded(foreign_response)["code"] == "not-found"
         absent = await client.post(
             "/api/knowledge/entities", json=_body(UUID("00000000-0000-0000-0000-0000000000ff"))
         )
@@ -193,7 +194,9 @@ async def test_duplicate_relation_line_is_422() -> None:
             "/api/knowledge/entities", json=_body(novel.id, relations=[line, dict(line)])
         )
         assert refused.status_code == 422, refused.text
-        assert _coded(refused)["code"] == "relation-duplicate"
+        detail = _coded(refused)
+        assert detail["code"] == "relation-duplicate"
+        assert "row 1" in detail["detail"]
         assert await _entity_count(client, novel.id) == before
 
 

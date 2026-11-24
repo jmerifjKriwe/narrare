@@ -142,7 +142,7 @@ class EntityCreate(BaseModel):
     aliases: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     content: str = ""
-    relations: list[RelationLine] = Field(default_factory=list[RelationLine])
+    relations: list[RelationLine] = Field(default_factory=list)  # pyright: ignore[reportUnknownVariableType]
 
 
 class RelationPatch(BaseModel):

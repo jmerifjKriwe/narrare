@@ -60,7 +60,7 @@ import { useModalKeys } from "@shell/ui/modalKeys";
 import {
   buildEntityCreateBody,
   findDuplicateName,
-  resolveRelationTarget,
+  relationRowOutcome,
   type EntityRelationRow,
 } from "./entityCreate";
 import { TYPE_KEYS, entityTypeLabel } from "./entityTypes";
@@ -204,7 +204,7 @@ function FormHeader({
           {title}
         </h2>
         {badge !== undefined && (
-          <span className="shrink-0 rounded bg-surface-container-high px-2 py-0.5 text-meta font-medium text-muted">
+          <span className="shrink-0 rounded bg-surface-container-high px-2 py-0.5 text-meta font-medium text-foreground">
             {badge}
           </span>
         )}
@@ -560,9 +560,12 @@ export function EntityCreateDialog({
   const labelListId = useId();
 
   const duplicate = findDuplicateName(name, entities);
-  const unresolved = relations.filter((row) => {
-    if (row.target.trim() === "") return false;
-    return resolveRelationTarget(row.target, entities).kind !== "one";
+  // Every filled row the save will drop — an unresolved target and a
+  // resolved target without its label both count; only an untouched add-row
+  // stays silent.
+  const dropped = relations.filter((row) => {
+    const outcome = relationRowOutcome(row, entities);
+    return outcome === "unresolved-target" || outcome === "missing-label";
   }).length;
   const ready = name.trim() !== "" && type !== "";
   const entityNames = useMemo(
@@ -728,55 +731,59 @@ export function EntityCreateDialog({
             </p>
           ) : (
             <div className="space-y-2">
-              {relations.map((row, index) => (
-                <div key={row.key} className="flex items-center gap-2">
-                  <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
-                    <input
-                      data-testid={`entity-create-relation-${index}-entity`}
-                      type="text"
-                      list={entityListId}
-                      value={row.target}
-                      aria-label={t("knowledge.create.entityLabel")}
-                      placeholder={t("knowledge.create.entityLabel")}
-                      onChange={(event) => updateRelation(index, { target: event.target.value })}
-                      className={`${INPUT} ${FOCUS}`}
-                    />
-                    <input
-                      data-testid={`entity-create-relation-${index}-label`}
-                      type="text"
-                      list={labelListId}
-                      value={row.relationType}
-                      aria-label={t("knowledge.create.relationLabelLabel")}
-                      placeholder={t("knowledge.create.relationLabelPlaceholder")}
-                      maxLength={RELATION_TYPE_MAX}
-                      onChange={(event) =>
-                        updateRelation(index, { relationType: event.target.value })
+              {relations.map((row, index) => {
+                const missingLabel = relationRowOutcome(row, entities) === "missing-label";
+                return (
+                  <div key={row.key} className="flex items-center gap-2">
+                    <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
+                      <input
+                        data-testid={`entity-create-relation-${index}-entity`}
+                        type="text"
+                        list={entityListId}
+                        value={row.target}
+                        aria-label={t("knowledge.create.entityLabel")}
+                        placeholder={t("knowledge.create.entityLabel")}
+                        onChange={(event) => updateRelation(index, { target: event.target.value })}
+                        className={`${INPUT} ${FOCUS}`}
+                      />
+                      <input
+                        data-testid={`entity-create-relation-${index}-label`}
+                        type="text"
+                        list={labelListId}
+                        value={row.relationType}
+                        aria-label={t("knowledge.create.relationLabelLabel")}
+                        aria-invalid={missingLabel || undefined}
+                        placeholder={t("knowledge.create.relationLabelPlaceholder")}
+                        maxLength={RELATION_TYPE_MAX}
+                        onChange={(event) =>
+                          updateRelation(index, { relationType: event.target.value })
+                        }
+                        className={`${INPUT} ${FOCUS} ${missingLabel ? "ring-1 ring-danger" : ""}`}
+                      />
+                      <input
+                        data-testid={`entity-create-relation-${index}-note`}
+                        type="text"
+                        value={row.note}
+                        aria-label={t("knowledge.crud.noteLabel")}
+                        placeholder={t("knowledge.crud.noteLabel")}
+                        onChange={(event) => updateRelation(index, { note: event.target.value })}
+                        className={`${INPUT} ${FOCUS}`}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={t("knowledge.create.removeRelation")}
+                      onClick={() =>
+                        setRelations((rows) => rows.filter((_row, rowIndex) => rowIndex !== index))
                       }
-                      className={`${INPUT} ${FOCUS}`}
-                    />
-                    <input
-                      data-testid={`entity-create-relation-${index}-note`}
-                      type="text"
-                      value={row.note}
-                      aria-label={t("knowledge.crud.noteLabel")}
-                      placeholder={t("knowledge.crud.noteLabel")}
-                      onChange={(event) => updateRelation(index, { note: event.target.value })}
-                      className={`${INPUT} ${FOCUS}`}
-                    />
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-danger ${FOCUS}`}
+                    >
+                      <Icon name="trash" size={15} />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    aria-label={t("knowledge.create.removeRelation")}
-                    onClick={() =>
-                      setRelations((rows) => rows.filter((_row, rowIndex) => rowIndex !== index))
-                    }
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-danger ${FOCUS}`}
-                  >
-                    <Icon name="trash" size={15} />
-                  </button>
-                </div>
-              ))}
-              {unresolved > 0 && (
+                );
+              })}
+              {dropped > 0 && (
                 <p data-testid="entity-create-unresolved-note" className="text-[11px] leading-snug text-muted">
                   {t("knowledge.create.unresolvedNote")}
                 </p>
@@ -802,9 +809,11 @@ export function EntityCreateDialog({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="leading-snug">
-                  {t("knowledge.create.failed", {
-                    detail: failure.detail ?? failure.message,
-                  })}
+                  {failure.code === "transport"
+                    ? t("knowledge.create.failedTransport")
+                    : t("knowledge.create.failed", {
+                        detail: failure.detail ?? failure.message,
+                      })}
                 </p>
                 {failure.code !== undefined && (
                   <p className="mt-0.5 font-mono text-[11px] text-danger">{failure.code}</p>

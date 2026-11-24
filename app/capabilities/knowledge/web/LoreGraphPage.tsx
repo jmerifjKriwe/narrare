@@ -49,6 +49,7 @@ import { usePageTitle } from "@shell/lib/pageTitle";
 import { useEntitiesQuery, useNovelRelationsQuery } from "@shell/lib/query";
 import { CARD_EYEBROW, FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
+import { useToast } from "@shell/ui/toast";
 
 import { EntityDossier } from "./EntityDossier";
 import { CreateRelationDialog, EntityCreateDialog, MergeDialog } from "./crudDialogs";
@@ -84,6 +85,7 @@ function snippet(content: string): string {
 
 export function LoreGraphPage() {
   const t = useTranslation();
+  const toast = useToast();
   const { novelId } = useParams({ from: GRAPH_PATH });
   const { entity: selectedId } = useSearch({ from: GRAPH_PATH });
   const navigate = useNavigate();
@@ -876,7 +878,10 @@ export function LoreGraphPage() {
           entities={entityList}
           openerId="graph-new-entity"
           onClose={() => setCrud(null)}
-          onCreated={(entity) => select(entity.id)}
+          onCreated={(entity, relations) => {
+            select(entity.id);
+            toast.show(t("knowledge.create.created", { count: relations }));
+          }}
         />
       )}
     </div>

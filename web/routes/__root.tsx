@@ -8,6 +8,7 @@ import { adoptServerLocale, activeLocale, subscribeLocale } from "../lib/locale"
 import { PageTitleProvider, applyBaseTitle, usePageTitle } from "../lib/pageTitle";
 import { useSettingsQuery } from "../lib/query";
 import { adoptServerTheme } from "../lib/theme";
+import { ToastProvider } from "../ui/toast";
 import "../globals.css";
 
 /** The shell root: providers, locale and theme adoption, the tab title's
@@ -58,13 +59,15 @@ function Shell() {
 
   return (
     <PageTitleProvider>
-      {/* The chrome frames the post-setup surfaces; the guided flows stand
-          alone. The frame keeps the outlet at a constant tree depth in
-          both modes — a branch flip must never remount the page being
-          navigated away from (ChromeFrame's own note). */}
-      <ChromeFrame standalone={standalone}>
-        <Outlet />
-      </ChromeFrame>
+      <ToastProvider>
+        {/* The chrome frames the post-setup surfaces; the guided flows stand
+            alone. The frame keeps the outlet at a constant tree depth in
+            both modes — a branch flip must never remount the page being
+            navigated away from (ChromeFrame's own note). */}
+        <ChromeFrame standalone={standalone}>
+          <Outlet />
+        </ChromeFrame>
+      </ToastProvider>
     </PageTitleProvider>
   );
 }

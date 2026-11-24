@@ -9,11 +9,10 @@
  * mocked at its module boundary, the house pattern); a refusal keeps the
  * answers and names the loss-free error with a retry, a 409 on an edge names
  * the duplicate it is. The merge names source → target and the loss before it
- * happens. The face speaks du-tone in all three catalogs.
- *
- * New-entity creation has no endpoint (entities are born through the
- * extraction review) — there is no CreateEntityDialog here; the graph's door
- * stands an honest disabled gap (pinned in LoreGraphPage.test.tsx).
+ * happens. The hand-made create (W9) is the same frame: a name and a type
+ * gate the save, a duplicate name is a notice, and a relation row the save
+ * will drop is counted rather than lost. The face speaks du-tone in all
+ * three catalogs.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -456,6 +455,44 @@ describe("EntityCreateDialog — create by hand", () => {
         ],
       },
     });
+  });
+
+  it("a resolved target without a label is counted into the notice and marked", () => {
+    openCreate();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Nevada-Trümmerfeld" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "location" } });
+    fireEvent.click(screen.getByTestId("entity-create-add-relation"));
+    fireEvent.change(screen.getByTestId("entity-create-relation-0-entity"), {
+      target: { value: "Station 7" },
+    });
+    const note = screen.getByTestId("entity-create-unresolved-note");
+    expect(note.textContent).toBe(de["knowledge.create.unresolvedNote"]);
+    const label = screen.getByTestId("entity-create-relation-0-label");
+    expect(label.getAttribute("aria-invalid")).toBe("true");
+
+    // Filling the label lifts both signals: the row will land.
+    fireEvent.change(label, { target: { value: de["knowledge.relation.located_in"] } });
+    expect(screen.queryByTestId("entity-create-unresolved-note")).toBeNull();
+    expect(label.getAttribute("aria-invalid")).toBeNull();
+  });
+
+  it("a transport failure speaks the catalog's sentence, never the browser's English", async () => {
+    api.POST.mockRejectedValue(new TypeError("Failed to fetch"));
+    openCreate();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Nevada-Trümmerfeld" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "location" } });
+    fireEvent.click(screen.getByTestId("entity-create-save"));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(de["knowledge.create.failedTransport"]);
+    expect(alert.textContent).not.toContain("Failed to fetch");
+    // The fields stand; the dialog is the writer's again.
+    expect((screen.getByTestId("entity-create-name") as HTMLInputElement).value).toBe(
+      "Nevada-Trümmerfeld",
+    );
   });
 
   it("a refused save shows code and detail and keeps the fields", async () => {

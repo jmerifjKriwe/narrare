@@ -330,10 +330,10 @@ async def create_entity(payload: EntityCreate, service: ServiceDep) -> EntityRea
         raise HTTPException(
             status_code=422, detail=coded_detail("relation-target-invalid", str(error))
         ) from None
-    except RelationExistsError:
+    except RelationExistsError as error:
         raise HTTPException(
             status_code=422,
-            detail=coded_detail("relation-duplicate", "this relation exists already"),
+            detail=coded_detail("relation-duplicate", str(error)),
         ) from None
     return EntityRead.model_validate(entity)
 

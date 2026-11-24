@@ -45,6 +45,7 @@ import { usePageTitle } from "@shell/lib/pageTitle";
 import { useEntitiesQuery, useNovelRelationsQuery } from "@shell/lib/query";
 import { CARD_EYEBROW, FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
+import { useToast } from "@shell/ui/toast";
 
 import { EntityDossier } from "./EntityDossier";
 import { EntityCreateDialog } from "./crudDialogs";
@@ -64,6 +65,7 @@ function tabClass(active: boolean): string {
 
 export function DossiersPage() {
   const t = useTranslation();
+  const toast = useToast();
   const { novelId } = useParams({ from: DOSSIERS_PATH });
   const { entity: selectedId } = useSearch({ from: DOSSIERS_PATH });
   const navigate = useNavigate();
@@ -469,7 +471,10 @@ export function DossiersPage() {
           entities={entityList}
           openerId="dossiers-new-dossier"
           onClose={() => setCreating(false)}
-          onCreated={(entity) => select(entity.id)}
+          onCreated={(entity, relations) => {
+            select(entity.id);
+            toast.show(t("knowledge.create.created", { count: relations }));
+          }}
         />
       )}
     </div>

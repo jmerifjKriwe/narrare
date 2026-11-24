@@ -12,6 +12,7 @@ import type { Entity } from "@shell/lib/api/client";
 import {
   buildEntityCreateBody,
   findDuplicateName,
+  relationRowOutcome,
   resolveRelationTarget,
   type EntityCreateForm,
 } from "./entityCreate";
@@ -105,5 +106,32 @@ describe("buildEntityCreateBody", () => {
     expect(body.relations).toEqual([
       { to_entity_id: "e3", relation_type: "Liegt in", note: "nördlich" },
     ]);
+  });
+
+  it("leaves a resolved row without a label out, so the dialog can count it", () => {
+    const body = buildEntityCreateBody(
+      form({
+        relations: [{ target: "Forschungsstation 7", relationType: "   ", note: "" }],
+      }),
+    );
+    expect(body.relations).toEqual([]);
+  });
+});
+
+describe("relationRowOutcome", () => {
+  it("names what the save will do with a row, so nothing drops silently", () => {
+    expect(
+      relationRowOutcome(
+        { target: "  forschungsstation 7 ", relationType: " Liegt in ", note: "" },
+        ENTITIES,
+      ),
+    ).toBe("kept");
+    expect(relationRowOutcome({ target: "Forschungsstation 7", relationType: "", note: "" }, ENTITIES)).toBe(
+      "missing-label",
+    );
+    expect(relationRowOutcome({ target: "Nebel", relationType: "kennt", note: "" }, ENTITIES)).toBe(
+      "unresolved-target",
+    );
+    expect(relationRowOutcome({ target: "   ", relationType: "", note: "" }, ENTITIES)).toBe("empty");
   });
 });

@@ -1222,9 +1222,15 @@ function createEntityFailure(cause: unknown): WireError {
     error?: { detail?: { code?: string; detail?: string } };
   };
   const response = failure?.response;
+  if (response === undefined) {
+    // A transport failure carries no HTTP answer: the browser's own
+    // «Failed to fetch» is English and names no cause a writer can act on,
+    // so the dialog renders the catalog's sentence instead.
+    return Object.assign(new Error("create refused: transport"), { code: "transport" });
+  }
   const detail = failure?.error?.detail;
-  return Object.assign(new Error(`create refused: ${response?.status ?? "unknown"}`), {
-    status: response?.status,
+  return Object.assign(new Error(`create refused: ${response.status}`), {
+    status: response.status,
     code: detail?.code,
     detail: detail?.detail,
   });
@@ -1239,11 +1245,11 @@ function createEntityFailure(cause: unknown): WireError {
 export function useCreateEntity(): UseMutationResult<Entity, WireError, EntityCreate> {
   return useMutation({
     mutationFn: async (body: EntityCreate) => {
-      const { data, response, error } = await client.POST("/api/knowledge/entities", {
-        body,
+      const result = await client.POST("/api/knowledge/entities", { body }).catch((cause: unknown) => {
+        throw createEntityFailure(cause);
       });
-      if (!response.ok || !data) throw createEntityFailure({ response, error });
-      return data;
+      if (!result.response.ok || !result.data) throw createEntityFailure(result);
+      return result.data;
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "entities"] });

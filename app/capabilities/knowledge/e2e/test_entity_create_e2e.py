@@ -85,6 +85,9 @@ def test_create_by_hand_from_the_graph(page: Page, installed: Stack) -> None:
     _goto_graph(page, novel_id)
 
     dialog = _open_create(page, "graph-new-entity")
+    # The dialog itself is a face: axe sees it while it is open, not only the
+    # page left behind after it closes.
+    assert_accessible(page)
     dialog.get_by_test_id("entity-create-name").fill("Nevada-Trümmerfeld")
     dialog.get_by_test_id("entity-create-type").select_option("location")
     tags = dialog.get_by_test_id("entity-create-tags")
@@ -97,6 +100,9 @@ def test_create_by_hand_from_the_graph(page: Page, installed: Stack) -> None:
     dialog.get_by_test_id("entity-create-relation-0-label").fill("Liegt in")
     dialog.get_by_test_id("entity-create-save").click()
     expect(dialog).not_to_be_visible()
+
+    # The save confirms in the shell's toast with the edges that landed.
+    expect(page.get_by_test_id("toast")).to_contain_text("Entität angelegt · 1 Beziehung verknüpft")
 
     # The save selects the new row: its dossier names the entity and the edge.
     dossier = page.get_by_test_id("entity-dossier")
@@ -119,6 +125,11 @@ def test_create_by_hand_from_the_dossiers(page: Page, installed: Stack) -> None:
     dialog.get_by_test_id("entity-create-type").select_option("location")
     dialog.get_by_test_id("entity-create-save").click()
     expect(dialog).not_to_be_visible()
+
+    # The dossiers door confirms the same way, with no edge landed.
+    expect(page.get_by_test_id("toast")).to_contain_text(
+        "Entität angelegt · 0 Beziehungen verknüpft"
+    )
 
     card = page.get_by_test_id("dossier-card").filter(has_text="Nebelhaus")
     expect(card).to_be_visible()
