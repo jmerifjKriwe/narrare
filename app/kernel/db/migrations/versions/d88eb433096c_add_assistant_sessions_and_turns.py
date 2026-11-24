@@ -100,10 +100,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # The child first: its foreign key points at the session table.
-    op.drop_index(op.f("ix_assistant_turns_user_id"), table_name="assistant_turns")
-    op.drop_index(op.f("ix_assistant_turns_session_id"), table_name="assistant_turns")
-    op.drop_table("assistant_turns")
-    op.drop_index(op.f("ix_assistant_sessions_user_id"), table_name="assistant_sessions")
-    op.drop_index(op.f("ix_assistant_sessions_novel_id"), table_name="assistant_sessions")
-    op.drop_table("assistant_sessions")
+    """Downgrade is not a script: the pre-migration dump is the way back.
+
+    Design D6 / ADR-103 — the history never runs destructive DDL downward;
+    restore the dump ``prepare_database`` took before the upgrade instead.
+    """
+    raise RuntimeError(
+        "downgrade is not supported; restore the pre-migration dump (design D6, ADR-103)"
+    )

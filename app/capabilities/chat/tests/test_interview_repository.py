@@ -124,6 +124,58 @@ async def test_a_foreign_session_is_none() -> None:
 
 
 @pytest.mark.usefixtures("two_users")
+async def test_lock_returns_the_owned_row_for_update() -> None:
+    """The lock hands back this user's row, and the write under it commits."""
+    novel = await _seed_novel()
+    async with Session() as session:
+        created = await AssistantSessionRepository(session, LOCAL_USER_ID).create(
+            novel.id, MODE, "character", None
+        )
+        await session.commit()
+        session_id = created.id
+
+    closed_at = datetime(2026, 2, 1, tzinfo=UTC)
+    async with Session() as session:
+        repo = AssistantSessionRepository(session, LOCAL_USER_ID)
+        locked = await repo.lock(session_id)
+        assert locked is not None
+        assert locked.id == session_id
+        # The row the lock returned is writable without a reload.
+        locked.closed_at = closed_at
+        await session.commit()
+
+    async with Session() as session:
+        reread = await AssistantSessionRepository(session, LOCAL_USER_ID).get(session_id)
+        assert reread is not None
+        assert reread.closed_at == closed_at
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_set_suggestion_state_persists() -> None:
+    """Settling a turn's suggestion writes the state the next read sees."""
+    novel = await _seed_novel()
+    async with Session() as session:
+        repo = AssistantSessionRepository(session, LOCAL_USER_ID)
+        created = await repo.create(novel.id, MODE, "character", None)
+        await repo.append_turn(created.id, 1, "assistant", "A new character?", suggestion="Mira")
+        await session.commit()
+        session_id = created.id
+
+    async with Session() as session:
+        repo = AssistantSessionRepository(session, LOCAL_USER_ID)
+        [pending] = await repo.last_turns(session_id, 10)
+        assert pending.suggestion_state is None
+        await repo.set_suggestion_state(pending, "accepted")
+        await session.commit()
+
+    async with Session() as session:
+        [settled] = await AssistantSessionRepository(session, LOCAL_USER_ID).last_turns(
+            session_id, 10
+        )
+        assert settled.suggestion_state == "accepted"
+
+
+@pytest.mark.usefixtures("two_users")
 async def test_list_is_newest_first_and_own_only() -> None:
     """The novel's list is this user's sessions, newest first, and no others."""
     novel = await _seed_novel()
@@ -185,8 +237,9 @@ async def test_seq_is_unique_per_session() -> None:
         assert await repo.next_seq(first_id) == 2
         assert await repo.next_seq(second_id) == 1
 
-        with pytest.raises(IntegrityError):
+        with pytest.raises(IntegrityError) as excinfo:
             await repo.append_turn(first_id, 1, "assistant", "again")
+        assert "uq_assistant_turns_seq" in str(excinfo.value)
         await session.rollback()
 
         await repo.append_turn(second_id, 1, "user", "first in its own session")
@@ -205,21 +258,36 @@ async def test_seq_is_unique_per_session() -> None:
 async def test_closing_a_novel_deletes_its_sessions() -> None:
     """The novel's cascade reaches the session and the turn below it."""
     novel = await _seed_novel()
+    other_novel = await _seed_novel(title="Another Book")
     async with Session() as session:
         repo = AssistantSessionRepository(session, LOCAL_USER_ID)
         created = await repo.create(novel.id, MODE, "character", None)
         await repo.append_turn(created.id, 1, "user", "hello")
+        survivor = await repo.create(other_novel.id, MODE, "character", None)
+        await repo.append_turn(survivor.id, 1, "user", "still here")
         await session.commit()
+        session_id, survivor_id = created.id, survivor.id
 
     async with Session() as session:
         await session.execute(delete(Novel).where(Novel.id == novel.id))
         await session.commit()
 
     async with Session() as session:
-        sessions = await session.scalar(select(func.count()).select_from(AssistantSession))
-        turns = await session.scalar(select(func.count()).select_from(AssistantTurn))
+        sessions = await session.scalar(
+            select(func.count())
+            .select_from(AssistantSession)
+            .where(AssistantSession.novel_id == novel.id)
+        )
+        turns = await session.scalar(
+            select(func.count())
+            .select_from(AssistantTurn)
+            .where(AssistantTurn.session_id == session_id)
+        )
         assert sessions == 0
         assert turns == 0
+        # The other novel's interview is untouched, so the zeros above mean
+        # the cascade, not an empty table.
+        assert await AssistantSessionRepository(session, LOCAL_USER_ID).get(survivor_id) is not None
 
 
 @pytest.mark.usefixtures("two_users")
@@ -251,3 +319,6 @@ async def test_roster_lists_only_the_novel() -> None:
         assert await novel_repo.exists(novel.id) is True
         assert await novel_repo.exists(foreign_novel.id) is False
         assert await novel_repo.heading(novel.id) == ("The Lighthouse", None)
+        # Absent and foreign are one answer: the heading returns None.
+        assert await novel_repo.heading(foreign_novel.id) is None
+        assert await novel_repo.heading(uuid4()) is None

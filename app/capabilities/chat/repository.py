@@ -10,7 +10,7 @@ capability that writes the canon.
 from datetime import UTC, datetime
 from uuid import UUID  # noqa: TC003
 
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import load_only
 
 from app.capabilities.chat.models import AssistantSession, AssistantTurn
@@ -23,7 +23,7 @@ class AssistantSessionRepository(ScopedRepository[AssistantSession]):
 
     model = AssistantSession
 
-    def _turns(self):
+    def _turns(self) -> Select[AssistantTurn]:
         """A turn select already narrowed to this user."""
         return select(AssistantTurn).where(AssistantTurn.user_id == self.user_id)
 
@@ -55,7 +55,7 @@ class AssistantSessionRepository(ScopedRepository[AssistantSession]):
         result = await self.session.scalars(
             self.query()
             .where(AssistantSession.novel_id == novel_id)
-            .order_by(AssistantSession.created_at.desc())
+            .order_by(AssistantSession.created_at.desc(), AssistantSession.id)
         )
         return list(result.all())
 
@@ -86,7 +86,13 @@ class AssistantSessionRepository(ScopedRepository[AssistantSession]):
         return list(reversed(result.all()))
 
     async def next_seq(self, session_id: UUID) -> int:
-        """The next free position, read inside the caller's locked transaction."""
+        """The next free position, read inside the caller's locked transaction.
+
+        Precondition: the caller has locked the session through :meth:`lock`
+        first. This method takes a bare ``session_id`` and does not check the
+        session's owner; the lock's scoped read is what proves the session is
+        this user's and serializes the allocation.
+        """
         highest = await self.session.scalar(
             select(func.max(AssistantTurn.seq)).where(
                 AssistantTurn.user_id == self.user_id,
@@ -106,7 +112,13 @@ class AssistantSessionRepository(ScopedRepository[AssistantSession]):
         suggestion: str | None = None,
         suggestion_state: str | None = None,
     ) -> AssistantTurn:
-        """Flush one turn for this user without committing the transaction."""
+        """Flush one turn for this user without committing the transaction.
+
+        Precondition: the caller has locked the session through :meth:`lock`
+        first. This method takes a bare ``session_id`` and does not check the
+        session's owner; the lock's scoped read is what proves the session is
+        this user's and serializes the ``seq`` allocation.
+        """
         turn = AssistantTurn(
             user_id=self.user_id,
             session_id=session_id,
@@ -155,7 +167,7 @@ class EntityRosterRepository(ScopedRepository[Entity]):
             self.query()
             .options(load_only(Entity.id, Entity.name, Entity.type, Entity.aliases))
             .where(Entity.novel_id == novel_id)
-            .order_by(Entity.name)
+            .order_by(Entity.name, Entity.id)
             .limit(limit)
         )
         return list(result.all())
@@ -173,11 +185,12 @@ class NovelRepository(ScopedRepository[Novel]):
         )
         return found is not None
 
-    async def heading(self, novel_id: UUID) -> tuple[str, str | None]:
+    async def heading(self, novel_id: UUID) -> tuple[str, str | None] | None:
         """The title and the genre the prompt renders, scoped to this user.
 
-        Absent and foreign are the same refusal the service's ``not-found``
-        makes; a caller that needs to answer 404 asks :meth:`exists` first.
+        ``None`` covers both an absent novel and another user's, so a caller
+        that needs the coded 404 tests this one result instead of a second
+        round trip through :meth:`exists`.
         """
         row = (
             await self.session.execute(
@@ -185,5 +198,5 @@ class NovelRepository(ScopedRepository[Novel]):
             )
         ).one_or_none()
         if row is None:
-            raise LookupError(f"novel {novel_id} is not visible to this user")
+            return None
         return row.title, row.genre
