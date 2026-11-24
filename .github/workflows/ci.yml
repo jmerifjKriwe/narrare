@@ -482,7 +482,8 @@ jobs:
             -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')
           docker run -d --name e2e-app --network e2e -p 8080:8000 \
             -e NARRE_DB_HOST=e2e-pg -e NARRE_DB_NAME=narrare -e NARRE_DB_USER=narrare \
-            -e NARRE_DB_PASSWORD=narrare -e NARRE_SECRET_KEY="$key" narrare:candidate
+            -e NARRE_DB_PASSWORD=narrare -e NARRE_SECRET_KEY="$key" \
+            -e NARRE_UPDATE_CHECK_URL=off narrare:candidate
           for _ in $(seq 1 90); do
             curl -sf -o /dev/null http://127.0.0.1:8080/ && exit 0
             sleep 1
