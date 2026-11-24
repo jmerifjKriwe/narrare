@@ -2,7 +2,7 @@
 
 > **Status:** living document, opened with the settings AI-Regeln & prompts
 > wave W8's PR 3 (2026-11-24, the gap ledger landing; PRs 1 #939 and 2
-> #944 merged before it, PR 3 rides `feat/prompts-rebuild`). Keep it
+> #944 merged before it, PR 3 merged as #948 (`e93526e3`). Keep it
 > current: when a row's trigger lands, update the row in the same commit
 > that replaces the interim. This is the single English list of every
 > element of the capability's surfaces — the AI-Regeln page
@@ -166,7 +166,7 @@ owner of the trigger and the row's child under the wave's index.
   are marked in the same commit that opens this ledger:
   - Row 1 (the AI-Regeln tabs, the pointer row): **resolved** — W8 built
     the AI-Regeln surface from the parked authority and the prompts
-    surface beside it (PRs #939/#944/PR 3); the Allgemein page's chrome
+    surface beside it (PRs #939/#944/#948); the Allgemein page's chrome
     gained the doors.
   - Row 2 (the Projekt-Regeln fields): **resolved** — the W8 design's
     ruling 1 kept them in BookSettings, and the AI-Regeln surface
