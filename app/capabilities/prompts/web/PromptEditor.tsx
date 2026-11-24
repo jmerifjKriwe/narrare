@@ -281,7 +281,11 @@ export function PromptEditor(props: {
               <textarea
                 ref={textareaRef}
                 data-testid="draft-textarea"
-                aria-label={t("prompts.editor.draft.title.global")}
+                aria-label={
+                  scope.tier === "novel" && scope.novelTitle !== null
+                    ? t("prompts.editor.draft.title.novel", { novel: scope.novelTitle })
+                    : t("prompts.editor.draft.title.global")
+                }
                 spellCheck={false}
                 value={draft}
                 onChange={(event) => {
