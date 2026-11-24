@@ -251,12 +251,19 @@ steps and never holds a transaction across the call:
    client keeps the text in the composer. Retry is therefore not a second user
    turn: the failed attempt left no row.
 3. One transaction: the session row is locked, «closed» is checked again, both
-   turns are written with `seq` allocated under the lock, the session's proposal
-   is replaced, the audit rows of the calls are written.
+   turns are written with `seq` allocated under the lock, the model's changes
+   are merged into the proposal as it stands under the lock, the audit rows of
+   the calls are written.
+
+**The proposal is merged, not replaced.** The model's output is compared with
+the input it was given: what it changed is written, what it left alone is taken
+from the proposal as it stands now. The provenance rule reads the same
+comparison.
 
 Concurrent turns on one session (two tabs, a double submit) cannot interleave
-their rows: each allocates `seq` inside its own write transaction. The composer
-is disabled while a turn runs, so the case stays an edge, not a feature.
+their rows and cannot erase each other: each allocates `seq` inside its own
+write transaction, and each merges only its own changes. The composer is
+disabled while a turn runs, so the case stays an edge, not a feature.
 
 Model output, per turn:
 `{"reply": str, "slots": {"name"?, "aliases"?, "tags"?, "content"?},
