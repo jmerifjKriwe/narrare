@@ -5,18 +5,21 @@
 import en_central from "../../../i18n/en.json";
 import en_knowledge from "../../../app/capabilities/knowledge/web/i18n/en.json";
 import en_planning from "../../../app/capabilities/planning/web/i18n/en.json";
+import en_prompts from "../../../app/capabilities/prompts/web/i18n/en.json";
 import en_settings from "../../../app/capabilities/settings/web/i18n/en.json";
 import en_setup from "../../../app/capabilities/setup/web/i18n/en.json";
 import en_writing from "../../../app/capabilities/writing/web/i18n/en.json";
 import de_central from "../../../i18n/de.json";
 import de_knowledge from "../../../app/capabilities/knowledge/web/i18n/de.json";
 import de_planning from "../../../app/capabilities/planning/web/i18n/de.json";
+import de_prompts from "../../../app/capabilities/prompts/web/i18n/de.json";
 import de_settings from "../../../app/capabilities/settings/web/i18n/de.json";
 import de_setup from "../../../app/capabilities/setup/web/i18n/de.json";
 import de_writing from "../../../app/capabilities/writing/web/i18n/de.json";
 import fr_central from "../../../i18n/fr.json";
 import fr_knowledge from "../../../app/capabilities/knowledge/web/i18n/fr.json";
 import fr_planning from "../../../app/capabilities/planning/web/i18n/fr.json";
+import fr_prompts from "../../../app/capabilities/prompts/web/i18n/fr.json";
 import fr_settings from "../../../app/capabilities/settings/web/i18n/fr.json";
 import fr_setup from "../../../app/capabilities/setup/web/i18n/fr.json";
 import fr_writing from "../../../app/capabilities/writing/web/i18n/fr.json";
@@ -28,6 +31,7 @@ const en_merged = {
   ...en_central,
   ...en_knowledge,
   ...en_planning,
+  ...en_prompts,
   ...en_settings,
   ...en_setup,
   ...en_writing,
@@ -36,6 +40,7 @@ const de_merged = {
   ...de_central,
   ...de_knowledge,
   ...de_planning,
+  ...de_prompts,
   ...de_settings,
   ...de_setup,
   ...de_writing,
@@ -44,6 +49,7 @@ const fr_merged = {
   ...fr_central,
   ...fr_knowledge,
   ...fr_planning,
+  ...fr_prompts,
   ...fr_settings,
   ...fr_setup,
   ...fr_writing,

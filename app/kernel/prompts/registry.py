@@ -7,8 +7,12 @@ skipped) and imports each once, so the process holds one registry. Every
 registration carries the bundled Jinja template, a sample-variable factory
 (save-time validation, the smoke tests and the editor's variable legend all
 render the same sample), an optional contract over the rendered sample, and
-whether the key may carry a novel scope. The key set is closed: users
-override keys, they never invent them — an unknown key is a ``KeyError``.
+whether the key may carry a novel scope. A registration may also carry the
+key's live-test assembly (W8): the capability's own callable that gathers
+the key's real inputs and renders the draft-or-chain source against them —
+the prompts surface's live test consumes it through the spec, never by
+reaching into another capability. The key set is closed: users override
+keys, they never invent them — an unknown key is a ``KeyError``.
 
 The render itself and its named refusals live in
 :mod:`app.kernel.prompts.rendering`; the model and repository of the user-owned
@@ -16,12 +20,18 @@ overrides dock here later, on the ``ProviderProfile`` precedent.
 """
 
 import sys
-from collections.abc import Callable  # noqa: TC003  the dataclass fields evaluate
+from collections.abc import Awaitable, Callable  # noqa: TC003  the dataclass fields evaluate
 from dataclasses import dataclass
 from importlib import import_module
 from logging import getLogger
 from pathlib import Path
 from threading import RLock
+from uuid import UUID  # noqa: TC003  the dataclass fields evaluate
+
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002  the context's field evaluates
+
+from app.kernel.embeddings.contract import EmbeddingProvider  # noqa: TC001  the context's field
+from app.kernel.llm.resolution import ResolvedProvider  # noqa: TC001  the context's field
 
 REASONS: tuple[str, ...] = (
     "syntax",
@@ -40,15 +50,68 @@ caller can frame the failure the way it frames a budget refusal today.
 """
 
 
+class LiveContextMissingError(RuntimeError):
+    """The live test's real assembly found no manuscript data to assemble.
+
+    The live test rides the capability's real context — the scene the writer
+    last touched, the chapter's prose, the retrieved passages. A fresh
+    instance has none of it, and samples would betray the test's promise, so
+    the assembly refuses by this name instead; the caller frames it as its
+    no-context face.
+    """
+
+
+@dataclass(frozen=True)
+class AssembledContext:
+    """The live test's assembled call: the prompt and the facts that rode in.
+
+    ``prompt`` is the rendered source — the editor draft when one was carried,
+    the effective chain otherwise — filled with the capability's real context.
+    ``facts`` names what rode in, in stable keys the surfaces localize
+    (``novel``, ``chapter``, ``passages``, …); the values are the data itself.
+    """
+
+    prompt: str
+    facts: dict[str, str]
+
+
+@dataclass(frozen=True)
+class LiveTestContext:
+    """What a live-test assembly may read: the scope, the draft, the tier.
+
+    ``source`` is the source the call renders — the editor draft under test,
+    else the effective chain's pick at the request's scope (the bundled
+    template when neither tier carries a row). The assembly renders it
+    through :func:`render`'s ``source`` seam, so includes resolve at the
+    same scope. ``resolved`` is the key's task cascade's answer: the tier
+    the call will ride, whose numbers the writing assembly budgets with.
+    """
+
+    session: AsyncSession
+    user_id: UUID
+    novel_id: UUID | None
+    source: str | None
+    resolved: ResolvedProvider
+    embeddings: EmbeddingProvider
+
+
 @dataclass(frozen=True)
 class PromptSpec:
-    """One registered prompt: the bundled text and what validating it needs."""
+    """One registered prompt: the bundled text and what validating it needs.
+
+    ``assemble`` is the capability's own live-test context builder (W8):
+    the one callable that gathers the key's real inputs and renders the
+    draft-or-chain source against them. ``None`` until a capability docks
+    it — the prompts surface's live test refuses a key without one, a
+    registration gap the smoke suite names.
+    """
 
     key: str
     template: str
     sample_variables: Callable[[], dict[str, object]]
     contract: Callable[[str], bool] | None = None
     novel_scopable: bool = True
+    assemble: Callable[[LiveTestContext], Awaitable[AssembledContext]] | None = None
 
 
 class PromptRenderError(RuntimeError):
@@ -86,6 +149,7 @@ class PromptRegistry:
         sample_variables: Callable[[], dict[str, object]],
         contract: Callable[[str], bool] | None = None,
         novel_scopable: bool = True,
+        assemble: Callable[[LiveTestContext], Awaitable[AssembledContext]] | None = None,
     ) -> None:
         """Register the bundled template under ``key``; a duplicate key is refused."""
         if key in self._specs:
@@ -96,6 +160,7 @@ class PromptRegistry:
             sample_variables=sample_variables,
             contract=contract,
             novel_scopable=novel_scopable,
+            assemble=assemble,
         )
 
     def spec(self, key: str) -> PromptSpec:

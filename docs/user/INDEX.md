@@ -12,6 +12,7 @@ documentation grows around this index, never inside it.
 | --- | --- | --- | --- |
 | Knowledge | /knowledge | — | an embedding model |
 | Planning | /novels/$novelId/planning/timeline | — | — |
+| Prompts | /settings/prompts | — | — |
 | Atelier settings | /settings | — | — |
 | Welcome to the Atelier | /setup | — | — |
 | Novels | / | — | a text model |
@@ -22,6 +23,7 @@ documentation grows around this index, never inside it.
 | --- | --- | --- | --- |
 | Wissen | /knowledge | — | ein Embedding-Modell |
 | Planung | /novels/$novelId/planning/timeline | — | — |
+| Prompts | /settings/prompts | — | — |
 | Atelier-Einstellungen | /settings | — | — |
 | Willkommen im Atelier | /setup | — | — |
 | Romane | / | — | ein Textmodell |
@@ -32,6 +34,7 @@ documentation grows around this index, never inside it.
 | --- | --- | --- | --- |
 | Savoir | /knowledge | — | un modèle d'embeddings |
 | Planification | /novels/$novelId/planning/timeline | — | — |
+| Prompts | /settings/prompts | — | — |
 | Réglages de l'atelier | /settings | — | — |
 | Bienvenue dans l'Atelier | /setup | — | — |
 | Romans | / | — | un modèle de texte |

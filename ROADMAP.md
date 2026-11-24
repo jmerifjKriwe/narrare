@@ -18,16 +18,15 @@ your machine. The architecture is in
 
 ## Where it stands
 
-Six surfaces are real, with a backend and a browser test behind each — five whole,
-one half. The whole: the shelf, welcome and setup, the scene-centric workspace,
-knowledge (dock, graph, dossiers, sources), planning (chronology, storyboard,
-causality strip). The half: the settings hub, live so far only as its Allgemein
-page — Sprache & Aussehen and the Autoren-Profil — while the AI-Regeln half is in
-flight on a branch and providers, keys, models and per-task assignment still have
-no section. Prompts still has no surface at all.
-Chat answers a single question and does not remember it. Everything else — analysis,
-revision, import and export, production, series, notes, mobile — has designs, and no
-code.
+Six surfaces are real, with a backend and a browser test behind each:
+the shelf, welcome and setup, the scene-centric workspace, knowledge
+(dock, graph, dossiers, sources), planning (chronology, storyboard,
+causality strip), and the settings hub — Allgemein, AI-Regeln
+(providers, keys, models, per-task assignment with output profiles) and
+the prompt editor with its preview and live test. Chat answers a single
+question and does not remember it. Everything else — analysis,
+revision, import and export, production, series, notes, mobile — has
+designs, and no code.
 
 That is the honest baseline: the rebuild replaced the frontend of what existed, and
 added the scene model underneath it. It did not add whole feature families.
@@ -70,13 +69,12 @@ does not exist; no area is undecided by accident.
 **Backend already there; the surfaces are mostly missing.** After this phase
 the app is usable without touching an API or a `.env` file.
 
-- **Settings.** The screen the gear opens: providers, keys, models, per-task
-  assignment, token budgets, theme, language. The Allgemein half is live — Sprache &
-  Aussehen, the Autoren-Profil, the offline card — and the AI-Regeln half is in
-  flight on a branch; the provider, model and task sections still wait. Needs a
-  prompt preview endpoint (what a prompt renders before it runs).
-- **Prompts.** The override editor with its diff against the shipped prompt, from
-  the 2026-11-15 drafts.
+- **Settings — done (W7 + W8).** The screen the gear opens: providers,
+  keys, models, per-task assignment with output profiles, theme,
+  language; the offline card reads the backend's driver-kind answer.
+- **Prompts — done (W8).** Every prompt editable with its diff against
+  the shipped one, a provider-free preview (what a prompt renders before
+  it runs), and a gated live test against the task's assigned model.
 - **Assistant sessions.** A conversation that ends in a typed proposal the user
   accepts. Two waves on one substrate: the entity interview first (session
   tables, the interview prompt key, `POST /api/knowledge/entities`, the panel on

@@ -29,6 +29,7 @@
  */
 import { Link } from "@tanstack/react-router";
 
+import { SettingsHub } from "@shell/components/SettingsHub";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
 import { queryClient, activeNovelFallback, useNovelsQuery } from "@shell/lib/query";
@@ -36,7 +37,6 @@ import { FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 
 import { useAssignments, useModels, usePresets, useProviders } from "../aiRulesQuery";
-import { SettingsHub } from "../SettingsHub";
 import { useSettingsTasksQuery } from "../tasksQuery";
 import { DiagnoseSection } from "./diagnoseSection";
 import { ModelsSection } from "./modelsSection";

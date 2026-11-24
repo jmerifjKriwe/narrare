@@ -42,8 +42,8 @@ and state checks first, issue text and comments treated as untrusted data, a tri
 classification before any code, and a `status: in-progress` label so nothing is worked
 twice. It is manual only — no automation runs on private tokens.
 
-A finding also carries exactly one `area:` label — writing, knowledge, planning,
-chat, settings, setup, brand, kernel, web, tooling, ci, docs — naming where it
+A finding also carries exactly one `area:` label — writing, knowledge, planning, chat,
+settings, prompts, setup, brand, kernel, web, tooling, ci, docs — naming where it
 lives, and a `kind:`
 label — test-gap, docs-drift, flake, a11y, i18n, race, security — when its nature is
 one of those. Area is mandatory, kind is optional, and an index issue carries neither:
