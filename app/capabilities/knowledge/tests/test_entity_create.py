@@ -155,6 +155,54 @@ async def test_invalid_name_and_type_are_422_naming_the_field() -> None:
         assert await _entity_count(client, novel.id) == before
 
 
+async def test_blank_or_over_long_relation_type_is_the_coded_422() -> None:
+    """The relation label's bounds are the service's coded refusal, not the
+    framework's field list: the route's own branch answers both."""
+    novel, station, _chen = await _seed_novel()
+    async with _client() as client:
+        before = await _entity_count(client, novel.id)
+        for relation_type in ("   ", "x" * 81):
+            refused = await client.post(
+                "/api/knowledge/entities",
+                json=_body(
+                    novel.id,
+                    relations=[
+                        {
+                            "to_entity_id": str(station.id),
+                            "relation_type": relation_type,
+                            "note": None,
+                        }
+                    ],
+                ),
+            )
+            assert refused.status_code == 422, relation_type
+            detail = _coded(refused)
+            assert detail["code"] == "entity-invalid"
+            assert "relation type" in detail["detail"]
+        assert await _entity_count(client, novel.id) == before
+
+
+async def test_novel_deleted_before_the_flush_is_404(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The ownership check passed, then the novel vanished before the entity
+    row flushed: the foreign key is the scoped absence's 404, never a 500."""
+    novel, _station, _chen = await _seed_novel()
+    original = getattr(KnowledgeService, "_own_novel")  # noqa: B009
+
+    async def vanish(self: KnowledgeService, novel_id: UUID) -> Novel:
+        row = await original(self, novel_id)
+        await self.session.delete(row)
+        await self.session.commit()
+        return row
+
+    monkeypatch.setattr(KnowledgeService, "_own_novel", vanish)
+    async with _client() as client:
+        refused = await client.post("/api/knowledge/entities", json=_body(novel.id))
+    assert refused.status_code == 404, refused.text
+    assert _coded(refused)["code"] == "not-found"
+
+
 async def test_relation_outside_the_novel_refuses_and_leaves_no_row() -> None:
     novel, station, _chen = await _seed_novel()
     # A second novel of the caller's own: the row exists and is owned, but an

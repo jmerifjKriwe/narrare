@@ -436,16 +436,28 @@ function ConfirmBadge({ icon }: { icon: Parameters<typeof Icon>[0]["name"] }) {
   );
 }
 
+/** The chip list after a draft: trimmed, folded into an existing chip
+ *  case-insensitively, or appended when it is new. The API dedupes too, so
+ *  the form never sends a doubled label. */
+function withChip(values: readonly string[], draft: string): string[] {
+  const value = draft.trim();
+  if (value === "") return [...values];
+  if (values.some((existing) => existing.toLowerCase() === value.toLowerCase())) return [...values];
+  return [...values, value];
+}
+
 /** The chip input of the create form: the screen's «Mit Enter hinzufügen».
- *  Enter commits the draft; a duplicate folds case-insensitively into the
- *  existing chip (the API dedupes too, so the form never sends a doubled
- *  label). */
+ *  Enter commits the draft, leaving the field commits it too, and the create
+ *  flushes whatever draft is still standing on save — a label typed without
+ *  Enter is never discarded. The 200-character cap mirrors the name input. */
 function ChipInput({
   testId,
   label,
   hint,
   placeholder,
   values,
+  draft,
+  onDraftChange,
   onChange,
 }: {
   testId: string;
@@ -453,17 +465,17 @@ function ChipInput({
   hint: string;
   placeholder: string;
   values: readonly string[];
+  draft: string;
+  onDraftChange: (draft: string) => void;
   onChange: (values: string[]) => void;
 }) {
   const id = useId();
-  const [draft, setDraft] = useState("");
   const t = useTranslation();
   function commit() {
     const value = draft.trim();
-    setDraft("");
+    onDraftChange("");
     if (value === "") return;
-    if (values.some((existing) => existing.toLowerCase() === value.toLowerCase())) return;
-    onChange([...values, value]);
+    onChange(withChip(values, value));
   }
   return (
     <div>
@@ -495,8 +507,10 @@ function ChipInput({
           data-testid={testId}
           type="text"
           value={draft}
+          maxLength={NAME_MAX}
           placeholder={placeholder}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => onDraftChange(event.target.value)}
+          onBlur={commit}
           onKeyDown={(event) => {
             if (event.key !== "Enter") return;
             event.preventDefault();
@@ -540,6 +554,8 @@ export function EntityCreateDialog({
   const [type, setType] = useState("");
   const [aliases, setAliases] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
+  const [aliasDraft, setAliasDraft] = useState("");
+  const [tagDraft, setTagDraft] = useState("");
   const [content, setContent] = useState("");
   const [relations, setRelations] = useState<(EntityRelationRow & { key: number })[]>([]);
   const [failure, setFailure] = useState<WireError | null>(null);
@@ -550,6 +566,8 @@ export function EntityCreateDialog({
     type !== "" ||
     aliases.length > 0 ||
     tags.length > 0 ||
+    aliasDraft !== "" ||
+    tagDraft !== "" ||
     content !== "" ||
     relations.length > 0;
 
@@ -590,12 +608,20 @@ export function EntityCreateDialog({
   function save() {
     setFailure(null);
     if (!ready) return;
+    // A chip the writer typed but never confirmed with Enter still belongs to
+    // the save: flush both drafts into the lists, then send the lists.
+    const nextAliases = withChip(aliases, aliasDraft);
+    const nextTags = withChip(tags, tagDraft);
+    setAliases(nextAliases);
+    setTags(nextTags);
+    setAliasDraft("");
+    setTagDraft("");
     const body = buildEntityCreateBody({
       novelId,
       name,
       type,
-      aliases,
-      tags,
+      aliases: nextAliases,
+      tags: nextTags,
       content,
       entities,
       relations: relations.map((row) => ({
@@ -634,173 +660,182 @@ export function EntityCreateDialog({
         onClose={onClose}
       />
       <div className="space-y-3">
-        <div>
-          <label htmlFor={`${headingId}-name`} className="mb-1 block text-meta font-medium text-foreground">
-            {t("knowledge.create.nameLabel")}
-          </label>
-          <input
-            id={`${headingId}-name`}
-            ref={nameRef}
-            data-testid="entity-create-name"
-            type="text"
-            value={name}
-            maxLength={NAME_MAX}
-            placeholder={t("knowledge.create.namePlaceholder")}
-            onChange={(event) => setName(event.target.value)}
-            className={`${INPUT} ${FOCUS}`}
-          />
-        </div>
-        <div>
-          <label htmlFor={`${headingId}-type`} className="mb-1 block text-meta font-medium text-foreground">
-            {t("knowledge.create.typeLabel")}
-          </label>
-          <select
-            id={`${headingId}-type`}
-            data-testid="entity-create-type"
-            value={type}
-            onChange={(event) => setType(event.target.value)}
-            className={`${INPUT} ${FOCUS}`}
-          >
-            <option value="">{t("knowledge.create.typePlaceholder")}</option>
-            {Object.keys(TYPE_KEYS).map((key) => (
-              <option key={key} value={key}>
-                {entityTypeLabel(t, key)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <ChipInput
-          testId="entity-create-aliases"
-          label={t("knowledge.create.aliasesLabel")}
-          hint={t("knowledge.create.addHint")}
-          placeholder={t("knowledge.create.aliasPlaceholder")}
-          values={aliases}
-          onChange={setAliases}
-        />
-        <ChipInput
-          testId="entity-create-tags"
-          label={t("knowledge.create.tagsLabel")}
-          hint={t("knowledge.create.addHint")}
-          placeholder={t("knowledge.create.tagPlaceholder")}
-          values={tags}
-          onChange={setTags}
-        />
-        <div>
-          <label htmlFor={`${headingId}-content`} className="mb-1 block text-meta font-medium text-foreground">
-            {t("knowledge.create.descriptionLabel")}
-          </label>
-          <textarea
-            id={`${headingId}-content`}
-            data-testid="entity-create-content"
-            value={content}
-            rows={3}
-            placeholder={t("knowledge.create.descriptionPlaceholder")}
-            onChange={(event) => setContent(event.target.value)}
-            className={`${INPUT} resize-y leading-relaxed ${FOCUS}`}
-          />
-        </div>
-        {duplicate !== null && (
-          <div
-            data-testid="entity-create-duplicate-note"
-            role="status"
-            className="flex items-start gap-1.5 rounded border border-rule bg-surface-container-low px-2.5 py-2 text-meta leading-snug text-foreground"
-          >
-            <span className="mt-0.5 shrink-0 text-primary">
-              <Icon name="info" size={13} />
-            </span>
-            <p>{t("knowledge.create.duplicateNote")}</p>
+        <fieldset disabled={busy} className="m-0 min-w-0 space-y-3 border-0 p-0">
+          <div>
+            <label htmlFor={`${headingId}-name`} className="mb-1 block text-meta font-medium text-foreground">
+              {t("knowledge.create.nameLabel")}
+            </label>
+            <input
+              id={`${headingId}-name`}
+              ref={nameRef}
+              data-testid="entity-create-name"
+              type="text"
+              value={name}
+              maxLength={NAME_MAX}
+              placeholder={t("knowledge.create.namePlaceholder")}
+              onChange={(event) => setName(event.target.value)}
+              className={`${INPUT} ${FOCUS}`}
+            />
           </div>
-        )}
-        <div className="space-y-2 pt-1">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-meta font-semibold text-foreground">
-              {t("knowledge.create.relationsLabel")}
-            </span>
-            <button
-              type="button"
-              data-testid="entity-create-add-relation"
-              onClick={addRelationRow}
-              className={`inline-flex items-center gap-1 text-meta font-medium text-primary transition-colors hover:text-foreground ${FOCUS}`}
+          {duplicate !== null && (
+            <div
+              data-testid="entity-create-duplicate-note"
+              role="status"
+              className="flex items-start gap-1.5 rounded border border-rule bg-surface-container-low px-2.5 py-2 text-meta leading-snug text-foreground"
             >
-              <Icon name="plus" size={14} /> {t("knowledge.create.addRelation")}
-            </button>
-          </div>
-          {relations.length === 0 ? (
-            <p className="rounded border border-rule bg-surface-container-low px-4 py-6 text-center text-meta text-muted">
-              {t("knowledge.create.noRelations")}
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {relations.map((row, index) => {
-                const missingLabel = relationRowOutcome(row, entities) === "missing-label";
-                return (
-                  <div key={row.key} className="flex items-center gap-2">
-                    <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
-                      <input
-                        data-testid={`entity-create-relation-${index}-entity`}
-                        type="text"
-                        list={entityListId}
-                        value={row.target}
-                        aria-label={t("knowledge.create.entityLabel")}
-                        placeholder={t("knowledge.create.entityLabel")}
-                        onChange={(event) => updateRelation(index, { target: event.target.value })}
-                        className={`${INPUT} ${FOCUS}`}
-                      />
-                      <input
-                        data-testid={`entity-create-relation-${index}-label`}
-                        type="text"
-                        list={labelListId}
-                        value={row.relationType}
-                        aria-label={t("knowledge.create.relationLabelLabel")}
-                        aria-invalid={missingLabel || undefined}
-                        placeholder={t("knowledge.create.relationLabelPlaceholder")}
-                        maxLength={RELATION_TYPE_MAX}
-                        onChange={(event) =>
-                          updateRelation(index, { relationType: event.target.value })
-                        }
-                        className={`${INPUT} ${FOCUS} ${missingLabel ? "ring-1 ring-danger" : ""}`}
-                      />
-                      <input
-                        data-testid={`entity-create-relation-${index}-note`}
-                        type="text"
-                        value={row.note}
-                        aria-label={t("knowledge.crud.noteLabel")}
-                        placeholder={t("knowledge.crud.noteLabel")}
-                        onChange={(event) => updateRelation(index, { note: event.target.value })}
-                        className={`${INPUT} ${FOCUS}`}
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      aria-label={t("knowledge.create.removeRelation")}
-                      onClick={() =>
-                        setRelations((rows) => rows.filter((_row, rowIndex) => rowIndex !== index))
-                      }
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-danger ${FOCUS}`}
-                    >
-                      <Icon name="trash" size={15} />
-                    </button>
-                  </div>
-                );
-              })}
-              {dropped > 0 && (
-                <p data-testid="entity-create-unresolved-note" className="text-[11px] leading-snug text-muted">
-                  {t("knowledge.create.unresolvedNote")}
-                </p>
-              )}
+              <span className="mt-0.5 shrink-0 text-primary">
+                <Icon name="info" size={13} />
+              </span>
+              <p>{t("knowledge.create.duplicateNote")}</p>
             </div>
           )}
-          <datalist id={entityListId}>
-            {entityNames.map((entityName) => (
-              <option key={entityName} value={entityName} />
-            ))}
-          </datalist>
-          <datalist id={labelListId}>
-            {relationTypeOptions(t).map((option) => (
-              <option key={option.key} value={option.label} />
-            ))}
-          </datalist>
-        </div>
+          <div>
+            <label htmlFor={`${headingId}-type`} className="mb-1 block text-meta font-medium text-foreground">
+              {t("knowledge.create.typeLabel")}
+            </label>
+            <select
+              id={`${headingId}-type`}
+              data-testid="entity-create-type"
+              value={type}
+              onChange={(event) => setType(event.target.value)}
+              className={`${INPUT} ${FOCUS}`}
+            >
+              <option value="">{t("knowledge.create.typePlaceholder")}</option>
+              {Object.keys(TYPE_KEYS).map((key) => (
+                <option key={key} value={key}>
+                  {entityTypeLabel(t, key)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <ChipInput
+            testId="entity-create-aliases"
+            label={t("knowledge.create.aliasesLabel")}
+            hint={t("knowledge.create.addHint")}
+            placeholder={t("knowledge.create.aliasPlaceholder")}
+            values={aliases}
+            draft={aliasDraft}
+            onDraftChange={setAliasDraft}
+            onChange={setAliases}
+          />
+          <ChipInput
+            testId="entity-create-tags"
+            label={t("knowledge.create.tagsLabel")}
+            hint={t("knowledge.create.addHint")}
+            placeholder={t("knowledge.create.tagPlaceholder")}
+            values={tags}
+            draft={tagDraft}
+            onDraftChange={setTagDraft}
+            onChange={setTags}
+          />
+          <div>
+            <label htmlFor={`${headingId}-content`} className="mb-1 block text-meta font-medium text-foreground">
+              {t("knowledge.create.descriptionLabel")}
+            </label>
+            <textarea
+              id={`${headingId}-content`}
+              data-testid="entity-create-content"
+              value={content}
+              rows={3}
+              placeholder={t("knowledge.create.descriptionPlaceholder")}
+              onChange={(event) => setContent(event.target.value)}
+              className={`${INPUT} resize-y leading-relaxed ${FOCUS}`}
+            />
+          </div>
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-meta font-semibold text-foreground">
+                {t("knowledge.create.relationsLabel")}
+              </span>
+              <button
+                type="button"
+                data-testid="entity-create-add-relation"
+                onClick={addRelationRow}
+                className={`inline-flex items-center gap-1 text-meta font-medium text-primary transition-colors hover:text-foreground ${FOCUS}`}
+              >
+                <Icon name="plus" size={14} /> {t("knowledge.create.addRelation")}
+              </button>
+            </div>
+            {relations.length === 0 ? (
+              <p className="rounded border border-rule bg-surface-container-low px-4 py-6 text-center text-meta text-muted">
+                {t("knowledge.create.noRelations")}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {relations.map((row, index) => {
+                  const outcome = relationRowOutcome(row, entities);
+                  const missingLabel = outcome === "missing-label";
+                  const unresolvedTarget = outcome === "unresolved-target";
+                  return (
+                    <div key={row.key} className="flex items-center gap-2">
+                      <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
+                        <input
+                          data-testid={`entity-create-relation-${index}-entity`}
+                          type="text"
+                          list={entityListId}
+                          value={row.target}
+                          aria-label={t("knowledge.create.entityLabel")}
+                          aria-invalid={unresolvedTarget || undefined}
+                          placeholder={t("knowledge.create.entityLabel")}
+                          onChange={(event) => updateRelation(index, { target: event.target.value })}
+                          className={`${INPUT} ${FOCUS} ${unresolvedTarget ? "ring-1 ring-danger" : ""}`}
+                        />
+                        <input
+                          data-testid={`entity-create-relation-${index}-label`}
+                          type="text"
+                          list={labelListId}
+                          value={row.relationType}
+                          aria-label={t("knowledge.create.relationLabelLabel")}
+                          aria-invalid={missingLabel || undefined}
+                          placeholder={t("knowledge.create.relationLabelPlaceholder")}
+                          maxLength={RELATION_TYPE_MAX}
+                          onChange={(event) =>
+                            updateRelation(index, { relationType: event.target.value })
+                          }
+                          className={`${INPUT} ${FOCUS} ${missingLabel ? "ring-1 ring-danger" : ""}`}
+                        />
+                        <input
+                          data-testid={`entity-create-relation-${index}-note`}
+                          type="text"
+                          value={row.note}
+                          aria-label={t("knowledge.crud.noteLabel")}
+                          placeholder={t("knowledge.crud.noteLabel")}
+                          onChange={(event) => updateRelation(index, { note: event.target.value })}
+                          className={`${INPUT} ${FOCUS}`}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={t("knowledge.create.removeRelation")}
+                        onClick={() =>
+                          setRelations((rows) => rows.filter((_row, rowIndex) => rowIndex !== index))
+                        }
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-danger ${FOCUS}`}
+                      >
+                        <Icon name="trash" size={15} />
+                      </button>
+                    </div>
+                  );
+                })}
+                {dropped > 0 && (
+                  <p data-testid="entity-create-unresolved-note" className="text-[11px] leading-snug text-muted">
+                    {t("knowledge.create.unresolvedNote")}
+                  </p>
+                )}
+              </div>
+            )}
+            <datalist id={entityListId}>
+              {entityNames.map((entityName) => (
+                <option key={entityName} value={entityName} />
+              ))}
+            </datalist>
+            <datalist id={labelListId}>
+              {relationTypeOptions(t).map((option) => (
+                <option key={option.key} value={option.label} />
+              ))}
+            </datalist>
+          </div>
+        </fieldset>
         {failure !== null && (
           <div role="alert" className="rounded border border-danger/40 bg-danger/10 px-2.5 py-2 text-meta text-foreground">
             <div className="flex items-start gap-1.5">
@@ -811,9 +846,11 @@ export function EntityCreateDialog({
                 <p className="leading-snug">
                   {failure.code === "transport"
                     ? t("knowledge.create.failedTransport")
-                    : t("knowledge.create.failed", {
-                        detail: failure.detail ?? failure.message,
-                      })}
+                    : failure.code === undefined
+                      ? t("knowledge.create.failedUnexpected")
+                      : t("knowledge.create.failed", {
+                          detail: failure.detail ?? failure.message,
+                        })}
                 </p>
                 {failure.code !== undefined && (
                   <p className="mt-0.5 font-mono text-[11px] text-danger">{failure.code}</p>

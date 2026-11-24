@@ -305,7 +305,7 @@ async def live_test_prompt(
     except LiveTestRateLimitedError as error:
         raise HTTPException(
             status_code=429,
-            detail={"code": "rate-limited", "detail": str(error)},
+            detail=coded_detail("rate-limited", str(error)),
             headers={"Retry-After": str(error.retry_after)},
         ) from None
     except KeyUnavailableError as error:

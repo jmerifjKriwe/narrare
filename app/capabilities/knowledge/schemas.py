@@ -121,10 +121,15 @@ class RelationCreate(BaseModel):
 class RelationLine(BaseModel):
     """One relation line of a create-by-hand body: the target row, its type,
     an optional note. The client resolved the target to an entity id before
-    the request; the service still checks the row belongs to the novel."""
+    the request; the service still checks the row belongs to the novel.
+
+    The type carries no schema bounds: a blank or over-long label is the
+    service's ``entity-invalid`` refusal (coded, naming the field), not the
+    framework's field list.
+    """
 
     to_entity_id: UUID
-    relation_type: str = Field(min_length=1, max_length=80)
+    relation_type: str
     note: str | None = None
 
 

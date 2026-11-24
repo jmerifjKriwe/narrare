@@ -134,4 +134,22 @@ describe("relationRowOutcome", () => {
     );
     expect(relationRowOutcome({ target: "   ", relationType: "", note: "" }, ENTITIES)).toBe("empty");
   });
+
+  it("a blank target with a typed label is unresolved, never an untouched add-row", () => {
+    // The writer filled the label first and left the target for last: the row
+    // must be counted and marked, not silently dropped as empty.
+    expect(relationRowOutcome({ target: "   ", relationType: "kennt", note: "" }, ENTITIES)).toBe(
+      "unresolved-target",
+    );
+    const body = buildEntityCreateBody(
+      form({ relations: [{ target: "  ", relationType: "kennt", note: "" }] }),
+    );
+    expect(body.relations).toEqual([]);
+  });
+
+  it("a blank target with only a note is unresolved too", () => {
+    expect(relationRowOutcome({ target: "", relationType: "", note: "  alter Weg  " }, ENTITIES)).toBe(
+      "unresolved-target",
+    );
+  });
 });

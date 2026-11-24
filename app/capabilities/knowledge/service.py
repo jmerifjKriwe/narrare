@@ -684,20 +684,29 @@ class KnowledgeService:
         the dialog warns without blocking.
 
         Commit and return the entity. Raise NotFoundError for an absent or
-        unowned novel, InvalidEntityUpdateError for an invalid name, type,
+        unowned novel — including one deleted between the ownership check and
+        the row's flush — InvalidEntityUpdateError for an invalid name, type,
         alias or tag, InvalidRelationError for a blank or over-long relation
         type, RelationTargetInvalidError for a line outside the novel, or
         RelationExistsError for a duplicate line.
         """
         await self._own_novel(payload.novel_id)
-        entity = await self._create_entity_row(
-            payload.novel_id,
-            payload.name,
-            payload.type,
-            payload.content,
-            aliases=payload.aliases,
-            tags=payload.tags,
-        )
+        try:
+            entity = await self._create_entity_row(
+                payload.novel_id,
+                payload.name,
+                payload.type,
+                payload.content,
+                aliases=payload.aliases,
+                tags=payload.tags,
+            )
+        except IntegrityError as error:
+            # The novel vanished between the ownership check and the flush:
+            # the foreign key answers as the scoped absence, not a 500.
+            await self.session.rollback()
+            if getattr(error.orig, "sqlstate", None) == FOREIGN_KEY_VIOLATION:
+                raise NotFoundError from None
+            raise
         try:
             for index, line in enumerate(payload.relations):
                 try:

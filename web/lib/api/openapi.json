@@ -2732,7 +2732,7 @@
         "type": "object"
       },
       "RelationLine": {
-        "description": "One relation line of a create-by-hand body: the target row, its type,\nan optional note. The client resolved the target to an entity id before\nthe request; the service still checks the row belongs to the novel.",
+        "description": "One relation line of a create-by-hand body: the target row, its type,\nan optional note. The client resolved the target to an entity id before\nthe request; the service still checks the row belongs to the novel.\n\nThe type carries no schema bounds: a blank or over-long label is the\nservice's ``entity-invalid`` refusal (coded, naming the field), not the\nframework's field list.",
         "properties": {
           "note": {
             "anyOf": [
@@ -2746,8 +2746,6 @@
             "title": "Note"
           },
           "relation_type": {
-            "maxLength": 80,
-            "minLength": 1,
             "title": "Relation Type",
             "type": "string"
           },

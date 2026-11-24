@@ -41,10 +41,10 @@ export type RelationResolution =
   | { kind: "one"; entity: Entity }
   | { kind: "many"; entities: Entity[] };
 
-/** What the save will do with one edited row. `empty` rows are add-row
- *  leftovers and say nothing; the two dropped kinds are what the dialog's
- *  notice counts, so a row the writer filled but that cannot land is never
- *  silent. */
+/** What the save will do with one edited row. Only a row with every field
+ *  blank is an untouched add-row and says nothing; the two dropped kinds are
+ *  what the dialog's notice counts, so a row the writer filled — even just
+ *  its label or its note, with the target still to come — is never silent. */
 export type RelationRowOutcome = "kept" | "unresolved-target" | "missing-label" | "empty";
 
 const fold = (value: string): string => value.trim().toLowerCase();
@@ -83,17 +83,24 @@ export function findDuplicateName(name: string, entities: readonly Entity[]): En
 
 /**
  * Whether the save keeps one row: a target that resolves to exactly one
- * entity and a label. An empty row is an add-row leftover; a filled row that
- * fails either half is dropped and counted into the dialog's notice — the
- * writer hears about it instead of losing an edge silently.
+ * entity and a label. Only a row whose every field is blank is an add-row
+ * leftover; a row with a blank target but a typed label or note is a filled
+ * row whose target is still missing, so it is dropped and counted like an
+ * unresolvable target — the writer hears about it instead of losing the
+ * label silently.
  */
 export function relationRowOutcome(
   row: EntityRelationRow,
   entities: readonly Entity[],
 ): RelationRowOutcome {
-  if (row.target.trim() === "") return "empty";
-  if (resolveRelationTarget(row.target, entities).kind !== "one") return "unresolved-target";
-  if (row.relationType.trim() === "") return "missing-label";
+  const hasTarget = row.target.trim() !== "";
+  const hasLabel = row.relationType.trim() !== "";
+  const hasNote = row.note.trim() !== "";
+  if (!hasTarget && !hasLabel && !hasNote) return "empty";
+  if (!hasTarget || resolveRelationTarget(row.target, entities).kind !== "one") {
+    return "unresolved-target";
+  }
+  if (!hasLabel) return "missing-label";
   return "kept";
 }
 

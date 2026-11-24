@@ -48,6 +48,12 @@ def _rename_entity(entity_id: str, name: str) -> None:
     response.raise_for_status()
 
 
+def _delete_entity(entity_id: str) -> None:
+    with httpx.Client(base_url=API_URL, timeout=30.0) as client:
+        response = client.delete(f"/api/knowledge/entities/{entity_id}")
+    response.raise_for_status()
+
+
 def _seed_canon_with_station() -> str:
     """The novel whose canon the dialog resolves against; the station's row is
     renamed through the real correction path."""
@@ -150,6 +156,8 @@ def test_duplicate_name_is_a_notice_not_a_refusal(page: Page, installed: Stack) 
     expect(dialog.get_by_test_id("entity-create-duplicate-note")).to_contain_text(
         "Eine Entität mit diesem Namen gibt es schon. Speichern ist trotzdem möglich."
     )
+    # The notice is a state of its own and must clear the same floor.
+    assert_accessible(page)
     save = dialog.get_by_test_id("entity-create-save")
     expect(save).to_be_enabled()
     save.click()
@@ -157,6 +165,36 @@ def test_duplicate_name_is_a_notice_not_a_refusal(page: Page, installed: Stack) 
 
     # The refusal never fired; the new duplicate stands beside the old row.
     expect(page.get_by_test_id("graph-node").filter(has_text="Mira")).to_have_count(2)
+    assert_accessible(page)
+
+
+def test_unresolved_note_and_refusal_are_accessible(page: Page, installed: Stack) -> None:
+    """The dialog's two warning states clear the a11y floor: the unresolved-row
+    note, and the coded refusal a stale relation target forces."""
+    novel_id = _seed_canon_with_station()
+    entities = {row["name"]: row for row in list_entities(novel_id)}
+    _goto_graph(page, novel_id)
+
+    dialog = _open_create(page, "graph-new-entity")
+    dialog.get_by_test_id("entity-create-name").fill("Nevada-Trümmerfeld")
+    dialog.get_by_test_id("entity-create-type").select_option("location")
+
+    dialog.get_by_test_id("entity-create-add-relation").click()
+    target = dialog.get_by_test_id("entity-create-relation-0-entity")
+    target.fill("Nebel")
+    dialog.get_by_test_id("entity-create-relation-0-label").fill("Liegt in")
+    expect(dialog.get_by_test_id("entity-create-unresolved-note")).to_be_visible()
+    assert_accessible(page)
+
+    # The row resolved on screen, then its target was deleted through the API
+    # before the save: the server's coded refusal is the face under axe.
+    target.fill("Mira")
+    expect(dialog.get_by_test_id("entity-create-unresolved-note")).to_have_count(0)
+    _delete_entity(str(entities["Mira"]["id"]))
+    dialog.get_by_test_id("entity-create-save").click()
+    alert = dialog.get_by_role("alert")
+    expect(alert).to_be_visible()
+    expect(alert).to_contain_text("relation-target-invalid")
     assert_accessible(page)
 
 

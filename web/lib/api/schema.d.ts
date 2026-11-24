@@ -2727,6 +2727,10 @@ export interface components {
          * @description One relation line of a create-by-hand body: the target row, its type,
          *     an optional note. The client resolved the target to an entity id before
          *     the request; the service still checks the row belongs to the novel.
+         *
+         *     The type carries no schema bounds: a blank or over-long label is the
+         *     service's ``entity-invalid`` refusal (coded, naming the field), not the
+         *     framework's field list.
          */
         RelationLine: {
             /** Note */
