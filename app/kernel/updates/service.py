@@ -28,6 +28,12 @@ from app.kernel.version import __version__
 DEFAULT_URL = "https://api.github.com/repos/jmerifjKriwe/narrare/releases/latest"
 DEFAULT_CACHE_SECONDS = 3600.0
 
+TAG_LIMIT = 64
+"""The version column's width; a longer tag is unusable, not a write error."""
+
+URL_LIMIT = 2048
+"""The release-link column's width; a longer link is dropped with the release."""
+
 
 @dataclass(frozen=True)
 class Release:
@@ -94,19 +100,27 @@ async def _download(url: str) -> Release | None:
 
 
 def _release(payload: Any) -> Release | None:
-    """A GitHub release body as the fields the app keeps, or nothing usable."""
+    """A GitHub release body as the fields the app keeps, or nothing usable.
+
+    The tag and link are bounded by the user columns; a value too wide to store
+    is treated like a missing field, so the read stays a 2xx instead of a
+    database error.
+    """
     if not isinstance(payload, dict):
         return None
     fields = cast("dict[str, object]", payload)
     tag = fields.get("tag_name")
-    if not isinstance(tag, str) or not tag.strip():
+    if not isinstance(tag, str) or not tag.strip() or len(tag.strip()) > TAG_LIMIT:
         return None
     notes = fields.get("body")
     link = fields.get("html_url")
+    url = link.strip() if isinstance(link, str) and link.strip() else None
+    if url is not None and len(url) > URL_LIMIT:
+        return None
     return Release(
         tag=tag.strip(),
         notes=notes if isinstance(notes, str) else None,
-        url=link if isinstance(link, str) and link.strip() else None,
+        url=url,
     )
 
 

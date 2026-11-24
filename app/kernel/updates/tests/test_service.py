@@ -76,6 +76,38 @@ async def test_a_prerelease_tag_is_not_announced(
     assert answer.update_available is False
 
 
+async def test_an_over_long_tag_answers_no_update(
+    session: AsyncSession, user: UUID, vendor: ReleaseVendor
+) -> None:
+    """The version column is 64 characters; a longer tag is not announced and
+    the check still answers, never a ``DataError`` at the write."""
+    vendor.state["tag"] = "v" * 65
+
+    answer = await UpdateService(session, user).read(force=True)
+
+    assert answer.latest_version is None
+    assert answer.update_available is False
+    assert answer.checked_at is not None
+
+    stored = await session.get(User, user)
+    assert stored is not None
+    assert stored.last_known_latest_version is None
+
+
+async def test_an_over_long_release_url_answers_no_update(
+    session: AsyncSession, user: UUID, vendor: ReleaseVendor
+) -> None:
+    """The release-link column is 2048 characters; a longer link is unusable
+    too, and the read stays an answer rather than a database error."""
+    vendor.state["url"] = "https://example.test/" + "a" * 2049
+
+    answer = await UpdateService(session, user).read(force=True)
+
+    assert answer.latest_version is None
+    assert answer.update_available is False
+    assert answer.release_url is None
+
+
 async def test_a_failed_fetch_keeps_the_last_known_answer(
     session: AsyncSession, user: UUID, vendor: ReleaseVendor
 ) -> None:
