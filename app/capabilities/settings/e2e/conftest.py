@@ -15,6 +15,11 @@ a configured endpoint, because the driver read is pure resolution — a provider
 and a default model created through the API are enough for the cascade to
 answer ``configured``, and no network call ever leaves.
 
+The one exception is the update check: the stack's ``NARRA_UPDATE_CHECK_URL``
+points at the session's ``ReleaseVendor`` (a real local server), so the banner
+leg exercises the browser, the API and the release source without GitHub. The
+vendor's default tag is the running version — every other test sees no banner.
+
 ``DATABASE`` is defined here once; the tests import it and the API helpers
 from this module.
 """
@@ -29,6 +34,7 @@ from playwright.sync_api import Page, expect
 
 from app.kernel.db import testsupport
 from app.kernel.testing.db_rows import reset
+from app.kernel.testing.release_vendor import ReleaseVendor
 from app.kernel.testing.stack import API_URL, WEB_URL, Stack, acquire_stack
 
 DATABASE = testsupport.test_database("narrare_v2_settings_e2e")
@@ -98,6 +104,17 @@ def set_theme(theme: str | None) -> None:
     """The settings row's theme — the shell adopts it at boot (dark face)."""
     with _client() as client:
         response = client.patch("/api/settings/theme", json={"theme": theme})
+    response.raise_for_status()
+
+
+def dismiss_update(version: str) -> None:
+    """Stop announcing ``version`` through the API, as the shell's dialog does.
+
+    The update leg's cleanup uses this: the suite shares one settings database,
+    and a later module must start on a row that announces nothing.
+    """
+    with _client() as client:
+        response = client.post("/api/updates/dismiss", json={"version": version})
     response.raise_for_status()
 
 
@@ -277,9 +294,30 @@ def expect_settings(page: Page) -> None:
     expect(page.locator('form button[type="submit"]')).to_be_visible()
 
 
+@pytest.fixture(scope="session")
+def release_vendor() -> Iterator[ReleaseVendor]:
+    """The update check's release source for this worker: a real local server.
+
+    The settings stack is the one suite that points ``NARRA_UPDATE_CHECK_URL``
+    at a stand-in, so the browser's banner can be exercised without GitHub. The
+    default tag is the running version, so every other settings test sees no
+    banner; the update leg changes the mutable ``state`` for its own walk.
+    """
+    with ReleaseVendor() as vendor:
+        yield vendor
+
+
 @pytest.fixture(scope="module")
-def stack() -> Iterator[Stack]:
-    running = acquire_stack("settings", database=DATABASE, seed_user=False)
+def stack(release_vendor: ReleaseVendor) -> Iterator[Stack]:
+    running = acquire_stack(
+        "settings",
+        database=DATABASE,
+        seed_user=False,
+        env={
+            "NARRA_UPDATE_CHECK_URL": release_vendor.base_url,
+            "NARRA_UPDATE_CHECK_CACHE_SECONDS": "0",
+        },
+    )
     yield running
 
 

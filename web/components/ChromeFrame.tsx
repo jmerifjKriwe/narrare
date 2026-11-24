@@ -23,6 +23,7 @@ import { Suspense, type ReactNode } from "react";
 
 import { IconRail } from "./IconRail";
 import { TopBar } from "./TopBar";
+import { UpdateBanner } from "./UpdateBanner";
 
 export function ChromeFrame({
   standalone = false,
@@ -35,6 +36,10 @@ export function ChromeFrame({
   return (
     <div className={standalone ? "contents" : "flex h-dvh flex-col"}>
       {!standalone && <TopBar />}
+      {/* The update strip is a conditional sibling on the chrome's axis —
+          never a wrapper around the outlet, so the main landmark keeps its
+          constant tree depth. Standalone flows carry no release news. */}
+      {!standalone && <UpdateBanner />}
       <div className={standalone ? "contents" : "flex flex-1 overflow-hidden"}>
         {/* The rail's offset: the collapsed width on a fine pointer, the
             open rail's own where there is no hover (the token's media). */}

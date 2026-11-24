@@ -70,5 +70,13 @@
   "shell.topbar.shelf": "Das Bücherregal",
   "shell.topbar.volume": "Band {volume}",
   "shell.topbar.words": "{count, number} Wörter",
-  "shell.topbar.wordsTotal": "{count, number} W. Gesamt"
+  "shell.topbar.wordsTotal": "{count, number} W. Gesamt",
+  "shell.update.available": "Narrare {version} ist verfügbar",
+  "shell.update.close": "Schließen",
+  "shell.update.heading": "Was sich in {version} geändert hat",
+  "shell.update.ignore": "Diese Version ignorieren",
+  "shell.update.later": "Später",
+  "shell.update.notes": "Versionshinweise",
+  "shell.update.openRelease": "Die Version auf GitHub öffnen",
+  "shell.update.toast": "Eine neuere Version ist verfügbar — {version}"
 }
