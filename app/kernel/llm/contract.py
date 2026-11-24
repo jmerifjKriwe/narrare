@@ -61,8 +61,14 @@ INTERVIEW_MARKERS: tuple[str, ...] = (
 )
 """The marker prefixes every interview render must carry, in the template's order."""
 
-_LINE_BREAK_RUN = re.compile(r"[\r\n\x85\u2028\u2029]+")
-"""Every run of line-break characters, including the Unicode separators."""
+_LINE_BREAK_RUN = re.compile(r"[\r\n\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029]+")
+"""Every run of characters ``str.splitlines()`` treats as a line boundary.
+
+The set is the documented one, not a guess: line feed, carriage return, line
+tabulation (``\\v``), form feed (``\\f``), file/group/record separator, next
+line, line separator and paragraph separator. Checked against the interpreter
+itself — every other code point leaves ``str.splitlines()`` with one line.
+"""
 
 
 def single_line(text: str) -> str:
@@ -71,8 +77,13 @@ def single_line(text: str) -> str:
     The interview's rendering invariant. A turn is rendered as its ``USER:`` or
     ``ASSISTANT:`` prefix plus this function's result, so a writer's text can
     never begin a line — and a line that looks like a machine marker is then
-    always the template's own, whatever its order. Covers ``\\r``, ``\\n``,
-    ``\\r\\n`` and the Unicode separators ``\\x85``, ``\\u2028`` and ``\\u2029``.
+    always the template's own, whatever its order.
+
+    Collapses exactly what ``str.splitlines()`` treats as a line boundary —
+    ``\\n``, ``\\r``, ``\\r\\n``, ``\\v`` (``\\x0b``), ``\\f`` (``\\x0c``),
+    ``\\x1c``, ``\\x1d``, ``\\x1e``, ``\\x85``, ``\\u2028`` and ``\\u2029`` —
+    because the fake reads the prompt with ``splitlines()``. Ordinary spaces and
+    tabs stay untouched, and the ends are stripped.
     """
     return _LINE_BREAK_RUN.sub(" ", text).strip()
 

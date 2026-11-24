@@ -260,13 +260,27 @@ def roster_block(entities: Sequence[Entity]) -> str:
 
     One ``name (type; aliases)`` line per entity, in the repository's
     name-order; an entity without aliases says ``none`` rather than leaving a
-    dangling separator. The template never writes the marker itself, and the
-    fake reads the lines behind it.
+    dangling separator. Every part is user-derived, so each goes through
+    ``single_line``: a name, type or alias carrying a line break stays inside
+    its one line instead of starting a forged one. The template never writes
+    the marker itself, and the fake reads the lines behind it.
     """
     return "\n".join(
-        f"{entity.name} ({entity.type}; {', '.join(entity.aliases) or 'none'})"
+        f"{single_line(entity.name)} "
+        f"({single_line(entity.type)}; "
+        f"{', '.join(single_line(alias) for alias in entity.aliases) or 'none'})"
         for entity in entities
     )
+
+
+def _novel_variables(title: str, genre: str) -> dict[str, str]:
+    """The novel heading's two variables, each one line — the one way they are built.
+
+    The template renders both inline, outside any marker line, so a break in
+    either would begin a line once rendered. The sample's values pass through
+    as a no-op; the helper is the single path so no caller can bypass it.
+    """
+    return {"novel_title": single_line(title), "novel_genre": single_line(genre)}
 
 
 def interview_sample_variables() -> dict[str, object]:
@@ -277,8 +291,7 @@ def interview_sample_variables() -> dict[str, object]:
     and roster are the ones the other bundled samples use.
     """
     return {
-        "novel_title": "Der Nebel",
-        "novel_genre": "Mystery",
+        **_novel_variables("Der Nebel", "Mystery"),
         "entity_type": _SAMPLE_ENTITY_TYPE,
         "slots": _SAMPLE_SLOTS_JSON,
         "relations": _SAMPLE_RELATIONS_JSON,
