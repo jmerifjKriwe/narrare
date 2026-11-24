@@ -603,6 +603,67 @@ describe("the reset", () => {
     expect(detailReads).toBe(2);
   });
 
+  it("a route remount before DELETE resolves still follows the shared completion revision", async () => {
+    const OVERRIDE = "# Globaler Override\n{{tail}}";
+    const INHERITED = "# Global-Standard\n{{tail}}";
+    details["writing.continuation"] = detail({
+      override: { scope: "global", content: OVERRIDE },
+      effective_content: OVERRIDE,
+    });
+    summaries = [summary({ override_global: true }), ...baseSummaries().slice(1)];
+    const deleted = deferred<{ data: undefined; response: Response }>();
+    api.DELETE.mockReturnValue(deleted.promise);
+    const originalGet = api.GET.getMockImplementation()! as GetMock;
+    let deleteCommitted = false;
+    let freshDetailReads = 0;
+    api.GET.mockImplementation(async (path: string, init?: { params?: { path?: Record<string, string>; query?: Record<string, unknown> } }) => {
+      if (
+        path === "/api/prompts/{key}" &&
+        init?.params?.path?.key === "writing.continuation" &&
+        init?.params?.query?.novel_id === undefined &&
+        deleteCommitted
+      ) {
+        freshDetailReads += 1;
+      }
+      return originalGet(path, init);
+    });
+
+    const router = renderPage();
+    const editor = await readyEditor();
+    fireEvent.click(within(editor).getByTestId("reset-button"));
+    fireEvent.click(within(editor).getByTestId("reset-go"));
+    await waitFor(() => expect(api.DELETE).toHaveBeenCalledTimes(1));
+
+    // Leave before the DELETE answers. The new page sees the shared pending
+    // lock, but its detail cache still holds the not-yet-deleted override.
+    await act(async () => { router.history.push("/elsewhere"); });
+    await act(async () => { router.history.push("/settings/prompts"); });
+    const remountedEditor = await screen.findByTestId("prompts-editor");
+    const remountedTextarea = within(remountedEditor).getByTestId("draft-textarea") as HTMLTextAreaElement;
+    expect(remountedTextarea.value).toBe(OVERRIDE);
+    expect(remountedTextarea.disabled).toBe(true);
+
+    // DELETE commits and the fresh detail answers immediately. The original
+    // page's per-call callback is gone; only shared mutation state can revise
+    // this remounted editor's identity.
+    deleteCommitted = true;
+    details["writing.continuation"] = detail({ override: null, effective_content: INHERITED });
+    summaries = baseSummaries();
+    deleted.resolve({ data: undefined, response: new Response(null, { status: 204 }) });
+
+    await waitFor(() => expect((screen.getByTestId("draft-textarea") as HTMLTextAreaElement).value).toBe(INHERITED));
+    expect(remountedTextarea.isConnected).toBe(false);
+    expect((screen.getByTestId("draft-textarea") as HTMLTextAreaElement).disabled).toBe(false);
+    expect(freshDetailReads).toBe(1);
+
+    // Save now carries the inherited baseline, never the deleted override.
+    api.PUT.mockResolvedValue({ data: details["writing.continuation"], response: ok() });
+    fireEvent.click(screen.getByTestId("save-button"));
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledWith("/api/prompts/{key}", expect.objectContaining({
+      body: { content: INHERITED, novel_id: null },
+    })));
+  });
+
   it("a failed fresh detail read keeps the stale detail out and still refreshes catalog marks", async () => {
     const OVERRIDE = "# Roman-Override\n{{tail}}";
     details["writing.continuation"] = detail({

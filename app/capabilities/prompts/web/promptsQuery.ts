@@ -21,7 +21,7 @@
  * one terminal event). The pre-stream failures (409/429/502/503 and the
  * save gate's 422) are JSON answers, not SSE — named by their status.
  */
-import { useIsMutating, useMutation, useQuery, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
+import { useIsMutating, useMutation, useMutationState, useQuery, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 
 import {
   client,
@@ -60,8 +60,25 @@ function invalidateCatalog(): void {
  *  pending, including an editor mounted after the original one unmounted. */
 export const PROMPT_RESET_MUTATION_KEY = ["prompts", "reset"] as const;
 
+function promptResetMutationKey(key: string | null, novelId: string | null) {
+  return [...PROMPT_RESET_MUTATION_KEY, key, novelId] as const;
+}
+
 export function useResetPending(): boolean {
   return useIsMutating({ mutationKey: PROMPT_RESET_MUTATION_KEY }) > 0;
+}
+
+/** The latest successful reset for this exact editing scope. MutationCache
+ *  state survives page/editor unmounts, so every page can revise its editor
+ *  identity when the reset completes — including one mounted mid-flight.
+ *  Query v5.105 exposes no mutation `dataUpdatedAt`; its monotonic
+ *  `mutationId` is the shared completion revision. */
+export function useResetRevision(key: string | null, novelId: string | null): number {
+  const revisions = useMutationState({
+    filters: { mutationKey: promptResetMutationKey(key, novelId), status: "success" },
+    select: (mutation) => mutation.mutationId,
+  });
+  return revisions[revisions.length - 1] ?? 0;
 }
 
 function promptDetailQueryKey(key: string | null, novelId: string | null) {
@@ -153,13 +170,16 @@ export function useSavePrompt(): UseMutationResult<
  *  DELETE resets the exact detail entry at hook level and lets its active
  *  observer fetch the inherited detail once. The editor never owns that
  *  completion, so unmounting cannot lose it or leave a stale cache behind. */
-export function useResetPrompt(): UseMutationResult<
+export function useResetPrompt(
+  key: string | null,
+  novelId: string | null,
+): UseMutationResult<
   void,
   WireError,
   { key: string; novelId: string | null }
 > {
   return useMutation({
-    mutationKey: PROMPT_RESET_MUTATION_KEY,
+    mutationKey: promptResetMutationKey(key, novelId),
     mutationFn: async ({ key, novelId }) => {
       const { response, error } = await client.DELETE("/api/prompts/{key}", {
         params: { path: { key }, query: novelId ? { novel_id: novelId } : {} },

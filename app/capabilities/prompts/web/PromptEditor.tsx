@@ -108,10 +108,10 @@ export function PromptEditor(props: {
   // The draft: the override in force when one stands, the effective source
   // otherwise — the baseline the dirty check compares against. The page keys
   // the editor on key+scope, so a tier or key switch REMOUNTS and the draft
-  // starts at the new tier's baseline. A confirmed reset advances the page's
-  // editor epoch, so its fresh detail remounts here too. An ordinary refetch
-  // that lands mid-typing (the save's invalidation, the bytes changing under
-  // the cursor) never clobbers the draft — keystrokes belong to their author.
+  // starts at the new tier's baseline. A confirmed reset advances the shared
+  // mutation revision, so its fresh detail remounts here too. An ordinary
+  // refetch that lands mid-typing (the save's invalidation, the bytes changing
+  // under the cursor) never clobbers the draft — keystrokes belong to their author.
   const baseline = detail.override !== null ? detail.override.content : detail.effective_content;
   const [draft, setDraft] = useState(baseline);
   const [savedFace, setSavedFace] = useState(false);

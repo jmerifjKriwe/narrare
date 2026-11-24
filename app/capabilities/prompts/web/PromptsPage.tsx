@@ -36,7 +36,7 @@ import { FOCUS } from "@shell/ui/card";
 import { Icon, type IconName } from "@shell/ui/icons";
 
 import { PromptEditor, type EditorScope } from "./PromptEditor";
-import { usePromptDetail, usePromptsList, useResetPending, useResetPrompt } from "./promptsQuery";
+import { usePromptDetail, usePromptsList, useResetPending, useResetPrompt, useResetRevision } from "./promptsQuery";
 
 const SERIF = "[font-family:var(--font-serif)]";
 const MONO = "[font-family:var(--font-mono)]";
@@ -63,11 +63,9 @@ export function PromptsPage() {
   const [novelId, setNovelId] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [tier, setTier] = useState<EditorScope["tier"]>("global");
-  const [editorEpoch, setEditorEpoch] = useState(0);
 
   const novels = useNovelsQuery();
   const list = usePromptsList(novelId);
-  const reset = useResetPrompt();
   const resetPending = useResetPending();
 
   // The Geltungsbereich's chosen novel by name, for the chips' labels.
@@ -96,16 +94,12 @@ export function PromptsPage() {
     filteredNovelTitle: novelTitle,
   };
 
+  const reset = useResetPrompt(currentKey, scope.novelId);
+  const resetRevision = useResetRevision(currentKey, scope.novelId);
   const detailRead = usePromptDetail(currentKey, scope.novelId);
 
   function runReset(key: string, novelId: string | null): void {
-    // The page owns this callback, so an editor remount cannot lose it. A
-    // route unmount still can; there the hook-level cache reset/fetch is the
-    // completion, and the next page mounts from that fresh detail.
-    reset.mutate(
-      { key, novelId },
-      { onSuccess: () => setEditorEpoch((epoch) => epoch + 1) },
-    );
+    reset.mutate({ key, novelId });
   }
 
   const resetFailure =
@@ -276,7 +270,7 @@ export function PromptsPage() {
             <div className="lg:col-span-8">
               {detailRead.data !== undefined && currentKey !== null ? (
                 <PromptEditor
-                  key={`${currentKey}:${scope.tier}:${scope.novelId ?? "global"}:${editorEpoch}`}
+                  key={`${currentKey}:${scope.tier}:${scope.novelId ?? "global"}:${resetRevision}`}
                   promptKey={currentKey}
                   detail={detailRead.data}
                   scope={scope}
