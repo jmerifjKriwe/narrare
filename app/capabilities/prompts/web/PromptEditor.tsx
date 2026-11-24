@@ -95,7 +95,12 @@ export function PromptEditor(props: {
   const { promptKey, detail, scope } = props;
 
   // The draft: the override in force when one stands, the effective source
-  // otherwise — the baseline the dirty check compares against.
+  // otherwise — the baseline the dirty check compares against. The reset to
+  // this baseline rides the component's own identity: the page keys the
+  // editor on the key+scope, so a tier or key switch REMOUNTS and the draft
+  // starts at the new tier's baseline. A refetch that lands mid-typing (the
+  // save's invalidation, the bytes changing under the cursor) never
+  // clobbers the draft — keystrokes belong to their author.
   const baseline = detail.override !== null ? detail.override.content : detail.effective_content;
   const [draft, setDraft] = useState(baseline);
   const [savedFace, setSavedFace] = useState(false);
@@ -103,16 +108,6 @@ export function PromptEditor(props: {
   const [confirmReset, setConfirmReset] = useState(false);
   const [diffOpen, setDiffOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-  // A key or scope switch resets the draft to the tier's own baseline — the
-  // textarea belongs to the source it edits, never to the previous one.
-  useEffect(() => {
-    setDraft(baseline);
-    setSavedFace(false);
-    setSaveFailure(null);
-    setConfirmReset(false);
-    // The baseline is derived from the detail read's own answer.
-  }, [baseline]);
 
   const novelId = scope.tier === "novel" ? scope.novelId : null;
   const diff = usePromptDiff(promptKey, novelId, diffOpen);

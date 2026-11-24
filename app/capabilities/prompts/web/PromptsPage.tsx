@@ -31,7 +31,7 @@ import { useState, type ReactNode } from "react";
 import { SettingsHub } from "@shell/components/SettingsHub";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
-import { useNovelsQuery } from "@shell/lib/query";
+import { queryClient, useNovelsQuery } from "@shell/lib/query";
 import { FOCUS } from "@shell/ui/card";
 import { Icon, type IconName } from "@shell/ui/icons";
 
@@ -96,12 +96,17 @@ export function PromptsPage() {
   const detailRead = usePromptDetail(currentKey, scope.novelId);
 
   const data = novels.data !== undefined && list.data !== undefined ? { novels: novels.data, list: list.data } : null;
-  const reads = [novels, list];
+  // The editor's detail read is the page's third read: a failed detail is
+  // the outage face, never a right column whose loading card stands forever.
+  const reads = [novels, list, detailRead];
 
   function retry(): void {
     for (const read of reads) {
       if (read.isError) void read.refetch();
     }
+    // A read that never mounted its ask (an earlier throw left it idle)
+    // re-asks through the cache invalidation — the family's own prefix.
+    void queryClient.invalidateQueries({ queryKey: ["prompts"] });
   }
 
   function changeScope(next: string | null): void {
@@ -248,7 +253,13 @@ export function PromptsPage() {
             {/* Right column: the editor for the selected key. */}
             <div className="lg:col-span-8">
               {detailRead.data !== undefined && currentKey !== null ? (
-                <PromptEditor promptKey={currentKey} detail={detailRead.data} scope={scope} onScopeChange={setTier} />
+                <PromptEditor
+                  key={`${currentKey}:${scope.tier}:${scope.novelId ?? "global"}`}
+                  promptKey={currentKey}
+                  detail={detailRead.data}
+                  scope={scope}
+                  onScopeChange={setTier}
+                />
               ) : (
                 <div className="rounded-lg border border-border bg-panel p-5 shadow-sm" role="status">
                   <p className="text-meta text-muted">{t("prompts.loading")}</p>
