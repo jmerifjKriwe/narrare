@@ -89,6 +89,14 @@ function promptDetailQueryKey(key: string | null, novelId: string | null) {
   return ["prompts", "detail", key, novelId] as const;
 }
 
+function promptDetailScopeQueryKey(key: string | null, novelId: string | null) {
+  // A global override is inherited by every novel detail for this key. A
+  // novel reset, by contrast, owns only its one exact scope.
+  return novelId === null
+    ? (["prompts", "detail", key] as const)
+    : promptDetailQueryKey(key, novelId);
+}
+
 /** The catalog list: one ask shape, the scope query always named. */
 export function usePromptsList(novelId: string | null): UseQueryResult<PromptSummary[]> {
   return useQuery({
@@ -171,9 +179,11 @@ export function useSavePrompt(): UseMutationResult<
 }
 
 /** The scope's override reset (the other tier untouched). The successful
- *  DELETE resets the exact detail entry at hook level and lets its active
- *  observer fetch the inherited detail once. The editor never owns that
- *  completion, so unmounting cannot lose it or leave a stale cache behind. */
+ *  DELETE resets the scope's detail entries at hook level and lets active
+ *  observers fetch inherited detail once. A global reset covers every novel
+ *  detail for that prompt key; a novel reset covers only its exact entry.
+ *  The editor never owns that completion, so unmounting cannot lose it or
+ *  leave a stale cache behind. */
 export function useResetPrompt(
   key: string | null,
   novelId: string | null,
@@ -191,13 +201,14 @@ export function useResetPrompt(
       if (!response.ok) throw enrich({ response, error }, "prompt reset");
     },
     onSuccess: async (_data, { key, novelId }) => {
-      const queryKey = promptDetailQueryKey(key, novelId);
+      const queryKey = promptDetailScopeQueryKey(key, novelId);
+      const exact = novelId !== null;
       try {
         // A detail refetch that began before the DELETE must not win after
-        // it. Cancel first, then reset notifies the active observer and
-        // refetches the inherited detail exactly once.
-        await queryClient.cancelQueries({ queryKey, exact: true });
-        await queryClient.resetQueries({ queryKey, exact: true });
+        // it. Cancel first, then reset notifies active observers and refetches
+        // them once; inactive inheriting novel entries become unset.
+        await queryClient.cancelQueries({ queryKey, exact });
+        await queryClient.resetQueries({ queryKey, exact });
       } finally {
         // The DELETE committed even if the fresh detail read is down. Its
         // completion still advances the cache-only editor revision; the

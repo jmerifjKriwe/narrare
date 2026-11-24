@@ -664,6 +664,83 @@ describe("the reset", () => {
     })));
   });
 
+  it("a global reset refreshes cached inheriting novel details", async () => {
+    const OVERRIDE = "# Globaler Override\n{{tail}}";
+    const INHERITED = "# Global-Standard\n{{tail}}";
+    details["writing.continuation"] = detail({
+      override: { scope: "global", content: OVERRIDE },
+      effective_content: OVERRIDE,
+    });
+    summaries = [summary({ override_global: true }), ...baseSummaries().slice(1)];
+    const originalGet = api.GET.getMockImplementation()! as GetMock;
+    let globalDeleted = false;
+    let novelDetailReads = 0;
+    api.GET.mockImplementation(async (path: string, init?: { params?: { path?: Record<string, string>; query?: Record<string, unknown> } }) => {
+      if (path === "/api/prompts/{key}" && init?.params?.path?.key === "writing.continuation" && init?.params?.query?.novel_id === "novel-1") {
+        novelDetailReads += 1;
+        const row = globalDeleted
+          ? details["writing.continuation"]!
+          : detail({ override: null, effective_content: OVERRIDE });
+        return { data: row, response: ok() };
+      }
+      return originalGet(path, init);
+    });
+    api.DELETE.mockImplementation(async () => {
+      globalDeleted = true;
+      details["writing.continuation"] = detail({ override: null, effective_content: INHERITED });
+      summaries = baseSummaries();
+      return { data: undefined, response: new Response(null, { status: 204 }) };
+    });
+
+    renderPage();
+    await readyEditor();
+    const select = screen.getByTestId("scope-select").querySelector("select") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "novel-1" } });
+    await waitFor(() => expect((screen.getByTestId("draft-textarea") as HTMLTextAreaElement).value).toBe(OVERRIDE));
+    expect(queryClient.getQueryData<Record<string, unknown>>(["prompts", "detail", "writing.continuation", "novel-1"])?.effective_content).toBe(OVERRIDE);
+
+    fireEvent.change(select, { target: { value: "" } });
+    await waitFor(() => expect((screen.getByTestId("scope-chip-global") as HTMLButtonElement).getAttribute("aria-pressed")).toBe("true"));
+    fireEvent.click(screen.getByTestId("reset-button"));
+    fireEvent.click(screen.getByTestId("reset-go"));
+    await waitFor(() => expect((screen.getByTestId("draft-textarea") as HTMLTextAreaElement).value).toBe(INHERITED));
+
+    // The inactive novel entry inherited the deleted global source. A global
+    // reset must unset it now, not wait for a catalog-wide cache expiry.
+    expect(queryClient.getQueryData(["prompts", "detail", "writing.continuation", "novel-1"])).toBeUndefined();
+    expect(novelDetailReads).toBe(1);
+
+    fireEvent.change(select, { target: { value: "novel-1" } });
+    await waitFor(() => expect((screen.getByTestId("draft-textarea") as HTMLTextAreaElement).value).toBe(INHERITED));
+    expect(novelDetailReads).toBe(2);
+
+    api.PUT.mockResolvedValue({ data: details["writing.continuation"], response: ok() });
+    fireEvent.click(screen.getByTestId("save-button"));
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledWith("/api/prompts/{key}", expect.objectContaining({
+      body: { content: INHERITED, novel_id: "novel-1" },
+    })));
+  });
+
+  it("a novel reset leaves a sibling novel detail cached", async () => {
+    const sibling = detail({
+      override: { scope: "novel", content: "# Geschwister-Roman\n{{tail}}" },
+      effective_content: "# Geschwister-Roman\n{{tail}}",
+    });
+    queryClient.setQueryData(["prompts", "detail", "writing.continuation", "novel-2"], sibling);
+    api.DELETE.mockResolvedValue({ data: undefined, response: new Response(null, { status: 204 }) });
+
+    renderPage();
+    await readyEditor();
+    const select = screen.getByTestId("scope-select").querySelector("select") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "novel-1" } });
+    await screen.findByTestId("prompts-editor");
+    fireEvent.click(screen.getByTestId("reset-button"));
+    fireEvent.click(screen.getByTestId("reset-go"));
+    await waitFor(() => expect((screen.getByTestId("reset-button") as HTMLButtonElement).disabled).toBe(false));
+
+    expect(queryClient.getQueryData(["prompts", "detail", "writing.continuation", "novel-2"])).toBe(sibling);
+  });
+
   it("MutationCache GC cannot roll the reset revision back into an unsaved draft", async () => {
     const OVERRIDE = "# Globaler Override\n{{tail}}";
     const INHERITED = "# Global-Standard\n{{tail}}";
