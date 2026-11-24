@@ -87,7 +87,7 @@
 
 **Files:** Move `app/capabilities/knowledge/structured.py` → `app/kernel/llm/structured.py` and `app/capabilities/knowledge/tests/test_structured.py` → `app/kernel/tests/test_structured.py`; Modify `app/capabilities/knowledge/jobs.py` (the import), `app/kernel/llm/__init__.py`.
 
-**Interfaces:** Produces `async def ask_structured[T](provider: TextProvider, prompt: str, *, schema: dict[str, object], parse: Callable[[str], T], audit: Callable[[AuditedCall], Awaitable[None]]) -> T` — the only change is `list[T]` → `T`; `MalformedAnswerError` keeps its `.reason`; `AuditedCall` moves with it. Knowledge's two callers pass their list-returning parse unchanged.
+**Interfaces:** Produces `async def ask_structured[T](provider: TextProvider, prompt: str, *, schema: dict[str, object], parse: Callable[[str], T], audit: Callable[[AuditedCall], Awaitable[None]]) -> T` — the only change is `list[T]` → `T`; `MalformedAnswerError` carries its reason as the exception's message and has no `.reason` attribute; `AuditedCall` moves with it. Knowledge's two callers pass their list-returning parse unchanged.
 
 - [ ] **Step 1: Run** `just test-file app/capabilities/knowledge/tests/test_structured.py` — PASS (the baseline).
 - [ ] **Step 2: Move and generalise**; add one kernel test `test_ask_structured_returns_an_object` (a stub provider answering `{"reply": "ok"}`, `parse=json.loads`). Run the moved file, the extraction and consistency suites — PASS.

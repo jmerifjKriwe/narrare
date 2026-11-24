@@ -1,18 +1,21 @@
-"""Structured answers: demand JSON, repair it, retry once, then fail with the reason.
+"""Structured answers: ask schema-bound, repair the reply, retry once, then raise.
 
-The two knowledge handlers need a JSON array from a model that occasionally
-answers in prose. This module owns that exchange for both of them — one call
-shape, one repair attempt, one retry that carries the validation error, and a
-failure that names what the parser refused so the job row can repeat it.
+The helper is capability-neutral: the caller supplies the schema the provider
+must honour and a ``parse`` function that turns the answer into whatever shape
+it wants — the module knows nothing about that shape. It tries the answer
+through ``parse``, then its repaired form once without another provider call,
+and retries the provider exactly once with the parse reason. If that second
+answer is unreadable too, it raises ``MalformedAnswerError`` whose message is
+the reason.
 
-Every call, the retry included, goes through the caller's audit callback: the
-rows still ride the handler's terminal commit, so a job that fails writes none
-of them (D3).
+Every call, the retry included, goes through the caller's audit callback; the
+caller's commit decides whether those rows persist, so a job that fails writes
+none of them (D3).
 """
 
 from dataclasses import dataclass
 from time import monotonic
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from json_repair import repair_json
 
@@ -22,11 +25,16 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
 
+_UNREAD = object()
+"""Marks a failed read. ``None`` is a legitimate ``T`` (``parse=loads`` on ``"null"``)."""
+
+
 class MalformedAnswerError(ValueError):
     """The provider's answer is not the JSON the caller asked for.
 
-    Its message is the parse reason: the lane writes it to ``Job.error``, so
-    the user reads what the model sent rather than "the job failed".
+    The reason travels as the exception's message; the caller decides where it
+    lands — knowledge writes it to ``Job.error``, so the user reads what the
+    model sent rather than "the job failed".
     """
 
 
@@ -53,7 +61,7 @@ async def _ask(provider: TextProvider, request: CompletionRequest) -> tuple[str,
     return "".join(pieces), round((monotonic() - started) * 1000), usage
 
 
-def _read[T](answer: str, parse: Callable[[str], T]) -> tuple[T | None, str]:
+def _read[T](answer: str, parse: Callable[[str], T]) -> tuple[T | object, str]:
     """Parse the answer, then its repair; report the reason the last attempt refused."""
     try:
         return parse(answer), ""
@@ -65,7 +73,7 @@ def _read[T](answer: str, parse: Callable[[str], T]) -> tuple[T | None, str]:
             return parse(repaired), ""
         except ValueError as error:
             reason = str(error) or reason
-    return None, reason
+    return _UNREAD, reason
 
 
 async def ask_structured[T](
@@ -86,8 +94,8 @@ async def ask_structured[T](
     answer, latency_ms, usage = await _ask(provider, first)
     await audit(AuditedCall(prompt=prompt, answer=answer, latency_ms=latency_ms, usage=usage))
     parsed, reason = _read(answer, parse)
-    if parsed is not None:
-        return parsed
+    if parsed is not _UNREAD:
+        return cast("T", parsed)
 
     correction = (
         f"The previous answer was invalid: {reason}. "
@@ -107,6 +115,6 @@ async def ask_structured[T](
         )
     )
     parsed, reason = _read(answer, parse)
-    if parsed is not None:
-        return parsed
+    if parsed is not _UNREAD:
+        return cast("T", parsed)
     raise MalformedAnswerError(reason)

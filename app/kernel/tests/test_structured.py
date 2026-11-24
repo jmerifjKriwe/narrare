@@ -89,6 +89,28 @@ async def test_ask_structured_returns_an_object() -> None:
     assert len(calls) == 1
 
 
+async def test_ask_structured_returns_none_when_the_answer_is_null() -> None:
+    # None is a legitimate parse result, not the failure signal: one call, one
+    # audit, nothing retried.
+    provider = StubProvider(["null"])
+    calls: list[AuditedCall] = []
+
+    assert (
+        await ask_structured(
+            provider,
+            "prompt",
+            schema={"type": "null"},
+            parse=loads,
+            audit=_audit_into(calls),
+        )
+        is None
+    )
+
+    assert len(provider.requests) == 1
+    assert provider.requests[0].response_schema == {"type": "null"}
+    assert len(calls) == 1
+
+
 async def test_a_valid_answer_parses_with_one_call_and_one_audit() -> None:
     provider = StubProvider(['["a", "b"]'])
     calls: list[AuditedCall] = []
