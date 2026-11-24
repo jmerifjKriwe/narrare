@@ -13,7 +13,10 @@
  * first-scene door is LIVE (Task 13) — the canonical new-chapter
  * experience (D16).
  */
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+
+// Full-suite load: see WorkspacePage.test.tsx.
+configure({ asyncUtilTimeout: 5000 });
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

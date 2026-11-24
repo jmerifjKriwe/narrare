@@ -10,7 +10,10 @@
  * into the one write path. The page owns F9/Esc (D19); here the surface
  * itself: its anatomy, its controls, its focus trap.
  */
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+
+// Full-suite load: see WorkspacePage.test.tsx.
+configure({ asyncUtilTimeout: 5000 });
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

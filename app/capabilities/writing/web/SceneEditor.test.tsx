@@ -17,7 +17,10 @@
  * streaming→pending transition, through the editor's hidden live region —
  * a region mounted populated never speaks, so the preview wears no role.
  */
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
+
+// Full-suite load: heavy editor surface; see WorkspacePage.test.tsx.
+configure({ asyncUtilTimeout: 5000 });
 import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
 import { useEffect, useState } from "react";

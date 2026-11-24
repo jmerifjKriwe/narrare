@@ -37,6 +37,10 @@ export default defineConfig({
   // never collect them. The jsdom environment stays a per-file decision —
   // the docblock in each test file — so lib tests keep node semantics.
   test: {
+    // Under full-suite load the default (cores-1 forks) churns 67 isolated
+    // workers; CI caps the concurrency to reduce scheduling jitter. Local dev
+    // keeps the default for speed. See docs/superpowers/plans/2026-11-22-web-unit-flakes.md.
+    maxWorkers: process.env.CI ? 2 : undefined,
     include: [
       "**/*.{test,spec}.?(c|m)[jt]s?(x)",
       "../app/capabilities/*/web/**/*.{test,spec}.?(c|m)[jt]s?(x)",
