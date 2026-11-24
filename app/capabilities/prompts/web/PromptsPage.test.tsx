@@ -385,6 +385,30 @@ describe("the save gate's refusal family", () => {
     await waitFor(() => expect(api.GET).toHaveBeenCalledWith("/api/prompts", expect.anything()));
   });
 
+  it("keystrokes between the save-click and the landing refetch are never clobbered", async () => {
+    // The save lands, the invalidation refetch answers with the saved
+    // override — the baseline's BYTES change under the cursor. The draft
+    // belongs to its author: the keystroke typed while the save was in
+    // flight survives, the draft is not reset to the new baseline.
+    const SAVED = "# Umgestimmt\n{{tail}}";
+    let landed = false;
+    api.PUT.mockImplementation(async () => {
+      landed = true;
+      return { data: detail({ override: { scope: "global", content: SAVED } }), response: ok() };
+    });
+    renderPage();
+    const editor = await readyEditor();
+    const textarea = within(editor).getByTestId("draft-textarea") as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: SAVED } });
+    fireEvent.click(within(editor).getByTestId("save-button"));
+    // The keystroke rides the in-flight save.
+    fireEvent.change(textarea, { target: { value: `${SAVED} und ein Nachsatz.` } });
+    expect(await screen.findByTestId("saved-face")).toBeTruthy();
+    // The refetch landed (the detail now carries the override).
+    await waitFor(() => expect(landed && api.GET.mock.calls.some(([path]) => path === "/api/prompts/{key}")).toBe(true));
+    expect((screen.getByTestId("draft-textarea") as HTMLTextAreaElement).value).toBe(`${SAVED} und ein Nachsatz.`);
+  });
+
   it("the novel scope rides the novel id", async () => {
     api.PUT.mockResolvedValue({ data: detail(), response: ok() });
     renderPage();
@@ -535,6 +559,7 @@ describe("the live test", () => {
     const context = await within(editor).findByTestId("live-context");
     expect(context.textContent).toContain(de["prompts.live.provider.fake"]);
     expect(context.textContent).toContain(de["prompts.live.provider.fakeNote"]);
+    expect(context.textContent).not.toContain("Kein Provider konfiguriert");
     expect(context.textContent).toContain("Roman: Dead Signal");
     expect(context.textContent).toContain("Kapitel: Nevada Echoes");
 
@@ -662,6 +687,29 @@ describe("the honest gates and the shared chrome", () => {
     renderPage();
     const outage = await screen.findByTestId("prompts-outage");
     expect(outage.textContent).toContain(de["prompts.loadFailed"]);
+    api.GET.mockImplementation(async (path: string, init?: { params?: { path?: Record<string, string>; query?: Record<string, unknown> } }) => {
+      if (path === "/api/writing/novels") return { data: novelList, response: ok() };
+      if (path === "/api/prompts") return { data: summaries, response: ok() };
+      const key = init?.params?.path?.key ?? "";
+      return { data: details[key] ?? detail(), response: ok() };
+    });
+    fireEvent.click(screen.getByTestId("prompts-retry"));
+    expect(await screen.findByTestId("prompts-editor")).toBeTruthy();
+  });
+
+  it("a failed detail read is the outage face, never a perpetual loading card; the retry re-asks it", async () => {
+    // The list and the novels answer; only the editor's detail read fails.
+    api.GET.mockImplementation(async (path: string, init?: { params?: { path?: Record<string, string> } }) => {
+      if (path === "/api/writing/novels") return { data: novelList, response: ok() };
+      if (path === "/api/prompts") return { data: summaries, response: ok() };
+      return { data: null, error: { detail: "detail down" }, response: new Response(null, { status: 503 }) };
+    });
+    renderPage();
+    const outage = await screen.findByTestId("prompts-outage");
+    expect(outage.textContent).toContain(de["prompts.loadFailed"]);
+    // No loading card stands in the editor's place — the page is one outage.
+    expect(screen.queryByTestId("prompts-editor")).toBeNull();
+    // The retry re-asks the detail: the editor stands.
     api.GET.mockImplementation(async (path: string, init?: { params?: { path?: Record<string, string>; query?: Record<string, unknown> } }) => {
       if (path === "/api/writing/novels") return { data: novelList, response: ok() };
       if (path === "/api/prompts") return { data: summaries, response: ok() };
