@@ -25,9 +25,9 @@
 > promises. The table's format follows the W7 ledger
 > ([`2026-11-21-settings.md`](2026-11-21-settings.md)).
 >
-> The wave's index issue is to be created by the coordinator (the
-> [`follow-ups.md`](../../superpowers/follow-ups.md) row carries the
-> placeholder until then). The filed children are **#940**, **#945** and
+> The wave's index issue is **#947** (the
+> [`follow-ups.md`](../../superpowers/follow-ups.md) row carries its
+> number). The filed children are **#940**, **#945** and
 > **#946**; #933 closed with the W8 opener. Rows whose trigger is a
 > later wave, a product or owner decision record their trigger here and
 > carry no issue — the ledger is their home until that trigger fires.
