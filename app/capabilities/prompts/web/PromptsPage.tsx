@@ -26,7 +26,7 @@
  * the loading skeleton while the reads stand, the outage face with its
  * retry when any fails — never dressed-up nulls.
  */
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { SettingsHub } from "@shell/components/SettingsHub";
 import { useTranslation } from "@shell/lib/i18n";
@@ -95,6 +95,8 @@ export function PromptsPage() {
   };
 
   const reset = useResetPrompt(currentKey, scope.novelId);
+  const resetRef = useRef(reset);
+  resetRef.current = reset;
   const resetRevision = useResetRevision(currentKey, scope.novelId);
   const detailRead = usePromptDetail(currentKey, scope.novelId);
 
@@ -103,7 +105,11 @@ export function PromptsPage() {
   }
 
   function retireResetFailure(): void {
-    if (reset.isError) reset.reset();
+    // Save keeps this callback from its start render. Read the reset's latest
+    // result, not that render's `isError`, so a newer pending reset stays
+    // observed while an older settled error is still retired.
+    const currentReset = resetRef.current;
+    if (currentReset.isError) currentReset.reset();
   }
 
   const resetFailure =

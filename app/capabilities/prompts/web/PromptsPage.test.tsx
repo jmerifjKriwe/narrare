@@ -807,6 +807,53 @@ describe("the reset", () => {
     expect(refusal.textContent).toContain(RESET_REFUSAL);
   });
 
+  it("a save started with a reset error still leaves a newer reset observed", async () => {
+    const OLD_REFUSAL = "Der erste Reset wurde abgelehnt.";
+    const NEW_REFUSAL = "Der zweite Reset wurde abgelehnt.";
+    const SAVED = "# Gespeichert\n{{tail}}";
+    api.DELETE.mockResolvedValueOnce({
+      data: null,
+      error: { detail: { reason: "runtime", detail: OLD_REFUSAL } },
+      response: new Response(null, { status: 422 }),
+    });
+
+    renderPage();
+    const editor = await readyEditor();
+    fireEvent.click(within(editor).getByTestId("reset-button"));
+    fireEvent.click(within(editor).getByTestId("reset-go"));
+    expect((await screen.findByTestId("refusal-face")).textContent).toContain(OLD_REFUSAL);
+
+    const saved = deferred<{ data: Record<string, unknown>; response: Response }>();
+    const deleted = deferred<{ data: null; error: unknown; response: Response }>();
+    api.PUT.mockReturnValue(saved.promise);
+    api.DELETE.mockReturnValue(deleted.promise);
+    const textarea = screen.getByTestId("draft-textarea") as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: SAVED } });
+    fireEvent.click(screen.getByTestId("save-button"));
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(1));
+
+    // Save captured the old error state. A newer reset replaces it with a
+    // pending mutation before Save lands; completion must read the latest
+    // reset state rather than that captured `isError: true`.
+    fireEvent.click(screen.getByTestId("reset-button"));
+    fireEvent.click(screen.getByTestId("reset-go"));
+    await waitFor(() => expect(api.DELETE).toHaveBeenCalledTimes(2));
+
+    saved.resolve({
+      data: detail({ override: { scope: "global", content: SAVED }, effective_content: SAVED }),
+      response: ok(),
+    });
+    expect(await screen.findByTestId("saved-face")).toBeTruthy();
+
+    deleted.resolve({
+      data: null,
+      error: { detail: { reason: "runtime", detail: NEW_REFUSAL } },
+      response: new Response(null, { status: 422 }),
+    });
+    const refusal = await screen.findByTestId("refusal-face");
+    expect(refusal.textContent).toContain(NEW_REFUSAL);
+  });
+
   it("MutationCache GC cannot roll the reset revision back into an unsaved draft", async () => {
     const OVERRIDE = "# Globaler Override\n{{tail}}";
     const INHERITED = "# Global-Standard\n{{tail}}";
