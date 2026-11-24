@@ -371,7 +371,11 @@ class PromptService:
             source, mode = content, "draft"
         else:
             row = await self._repository().effective(key, novel_id)
-            source, mode = (row.content if row is not None else None), "effective"
+            # The pick at the REQUEST's scope, the bundled template as its
+            # fallback: `None` would let the assembly resolve the chain at a
+            # scope of its own choosing (the writing test's latest scene
+            # names its novel), executing a template the editor never showed.
+            source, mode = (row.content if row is not None else spec.template), "effective"
 
         resolved = await resolve_provider(self.session, self.user_id, key)
         assemble = spec.assemble

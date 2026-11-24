@@ -35,6 +35,7 @@ from app.kernel.embeddings import FakeEmbeddingProvider
 from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository, ProviderRepository
 from app.kernel.llm.resolution import ResolvedProvider
 from app.kernel.prompts import get_registry, no_includes, render_source
+from app.kernel.prompts.models import PromptTemplateRepository
 from app.kernel.secrets import KeyUnavailableError
 
 if TYPE_CHECKING:
@@ -455,6 +456,106 @@ async def test_the_call_rides_the_key_s_task_assignment() -> None:
     [row] = await _audit_rows()
     assert row["profile_id"] == profile_id
     assert row["model"] == "fake-turbo"
+
+
+async def test_the_live_budget_is_the_task_s_reservation_not_the_model_ceiling() -> None:
+    """The live call assembles under the same reserve as continuation.
+
+    The model's stored ceiling fills the window on purpose: budgeting with
+    the ceiling would refuse the pair, while the ``quick`` profile reserves
+    1 024 inside it. The live test must assemble what continuation
+    assembles — same prompt, byte for byte — not a narrower context.
+    """
+    novel_id = await _novel()
+    chapter_id = await _chapter(novel_id)
+    scene_id = await _scene(chapter_id, "Der Hafen lag im Dunkel.")
+
+    async with Session() as session:
+        providers = ProviderRepository(session, LOCAL_USER_ID)
+        provider = await providers.create(name="Lokal", kind="fake", base_url="")
+        profile = await ProfileRepository(session, LOCAL_USER_ID).create(
+            name="Fake-Quick",
+            provider_id=provider.id,
+            model="fake-quick",
+            context_window=1500,
+            max_output_tokens=2000,
+        )
+        await AssignmentRepository(session, LOCAL_USER_ID).set(
+            CONTINUATION, profile.id, "quick", None
+        )
+        await session.commit()
+
+    async with _client() as client:
+        continuation = await client.post(f"/api/writing/scenes/{scene_id}/continue")
+        assert continuation.status_code == 200, continuation.text
+        live = await client.post(f"/api/prompts/{CONTINUATION}/live-test")
+        assert live.status_code == 200, live.text
+
+    # Both calls audited under the key: the prompts they carried are one
+    # prompt. The ceiling budget would have refused the live call (422).
+    texts = {row["prompt_text"] for row in await _audit_rows()}
+    assert len(texts) == 1
+    [prompt] = texts
+    assert "Der Hafen lag im Dunkel." in prompt
+
+
+async def test_a_draftless_global_writing_test_rides_the_global_chain() -> None:
+    """No global override, no draft: the test executes the global template the
+    editor shows. The latest scene's novel override must not stand in for it.
+
+    With the source left unset at the requested (global) scope, the assembly
+    resolved the chain at the scene's novel and executed that override while
+    the context frame reported ``novel_id: null``.
+    """
+    novel_id = await _novel()
+    chapter_id = await _chapter(novel_id)
+    await _scene(chapter_id, "Der Hafen lag im Dunkel.")
+    async with Session() as session:
+        await PromptTemplateRepository(session, LOCAL_USER_ID).save(
+            CONTINUATION, "NOVEL-OVERRIDE: {{ tail }}", novel_id
+        )
+        await session.commit()
+
+    async with _client() as client:
+        response = await client.post(f"/api/prompts/{CONTINUATION}/live-test")
+        assert response.status_code == 200, response.text
+
+    assert _frames(response.text)[0]["context"]["source"] == "effective"
+    [row] = await _audit_rows()
+    assert "NOVEL-OVERRIDE" not in row["prompt_text"]
+    assert row["prompt_text"].startswith("Novel: ")  # the bundled arrangement
+
+
+async def test_a_test_s_includes_resolve_at_the_request_s_scope() -> None:
+    """The include chain follows the requested tier: global test → global rows.
+
+    Both include sources live at the same two tiers, so the text names which
+    one the render walked. The novel test pins the other direction — the
+    scope parameter must not flatten every test to global.
+    """
+    novel_id = await _novel()
+    chapter_id = await _chapter(novel_id)
+    await _scene(chapter_id, "Der Hafen lag im Dunkel.")
+    async with Session() as session:
+        templates = PromptTemplateRepository(session, LOCAL_USER_ID)
+        await templates.save(CONTINUATION, "TOP {% include 'knowledge.extract-entities' %}", None)
+        await templates.save(EXTRACT, "GLOBAL-INCLUDE {{ tail }}", None)
+        await templates.save(EXTRACT, "NOVEL-INCLUDE {{ tail }}", novel_id)
+        await session.commit()
+
+    async with _client() as client:
+        global_run = await client.post(f"/api/prompts/{CONTINUATION}/live-test")
+        assert global_run.status_code == 200, global_run.text
+        prompts_service._LIVE_TEST_LAST.clear()  # pyright: ignore[reportPrivateUsage]
+        novel_run = await client.post(
+            f"/api/prompts/{CONTINUATION}/live-test", json={"novel_id": str(novel_id)}
+        )
+        assert novel_run.status_code == 200, novel_run.text
+
+    rows = {row["novel_id"]: row for row in await _audit_rows()}
+    assert "GLOBAL-INCLUDE" in rows[None]["prompt_text"]
+    assert "NOVEL-INCLUDE" not in rows[None]["prompt_text"]
+    assert "NOVEL-INCLUDE" in rows[novel_id]["prompt_text"]
 
 
 # --- the live test: the gated paths ----------------------------------------

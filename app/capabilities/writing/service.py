@@ -462,6 +462,7 @@ class WritingService:
         model: str | None = None,
         prompt: str | None = None,
         source: str | None = None,
+        render_novel_id: UUID | Literal["scene"] | None = "scene",
     ) -> str:
         """The prompt for a scene continuation, or NotFoundError if the scene is not ours.
 
@@ -477,6 +478,12 @@ class WritingService:
         An explicit `source` renders instead of the chain's pick (W8's live
         test): the editor draft under test is what reaches the provider,
         budgeted and refused exactly as a saved override would be.
+        ``render_novel_id`` names the scope that source's includes resolve
+        in: ``"scene"`` (the default) is the scene's own novel — the
+        production continuation's chain — while ``None`` walks the user's
+        global chain, the live test's global scope. Without it a global
+        test would read the latest scene's novel override over the global
+        template the editor shows.
 
         The unit is the scene (W4 §5). The tail is the active scene's own prose;
         the predecessors are the book's earlier scenes in reading order walked
@@ -523,10 +530,13 @@ class WritingService:
                 ranked.append((min(positions), entity))
         ranked.sort(key=lambda pair: (pair[0], pair[1].name))
         predecessors = await self._continuation_predecessors(scene, chapter)
+        scope: UUID | None = (
+            chapter.novel_id if isinstance(render_novel_id, str) else render_novel_id
+        )
         return await render_continuation(
             self.session,
             self.user_id,
-            chapter.novel_id,
+            scope,
             budgets=budgets,
             novel_title=novel.title if novel else "",
             chapter_title=chapter.title,

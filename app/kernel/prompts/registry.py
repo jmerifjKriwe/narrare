@@ -79,11 +79,12 @@ class AssembledContext:
 class LiveTestContext:
     """What a live-test assembly may read: the scope, the draft, the tier.
 
-    ``source`` is the editor draft under test, ``None`` meaning the saved
-    effective — the assembly renders it through :func:`render`'s ``source``
-    seam, so includes still walk the chain in scope. ``resolved`` is the
-    key's task cascade's answer: the tier the call will ride, whose numbers
-    the writing assembly budgets with.
+    ``source`` is the source the call renders — the editor draft under test,
+    else the effective chain's pick at the request's scope (the bundled
+    template when neither tier carries a row). The assembly renders it
+    through :func:`render`'s ``source`` seam, so includes resolve at the
+    same scope. ``resolved`` is the key's task cascade's answer: the tier
+    the call will ride, whose numbers the writing assembly budgets with.
     """
 
     session: AsyncSession

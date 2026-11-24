@@ -468,9 +468,12 @@ async def _assemble_live(context: LiveTestContext) -> AssembledContext:
     The same assembly the continuation endpoint runs — the service gathers
     the scene, its chapter and novel, the entities the tail names and the
     predecessors — over the writer's most recently touched scene, with the
-    resolved tier's numbers as the budgets and the draft (or the effective
-    chain) as the source. The import is deferred: this module registers at
-    import time and the service imports it.
+    resolved tier's numbers as the budgets and the source the prompts
+    service resolved at the request's scope (the draft, else the effective
+    chain's pick). The render walks the chain at that request scope too:
+    a global test's includes resolve globally, never through the latest
+    scene's novel. The import is deferred: this module registers at import
+    time and the service imports it.
     """
     from app.capabilities.writing.service import WritingService
 
@@ -482,8 +485,9 @@ async def _assemble_live(context: LiveTestContext) -> AssembledContext:
         scene.id,
         source=context.source,
         context_window=context.resolved.context_window,
-        max_output_tokens=context.resolved.max_output_tokens,
+        max_output_tokens=context.resolved.resolved_output_tokens,
         model=context.resolved.model,
+        render_novel_id=context.novel_id,
     )
     chapter = await service.get_chapter(scene.chapter_id)
     novel = await service.novels.get(chapter.novel_id)
