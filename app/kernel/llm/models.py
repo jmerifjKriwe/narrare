@@ -44,6 +44,47 @@ column — validating one is the settings service's gate, not the database's.
 The list is open at one end on purpose: a provider kind arrives that no code
 but its adapter and the catalog knows, and this list is where it lands."""
 
+OUTPUT_PROFILES: dict[str, int] = {
+    "quick": 1_024,
+    "balanced": 4_096,
+    "long_texts": 12_288,
+    "comprehensive": 32_768,
+}
+"""The named output profiles and their targets, in output tokens (W8 ruling 5).
+
+These are realistic numbers against the models the catalog actually carries
+(200 k to 1 M-token windows), not conservative relics — the point of the ruling.
+A profile binds per task, not per model: the same model serves a short
+continuation and a long extraction, and the assignment row stores which one
+applies. The targets are what a call aims for, not ceilings — resolution
+caps at the model's stored ``max_output_tokens`` when one exists
+(:func:`app.kernel.llm.resolution`), and the catalog's knowledge never caps
+them. Validating a name is the settings schema's gate, like PROVIDER_KINDS.
+"""
+
+DEFAULT_OUTPUT_PROFILE = "balanced"
+"""The profile an assignment without a stored choice carries.
+
+The profile column has no two-state semantics (W8): absent and carried null
+both mean this, the column defaults to it, and the migration backfills it —
+a save that does not name a profile states ``balanced`` by that fact.
+"""
+
+CUSTOM_OUTPUT_PROFILE = "custom"
+"""The fifth name: not in :data:`OUTPUT_PROFILES` because it is its number.
+
+An assignment with this name stores the explicit token target in
+``output_profile_custom``; the API carries that number in place of a name.
+"""
+
+OUTPUT_PROFILE_CUSTOM_MAX = 2_147_483_647
+"""The Integer column's own ceiling for a custom target.
+
+A number beyond it would overflow at the write; the schema's gate refuses it
+with the field instead — the same shape as the word goal's bound. A custom
+number under a stored model ceiling is bounded by the save gate, not here.
+"""
+
 
 class LLMProvider(UserOwned):
     """One user's saved provider: the endpoint its models hang off.
@@ -139,6 +180,14 @@ class TaskAssignment(UserOwned):
     cascades its assignments at the database, and the affected tasks fall
     back down the resolution cascade — the resolver's story (WP2a T3), not
     the table's.
+
+    The row also carries the task's output profile (W8): ``output_profile``
+    names an :data:`OUTPUT_PROFILES` entry or :data:`CUSTOM_OUTPUT_PROFILE`,
+    never NULL and defaulted to :data:`DEFAULT_OUTPUT_PROFILE` — absent and
+    carried null both mean it, so no two-state semantics live here. A custom
+    choice stores its explicit number in ``output_profile_custom``; the save
+    gate bounds that number to the assigned model's stored
+    ``max_output_tokens`` when one exists.
     """
 
     __tablename__ = "task_assignments"
@@ -151,6 +200,12 @@ class TaskAssignment(UserOwned):
     profile_id: Mapped[UUID] = mapped_column(
         Uuid, ForeignKey("provider_profiles.id", ondelete="CASCADE")
     )
+    # A vocabulary name, free text to the database — the gate is the schema's.
+    output_profile: Mapped[str] = mapped_column(
+        String(20), default=DEFAULT_OUTPUT_PROFILE, server_default=DEFAULT_OUTPUT_PROFILE
+    )
+    # The explicit target when output_profile is "custom"; NULL otherwise.
+    output_profile_custom: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

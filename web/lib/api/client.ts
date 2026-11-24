@@ -45,6 +45,23 @@ export type TaskEffective = components["schemas"]["TaskEffectiveRead"];
  *  `fake` while the local fake adapter serves every assignable task,
  *  `configured` once any provider adapter answers. */
 export type Driver = components["schemas"]["DriverRead"];
+/** One saved provider endpoint as every read shows it: the mask
+ *  (`sk-…` plus the last four characters), never the key. */
+export type Provider = components["schemas"]["ProviderRead"];
+/** The provider create's one answer: the full key rides exactly once,
+ *  `null` when nothing was stored (a local endpoint without one). */
+export type ProviderCreated = components["schemas"]["ProviderCreated"];
+/** One saved model as every read shows it: its provider named, no key
+ *  anywhere, the `in_catalog`/`last_error_code` marks read-only facts. */
+export type Model = components["schemas"]["ModelRead"];
+/** One provider preset as the create form reads it: the endpoint facts,
+ *  the vendor's catalog model ids and the snapshot's honesty date. */
+export type Preset = components["schemas"]["PresetRead"];
+/** One stored task assignment: the model and the output-profile choice. */
+export type Assignment = components["schemas"]["AssignmentRead"];
+/** What one model connection test found: it ran, and it either answered
+ *  or named why. */
+export type ModelTestResult = components["schemas"]["ModelTestResult"];
 export type Entity = components["schemas"]["EntityRead"];
 export type Suggestion = components["schemas"]["SuggestionRead"];
 export type Relation = components["schemas"]["RelationRead"];
@@ -63,6 +80,13 @@ export type TimelineEventUpdate = components["schemas"]["TimelineEventUpdate"];
 /** Planning's scene aggregate (W6): one chapter's scenes in position
  *  order, with the chapter's stamp as the version a drill-in compares. */
 export type SceneAggregate = components["schemas"]["SceneAggregateRead"];
+/** The prompts surface's reads (W8 Task 12): the catalog row with its two
+ *  override tiers' facts, the editor's detail, the provider-free preview
+ *  and the saved diff. */
+export type PromptSummary = components["schemas"]["PromptSummary"];
+export type PromptDetail = components["schemas"]["PromptDetail"];
+export type PromptDiff = components["schemas"]["PromptDiff"];
+export type PromptPreview = components["schemas"]["PromptPreview"];
 
 /**
  * The one failure the UI can name a fix for: the corpus was embedded by a

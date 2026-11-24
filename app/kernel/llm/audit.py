@@ -119,17 +119,19 @@ async def audited_stream(
     user_id: UUID,
     task_key: str,
     novel_id: UUID | None = None,
+    prompt_key: str | None = None,
 ) -> AsyncGenerator[CompletionEvent]:
     """Yield the resolved provider's events and audit the call however it ends.
 
     One finalizer for every streaming capability. The row names the resolved
-    configuration — kind, model, profile id — and prices the call from the
-    same facts: the resolved kind (the fake tier is free), the catalog entry
-    the resolution carried (``resolved.info``), the resolved endpoint
-    deciding locality. It is written in a ``finally`` under a shielded
-    cancel scope, so a disconnecting client or a cancelled task cannot take
-    it with it; a failed audit is logged, never raised into a finished
-    response (§3.4 — a log row, not user data).
+    configuration — kind, model, profile id — and the prompt key the call
+    rode when the caller names one (W8's live test), and prices the call
+    from the same facts: the resolved kind (the fake tier is free), the
+    catalog entry the resolution carried (``resolved.info``), the resolved
+    endpoint deciding locality. It is written in a ``finally`` under a
+    shielded cancel scope, so a disconnecting client or a cancelled task
+    cannot take it with it; a failed audit is logged, never raised into a
+    finished response (§3.4 — a log row, not user data).
     Status names the call, not the delivery: ``ok`` once the provider ended
     cleanly — a ``Done`` event, when the provider sends one, ends it — ``error``
     when the provider raised (the error text rides along, and the row carries
@@ -183,6 +185,7 @@ async def audited_stream(
                         input_tokens=usage.input_tokens if usage else None,
                         output_tokens=usage.output_tokens if usage else None,
                         novel_id=novel_id,
+                        prompt_key=prompt_key,
                         error=error,
                         error_code=code,
                         profile_id=resolved.profile_id,

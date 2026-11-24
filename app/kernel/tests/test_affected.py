@@ -52,10 +52,12 @@ def _no_ambient_git_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Hide git's location variables from the test process itself.
 
     Git exports GIT_DIR (and, in some versions, GIT_INDEX_FILE) while it
-    runs hooks, and the pre-push hook runs this suite: with a leaked
-    GIT_DIR, git resolves every call — the fixtures', and the resolver's
-    in-process ones — to the repository whose hook is running instead of
-    the miniature one in tmp_path.
+    runs hooks, and that environment reaches any Python process a hook or a
+    local command spawns — no configured hook runs pytest today, so the
+    protection is about the inherited variables, not an imagined suite: with
+    a leaked GIT_DIR, git resolves every call — the fixtures', and the
+    resolver's in-process ones — to the repository whose hook is running
+    instead of the miniature one in tmp_path.
     """
     for key in list(os.environ):
         if key.startswith("GIT_"):
@@ -289,13 +291,20 @@ def test_the_real_checkout_discovers_the_rebuilt_suites(
     W0 demolished the capability UIs and their suites with them; the
     rebuild brings them back screen by screen — setup's suite was the
     first one home (W2), writing's shelf suite joined it (W3), knowledge's
-    was the third (W5), planning's rides W6 as the fourth, and settings'
-    rides W7 as the fifth. The expectation names the rebuilt set as it
-    stands and grows with each wave's suite; the bare set-equality failure
-    will say what drifted.
+    was the third (W5), planning's rides W6 as the fourth, settings'
+    rides W7 as the fifth, and prompts' rides W8 as the sixth. The
+    expectation names the rebuilt set as it stands and grows with each
+    wave's suite; the bare set-equality failure will say what drifted.
     """
     monkeypatch.chdir(REPO_ROOT)
-    assert known_capabilities() == {"knowledge", "planning", "settings", "setup", "writing"}
+    assert known_capabilities() == {
+        "knowledge",
+        "planning",
+        "prompts",
+        "settings",
+        "setup",
+        "writing",
+    }
 
 
 def test_a_shared_surface_change_in_the_interim_owes_nothing(

@@ -27,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 from app.kernel.contracts.models import Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
-from app.kernel.prompts import PromptRegistry, PromptRenderError, render
+from app.kernel.prompts import PromptRegistry, PromptRenderError, referenced_names, render
 from app.kernel.prompts import registry as prompts_registry
 from app.kernel.prompts.models import PromptTemplate, PromptTemplateRepository
 
@@ -158,6 +158,51 @@ async def test_unknown_key_is_a_key_error() -> None:
     async with Session() as session:
         with pytest.raises(KeyError, match=r"toy\.nope"):
             await render(session, OWNER, "toy.nope", {})
+
+
+@pytest.mark.usefixtures("two_users", "toy_registry")
+async def test_an_explicit_source_renders_instead_of_the_chain_s_pick() -> None:
+    """The live test's seam: the given source serves, the chain keeps the includes.
+
+    A stored global row would win the pick without ``source``; with it, the
+    given text is what renders. The includes stay the chain's: another key's
+    override resolves, and the key's own include resolves the chain's source
+    for that key — the root source carries no key, so no guard cycle fires.
+    (A draft that includes its own key never reaches this seam — the save
+    gate refuses the cycle before the live test is prepared.)
+    """
+    async with Session() as session:
+        repo = PromptTemplateRepository(session, OWNER)
+        await repo.save("toy.ask", "global ask {{ q }}", None)
+        await repo.save("toy.frame", "FRAME-OVERRIDE", None)
+        await session.commit()
+
+        drafted = await render(session, OWNER, "toy.ask", {"q": "hi"}, source="draft ask {{ q }}")
+        assert drafted == "draft ask hi"
+
+        included = await render(
+            session,
+            OWNER,
+            "toy.ask",
+            {},
+            source="draft [{% include 'toy.frame' %}]",
+        )
+        assert included == "draft [FRAME-OVERRIDE]"
+
+        own = await render(
+            session, OWNER, "toy.ask", {"q": "hi"}, source="[{% include 'toy.ask' %}] {{ q }}"
+        )
+    assert own == "[global ask hi] hi"
+
+
+@pytest.mark.usefixtures("two_users", "toy_registry")
+async def test_referenced_names_reads_the_ast_s_loads_only() -> None:
+    """The preview's provenance: loads count, assignment targets and params do not."""
+    reads = referenced_names(
+        "{{ tail }} {% set x = 1 %}{{ x }} {% for i in items %}{{ i }}{% endfor %}"
+    )
+    assert reads == {"tail", "x", "i", "items"}
+    assert referenced_names("no variables at all") == frozenset()
 
 
 @pytest.mark.usefixtures("two_users", "toy_registry")

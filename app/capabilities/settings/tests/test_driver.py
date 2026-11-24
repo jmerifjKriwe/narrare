@@ -91,7 +91,14 @@ async def test_the_audit_only_key_never_counts_toward_the_word() -> None:
 
     # The landscape is real: the audit-only assignment stands on the books,
     # and the word ignores it all the same.
-    assert assignments == [{"task_key": "settings.test", "profile_id": model["id"]}]
+    assert assignments == [
+        {
+            "task_key": "settings.test",
+            "profile_id": model["id"],
+            "output_profile": "balanced",
+            "output_profile_custom": None,
+        }
+    ]
     assert response.status_code == 200
     assert response.json() == {"kind": "fake"}
 

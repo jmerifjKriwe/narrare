@@ -49,6 +49,7 @@ from jinja2 import (
     Template,
     TemplateSyntaxError,
     UndefinedError,
+    nodes,
 )
 from jinja2.environment import TemplateModule  # noqa: TC002  signatures evaluate
 from jinja2.exceptions import SecurityError
@@ -289,6 +290,23 @@ def render_source(
         raise PromptRenderError("runtime", str(error)) from error
 
 
+def referenced_names(source: str) -> frozenset[str]:
+    """The names a template source reads — the preview's variable provenance.
+
+    The AST's load contexts decide: an assignment target or a loop variable
+    is a store, not a read, so ``{% set x = 1 %}`` never marks ``x`` used. A
+    source that cannot parse returns nothing — the render refuses such a
+    source first, so this answers only after a successful render.
+    """
+    try:
+        # Parse only, nothing renders: the walk reads the AST, no template
+        # output ever reaches a page from here.
+        tree = Environment(autoescape=False).parse(source)  # noqa: S701  # nosec B701
+    except TemplateSyntaxError:
+        return frozenset()
+    return frozenset(node.name for node in tree.find_all(nodes.Name) if node.ctx == "load")
+
+
 async def render(
     session: AsyncSession,
     user_id: UUID,
@@ -296,6 +314,7 @@ async def render(
     variables: Mapping[str, object],
     *,
     novel_id: UUID | None = None,
+    source: str | None = None,
 ) -> str:
     """Render the prompt ``key`` through the effective chain and return the text.
 
@@ -305,6 +324,13 @@ async def render(
     is a ``KeyError`` before any read: the key set is closed, users override
     keys they never invent them, and the caller frames that as its 404.
     Render failures re-raise ``PromptRenderError`` with their named reason.
+
+    An explicit ``source`` renders instead of the chain's pick (W8's live
+    test): the editor draft under test goes to the provider exactly as it
+    stands, while the include chain keeps walking the effective chain in the
+    same scope — another key's override still resolves. A draft that includes
+    its own key never reaches this seam: the save gate resolves a key's own
+    include to the content under test, refusing the cycle there.
 
     Includes resolve through the same chain in the same scope (same session,
     user and ``novel_id``): the repository owns the preference, and each
@@ -329,8 +355,9 @@ async def render(
     registry = get_registry()
     spec = registry.spec(key)  # an unknown key is the caller's 404, not a refusal
     repository = PromptTemplateRepository(session, user_id)
-    override = await repository.effective(key, novel_id)
-    source = override.content if override is not None else spec.template
+    if source is None:
+        override = await repository.effective(key, novel_id)
+        source = override.content if override is not None else spec.template
 
     loop = asyncio.get_running_loop()
 

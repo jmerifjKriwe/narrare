@@ -19,7 +19,13 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.generated.locales import LOCALES
 from app.kernel.contracts.models import WORD_GOAL_MAX, WORD_GOAL_MIN
-from app.kernel.llm.models import PROVIDER_KINDS
+from app.kernel.llm.models import (
+    CUSTOM_OUTPUT_PROFILE,
+    OUTPUT_PROFILE_CUSTOM_MAX,
+    OUTPUT_PROFILES,
+    PROVIDER_KINDS,
+)
+from app.kernel.llm.resolution import OutputProfile
 
 
 class SettingsRead(BaseModel):
@@ -135,11 +141,14 @@ class ModelRead(BaseModel):
     """A model as every read shows it: its provider named, no key anywhere.
 
     The key and its mask live on the provider; the model carries none. The
-    three state fields are the settings row's marks, read-only facts:
+    four state fields are the settings row's marks, read-only facts:
     ``in_catalog`` is the resolution lookup's own answer (:func:`effective_info`
     with the provider's vendor — no second lookup path), and the
     ``last_error_*`` pair is the model's newest audit row, kept only when that
-    call failed, so a later success clears the mark.
+    call failed, so a later success clears the mark. ``catalog_max_output_tokens``
+    is that same lookup's own output ceiling for the model string — beside,
+    never merged into, the model's stored ``max_output_tokens``, whose column
+    keeps its own meaning (the one ceiling a custom choice is bounded by).
     """
 
     id: UUID
@@ -150,6 +159,7 @@ class ModelRead(BaseModel):
     is_default: bool
     context_window: int | None
     max_output_tokens: int | None
+    catalog_max_output_tokens: int | None
     temperature: float | None
     request_timeout: float | None
     in_catalog: bool
@@ -252,14 +262,73 @@ class ModelTestResult(BaseModel):
 
 
 class AssignmentUpdate(BaseModel):
-    """``profile_id: null`` clears the task's assignment (back down the cascade)."""
+    """``profile_id: null`` clears the task's assignment (back down the cascade).
+
+    ``output_profile`` is the task's output-length choice (W8): a vocabulary
+    name (:data:`OUTPUT_PROFILES`) or an explicit number — the number *is*
+    the custom profile's carrier, there is no ``"custom"`` string. Absent
+    and carried null both mean ``balanced``: the profile column has no
+    two-state semantics, so a save that omits the field states ``balanced``
+    by that fact. A custom number above the assigned model's stored
+    ``max_output_tokens`` is refused by the service's gate (422 naming the
+    field); with no stored ceiling nothing bounds it.
+    """
 
     profile_id: UUID | None
+    output_profile: str | int | None = None
+
+    @field_validator("output_profile", mode="before")
+    @classmethod
+    def _a_name_of_the_vocabulary_or_an_explicit_number(cls, value: object) -> object:
+        # Before the union's coercion: a bool would otherwise arrive as 1 and
+        # pass for the custom number 1 — a truth value is no token count.
+        if value is None:
+            return None
+        if isinstance(value, str):
+            # A str must name the vocabulary; "custom" is not a name — the
+            # number itself rides instead.
+            if value == CUSTOM_OUTPUT_PROFILE:
+                raise ValueError("the custom output profile rides as its number, not as a name")
+            if value not in OUTPUT_PROFILES:
+                known = ", ".join(OUTPUT_PROFILES)
+                raise ValueError(
+                    f"unknown output profile {value!r}; known: {known},"
+                    " or a custom token count as a number"
+                )
+            return value
+        if isinstance(value, bool):
+            raise ValueError("a token count is a whole number, not a flag")
+        if isinstance(value, int):
+            if not (1 <= value <= OUTPUT_PROFILE_CUSTOM_MAX):
+                raise ValueError(
+                    "a custom output profile is a token count between 1 and"
+                    f" {OUTPUT_PROFILE_CUSTOM_MAX}"
+                )
+            return value
+        raise ValueError(
+            "an output profile is a vocabulary name or a custom token count as a number"
+        )
+
+    def output_choice(self) -> OutputProfile | None:
+        """The carried choice as the kernel's type; ``None`` means no choice."""
+        if self.output_profile is None:
+            return None
+        if isinstance(self.output_profile, int):
+            return OutputProfile(name=CUSTOM_OUTPUT_PROFILE, custom=self.output_profile)
+        return OutputProfile(name=self.output_profile)
 
 
 class AssignmentRead(BaseModel):
+    """A stored assignment as every read shows it: the model and the profile.
+
+    The profile fields mirror the row's columns — ``custom`` beside its
+    number, the vocabulary's default where no choice was stored.
+    """
+
     task_key: str
     profile_id: UUID | None
+    output_profile: str
+    output_profile_custom: int | None
 
 
 class TaskEffectiveRead(BaseModel):
@@ -271,6 +340,14 @@ class TaskEffectiveRead(BaseModel):
     say what answers without claiming the cascade's stored choice. An
     audit-only key has no serving tier: ``kind`` is ``audit``, the model
     fields are ``None``, and ``assignable`` is ``False``.
+
+    The output profile is the honesty seam (W8): ``output_profile`` names the
+    choice the serving assignment carried (``balanced`` when none did) and
+    ``resolved_output_tokens`` is the number a call reserves — the target,
+    ``min``-ed with the model's stored ``max_output_tokens`` where one is
+    stored, the target itself where none is (an unknown ceiling is never
+    invented). An audit-only key names no profile and reserves nothing:
+    both fields are ``None`` there.
     """
 
     task_key: str
@@ -278,6 +355,8 @@ class TaskEffectiveRead(BaseModel):
     profile_name: str | None
     kind: str
     assignable: bool
+    output_profile: str | None
+    resolved_output_tokens: int | None
 
 
 class DriverRead(BaseModel):

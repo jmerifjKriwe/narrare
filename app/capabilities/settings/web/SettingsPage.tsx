@@ -6,7 +6,7 @@
  * - Sprache & Aussehen, the immediate section: the three language cards and
  *   the theme's three appearance cards apply AT ONCE, through the existing
  *   seams — `useLanguageChoice` (the one language contract; „Dem Browser
- *   folgen“ is its null choice) and the shared `useTheme` write (the rail
+ *   folgen" is its null choice) and the shared `useTheme` write (the rail
  *   toggle's own door). No second mechanism exists; a refusal restores.
  *   The theme previews keep their drafted colours on the one palette: the
  *   swatch spans pin `color-scheme`, so the parchment swatch stays
@@ -17,6 +17,10 @@
  *   and `#tagesziel-feld` — a hash navigation focuses the field it names.
  * - The offline note, the draft's card, carried inside the profile section.
  *
+ * W8 Task 9 adds exactly one thing to this page: the shared hub chrome
+ * (`SettingsHub`, ruling 4) above the content — the content itself is
+ * byte-stable, and the hub carries the two routes that exist.
+ *
  * Honest states throughout: the loading skeleton while the strict read
  * stands, the outage face with its retry (the read is the settings
  * capability's own `useSettings` — a dressed-up null would be a lie here),
@@ -26,6 +30,7 @@
 import { useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 
+import { SettingsHub } from "@shell/components/SettingsHub";
 import { catalogs, type Locale } from "@shell/lib/generated/catalogs";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
@@ -74,6 +79,11 @@ export function SettingsPage() {
   return (
     <main id="main-content" data-testid="settings-page" aria-busy={settings.isPending} className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl space-y-12 px-8 py-10 pb-24">
+        {/* BEGIN: the settings hub chrome (W8 ruling 4) — the only change
+            this page takes in PR 2: the content below is byte-stable. */}
+        <SettingsHub />
+        {/* END: the hub chrome. */}
+
         {/* Kopfzeile der Ansicht */}
         <div>
           <h1 className={`${SERIF} text-hero font-normal tracking-tight text-foreground`}>

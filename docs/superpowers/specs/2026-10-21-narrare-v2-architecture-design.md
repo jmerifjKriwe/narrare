@@ -245,7 +245,13 @@ gates fall under §8.
 changed files, secrets. Format and lint work on changed files only; the typecheck is
 scoped to changed paths.
 
-**Local — pre-push, target under 60 s, two hooks:** full typecheck, unit tests.
+**Local — commit hooks, target under 60 s:** format, lint, the changed-files
+typecheck, the secret scan, the commit-message check, the changed web tests.
+On push: `uv-lock` always, and `pyright-full` when Python or dependency files
+are touched — no hook runs pytest. The full suites moved to CI (2026-11-23);
+CI triggers on PRs and main pushes only, with E2E narrowed to the PR's affected
+capabilities. A green local push verifies the hooks that fired, `just verify`
+the whole tree.
 
 **CI — seven job definitions:** five functional gates (`lint-types`; `tests`, which
 also uploads the coverage on a `main` push; `e2e-suites`, the per-capability

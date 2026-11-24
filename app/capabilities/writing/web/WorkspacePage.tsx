@@ -186,6 +186,17 @@ export function WorkspacePage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [goalDialog, setGoalDialog] = useState<{ kind: "daily" } | { kind: "chapter"; chapter: Chapter } | null>(null);
 
+  // The dialog's deep link (W8 Task 9): the AI-Regeln surface's pointer
+  // door lands at `#buch-einstellungen` — the mirror of the dialog's own
+  // retired settings door, which walked to `/settings#profil-sektion` the
+  // same way. The hash opens the dialog once the book's row stood; any
+  // other hash (or none) opens nothing.
+  useEffect(() => {
+    if (!novel.isSuccess) return;
+    if (window.location.hash !== "#buch-einstellungen") return;
+    setSettingsOpen(true);
+  }, [novel.isSuccess]);
+
   // A navigation between two books reuses this component — the selection
   // and the collapse state belong to the book that was opened, never the
   // next one.

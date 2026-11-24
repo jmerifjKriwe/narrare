@@ -823,14 +823,132 @@ async def test_assignments_accept_unknown_forward_compatible_task_keys(client: A
     assert assigned.json() == {
         "task_key": "brandnew.task",
         "profile_id": model["id"],
+        "output_profile": "balanced",
+        "output_profile_custom": None,
     }
 
     listed = (await client.get("/api/settings/assignments")).json()
-    assert listed == [{"task_key": "brandnew.task", "profile_id": model["id"]}]
+    assert listed == [
+        {
+            "task_key": "brandnew.task",
+            "profile_id": model["id"],
+            "output_profile": "balanced",
+            "output_profile_custom": None,
+        }
+    ]
 
     cleared = await client.put("/api/settings/assignments/brandnew.task", json={"profile_id": None})
     assert cleared.status_code == 200
     assert cleared.json()["profile_id"] is None
+    assert (await client.get("/api/settings/assignments")).json() == []
+
+
+async def test_an_assignment_stores_the_output_profile_it_names(client: AsyncClient) -> None:
+    """The profile rides the PUT and every later read of the assignment."""
+    provider = await _create_provider(client)
+    model = await _create(client, str(provider["id"]))
+    put = await client.put(
+        "/api/settings/assignments/chat.ask",
+        json={"profile_id": model["id"], "output_profile": "long_texts"},
+    )
+    assert put.status_code == 200
+    assert put.json() == {
+        "task_key": "chat.ask",
+        "profile_id": model["id"],
+        "output_profile": "long_texts",
+        "output_profile_custom": None,
+    }
+    listed = (await client.get("/api/settings/assignments")).json()
+    assert listed == [put.json()]
+
+
+async def test_an_absent_or_null_profile_saves_balanced(client: AsyncClient) -> None:
+    """The profile column has no two-state semantics: absent and null both
+    mean balanced — a save that carries no profile resets the task to it."""
+    provider = await _create_provider(client)
+    model = await _create(client, str(provider["id"]))
+    balanced = {
+        "task_key": "chat.ask",
+        "profile_id": model["id"],
+        "output_profile": "balanced",
+        "output_profile_custom": None,
+    }
+
+    absent = await client.put(
+        "/api/settings/assignments/chat.ask", json={"profile_id": model["id"]}
+    )
+    assert absent.status_code == 200
+    assert absent.json() == balanced
+
+    named = await client.put(
+        "/api/settings/assignments/chat.ask",
+        json={"profile_id": model["id"], "output_profile": "quick"},
+    )
+    assert named.status_code == 200
+    assert named.json()["output_profile"] == "quick"
+
+    nulled = await client.put(
+        "/api/settings/assignments/chat.ask",
+        json={"profile_id": model["id"], "output_profile": None},
+    )
+    assert nulled.status_code == 200
+    assert nulled.json() == balanced
+
+
+async def test_a_custom_profile_is_bounded_to_the_models_stored_ceiling(
+    client: AsyncClient,
+) -> None:
+    """A custom number above a stored ceiling is refused with the field; at or
+    under it stores; without a stored ceiling nothing bounds it — it stands."""
+    provider = await _create_provider(client)
+    capped = await _create(client, str(provider["id"]), "Capped", max_output_tokens=8_192)
+
+    fit = await client.put(
+        "/api/settings/assignments/chat.ask",
+        json={"profile_id": capped["id"], "output_profile": 6_000},
+    )
+    assert fit.status_code == 200
+    assert fit.json() == {
+        "task_key": "chat.ask",
+        "profile_id": capped["id"],
+        "output_profile": "custom",
+        "output_profile_custom": 6_000,
+    }
+
+    above = await client.put(
+        "/api/settings/assignments/chat.ask",
+        json={"profile_id": capped["id"], "output_profile": 9_001},
+    )
+    assert above.status_code == 422
+    assert "output_profile" in above.text
+    # The refusal changed nothing: the last stored choice still answers.
+    listed = (await client.get("/api/settings/assignments")).json()
+    assert listed[0]["output_profile_custom"] == 6_000
+
+    # No stored ceiling: no known bound exists, the save passes.
+    free = await _create(client, str(provider["id"]), "Free")
+    unbounded = await client.put(
+        "/api/settings/assignments/knowledge.extract-entities",
+        json={"profile_id": free["id"], "output_profile": 50_000},
+    )
+    assert unbounded.status_code == 200
+    assert unbounded.json()["output_profile"] == "custom"
+    assert unbounded.json()["output_profile_custom"] == 50_000
+
+
+async def test_an_output_profile_outside_the_vocabulary_is_refused(client: AsyncClient) -> None:
+    """A name the vocabulary does not carry is a 422 naming the field — and
+    ``custom`` itself is not a name: the number is its carrier."""
+    provider = await _create_provider(client)
+    model = await _create(client, str(provider["id"]))
+    for carried in ("huge", "custom", True):
+        put = await client.put(
+            "/api/settings/assignments/chat.ask",
+            json={"profile_id": model["id"], "output_profile": carried},
+        )
+        assert put.status_code == 422, carried
+        assert "output_profile" in put.text, carried
+    # Nothing unusable was stored.
     assert (await client.get("/api/settings/assignments")).json() == []
 
 
@@ -1022,6 +1140,9 @@ async def test_the_model_read_names_whether_the_catalog_prices_it(
     stranger = await _create_provider(client, name="Stranger", vendor="other")
     # No tier reaches "mini-xl": not this vendor's, not the bare, not folded.
     unknown = await _create(client, str(stranger["id"]), "Unknown", model="mini-xl")
+    # The one row with stored overrides: presence never depended on them —
+    # the lookup applies them to the numbers after the tiers decide.
+    await _create(client, str(acme["id"]), "Capped", model="mini", max_output_tokens=2_048)
 
     assert known["in_catalog"] is True
     assert unknown["in_catalog"] is False
@@ -1033,4 +1154,41 @@ async def test_the_model_read_names_whether_the_catalog_prices_it(
         after = await session.scalar(text("SELECT count(*) FROM llm_calls"))
     assert before == after == 0
     flags = {entry["name"]: entry["in_catalog"] for entry in listed}
-    assert flags == {"Known": True, "Unknown": False}
+    assert flags == {"Known": True, "Unknown": False, "Capped": True}
+    # The stored-override row's own answer, stated beside the dict pin.
+    by_name = {entry["name"]: entry for entry in listed}
+    assert by_name["Capped"]["in_catalog"] is True
+
+
+async def test_the_model_read_carries_the_catalogs_known_output_limit(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``catalog_max_output_tokens`` is the catalog's own ceiling, beside the stored one.
+
+    The assignment gate bounds a custom choice by the model's STORED
+    ``max_output_tokens`` alone — the catalog prices the call and is no
+    ceiling (W8 ruling 5) — and the UI's create form stores no tunables,
+    so from the surface a catalogued model never carries a stored
+    ceiling. The read must still answer the catalog's known output limit,
+    or the Aufgaben editor cannot name (and refuse above) the one limit
+    the provider is known to enforce before a call dies on it.
+    """
+    monkeypatch.setattr(catalog, "load_catalog", lambda: {"acme/mini": ACME})
+    acme = await _create_provider(client, vendor="acme")
+    await _create(client, str(acme["id"]), "Known", model="mini")
+    stranger = await _create_provider(client, name="Stranger", vendor="other")
+    await _create(client, str(stranger["id"]), "Unknown", model="mini-xl")
+    await _create(client, str(acme["id"]), "Capped", model="mini", max_output_tokens=2_048)
+
+    listed = {entry["name"]: entry for entry in (await client.get("/api/settings/models")).json()}
+    # No stored ceiling: the honest unset column stands, and the catalog's
+    # known limit answers beside it.
+    assert listed["Known"]["max_output_tokens"] is None
+    assert listed["Known"]["catalog_max_output_tokens"] == 4_096
+    # No catalog tier reaches the model: no known limit is invented.
+    assert listed["Unknown"]["max_output_tokens"] is None
+    assert listed["Unknown"]["catalog_max_output_tokens"] is None
+    # A stored ceiling keeps its own column; the catalog's answer sits
+    # beside it, never merged into it.
+    assert listed["Capped"]["max_output_tokens"] == 2_048
+    assert listed["Capped"]["catalog_max_output_tokens"] == 4_096

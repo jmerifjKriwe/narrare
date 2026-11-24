@@ -42,7 +42,16 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.kernel.context import BudgetImpossibleError, ContextBudgets
 from app.kernel.contracts.models import Entity  # noqa: TC001
-from app.kernel.prompts import PromptRenderError, get_registry, no_includes, render, render_source
+from app.kernel.prompts import (
+    AssembledContext,
+    LiveContextMissingError,
+    LiveTestContext,
+    PromptRenderError,
+    get_registry,
+    no_includes,
+    render,
+    render_source,
+)
 
 CONTINUATION_KEY: Final = "writing.continuation"
 
@@ -331,6 +340,7 @@ async def render_continuation(
     blurb: str | None,
     active_chapter_id: UUID | None = None,
     prompt: str | None = None,
+    source: str | None = None,
 ) -> str:
     """The continuation prompt through the effective chain, the budgets held.
 
@@ -343,6 +353,10 @@ async def render_continuation(
     ``budget``, the caller's error frame, never a truncated prompt. Read-only:
     the override chain is read, nothing written.
 
+    An explicit ``source`` renders instead of the chain's pick (W8's live
+    test): the editor draft under test is budgeted and refused exactly as a
+    saved override would be, while its includes still walk the chain.
+
     The writer instruction (W4 D5) rides the same fit: its block is frame the
     source may place anywhere — an override that does not name the
     ``instruction`` variable renders without it, and only what rendered is
@@ -350,7 +364,9 @@ async def render_continuation(
     """
 
     async def chain(variables: dict[str, str]) -> str:
-        return await render(session, user_id, CONTINUATION_KEY, variables, novel_id=novel_id)
+        return await render(
+            session, user_id, CONTINUATION_KEY, variables, novel_id=novel_id, source=source
+        )
 
     return await _fit_tail(
         chain,
@@ -446,9 +462,47 @@ def _style_block(genre: str | None, blurb: str | None, budget: int) -> str:
     return section[: budget - 2] + "\n\n"
 
 
+async def _assemble_live(context: LiveTestContext) -> AssembledContext:
+    """The live test's continuation: the writer's latest scene, the real budgets.
+
+    The same assembly the continuation endpoint runs — the service gathers
+    the scene, its chapter and novel, the entities the tail names and the
+    predecessors — over the writer's most recently touched scene, with the
+    resolved tier's numbers as the budgets and the source the prompts
+    service resolved at the request's scope (the draft, else the effective
+    chain's pick). The render walks the chain at that request scope too:
+    a global test's includes resolve globally, never through the latest
+    scene's novel. The import is deferred: this module registers at import
+    time and the service imports it.
+    """
+    from app.capabilities.writing.service import WritingService
+
+    service = WritingService(context.session, context.user_id)
+    scene = await service.latest_scene(context.novel_id)
+    if scene is None:
+        raise LiveContextMissingError("no scene to continue yet — write a scene first")
+    prompt = await service.continuation_prompt(
+        scene.id,
+        source=context.source,
+        context_window=context.resolved.context_window,
+        max_output_tokens=context.resolved.resolved_output_tokens,
+        model=context.resolved.model,
+        render_novel_id=context.novel_id,
+    )
+    chapter = await service.get_chapter(scene.chapter_id)
+    novel = await service.novels.get(chapter.novel_id)
+    facts = {"chapter": chapter.title}
+    if novel is not None:
+        facts = {"novel": novel.title, **facts}
+    if scene.title:
+        facts["scene"] = scene.title
+    return AssembledContext(prompt=prompt, facts=facts)
+
+
 get_registry().register(
     CONTINUATION_KEY,
     template=CONTINUATION_TEMPLATE,
     sample_variables=sample_variables,
     novel_scopable=True,
+    assemble=_assemble_live,
 )

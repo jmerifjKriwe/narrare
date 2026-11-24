@@ -716,6 +716,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/prompts/{key}/live-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Live Test Prompt
+         * @description Test the draft against the live wire over the capability's real context.
+         *
+         *     Absent body (or content) tests the saved effective. The draft passes the
+         *     save gate before any provider call and is never persisted; the call
+         *     rides the key's task assignment and its own real context assembly; the
+         *     answer streams and lands only in the audit row the task's calls share.
+         */
+        post: operations["live_test_prompt_api_prompts__key__live_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/prompts/{key}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Prompt
+         * @description Render the draft (or the scope's saved effective) at sample scope.
+         *
+         *     A POST, not a GET: the draft rides the body, and a browser's ``fetch``
+         *     refuses a GET body outright — the editor's preview loop would die at
+         *     runtime. A render computation is no cacheable resource; the query's
+         *     ``novel_id`` and the optional-body semantics stay the reads' shape.
+         *
+         *     No model call, nothing persisted; a draft the sandbox refuses is the
+         *     named 422, a contract failure the diagnostic inside the 200.
+         */
+        post: operations["preview_prompt_api_prompts__key__preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings": {
         parameters: {
             query?: never;
@@ -773,6 +826,8 @@ export interface paths {
          * @description Point the task at a model, or clear it with ``profile_id: null``.
          *
          *     Any non-empty task key is accepted — unknown keys are forward-compatible.
+         *     The output profile rides the save; a body that omits it states
+         *     ``balanced`` (the profile column has no two-state semantics, W8).
          */
         put: operations["put_assignment_api_settings_assignments__task_key__put"];
         post?: never;
@@ -1536,8 +1591,18 @@ export interface components {
             /** Reason */
             reason: string;
         };
-        /** AssignmentRead */
+        /**
+         * AssignmentRead
+         * @description A stored assignment as every read shows it: the model and the profile.
+         *
+         *     The profile fields mirror the row's columns — ``custom`` beside its
+         *     number, the vocabulary's default where no choice was stored.
+         */
         AssignmentRead: {
+            /** Output Profile */
+            output_profile: string;
+            /** Output Profile Custom */
+            output_profile_custom: number | null;
             /** Profile Id */
             profile_id: string | null;
             /** Task Key */
@@ -1546,8 +1611,19 @@ export interface components {
         /**
          * AssignmentUpdate
          * @description ``profile_id: null`` clears the task's assignment (back down the cascade).
+         *
+         *     ``output_profile`` is the task's output-length choice (W8): a vocabulary
+         *     name (:data:`OUTPUT_PROFILES`) or an explicit number — the number *is*
+         *     the custom profile's carrier, there is no ``"custom"`` string. Absent
+         *     and carried null both mean ``balanced``: the profile column has no
+         *     two-state semantics, so a save that omits the field states ``balanced``
+         *     by that fact. A custom number above the assigned model's stored
+         *     ``max_output_tokens`` is refused by the service's gate (422 naming the
+         *     field); with no stored ceiling nothing bounds it.
          */
         AssignmentUpdate: {
+            /** Output Profile */
+            output_profile?: string | number | null;
             /** Profile Id */
             profile_id: string | null;
         };
@@ -1999,13 +2075,18 @@ export interface components {
          * @description A model as every read shows it: its provider named, no key anywhere.
          *
          *     The key and its mask live on the provider; the model carries none. The
-         *     three state fields are the settings row's marks, read-only facts:
+         *     four state fields are the settings row's marks, read-only facts:
          *     ``in_catalog`` is the resolution lookup's own answer (:func:`effective_info`
          *     with the provider's vendor — no second lookup path), and the
          *     ``last_error_*`` pair is the model's newest audit row, kept only when that
-         *     call failed, so a later success clears the mark.
+         *     call failed, so a later success clears the mark. ``catalog_max_output_tokens``
+         *     is that same lookup's own output ceiling for the model string — beside,
+         *     never merged into, the model's stored ``max_output_tokens``, whose column
+         *     keeps its own meaning (the one ceiling a custom choice is bounded by).
          */
         ModelRead: {
+            /** Catalog Max Output Tokens */
+            catalog_max_output_tokens: number | null;
             /** Context Window */
             context_window: number | null;
             /**
@@ -2273,6 +2354,24 @@ export interface components {
             vendor: string;
         };
         /**
+         * PromptCodedDetail
+         * @description The live test's coded face: the code the surfaces localize, the detail
+         *     behind it — the chat frames' vocabulary, one spelling for both routers.
+         */
+        PromptCodedDetail: {
+            /** Code */
+            code: string;
+            /** Detail */
+            detail: string;
+        };
+        /**
+         * PromptCodedError
+         * @description The live test's HTTP faces (409, 429, 502, 503): the coded detail body.
+         */
+        PromptCodedError: {
+            detail: components["schemas"]["PromptCodedDetail"];
+        };
+        /**
          * PromptDetail
          * @description One key as the editor shows it: the bundled source, the variable
          *     legend, the override in force, the source a render would use.
@@ -2305,6 +2404,17 @@ export interface components {
             detail: string;
         };
         /**
+         * PromptLiveTestBody
+         * @description The live test's body: the editor draft (absent = the saved effective)
+         *     and the scope. An absent body altogether tests the saved effective too.
+         */
+        PromptLiveTestBody: {
+            /** Content */
+            content?: string | null;
+            /** Novel Id */
+            novel_id?: string | null;
+        };
+        /**
          * PromptOverride
          * @description The override in force for the scope: which tier answered, its content.
          */
@@ -2316,6 +2426,46 @@ export interface components {
              * @enum {string}
              */
             scope: "global" | "novel";
+        };
+        /**
+         * PromptPreview
+         * @description The editor's preview: the rendered text, the provenance, the diagnostics.
+         */
+        PromptPreview: {
+            diagnostics: components["schemas"]["PromptPreviewDiagnostics"];
+            /** Rendered */
+            rendered: string;
+            /** Variables */
+            variables: components["schemas"]["PromptVariableProvenance"][];
+        };
+        /**
+         * PromptPreviewBody
+         * @description The preview's optional body: the editor draft to render.
+         *
+         *     Absent (or carrying no ``content``) previews the saved effective source.
+         *     ``novel_id`` rides the query string, beside the other reads; the body is
+         *     the POST's optional draft — a browser's ``fetch`` refuses a GET body, so
+         *     the render computation posts.
+         */
+        PromptPreviewBody: {
+            /** Content */
+            content?: string | null;
+        };
+        /**
+         * PromptPreviewDiagnostics
+         * @description What the render found beyond the text: its size and the contract's verdict.
+         *
+         *     ``contract_ok`` is ``None`` for a key without a contract, ``False`` for a
+         *     draft that renders but would fail its key's save-time gate — the preview
+         *     shows both facts, the refusal stays the save's.
+         */
+        PromptPreviewDiagnostics: {
+            /** Chars */
+            chars: number;
+            /** Contract Ok */
+            contract_ok: boolean | null;
+            /** Lines */
+            lines: number;
         };
         /**
          * PromptRefusal
@@ -2365,6 +2515,22 @@ export interface components {
             example: string;
             /** Name */
             name: string;
+        };
+        /**
+         * PromptVariableProvenance
+         * @description One declared variable: its sample value, and whether the source reads it.
+         *
+         *     ``used`` is the AST's own verdict — a load context in the parsed source —
+         *     so a variable the source names inside a comment-style construct counts
+         *     as little as the render itself counts it.
+         */
+        PromptVariableProvenance: {
+            /** Name */
+            name: string;
+            /** Used */
+            used: boolean;
+            /** Value */
+            value: string;
         };
         /**
          * ProposedRelationRead
@@ -3011,16 +3177,28 @@ export interface components {
          *     say what answers without claiming the cascade's stored choice. An
          *     audit-only key has no serving tier: ``kind`` is ``audit``, the model
          *     fields are ``None``, and ``assignable`` is ``False``.
+         *
+         *     The output profile is the honesty seam (W8): ``output_profile`` names the
+         *     choice the serving assignment carried (``balanced`` when none did) and
+         *     ``resolved_output_tokens`` is the number a call reserves — the target,
+         *     ``min``-ed with the model's stored ``max_output_tokens`` where one is
+         *     stored, the target itself where none is (an unknown ceiling is never
+         *     invented). An audit-only key names no profile and reserves nothing:
+         *     both fields are ``None`` there.
          */
         TaskEffectiveRead: {
             /** Assignable */
             assignable: boolean;
             /** Kind */
             kind: string;
+            /** Output Profile */
+            output_profile: string | null;
             /** Profile Id */
             profile_id: string | null;
             /** Profile Name */
             profile_name: string | null;
+            /** Resolved Output Tokens */
+            resolved_output_tokens: number | null;
             /** Task Key */
             task_key: string;
         };
@@ -4659,6 +4837,135 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PromptDiff"];
+                };
+            };
+            /** @description No bundled prompt carries this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptKeyNotFound"];
+                };
+            };
+            /** @description Refused by name — or the request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptRefusal"] | components["schemas"]["ValidationBody"];
+                };
+            };
+        };
+    };
+    live_test_prompt_api_prompts__key__live_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PromptLiveTestBody"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /** @description Server-sent events: one context frame, then the answer's deltas, then one terminal event: done or error. */
+                    "text/event-stream": string;
+                };
+            };
+            /** @description No bundled prompt carries this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptKeyNotFound"];
+                };
+            };
+            /** @description No real context to assemble, or a corpus mismatch. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptCodedError"];
+                };
+            };
+            /** @description Refused by name — or the request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptRefusal"] | components["schemas"]["ValidationBody"];
+                };
+            };
+            /** @description The user's live-test window is still closed. */
+            429: {
+                headers: {
+                    /** @description The remaining seconds, whole, until the next test. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptCodedError"];
+                };
+            };
+            /** @description The provider failed before its first token. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptCodedError"];
+                };
+            };
+            /** @description The key store cannot produce the provider's key. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptCodedError"];
+                };
+            };
+        };
+    };
+    preview_prompt_api_prompts__key__preview_post: {
+        parameters: {
+            query?: {
+                novel_id?: string | null;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PromptPreviewBody"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptPreview"];
                 };
             };
             /** @description No bundled prompt carries this key. */

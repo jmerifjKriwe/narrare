@@ -9,6 +9,7 @@ One row per capability that ships help; capabilities without help are listed at 
 
 - knowledge
 - planning
+- prompts
 - settings
 - setup
 - writing

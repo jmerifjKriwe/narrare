@@ -13,6 +13,10 @@ const SettingsPage = lazy(async () => {
   const page = await import("./SettingsPage");
   return { default: page.SettingsPage };
 });
+const AiRulesPage = lazy(async () => {
+  const page = await import("./ai-rules/AiRulesPage");
+  return { default: page.AiRulesPage };
+});
 
 /**
  * The setup gate the settings surface shares with the shelf, the workspace,
@@ -54,8 +58,24 @@ const settingsRoute = createRoute({
   component: SettingsPage,
 });
 
+/**
+ * The AI-Regeln surface (W8 Task 9) — the hub's second page at
+ * `/settings/ai-regeln`, the same global facts and the same setup gate as
+ * the Allgemein route: a child shape beside it under the shell root, never
+ * under a book.
+ */
+const aiRulesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings/ai-regeln",
+  beforeLoad: async () => {
+    const complete = await queryClient.ensureQueryData(setupStatusQueryOptions);
+    if (!complete) throw redirect({ to: "/setup" });
+  },
+  component: AiRulesPage,
+});
+
 // The capability route contract: every route this capability mounts under
 // the shell root, as a const tuple. The route consts stand on their own
 // on purpose: a contextual type here degrades createRoute's inference to
 // `any` paths, and with it the router's checked `to=` props.
-export const routes = [settingsRoute] as const;
+export const routes = [settingsRoute, aiRulesRoute] as const;

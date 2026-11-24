@@ -24,6 +24,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from app.api.main import app
+from app.capabilities.writing.service import WritingService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
@@ -363,6 +364,27 @@ async def test_a_scene_cannot_be_added_to_another_users_chapter() -> None:
         )
     assert created.status_code == 404
     assert created.json()["detail"] == "chapter not found"
+
+
+async def test_latest_scene_never_traverses_another_users_chapter() -> None:
+    """The novel-scoped join carries its own owner predicate.
+
+    A scene of ours pointing at another user's chapter is inconsistent data
+    the API cannot mint; the scoped read must still not walk through that
+    chapter to answer a foreign novel's scope.
+    """
+    novel_id, chapter_id = await _seed_foreign_chapter()
+    async with Session() as session:
+        await session.execute(
+            text(
+                "INSERT INTO scenes "
+                "(id, user_id, chapter_id, position, title, body, created_at, updated_at) "
+                "VALUES (:id, :user_id, :chapter_id, 1, '', 'Unsere Szene.', now(), now())"
+            ),
+            {"id": uuid4(), "user_id": LOCAL_USER_ID, "chapter_id": chapter_id},
+        )
+        await session.commit()
+        assert await WritingService(session, LOCAL_USER_ID).latest_scene(novel_id) is None
 
 
 async def test_list_scenes_answers_404_for_a_foreign_chapter() -> None:

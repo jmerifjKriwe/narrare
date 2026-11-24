@@ -28,13 +28,21 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.kernel.llm.audit import audited_stream
-from app.kernel.llm.catalog import effective_info
+from app.kernel.llm.catalog import ModelInfo, effective_info
 from app.kernel.llm.contract import CompletionRequest
-from app.kernel.llm.models import ERROR, LlmCall, LLMProvider, ProviderProfile, TaskAssignment
+from app.kernel.llm.models import (
+    CUSTOM_OUTPUT_PROFILE,
+    ERROR,
+    LlmCall,
+    LLMProvider,
+    ProviderProfile,
+    TaskAssignment,
+)
 from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository, ProviderRepository
 from app.kernel.llm.resolution import (
     AUDIT_ONLY_TASK_KEYS,
     KNOWN_TASK_KEYS,
+    OutputProfile,
     from_profile,
     resolve_provider,
 )
@@ -86,25 +94,41 @@ class ModelState:
     ``in_catalog`` is the resolution-side lookup's own answer — the same
     :func:`app.kernel.llm.catalog.effective_info` tiers a generation prices
     with — so the page never derives a second truth about what the catalog
-    carries. ``last_error_code`` and ``last_error_at`` are the model's newest
-    audit row's, present only when that call failed: a later success clears
-    the mark, because the mark speaks about the *last* call, not the worst.
+    carries. ``catalog_max_output_tokens`` is that lookup's own output
+    ceiling for the model string, read-only: the assignment gate bounds a
+    custom choice by the model's stored ``max_output_tokens`` alone (the
+    catalog prices the call and is no ceiling, W8 ruling 5), so the
+    Aufgaben editor needs this answer beside it to name — and refuse
+    above — the one limit the provider is known to enforce. ``last_error_code``
+    and ``last_error_at`` are the model's newest audit row's, present only
+    when that call failed: a later success clears the mark, because the
+    mark speaks about the *last* call, not the worst.
     """
 
     in_catalog: bool
+    catalog_max_output_tokens: int | None
     last_error_code: str | None
     last_error_at: datetime | None
 
 
 @dataclass(frozen=True)
 class TaskEffective:
-    """One known task key and the provider the cascade actually serves it."""
+    """One known task key and the provider the cascade actually serves it.
+
+    ``output_profile`` and ``resolved_output_tokens`` carry the task's
+    output choice (W8): the serving assignment's profile and the number a
+    call reserves — the profile's target, capped by the assigned model's
+    stored ceiling where one is stored. ``None`` where no profile applies:
+    the audit-only key routes to no model and reserves nothing.
+    """
 
     task_key: str
     profile_id: UUID | None
     profile_name: str | None
     kind: str
     assignable: bool
+    output_profile: str | None
+    resolved_output_tokens: int | None
 
 
 class ModelService:
@@ -341,8 +365,10 @@ class ModelService:
         half-filled row.
         """
         last_error_code, last_error_at = await self._last_failure(profile.id)
+        info = self._catalog_info(profile, provider)
         return ModelState(
-            in_catalog=self._in_catalog(profile, provider),
+            in_catalog=info is not None,
+            catalog_max_output_tokens=info.max_output_tokens if info is not None else None,
             last_error_code=last_error_code,
             last_error_at=last_error_at,
         )
@@ -361,8 +387,10 @@ class ModelService:
         states: dict[UUID, ModelState] = {}
         for profile, provider in pairs:
             last_error_code, last_error_at = await self._last_failure(profile.id)
+            info = self._catalog_info(profile, provider)
             states[profile.id] = ModelState(
-                in_catalog=self._in_catalog(profile, provider),
+                in_catalog=info is not None,
+                catalog_max_output_tokens=info.max_output_tokens if info is not None else None,
                 last_error_code=last_error_code,
                 last_error_at=last_error_at,
             )
@@ -379,12 +407,14 @@ class ModelService:
         through the same cascade a generation uses, so the answer is what the
         next call will get: the exact assignment, a sibling's segment
         assignment, the default model, or the environment tier.
-        ``profile_name`` is ``None`` exactly when no model serves.
-        Audit-only keys (:data:`AUDIT_ONLY_TASK_KEYS`) are never routed — the
-        settings probe audits its call under ``settings.test`` but tests the
-        clicked model — so they report ``kind="audit"`` and are not
-        assignable, without consulting the cascade. Resolution never writes,
-        so reading the list creates no assignment and audits no call.
+        ``profile_name`` is ``None`` exactly when no model serves. The row's
+        ``resolved_output_tokens`` is the same number the next call reserves
+        — one truth, never a second derivation. Audit-only keys
+        (:data:`AUDIT_ONLY_TASK_KEYS`) are never routed — the settings probe
+        audits its call under ``settings.test`` but tests the clicked model —
+        so they report ``kind="audit"`` and are not assignable, without
+        consulting the cascade. Resolution never writes, so reading the list
+        creates no assignment and audits no call.
         """
         names = {profile.id: profile.name for profile, _ in await self.list()}
         rows: list[TaskEffective] = []
@@ -397,6 +427,8 @@ class ModelService:
                         profile_name=None,
                         kind="audit",
                         assignable=False,
+                        output_profile=None,
+                        resolved_output_tokens=None,
                     )
                 )
                 continue
@@ -408,6 +440,8 @@ class ModelService:
                     profile_name=names.get(resolved.profile_id) if resolved.profile_id else None,
                     kind=resolved.kind,
                     assignable=True,
+                    output_profile=resolved.output_profile,
+                    resolved_output_tokens=resolved.resolved_output_tokens,
                 )
             )
         return rows
@@ -426,12 +460,26 @@ class ModelService:
         kinds = {row.kind for row in await self.tasks() if row.assignable}
         return "fake" if kinds <= {"fake"} else "configured"
 
-    async def assign(self, task_key: str, profile_id: UUID | None) -> TaskAssignment | None:
+    async def assign(
+        self,
+        task_key: str,
+        profile_id: UUID | None,
+        output_profile: OutputProfile | None = None,
+    ) -> TaskAssignment | None:
         """Point the task at one of the user's models, or clear it with ``None``.
 
         Any non-empty task key is accepted — the known keys are a kernel
         constant for readers, not a format; a new capability's key can be
         assigned before its list entry ships.
+
+        The output profile rides the assignment (W8). A choice the caller did
+        not carry is the vocabulary's default — absent and null both mean
+        ``balanced``, no two-state semantics. A custom choice is bounded to a
+        known ceiling at save: a number above the assigned model's stored
+        ``max_output_tokens`` is refused with the field (never silently
+        clamped, the allocator's own rule), and with no stored ceiling
+        nothing bounds it — the number stands, uncapped, the same rule
+        resolution reads by.
         """
         if not task_key:
             raise ProfileRefusedError(("task_key",), "a task key cannot be empty")
@@ -443,27 +491,35 @@ class ModelService:
         profile = await self._profiles().get(profile_id)
         if profile is None:
             raise ProfileNotFoundError(f"no profile {profile_id}")
-        assignment = await assignments.set(task_key, profile.id)
+        choice = output_profile if output_profile is not None else OutputProfile()
+        ceiling = profile.max_output_tokens
+        if choice.name == CUSTOM_OUTPUT_PROFILE and ceiling is not None and choice.target > ceiling:
+            raise ProfileRefusedError(
+                ("output_profile",),
+                f"a custom output of {choice.target} tokens is above the model's"
+                f" stored ceiling of {ceiling}; pick a number at or under it,"
+                " a named profile, or raise the model's max_output_tokens",
+            )
+        assignment = await assignments.set(task_key, profile.id, choice.name, choice.custom)
         await self.session.commit()
         return assignment
 
-    def _in_catalog(self, profile: ProviderProfile, provider: LLMProvider) -> bool:
-        """Whether a catalog tier reaches this model — the resolution lookup itself.
+    def _catalog_info(self, profile: ProviderProfile, provider: LLMProvider) -> ModelInfo | None:
+        """The catalog's own fact sheet for the model string — or None.
 
-        The same :func:`effective_info` call the resolver's merge makes, with
-        the same arguments (the provider's vendor, the row's two stored
-        windows), so the settings mark can never disagree with what a call
-        is priced by. There is one lookup in the kernel; this is it, not a
-        second path.
+        The same :func:`effective_info` tiers a generation prices with, the
+        same vendor spelling the resolver tries first — asked without the
+        row's stored overrides, which the lookup applies to the numbers
+        AFTER the tiers decide and so never touched the presence the
+        ``in_catalog`` mark states. The known-limit answer must be the
+        catalog's own number, not the model row's: the stored ceiling has
+        its own column on every read.
         """
-        return (
-            effective_info(
-                profile.model or "",
-                vendor=provider.vendor,
-                profile_context_window=profile.context_window,
-                profile_max_output_tokens=profile.max_output_tokens,
-            )
-            is not None
+        return effective_info(
+            profile.model or "",
+            vendor=provider.vendor,
+            profile_context_window=None,
+            profile_max_output_tokens=None,
         )
 
     async def _last_failure(self, profile_id: UUID) -> tuple[str | None, datetime | None]:
