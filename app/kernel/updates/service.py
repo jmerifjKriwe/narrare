@@ -2,7 +2,7 @@
 
 The check is a convenience, never a gate (design 2026-11-24): the app works
 offline, a failed fetch is silent, and the last known release stays readable.
-The release source is configuration — ``NARRA_UPDATE_CHECK_URL``, with ``off``
+The release source is configuration — ``NARRE_UPDATE_CHECK_URL``, with ``off``
 or an empty value disabling the check — so the tests and the E2E stack name a
 local server instead of GitHub. The module cache, one hour by default, spares
 the unauthenticated GitHub quota a reload storm would spend; the answer also
@@ -55,7 +55,7 @@ def reset_cache() -> None:
 
 def _check_url() -> str | None:
     """The release source, or ``None`` when the check is disabled."""
-    url = environ.get("NARRA_UPDATE_CHECK_URL", DEFAULT_URL).strip()
+    url = environ.get("NARRE_UPDATE_CHECK_URL", DEFAULT_URL).strip()
     if not url or url.lower() == "off":
         return None
     return url
@@ -63,7 +63,7 @@ def _check_url() -> str | None:
 
 def _cache_seconds() -> float:
     """The in-memory cache's TTL; zero disables it, a bad value takes the default."""
-    raw = environ.get("NARRA_UPDATE_CHECK_CACHE_SECONDS", str(DEFAULT_CACHE_SECONDS)).strip()
+    raw = environ.get("NARRE_UPDATE_CHECK_CACHE_SECONDS", str(DEFAULT_CACHE_SECONDS)).strip()
     try:
         return max(float(raw), 0.0)
     except ValueError:

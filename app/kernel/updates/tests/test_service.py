@@ -142,7 +142,7 @@ async def test_a_malformed_url_answers_no_update(
     monkeypatch: pytest.MonkeyPatch, session: AsyncSession, user: UUID
 ) -> None:
     """A bad configured URL is a fetch failure too, not a 500."""
-    monkeypatch.setenv("NARRA_UPDATE_CHECK_URL", "http://[::1")
+    monkeypatch.setenv("NARRE_UPDATE_CHECK_URL", "http://[::1")
 
     answer = await UpdateService(session, user).read(force=True)
 
@@ -153,7 +153,7 @@ async def test_a_malformed_url_answers_no_update(
 async def test_a_disabled_url_answers_no_update(
     monkeypatch: pytest.MonkeyPatch, session: AsyncSession, user: UUID
 ) -> None:
-    monkeypatch.setenv("NARRA_UPDATE_CHECK_URL", "off")
+    monkeypatch.setenv("NARRE_UPDATE_CHECK_URL", "off")
 
     answer = await UpdateService(session, user).read(force=True)
 
@@ -170,7 +170,7 @@ async def test_a_disabled_url_answers_no_update(
 async def test_an_empty_url_answers_no_update(
     monkeypatch: pytest.MonkeyPatch, session: AsyncSession, user: UUID
 ) -> None:
-    monkeypatch.setenv("NARRA_UPDATE_CHECK_URL", "")
+    monkeypatch.setenv("NARRE_UPDATE_CHECK_URL", "")
 
     answer = await UpdateService(session, user).read(force=True)
 
@@ -208,7 +208,7 @@ async def test_the_cache_spares_the_source_a_second_fetch(
     user: UUID,
     vendor: ReleaseVendor,
 ) -> None:
-    monkeypatch.setenv("NARRA_UPDATE_CHECK_CACHE_SECONDS", "3600")
+    monkeypatch.setenv("NARRE_UPDATE_CHECK_CACHE_SECONDS", "3600")
     service = UpdateService(session, user)
 
     await service.read(force=True)

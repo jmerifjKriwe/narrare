@@ -445,7 +445,7 @@ def _environment(database: str, env: dict[str, str] | None) -> dict[str, str]:
     # The release check is a network call every stack must opt into, so the
     # default wins over the ambient environment; the caller's `env` below still
     # overrides it (the settings E2E names its own ReleaseVendor).
-    base["NARRA_UPDATE_CHECK_URL"] = "off"
+    base["NARRE_UPDATE_CHECK_URL"] = "off"
     return {
         **base,
         **(env or {}),

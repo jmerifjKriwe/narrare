@@ -14,10 +14,10 @@
 
 - Follow `docs/_shared/CONSTRAINTS.md`; the shell never imports capability code.
 - Keep `app/kernel/version.py` the one version literal.
-- Release source URL: `NARRA_UPDATE_CHECK_URL`, default
+- Release source URL: `NARRE_UPDATE_CHECK_URL`, default
   `https://api.github.com/repos/jmerifjKriwe/narrare/releases/latest`.
   The literal `off` (or an empty value) disables the check.
-- Cache TTL: `NARRA_UPDATE_CHECK_CACHE_SECONDS`, default `3600`; `0` disables the
+- Cache TTL: `NARRE_UPDATE_CHECK_CACHE_SECONDS`, default `3600`; `0` disables the
   in-memory cache (E2E uses `0`).
 - Every user-visible string exists in en, de and fr; catalogs are sorted and
   key-identical. Shell copy lives in `i18n/*.json`, settings copy in
@@ -199,8 +199,8 @@ async def test_a_disabled_url_answers_no_update(monkeypatch, session, user): ...
 async def test_the_interval_skips_the_fetch_until_due(session, user, vendor): ...
 ```
 
-Set `NARRA_UPDATE_CHECK_URL` to the vendor's `base_url` and
-`NARRA_UPDATE_CHECK_CACHE_SECONDS` to `"0"` with `monkeypatch.setenv`.
+Set `NARRE_UPDATE_CHECK_URL` to the vendor's `base_url` and
+`NARRE_UPDATE_CHECK_CACHE_SECONDS` to `"0"` with `monkeypatch.setenv`.
 The vendor's body is a GitHub release JSON:
 `{"tag_name": "v999.0.0", "name": "v999.0.0", "body": "## Notes\n\n- new",
 "html_url": "https://example.test/release"}`.
@@ -430,13 +430,13 @@ manager (`base_url`, mutable `state: dict[str, str]`) serving
 current version so no banner appears unless a test changes it.
 
 In `app/kernel/testing/stack.py`'s `_environment`, set
-`base.setdefault("NARRA_UPDATE_CHECK_URL", "off")` before merging the caller's
+`base.setdefault("NARRE_UPDATE_CHECK_URL", "off")` before merging the caller's
 `env`, so every E2E stack is offline unless it names a vendor.
 
 In `app/capabilities/settings/e2e/conftest.py`, add a session-scoped
 `release_vendor` fixture and pass
-`env={"NARRA_UPDATE_CHECK_URL": release_vendor.base_url,
-"NARRA_UPDATE_CHECK_CACHE_SECONDS": "0"}` to the settings `acquire_stack` call.
+`env={"NARRE_UPDATE_CHECK_URL": release_vendor.base_url,
+"NARRE_UPDATE_CHECK_CACHE_SECONDS": "0"}` to the settings `acquire_stack` call.
 
 - [ ] **Step 8: Write the E2E leg**
 

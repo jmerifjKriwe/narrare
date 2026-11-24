@@ -2,7 +2,7 @@
 
 The update check talks to GitHub's latest-release endpoint, which costs quota
 and needs the network. The tests (and the browser E2E) point
-``NARRA_UPDATE_CHECK_URL`` at this server instead: the request, the framing,
+``NARRE_UPDATE_CHECK_URL`` at this server instead: the request, the framing,
 the JSON parse and the fallback path stay real, only the source is a stand-in.
 
 ``state`` is deliberately mutable at runtime — a test changes the tag, the
@@ -26,7 +26,7 @@ class ReleaseVendor:
     """A real HTTP release source on a free port, usable as a context manager.
 
     ``base_url`` is the full latest-release URL, so it can be handed to
-    ``NARRA_UPDATE_CHECK_URL`` unchanged. ``received`` is every request path the
+    ``NARRE_UPDATE_CHECK_URL`` unchanged. ``received`` is every request path the
     server saw, in order; ``status`` lets a test turn the source into an outage.
     """
 

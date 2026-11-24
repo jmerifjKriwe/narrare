@@ -72,6 +72,6 @@ def _empty_release_cache() -> Iterator[None]:
 def vendor(monkeypatch: pytest.MonkeyPatch) -> Iterator[ReleaseVendor]:
     """A newer release on the shared local source, with the cache disabled."""
     with ReleaseVendor(**RELEASE) as vendor:
-        monkeypatch.setenv("NARRA_UPDATE_CHECK_URL", vendor.base_url)
-        monkeypatch.setenv("NARRA_UPDATE_CHECK_CACHE_SECONDS", "0")
+        monkeypatch.setenv("NARRE_UPDATE_CHECK_URL", vendor.base_url)
+        monkeypatch.setenv("NARRE_UPDATE_CHECK_CACHE_SECONDS", "0")
         yield vendor

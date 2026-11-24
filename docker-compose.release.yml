@@ -26,6 +26,11 @@ services:
       # restart, and an empty one refuses to store provider keys at all.
       NARRE_SECRET_KEY: ${NARRE_SECRET_KEY:?set NARRE_SECRET_KEY in .env}
       NARRE_BACKUP_DIR: /backups
+      # The release check asks GitHub for the latest release. Set the URL to
+      # `off` to disable it; the cache seconds default to one hour, and 0
+      # disables the cache.
+      NARRE_UPDATE_CHECK_URL: ${NARRE_UPDATE_CHECK_URL:-https://api.github.com/repos/jmerifjKriwe/narrare/releases/latest}
+      NARRE_UPDATE_CHECK_CACHE_SECONDS: ${NARRE_UPDATE_CHECK_CACHE_SECONDS:-3600}
     volumes:
       # The pre-migration dump of every upgrade lands here, and it has to
       # outlive the container that took it.

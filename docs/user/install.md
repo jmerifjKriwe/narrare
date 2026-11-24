@@ -84,6 +84,19 @@ docker run -d --name narrare --restart unless-stopped -p 8000:8000 \
   ghcr.io/jmerifjKriwe/narrare:latest
 ```
 
+### The release check
+
+Narrare can tell you when a newer release exists. It is optional, and two
+variables control it:
+
+| Variable | Meaning |
+| --- | --- |
+| `NARRE_UPDATE_CHECK_URL` | optional; the release source. Set it to `off` to disable the check |
+| `NARRE_UPDATE_CHECK_CACHE_SECONDS` | optional; how long an answer is cached, defaults to `3600`. `0` disables the cache |
+
+The compose installation forwards both from `.env` with the public release URL
+and one hour as their defaults.
+
 ## Unraid
 
 The template lives in the repository at `deploy/unraid/narrare.xml`. Add it

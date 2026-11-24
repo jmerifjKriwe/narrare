@@ -15,7 +15,7 @@ a configured endpoint, because the driver read is pure resolution — a provider
 and a default model created through the API are enough for the cascade to
 answer ``configured``, and no network call ever leaves.
 
-The one exception is the update check: the stack's ``NARRA_UPDATE_CHECK_URL``
+The one exception is the update check: the stack's ``NARRE_UPDATE_CHECK_URL``
 points at the session's ``ReleaseVendor`` (a real local server), so the banner
 leg exercises the browser, the API and the release source without GitHub. The
 vendor's default tag is the running version — every other test sees no banner.
@@ -299,7 +299,7 @@ def expect_settings(page: Page) -> None:
 def release_vendor() -> Iterator[ReleaseVendor]:
     """The update check's release source for this worker: a real local server.
 
-    The settings stack is the one suite that points ``NARRA_UPDATE_CHECK_URL``
+    The settings stack is the one suite that points ``NARRE_UPDATE_CHECK_URL``
     at a stand-in, so the browser's banner can be exercised without GitHub. The
     default tag is the running version, so every other settings test sees no
     banner; the update leg changes the mutable ``state`` for its own walk.
@@ -315,8 +315,8 @@ def stack(release_vendor: ReleaseVendor) -> Iterator[Stack]:
         database=DATABASE,
         seed_user=False,
         env={
-            "NARRA_UPDATE_CHECK_URL": release_vendor.base_url,
-            "NARRA_UPDATE_CHECK_CACHE_SECONDS": "0",
+            "NARRE_UPDATE_CHECK_URL": release_vendor.base_url,
+            "NARRE_UPDATE_CHECK_CACHE_SECONDS": "0",
         },
     )
     yield running

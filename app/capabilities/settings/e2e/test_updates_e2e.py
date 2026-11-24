@@ -3,7 +3,7 @@
 """The update check on the real stack: banner, notes and dismissal in a browser.
 
 The release source is ``ReleaseVendor`` (a real local HTTP server named by the
-settings stack's ``NARRA_UPDATE_CHECK_URL``), so the check, the JSON parse and
+settings stack's ``NARRE_UPDATE_CHECK_URL``), so the check, the JSON parse and
 the browser's rendering are the product's own, only GitHub is not. The test
 changes the vendor's mutable tag to a newer release, sees the banner after the
 start check, opens the notes in the modal, ignores the version, and proves the

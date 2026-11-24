@@ -81,7 +81,7 @@ works offline, and a failed check is silent.
   - `service.py`: read the current user row, decide whether the stored answer
     is due, fetch
     `https://api.github.com/repos/jmerifjKriwe/narrare/releases/latest` (URL
-    overridable with `NARRA_UPDATE_CHECK_URL`), store the answer, return it.
+    overridable with `NARRE_UPDATE_CHECK_URL`), store the answer, return it.
   - A module-level cache keyed by URL with a one-hour TTL, so a reload storm
     does not spend the unauthenticated GitHub quota.
   - `router.py`, mounted beside the jobs router: `GET /api/updates` and
@@ -121,7 +121,7 @@ works offline, and a failed check is silent.
   capability catalogs. Sorted, same keys, plural categories where needed.
 - Unit tests: version comparison, the due/not-due decision, the failed-fetch
   fallback, the banner and dialog states.
-- E2E leg: a fake release server named by `NARRA_UPDATE_CHECK_URL` in the E2E
+- E2E leg: a fake release server named by `NARRE_UPDATE_CHECK_URL` in the E2E
   stack; the test starts the app, sees the banner, opens the modal, reads the
   notes, dismisses, and sees the banner stay away.
 
@@ -133,4 +133,4 @@ works offline, and a failed check is silent.
   re-check; either is acceptable if it stops when the tab is hidden.
 - The toast's exact motion; the banner is the required surface, the toast the
   start notice.
-- The `NARRA_UPDATE_CHECK_URL` hook for the E2E stack (the plan pins it).
+- The `NARRE_UPDATE_CHECK_URL` hook for the E2E stack (the plan pins it).
