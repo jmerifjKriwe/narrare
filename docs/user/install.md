@@ -84,7 +84,7 @@ docker run -d --name narrare --restart unless-stopped -p 8000:8000 \
   ghcr.io/jmerifjKriwe/narrare:latest
 ```
 
-### The release check
+## The release check
 
 Narrare can tell you when a newer release exists. It is optional, and two
 variables control it:
@@ -101,7 +101,7 @@ and one hour as their defaults.
 
 The template lives in the repository at `deploy/unraid/narrare.xml`. Add it
 through **Docker → Add Container**, or paste its address into the template
-field. It asks for exactly the variables above, plus `NARRE_SECRET_KEY` and a
+field. It asks for exactly the six database variables above, plus `NARRE_SECRET_KEY` and a
 host path for `/backups` (for example
 `/mnt/user/appdata/narrare/backups`).
 
