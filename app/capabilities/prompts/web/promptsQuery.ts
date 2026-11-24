@@ -191,8 +191,10 @@ export interface LiveTestSink {
   delta(text: string): void;
   done(): void;
   /** A coded pre-stream face (409/429/502/503) or a mid-stream error frame;
-   *  `retryAfter` rides the 429's header. */
-  error(code: string, retryAfter?: number): void;
+   *  `retryAfter` rides the 429's header, and `status` the pre-stream
+   *  answer's HTTP status (a coded 502 is still a provider failure, while a
+   *  mid-stream frame has no status to tell it by). */
+  error(code: string, retryAfter?: number, status?: number): void;
   /** The save gate's 422: the refusal body rides for the family face. */
   refused(body: unknown): void;
   /** The coded faces' transport-level shapes: a non-SSE answer that is none
@@ -249,7 +251,11 @@ export async function startLiveTest(
     const code = typeof coded?.code === "string" ? coded.code : null;
     if (code !== null) {
       const retryAfter = response.headers.get("Retry-After");
-      sink.error(code, retryAfter === null ? undefined : Number.parseInt(retryAfter, 10) || undefined);
+      sink.error(
+        code,
+        retryAfter === null ? undefined : Number.parseInt(retryAfter, 10) || undefined,
+        response.status,
+      );
       return;
     }
     void response.body?.cancel();

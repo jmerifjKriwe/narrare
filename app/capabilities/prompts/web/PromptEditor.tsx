@@ -526,7 +526,7 @@ function LiveTest({ promptKey, novelId, dirty, draft }: { promptKey: string; nov
               ? { ...current, phase: "done" }
               : current,
           ),
-        error: (code, retryAfter) =>
+        error: (code, retryAfter, status) =>
           setPhase({
             phase: "failed",
             kind:
@@ -542,7 +542,12 @@ function LiveTest({ promptKey, novelId, dirty, draft }: { promptKey: string; nov
                         ? "interrupted"
                         : code === "network"
                           ? "network"
-                          : "generic",
+                          : // A coded 502 is the provider dying before its
+                            // first token; its code names the cause in the
+                            // audit, the face names the failure family.
+                            status === 502
+                            ? "provider"
+                            : "generic",
             code,
             retryAfter,
           }),

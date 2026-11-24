@@ -653,6 +653,14 @@ describe("the live test", () => {
       de["prompts.live.error.noContext"],
       null,
     ],
+    [
+      "provider",
+      502,
+      (body: string) => new Response(body, { status: 502 }),
+      JSON.stringify({ detail: { code: "model-not-found", detail: "backend says" } }),
+      de["prompts.live.error.provider"],
+      null,
+    ],
   ])("the %s pre-stream face localizes by code", async (_name, _status, respond, payload, copy, extra) => {
     fetchMock.mockResolvedValue(respond(payload));
     renderPage();
