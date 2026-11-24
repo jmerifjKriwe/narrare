@@ -764,12 +764,12 @@ describe("the honest gates and the shared chrome", () => {
   it("the hub chrome carries the three routes, the active face on Prompts", async () => {
     renderPage();
     await readyEditor();
-    const nav = screen.getByRole("navigation", { name: de["settings.hub.label"] });
+    const nav = screen.getByRole("navigation", { name: de["shell.hub.label"] });
     const links = Array.from(nav.querySelectorAll("a"));
     expect(links.map((link) => link.textContent)).toEqual([
-      de["settings.hub.general"],
-      de["settings.hub.aiRules"],
-      de["settings.hub.prompts"],
+      de["shell.hub.general"],
+      de["shell.hub.aiRules"],
+      de["shell.hub.prompts"],
     ]);
     expect(links[2]?.getAttribute("aria-current")).toBe("page");
   });

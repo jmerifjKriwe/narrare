@@ -261,12 +261,12 @@ describe("the hub chrome — the three routes of the settings area", () => {
   it("carries Allgemein, KI-Regeln and Prompts, the active face on the route the page stands on", async () => {
     renderPage();
     await screen.findAllByTestId("task-row");
-    const nav = screen.getByRole("navigation", { name: de["settings.hub.label"] });
+    const nav = screen.getByRole("navigation", { name: de["shell.hub.label"] });
     const links = Array.from(nav.querySelectorAll("a"));
     expect(links.map((link) => link.textContent)).toEqual([
-      de["settings.hub.general"],
-      de["settings.hub.aiRules"],
-      de["settings.hub.prompts"],
+      de["shell.hub.general"],
+      de["shell.hub.aiRules"],
+      de["shell.hub.prompts"],
     ]);
     expect(links[1]?.getAttribute("aria-current")).toBe("page");
     expect(links[0]?.getAttribute("aria-current")).toBeNull();
@@ -278,8 +278,8 @@ describe("the hub chrome — the three routes of the settings area", () => {
     // SettingsPage.test — here only the geometry's other half.
     renderPage();
     await screen.findAllByTestId("task-row");
-    const nav = screen.getByRole("navigation", { name: de["settings.hub.label"] });
-    expect(nav.textContent).toContain(de["settings.hub.general"]);
+    const nav = screen.getByRole("navigation", { name: de["shell.hub.label"] });
+    expect(nav.textContent).toContain(de["shell.hub.general"]);
   });
 });
 

@@ -6,7 +6,8 @@
  * three authorities span two capabilities (Allgemein and KI-Regeln belong to
  * `settings`, Prompts to `prompts`), and a capability never imports another
  * (rule 1) — the shared chrome is the shell's, each page renders it above
- * its own content.
+ * its own content. Its labels live in the shared catalogs (`i18n/`) for the
+ * same reason: the chrome's text has no capability owner.
  *
  * The draft draws three items; all three routes exist (the Prompts surface
  * joined in PR 3, the commit this item's door went live in — the door and
@@ -31,12 +32,12 @@ const FOCUS =
  *  route. */
 const ITEMS: ReadonlyArray<{
   to: string;
-  labelKey: "settings.hub.general" | "settings.hub.aiRules" | "settings.hub.prompts";
+  labelKey: "shell.hub.general" | "shell.hub.aiRules" | "shell.hub.prompts";
   icon: IconName;
 }> = [
-  { to: "/settings", labelKey: "settings.hub.general", icon: "tune" },
-  { to: "/settings/ai-regeln", labelKey: "settings.hub.aiRules", icon: "spark" },
-  { to: "/settings/prompts", labelKey: "settings.hub.prompts", icon: "document" },
+  { to: "/settings", labelKey: "shell.hub.general", icon: "tune" },
+  { to: "/settings/ai-regeln", labelKey: "shell.hub.aiRules", icon: "spark" },
+  { to: "/settings/prompts", labelKey: "shell.hub.prompts", icon: "document" },
 ];
 
 export function SettingsHub() {
@@ -45,7 +46,7 @@ export function SettingsHub() {
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-panel p-2 shadow-sm">
-      <nav aria-label={t("settings.hub.label")} className="flex items-center gap-1.5">
+      <nav aria-label={t("shell.hub.label")} className="flex items-center gap-1.5">
         {ITEMS.map((item) => {
           const active = pathname === item.to;
           return (
