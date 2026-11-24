@@ -9,11 +9,10 @@
  * mocked at its module boundary, the house pattern); a refusal keeps the
  * answers and names the loss-free error with a retry, a 409 on an edge names
  * the duplicate it is. The merge names source → target and the loss before it
- * happens. The face speaks du-tone in all three catalogs.
- *
- * New-entity creation has no endpoint (entities are born through the
- * extraction review) — there is no CreateEntityDialog here; the graph's door
- * stands an honest disabled gap (pinned in LoreGraphPage.test.tsx).
+ * happens. The hand-made create (W9) is the same frame: a name and a type
+ * gate the save, a duplicate name is a notice, and a relation row the save
+ * will drop is counted rather than lost. The face speaks du-tone in all
+ * three catalogs.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -35,6 +34,7 @@ import {
   DeleteRelationDialog,
   EditEntityDialog,
   EditRelationDialog,
+  EntityCreateDialog,
   MergeDialog,
 } from "./crudDialogs";
 
@@ -382,6 +382,240 @@ describe("CreateRelationDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: de["knowledge.crud.save"] }));
     expect(screen.getByText(de["knowledge.crud.fromRequired"])).toBeTruthy();
     expect(api.POST).not.toHaveBeenCalled();
+  });
+});
+
+describe("EntityCreateDialog — create by hand", () => {
+  const harnessCreate = harness((close) => (
+    <EntityCreateDialog novelId={NOVEL_ID} entities={ENTITIES} openerId="opener" onClose={close} />
+  ));
+
+  function openCreate() {
+    mount(harnessCreate);
+    openDialog();
+    return screen.getByTestId("entity-create-dialog");
+  }
+
+  it("save stays disabled until name and type are set", () => {
+    openCreate();
+    const save = screen.getByTestId("entity-create-save") as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Nevada-Trümmerfeld" },
+    });
+    expect(save.disabled).toBe(true);
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "location" } });
+    expect(save.disabled).toBe(false);
+  });
+
+  it("the duplicate-name notice shows and keeps save enabled", () => {
+    openCreate();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "  dr. maya chen  " },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "character" } });
+    expect(screen.getByTestId("entity-create-duplicate-note").textContent).toContain(
+      de["knowledge.create.duplicateNote"].slice(0, 20),
+    );
+    expect((screen.getByTestId("entity-create-save") as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("an added relation row is sent", async () => {
+    api.POST.mockResolvedValue({
+      data: entityRow({ id: "e9", name: "Nevada-Trümmerfeld", type: "location" }),
+      response: ok(201),
+    });
+    openCreate();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Nevada-Trümmerfeld" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "location" } });
+    fireEvent.click(screen.getByTestId("entity-create-add-relation"));
+    fireEvent.change(screen.getByTestId("entity-create-relation-0-entity"), {
+      target: { value: "Station 7" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-relation-0-label"), {
+      target: { value: de["knowledge.relation.located_in"] },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-relation-0-note"), {
+      target: { value: "  nördlich  " },
+    });
+    fireEvent.click(screen.getByTestId("entity-create-save"));
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+    expect(api.POST).toHaveBeenCalledWith("/api/knowledge/entities", {
+      body: {
+        novel_id: NOVEL_ID,
+        name: "Nevada-Trümmerfeld",
+        type: "location",
+        aliases: [],
+        tags: [],
+        content: "",
+        relations: [
+          { to_entity_id: "e3", relation_type: "located_in", note: "nördlich" },
+        ],
+      },
+    });
+  });
+
+  it("a resolved target without a label is counted into the notice and marked", () => {
+    openCreate();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Nevada-Trümmerfeld" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "location" } });
+    fireEvent.click(screen.getByTestId("entity-create-add-relation"));
+    fireEvent.change(screen.getByTestId("entity-create-relation-0-entity"), {
+      target: { value: "Station 7" },
+    });
+    const note = screen.getByTestId("entity-create-unresolved-note");
+    expect(note.textContent).toBe(de["knowledge.create.unresolvedNote"]);
+    const label = screen.getByTestId("entity-create-relation-0-label");
+    expect(label.getAttribute("aria-invalid")).toBe("true");
+
+    // Filling the label lifts both signals: the row will land.
+    fireEvent.change(label, { target: { value: de["knowledge.relation.located_in"] } });
+    expect(screen.queryByTestId("entity-create-unresolved-note")).toBeNull();
+    expect(label.getAttribute("aria-invalid")).toBeNull();
+  });
+
+  it("the duplicate-name notice sits directly under the name field", () => {
+    openCreate();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Dr. Maya Chen" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "character" } });
+    const nameField = screen.getByTestId("entity-create-name").closest("div") as HTMLElement;
+    const note = screen.getByTestId("entity-create-duplicate-note");
+    const typeField = screen.getByTestId("entity-create-type").closest("div") as HTMLElement;
+    expect(nameField.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(note.compareDocumentPosition(typeField) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("the fields hold while the save is pending", async () => {
+    let resolve: (value: { data: Entity; response: Response }) => void = () => {};
+    api.POST.mockImplementation(() => new Promise((r) => { resolve = r; }));
+    openCreate();
+    const name = screen.getByTestId("entity-create-name") as HTMLInputElement;
+    const type = screen.getByTestId("entity-create-type") as HTMLSelectElement;
+    fireEvent.change(name, { target: { value: "Nevada-Trümmerfeld" } });
+    fireEvent.change(type, { target: { value: "location" } });
+    fireEvent.click(screen.getByTestId("entity-create-save"));
+    await waitFor(() => expect(screen.getByTestId("entity-create-save").textContent).toContain(de["knowledge.crud.busy"]));
+    // The fieldset disables its fields; :disabled sees the ancestor's state.
+    expect(name.closest("fieldset")?.disabled).toBe(true);
+    expect(name.matches(":disabled")).toBe(true);
+    expect(type.matches(":disabled")).toBe(true);
+    expect(screen.getByTestId("entity-create-tags").matches(":disabled")).toBe(true);
+    resolve({ data: entityRow({ id: "e9", name: "Nevada-Trümmerfeld", type: "location" }), response: ok(201) });
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+  });
+
+  it("a chip draft is committed on blur", () => {
+    openCreate();
+    const aliases = screen.getByTestId("entity-create-aliases") as HTMLInputElement;
+    fireEvent.change(aliases, { target: { value: "  Nevada  " } });
+    fireEvent.blur(aliases);
+    expect(screen.getByText("Nevada")).toBeTruthy();
+    expect(aliases.value).toBe("");
+  });
+
+  it("a chip draft the writer never confirmed still rides the save and is capped at 200", async () => {
+    api.POST.mockResolvedValue({
+      data: entityRow({ id: "e9", name: "Nevada-Trümmerfeld", type: "location" }),
+      response: ok(201),
+    });
+    openCreate();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Nevada-Trümmerfeld" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "location" } });
+    const tags = screen.getByTestId("entity-create-tags") as HTMLInputElement;
+    expect(tags.maxLength).toBe(200);
+    // No Enter, no blur: only the save flushes this draft.
+    fireEvent.change(tags, { target: { value: "  Ruine  " } });
+    fireEvent.click(screen.getByTestId("entity-create-save"));
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+    expect(api.POST.mock.calls[0][1].body.tags).toEqual(["Ruine"]);
+  });
+
+  it("a blank target with a typed label is counted, not dropped silently", () => {
+    openCreate();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Nevada-Trümmerfeld" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "location" } });
+    fireEvent.click(screen.getByTestId("entity-create-add-relation"));
+    const target = screen.getByTestId("entity-create-relation-0-entity");
+    fireEvent.change(screen.getByTestId("entity-create-relation-0-label"), {
+      target: { value: de["knowledge.relation.located_in"] },
+    });
+    expect(screen.getByTestId("entity-create-unresolved-note").textContent).toBe(
+      de["knowledge.create.unresolvedNote"],
+    );
+    expect(target.getAttribute("aria-invalid")).toBe("true");
+
+    // The target the writer meant lifts both signals.
+    fireEvent.change(target, { target: { value: "Station 7" } });
+    expect(screen.queryByTestId("entity-create-unresolved-note")).toBeNull();
+    expect(target.getAttribute("aria-invalid")).toBeNull();
+  });
+
+  it("an HTTP failure without a coded detail speaks the catalog, not the raw message", async () => {
+    api.POST.mockResolvedValue({ data: undefined, response: ok(500) });
+    openCreate();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Nevada-Trümmerfeld" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "location" } });
+    fireEvent.click(screen.getByTestId("entity-create-save"));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(de["knowledge.create.failedUnexpected"]);
+    expect(alert.textContent).not.toContain("create refused");
+    expect(alert.querySelector("p.font-mono")).toBeNull();
+  });
+
+  it("a transport failure speaks the catalog's sentence, never the browser's English", async () => {
+    api.POST.mockRejectedValue(new TypeError("Failed to fetch"));
+    openCreate();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Nevada-Trümmerfeld" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "location" } });
+    fireEvent.click(screen.getByTestId("entity-create-save"));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(de["knowledge.create.failedTransport"]);
+    expect(alert.textContent).not.toContain("Failed to fetch");
+    // The fields stand; the dialog is the writer's again.
+    expect((screen.getByTestId("entity-create-name") as HTMLInputElement).value).toBe(
+      "Nevada-Trümmerfeld",
+    );
+  });
+
+  it("a refused save shows code and detail and keeps the fields", async () => {
+    api.POST.mockResolvedValue({
+      data: undefined,
+      error: {
+        detail: {
+          code: "relation-target-invalid",
+          detail: "relation row 0 names an entity outside the novel",
+        },
+      },
+      response: ok(422),
+    });
+    openCreate();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Nevada-Trümmerfeld" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "location" } });
+    fireEvent.click(screen.getByTestId("entity-create-save"));
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByText(/relation-target-invalid/)).toBeTruthy();
+    expect(within(alert).getByText(/relation row 0/)).toBeTruthy();
+    // The answer is kept, the dialog stands.
+    expect((screen.getByTestId("entity-create-name") as HTMLInputElement).value).toBe(
+      "Nevada-Trümmerfeld",
+    );
+    expect(screen.getByTestId("entity-create-dialog")).toBeTruthy();
   });
 });
 

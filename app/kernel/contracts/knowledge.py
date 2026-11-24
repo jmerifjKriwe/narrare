@@ -37,8 +37,9 @@ class Entity(UserOwned):
     """An entity the user kept: one thing of the story, with its type, its
     other names, its tags and its Markdown body.
 
-    Born only through review — an accepted :class:`EntitySuggestion` creates
-    it — so the table holds the story's canon, not the model's proposals.
+    Born through review or by hand — an accepted :class:`EntitySuggestion`
+    or the create endpoint creates it — so the table holds the story's canon,
+    not the model's proposals.
     ``search_text`` is the maintained concatenation the trigram search runs
     over (name, aliases, tags); it is written by the same paths that write
     those fields, never by the client.

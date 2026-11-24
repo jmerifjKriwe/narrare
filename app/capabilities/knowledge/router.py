@@ -10,6 +10,7 @@ from app.capabilities.knowledge.schemas import (
     AcceptRead,
     ConsistencyAccepted,
     DocumentRead,
+    EntityCreate,
     EntityMerge,
     EntityRead,
     EntityUpdate,
@@ -36,11 +37,13 @@ from app.capabilities.knowledge.service import (
     KnowledgeService,
     NotFoundError,
     RelationExistsError,
+    RelationTargetInvalidError,
     SelfMergeError,
 )
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
+from app.kernel.errors import coded_detail
 from app.kernel.retrieval import EmbeddingMismatchError
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
@@ -297,6 +300,42 @@ async def dismiss_finding(finding_id: UUID, service: ServiceDep) -> FindingRead:
     except FindingAlreadyReviewedError:
         raise HTTPException(status_code=409, detail="finding already reviewed") from None
     return FindingRead.model_validate(finding)
+
+
+@router.post("/entities", response_model=EntityRead, status_code=201)
+async def create_entity(payload: EntityCreate, service: ServiceDep) -> EntityRead:
+    """Create an entity by hand, with its relation lines, in one transaction.
+
+    Return the entity; raise HTTP 404 for an absent or unowned novel, or
+    HTTP 422 for an invalid name, type or label (``entity-invalid``), a
+    relation line outside the novel (``relation-target-invalid``, naming
+    the row), or a duplicate line (``relation-duplicate``).
+    """
+    try:
+        entity = await service.create_entity(payload)
+    except NotFoundError:
+        raise HTTPException(
+            status_code=404, detail=coded_detail("not-found", "novel not found")
+        ) from None
+    except InvalidEntityUpdateError as error:
+        raise HTTPException(
+            status_code=422, detail=coded_detail("entity-invalid", str(error))
+        ) from None
+    except InvalidRelationError as error:
+        raise HTTPException(
+            status_code=422,
+            detail=coded_detail("entity-invalid", f"relation type: {error}"),
+        ) from None
+    except RelationTargetInvalidError as error:
+        raise HTTPException(
+            status_code=422, detail=coded_detail("relation-target-invalid", str(error))
+        ) from None
+    except RelationExistsError as error:
+        raise HTTPException(
+            status_code=422,
+            detail=coded_detail("relation-duplicate", str(error)),
+        ) from None
+    return EntityRead.model_validate(entity)
 
 
 @router.patch("/entities/{entity_id}", response_model=EntityRead)

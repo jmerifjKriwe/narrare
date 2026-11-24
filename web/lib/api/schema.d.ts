@@ -111,6 +111,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge/entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Entity
+         * @description Create an entity by hand, with its relation lines, in one transaction.
+         *
+         *     Return the entity; raise HTTP 404 for an absent or unowned novel, or
+         *     HTTP 422 for an invalid name, type or label (``entity-invalid``), a
+         *     relation line outside the novel (``relation-target-invalid``, naming
+         *     the row), or a duplicate line (``relation-duplicate``).
+         */
+        post: operations["create_entity_api_knowledge_entities_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge/entities/{entity_id}": {
         parameters: {
             query?: never;
@@ -1814,6 +1839,36 @@ export interface components {
             detail: components["schemas"]["EmbeddingMismatchDetail"];
         };
         /**
+         * EntityCreate
+         * @description The POST body of an entity: its fields and the relation lines to place.
+         *
+         *     The values are checked by the service against the same contract the
+         *     update path reads — the schema only carries them, so a refusal is the
+         *     coded ``entity-invalid``, never the framework's field list.
+         */
+        EntityCreate: {
+            /** Aliases */
+            aliases?: string[];
+            /**
+             * Content
+             * @default
+             */
+            content: string;
+            /** Name */
+            name: string;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            /** Relations */
+            relations?: components["schemas"]["RelationLine"][];
+            /** Tags */
+            tags?: string[];
+            /** Type */
+            type: string;
+        };
+        /**
          * EntityMerge
          * @description The merge's whole ask: which row survives.
          */
@@ -2657,6 +2712,27 @@ export interface components {
          *     immutable afterwards.
          */
         RelationCreate: {
+            /** Note */
+            note?: string | null;
+            /** Relation Type */
+            relation_type: string;
+            /**
+             * To Entity Id
+             * Format: uuid
+             */
+            to_entity_id: string;
+        };
+        /**
+         * RelationLine
+         * @description One relation line of a create-by-hand body: the target row, its type,
+         *     an optional note. The client resolved the target to an entity id before
+         *     the request; the service still checks the row belongs to the novel.
+         *
+         *     The type carries no schema bounds: a blank or over-long label is the
+         *     service's ``entity-invalid`` refusal (coded, naming the field), not the
+         *     framework's field list.
+         */
+        RelationLine: {
             /** Note */
             note?: string | null;
             /** Relation Type */
@@ -3597,6 +3673,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_entity_api_knowledge_entities_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityRead"];
+                };
             };
             /** @description Validation Error */
             422: {

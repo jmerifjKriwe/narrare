@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><title>Narrare</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"on-primary-fixed-variant":"#6f371c","on-secondary":"#ffffff","area-planning":"#834D7E","on-primary-container":"#f8a884","on-secondary-container":"#795c52","tertiary-container":"#6e3f14","bg-soft-dark":"#2C2922","surface-tint":"#8c4e30","background":"#fff8f2","border-dark":"#35332D","rule-dark":"#302D28","inverse-primary":"#ffb695","on-tertiary-fixed-variant":"#693c10","secondary-fixed":"#ffdbce","surface-container-lowest":"#ffffff","secondary-fixed-dim":"#e3bfb2","surface-bright":"#fff8f2","surface-dim":"#e0d9d1","on-secondary-fixed":"#2a170f","surface-variant":"#e9e1d9","bg-canvas-light":"#F6F3ED","area-chat":"#3A637B","primary-fixed":"#ffdbcc","tertiary-fixed":"#ffdcc3","primary-fixed-dim":"#ffb695","bg-card-dark":"#211F1A","cover-sepia":"#743B1F","on-tertiary-container":"#eead78","text-muted-light":"#6E6B65","error":"#ba1a1a","cover-pale":"#EEEBE5","state-success":"#21763C","on-tertiary-fixed":"#2f1500","bg-card-light":"#FFFFFF","state-warning":"#9A6100","bg-panel-dark":"#1C1914","border-light":"#E0DEDA","on-error-container":"#93000a","on-surface":"#1e1b16","tertiary":"#522900","amber-focus-dark":"#F2AD73","secondary":"#74584e","on-primary":"#ffffff","on-error":"#ffffff","error-container":"#ffdad6","area-settings":"#5A5549","rule-light":"#EEEBE5","bg-soft-light":"#EFEBE2","bg-panel-light":"#FDFCF9","surface-container-highest":"#e9e1d9","secondary-container":"#fed8ca","on-primary-fixed":"#351000","tertiary-fixed-dim":"#fcb882","on-secondary-fixed-variant":"#5a4137","on-surface-variant":"#53433d","surface-container-high":"#eee7df","text-foreground-dark":"#DFDEDA","area-writing":"#914F2F","outline-variant":"#d8c2b9","outline":"#86736c","bg-canvas-dark":"#16140F","primary":"#58250b","state-danger":"#AC3031","primary-container":"#743b1f","area-knowledge":"#606127","surface":"#fff8f2","amber-focus":"#8F4622","text-muted-dark":"#89867F","surface-container":"#f4ede4","inverse-surface":"#33302b","inverse-on-surface":"#f7f0e7","surface-container-low":"#faf2ea","on-tertiary":"#ffffff","on-background":"#1e1b16","cover-ink":"#24211C"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"rail-expanded":"10.5rem","prose-max-width":"34rem","space-xs":"0.25rem","container-max":"75rem","space-md":"1rem","margin":"1.5rem","space-sm":"0.5rem","rail-collapsed":"3rem","space-xl":"2rem","gutter":"1rem","space-lg":"1.5rem","dock-width":"21rem"},"fontFamily":{"headline-emph":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"],"headline-hero":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"],"eyebrow-tracked":["Plus Jakarta Sans"],"label-default":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"prose-heading-2":["EB Garamond"],"meta-default":["Plus Jakarta Sans"]},"fontSize":{"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}],"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}]}}}}</script></head><body class="bg-bg-canvas-light font-body-default text-body-default text-on-surface"><aside class="fixed left-0 top-0 h-full w-rail-collapsed bg-bg-panel-light border-r border-border-light z-50 flex flex-col items-center py-space-sm justify-between"><div class="flex flex-col items-center gap-space-md w-full"><a class="w-8 h-8 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center font-headline-emph text-headline-emph" href="#">N</a><nav class="flex flex-col items-center gap-space-xs w-full px-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-bold"><a class="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="library" href="#" title="Bibliothek"><span class="material-symbols-outlined text-[20px]">local_library</span></a><a class="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="writing" href="#" title="Schreiben"><span class="material-symbols-outlined text-[20px]">edit_note</span></a><a aria-current="page" class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors bg-primary-container text-on-primary-container font-bold" data-path="knowledge" href="#" title="Wissen"><span class="material-symbols-outlined text-[20px]">hub</span></a><a class="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="planning" href="#" title="Planung"><span class="material-symbols-outlined text-[20px]">view_timeline</span></a><a class="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#" title="Einstellungen"><span class="material-symbols-outlined text-[20px]">settings</span></a></nav></div><button class="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" title="Theme wechseln" type="button"><span class="material-symbols-outlined text-[20px]">dark_mode</span></button></aside><div class="pl-rail-collapsed"><header class="fixed top-0 left-rail-collapsed right-0 h-14 bg-bg-panel-light border-b border-border-light z-40 px-space-lg flex items-center justify-between"><div class="flex items-center gap-space-md"><span class="font-label-default text-label-default text-on-surface">Manuskripte / Dead Signal</span><span class="inline-flex items-center gap-space-xs font-meta-default text-meta-default text-state-success"><span class="material-symbols-outlined text-[16px]">check</span>Gespeichert</span></div><div class="flex items-center gap-space-md"><div class="hidden sm:flex items-center h-7 px-space-sm bg-bg-card-light border border-border-light rounded-lg gap-space-sm"><span class="material-symbols-outlined text-[16px] text-text-muted-light">search</span><input class="bg-transparent font-meta-default text-meta-default text-on-surface placeholder:text-text-muted-light focus:outline-none w-44" placeholder="Suchen oder prompt ..." type="text"/><kbd class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light bg-bg-soft-light px-1.5 py-0.5 rounded">⌘K</kbd></div><span class="font-meta-default text-meta-default text-text-muted-light tabular-nums">48.219 Wörter</span><div class="flex items-center gap-space-xs font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light"><button class="text-on-surface font-semibold" type="button">DE</button><span>/</span><button class="hover:text-on-surface transition-colors" type="button">EN</button><span>/</span><button class="hover:text-on-surface transition-colors" type="button">FR</button></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-14 bg-bg-canvas-light min-h-screen"><div class="flex flex-col w-full">
+<!-- Page Subbar -->
+<div class="bg-bg-panel-light px-space-lg py-space-md flex flex-col lg:flex-row lg:items-center lg:justify-between gap-space-md shadow-sm z-10">
+<div class="flex flex-col gap-space-xs min-w-0">
+<div class="font-meta-default text-meta-default text-text-muted-light truncate">
+        Atelier / Dead Signal / Lore &amp; Wissensnetzwerk / Kausaler Entitäten-Graph
+      </div>
+<h1 class="font-headline-title text-headline-title text-on-surface">
+        Kausales Wissensnetzwerk
+      </h1>
+</div>
+<div class="flex flex-wrap items-center gap-space-md">
+<div class="inline-flex items-center bg-bg-soft-light p-0.5 rounded-lg" role="tablist">
+<button class="px-space-sm py-1 rounded bg-bg-card-light text-on-surface font-label-default text-label-default shadow-sm transition-colors" data-view-tab="network" type="button">
+          Beziehungsnetz
+        </button>
+<button class="px-space-sm py-1 rounded text-text-muted-light hover:text-on-surface font-label-default text-label-default transition-colors" data-view-tab="matrix" type="button">
+          Matrix
+        </button>
+<button class="px-space-sm py-1 rounded text-text-muted-light hover:text-on-surface font-label-default text-label-default transition-colors" data-view-tab="hierarchy" type="button">
+          Hierarchie
+        </button>
+</div>
+<button class="inline-flex items-center gap-space-xs h-7 px-space-sm rounded-lg bg-primary-container text-on-primary font-label-default text-label-default hover:bg-primary transition-colors shadow-sm" type="button">
+<span>+ Neue Entität</span>
+</button>
+</div>
+</div>
+<!-- Main Split Area -->
+<div class="flex flex-col lg:flex-row w-full flex-1">
+<!-- Left Main Area (~4/5) -->
+<div class="flex-1 flex flex-col min-w-0 p-space-lg gap-space-md">
+<!-- Filter Row -->
+<div class="flex flex-wrap items-center justify-between gap-space-md">
+<div class="flex flex-wrap items-center gap-space-xs">
+<button class="inline-flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-primary-container text-on-primary font-label-default text-label-default transition-colors" data-filter-chip="" type="button">
+<span>Alle</span>
+<span class="font-meta-default text-meta-default opacity-80">18</span>
+</button>
+<button class="inline-flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-bg-card-light text-on-surface-variant hover:bg-bg-soft-light font-label-default text-label-default shadow-sm transition-colors" data-filter-chip="" type="button">
+<span>Figuren</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">6</span>
+</button>
+<button class="inline-flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-bg-card-light text-on-surface-variant hover:bg-bg-soft-light font-label-default text-label-default shadow-sm transition-colors" data-filter-chip="" type="button">
+<span>Orte &amp; Stationen</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">5</span>
+</button>
+<button class="inline-flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-bg-card-light text-on-surface-variant hover:bg-bg-soft-light font-label-default text-label-default shadow-sm transition-colors" data-filter-chip="" type="button">
+<span>Artefakte &amp; Tech</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">4</span>
+</button>
+<button class="inline-flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-bg-card-light text-on-surface-variant hover:bg-bg-soft-light font-label-default text-label-default shadow-sm transition-colors" data-filter-chip="" type="button">
+<span>Ereignisse</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">3</span>
+</button>
+</div>
+<div class="flex items-center h-7 px-space-sm bg-bg-card-light rounded-lg gap-space-sm shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-text-muted-light">search</span>
+<input class="bg-transparent font-meta-default text-meta-default text-on-surface placeholder:text-text-muted-light focus:outline-none w-44" placeholder="Forschungsstation 7" type="text" value="Forschungsstation 7"/>
+</div>
+</div>
+<!-- Graph Canvas -->
+<div class="relative w-full min-h-[620px] bg-bg-panel-light rounded-xl shadow-sm overflow-hidden flex flex-col justify-between">
+<!-- Dotted Background Pattern -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none text-outline-variant/40" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<pattern height="20" id="lore-dots" patternunits="userSpaceOnUse" width="20">
+<circle cx="2" cy="2" fill="currentColor" r="1"></circle>
+</pattern>
+</defs>
+<rect fill="url(#lore-dots)" height="100%" width="100%"></rect>
+</svg>
+<!-- Connection Lines -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none text-outline/40" preserveaspectratio="none" viewbox="0 0 900 560">
+<line stroke="currentColor" stroke-width="1.25" x1="450" x2="210" y1="120" y2="210"></line>
+<line stroke="currentColor" stroke-width="1.25" x1="450" x2="680" y1="120" y2="195"></line>
+<line stroke="currentColor" stroke-width="1.25" x1="210" x2="250" y1="210" y2="370"></line>
+<line stroke="currentColor" stroke-width="1.25" x1="210" x2="450" y1="210" y2="290"></line>
+<line stroke="currentColor" stroke-width="1.25" x1="450" x2="680" y1="290" y2="195"></line>
+<line stroke="currentColor" stroke-width="1.25" x1="450" x2="440" y1="290" y2="450"></line>
+<line stroke="currentColor" stroke-width="1.25" x1="250" x2="440" y1="370" y2="450"></line>
+<line stroke="currentColor" stroke-width="1.25" x1="680" x2="690" y1="195" y2="390"></line>
+<line stroke="currentColor" stroke-width="1.25" x1="440" x2="690" y1="450" y2="390"></line>
+</svg>
+<!-- Graph Nodes -->
+<div class="relative flex-1 w-full min-h-[540px] p-space-lg">
+<!-- Node: ARIA (KI) -->
+<div class="absolute top-[12%] left-[41%] w-52 bg-bg-card-light rounded-lg p-space-sm shadow-md flex items-start gap-space-sm hover:shadow-lg transition-shadow cursor-pointer">
+<div class="w-7 h-7 rounded bg-surface-container flex items-center justify-center shrink-0 text-area-chat">
+<span class="material-symbols-outlined text-[16px]">memory</span>
+</div>
+<div class="min-w-0">
+<div class="font-label-default text-label-default text-on-surface truncate">ARIA (KI)</div>
+<div class="font-meta-default text-meta-default text-text-muted-light truncate">Autonome Stationsintelligenz</div>
+</div>
+</div>
+<!-- Node: Dr. Maya Chen -->
+<div class="absolute top-[30%] left-[12%] w-52 bg-bg-card-light rounded-lg p-space-sm shadow-md flex items-start gap-space-sm hover:shadow-lg transition-shadow cursor-pointer">
+<div class="w-7 h-7 rounded bg-surface-container flex items-center justify-center shrink-0 text-area-writing">
+<span class="material-symbols-outlined text-[16px]">person</span>
+</div>
+<div class="min-w-0">
+<div class="font-label-default text-label-default text-on-surface truncate">Dr. Maya Chen</div>
+<div class="font-meta-default text-meta-default text-text-muted-light truncate">Leitende Signalanalystin</div>
+</div>
+</div>
+<!-- Node: Horizon Station -->
+<div class="absolute top-[28%] left-[64%] w-52 bg-bg-card-light rounded-lg p-space-sm shadow-md flex items-start gap-space-sm hover:shadow-lg transition-shadow cursor-pointer">
+<div class="w-7 h-7 rounded bg-surface-container flex items-center justify-center shrink-0 text-area-knowledge">
+<span class="material-symbols-outlined text-[16px]">satellite_alt</span>
+</div>
+<div class="min-w-0">
+<div class="font-label-default text-label-default text-on-surface truncate">Horizon Station</div>
+<div class="font-meta-default text-meta-default text-text-muted-light truncate">Orbitaler Relais-Außenposten</div>
+</div>
+</div>
+<!-- Node: Forschungsstation 7 -->
+<div class="absolute top-[46%] left-[39%] w-56 bg-bg-card-light rounded-lg p-space-sm shadow-md flex items-start gap-space-sm hover:shadow-lg transition-shadow cursor-pointer">
+<div class="w-7 h-7 rounded bg-primary-fixed flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[16px]">domain</span>
+</div>
+<div class="min-w-0">
+<div class="font-label-default text-label-default text-on-surface truncate">Forschungsstation 7</div>
+<div class="font-meta-default text-meta-default text-text-muted-light truncate">Stillgelegter Tiefsee-Sektor</div>
+</div>
+</div>
+<!-- Node: Lin Chen -->
+<div class="absolute top-[60%] left-[16%] w-52 bg-bg-card-light rounded-lg p-space-sm shadow-md flex items-start gap-space-sm hover:shadow-lg transition-shadow cursor-pointer">
+<div class="w-7 h-7 rounded bg-surface-container flex items-center justify-center shrink-0 text-area-writing">
+<span class="material-symbols-outlined text-[16px]">person</span>
+</div>
+<div class="min-w-0">
+<div class="font-label-default text-label-default text-on-surface truncate">Lin Chen</div>
+<div class="font-meta-default text-meta-default text-text-muted-light truncate">Systemarchitektin &amp; Schwester</div>
+</div>
+</div>
+<!-- Node: Resonanz-Transmitter -->
+<div class="absolute top-[74%] left-[40%] w-52 bg-bg-card-light rounded-lg p-space-sm shadow-md flex items-start gap-space-sm hover:shadow-lg transition-shadow cursor-pointer">
+<div class="w-7 h-7 rounded bg-surface-container flex items-center justify-center shrink-0 text-area-planning">
+<span class="material-symbols-outlined text-[16px]">inventory_2</span>
+</div>
+<div class="min-w-0">
+<div class="font-label-default text-label-default text-on-surface truncate">Resonanz-Transmitter</div>
+<div class="font-meta-default text-meta-default text-text-muted-light truncate">Subraum-Kopplungseinheit</div>
+</div>
+</div>
+<!-- Node: Director Kavic -->
+<div class="absolute top-[63%] left-[65%] w-52 bg-bg-card-light rounded-lg p-space-sm shadow-md flex items-start gap-space-sm hover:shadow-lg transition-shadow cursor-pointer">
+<div class="w-7 h-7 rounded bg-surface-container flex items-center justify-center shrink-0 text-area-writing">
+<span class="material-symbols-outlined text-[16px]">person</span>
+</div>
+<div class="min-w-0">
+<div class="font-label-default text-label-default text-on-surface truncate">Director Kavic</div>
+<div class="font-meta-default text-meta-default text-text-muted-light truncate">Leiter der Sicherheitsdirektion</div>
+</div>
+</div>
+</div>
+<!-- Legend Strip -->
+<div class="relative bg-bg-card-light/90 backdrop-blur-sm px-space-md py-space-sm flex flex-wrap items-center gap-space-lg">
+<div class="flex items-center gap-space-xs font-meta-default text-meta-default text-text-muted-light">
+<span class="w-2 h-2 rounded-full bg-area-writing"></span>
+<span>Figuren</span>
+</div>
+<div class="flex items-center gap-space-xs font-meta-default text-meta-default text-text-muted-light">
+<span class="w-2 h-2 rounded-full bg-area-knowledge"></span>
+<span>Orte &amp; Stationen</span>
+</div>
+<div class="flex items-center gap-space-xs font-meta-default text-meta-default text-text-muted-light">
+<span class="w-2 h-2 rounded-full bg-area-planning"></span>
+<span>Artefakte &amp; Tech</span>
+</div>
+<div class="flex items-center gap-space-xs font-meta-default text-meta-default text-text-muted-light">
+<span class="w-2 h-2 rounded-full bg-area-chat"></span>
+<span>Systeme &amp; KI</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Interview Panel (~1/5 of width, full height under subbar) -->
+<aside class="w-full lg:w-1/5 lg:min-w-[336px] bg-bg-card-light shadow-md flex flex-col justify-between">
+<!-- Panel Header -->
+<div class="px-space-md py-space-sm bg-bg-panel-light flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<h2 class="font-headline-emph text-headline-emph text-on-surface truncate">Neue Entität</h2>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-soft-light text-on-surface-variant font-meta-default text-meta-default shrink-0">
+<span class="material-symbols-outlined text-[14px]">inventory_2</span>
+<span>Objekt</span>
+</span>
+</div>
+<div class="flex items-center gap-space-xs shrink-0">
+<button class="w-7 h-7 rounded flex items-center justify-center text-text-muted-light hover:bg-bg-soft-light hover:text-on-surface transition-colors" title="Interviews" type="button">
+<span class="material-symbols-outlined text-[18px]">list</span>
+</button>
+<button class="w-7 h-7 rounded flex items-center justify-center text-text-muted-light hover:bg-bg-soft-light hover:text-on-surface transition-colors" title="Schließen" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+</div>
+<!-- Pinned Proposal Card -->
+<div class="mx-space-sm mt-space-sm bg-bg-panel-light rounded-lg shadow-sm overflow-hidden">
+<button class="w-full px-space-md py-space-sm flex items-center justify-between text-left hover:bg-bg-soft-light transition-colors" id="proposal-toggle" type="button">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface">Vorschlag</span>
+<span class="material-symbols-outlined text-[18px] text-text-muted-light transition-transform" id="proposal-chevron">expand_less</span>
+</button>
+<div class="px-space-md pb-space-md flex flex-col gap-space-sm" id="proposal-body">
+<!-- Name -->
+<div class="flex flex-col gap-0.5">
+<span class="font-meta-default text-meta-default text-text-muted-light">Name</span>
+<span class="font-label-default text-label-default text-on-surface">Resonanz-Transponder LC-89</span>
+</div>
+<!-- Typ -->
+<div class="flex flex-col gap-0.5">
+<span class="font-meta-default text-meta-default text-text-muted-light">Typ</span>
+<span class="font-body-default text-body-default text-on-surface">Objekt</span>
+</div>
+<!-- Aliasse -->
+<div class="flex flex-col gap-1">
+<span class="font-meta-default text-meta-default text-text-muted-light">Aliasse</span>
+<div class="flex flex-wrap gap-space-xs">
+<span class="px-2 py-0.5 rounded bg-bg-soft-light text-on-surface font-meta-default text-meta-default">LC-89</span>
+<span class="px-2 py-0.5 rounded bg-bg-soft-light text-on-surface font-meta-default text-meta-default">Transponder</span>
+</div>
+</div>
+<!-- Schlagworte -->
+<div class="flex flex-col gap-1">
+<span class="font-meta-default text-meta-default text-text-muted-light">Schlagworte</span>
+<div class="flex flex-wrap gap-space-xs">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-soft-light text-on-surface font-meta-default text-meta-default">
+<span>Technologie</span>
+<span class="px-1 py-0 rounded bg-surface-container-highest text-text-muted-light font-eyebrow-tracked text-eyebrow-tracked">vorgeschlagen</span>
+</span>
+<span class="px-2 py-0.5 rounded bg-bg-soft-light text-on-surface font-meta-default text-meta-default">Relikt</span>
+</div>
+</div>
+<!-- Beschreibung -->
+<div class="flex flex-col gap-0.5">
+<span class="font-meta-default text-meta-default text-text-muted-light">Beschreibung</span>
+<p class="font-meta-default text-meta-default text-on-surface-variant line-clamp-2">
+              Verschlossenes Prototyp-Subraumrelais. Öffnet nur auf Mayas und Lins DNA-Resonanz.
+            </p>
+</div>
+<!-- Beziehungen -->
+<div class="flex flex-col gap-1">
+<span class="font-meta-default text-meta-default text-text-muted-light">Beziehungen</span>
+<div class="flex flex-col gap-space-xs"><div class="flex items-start justify-between gap-space-xs px-2 py-1 rounded bg-bg-soft-light"><span class="font-meta-default text-meta-default text-on-surface">Forschungsstation 7 · Ort — Liegt in</span><span class="px-1 py-0 rounded bg-surface-container-highest text-text-muted-light font-eyebrow-tracked text-eyebrow-tracked shrink-0 mt-0.5">vorgeschlagen</span></div><div class="flex items-start justify-between gap-space-xs px-2 py-1 rounded bg-bg-soft-light"><span class="font-meta-default text-meta-default text-on-surface">Dr. Lin Chen · Figur — Gebaut von</span><span class="px-1 py-0 rounded bg-surface-container-highest text-text-muted-light font-eyebrow-tracked text-eyebrow-tracked shrink-0 mt-0.5">vorgeschlagen</span></div></div>
+</div>
+<div class="pt-space-xs">
+<button class="font-meta-default text-meta-default text-text-muted-light hover:text-state-danger transition-colors" type="button">
+              Vorschläge verwerfen
+            </button>
+</div>
+</div>
+</div>
+<!-- Transcript (Scroll Area) -->
+<div class="flex-1 overflow-y-auto px-space-md py-space-md flex flex-col gap-space-md">
+<!-- Turn 1 -->
+<div class="flex flex-col gap-0.5">
+<div class="font-meta-default text-meta-default text-text-muted-light">Assistent · 14:02</div>
+<p class="font-body-default text-body-default text-on-surface">
+            Was möchtest du anlegen? Nenn mir den Namen des Objekts und sag in einem Satz, was es ist.
+          </p>
+</div>
+<!-- Turn 2 -->
+<div class="flex flex-col gap-0.5 bg-bg-soft-light rounded-lg p-space-sm">
+<div class="font-meta-default text-meta-default text-text-muted-light">Du · 14:03</div>
+<p class="font-body-default text-body-default text-on-surface">
+            Es heißt Resonanz-Transponder LC-89, ein Relikt aus der alten Station.
+          </p>
+</div>
+<!-- Turn 3 -->
+<div class="flex flex-col gap-0.5">
+<div class="font-meta-default text-meta-default text-text-muted-light">Assistent · 14:03</div>
+<p class="font-body-default text-body-default text-on-surface">
+            Notiert. Was öffnet oder auslöst das Objekt, und wer darf es bedienen?
+          </p>
+</div>
+<!-- Turn 4 -->
+<div class="flex flex-col gap-0.5 bg-bg-soft-light rounded-lg p-space-sm">
+<div class="font-meta-default text-meta-default text-text-muted-light">Du · 14:04</div>
+<p class="font-body-default text-body-default text-on-surface">
+            Keine Ahnung
+          </p>
+</div>
+<!-- Turn 5 -->
+<div class="flex flex-col gap-1">
+<div class="font-meta-default text-meta-default text-text-muted-light">Assistent · 14:04</div>
+<div class="bg-bg-panel-light rounded-lg p-space-sm shadow-sm flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface-variant">Vorschlag</span>
+<span class="inline-flex items-center gap-0.5 font-meta-default text-meta-default text-state-success">
+<span class="material-symbols-outlined text-[14px]">check</span>
+<span>übernommen</span>
+</span>
+</div>
+<p class="font-body-default text-body-default text-on-surface">
+              Nur Maya und Lin können es öffnen: Es reagiert auf ihre DNA-Resonanz.
+            </p>
+</div>
+</div>
+<!-- Turn 6 -->
+<div class="flex flex-col gap-0.5 bg-bg-soft-light rounded-lg p-space-sm">
+<div class="font-meta-default text-meta-default text-text-muted-light">Du · 14:05</div>
+<p class="font-body-default text-body-default text-on-surface">
+            Nur Maya und Lin können es öffnen: Es reagiert auf ihre DNA-Resonanz.
+          </p>
+</div>
+<!-- Turn 7 -->
+<div class="flex flex-col gap-0.5">
+<div class="font-meta-default text-meta-default text-text-muted-light">Assistent · 14:05</div>
+<p class="font-body-default text-body-default text-on-surface">
+            Gut. Woher stammt es, und hat es einen Zusammenhang zu Forschungsstation 7?
+          </p>
+</div>
+<!-- Turn 8 -->
+<div class="flex flex-col gap-0.5 bg-bg-soft-light rounded-lg p-space-sm">
+<div class="font-meta-default text-meta-default text-text-muted-light">Du · 14:06</div>
+<p class="font-body-default text-body-default text-on-surface">
+            Alles vorschlagen lassen
+          </p>
+</div>
+<!-- Turn 9 -->
+<div class="flex flex-col gap-0.5">
+<div class="font-meta-default text-meta-default text-text-muted-light">Assistent · 14:06</div>
+<p class="font-body-default text-body-default text-on-surface">
+            Ich habe den Vorschlag vervollständigt: zwei Schlagworte und zwei Beziehungen. Prüfe sie, bevor du speicherst.
+          </p>
+</div>
+</div>
+<!-- Composer & Footer -->
+<div class="bg-bg-panel-light px-space-md py-space-sm flex flex-col gap-space-sm">
+<div class="flex flex-wrap items-center gap-space-xs">
+<button class="px-2 py-0.5 rounded bg-bg-soft-light text-on-surface-variant hover:text-on-surface font-meta-default text-meta-default transition-colors" type="button">
+            Keine Ahnung
+          </button>
+<button class="px-2 py-0.5 rounded bg-bg-soft-light text-on-surface-variant hover:text-on-surface font-meta-default text-meta-default transition-colors" type="button">
+            Alles vorschlagen lassen
+          </button>
+</div>
+<div class="flex items-end gap-space-xs bg-bg-card-light rounded-lg p-space-xs shadow-sm">
+<textarea class="flex-1 bg-transparent px-space-xs py-1 font-body-default text-body-default text-on-surface placeholder:text-text-muted-light focus:outline-none resize-none" placeholder="Antworten ..." rows="2"></textarea>
+<button class="w-7 h-7 rounded bg-primary-container text-on-primary flex items-center justify-center hover:bg-primary transition-colors shrink-0" title="Senden" type="button">
+<span class="material-symbols-outlined text-[16px]">arrow_upward</span>
+</button>
+</div>
+<div class="font-meta-default text-meta-default text-text-muted-light">
+          Enter sendet, Shift + Enter für eine neue Zeile
+        </div>
+<div class="flex items-center gap-space-xs pt-space-xs">
+<button class="flex-1 h-7 px-space-sm rounded-lg bg-primary-container text-on-primary font-label-default text-label-default hover:bg-primary transition-colors shadow-sm" type="button">
+            Als Entität speichern
+          </button>
+<button class="h-7 px-space-sm rounded-lg bg-bg-card-light text-on-surface font-label-default text-label-default hover:bg-bg-soft-light transition-colors shadow-sm shrink-0" type="button">
+            Interview beenden
+          </button>
+</div>
+</div>
+</aside>
+</div>
+</div>
+<script>
+  (function () {
+    const toggleBtn = document.getElementById('proposal-toggle');
+    const proposalBody = document.getElementById('proposal-body');
+    const chevron = document.getElementById('proposal-chevron');
+    if (toggleBtn && proposalBody && chevron) {
+      toggleBtn.addEventListener('click', function () {
+        const isHidden = proposalBody.classList.toggle('hidden');
+        chevron.textContent = isHidden ? 'expand_more' : 'expand_less';
+      });
+    }
+
+    const viewTabs = document.querySelectorAll('[data-view-tab]');
+    viewTabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        viewTabs.forEach(function (t) {
+          t.classList.remove('bg-bg-card-light', 'text-on-surface', 'shadow-sm');
+          t.classList.add('text-text-muted-light');
+        });
+        tab.classList.add('bg-bg-card-light', 'text-on-surface', 'shadow-sm');
+        tab.classList.remove('text-text-muted-light');
+      });
+    });
+
+    const filterChips = document.querySelectorAll('[data-filter-chip]');
+    filterChips.forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        filterChips.forEach(function (c) {
+          c.classList.remove('bg-primary-container', 'text-on-primary');
+          c.classList.add('bg-bg-card-light', 'text-on-surface-variant', 'shadow-sm');
+        });
+        chip.classList.add('bg-primary-container', 'text-on-primary');
+        chip.classList.remove('bg-bg-card-light', 'text-on-surface-variant', 'shadow-sm');
+      });
+    });
+  })();
+</script></main></div></body></html>

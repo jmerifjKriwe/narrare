@@ -17,9 +17,9 @@
  * - The draft's CRUD doors (W5 Task 4): draw relation and merge open the
  *   shared dialogs (`crudDialogs.tsx`), and both wait disabled with their
  *   note until two entities stand — a relation and a merge each need two
- *   ends, so a sparse canon offers no dead-end dialog; the new-entity door
- *   has no endpoint at all (entities are born through review) and stands an
- *   honest disabled gap with its note.
+ *   ends, so a sparse canon offers no dead-end dialog. The new-entity door
+ *   (W9) opens the hand-made create; a saved row is selected at once, so the
+ *   dossier shows the entity and its relations without a second click.
  *
  * The page reads the real API through the shell's query seam and imports no
  * other capability (rule 1). Loading, outage and the empty canon each answer
@@ -49,9 +49,10 @@ import { usePageTitle } from "@shell/lib/pageTitle";
 import { useEntitiesQuery, useNovelRelationsQuery } from "@shell/lib/query";
 import { CARD_EYEBROW, FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
+import { useToast } from "@shell/ui/toast";
 
 import { EntityDossier } from "./EntityDossier";
-import { CreateRelationDialog, MergeDialog } from "./crudDialogs";
+import { CreateRelationDialog, EntityCreateDialog, MergeDialog } from "./crudDialogs";
 import { entityTypeIcon, entityTypeLabel, typeTheme } from "./entityTypes";
 import { fitTransform, graphBounds, graphSignature, layoutGraph, type Transform } from "./graphLayout";
 import { relationTypeLabel } from "./relations";
@@ -84,6 +85,7 @@ function snippet(content: string): string {
 
 export function LoreGraphPage() {
   const t = useTranslation();
+  const toast = useToast();
   const { novelId } = useParams({ from: GRAPH_PATH });
   const { entity: selectedId } = useSearch({ from: GRAPH_PATH });
   const navigate = useNavigate();
@@ -95,8 +97,9 @@ export function LoreGraphPage() {
   const [activeType, setActiveType] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [edgeId, setEdgeId] = useState<string | null>(null);
-  // Which subbar CRUD dialog stands open (Task 4); the dossier owns its own.
-  const [crud, setCrud] = useState<null | "addRelation" | "merge">(null);
+  // Which subbar CRUD dialog stands open (Task 4; the create since W9); the
+  // dossier owns its own.
+  const [crud, setCrud] = useState<null | "addRelation" | "merge" | "create">(null);
 
   const entityList = useMemo(() => entities.data ?? [], [entities.data]);
   const relationList = useMemo(() => relations.data ?? [], [relations.data]);
@@ -409,11 +412,11 @@ export function LoreGraphPage() {
   return (
     <div id="graph-page" data-testid="graph-page" tabIndex={-1} className="flex h-full flex-col overflow-hidden focus:outline-none">
       {/* The subbar — the view label, the type filter chips, the search and
-          the draft's CRUD doors (Task 4: relation/merge live, new-entity gap).
-          One consistent mechanism with the dossiers and the sources archive:
-          the bar stands in EVERY state — pending, failed, empty, populated —
-          so the sibling doors never vanish behind an honest face; only the
-          body below it varies. */}
+          the draft's CRUD doors (relation/merge live since Task 4, the
+          new-entity create since W9). One consistent mechanism with the
+          dossiers and the sources archive: the bar stands in EVERY state —
+          pending, failed, empty, populated — so the sibling doors never
+          vanish behind an honest face; only the body below it varies. */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-container-low px-4 py-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="flex items-center gap-1.5 rounded-full border border-rule bg-card px-3 py-1 text-meta font-semibold text-foreground shadow-card">
@@ -540,9 +543,10 @@ export function LoreGraphPage() {
           </button>
           <button
             type="button"
-            disabled
-            title={`${t("knowledge.graph.newEntity")} (${t("knowledge.graph.newEntityNote")})`}
-            className="flex cursor-not-allowed items-center gap-1.5 rounded-[var(--radius-control)] bg-primary px-3 py-1 text-meta text-primary-foreground opacity-60"
+            id="graph-new-entity"
+            data-testid="graph-new-entity"
+            onClick={() => setCrud("create")}
+            className={`flex items-center gap-1.5 rounded-[var(--radius-control)] bg-primary px-3 py-1 text-meta text-primary-foreground transition-colors hover:opacity-95 ${FOCUS}`}
           >
             <Icon name="plus" size={14} /> {t("knowledge.graph.newEntity")}
           </button>
@@ -866,6 +870,18 @@ export function LoreGraphPage() {
           openerId="graph-merge"
           onClose={() => setCrud(null)}
           onMerged={(id) => select(id)}
+        />
+      )}
+      {crud === "create" && (
+        <EntityCreateDialog
+          novelId={novelId}
+          entities={entityList}
+          openerId="graph-new-entity"
+          onClose={() => setCrud(null)}
+          onCreated={(entity, relations) => {
+            select(entity.id);
+            toast.show(t("knowledge.create.created", { count: relations }));
+          }}
         />
       )}
     </div>

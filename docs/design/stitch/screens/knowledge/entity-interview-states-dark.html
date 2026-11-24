@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>Narrare — Dokumentation &amp; Referenz</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,400..700;1,400..700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"bg-card-light":"#FFFFFF","area-settings":"#5A5549","inverse-on-surface":"#f7f0e7","error-container":"#ffdad6","on-secondary-container":"#795c52","amber-focus":"#8F4622","area-writing":"#914F2F","secondary":"#74584e","bg-panel-dark":"#1C1914","on-surface-variant":"#53433d","on-primary-container":"#f8a884","primary-fixed":"#ffdbcc","surface-bright":"#fff8f2","surface-container-low":"#faf2ea","on-primary-fixed-variant":"#6f371c","bg-soft-light":"#EFEBE2","tertiary-fixed":"#ffdcc3","on-secondary":"#ffffff","on-background":"#1e1b16","on-primary-fixed":"#351000","border-light":"#E0DEDA","primary":"#58250b","secondary-container":"#fed8ca","surface-variant":"#e9e1d9","error":"#ba1a1a","tertiary-container":"#6e3f14","bg-panel-light":"#FDFCF9","rule-light":"#EEEBE5","bg-canvas-light":"#F6F3ED","on-tertiary":"#ffffff","text-muted-light":"#6E6B65","border-dark":"#35332D","bg-card-dark":"#211F1A","inverse-surface":"#33302b","tertiary":"#522900","inverse-primary":"#ffb695","surface-tint":"#8c4e30","on-tertiary-fixed-variant":"#693c10","primary-container":"#743b1f","amber-focus-dark":"#F2AD73","on-primary":"#ffffff","cover-sepia":"#743B1F","background":"#fff8f2","tertiary-fixed-dim":"#fcb882","outline-variant":"#d8c2b9","rule-dark":"#302D28","on-secondary-fixed-variant":"#5a4137","state-danger":"#AC3031","surface-dim":"#e0d9d1","surface":"#fff8f2","on-secondary-fixed":"#2a170f","on-tertiary-fixed":"#2f1500","surface-container-lowest":"#ffffff","secondary-fixed-dim":"#e3bfb2","surface-container-high":"#eee7df","on-surface":"#1e1b16","text-foreground-dark":"#DFDEDA","on-tertiary-container":"#eead78","bg-soft-dark":"#2C2922","surface-container":"#f4ede4","primary-fixed-dim":"#ffb695","area-knowledge":"#606127","bg-canvas-dark":"#16140F","state-success":"#21763C","outline":"#86736c","cover-pale":"#EEEBE5","on-error-container":"#93000a","surface-container-highest":"#e9e1d9","text-muted-dark":"#89867F","state-warning":"#9A6100","on-error":"#ffffff","cover-ink":"#24211C","secondary-fixed":"#ffdbce","area-planning":"#834D7E","area-chat":"#3A637B"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-lg":"1.5rem","prose-max-width":"34rem","space-xl":"2rem","container-max":"75rem","space-md":"1rem","gutter":"1rem","dock-width":"21rem","rail-collapsed":"3rem","space-xs":"0.25rem","rail-expanded":"10.5rem","margin":"1.5rem","space-sm":"0.5rem"},"fontFamily":{"headline-hero":["Plus Jakarta Sans"],"prose-heading-2":["EB Garamond"],"body-default":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"eyebrow-tracked":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"],"meta-default":["Plus Jakarta Sans"],"label-default":["Plus Jakarta Sans"]},"fontSize":{"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}],"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}]}}}};</script></head><body class="bg-[#16140F] text-[#DFDEDA] font-body-default text-body-default antialiased selection:bg-[#47291D] selection:text-[#FED8CA]"><main class="w-full bg-[#16140F] min-h-screen text-[#DFDEDA]"><div class="flex flex-col w-full">
+<!-- Top Spec Sheet Header -->
+<header class="w-full max-w-[1440px] mx-auto px-6 lg:px-12 pt-8 pb-10"><div class="flex flex-col items-start border-b border-[#302D28] pb-8">
+<div class="flex items-center gap-3 mb-3">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-[#D39562] tracking-widest bg-[#47291D] px-2.5 py-0.5 rounded border border-[#564E43]/40">Zustands-Referenz</span>
+</div>
+<h1 class="font-prose-heading-1 text-4xl lg:text-5xl text-[#DFDEDA] tracking-tight mb-3 font-serif">Entität-Interview</h1>
+<p class="font-prose-editorial text-prose-editorial text-[#89867F] max-w-2xl font-serif text-[18px]">Das Panel auf der Seite Kausales Wissensnetzwerk in elf Zuständen</p>
+</div></header>
+<!-- Spec Sheet Content Canvas -->
+<main class="w-full max-w-[1440px] mx-auto px-6 lg:px-12 pb-24">
+<!-- Grid of 11 State Panels (3 per row on desktop) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+<!-- ========================================================================= -->
+<!-- TILE 01: Typ wählen -->
+<!-- ========================================================================= -->
+<section class="flex flex-col rounded-xl bg-[#1C1914] p-4 border border-[#35332D] shadow-[0_1px_6px_rgba(0,0,0,0.4)]">
+<div class="flex items-center justify-between pb-3 border-b border-[#302D28] mb-4">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-[#D39562] font-bold">01</span>
+<span class="text-[#89867F] font-meta-default text-meta-default">/ 11</span>
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA] ml-1">Typ wählen</span>
+</div>
+<span class="font-meta-default text-meta-default text-[#89867F]">Initialzustand</span>
+</div>
+<div class="flex flex-col bg-[#16140F] rounded-lg border border-[#35332D] p-3 flex-1">
+<div class="flex items-center justify-between pb-2.5 border-b border-[#302D28]">
+<div class="flex items-center gap-2">
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA]">Neue Entität</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#2C2922] text-[#D39562] border border-[#35332D] font-label-default text-[11px]">
+<span class="material-symbols-outlined text-[13px]">inventory_2</span>
+Objekt
+</span>
+</div>
+<div class="flex items-center gap-1 text-[#89867F]">
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922] hover:text-[#DFDEDA] transition-colors" title="Liste aller Interviews" type="button">
+<span class="material-symbols-outlined text-[16px]">format_list_bulleted</span>
+</button>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922] hover:text-[#DFDEDA] transition-colors" title="Schließen" type="button">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col flex-1 py-4 justify-between">
+<div>
+<p class="font-serif text-[21px] text-[#DFDEDA] text-center mb-4">Was möchtest du anlegen?</p>
+<div class="grid grid-cols-2 gap-1.5 mb-4">
+<button class="flex items-center gap-2 p-2 rounded border border-[#35332D] bg-[#211F1A] text-left text-[#DFDEDA] font-label-default text-label-default hover:bg-[#2C2922] transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px] text-[#89867F]">person</span>
+<span>Figur</span>
+</button>
+<button class="flex items-center gap-2 p-2 rounded border border-[#35332D] bg-[#211F1A] text-left text-[#DFDEDA] font-label-default text-label-default hover:bg-[#2C2922] transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px] text-[#89867F]">home</span>
+<span>Ort</span>
+</button>
+<button class="flex items-center gap-2 p-2 rounded border border-[#35332D] bg-[#211F1A] text-left text-[#DFDEDA] font-label-default text-label-default hover:bg-[#2C2922] transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px] text-[#89867F]">shield</span>
+<span>Fraktion</span>
+</button>
+<button class="flex items-center gap-2 p-2 rounded border-2 border-[#D39562] bg-[#47291D] text-left text-[#FED8CA] font-headline-emph text-label-default shadow-xs" type="button">
+<span class="material-symbols-outlined text-[18px] text-[#D39562]" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span class="text-[#FED8CA] font-semibold">Objekt</span>
+</button>
+<button class="flex items-center gap-2 p-2 rounded border border-[#35332D] bg-[#211F1A] text-left text-[#DFDEDA] font-label-default text-label-default hover:bg-[#2C2922] transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px] text-[#89867F]">hub</span>
+<span>System</span>
+</button>
+<button class="flex items-center gap-2 p-2 rounded border border-[#35332D] bg-[#211F1A] text-left text-[#DFDEDA] font-label-default text-label-default hover:bg-[#2C2922] transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px] text-[#89867F]">schedule</span>
+<span>Zeitleiste</span>
+</button>
+<button class="flex items-center gap-2 p-2 rounded border border-[#35332D] bg-[#211F1A] text-left text-[#DFDEDA] font-label-default text-label-default hover:bg-[#2C2922] transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px] text-[#89867F]">history_edu</span>
+<span>Ereignis</span>
+</button>
+<button class="flex items-center gap-2 p-2 rounded border border-[#35332D] bg-[#211F1A] text-left text-[#DFDEDA] font-label-default text-label-default hover:bg-[#2C2922] transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px] text-[#89867F]">menu_book</span>
+<span>Allgemein</span>
+</button>
+</div>
+<p class="font-meta-default text-[11px] leading-relaxed text-[#89867F] text-center px-2">
+Der Assistent stellt Fragen passend zum Typ. Der Typ lässt sich danach nicht mehr ändern.
+</p>
+</div>
+<div class="mt-6 flex flex-col gap-2">
+<button class="w-full h-8 rounded bg-[#D39562] text-[#1D140D] font-headline-emph text-label-default font-semibold shadow-xs flex items-center justify-center hover:bg-[#F2AD73] transition-colors" type="button">
+Interview starten
+</button>
+<button class="text-center font-meta-default text-meta-default text-[#89867F] hover:text-[#D39562] transition-colors py-1" type="button">
+Von Hand anlegen
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- TILE 02: Erste Frage -->
+<!-- ========================================================================= -->
+<section class="flex flex-col rounded-xl bg-[#1C1914] p-4 border border-[#35332D] shadow-[0_1px_6px_rgba(0,0,0,0.4)]">
+<div class="flex items-center justify-between pb-3 border-b border-[#302D28] mb-4">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-[#D39562] font-bold">02</span>
+<span class="text-[#89867F] font-meta-default text-meta-default">/ 11</span>
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA] ml-1">Erste Frage</span>
+</div>
+<span class="font-meta-default text-meta-default text-[#89867F]">Dialogbeginn</span>
+</div>
+<div class="flex flex-col bg-[#16140F] rounded-lg border border-[#35332D] p-3 flex-1">
+<div class="flex items-center justify-between pb-2.5 border-b border-[#302D28]">
+<div class="flex items-center gap-2">
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA]">Neue Entität</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#2C2922] text-[#D39562] border border-[#35332D] font-label-default text-[11px]">
+<span class="material-symbols-outlined text-[13px]">inventory_2</span>
+Objekt
+</span>
+</div>
+<div class="flex items-center gap-1 text-[#89867F]">
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922] hover:text-[#DFDEDA]" type="button"><span class="material-symbols-outlined text-[16px]">format_list_bulleted</span></button>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922] hover:text-[#DFDEDA]" type="button"><span class="material-symbols-outlined text-[16px]">close</span></button>
+</div>
+</div>
+<div class="mt-2.5 rounded bg-[#211F1A] border border-[#35332D] p-2.5">
+<div class="flex items-center justify-between pb-1.5 border-b border-[#302D28] mb-2">
+<span class="font-eyebrow-tracked text-[10px] text-[#89867F] uppercase tracking-wider">Vorschlag</span>
+<span class="font-meta-default text-[10px] text-[#89867F]">Objekt</span>
+</div>
+<dl class="space-y-1 font-meta-default text-[11px]">
+<div class="grid grid-cols-3"><dt class="text-[#89867F]">Name</dt><dd class="col-span-2 text-[#89867F] italic">noch offen</dd></div>
+<div class="grid grid-cols-3"><dt class="text-[#89867F]">Aliasse</dt><dd class="col-span-2 text-[#89867F] italic">noch offen</dd></div>
+<div class="grid grid-cols-3"><dt class="text-[#89867F]">Schlagworte</dt><dd class="col-span-2 text-[#89867F] italic">noch offen</dd></div>
+<div class="grid grid-cols-3"><dt class="text-[#89867F]">Beschreibung</dt><dd class="col-span-2 text-[#89867F] italic">noch offen</dd></div>
+<div class="grid grid-cols-3"><dt class="text-[#89867F]">Beziehungen</dt><dd class="col-span-2 text-[#89867F] italic">noch offen</dd></div>
+</dl>
+</div>
+<div class="my-3 flex-1 flex flex-col gap-2">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-emph text-[11px] text-[#D39562]">Assistent</span>
+<span class="font-meta-default text-[10px] text-[#89867F]">· 14:02</span>
+</div>
+<div class="bg-[#211F1A] border border-[#35332D] p-2 rounded text-[#DFDEDA] font-body-default text-[12px] leading-relaxed">
+Was möchtest du anlegen? Nenn mir den Namen des Objekts und sag in einem Satz, was es ist.
+</div>
+</div>
+</div>
+<div class="pt-2 border-t border-[#302D28] flex flex-col gap-1.5">
+<div class="flex items-center gap-1.5 bg-[#211F1A] border border-[#35332D] rounded px-2 py-1">
+<input class="bg-transparent w-full text-[#DFDEDA] font-body-default text-[12px] focus:outline-none placeholder:text-[#89867F]" placeholder="Antworten ..." type="text"/>
+<button class="text-[#D39562] hover:text-[#F2AD73]" type="button"><span class="material-symbols-outlined text-[16px]">arrow_upward</span></button>
+</div>
+<div class="flex items-center gap-1.5">
+<button class="px-2 py-0.5 rounded bg-[#2C2922] border border-[#35332D] text-[10px] font-label-default text-[#89867F] hover:text-[#DFDEDA]" type="button">Keine Ahnung</button>
+<button class="px-2 py-0.5 rounded bg-[#2C2922] border border-[#35332D] text-[10px] font-label-default text-[#89867F] hover:text-[#DFDEDA]" type="button">Alles vorschlagen lassen</button>
+</div>
+</div>
+<div class="mt-3 pt-2 border-t border-[#302D28] flex flex-col gap-1.5">
+<span class="font-meta-default text-[10px] text-[#F27474] flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#F27474]"></span> Der Name fehlt noch
+</span>
+<div class="flex items-center gap-2">
+<button class="flex-1 h-7 rounded bg-[#27241E] border border-[#35332D] text-[#89867F] font-label-default text-[11px] cursor-not-allowed" disabled="" type="button">
+Als Entität speichern
+</button>
+<button class="h-7 px-2 rounded border border-[#35332D] bg-[#211F1A] text-[#89867F] font-label-default text-[11px] hover:text-[#DFDEDA]" type="button">Interview beenden</button>
+</div>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- TILE 03: Der Assistent überlegt -->
+<!-- ========================================================================= -->
+<section class="flex flex-col rounded-xl bg-[#1C1914] p-4 border border-[#35332D] shadow-[0_1px_6px_rgba(0,0,0,0.4)]">
+<div class="flex items-center justify-between pb-3 border-b border-[#302D28] mb-4">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-[#D39562] font-bold">03</span>
+<span class="text-[#89867F] font-meta-default text-meta-default">/ 11</span>
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA] ml-1">Der Assistent überlegt</span>
+</div>
+<span class="font-meta-default text-meta-default text-[#89867F]">Inferenz-Status</span>
+</div>
+<div class="flex flex-col bg-[#16140F] rounded-lg border border-[#35332D] p-3 flex-1">
+<div class="flex items-center justify-between pb-2.5 border-b border-[#302D28]">
+<div class="flex items-center gap-2">
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA]">Neue Entität</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#2C2922] text-[#D39562] border border-[#35332D] font-label-default text-[11px]">
+<span class="material-symbols-outlined text-[13px]">inventory_2</span>
+Objekt
+</span>
+</div>
+<div class="flex items-center gap-1 text-[#89867F]">
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922]" type="button"><span class="material-symbols-outlined text-[16px]">format_list_bulleted</span></button>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922]" type="button"><span class="material-symbols-outlined text-[16px]">close</span></button>
+</div>
+</div>
+<div class="mt-2.5 rounded bg-[#211F1A] border border-[#35332D] p-2.5 opacity-90">
+<div class="flex items-center justify-between pb-1 border-b border-[#302D28] mb-1.5">
+<span class="font-eyebrow-tracked text-[10px] text-[#89867F] uppercase tracking-wider">Vorschlag</span>
+<span class="font-meta-default text-[10px] text-[#89867F]">Objekt</span>
+</div>
+<dl class="space-y-1 font-meta-default text-[11px]">
+<div class="grid grid-cols-3"><dt class="text-[#89867F]">Name</dt><dd class="col-span-2 text-[#89867F] italic">noch offen</dd></div>
+<div class="grid grid-cols-3"><dt class="text-[#89867F]">Beschreibung</dt><dd class="col-span-2 text-[#89867F] italic">noch offen</dd></div>
+</dl>
+</div>
+<div class="my-3 flex-1 flex flex-col gap-2">
+<div class="flex flex-col gap-1 items-end">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-emph text-[11px] text-[#DFDEDA]">Du</span>
+<span class="font-meta-default text-[10px] text-[#89867F]">· 14:03</span>
+</div>
+<div class="bg-[#47291D]/60 border border-[#564E43] p-2 rounded text-[#DFDEDA] font-body-default text-[12px] leading-relaxed max-w-[90%]">
+Es heißt Resonanz-Transponder LC-89, ein Relikt aus der alten Station.
+</div>
+</div>
+<div class="flex flex-col gap-1 mt-1">
+<div class="flex items-center gap-1.5 text-[#D39562]">
+<span class="font-headline-emph text-[11px]">Assistent</span>
+<span class="w-1.5 h-1.5 rounded-full bg-[#D39562] animate-pulse"></span>
+</div>
+<div class="inline-flex items-center gap-2 bg-[#211F1A] border border-[#35332D] px-2.5 py-1.5 rounded text-[#89867F] font-meta-default text-[11px]">
+<svg class="animate-spin h-3 w-3 text-[#D39562]" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+<path class="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor"></path>
+</svg>
+<span class="text-[#DFDEDA]">Der Assistent überlegt ...</span>
+</div>
+</div>
+</div>
+<div class="pt-2 border-t border-[#302D28] flex flex-col gap-1.5 opacity-50 cursor-not-allowed">
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-0.5 rounded bg-[#2C2922] border border-[#35332D] text-[10px] text-[#89867F]">Keine Ahnung</span>
+<span class="px-2 py-0.5 rounded bg-[#2C2922] border border-[#35332D] text-[10px] text-[#89867F]">Alles vorschlagen lassen</span>
+</div>
+<div class="flex items-center gap-1.5 bg-[#27241E] border border-[#35332D] rounded px-2 py-1">
+<input class="bg-transparent w-full text-[#89867F] font-body-default text-[12px] cursor-not-allowed" disabled="" placeholder="Warten auf Antwort ..." type="text"/>
+<span class="material-symbols-outlined text-[16px] text-[#89867F]">arrow_upward</span>
+</div>
+</div>
+<div class="mt-3 pt-2 border-t border-[#302D28] flex items-center gap-2">
+<button class="flex-1 h-7 rounded bg-[#27241E] border border-[#35332D] text-[#89867F] font-label-default text-[11px] cursor-not-allowed" disabled="" type="button">
+Als Entität speichern
+</button>
+<button class="h-7 px-2 rounded border border-[#35332D] bg-[#211F1A] text-[#89867F] font-label-default text-[11px] cursor-not-allowed" disabled="" type="button">Interview beenden</button>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- TILE 04: Geantwortet -->
+<!-- ========================================================================= -->
+<section class="flex flex-col rounded-xl bg-[#1C1914] p-4 border border-[#35332D] shadow-[0_1px_6px_rgba(0,0,0,0.4)]">
+<div class="flex items-center justify-between pb-3 border-b border-[#302D28] mb-4">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-[#D39562] font-bold">04</span>
+<span class="text-[#89867F] font-meta-default text-meta-default">/ 11</span>
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA] ml-1">Geantwortet</span>
+</div>
+<span class="font-meta-default text-meta-default text-[#52D47E] font-medium">Speicherbar</span>
+</div>
+<div class="flex flex-col bg-[#16140F] rounded-lg border border-[#35332D] p-3 flex-1">
+<div class="flex items-center justify-between pb-2.5 border-b border-[#302D28]">
+<div class="flex items-center gap-2">
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA]">Neue Entität</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#47291D] text-[#FED8CA] border border-[#564E43] font-label-default text-[11px]">
+<span class="material-symbols-outlined text-[13px]">inventory_2</span>
+Objekt
+</span>
+</div>
+<div class="flex items-center gap-1 text-[#89867F]">
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922]" type="button"><span class="material-symbols-outlined text-[16px]">format_list_bulleted</span></button>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922]" type="button"><span class="material-symbols-outlined text-[16px]">close</span></button>
+</div>
+</div>
+<div class="mt-2.5 rounded bg-[#211F1A] border border-[#35332D] p-2.5">
+<div class="flex items-center justify-between pb-1.5 border-b border-[#302D28] mb-2">
+<span class="font-eyebrow-tracked text-[10px] text-[#89867F] uppercase tracking-wider">Vorschlag</span>
+<span class="font-meta-default text-[10px] text-[#D39562] font-medium">Objekt</span>
+</div>
+<dl class="space-y-1.5 font-meta-default text-[11px]">
+<div class="grid grid-cols-3">
+<dt class="text-[#89867F]">Name</dt>
+<dd class="col-span-2 text-[#DFDEDA] font-headline-emph font-semibold">Resonanz-Transponder LC-89</dd>
+</div>
+<div class="grid grid-cols-3"><dt class="text-[#89867F]">Aliasse</dt><dd class="col-span-2 text-[#89867F] italic">noch offen</dd></div>
+<div class="grid grid-cols-3">
+<dt class="text-[#89867F]">Schlagworte</dt>
+<dd class="col-span-2">
+<span class="inline-block px-1.5 py-0.2 rounded bg-[#47291D] text-[#FED8CA] border border-[#564E43] text-[10px]">Relikt</span>
+</dd>
+</div>
+<div class="grid grid-cols-3">
+<dt class="text-[#89867F]">Beschreibung</dt>
+<dd class="col-span-2 text-[#DFDEDA] leading-snug">Ein Relikt aus der alten Station.</dd>
+</div>
+<div class="grid grid-cols-3">
+<dt class="text-[#89867F]">Beziehungen</dt>
+<dd class="col-span-2 text-[#89867F] italic">noch offen</dd>
+</div>
+</dl>
+</div>
+<div class="my-3 flex-1 flex flex-col gap-2">
+<div class="flex flex-col gap-1 items-end">
+<div class="bg-[#47291D]/40 border border-[#564E43] p-1.5 rounded text-[#DFDEDA] font-body-default text-[11px] max-w-[90%] truncate">
+Es heißt Resonanz-Transponder LC-89...
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-emph text-[11px] text-[#D39562]">Assistent</span>
+<span class="font-meta-default text-[10px] text-[#89867F]">· 14:03</span>
+</div>
+<div class="bg-[#211F1A] border border-[#35332D] p-2 rounded text-[#DFDEDA] font-body-default text-[12px] leading-relaxed">
+Notiert. Was öffnet oder löst das Objekt aus, und wer darf es bedienen?
+</div>
+</div>
+</div>
+<div class="pt-2 border-t border-[#302D28] flex flex-col gap-1.5">
+<div class="flex items-center gap-1.5 bg-[#211F1A] border border-[#35332D] rounded px-2 py-1">
+<input class="bg-transparent w-full text-[#DFDEDA] font-body-default text-[12px] focus:outline-none placeholder:text-[#89867F]" placeholder="Antworten ..." type="text"/>
+<button class="text-[#D39562] hover:text-[#F2AD73]" type="button"><span class="material-symbols-outlined text-[16px]">arrow_upward</span></button>
+</div>
+<div class="flex items-center gap-1.5">
+<button class="px-2 py-0.5 rounded bg-[#2C2922] border border-[#35332D] text-[10px] font-label-default text-[#89867F] hover:text-[#DFDEDA]" type="button">Keine Ahnung</button>
+<button class="px-2 py-0.5 rounded bg-[#2C2922] border border-[#35332D] text-[10px] font-label-default text-[#89867F] hover:text-[#DFDEDA]" type="button">Alles vorschlagen lassen</button>
+</div>
+</div>
+<div class="mt-3 pt-2 border-t border-[#302D28] flex items-center gap-2">
+<button class="flex-1 h-7 rounded bg-[#D39562] text-[#1D140D] font-headline-emph text-[11px] font-semibold shadow-xs hover:bg-[#F2AD73] transition-colors" type="button">
+Als Entität speichern
+</button>
+<button class="h-7 px-2 rounded border border-[#35332D] bg-[#211F1A] text-[#89867F] font-label-default text-[11px] hover:text-[#DFDEDA]" type="button">
+Interview beenden
+</button>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- TILE 05: Vorschlag für eine Frage -->
+<!-- ========================================================================= -->
+<section class="flex flex-col rounded-xl bg-[#1C1914] p-4 border border-[#35332D] shadow-[0_1px_6px_rgba(0,0,0,0.4)]">
+<div class="flex items-center justify-between pb-3 border-b border-[#302D28] mb-4">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-[#D39562] font-bold">05</span>
+<span class="text-[#89867F] font-meta-default text-meta-default">/ 11</span>
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA] ml-1">Vorschlag für eine Frage</span>
+</div>
+<span class="font-meta-default text-meta-default text-[#89867F]">Assistenz-Aktion</span>
+</div>
+<div class="flex flex-col bg-[#16140F] rounded-lg border border-[#35332D] p-3 flex-1">
+<div class="flex items-center justify-between pb-2 border-b border-[#302D28]">
+<div class="flex items-center gap-2">
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA]">Neue Entität</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#2C2922] text-[#D39562] border border-[#35332D] font-label-default text-[11px]">
+<span class="material-symbols-outlined text-[13px]">inventory_2</span>
+Objekt
+</span>
+</div>
+<div class="flex items-center gap-1 text-[#89867F]">
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922]" type="button"><span class="material-symbols-outlined text-[16px]">format_list_bulleted</span></button>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922]" type="button"><span class="material-symbols-outlined text-[16px]">close</span></button>
+</div>
+</div>
+<div class="my-2.5 flex-1 flex flex-col gap-2">
+<div class="flex flex-col gap-0.5 items-end">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-emph text-[10px] text-[#DFDEDA]">Du</span>
+<span class="font-meta-default text-[10px] text-[#89867F]">· 14:04</span>
+</div>
+<div class="bg-[#47291D]/40 border border-[#564E43] px-2.5 py-1 rounded text-[#DFDEDA] font-body-default text-[11px]">
+Keine Ahnung
+</div>
+</div>
+<div class="rounded border border-[#F2AD73]/40 bg-[#27241E] p-2.5 shadow-xs flex flex-col gap-2">
+<div class="flex items-center gap-1.5 text-[#D39562]">
+<span class="material-symbols-outlined text-[14px]">auto_awesome</span>
+<span class="font-eyebrow-tracked text-[10px] uppercase font-bold tracking-wider">Vorschlag</span>
+</div>
+<p class="font-serif text-[13px] leading-snug text-[#DFDEDA]">
+Nur Maya und Lin können es öffnen: Es reagiert auf ihre DNA-Resonanz.
+</p>
+<div class="flex items-center gap-1.5 pt-1">
+<button class="h-6 px-2 rounded bg-[#D39562] text-[#1D140D] font-label-default text-[10px] font-semibold hover:bg-[#F2AD73]" type="button">
+Übernehmen
+</button>
+<button class="h-6 px-2 rounded border border-[#35332D] bg-[#211F1A] text-[#DFDEDA] font-label-default text-[10px] hover:bg-[#2C2922]" type="button">
+Ändern
+</button>
+<button class="h-6 px-1.5 text-[#89867F] font-label-default text-[10px] hover:text-[#F27474]" type="button">
+Verwerfen
+</button>
+</div>
+</div>
+</div>
+<div class="pt-2 border-t border-[#302D28] flex flex-col gap-1.5">
+<div class="flex items-center gap-1.5">
+<button class="px-2 py-0.5 rounded bg-[#2C2922] border border-[#35332D] text-[10px] font-label-default text-[#89867F] hover:text-[#DFDEDA]" type="button">Keine Ahnung</button>
+<button class="px-2 py-0.5 rounded bg-[#2C2922] border border-[#35332D] text-[10px] font-label-default text-[#89867F] hover:text-[#DFDEDA]" type="button">Alles vorschlagen lassen</button>
+</div>
+<div class="flex items-center gap-1.5 bg-[#211F1A] border border-[#35332D] rounded px-2 py-1">
+<input class="bg-transparent w-full text-[#DFDEDA] font-body-default text-[12px] focus:outline-none placeholder:text-[#89867F]" placeholder="Antworten ..." type="text"/>
+<button class="text-[#D39562] hover:text-[#F2AD73]" type="button"><span class="material-symbols-outlined text-[16px]">arrow_upward</span></button>
+</div>
+</div>
+<div class="mt-2.5 pt-2 border-t border-[#302D28] flex items-center gap-2">
+<button class="flex-1 h-7 rounded bg-[#D39562] text-[#1D140D] font-headline-emph text-[11px] font-semibold hover:bg-[#F2AD73] transition-colors" type="button">
+Als Entität speichern
+</button>
+<button class="h-7 px-2 rounded border border-[#35332D] bg-[#211F1A] text-[#89867F] font-label-default text-[11px] hover:text-[#DFDEDA]" type="button">Interview beenden</button>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- TILE 06: Alles vorgeschlagen -->
+<!-- ========================================================================= -->
+<section class="flex flex-col rounded-xl bg-[#1C1914] p-4 border border-[#35332D] shadow-[0_1px_6px_rgba(0,0,0,0.4)]">
+<div class="flex items-center justify-between pb-3 border-b border-[#302D28] mb-4">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-[#D39562] font-bold">06</span>
+<span class="text-[#89867F] font-meta-default text-meta-default">/ 11</span>
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA] ml-1">Alles vorgeschlagen</span>
+</div>
+<span class="font-meta-default text-meta-default text-[#E5A84B] font-medium">Prüfphase</span>
+</div>
+<div class="flex flex-col bg-[#16140F] rounded-lg border border-[#35332D] p-3 flex-1">
+<div class="flex items-center justify-between pb-2 border-b border-[#302D28]">
+<div class="flex items-center gap-2">
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA]">Neue Entität</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#47291D] text-[#FED8CA] border border-[#564E43] font-label-default text-[11px]">
+<span class="material-symbols-outlined text-[13px]">inventory_2</span>
+Objekt
+</span>
+</div>
+<div class="flex items-center gap-1 text-[#89867F]">
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922]" type="button"><span class="material-symbols-outlined text-[16px]">format_list_bulleted</span></button>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922]" type="button"><span class="material-symbols-outlined text-[16px]">close</span></button>
+</div>
+</div>
+<div class="mt-2 rounded bg-[#211F1A] border border-[#35332D] p-2.5">
+<div class="flex items-center justify-between pb-1 border-b border-[#302D28] mb-1.5">
+<span class="font-eyebrow-tracked text-[10px] text-[#89867F] uppercase tracking-wider">Vorschlag</span>
+<span class="font-meta-default text-[10px] text-[#D39562]">Objekt</span>
+</div>
+<dl class="space-y-1.5 font-meta-default text-[11px]">
+<div>
+<dt class="text-[#89867F] text-[10px]">Name</dt>
+<dd class="text-[#DFDEDA] font-headline-emph font-semibold">Resonanz-Transponder LC-89</dd>
+</div>
+<div>
+<dt class="text-[#89867F] text-[10px]">Aliasse</dt>
+<dd class="text-[#DFDEDA]">LC-89, Transponder</dd>
+</div>
+<div>
+<div class="flex items-center gap-1 mb-0.5">
+<dt class="text-[#89867F] text-[10px]">Schlagworte</dt>
+<span class="text-[9px] px-1 py-0 rounded bg-[#47291D] text-[#FED8CA] border border-[#564E43] font-mono">vorgeschlagen</span>
+</div>
+<dd class="flex flex-wrap gap-1">
+<span class="px-1.5 py-0.2 rounded bg-[#2C2922] border border-[#35332D] text-[10px] text-[#DFDEDA]">Technologie</span>
+<span class="px-1.5 py-0.2 rounded bg-[#2C2922] border border-[#35332D] text-[10px] text-[#DFDEDA]">Subraum-Technik</span>
+</dd>
+</div>
+<div>
+<div class="flex items-center gap-1 mb-0.5">
+<dt class="text-[#89867F] text-[10px]">Beschreibung</dt>
+<span class="text-[9px] px-1 py-0 rounded bg-[#47291D] text-[#FED8CA] border border-[#564E43] font-mono">vorgeschlagen</span>
+</div>
+<dd class="text-[#DFDEDA] leading-snug text-[11px]">
+Verschlossenes Prototyp-Subraumrelais. Öffnet nur auf Mayas und Lins DNA-Resonanz.
+</dd>
+</div>
+<div>
+<div class="flex items-center gap-1 mb-0.5">
+<dt class="text-[#89867F] text-[10px]">Beziehungen</dt>
+<span class="text-[9px] px-1 py-0 rounded bg-[#47291D] text-[#FED8CA] border border-[#564E43] font-mono">vorgeschlagen</span>
+</div>
+<dd class="space-y-1 text-[11px]">
+<div class="p-1 rounded bg-[#2C2922] border border-[#35332D] text-[#DFDEDA]">
+Forschungsstation 7 · Ort — Liegt in
+</div>
+<div class="p-1 rounded bg-[#2C2922] border border-[#35332D] text-[#DFDEDA]">
+Dr. Lin Chen · Figur — Gebaut von
+</div>
+</dd>
+</div>
+</dl>
+<div class="mt-2 pt-1 border-t border-[#302D28] text-right">
+<button class="font-meta-default text-[10px] text-[#89867F] hover:text-[#F27474] transition-colors underline decoration-[#35332D]" type="button">
+Vorschläge verwerfen
+</button>
+</div>
+</div>
+<div class="my-2.5">
+<div class="flex items-center gap-1.5 mb-1">
+<span class="font-headline-emph text-[10px] text-[#D39562]">Assistent</span>
+<span class="font-meta-default text-[10px] text-[#89867F]">· 14:06</span>
+</div>
+<p class="font-body-default text-[11px] text-[#DFDEDA] leading-relaxed bg-[#211F1A] border border-[#35332D] p-2 rounded">
+Ich habe den Vorschlag vervollständigt: zwei Schlagworte, die Beschreibung und zwei Beziehungen. Prüfe sie, bevor du speicherst.
+</p>
+</div>
+<div class="mt-auto pt-2 border-t border-[#302D28] flex items-center gap-2">
+<button class="flex-1 h-7 rounded bg-[#D39562] text-[#1D140D] font-headline-emph text-[11px] font-semibold shadow-xs hover:bg-[#F2AD73]" type="button">
+Als Entität speichern
+</button>
+<button class="h-7 px-2 rounded border border-[#35332D] bg-[#211F1A] text-[#89867F] font-label-default text-[11px] hover:text-[#DFDEDA]" type="button">Interview beenden</button>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- TILE 07: Nicht auswertbar -->
+<!-- ========================================================================= -->
+<section class="flex flex-col rounded-xl bg-[#1C1914] p-4 border border-[#35332D] shadow-[0_1px_6px_rgba(0,0,0,0.4)]">
+<div class="flex items-center justify-between pb-3 border-b border-[#302D28] mb-4">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-[#D39562] font-bold">07</span>
+<span class="text-[#89867F] font-meta-default text-meta-default">/ 11</span>
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA] ml-1">Nicht auswertbar</span>
+</div>
+<span class="font-meta-default text-meta-default text-[#E5A84B] font-medium">Wiederholen</span>
+</div>
+<div class="flex flex-col bg-[#16140F] rounded-lg border border-[#35332D] p-3 flex-1">
+<div class="flex items-center justify-between pb-2 border-b border-[#302D28]">
+<div class="flex items-center gap-2">
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA]">Neue Entität</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#2C2922] text-[#D39562] border border-[#35332D] font-label-default text-[11px]">
+<span class="material-symbols-outlined text-[13px]">inventory_2</span>
+Objekt
+</span>
+</div>
+<div class="flex items-center gap-1 text-[#89867F]">
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922]" type="button"><span class="material-symbols-outlined text-[16px]">format_list_bulleted</span></button>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922]" type="button"><span class="material-symbols-outlined text-[16px]">close</span></button>
+</div>
+</div>
+<div class="my-3 flex-1 flex flex-col gap-2">
+<div class="flex flex-col gap-1 items-end">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-emph text-[10px] text-[#DFDEDA]">Du</span>
+<span class="font-meta-default text-[10px] text-[#89867F]">· 14:05</span>
+</div>
+<div class="bg-[#47291D]/40 border border-[#564E43] p-2 rounded text-[#DFDEDA] font-body-default text-[11px] max-w-[90%]">
+Es stammt aus dem Labor von Lin.
+</div>
+</div>
+<div class="rounded border border-[#523817] bg-[#302111] p-2.5 flex flex-col gap-2">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[#E5A84B] text-[18px] shrink-0 mt-0.5">warning</span>
+<p class="font-body-default text-[11px] leading-snug text-[#E5A84B]">
+Die Antwort war nicht auswertbar. Dein Text ist noch im Eingabefeld.
+</p>
+</div>
+<div class="flex justify-end">
+<button class="h-6 px-2.5 rounded border border-[#523817] bg-[#211F1A] text-[#E5A84B] font-headline-emph text-[10px] hover:bg-[#302111] transition-colors" type="button">
+Erneut versuchen
+</button>
+</div>
+</div>
+</div>
+<div class="pt-2 border-t border-[#302D28] flex flex-col gap-1.5">
+<div class="flex items-center gap-1.5 bg-[#211F1A] border border-[#F2AD73]/60 rounded px-2 py-1 shadow-xs">
+<input class="bg-transparent w-full text-[#DFDEDA] font-body-default text-[12px] focus:outline-none" type="text" value="Es stammt aus dem Labor von Lin."/>
+<button class="text-[#D39562] hover:text-[#F2AD73]" type="button"><span class="material-symbols-outlined text-[16px]">arrow_upward</span></button>
+</div>
+<div class="flex items-center gap-1.5">
+<button class="px-2 py-0.5 rounded bg-[#2C2922] border border-[#35332D] text-[10px] text-[#89867F] hover:text-[#DFDEDA]" type="button">Keine Ahnung</button>
+<button class="px-2 py-0.5 rounded bg-[#2C2922] border border-[#35332D] text-[10px] text-[#89867F] hover:text-[#DFDEDA]" type="button">Alles vorschlagen lassen</button>
+</div>
+</div>
+<div class="mt-3 pt-2 border-t border-[#302D28] flex items-center gap-2">
+<button class="flex-1 h-7 rounded bg-[#D39562] text-[#1D140D] font-headline-emph text-[11px] font-semibold hover:bg-[#F2AD73]" type="button">
+Als Entität speichern
+</button>
+<button class="h-7 px-2 rounded border border-[#35332D] bg-[#211F1A] text-[#89867F] font-label-default text-[11px] hover:text-[#DFDEDA]" type="button">Interview beenden</button>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- TILE 08: Kein Modell eingerichtet -->
+<!-- ========================================================================= -->
+<section class="flex flex-col rounded-xl bg-[#1C1914] p-4 border border-[#35332D] shadow-[0_1px_6px_rgba(0,0,0,0.4)]">
+<div class="flex items-center justify-between pb-3 border-b border-[#302D28] mb-4">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-[#D39562] font-bold">08</span>
+<span class="text-[#89867F] font-meta-default text-meta-default">/ 11</span>
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA] ml-1">Kein Modell eingerichtet</span>
+</div>
+<span class="font-meta-default text-meta-default text-[#F27474] font-medium">Konfiguration fehlt</span>
+</div>
+<div class="flex flex-col bg-[#16140F] rounded-lg border border-[#35332D] p-3 flex-1">
+<div class="flex items-center justify-between pb-2 border-b border-[#302D28]">
+<div class="flex items-center gap-2"><span class="font-headline-emph text-headline-emph text-[#DFDEDA]">Neue Entität</span><span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#2C2922] text-[#D39562] border border-[#35332D] font-label-default text-[11px]"><span class="material-symbols-outlined text-[13px]">inventory_2</span>Objekt</span></div>
+<div class="flex items-center gap-1 text-[#89867F]"><button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922]" type="button"><span class="material-symbols-outlined text-[16px]">format_list_bulleted</span></button><button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922]" type="button"><span class="material-symbols-outlined text-[16px]">close</span></button></div>
+</div>
+<div class="my-3 flex-1 flex flex-col gap-2">
+<div class="flex flex-col gap-1 items-end"><div class="flex items-center gap-1.5"><span class="font-headline-emph text-[10px] text-[#DFDEDA]">Du</span><span class="font-meta-default text-[10px] text-[#89867F]">· 14:03</span></div><div class="bg-[#47291D]/40 border border-[#564E43] p-2 rounded text-[#DFDEDA] font-body-default text-[11px] max-w-[90%]">Es heißt Resonanz-Transponder LC-89, ein Relikt aus der alten Station.</div></div>
+<div class="rounded border border-[#523817] bg-[#302111] p-2.5 flex items-start justify-between gap-2">
+<div class="flex items-start gap-2"><span class="material-symbols-outlined text-[#E5A84B] text-[18px] shrink-0 mt-0.5">warning</span><p class="font-meta-default text-[11px] leading-snug text-[#E5A84B]">Für das Interview ist kein Modell eingerichtet.</p></div>
+<button class="h-6 px-2 rounded bg-[#211F1A] border border-[#523817] font-label-default text-[10px] text-[#E5A84B] whitespace-nowrap hover:bg-[#302111] transition-colors" type="button">KI-Regeln öffnen</button>
+</div>
+</div>
+<div class="pt-2 border-t border-[#302D28] flex flex-col gap-1.5">
+<div class="flex items-center gap-1.5 bg-[#211F1A] border border-[#F2AD73]/60 rounded px-2 py-1 shadow-xs"><input class="bg-transparent w-full text-[#DFDEDA] font-body-default text-[12px] focus:outline-none" type="text" value="Es heißt Resonanz-Transponder LC-89, ein Relikt aus der alten Station."/><button class="text-[#D39562] hover:text-[#F2AD73]" type="button"><span class="material-symbols-outlined text-[16px]">arrow_upward</span></button></div>
+<div class="flex items-center gap-1.5"><button class="px-2 py-0.5 rounded bg-[#2C2922] border border-[#35332D] text-[10px] text-[#89867F]" type="button">Keine Ahnung</button><button class="px-2 py-0.5 rounded bg-[#2C2922] border border-[#35332D] text-[10px] text-[#89867F]" type="button">Alles vorschlagen lassen</button></div>
+</div>
+<div class="mt-3 pt-2 border-t border-[#302D28] flex items-center gap-2"><button class="flex-1 h-7 rounded bg-[#27241E] border border-[#35332D] text-[#89867F] font-label-default text-[11px] cursor-not-allowed" disabled="" type="button">Als Entität speichern</button><button class="h-7 px-2 rounded border border-[#35332D] bg-[#211F1A] text-[#89867F] font-label-default text-[11px] hover:text-[#DFDEDA]" type="button">Interview beenden</button></div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- TILE 09: Interview beendet -->
+<!-- ========================================================================= -->
+<section class="flex flex-col rounded-xl bg-[#1C1914] p-4 border border-[#35332D] shadow-[0_1px_6px_rgba(0,0,0,0.4)]">
+<div class="flex items-center justify-between pb-3 border-b border-[#302D28] mb-4">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-[#D39562] font-bold">09</span>
+<span class="text-[#89867F] font-meta-default text-meta-default">/ 11</span>
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA] ml-1">Interview beendet</span>
+</div>
+<span class="font-meta-default text-meta-default text-[#89867F]">Schreibgeschützt</span>
+</div>
+<div class="flex flex-col bg-[#16140F] rounded-lg border border-[#35332D] p-3 flex-1">
+<div class="flex items-center justify-between pb-2 border-b border-[#302D28]">
+<div class="flex items-center gap-2">
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA]">Neue Entität</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#2C2922] text-[#D39562] border border-[#35332D] font-label-default text-[11px]">
+<span class="material-symbols-outlined text-[13px]">inventory_2</span>
+Objekt
+</span>
+</div>
+<div class="flex items-center gap-1 text-[#89867F]">
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922]" type="button"><span class="material-symbols-outlined text-[16px]">format_list_bulleted</span></button>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922]" type="button"><span class="material-symbols-outlined text-[16px]">close</span></button>
+</div>
+</div>
+<div class="mt-2 rounded bg-[#27241E] border border-[#35332D] px-2.5 py-1.5 flex items-center gap-2">
+<span class="material-symbols-outlined text-[#89867F] text-[16px]">lock</span>
+<span class="font-meta-default text-[11px] text-[#89867F]">
+Dieses Interview ist beendet. Das Gespräch bleibt lesbar.
+</span>
+</div>
+<div class="mt-2 rounded bg-[#211F1A] border border-[#35332D] p-2 font-meta-default text-[11px]">
+<div class="font-headline-emph text-[#DFDEDA] text-[12px] mb-0.5 font-semibold">Resonanz-Transponder LC-89</div>
+<div class="text-[#89867F] text-[10px] mb-1.5">Objekt · Relikt, Technologie</div>
+<p class="text-[#DFDEDA] leading-snug line-clamp-2">
+Verschlossenes Prototyp-Subraumrelais. Reagiert auf Mayas und Lins Resonanzmuster.
+</p>
+</div>
+<div class="my-3 flex-1 flex flex-col gap-2 overflow-hidden opacity-85">
+<div class="flex flex-col gap-0.5">
+<span class="font-meta-default text-[10px] text-[#89867F]">Assistent · 14:02</span>
+<div class="bg-[#211F1A] border border-[#35332D] p-1.5 rounded font-body-default text-[11px] text-[#DFDEDA]">
+Nenn mir den Namen des Objekts.
+</div>
+</div>
+<div class="flex flex-col gap-0.5 items-end">
+<span class="font-meta-default text-[10px] text-[#89867F]">Du · 14:03</span>
+<div class="bg-[#47291D]/40 border border-[#564E43] p-1.5 rounded font-body-default text-[11px] text-[#DFDEDA]">
+Resonanz-Transponder LC-89.
+</div>
+</div>
+</div>
+<div class="mt-auto pt-2 border-t border-[#302D28] flex items-center gap-2">
+<button class="flex-1 h-7 rounded bg-[#D39562] text-[#1D140D] font-headline-emph text-[11px] font-semibold shadow-xs hover:bg-[#F2AD73]" type="button">
+Als Entität speichern
+</button>
+<button class="h-7 px-3 rounded border border-[#35332D] bg-[#211F1A] text-[#D39562] font-label-default text-[11px] hover:bg-[#2C2922] transition-colors" type="button">
+Neues Interview
+</button>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- TILE 10: Die Liste der Interviews -->
+<!-- ========================================================================= -->
+<section class="flex flex-col rounded-xl bg-[#1C1914] p-4 border border-[#35332D] shadow-[0_1px_6px_rgba(0,0,0,0.4)]">
+<div class="flex items-center justify-between pb-3 border-b border-[#302D28] mb-4">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-[#D39562] font-bold">10</span>
+<span class="text-[#89867F] font-meta-default text-meta-default">/ 11</span>
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA] ml-1">Die Liste der Interviews</span>
+</div>
+<span class="font-meta-default text-meta-default text-[#89867F]">Übersichtspanel</span>
+</div>
+<div class="flex flex-col bg-[#16140F] rounded-lg border border-[#35332D] p-3 flex-1">
+<div class="flex items-center justify-between pb-2.5 border-b border-[#302D28]">
+<div class="flex items-center gap-2">
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA]">Interviews</span>
+<span class="w-1.5 h-1.5 rounded-full bg-[#D39562]"></span>
+</div>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-[#2C2922] text-[#89867F] hover:text-[#DFDEDA]" type="button">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+<div class="pt-3 pb-3">
+<button class="w-full h-8 rounded bg-[#D39562] text-[#1D140D] font-headline-emph text-label-default font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-[#F2AD73] transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span>Neues Interview</span>
+</button>
+</div>
+<div class="flex flex-col gap-1.5 mb-4">
+<div class="flex items-center justify-between px-1">
+<span class="font-eyebrow-tracked text-[10px] uppercase text-[#89867F] tracking-wider font-semibold">Offen</span>
+<span class="font-mono text-[10px] text-[#D39562]">2 Sitzungen</span>
+</div>
+<div class="p-2.5 rounded bg-[#211F1A] border border-[#35332D] flex items-center justify-between hover:border-[#D39562]/40 transition-colors">
+<div class="flex flex-col">
+<span class="font-headline-emph text-[12px] text-[#DFDEDA]">Resonanz-Transponder LC-89</span>
+<div class="flex items-center gap-1.5 font-meta-default text-[10px] text-[#89867F]">
+<span>Objekt</span>
+<span>·</span>
+<span class="text-[#E5A84B]">offen</span>
+</div>
+</div>
+<button class="font-label-default text-[11px] text-[#D39562] font-semibold hover:underline" type="button">
+Fortsetzen
+</button>
+</div>
+<div class="p-2.5 rounded bg-[#211F1A] border border-[#35332D] flex items-center justify-between hover:border-[#D39562]/40 transition-colors">
+<div class="flex flex-col">
+<span class="font-headline-emph text-[12px] text-[#89867F] italic">noch ohne Name</span>
+<div class="flex items-center gap-1.5 font-meta-default text-[10px] text-[#89867F]">
+<span>Figur</span>
+<span>·</span>
+<span class="text-[#E5A84B]">offen</span>
+</div>
+</div>
+<button class="font-label-default text-[11px] text-[#D39562] font-semibold hover:underline" type="button">
+Fortsetzen
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-1.5 mt-auto">
+<div class="flex items-center justify-between px-1">
+<span class="font-eyebrow-tracked text-[10px] uppercase text-[#89867F] tracking-wider font-semibold">Beendet</span>
+<span class="font-mono text-[10px] text-[#89867F]">1 Beendet</span>
+</div>
+<div class="p-2.5 rounded bg-[#211F1A]/70 border border-[#302D28] flex items-center justify-between opacity-80">
+<div class="flex flex-col">
+<span class="font-body-default text-[12px] text-[#DFDEDA]">Nevada-Trümmerfeld</span>
+<div class="flex items-center gap-1.5 font-meta-default text-[10px] text-[#89867F]">
+<span>Ort</span>
+<span>·</span>
+<span>beendet</span>
+</div>
+</div>
+<button class="font-label-default text-[11px] text-[#89867F] hover:text-[#DFDEDA]" type="button">
+Ansehen
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- TILE 11: Die Tür (Subbar-Ausschnitt Lore-Graph-Kopfleiste) -->
+<!-- ========================================================================= -->
+<section class="flex flex-col rounded-xl bg-[#1C1914] p-4 border border-[#35332D] shadow-[0_1px_6px_rgba(0,0,0,0.4)] md:col-span-2 lg:col-span-3">
+<div class="flex items-center justify-between pb-3 border-b border-[#302D28] mb-4">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-[#D39562] font-bold">11</span>
+<span class="text-[#89867F] font-meta-default text-meta-default">/ 11</span>
+<span class="font-headline-emph text-headline-emph text-[#DFDEDA] ml-1">Die Tür</span>
+</div>
+<span class="font-meta-default text-meta-default text-[#D39562] font-medium">Einstiegspunkt Kopfleiste</span>
+</div>
+<div class="flex flex-col bg-[#16140F] rounded-lg border border-[#35332D] p-6">
+<div class="mb-3">
+<span class="font-eyebrow-tracked text-[10px] uppercase text-[#89867F] tracking-wider font-semibold">Subbar-Ausschnitt: Kausales Wissensnetzwerk</span>
+</div>
+<div class="w-full bg-[#211F1A] rounded-lg border border-[#35332D] p-3 flex flex-wrap items-center justify-between gap-4 shadow-xs">
+<div class="flex items-center bg-[#2C2922] p-1 rounded-lg border border-[#302D28]">
+<button class="px-3.5 py-1.5 rounded bg-[#211F1A] text-[#D39562] font-headline-emph text-label-default shadow-xs flex items-center gap-1.5 border border-[#35332D]" type="button">
+<span class="material-symbols-outlined text-[16px]">bubble_chart</span>
+<span>Beziehungsnetz</span>
+</button>
+<button class="px-3.5 py-1.5 rounded text-[#89867F] font-label-default text-label-default hover:text-[#DFDEDA] transition-colors flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[16px]">grid_view</span>
+<span>Matrix</span>
+</button>
+<button class="px-3.5 py-1.5 rounded text-[#89867F] font-label-default text-label-default hover:text-[#DFDEDA] transition-colors flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[16px]">account_tree</span>
+<span>Hierarchie</span>
+</button>
+</div>
+<div class="flex items-center gap-3">
+<div class="hidden sm:flex items-center gap-2 text-[#89867F] font-meta-default text-[12px]">
+<span class="w-2 h-2 rounded-full bg-[#52D47E]"></span>
+<span class="text-[#52D47E]">Graph synchronisiert</span>
+</div>
+<button class="h-9 px-4 rounded bg-[#D39562] text-[#1D140D] font-headline-emph text-label-default font-semibold flex items-center gap-2 shadow-sm hover:bg-[#F2AD73] transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span>Neue Entität</span>
+<span class="w-4 h-4 rounded-full bg-[#47291D] text-[#FED8CA] border border-[#564E43] font-mono text-[10px] font-bold flex items-center justify-center" title="2 offene Entwürfe">
+2
+</span>
+</button>
+</div>
+</div>
+<div class="mt-4 pt-3 border-t border-[#302D28] grid grid-cols-1 md:grid-cols-3 gap-4 text-[#89867F] font-meta-default text-[12px]">
+<div><span class="font-headline-emph text-[#DFDEDA] block mb-1 font-semibold">Einstieg</span>Ein Klick auf «Neue Entität» öffnet das Panel. Ohne offenes Interview zeigt es Zustand 01.</div>
+<div><span class="font-headline-emph text-[#DFDEDA] block mb-1 font-semibold">Zähler</span>Die Zahl ist die Anzahl der offenen Interviews dieses Romans.</div>
+<div><span class="font-headline-emph text-[#DFDEDA] block mb-1 font-semibold">Bei Klick</span>Ist ein Interview offen, setzt das Panel beim jüngsten fort.</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div></main></body></html>

@@ -32,6 +32,7 @@ import { client, type Entity, type Relation } from "@shell/lib/api/client";
 import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { ToastProvider } from "@shell/ui/toast";
 
 import { fitTransform, graphBounds, layoutGraph } from "./graphLayout";
 import { LoreGraphPage } from "./LoreGraphPage";
@@ -129,7 +130,9 @@ async function renderGraph(entry = `/novels/${NOVEL_ID}/knowledge/graph`) {
   await router.load();
   render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
     </QueryClientProvider>,
   );
   return router;
@@ -661,18 +664,42 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     return api.GET.mock.calls.filter(([p]) => p === path).length;
   }
 
-  it("addEdge and merge are live; newEntity stays an honest disabled gap", async () => {
+  it("addEdge, merge and the new-entity door are live", async () => {
     await renderGraph();
     await screen.findAllByTestId("graph-node");
     const add = screen.getByRole("button", { name: de["knowledge.graph.addEdge"] });
     expect((add as HTMLButtonElement).disabled).toBe(false);
     const merge = screen.getByRole("button", { name: de["knowledge.graph.merge"] });
     expect((merge as HTMLButtonElement).disabled).toBe(false);
-    const newEntity = screen.getByRole("button", { name: new RegExp(de["knowledge.graph.newEntity"]) });
-    expect((newEntity as HTMLButtonElement).disabled).toBe(true);
-    // The gap note tells the truth — no dead „arrives with the dialogs" promise.
-    expect(newEntity.getAttribute("title")).toContain(de["knowledge.graph.newEntityNote"]);
-    expect(de["knowledge.graph.newEntityNote"]).not.toContain("CRUD");
+    const newEntity = screen.getByRole("button", { name: de["knowledge.graph.newEntity"] });
+    expect((newEntity as HTMLButtonElement).disabled).toBe(false);
+    // The door opens the hand-made create — one dialog for both paths.
+    fireEvent.click(newEntity);
+    const dialog = await screen.findByTestId("entity-create-dialog");
+    expect(within(dialog).getByText(de["knowledge.create.title"])).toBeTruthy();
+  });
+
+  it("a saved row confirms in the shell's toast with its landed relation count", async () => {
+    api.POST.mockResolvedValue({
+      data: entityRow({ id: "e9", name: "Nebelhaus", type: "location" }),
+      response: new Response(null, { status: 201 }),
+    });
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    fireEvent.click(screen.getByRole("button", { name: de["knowledge.graph.newEntity"] }));
+    const dialog = await screen.findByTestId("entity-create-dialog");
+    fireEvent.change(within(dialog).getByTestId("entity-create-name"), {
+      target: { value: "Nebelhaus" },
+    });
+    fireEvent.change(within(dialog).getByTestId("entity-create-type"), {
+      target: { value: "location" },
+    });
+    fireEvent.click(within(dialog).getByTestId("entity-create-save"));
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+    const toast = await screen.findByTestId("toast");
+    expect(toast.textContent).toContain("Entität angelegt · 0 Beziehungen verknüpft");
+    // A polite live region, not an interruptive alert.
+    expect(toast.parentElement?.getAttribute("aria-live")).toBe("polite");
   });
 
   it("the addEdge door opens the create dialog; a save refetches the edges", async () => {
