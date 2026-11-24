@@ -21,7 +21,7 @@
  * one terminal event). The pre-stream failures (409/429/502/503 and the
  * save gate's 422) are JSON answers, not SSE — named by their status.
  */
-import { useIsMutating, useMutation, useMutationState, useQuery, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
+import { useIsMutating, useMutation, useQuery, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 
 import {
   client,
@@ -64,21 +64,25 @@ function promptResetMutationKey(key: string | null, novelId: string | null) {
   return [...PROMPT_RESET_MUTATION_KEY, key, novelId] as const;
 }
 
+function promptResetRevisionQueryKey(key: string | null, novelId: string | null) {
+  return ["prompts", "reset-revision", key, novelId] as const;
+}
+
 export function useResetPending(): boolean {
   return useIsMutating({ mutationKey: PROMPT_RESET_MUTATION_KEY }) > 0;
 }
 
-/** The latest successful reset for this exact editing scope. MutationCache
- *  state survives page/editor unmounts, so every page can revise its editor
- *  identity when the reset completes — including one mounted mid-flight.
- *  Query v5.105 exposes no mutation `dataUpdatedAt`; its monotonic
- *  `mutationId` is the shared completion revision. */
+/** The latest successful reset for this exact editing scope. This tiny
+ *  cache-only entry outlives MutationCache GC, so clearing an old mutation
+ *  cannot roll the editor identity backward and discard an unsaved draft. */
 export function useResetRevision(key: string | null, novelId: string | null): number {
-  const revisions = useMutationState({
-    filters: { mutationKey: promptResetMutationKey(key, novelId), status: "success" },
-    select: (mutation) => mutation.mutationId,
-  });
-  return revisions[revisions.length - 1] ?? 0;
+  return useQuery({
+    queryKey: promptResetRevisionQueryKey(key, novelId),
+    initialData: 0,
+    enabled: false,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  }).data;
 }
 
 function promptDetailQueryKey(key: string | null, novelId: string | null) {
@@ -195,9 +199,13 @@ export function useResetPrompt(
         await queryClient.cancelQueries({ queryKey, exact: true });
         await queryClient.resetQueries({ queryKey, exact: true });
       } finally {
-        // The DELETE committed even if the fresh detail read is down. The
-        // catalog marks still move; the detail query's own error owns the
-        // page's outage/retry face.
+        // The DELETE committed even if the fresh detail read is down. Its
+        // completion still advances the cache-only editor revision; the
+        // detail query's own error owns the page's outage/retry face.
+        queryClient.setQueryData<number>(
+          promptResetRevisionQueryKey(key, novelId),
+          (current) => (current ?? 0) + 1,
+        );
         invalidateCatalog();
       }
     },

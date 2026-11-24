@@ -664,6 +664,46 @@ describe("the reset", () => {
     })));
   });
 
+  it("MutationCache GC cannot roll the reset revision back into an unsaved draft", async () => {
+    const OVERRIDE = "# Globaler Override\n{{tail}}";
+    const INHERITED = "# Global-Standard\n{{tail}}";
+    const UNSAVED = `${INHERITED} und ein ungesicherter Entwurf.`;
+    details["writing.continuation"] = detail({
+      override: { scope: "global", content: OVERRIDE },
+      effective_content: OVERRIDE,
+    });
+    summaries = [summary({ override_global: true }), ...baseSummaries().slice(1)];
+    api.DELETE.mockImplementation(async () => {
+      details["writing.continuation"] = detail({ override: null, effective_content: INHERITED });
+      summaries = baseSummaries();
+      return { data: undefined, response: new Response(null, { status: 204 }) };
+    });
+
+    const router = renderPage();
+    const editor = await readyEditor();
+    fireEvent.click(within(editor).getByTestId("reset-button"));
+    fireEvent.click(within(editor).getByTestId("reset-go"));
+    await waitFor(() => expect((screen.getByTestId("draft-textarea") as HTMLTextAreaElement).value).toBe(INHERITED));
+
+    await act(async () => { router.history.push("/elsewhere"); });
+    await act(async () => { router.history.push("/settings/prompts"); });
+    const remountedEditor = await screen.findByTestId("prompts-editor");
+    const textarea = within(remountedEditor).getByTestId("draft-textarea") as HTMLTextAreaElement;
+    expect(textarea.value).toBe(INHERITED);
+    fireEvent.change(textarea, { target: { value: UNSAVED } });
+    expect(textarea.value).toBe(UNSAVED);
+
+    // The MutationCache entry may be collected once its page is gone. The
+    // reset revision must live elsewhere, or this clear rolls the editor key
+    // backward and discards the unsaved draft.
+    await act(async () => {
+      queryClient.getMutationCache().clear();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect((screen.getByTestId("draft-textarea") as HTMLTextAreaElement).value).toBe(UNSAVED);
+    expect(screen.getByTestId("prompts-editor")).toBe(remountedEditor);
+  });
+
   it("a failed fresh detail read keeps the stale detail out and still refreshes catalog marks", async () => {
     const OVERRIDE = "# Roman-Override\n{{tail}}";
     details["writing.continuation"] = detail({
