@@ -91,8 +91,8 @@ UI and frontend work is implemented and reviewed by subagents
 (superpowers:subagent-driven-development), never inline in the coordinating
 session. Every dispatch names its implementer and reviewer models explicitly — an
 omitted model silently inherits the session's most capable one and defeats the
-purpose. The coordinator picks the concrete models at dispatch time; the standing
-preference below is the default until the owner changes it.
+purpose. The coordinator picks the concrete models at dispatch time from the local
+assignment each developer keeps; the roles below say who does what.
 
 **Two lanes** (2026-11-22, owner decision). Which protocol a change runs is
 decided before the first dispatch, by the product surface it touches:
