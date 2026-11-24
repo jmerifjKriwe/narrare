@@ -63,7 +63,16 @@ const KEY_ICONS: Readonly<Record<string, IconName>> = {
 
 /** The context frame's fact keys the catalogs localize; anything else the
  *  frame names prints raw — the backend's own word, never a wrong label. */
-const FACT_KEYS: ReadonlySet<string> = new Set(["novel", "chapter", "scene", "question", "passages"]);
+const FACT_KEYS: ReadonlySet<string> = new Set([
+  "novel",
+  "chapter",
+  "scene",
+  "question",
+  "passages",
+  "chars",
+  "chapters",
+  "entities",
+]);
 
 export interface EditorScope {
   /** The tier the editor edits: the novel's own or the global one. */

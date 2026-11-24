@@ -602,6 +602,30 @@ describe("the live test", () => {
     expect(named.textContent).not.toContain(de["prompts.live.provider.fakeNote"]);
   });
 
+  it("the knowledge facts wear the catalog's labels, never the raw key", async () => {
+    fetchMock.mockResolvedValue(sse([
+      `data: ${JSON.stringify({
+        context: {
+          key: "knowledge.check-consistency",
+          source: "effective",
+          provider: "fake",
+          novel_id: null,
+          facts: { chars: "120", chapters: "2", entities: "3" },
+        },
+      })}\n\n`,
+      "event: done\ndata: {}\n\n",
+    ]));
+    renderPage();
+    const editor = await readyEditor();
+    fireEvent.click(within(editor).getByTestId("live-button"));
+    const context = await within(editor).findByTestId("live-context");
+    expect(context.textContent).toContain(`${de["prompts.live.facts.chars"]}: 120`);
+    expect(context.textContent).toContain(`${de["prompts.live.facts.chapters"]}: 2`);
+    expect(context.textContent).toContain(`${de["prompts.live.facts.entities"]}: 3`);
+    // The raw backend keys never reach the face when a label exists.
+    expect(context.textContent).not.toContain("chapters: 2");
+  });
+
   it("the deltas arrive live and land in the answer region", async () => {
     const encoder = new TextEncoder();
     let release!: () => void;
