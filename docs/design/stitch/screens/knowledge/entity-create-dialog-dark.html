@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,400..700;1,400..700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      "colors": {
+        "outline": "#35332D",
+        "outline-variant": "#302D28",
+        "outline-subtle": "#564E43",
+        "text-muted-dark": "#89867F",
+        "text-foreground-dark": "#DFDEDA",
+        "bg-canvas-dark": "#16140F",
+        "bg-panel-dark": "#1C1914",
+        "bg-card-dark": "#211F1A",
+        "bg-input-dark": "#2C2922",
+        "bg-soft-dark": "#27241E",
+        "border-dark": "#35332D",
+        "rule-dark": "#302D28",
+        "primary": "#D39562",
+        "on-primary": "#1D140D",
+        "focus-amber": "#F2AD73",
+        "secondary": "#D7A892",
+        "on-secondary": "#3B1C10",
+        "secondary-container": "#47291D",
+        "on-secondary-container": "#FED8CA",
+        "area-writing": "#D88D68",
+        "area-knowledge": "#B4B65B",
+        "area-chat": "#72A5C3",
+        "area-planning": "#C686C0",
+        "area-settings": "#ABA391"
+      },
+      "borderRadius": {
+        "DEFAULT": "0.125rem",
+        "lg": "0.25rem",
+        "xl": "0.5rem",
+        "full": "0.75rem"
+      },
+      "spacing": {
+        "container-max": "75rem",
+        "space-sm": "0.5rem",
+        "gutter": "1rem",
+        "dock-width": "21rem",
+        "space-md": "1rem",
+        "prose-max-width": "34rem",
+        "space-xl": "2rem",
+        "rail-collapsed": "3rem",
+        "space-lg": "1.5rem",
+        "rail-expanded": "10.5rem",
+        "margin": "1.5rem",
+        "space-xs": "0.25rem"
+      },
+      "fontFamily": {
+        "prose-heading-1": [ "EB Garamond" ],
+        "headline-emph": [ "Plus Jakarta Sans" ],
+        "headline-hero": [ "Plus Jakarta Sans" ],
+        "eyebrow-tracked": [ "Plus Jakarta Sans" ],
+        "label-default": [ "Plus Jakarta Sans" ],
+        "body-default": [ "Plus Jakarta Sans" ],
+        "headline-title": [ "Plus Jakarta Sans" ],
+        "prose-editorial": [ "EB Garamond" ],
+        "meta-default": [ "Plus Jakarta Sans" ],
+        "prose-heading-2": [ "EB Garamond" ]
+      },
+      "fontSize": {
+        "prose-heading-1": [ "26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" } ],
+        "headline-emph": [ "15px", { "lineHeight": "22px", "fontWeight": "600" } ],
+        "headline-hero": [ "28px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" } ],
+        "eyebrow-tracked": [ "11px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600" } ],
+        "label-default": [ "13px", { "lineHeight": "18px", "fontWeight": "500" } ],
+        "body-default": [ "14px", { "lineHeight": "22px", "fontWeight": "400" } ],
+        "headline-title": [ "20px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" } ],
+        "prose-editorial": [ "18px", { "lineHeight": "31.5px", "letterSpacing": "0.01em", "fontWeight": "400" } ],
+        "meta-default": [ "12px", { "lineHeight": "17px", "fontWeight": "400" } ],
+        "prose-heading-2": [ "21px", { "lineHeight": "28px", "fontWeight": "600" } ]
+      }
+    }
+  }
+};</script></head><body class="bg-bg-canvas-dark text-text-foreground-dark font-body-default text-body-default min-h-screen selection:bg-primary selection:text-on-primary"><main class="w-full bg-bg-canvas-dark"><div class="flex flex-col w-full">
+<div class="max-w-container-max mx-auto px-margin py-space-xl w-full flex flex-col gap-space-xl">
+<!-- Sheet Header -->
+<header class="flex flex-col gap-space-xs pb-space-lg border-b border-rule-dark">
+<div class="flex items-center gap-space-sm">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-area-knowledge bg-bg-soft-dark border border-border-dark px-space-xs py-0.5 rounded tracking-wider">Dialog-Referenz</span>
+</div>
+<h1 class="font-prose-heading-1 text-prose-heading-1 text-text-foreground-dark font-semibold tracking-tight">Neue Entität anlegen</h1>
+<p class="font-body-default text-body-default text-text-muted-dark">Zwei Varianten, vier Zustände</p>
+</header>
+<!-- Section 1: Side-by-Side Dialog Variants -->
+<section class="flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm"><span class="font-headline-emph text-headline-emph text-text-foreground-dark">1. Zwei Varianten</span></div>
+</div>
+<!-- Backdrop Canvas Grid with Dotted Lore-Graph -->
+<div class="relative w-full rounded-xl p-space-lg overflow-hidden bg-[#12100C] border border-border-dark shadow-2xl">
+<!-- Dimmed Lore-Graph Background Pattern & Ghost Cards -->
+<div class="absolute inset-0 opacity-45 pointer-events-none select-none" style="background-image: radial-gradient(circle, #302D28 1.5px, transparent 1.5px); background-size: 24px 24px;"></div>
+<!-- Faint decorative background graph elements -->
+<div class="absolute top-12 left-10 w-44 p-space-sm bg-bg-card-dark border border-border-dark rounded shadow-sm opacity-30 pointer-events-none">
+<span class="font-eyebrow-tracked text-[10px] text-area-knowledge block">Figur</span>
+<span class="font-label-default text-label-default font-medium text-text-foreground-dark">Dr. Maya Chen</span>
+</div>
+<div class="absolute top-28 right-16 w-44 p-space-sm bg-bg-card-dark border border-border-dark rounded shadow-sm opacity-30 pointer-events-none">
+<span class="font-eyebrow-tracked text-[10px] text-area-planning block">System</span>
+<span class="font-label-default text-label-default font-medium text-text-foreground-dark">Subraum-Relaisnetz</span>
+</div>
+<!-- Dialog Comparison Grid -->
+<div class="relative z-10 grid grid-cols-1 xl:grid-cols-2 gap-space-xl items-start">
+<!-- ================= VARIANT A: VON HAND ================= -->
+<article class="flex flex-col bg-bg-card-dark rounded-xl border border-border-dark shadow-2xl overflow-hidden">
+<!-- Dialog Frame Header -->
+<div class="px-space-lg py-space-md bg-bg-panel-dark border-b border-rule-dark flex items-center justify-between">
+<div class="flex items-center gap-space-sm min-w-0">
+<h2 class="font-prose-heading-2 text-prose-heading-2 text-text-foreground-dark font-semibold truncate">Neue Entität anlegen</h2>
+<span class="px-space-xs py-0.5 rounded font-meta-default text-[11px] font-medium bg-bg-soft-dark border border-border-dark text-text-muted-dark shrink-0">Von Hand</span>
+</div>
+<button aria-label="Schließen" class="w-7 h-7 flex items-center justify-center rounded text-text-muted-dark hover:text-text-foreground-dark hover:bg-bg-input-dark transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Form Body -->
+<div class="p-space-lg flex flex-col gap-space-md bg-bg-card-dark">
+<!-- Name Input -->
+<div class="flex flex-col gap-1">
+<label class="font-label-default text-label-default text-text-foreground-dark font-medium">Name *</label>
+<div class="h-8 w-full rounded border border-border-dark bg-bg-input-dark px-2.5 flex items-center shadow-inner focus-within:border-focus-amber transition-colors">
+<input class="w-full bg-transparent font-body-default text-[13px] text-text-foreground-dark placeholder:text-text-muted-dark outline-none" placeholder="z. B. Resonanz-Transponder LC-89" type="text"/>
+</div>
+</div>
+<!-- Typ Select -->
+<div class="flex flex-col gap-1">
+<label class="font-label-default text-label-default text-text-foreground-dark font-medium">Typ</label>
+<div class="relative h-8 w-full rounded border border-border-dark bg-bg-input-dark px-2.5 flex items-center justify-between shadow-inner cursor-pointer hover:border-outline-subtle transition-colors">
+<span class="font-body-default text-[13px] text-text-muted-dark">Typ auswählen ...</span>
+<span class="material-symbols-outlined text-text-muted-dark text-[18px]">expand_more</span>
+</div>
+</div>
+<!-- Aliasse Chip Input -->
+<div class="flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<label class="font-label-default text-label-default text-text-foreground-dark font-medium">Aliasse</label>
+<span class="font-meta-default text-meta-default text-text-muted-dark">Mit Enter hinzufügen</span>
+</div>
+<div class="min-h-8 py-1 w-full rounded border border-border-dark bg-bg-input-dark px-2.5 flex items-center flex-wrap gap-1 shadow-inner focus-within:border-focus-amber transition-colors">
+<input class="bg-transparent font-body-default text-[13px] text-text-foreground-dark placeholder:text-text-muted-dark outline-none flex-1 min-w-[120px]" placeholder="Neuer Alias ..." type="text"/>
+</div>
+</div>
+<!-- Schlagworte Chip Input -->
+<div class="flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<label class="font-label-default text-label-default text-text-foreground-dark font-medium">Schlagworte</label>
+<span class="font-meta-default text-meta-default text-text-muted-dark">Mit Enter hinzufügen</span>
+</div>
+<div class="min-h-8 py-1 w-full rounded border border-border-dark bg-bg-input-dark px-2.5 flex items-center flex-wrap gap-1 shadow-inner focus-within:border-focus-amber transition-colors">
+<input class="bg-transparent font-body-default text-[13px] text-text-foreground-dark placeholder:text-text-muted-dark outline-none flex-1 min-w-[120px]" placeholder="Neues Schlagwort ..." type="text"/>
+</div>
+</div>
+<!-- Beschreibung Text Area -->
+<div class="flex flex-col gap-1">
+<label class="font-label-default text-label-default text-text-foreground-dark font-medium">Beschreibung</label>
+<textarea class="w-full rounded border border-border-dark bg-bg-input-dark p-2.5 font-body-default text-[13px] text-text-foreground-dark placeholder:text-text-muted-dark outline-none resize-none shadow-inner focus:border-focus-amber transition-colors leading-relaxed" placeholder="Kontextuelle Skizze, physikalische Erscheinung oder chronologische Verortung eingeben ..." rows="3"></textarea>
+</div>
+<!-- Beziehungen Section -->
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<div class="flex items-center justify-between pb-1">
+<span class="font-label-default text-label-default font-semibold text-text-foreground-dark">Beziehungen</span>
+<button class="font-label-default text-label-default text-primary hover:text-focus-amber flex items-center gap-1 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                    Beziehung hinzufügen
+                  </button>
+</div>
+<!-- Empty state for relations -->
+<div class="py-space-md px-space-sm bg-bg-panel-dark border border-rule-dark rounded text-center">
+<p class="font-meta-default text-meta-default text-text-muted-dark">Noch keine Beziehungen verknüpft</p>
+</div>
+</div>
+</div>
+<!-- Footer Hint & Actions -->
+<div class="px-space-lg py-space-md bg-bg-panel-dark border-t border-rule-dark flex flex-col gap-space-sm">
+<span class="font-meta-default text-meta-default text-text-muted-dark">Name und Typ sind Pflicht</span>
+<div class="flex items-center justify-end gap-space-sm">
+<button class="h-8 px-space-md rounded bg-bg-input-dark border border-border-dark text-text-foreground-dark hover:bg-bg-soft-dark font-label-default text-label-default font-medium transition-colors" type="button">
+                  Abbrechen
+                </button>
+<button class="h-8 px-space-md rounded bg-[#27241E] border border-border-dark text-text-muted-dark font-label-default text-label-default font-medium cursor-not-allowed opacity-60" disabled="" type="button">
+                  Entität speichern
+                </button>
+</div>
+</div>
+</article>
+<!-- ================= VARIANT B: AUS DEM INTERVIEW ================= -->
+<article class="flex flex-col bg-bg-card-dark rounded-xl border border-border-dark shadow-2xl overflow-hidden">
+<!-- Dialog Frame Header -->
+<div class="px-space-lg py-space-md bg-bg-panel-dark border-b border-rule-dark flex items-center justify-between">
+<div class="flex items-center gap-space-sm min-w-0">
+<h2 class="font-prose-heading-2 text-prose-heading-2 text-text-foreground-dark font-semibold truncate">Neue Entität anlegen</h2>
+<span class="px-space-xs py-0.5 rounded font-meta-default text-[11px] font-medium bg-secondary-container text-on-secondary-container border border-[#5a3324] shrink-0">Aus dem Interview</span>
+</div>
+<button aria-label="Schließen" class="w-7 h-7 flex items-center justify-center rounded text-text-muted-dark hover:text-text-foreground-dark hover:bg-bg-input-dark transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Form Body -->
+<div class="p-space-lg flex flex-col gap-space-md bg-bg-card-dark">
+<!-- Name Input (Filled) -->
+<div class="flex flex-col gap-1">
+<label class="font-label-default text-label-default text-text-foreground-dark font-medium">Name *</label>
+<div class="h-8 w-full rounded border border-border-dark bg-bg-input-dark px-2.5 flex items-center shadow-inner focus-within:border-focus-amber transition-colors">
+<input class="w-full bg-transparent font-body-default text-[13px] text-text-foreground-dark outline-none font-medium" type="text" value="Resonanz-Transponder LC-89"/>
+</div>
+</div>
+<!-- Typ Select (Objekt Selected, Fixed) -->
+<div class="flex flex-col gap-1">
+<label class="font-label-default text-label-default text-text-foreground-dark font-medium">Typ</label>
+<div class="h-8 w-full rounded border border-border-dark bg-bg-panel-dark px-2.5 flex items-center justify-between shadow-inner">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-text-muted-dark">lock</span>
+<span class="font-body-default text-[13px] text-text-foreground-dark font-medium">Objekt</span>
+</div>
+<span class="font-eyebrow-tracked text-[10px] uppercase text-text-muted-dark bg-bg-input-dark border border-border-dark px-1.5 py-0.5 rounded tracking-wider">Fixiert</span>
+</div>
+</div>
+<!-- Aliasse Chip Input (Filled) -->
+<div class="flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<label class="font-label-default text-label-default text-text-foreground-dark font-medium">Aliasse</label>
+<span class="font-meta-default text-meta-default text-text-muted-dark">Mit Enter hinzufügen</span>
+</div>
+<div class="min-h-8 py-1 w-full rounded border border-border-dark bg-bg-input-dark px-2.5 flex items-center flex-wrap gap-1.5 shadow-inner">
+<span class="inline-flex items-center gap-1 bg-bg-panel-dark border border-border-dark px-2 py-0.5 rounded text-[12px] font-medium text-text-foreground-dark">
+                    LC-89
+                    <button aria-label="Alias entfernen" class="text-text-muted-dark hover:text-text-foreground-dark flex items-center" type="button">
+<span class="material-symbols-outlined text-[13px]">close</span>
+</button>
+</span>
+<span class="inline-flex items-center gap-1 bg-bg-panel-dark border border-border-dark px-2 py-0.5 rounded text-[12px] font-medium text-text-foreground-dark">
+                    Transponder
+                    <button aria-label="Alias entfernen" class="text-text-muted-dark hover:text-text-foreground-dark flex items-center" type="button">
+<span class="material-symbols-outlined text-[13px]">close</span>
+</button>
+</span>
+<input class="bg-transparent font-body-default text-[13px] text-text-foreground-dark outline-none flex-1 min-w-[60px]" placeholder="" type="text"/>
+</div>
+</div>
+<!-- Schlagworte Chip Input (Filled) -->
+<div class="flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<label class="font-label-default text-label-default text-text-foreground-dark font-medium">Schlagworte</label>
+<span class="font-meta-default text-meta-default text-text-muted-dark">Mit Enter hinzufügen</span>
+</div>
+<div class="min-h-8 py-1 w-full rounded border border-border-dark bg-bg-input-dark px-2.5 flex items-center flex-wrap gap-1.5 shadow-inner">
+<span class="inline-flex items-center gap-1.5 bg-bg-panel-dark border border-border-dark px-2 py-0.5 rounded text-[12px] font-medium text-text-foreground-dark">
+<span>Technologie</span>
+<span class="font-eyebrow-tracked text-[9px] uppercase tracking-wider text-on-secondary-container bg-secondary-container px-1 py-0.2 rounded">vorgeschlagen</span>
+<button aria-label="Schlagwort entfernen" class="text-text-muted-dark hover:text-text-foreground-dark flex items-center" type="button">
+<span class="material-symbols-outlined text-[13px]">close</span>
+</button>
+</span>
+<span class="inline-flex items-center gap-1 bg-bg-panel-dark border border-border-dark px-2 py-0.5 rounded text-[12px] font-medium text-text-foreground-dark">
+                    Relikt
+                    <button aria-label="Schlagwort entfernen" class="text-text-muted-dark hover:text-text-foreground-dark flex items-center" type="button">
+<span class="material-symbols-outlined text-[13px]">close</span>
+</button>
+</span>
+<input class="bg-transparent font-body-default text-[13px] text-text-foreground-dark outline-none flex-1 min-w-[60px]" placeholder="" type="text"/>
+</div>
+</div>
+<!-- Beschreibung Text Area (Filled) -->
+<div class="flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<label class="font-label-default text-label-default text-text-foreground-dark font-medium">Beschreibung</label>
+<span class="font-eyebrow-tracked text-[9px] uppercase tracking-wider text-on-secondary-container bg-secondary-container px-1.5 py-0.5 rounded">vorgeschlagen</span>
+</div>
+<textarea class="w-full rounded border border-border-dark bg-bg-input-dark p-2.5 font-body-default text-[13px] text-text-foreground-dark outline-none resize-none shadow-inner leading-relaxed focus:border-focus-amber transition-colors" rows="3">Verschlossenes Prototyp-Subraumrelais. Öffnet nur auf Mayas und Lins DNA-Resonanz.</textarea>
+</div>
+<!-- Beziehungen Section (3 Rows) -->
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<div class="flex items-center justify-between pb-1">
+<span class="font-label-default text-label-default font-semibold text-text-foreground-dark">Beziehungen</span>
+<button class="font-label-default text-label-default text-primary hover:text-focus-amber flex items-center gap-1 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                    Beziehung hinzufügen
+                  </button>
+</div>
+<div class="flex flex-col gap-2">
+<!-- Row 1: Drei gleich breite Spalten, vollständiger Text, Spark vor Entitätsname -->
+<div class="flex items-center gap-1.5 bg-bg-panel-dark border border-rule-dark p-2 rounded">
+<div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+<div class="h-8 bg-bg-input-dark border border-border-dark rounded px-2.5 flex items-center justify-between shadow-inner text-left min-w-0">
+<span class="font-body-default text-[12px] text-text-foreground-dark whitespace-nowrap"><span class="text-primary font-medium mr-1">✦</span>Forschungsstation 7 (Ort)</span>
+<span class="material-symbols-outlined text-text-muted-dark text-[16px] shrink-0 ml-1">expand_more</span>
+</div>
+<div class="h-8 bg-bg-input-dark border border-border-dark rounded px-2.5 flex items-center justify-between shadow-inner min-w-0">
+<span class="font-body-default text-[12px] text-text-foreground-dark whitespace-nowrap">Liegt in</span>
+<span class="material-symbols-outlined text-text-muted-dark text-[14px] shrink-0 ml-1">arrow_drop_down</span>
+</div>
+<div class="h-8 bg-bg-input-dark border border-border-dark rounded px-2.5 flex items-center shadow-inner min-w-0">
+<input class="w-full bg-transparent font-body-default text-[12px] text-text-foreground-dark placeholder:text-text-muted-dark outline-none" placeholder="Notiz (optional)" type="text"/>
+</div>
+</div>
+<button aria-label="Beziehung löschen" class="w-8 h-8 flex items-center justify-center text-text-muted-dark hover:text-[#F27474] rounded shrink-0 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</button>
+</div>
+<!-- Row 2: Drei gleich breite Spalten, vollständiger Text, Spark vor Entitätsname -->
+<div class="flex items-center gap-1.5 bg-bg-panel-dark border border-rule-dark p-2 rounded">
+<div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+<div class="h-8 bg-bg-input-dark border border-border-dark rounded px-2.5 flex items-center justify-between shadow-inner text-left min-w-0">
+<span class="font-body-default text-[12px] text-text-foreground-dark whitespace-nowrap"><span class="text-primary font-medium mr-1">✦</span>Dr. Lin Chen (Figur)</span>
+<span class="material-symbols-outlined text-text-muted-dark text-[16px] shrink-0 ml-1">expand_more</span>
+</div>
+<div class="h-8 bg-bg-input-dark border border-border-dark rounded px-2.5 flex items-center justify-between shadow-inner min-w-0">
+<span class="font-body-default text-[12px] text-text-foreground-dark whitespace-nowrap">Gebaut von</span>
+<span class="material-symbols-outlined text-text-muted-dark text-[14px] shrink-0 ml-1">arrow_drop_down</span>
+</div>
+<div class="h-8 bg-bg-input-dark border border-border-dark rounded px-2.5 flex items-center shadow-inner min-w-0">
+<input class="w-full bg-transparent font-body-default text-[12px] text-text-foreground-dark placeholder:text-text-muted-dark outline-none" placeholder="Notiz (optional)" type="text"/>
+</div>
+</div>
+<button aria-label="Beziehung löschen" class="w-8 h-8 flex items-center justify-center text-text-muted-dark hover:text-[#F27474] rounded shrink-0 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</button>
+</div>
+<!-- Row 3 with Dropdown Selection open: Drei gleich breite Spalten, vollständiger Text -->
+<div class="flex flex-col gap-1 bg-bg-panel-dark border border-rule-dark p-2 rounded">
+<div class="flex items-center gap-1.5">
+<div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+<div class="h-8 bg-bg-input-dark rounded px-2.5 flex items-center justify-between shadow-inner text-left border border-focus-amber ring-1 ring-focus-amber/30 min-w-0">
+<span class="font-body-default text-[12px] text-focus-amber font-medium whitespace-nowrap">2 Treffer — wählen</span>
+<span class="material-symbols-outlined text-focus-amber text-[16px] shrink-0 ml-1">expand_less</span>
+</div>
+<div class="h-8 bg-bg-input-dark border border-border-dark rounded px-2.5 flex items-center justify-between shadow-inner min-w-0">
+<span class="font-body-default text-[12px] text-text-foreground-dark whitespace-nowrap">arbeitet mit</span>
+<span class="material-symbols-outlined text-text-muted-dark text-[14px] shrink-0 ml-1">arrow_drop_down</span>
+</div>
+<div class="h-8 bg-bg-input-dark border border-border-dark rounded px-2.5 flex items-center shadow-inner min-w-0">
+<input class="w-full bg-transparent font-body-default text-[12px] text-text-foreground-dark placeholder:text-text-muted-dark outline-none" placeholder="Notiz (optional)" type="text"/>
+</div>
+</div>
+<button aria-label="Beziehung löschen" class="w-8 h-8 flex items-center justify-center text-text-muted-dark hover:text-[#F27474] rounded shrink-0 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</button>
+</div>
+<!-- Dropdown box below the input spanning column 1 width -->
+<div class="w-full sm:w-[calc((100%-44px)/3)] bg-[#27241E] border border-border-dark rounded shadow-2xl overflow-hidden flex flex-col mt-0.5 divide-y divide-rule-dark">
+<button class="px-2.5 py-1.5 text-left font-body-default text-[12px] text-text-foreground-dark hover:bg-bg-input-dark flex items-center justify-between transition-colors" type="button">
+<span class="whitespace-nowrap">Dr. Maya Chen</span>
+<span class="font-eyebrow-tracked text-[10px] text-text-muted-dark ml-2">Figur</span>
+</button>
+<button class="px-2.5 py-1.5 text-left font-body-default text-[12px] text-text-foreground-dark hover:bg-bg-input-dark flex items-center justify-between bg-bg-input-dark/60 transition-colors" type="button">
+<span class="whitespace-nowrap">Dr. Lin Chen</span>
+<span class="font-eyebrow-tracked text-[10px] text-text-muted-dark ml-2">Figur</span>
+</button>
+</div>
+<!-- Explicit Remark -->
+<span class="font-meta-default text-[11px] text-[#E5A84B] flex items-center gap-1 mt-0.5 pl-0.5">
+<span class="material-symbols-outlined text-[14px]">help_outline</span>
+                      Mehrere Treffer — wählen
+                    </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Exact Line & Actions -->
+<div class="px-space-lg py-space-md bg-bg-panel-dark border-t border-rule-dark flex flex-col gap-space-sm">
+<span class="font-meta-default text-meta-default text-text-muted-dark">Nicht zugeordnete Beziehungen werden nicht angelegt.</span>
+<div class="flex items-center justify-end gap-space-sm">
+<button class="h-8 px-space-md rounded bg-bg-input-dark border border-border-dark text-text-foreground-dark hover:bg-bg-soft-dark font-label-default text-label-default font-medium transition-colors" type="button">
+                  Abbrechen
+                </button>
+<button class="h-8 px-space-md rounded bg-primary text-on-primary hover:brightness-110 font-label-default text-label-default font-semibold transition-all shadow-md hover:shadow-primary/20" type="button">
+                  Entität speichern
+                </button>
+</div>
+</div>
+</article>
+</div>
+</div>
+</section>
+<!-- Section 2: Four Small States in a Row -->
+<section class="flex flex-col gap-space-md pt-space-lg">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm"><span class="font-headline-emph text-headline-emph text-text-foreground-dark">2. Vier Zustände</span></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-md items-start">
+<!-- STATE 1: Name schon vergeben -->
+<div class="flex flex-col bg-bg-card-dark rounded-lg border border-border-dark shadow-md overflow-hidden h-full">
+<div class="px-space-md py-space-xs bg-bg-panel-dark border-b border-rule-dark flex items-center justify-between">
+<span class="font-eyebrow-tracked text-[11px] uppercase tracking-wider text-text-muted-dark">Zustand 1</span>
+<span class="font-label-default text-[12px] font-semibold text-text-foreground-dark">Name schon vergeben</span>
+</div>
+<div class="p-space-md flex flex-col gap-2">
+<div class="flex flex-col gap-1">
+<label class="font-label-default text-[12px] text-text-foreground-dark font-medium">Name *</label>
+<div class="h-8 w-full rounded border border-border-dark bg-bg-input-dark px-2.5 flex items-center shadow-inner">
+<input class="w-full bg-transparent font-body-default text-[12px] text-text-foreground-dark outline-none font-medium" readonly="" type="text" value="Resonanz-Transponder LC-89"/>
+</div>
+</div>
+<!-- Warning Notice Midnight Ink: Container #302111, Border #523817, Text #E5A84B -->
+<div class="flex items-start gap-1.5 p-2.5 rounded bg-[#302111] border border-[#523817] shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-[#E5A84B] shrink-0 mt-0.5">info</span>
+<p class="font-meta-default text-[11px] leading-snug text-[#E5A84B]">
+                Eine Entität mit diesem Namen gibt es schon. Speichern ist trotzdem möglich.
+              </p>
+</div>
+</div>
+</div>
+<!-- STATE 2: Speichert ... -->
+<div class="flex flex-col bg-bg-card-dark rounded-lg border border-border-dark shadow-md overflow-hidden h-full">
+<div class="px-space-md py-space-xs bg-bg-panel-dark border-b border-rule-dark flex items-center justify-between">
+<span class="font-eyebrow-tracked text-[11px] uppercase tracking-wider text-text-muted-dark">Zustand 2</span>
+<span class="font-label-default text-[12px] font-semibold text-text-foreground-dark">Speichert ...</span>
+</div>
+<div class="p-space-md flex flex-col gap-space-md">
+<!-- Muted skeleton fields in #2C2922 -->
+<div class="flex flex-col gap-1.5 opacity-60 pointer-events-none select-none">
+<div class="h-4 w-20 bg-bg-input-dark rounded"></div>
+<div class="h-8 w-full bg-bg-input-dark border border-border-dark rounded shadow-inner"></div>
+</div>
+<!-- Action area with dark pending spinner button -->
+<div class="pt-space-xs flex items-center justify-end gap-space-xs">
+<button class="h-8 px-space-sm rounded bg-bg-panel-dark border border-border-dark text-text-muted-dark font-label-default text-[12px] cursor-not-allowed opacity-50" disabled="" type="button">
+                Abbrechen
+              </button>
+<button class="h-8 px-space-md rounded bg-[#352517] border border-border-dark text-focus-amber font-label-default text-[12px] font-medium flex items-center gap-1.5 cursor-wait" disabled="" type="button">
+<svg class="animate-spin h-3.5 w-3.5 text-focus-amber" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+<path class="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor"></path>
+</svg>
+<span>Speichert ...</span>
+</button>
+</div>
+</div>
+</div>
+<!-- STATE 3: Abgelehnt -->
+<div class="flex flex-col bg-bg-card-dark rounded-lg border border-border-dark shadow-md overflow-hidden h-full">
+<div class="px-space-md py-space-xs bg-bg-panel-dark border-b border-rule-dark flex items-center justify-between">
+<span class="font-eyebrow-tracked text-[11px] uppercase tracking-wider text-text-muted-dark">Zustand 3</span>
+<span class="font-label-default text-[12px] font-semibold text-text-foreground-dark">Abgelehnt</span>
+</div>
+<div class="p-space-md flex flex-col gap-2">
+<!-- Error Box Midnight Ink: Container #331515, Border #522222, Text #F27474 -->
+<div class="flex items-start gap-1.5 p-2.5 rounded bg-[#331515] border border-[#522222] text-[#F27474]">
+<span class="material-symbols-outlined text-[16px] text-[#F27474] shrink-0 mt-0.5">warning</span>
+<p class="font-meta-default text-[11px] leading-snug font-medium">
+                Die Entität wurde nicht angelegt: &lt;Grund&gt;.
+              </p>
+</div>
+<!-- Retained fields and re-enabled save button -->
+<div class="h-7 w-full rounded border border-border-dark bg-bg-input-dark px-2.5 flex items-center shadow-inner mt-1">
+<span class="font-body-default text-[11px] text-text-foreground-dark truncate">Resonanz-Transponder LC-89</span>
+</div>
+<div class="flex justify-end pt-1">
+<button class="h-7 px-space-sm rounded bg-primary text-on-primary font-label-default text-[11px] font-semibold hover:brightness-110 transition-all shadow-sm" type="button">
+                Entität speichern
+              </button>
+</div>
+</div>
+</div>
+<!-- STATE 4: Angelegt -->
+<div class="flex flex-col bg-bg-card-dark rounded-lg border border-border-dark shadow-md overflow-hidden h-full">
+<div class="px-space-md py-space-xs bg-bg-panel-dark border-b border-rule-dark flex items-center justify-between">
+<span class="font-eyebrow-tracked text-[11px] uppercase tracking-wider text-text-muted-dark">Zustand 4</span>
+<span class="font-label-default text-[12px] font-semibold text-text-foreground-dark">Angelegt</span>
+</div>
+<div class="relative p-space-md flex items-center justify-center min-h-[120px] bg-[#12100C] overflow-hidden">
+<!-- Dotted canvas glimpse -->
+<div class="absolute inset-0 opacity-40 pointer-events-none" style="background-image: radial-gradient(circle, #302D28 1.5px, transparent 1.5px); background-size: 16px 16px;"></div>
+<!-- Toast notification Midnight Ink: Container #172D1E, Border #274830, Text #52D47E -->
+<div class="relative z-10 flex items-center gap-2 px-space-md py-2.5 rounded-lg bg-[#172D1E] border border-[#274830] shadow-xl max-w-full">
+<div class="w-4 h-4 rounded-full bg-[#52D47E] flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[#172D1E] text-[12px] font-bold">check</span>
+</div>
+<span class="font-label-default text-[12px] text-[#52D47E] font-medium leading-snug">
+                Entität angelegt · 2 Beziehungen verknüpft
+              </span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div></main></body></html>

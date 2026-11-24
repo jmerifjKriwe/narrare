@@ -26,6 +26,12 @@ Each screen is a pair in `screens/<area>/`:
   stays reference for the dock). Light drafts win; the dark faces ride the
   shell's token ladder. The round's checkpoint decisions and the wave's gap
   ledger: [`gaps/2026-11-16-w4.md`](gaps/2026-11-16-w4.md).
+  The 2026-11-24 entity-interview round supersedes the `entity-genesis-ai-dialog`
+  draft — it drew the interview on the writing workspace, with a completion
+  percentage and a chat persona — with `entity-interview`, its states reference
+  and `entity-create-dialog`, each light and dark; git history keeps it. The
+  brief with the round's screen records:
+  `docs/superpowers/specs/2026-11-24-entity-interview-stitch-brief.md`.
   The 2026-11-14 `cover-system` sheet is a clarification of the cover object, not
   a screen template: Stitch offers it only as a downscaled export (412×1600 of a
   2560×9934 desktop canvas), so its preview is a thumbnail and the HTML is the
@@ -117,7 +123,13 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`dossier-research-station-7-aria`](screens/knowledge/dossier-research-station-7-aria.webp) | Dossier: Forschungsstation 7 & ARIA | 4848 px |
 |  | [`worldbuilding-atlas`](screens/knowledge/worldbuilding-atlas.webp) | Weltenbau- & Geografie-Atlas | 2940 px |
 |  | [`worldbuilding-atlas-dark`](screens/knowledge/worldbuilding-atlas-dark.webp) | Weltenbau- & Geografie-Atlas (Dark Mode) | 3068 px |
-|  | [`entity-genesis-ai-dialog`](screens/knowledge/entity-genesis-ai-dialog.webp) | Entitäten-Genesis im KI-Dialog | 2496 px |
+|  | [`entity-genesis-ai-dialog`](screens/knowledge/entity-genesis-ai-dialog.webp) | Entitäten-Genesis im KI-Dialog (überholt durch `entity-interview`) | 2496 px |
+|  | [`entity-interview`](screens/knowledge/entity-interview.webp) | Kausales Wissensnetzwerk — Neue Entität (Interview), maßgeblich W9 | 3270 px |
+|  | [`entity-interview-dark`](screens/knowledge/entity-interview-dark.webp) | Kausales Wissensnetzwerk — Neue Entität (Interview, Midnight Ink, maßgeblich W9) | 3336 px |
+|  | [`entity-interview-states`](screens/knowledge/entity-interview-states.webp) | Zustands-Referenz: Entität-Interview | 6150 px |
+|  | [`entity-interview-states-dark`](screens/knowledge/entity-interview-states-dark.webp) | Zustands-Referenz: Entität-Interview (Midnight Ink) | 6202 px |
+|  | [`entity-create-dialog`](screens/knowledge/entity-create-dialog.webp) | Dialog-Referenz: Neue Entität anlegen | 3070 px |
+|  | [`entity-create-dialog-dark`](screens/knowledge/entity-create-dialog-dark.webp) | Dialog-Referenz: Neue Entität anlegen (Midnight Ink) | 3082 px |
 |  | [`sources-research-archive`](screens/knowledge/sources-research-archive.webp) | Quellen-, Recherche- & Fakten-Archiv | 2740 px |
 |  | [`sources-archive-2`](screens/knowledge/sources-archive-2.webp) | Quellen-, Recherche- & Fakten-Archiv — Narrare (harmonisiert) | 2832 px |
 | Planning and structure | [`three-act-storyboard`](screens/planning/three-act-storyboard.webp) | 3-Akt-Storyboard & Szenen-Struktur - Dead Signal | 3900 px |
