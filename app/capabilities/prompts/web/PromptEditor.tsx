@@ -101,6 +101,7 @@ export function PromptEditor(props: {
   resetPending: boolean;
   resetFailure: WireError | null;
   onReset: (key: string, novelId: string | null) => void;
+  onSaveSuccess: () => void;
 }) {
   const t = useTranslation();
   const { promptKey, detail, scope } = props;
@@ -124,7 +125,7 @@ export function PromptEditor(props: {
   const diff = usePromptDiff(promptKey, novelId, diffOpen);
   const save = useSavePrompt();
   const preview = usePreviewPrompt();
-  const { resetPending, resetFailure, onReset } = props;
+  const { resetPending, resetFailure, onReset, onSaveSuccess } = props;
 
   const dirty = draft !== baseline;
   const failure = saveFailure ?? resetFailure;
@@ -154,7 +155,12 @@ export function PromptEditor(props: {
     save.mutate(
       { key: promptKey, content: draft, novelId },
       {
-        onSuccess: () => setSavedFace(true),
+        onSuccess: () => {
+          setSavedFace(true);
+          // Only a landed save retires an older reset refusal. A save start
+          // or failure leaves that refusal available.
+          onSaveSuccess();
+        },
         onError: (cause) => setSaveFailure(cause),
       },
     );

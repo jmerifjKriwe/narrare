@@ -741,6 +741,35 @@ describe("the reset", () => {
     expect(queryClient.getQueryData(["prompts", "detail", "writing.continuation", "novel-2"])).toBe(sibling);
   });
 
+  it("a successful save retires an earlier reset refusal", async () => {
+    const RESET_REFUSAL = "Reset wurde abgelehnt.";
+    const SAVED = "# Gespeichert\n{{tail}}";
+    api.DELETE.mockResolvedValue({
+      data: null,
+      error: { detail: { reason: "runtime", detail: RESET_REFUSAL } },
+      response: new Response(null, { status: 422 }),
+    });
+
+    renderPage();
+    const editor = await readyEditor();
+    fireEvent.click(within(editor).getByTestId("reset-button"));
+    fireEvent.click(within(editor).getByTestId("reset-go"));
+    const refusal = await screen.findByTestId("refusal-face");
+    expect(refusal.textContent).toContain(RESET_REFUSAL);
+
+    api.PUT.mockResolvedValue({
+      data: detail({ override: { scope: "global", content: SAVED }, effective_content: SAVED }),
+      response: ok(),
+    });
+    const textarea = screen.getByTestId("draft-textarea") as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: SAVED } });
+    fireEvent.click(screen.getByTestId("save-button"));
+
+    expect(await screen.findByTestId("saved-face")).toBeTruthy();
+    expect(screen.queryByTestId("refusal-face")).toBeNull();
+    expect(screen.queryByText(RESET_REFUSAL)).toBeNull();
+  });
+
   it("MutationCache GC cannot roll the reset revision back into an unsaved draft", async () => {
     const OVERRIDE = "# Globaler Override\n{{tail}}";
     const INHERITED = "# Global-Standard\n{{tail}}";

@@ -102,6 +102,10 @@ export function PromptsPage() {
     reset.mutate({ key, novelId });
   }
 
+  function retireResetFailure(): void {
+    reset.reset();
+  }
+
   const resetFailure =
     reset.isError && reset.variables?.key === currentKey && reset.variables.novelId === scope.novelId
       ? reset.error
@@ -278,6 +282,7 @@ export function PromptsPage() {
                   resetPending={resetPending}
                   resetFailure={resetFailure}
                   onReset={runReset}
+                  onSaveSuccess={retireResetFailure}
                 />
               ) : (
                 <div className="rounded-lg border border-border bg-panel p-5 shadow-sm" role="status">
