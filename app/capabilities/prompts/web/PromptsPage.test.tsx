@@ -103,10 +103,11 @@ let details: Record<string, Record<string, unknown>>;
 let novelOverridePresent: boolean;
 
 /** A controllable promise for the reset's in-flight network edges. */
-function deferred<T>(): { promise: Promise<T>; resolve(value: T): void } {
+function deferred<T>(): { promise: Promise<T>; resolve(value: T): void; reject(reason?: unknown): void } {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => { resolve = done; });
-  return { promise, resolve };
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((done, fail) => { resolve = done; reject = fail; });
+  return { promise, resolve, reject };
 }
 
 /** The mock instance's reads. The list answers per novel_id; the detail per
@@ -768,6 +769,42 @@ describe("the reset", () => {
     expect(await screen.findByTestId("saved-face")).toBeTruthy();
     expect(screen.queryByTestId("refusal-face")).toBeNull();
     expect(screen.queryByText(RESET_REFUSAL)).toBeNull();
+  });
+
+  it("a finishing save cannot detach a newer pending reset", async () => {
+    const SAVED = "# Gespeichert\n{{tail}}";
+    const RESET_REFUSAL = "Der neuere Reset wurde abgelehnt.";
+    const saved = deferred<{ data: Record<string, unknown>; response: Response }>();
+    const deleted = deferred<{ data: null; error: unknown; response: Response }>();
+    api.PUT.mockReturnValue(saved.promise);
+    api.DELETE.mockReturnValue(deleted.promise);
+
+    renderPage();
+    const editor = await readyEditor();
+    const textarea = within(editor).getByTestId("draft-textarea") as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: SAVED } });
+    fireEvent.click(within(editor).getByTestId("save-button"));
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(1));
+
+    // Reset stays available while Save is in flight. This newer mutation
+    // must keep its observer when the older Save lands first.
+    fireEvent.click(within(editor).getByTestId("reset-button"));
+    fireEvent.click(within(editor).getByTestId("reset-go"));
+    await waitFor(() => expect(api.DELETE).toHaveBeenCalledTimes(1));
+
+    saved.resolve({
+      data: detail({ override: { scope: "global", content: SAVED }, effective_content: SAVED }),
+      response: ok(),
+    });
+    expect(await screen.findByTestId("saved-face")).toBeTruthy();
+
+    deleted.resolve({
+      data: null,
+      error: { detail: { reason: "runtime", detail: RESET_REFUSAL } },
+      response: new Response(null, { status: 422 }),
+    });
+    const refusal = await screen.findByTestId("refusal-face");
+    expect(refusal.textContent).toContain(RESET_REFUSAL);
   });
 
   it("MutationCache GC cannot roll the reset revision back into an unsaved draft", async () => {

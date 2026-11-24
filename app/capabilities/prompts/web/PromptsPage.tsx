@@ -103,7 +103,7 @@ export function PromptsPage() {
   }
 
   function retireResetFailure(): void {
-    reset.reset();
+    if (reset.isError) reset.reset();
   }
 
   const resetFailure =
