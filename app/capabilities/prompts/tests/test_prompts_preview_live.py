@@ -409,7 +409,8 @@ async def test_interview_live_test_resolves_and_audits_chat_ask() -> None:
     The resolution follows ``spec.task_key``; the audit names the task the
     call rode and the prompt that produced it — ``chat.ask`` and
     ``knowledge.entity-interview`` — and the facts name the sample type, its
-    two turns and the novel's real roster.
+    two turns and the novel's real roster. The sample's own heading stands:
+    only the roster is the user's, per the spec.
     """
     novel_id = await _novel("Die Reisende")
     await _entity(novel_id, "Mira", "character")
@@ -431,7 +432,7 @@ async def test_interview_live_test_resolves_and_audits_chat_ask() -> None:
     assert row["prompt_key"] == INTERVIEW
     assert "PURPOSE: entity-interview" in row["prompt_text"]
     assert "Mira (character; none)" in row["prompt_text"]
-    assert 'novel "Die Reisende"' in row["prompt_text"]
+    assert 'novel "Der Nebel" in the genre Mystery' in row["prompt_text"]
     assert '"reply"' in row["response_text"]
 
 

@@ -15,6 +15,7 @@ from app.kernel.context import CHARS_PER_TOKEN
 from app.kernel.contracts.models import ENTITY_TYPES
 from app.kernel.llm.contract import (
     DONE,
+    INTERVIEW_MARKERS,
     PURPOSE_INTERVIEW,
     PURPOSE_PREFIX,
     RELATIONS_PREFIX,
@@ -22,8 +23,6 @@ from app.kernel.llm.contract import (
     ROSTER_PREFIX,
     SLOTS_PREFIX,
     SOURCE_PREFIX,
-    TURNS_PREFIX,
-    TYPE_PREFIX,
     USER_PREFIX,
     CompletionEvent,
     CompletionRequest,
@@ -182,28 +181,32 @@ _FILL_CONTENT = "Ein Vorschlag des Fake-Treibers."
 """The canned values ``fill-all`` puts into every open slot — deterministic,
 never derived from the story, because the fake stands in for a model."""
 
-_INTERVIEW_SECTION_MARKERS = (
-    PURPOSE_PREFIX,
-    TYPE_PREFIX,
-    SLOTS_PREFIX,
-    RELATIONS_PREFIX,
-    TURNS_PREFIX,
-    ROSTER_PREFIX,
-    REQUEST_PREFIX,
-)
+_INTERVIEW_SECTION_MARKERS = (PURPOSE_PREFIX, *INTERVIEW_MARKERS)
+"""Every line that ends an interview section: the purpose line and each marker.
+
+Derived from the kernel constant rather than rebuilt by hand, so a new marker
+cannot leave the section reader behind.
+"""
 
 
-def _line_after(prompt: str, prefix: str) -> str | None:
-    """The value behind one marked line, stripped; None when the line is absent."""
+def _last_line_after(prompt: str, prefix: str) -> str | None:
+    """The value behind the last line carrying the prefix, stripped.
+
+    The last occurrence, not the first: the writer's turns precede the marked
+    variables, and a multi-line turn may itself contain a line that starts with
+    a marker. The template renders the kernel-fed values after the transcript,
+    so the real value is always the final marked line.
+    """
+    value: str | None = None
     for line in prompt.splitlines():
         if line.startswith(prefix):
-            return line.removeprefix(prefix).strip()
-    return None
+            value = line.removeprefix(prefix).strip()
+    return value
 
 
 def _json_line(prompt: str, prefix: str, default: object) -> object:
     """The JSON payload on a marked line, or ``default`` when absent or broken."""
-    raw = _line_after(prompt, prefix)
+    raw = _last_line_after(prompt, prefix)
     if raw is None:
         return default
     try:
@@ -314,7 +317,7 @@ def _interview_answer(prompt: str) -> str:
     if user_text == "unparseable":
         return "".join(FakeProvider.CHUNKS)
 
-    request = _line_after(prompt, REQUEST_PREFIX) or "answer"
+    request = _last_line_after(prompt, REQUEST_PREFIX) or "answer"
     if request == "no-idea":
         return _interview_json(_INTERVIEW_SUGGESTED, slots, relations, _INTERVIEW_SUGGESTION)
     if request == "fill-all":
@@ -357,7 +360,7 @@ class FakeProvider:
         return []
 
     async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
-        """Yield deterministic JSON for recognized extraction or check purposes.
+        """Yield deterministic JSON for recognized extraction, check or interview purposes.
 
         Other prompts yield the first source line in pieces, or CHUNKS when
         that line is absent or empty. JSON answers arrive as a single piece.

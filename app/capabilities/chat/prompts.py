@@ -22,13 +22,15 @@ import json
 from collections.abc import Sequence  # noqa: TC003
 from typing import Final
 
-from app.capabilities.chat.repository import EntityRosterRepository, NovelRepository
+from app.capabilities.chat.repository import EntityRosterRepository
 from app.kernel.contracts.models import Entity  # noqa: TC001
 from app.kernel.llm import (
     ASSISTANT_PREFIX,
     INTERVIEW_MARKERS,
     PURPOSE_INTERVIEW,
     PURPOSE_PREFIX,
+    RELATIONS_PREFIX,
+    SLOTS_PREFIX,
     SOURCE_PREFIX,
     USER_PREFIX,
 )
@@ -181,7 +183,9 @@ INTERVIEW_TEMPLATE = (
     "Ask about the writer's own story, not about writing craft in general. Propose\n"
     "relations only to names on the roster below or to names the writer has already\n"
     "given; never invent a target. The roster is capped at 200 names — a list that\n"
-    "stops at 200 is cut, so say so and ask instead of assuming it is complete.\n"
+    "stops at 200 is cut, so say so and ask instead of assuming it is complete. If\n"
+    "what the writer describes is already on the roster by name or alias, say so\n"
+    "and ask whether they mean that existing entity before going further.\n"
     "\n"
     "The writer's request for this turn; the REQUEST line names the act:\n"
     "- answer: the writer replied. Take what the reply says and ask the next question.\n"
@@ -211,20 +215,29 @@ INTERVIEW_TEMPLATE = (
 )
 
 _SAMPLE_ENTITY_TYPE: Final = "character"
-_SAMPLE_SLOTS: Final[dict[str, object]] = {
-    "name": "Jona",
-    "aliases": ["Der Wächter"],
-    "tags": ["Verbündeter"],
-    "content": "Ein schweigsamer Wächter am See.",
-}
-_SAMPLE_RELATIONS: Final[list[dict[str, str]]] = [
-    {"target": "Mira", "type": "knows", "note": "Er kennt sie aus dem Winter."}
-]
+_SAMPLE_SLOTS: Final[dict[str, object]] = {}
+"""The sample's proposal: empty, so the preview shows an interview at its start."""
+_SAMPLE_RELATIONS: Final[list[dict[str, str]]] = []
+"""The sample proposes no relation until the interview names a target."""
 _SAMPLE_TRANSCRIPT: Final = (
     f"{ASSISTANT_PREFIX}Wie heißt die Figur, und welche Rolle spielt sie in der Geschichte?\n"
-    f"{USER_PREFIX}Jona ist der Wächter am See."
+    f"{USER_PREFIX}Eine Wächterin am See; einen Namen habe ich noch nicht."
 )
-_SAMPLE_ROSTER: Final = "Mira (character; Die Wanderin)\nHaus (location; Das Haus am See)"
+_SAMPLE_ROSTER: Final = (
+    "Mira (character; Die Wanderin)\n"
+    "Haus (location; Das Haus am See)\n"
+    "Der Winter (event; Das Jahr ohne Sonne)"
+)
+
+_SAMPLE_SLOTS_JSON: Final = json.dumps(_SAMPLE_SLOTS, ensure_ascii=False)
+_SAMPLE_RELATIONS_JSON: Final = json.dumps(_SAMPLE_RELATIONS, ensure_ascii=False)
+_SAMPLE_PAYLOADS: Final[tuple[str, ...]] = (
+    f"{SLOTS_PREFIX}{_SAMPLE_SLOTS_JSON}",
+    f"{RELATIONS_PREFIX}{_SAMPLE_RELATIONS_JSON}",
+    _SAMPLE_TRANSCRIPT,
+    _SAMPLE_ROSTER,
+)
+"""The sample's marked payloads: the interview's contract binds every one whole."""
 
 
 def roster_block(entities: Sequence[Entity]) -> str:
@@ -252,8 +265,8 @@ def interview_sample_variables() -> dict[str, object]:
         "novel_title": "Der Nebel",
         "novel_genre": "Mystery",
         "entity_type": _SAMPLE_ENTITY_TYPE,
-        "slots": json.dumps(_SAMPLE_SLOTS, ensure_ascii=False),
-        "relations": json.dumps(_SAMPLE_RELATIONS, ensure_ascii=False),
+        "slots": _SAMPLE_SLOTS_JSON,
+        "relations": _SAMPLE_RELATIONS_JSON,
         "transcript": _SAMPLE_TRANSCRIPT,
         "roster": _SAMPLE_ROSTER,
         "request": "answer",
@@ -263,31 +276,34 @@ def interview_sample_variables() -> dict[str, object]:
 def interview_contract(rendered: str) -> bool:
     """A re-voice may reorder the frame, never drop the machine markers.
 
-    The fake reads exactly the marked lines, so a saved template that loses
-    the purpose line or any marker prefix would answer the wrong shape at the
-    floor tier — refused at save time instead.
+    Content-bound, mirroring chat's settled shape: the six marker prefixes
+    alone are not enough — an override could write ``SLOTS: n/a``, keep the
+    ``TURNS:`` header while dropping the transcript, or mention the markers in
+    prose. The fake reads exactly the marked lines, so the sample's own marked
+    payloads must ride the render whole; a template that loses one is refused
+    at save time instead of answering the wrong shape at the floor tier.
     """
-    return f"{PURPOSE_PREFIX}{PURPOSE_INTERVIEW}" in rendered and all(
-        marker in rendered for marker in INTERVIEW_MARKERS
+    return (
+        f"{PURPOSE_PREFIX}{PURPOSE_INTERVIEW}" in rendered
+        and all(marker in rendered for marker in INTERVIEW_MARKERS)
+        and all(payload in rendered for payload in _SAMPLE_PAYLOADS)
     )
 
 
 async def _assemble_interview(context: LiveTestContext) -> AssembledContext:
-    """The live test's interview: the sample turn beside the real roster.
+    """The live test's interview: the sample beside the real roster.
 
-    An interview at a novel's scope reads that novel's heading and its real
-    entity roster, so the editor's test shows the names the interview will
-    actually see; without a novel the sample roster stands. The rest of the
-    variables are the sample the legend shows — there is no stored session to
-    ride. The facts name the sample type, the sample's two turns and the
-    roster's size, so the context frame says what the call carried.
+    An interview at a novel's scope reads that novel's real entity roster, so
+    the editor's test shows the names the interview will actually see; without
+    a novel the sample roster stands. Every other variable — the heading, the
+    type, the empty proposal, the transcript and the act — is the sample the
+    legend shows, because there is no stored session to ride. The facts name
+    the sample type, the sample's two turns and the roster's size, so the
+    context frame says what the call carried.
     """
     variables = interview_sample_variables()
     roster_count = len(_SAMPLE_ROSTER.splitlines())
     if context.novel_id is not None:
-        heading = await NovelRepository(context.session, context.user_id).heading(context.novel_id)
-        if heading is not None:
-            variables["novel_title"], variables["novel_genre"] = heading
         entities = await EntityRosterRepository(context.session, context.user_id).names_for_novel(
             context.novel_id
         )

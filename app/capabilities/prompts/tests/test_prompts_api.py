@@ -246,6 +246,49 @@ async def test_an_override_that_drops_the_chat_contract_is_refused() -> None:
         assert await _rows() == []
 
 
+async def test_an_override_that_drops_the_interview_request_marker_is_refused() -> None:
+    """A re-voice that loses ``REQUEST:`` fails the interview's contract."""
+    async with _client() as client:
+        saved = await client.put(
+            f"/api/prompts/{INTERVIEW}",
+            json={
+                "content": (
+                    "PURPOSE: entity-interview\n"
+                    "TYPE: {{ entity_type }}\n"
+                    "SLOTS: {{ slots }}\n"
+                    "RELATIONS: {{ relations }}\n"
+                    "TURNS:\n{{ transcript }}\n"
+                    "ROSTER:\n{{ roster }}\n"
+                )
+            },
+        )
+        assert saved.status_code == 422
+        assert saved.json()["detail"]["reason"] == "contract"
+        assert await _rows() == []
+
+
+async def test_an_interview_override_with_the_markers_but_no_payload_is_refused() -> None:
+    """The markers alone are not enough: the sample payload must ride whole."""
+    async with _client() as client:
+        saved = await client.put(
+            f"/api/prompts/{INTERVIEW}",
+            json={
+                "content": (
+                    "PURPOSE: entity-interview\n"
+                    "TYPE: {{ entity_type }}\n"
+                    "SLOTS: n/a\n"
+                    "RELATIONS: {{ relations }}\n"
+                    "TURNS:\n{{ transcript }}\n"
+                    "ROSTER:\n{{ roster }}\n"
+                    "REQUEST: {{ request }}\n"
+                )
+            },
+        )
+        assert saved.status_code == 422
+        assert saved.json()["detail"]["reason"] == "contract"
+        assert await _rows() == []
+
+
 async def test_a_novel_scoped_save_on_a_global_only_key_names_the_key() -> None:
     """``chat.ask`` carries no novel scope; the refusal names it."""
     novel_id = await _novel()

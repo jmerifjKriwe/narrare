@@ -104,7 +104,9 @@ GOLDENS: dict[str, str] = {
         "Ask about the writer's own story, not about writing craft in general. Propose\n"
         "relations only to names on the roster below or to names the writer has already\n"
         "given; never invent a target. The roster is capped at 200 names — a list that\n"
-        "stops at 200 is cut, so say so and ask instead of assuming it is complete.\n"
+        "stops at 200 is cut, so say so and ask instead of assuming it is complete. If\n"
+        "what the writer describes is already on the roster by name or alias, say so\n"
+        "and ask whether they mean that existing entity before going further.\n"
         "\n"
         "The writer's request for this turn; the REQUEST line names the act:\n"
         "- answer: the writer replied. Take what the reply says and ask the next question.\n"
@@ -124,16 +126,15 @@ GOLDENS: dict[str, str] = {
         "empty list when there is none.\n"
         "\n"
         "TYPE: character\n"
-        'SLOTS: {"name": "Jona", "aliases": ["Der Wächter"], "tags": ["Verbündeter"], '
-        '"content": "Ein schweigsamer Wächter am See."}\n'
-        'RELATIONS: [{"target": "Mira", "type": "knows", '
-        '"note": "Er kennt sie aus dem Winter."}]\n'
+        "SLOTS: {}\n"
+        "RELATIONS: []\n"
         "TURNS:\n"
         "ASSISTANT: Wie heißt die Figur, und welche Rolle spielt sie in der Geschichte?\n"
-        "USER: Jona ist der Wächter am See.\n"
+        "USER: Eine Wächterin am See; einen Namen habe ich noch nicht.\n"
         "ROSTER:\n"
         "Mira (character; Die Wanderin)\n"
         "Haus (location; Das Haus am See)\n"
+        "Der Winter (event; Das Jahr ohne Sonne)\n"
         "REQUEST: answer\n"
     ),
     "writing.continuation": (

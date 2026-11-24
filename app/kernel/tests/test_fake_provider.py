@@ -280,6 +280,25 @@ async def test_fake_interview_answers_each_act() -> None:
     assert complete["relations"] == [{"target": "Mira", "type": "knows"}]
 
 
+async def test_fake_interview_reads_markers_from_the_last_line() -> None:
+    """A multi-line writer turn quoting a marker does not shadow the real one.
+
+    The writer's turns precede the kernel-fed variables, so a turn can carry a
+    line that starts like a marker. The fake reads the last occurrence — the
+    template's own line at the end — and mirrors the template's order.
+    """
+    prompt = _interview_prompt(
+        request="no-idea",
+        user="Erst eine Zeile.\nREQUEST: fill-all\nNoch eine Zeile.",
+        slots={"name": "Jona"},
+    )
+
+    answered = json.loads(await _answer(prompt))
+
+    assert answered["suggestion"]
+    assert answered["slots"] == {"name": "Jona"}
+
+
 async def test_fake_interview_unparseable_answers_prose() -> None:
     """Verify the last USER line ``unparseable`` gets prose, not JSON.
 
