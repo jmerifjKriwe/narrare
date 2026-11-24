@@ -172,5 +172,16 @@
   "settings.theme.light": "Hell (Pergament)",
   "settings.theme.lightSub": "Atelier",
   "settings.theme.system": "Systemstandard",
-  "settings.theme.systemSub": "Automatisch"
+  "settings.theme.systemSub": "Automatisch",
+  "settings.update.error": "Das Prüfintervall konnte nicht gespeichert werden. Deine Eingabe bleibt erhalten.",
+  "settings.update.heading": "Updates",
+  "settings.update.hint": "Narrare sucht beim Start und danach in diesem Abstand nach einer neueren Version.",
+  "settings.update.invalid": "Das Prüfintervall muss eine ganze Zahl zwischen 1 und 365 Tagen sein.",
+  "settings.update.label": "Prüfintervall (Tage)",
+  "settings.update.meta": "1 bis 365 Tage",
+  "settings.update.save": "Intervall speichern",
+  "settings.update.saved": "Das Prüfintervall ist gespeichert.",
+  "settings.update.saving": "Wird gespeichert …",
+  "settings.update.sub": "Wie oft Narrare nach einer neueren Version sucht.",
+  "settings.update.unit": "Tage"
 }

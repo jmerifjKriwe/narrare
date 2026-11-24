@@ -92,7 +92,7 @@ def test_the_hub_chrome_carries_the_area_routes_on_both_pages(page: Page, instal
     # The Allgemein content stands below the chrome, byte-stable: the strict
     # read answered, the form opened (the W7 legs' own ready face).
     expect(page.get_by_test_id("settings-page")).to_be_visible()
-    expect(page.locator('form button[type="submit"]')).to_be_visible()
+    expect(page.locator("#settings-author-name")).to_be_visible()
 
     # The door walks; the active face flips exactly.
     nav.get_by_role("link", name=AI_RULES).click()

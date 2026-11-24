@@ -7,7 +7,8 @@ settings stack's ``NARRA_UPDATE_CHECK_URL``), so the check, the JSON parse and
 the browser's rendering are the product's own, only GitHub is not. The test
 changes the vendor's mutable tag to a newer release, sees the banner after the
 start check, opens the notes in the modal, ignores the version, and proves the
-answer survived a fresh page load — the banner stays away.
+answer survived a fresh page load — the banner stays away. The walk also sets
+the settings page's check interval and reads it back after the reload.
 
 The vendor is reset and the dismissal neutralised in ``finally``: the settings
 database is shared by every module of this suite, and a later test must not
@@ -19,7 +20,13 @@ from typing import TYPE_CHECKING
 import pytest
 from playwright.sync_api import Page, expect
 
-from app.capabilities.settings.e2e.conftest import dismiss_update, expect_settings, goto_settings
+from app.capabilities.settings.e2e.conftest import (
+    await_settings,
+    dismiss_update,
+    expect_settings,
+    goto_settings,
+    seed_settings,
+)
 from app.kernel.version import __version__
 
 if TYPE_CHECKING:
@@ -44,6 +51,8 @@ NOTES_HEADING = "Was ist neu"
 OPEN_RELEASE = "Die Version auf GitHub öffnen"
 NOTES_BUTTON = "Versionshinweise"
 IGNORE = "Diese Version ignorieren"
+INTERVAL_LABEL = "Prüfintervall (Tage)"
+SAVE_INTERVAL = "Intervall speichern"
 
 
 def test_the_newer_release_is_announced_read_and_dismissed(
@@ -54,6 +63,10 @@ def test_the_newer_release_is_announced_read_and_dismissed(
     the banner away — no refresh tricks, the browser drives the real API."""
     release_vendor.state.update(tag=RELEASE_TAG, notes=RELEASE_NOTES, url=RELEASE_URL)
     try:
+        # The walk owns its baseline: the shared row is seeded to the product
+        # default before the start assertion leans on it (the cleanup restores
+        # it too).
+        seed_settings(update_check_interval_days=7)
         goto_settings(page)
 
         # The start check asks once the shell mounts; the banner names the
@@ -76,19 +89,31 @@ def test_the_newer_release_is_announced_read_and_dismissed(
         dialog.get_by_role("button", name=IGNORE).click()
         expect(banner).to_have_count(0)
 
+        # The settings section's interval writes through the same row: set it
+        # to one day, prove the server keeps it, then the reload below reads
+        # the field back — the browser's value and the row are one truth.
+        interval = page.get_by_label(INTERVAL_LABEL)
+        expect(interval).to_have_value("7")
+        interval.fill("1")
+        page.get_by_role("button", name=SAVE_INTERVAL).click()
+        await_settings(update_check_interval_days=1)
+
         # A fresh page load asks again (force=true) and shows nothing: the
-        # dismissal the browser posted is the server's own answer now.
+        # dismissal the browser posted is the server's own answer now. The
+        # interval survives the reload, read from the row.
         with page.expect_response(
             lambda response: "/api/updates" in response.url and "force" in response.url
         ) as read:
             page.reload()
         assert read.value.ok, read.value.status
         expect_settings(page)
+        expect(page.get_by_label(INTERVAL_LABEL)).to_have_value("1")
         page.wait_for_timeout(300)  # a beat: a rendered banner would stand
         expect(page.get_by_test_id("update-banner")).to_have_count(0)
         expect(page.get_by_test_id("update-toast")).to_have_count(0)
     finally:
         # The suite shares this database and this worker's vendor: leave both
-        # as a fresh instance would have them.
+        # as a fresh instance would have them — the default interval included.
         release_vendor.state.update(tag=__version__, notes="", url="")
         dismiss_update(__version__)
+        seed_settings(update_check_interval_days=7)

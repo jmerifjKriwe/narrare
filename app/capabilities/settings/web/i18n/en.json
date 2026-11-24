@@ -172,5 +172,16 @@
   "settings.theme.light": "Light (parchment)",
   "settings.theme.lightSub": "Atelier",
   "settings.theme.system": "System default",
-  "settings.theme.systemSub": "Automatic"
+  "settings.theme.systemSub": "Automatic",
+  "settings.update.error": "The check interval could not be saved. Your answer is kept.",
+  "settings.update.heading": "Updates",
+  "settings.update.hint": "Narrare checks at start and then at this interval for a newer release.",
+  "settings.update.invalid": "The check interval must be a whole number between 1 and 365 days.",
+  "settings.update.label": "Check interval (days)",
+  "settings.update.meta": "1 to 365 days",
+  "settings.update.save": "Save interval",
+  "settings.update.saved": "The check interval is saved.",
+  "settings.update.saving": "Saving …",
+  "settings.update.sub": "How often Narrare looks for a newer release.",
+  "settings.update.unit": "days"
 }

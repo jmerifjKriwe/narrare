@@ -287,11 +287,12 @@ def expect_ai_rules(page: Page) -> None:
 
 def expect_settings(page: Page) -> None:
     """The page's own testid, then the form: the row stood, the fields open.
-    The submit button is the language-independent ready face — the form only
-    renders once the strict read answered (the isolation leg boots in
-    English, every other leg in German)."""
+    The author field's own id is the language-independent ready face — the
+    form only renders once the strict read answered (the isolation leg boots
+    in English, every other leg in German), and the page now carries two
+    forms, so a bare submit-button locator would match both."""
     expect(page.get_by_test_id("settings-page")).to_be_visible()
-    expect(page.locator('form button[type="submit"]')).to_be_visible()
+    expect(page.locator("#settings-author-name")).to_be_visible()
 
 
 @pytest.fixture(scope="session")

@@ -172,5 +172,16 @@
   "settings.theme.light": "Clair (parchemin)",
   "settings.theme.lightSub": "Atelier",
   "settings.theme.system": "Défaut système",
-  "settings.theme.systemSub": "Automatique"
+  "settings.theme.systemSub": "Automatique",
+  "settings.update.error": "L'intervalle de vérification n'a pas pu être enregistré. Ta saisie est conservée.",
+  "settings.update.heading": "Mises à jour",
+  "settings.update.hint": "Narrare vérifie au démarrage, puis à cet intervalle, si une version plus récente existe.",
+  "settings.update.invalid": "L'intervalle de vérification doit être un nombre entier entre 1 et 365 jours.",
+  "settings.update.label": "Intervalle de vérification (jours)",
+  "settings.update.meta": "1 à 365 jours",
+  "settings.update.save": "Enregistrer l'intervalle",
+  "settings.update.saved": "L'intervalle de vérification est enregistré.",
+  "settings.update.saving": "Enregistrement …",
+  "settings.update.sub": "À quelle fréquence Narrare cherche une version plus récente.",
+  "settings.update.unit": "jours"
 }

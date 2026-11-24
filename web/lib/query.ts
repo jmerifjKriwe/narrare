@@ -110,6 +110,7 @@ export function useSettings(): UseQueryResult<{
   theme: string | null;
   author_name: string | null;
   daily_goal_words: number | null;
+  update_check_interval_days: number | null;
   email: string | null;
 }> {
   return useQuery({
@@ -123,6 +124,7 @@ export function useSettings(): UseQueryResult<{
         theme: data.theme ?? null,
         author_name: data.author_name ?? null,
         daily_goal_words: data.daily_goal_words ?? null,
+        update_check_interval_days: data.update_check_interval_days ?? null,
         email: data.email ?? null,
       };
     },
@@ -131,9 +133,15 @@ export function useSettings(): UseQueryResult<{
 
 /** The fields a profile save may carry: only these reach the PATCH body,
  *  beside the locale every settings write carries (the schema's own rule).
- *  `null` is the cleared state for both — the name back to the email label,
- *  the goal back to no goal; an absent field keeps the stored answer. */
-export type SettingsChanges = { authorName?: string | null; dailyGoalWords?: number | null };
+ *  `null` is the cleared state for the name and the goal — back to the email
+ *  label and no goal; the update check's interval rides its wire name and a
+ *  carried `null` resets it to the product default. An absent field keeps the
+ *  stored answer. */
+export type SettingsChanges = {
+  authorName?: string | null;
+  dailyGoalWords?: number | null;
+  update_check_interval_days?: number | null;
+};
 
 /**
  * The preference row's write (the writing capability's GoalSetter and book
@@ -152,14 +160,18 @@ export function useUpdateSettings(): UseMutationResult<
   { locale: string | null } & SettingsChanges
 > {
   return useMutation({
-    mutationFn: async ({ locale, authorName, dailyGoalWords }) => {
+    mutationFn: async ({ locale, authorName, dailyGoalWords, update_check_interval_days }) => {
       const body: {
         locale: string | null;
         author_name?: string | null;
         daily_goal_words?: number | null;
+        update_check_interval_days?: number | null;
       } = { locale };
       if (authorName !== undefined) body.author_name = authorName;
       if (dailyGoalWords !== undefined) body.daily_goal_words = dailyGoalWords;
+      if (update_check_interval_days !== undefined) {
+        body.update_check_interval_days = update_check_interval_days;
+      }
       const { error, response } = await client.PATCH("/api/settings", { body });
       if (!response.ok) {
         throw Object.assign(new Error(`settings update refused: ${response.status}`), {
