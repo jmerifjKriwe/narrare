@@ -104,12 +104,18 @@ export function PromptsPage() {
     reset.mutate({ key, novelId });
   }
 
-  function retireResetFailure(): void {
+  function resetOperationToken(): number {
+    return resetRef.current.submittedAt;
+  }
+
+  function retireResetFailure(resetToken: number): void {
     // Save keeps this callback from its start render. Read the reset's latest
-    // result, not that render's `isError`, so a newer pending reset stays
-    // observed while an older settled error is still retired.
+    // result and retire it only when it is the same operation and already an
+    // error; a newer pending or failed reset must stay observed.
     const currentReset = resetRef.current;
-    if (currentReset.isError) currentReset.reset();
+    if (resetToken === currentReset.submittedAt && currentReset.isError) {
+      currentReset.reset();
+    }
   }
 
   const resetFailure =
@@ -288,6 +294,7 @@ export function PromptsPage() {
                   resetPending={resetPending}
                   resetFailure={resetFailure}
                   onReset={runReset}
+                  onSaveStart={resetOperationToken}
                   onSaveSuccess={retireResetFailure}
                 />
               ) : (

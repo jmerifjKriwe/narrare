@@ -854,6 +854,42 @@ describe("the reset", () => {
     expect(refusal.textContent).toContain(NEW_REFUSAL);
   });
 
+  it("a reset that fails before Save finishes keeps its refusal", async () => {
+    const SAVED = "# Gespeichert\n{{tail}}";
+    const RESET_REFUSAL = "Der neuere Reset ist vor dem Save fehlgeschlagen.";
+    const saved = deferred<{ data: Record<string, unknown>; response: Response }>();
+    const deleted = deferred<{ data: null; error: unknown; response: Response }>();
+    api.PUT.mockReturnValue(saved.promise);
+    api.DELETE.mockReturnValue(deleted.promise);
+
+    renderPage();
+    const editor = await readyEditor();
+    const textarea = within(editor).getByTestId("draft-textarea") as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: SAVED } });
+    fireEvent.click(within(editor).getByTestId("save-button"));
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(within(editor).getByTestId("reset-button"));
+    fireEvent.click(within(editor).getByTestId("reset-go"));
+    await waitFor(() => expect(api.DELETE).toHaveBeenCalledTimes(1));
+
+    // The newer reset settles as an error before the older Save lands. Save
+    // completion must not retire a reset operation that began after it.
+    deleted.resolve({
+      data: null,
+      error: { detail: { reason: "runtime", detail: RESET_REFUSAL } },
+      response: new Response(null, { status: 422 }),
+    });
+    expect((await screen.findByTestId("refusal-face")).textContent).toContain(RESET_REFUSAL);
+
+    saved.resolve({
+      data: detail({ override: { scope: "global", content: SAVED }, effective_content: SAVED }),
+      response: ok(),
+    });
+    expect(await screen.findByTestId("saved-face")).toBeTruthy();
+    expect(screen.getByTestId("refusal-face").textContent).toContain(RESET_REFUSAL);
+  });
+
   it("MutationCache GC cannot roll the reset revision back into an unsaved draft", async () => {
     const OVERRIDE = "# Globaler Override\n{{tail}}";
     const INHERITED = "# Global-Standard\n{{tail}}";

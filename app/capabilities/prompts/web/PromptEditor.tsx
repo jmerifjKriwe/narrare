@@ -101,7 +101,8 @@ export function PromptEditor(props: {
   resetPending: boolean;
   resetFailure: WireError | null;
   onReset: (key: string, novelId: string | null) => void;
-  onSaveSuccess: () => void;
+  onSaveStart: () => number;
+  onSaveSuccess: (resetToken: number) => void;
 }) {
   const t = useTranslation();
   const { promptKey, detail, scope } = props;
@@ -125,7 +126,7 @@ export function PromptEditor(props: {
   const diff = usePromptDiff(promptKey, novelId, diffOpen);
   const save = useSavePrompt();
   const preview = usePreviewPrompt();
-  const { resetPending, resetFailure, onReset, onSaveSuccess } = props;
+  const { resetPending, resetFailure, onReset, onSaveStart, onSaveSuccess } = props;
 
   const dirty = draft !== baseline;
   const failure = saveFailure ?? resetFailure;
@@ -152,14 +153,15 @@ export function PromptEditor(props: {
     if (resetPending) return;
     setSavedFace(false);
     setSaveFailure(null);
+    const resetToken = onSaveStart();
     save.mutate(
       { key: promptKey, content: draft, novelId },
       {
         onSuccess: () => {
           setSavedFace(true);
-          // Only a landed save retires an older reset refusal. A save start
-          // or failure leaves that refusal available.
-          onSaveSuccess();
+          // Only a landed save retires the reset operation that already
+          // existed when this save began. A newer reset keeps its refusal.
+          onSaveSuccess(resetToken);
         },
         onError: (cause) => setSaveFailure(cause),
       },
