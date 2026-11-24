@@ -564,7 +564,7 @@ class WritingService:
         statement = select(Scene).where(Scene.user_id == self.user_id)
         if novel_id is not None:
             statement = statement.join(Chapter, Chapter.id == Scene.chapter_id).where(
-                Chapter.novel_id == novel_id
+                Chapter.novel_id == novel_id, Chapter.user_id == self.user_id
             )
         return await self.session.scalar(
             statement.order_by(Scene.updated_at.desc(), Scene.id.desc()).limit(1)

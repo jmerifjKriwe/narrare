@@ -431,6 +431,35 @@ async def test_the_knowledge_live_tests_assemble_the_latest_chapters() -> None:
     assert "Mira (character)" in rows[CONSISTENCY]["prompt_text"]
 
 
+async def test_the_extraction_assembly_never_names_a_foreign_novel() -> None:
+    """The chapter's parent novel is read through the owner predicate.
+
+    The inconsistent row (our chapter pointing at another user's novel) can
+    only arrive around the API, which owns the checks — the assembly's own
+    read must still answer nothing rather than name a book that is not ours.
+    """
+    other = UUID("00000000-0000-0000-0000-000000000002")
+    await seed_user(other)
+    async with Session() as session:
+        foreign = Novel(user_id=other, title="Fremdes Buch")
+        session.add(foreign)
+        await session.flush()
+        chapter = Chapter(user_id=LOCAL_USER_ID, novel_id=foreign.id, title="Kapitel", position=0)
+        session.add(chapter)
+        await session.commit()
+        chapter_id = chapter.id
+    await _scene(chapter_id, "Der Hafen lag im Dunkel.")
+
+    async with _client() as client:
+        response = await client.post(f"/api/prompts/{EXTRACT}/live-test")
+        assert response.status_code == 200, response.text
+
+    facts = _frames(response.text)[0]["context"]["facts"]
+    assert "novel" not in facts
+    [row] = await _audit_rows()
+    assert "Fremdes Buch" not in row["prompt_text"]
+
+
 async def test_the_call_rides_the_key_s_task_assignment() -> None:
     """The cascade serves the call; the audit names the assigned profile."""
     novel_id = await _novel()

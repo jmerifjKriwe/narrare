@@ -303,7 +303,7 @@ async def _assemble_extraction(context: LiveTestContext) -> AssembledContext:
         novel_id=context.novel_id,
         source=context.source,
     )
-    novel = await context.session.get(Novel, chapter.novel_id)
+    novel = await _latest_novel(context.session, context.user_id, chapter.novel_id)
     facts = {"chapter": chapter.title, "chars": str(min(len(prose), BODY_LIMIT))}
     if novel is not None:
         facts = {"novel": novel.title, **facts}
