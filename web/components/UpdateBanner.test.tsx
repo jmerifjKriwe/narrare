@@ -294,7 +294,7 @@ describe("ReleaseNotesDialog — the markdown and the two answers", () => {
     await openNotes();
 
     // The scrim is the only control named Close outside the panel: the panel
-    // holds the other one in its footer.
+    // holds the other two, in its header and its footer.
     const scrim = screen
       .getAllByRole("button", { name: "Close" })
       .find((button) => button.closest("[role='dialog']") === null);
