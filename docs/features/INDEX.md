@@ -178,12 +178,12 @@ roadmap's design-debt section.
 
 | Feature | What it is | State | Phase |
 |---|---|---|---|
-| Settings screen (SET-001) | The hub the gear opens: Allgemein live (Sprache & Aussehen, Autoren-Profil, offline card); the AI-Regeln half on a branch; providers, models and tasks still backend | `building` | `1` |
-| Provider profiles and presets | Several endpoints, keys in the OS keychain or encrypted | `backend` | `1` |
-| Per-task model (SET-003) | Each task pointed at its own model | `backend` | `1` |
+| Settings screen (SET-001) | The hub the gear opens: Allgemein (Sprache & Aussehen, Autoren-Profil, offline card) and AI-Regeln (providers, keys, models, per-task assignment with output profiles, System-Diagnose) under one hub chrome | `live` | `1` |
+| Provider profiles and presets | Several endpoints, keys in the OS keychain or encrypted | `live` | `1` |
+| Per-task model (SET-003) | Each task pointed at its own model, with its output profile | `live` | `1` |
 | Theme and language | Light, dark or system; three languages, du or Sie | `live` | `0` |
-| Prompt overrides (PROMPT-001/002) | Every prompt editable, with a diff against the shipped one | `backend` | `1` |
-| Prompt variables and preview (PROMPT-003) | See what a prompt renders before it runs | `designed` | `1` |
+| Prompt overrides (PROMPT-001/002) | Every prompt editable, with a diff against the shipped one | `live` | `1` |
+| Prompt variables and preview (PROMPT-003) | See what a prompt renders before it runs; test the draft against the live wire | `live` | `1` |
 | Command palette (⌘K) | Every action by name, from anywhere | `designed` | `2` |
 | Help centre | The manual inside the app, per surface | `designed` | `2` |
 | Shortcut remapping (SET-004) | Bind keys to actions, with conflict resolution | `later` | `later` |
