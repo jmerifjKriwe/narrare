@@ -32,6 +32,7 @@ from app.kernel.llm.contract import (
     TYPE_PREFIX,
     USER_PREFIX,
     TextProvider,
+    single_line,
 )
 from app.kernel.llm.structured import AuditedCall, MalformedAnswerError, ask_structured
 
@@ -52,4 +53,5 @@ __all__ = [
     "MalformedAnswerError",
     "TextProvider",
     "ask_structured",
+    "single_line",
 ]

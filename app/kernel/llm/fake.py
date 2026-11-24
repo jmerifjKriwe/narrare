@@ -189,24 +189,23 @@ cannot leave the section reader behind.
 """
 
 
-def _last_line_after(prompt: str, prefix: str) -> str | None:
-    """The value behind the last line carrying the prefix, stripped.
+def _line_after(prompt: str, prefix: str) -> str | None:
+    """The value behind the first line carrying the prefix, stripped.
 
-    The last occurrence, not the first: the writer's turns precede the marked
-    variables, and a multi-line turn may itself contain a line that starts with
-    a marker. The template renders the kernel-fed values after the transcript,
-    so the real value is always the final marked line.
+    The first occurrence: the template renders each kernel-fed variable exactly
+    once, and every turn is exactly one line (``single_line``), so a writer's
+    text can never begin a line that carries a marker. The real value is
+    therefore the first marked line, in any marker order the contract allows.
     """
-    value: str | None = None
     for line in prompt.splitlines():
         if line.startswith(prefix):
-            value = line.removeprefix(prefix).strip()
-    return value
+            return line.removeprefix(prefix).strip()
+    return None
 
 
 def _json_line(prompt: str, prefix: str, default: object) -> object:
     """The JSON payload on a marked line, or ``default`` when absent or broken."""
-    raw = _last_line_after(prompt, prefix)
+    raw = _line_after(prompt, prefix)
     if raw is None:
         return default
     try:
@@ -317,7 +316,7 @@ def _interview_answer(prompt: str) -> str:
     if user_text == "unparseable":
         return "".join(FakeProvider.CHUNKS)
 
-    request = _last_line_after(prompt, REQUEST_PREFIX) or "answer"
+    request = _line_after(prompt, REQUEST_PREFIX) or "answer"
     if request == "no-idea":
         return _interview_json(_INTERVIEW_SUGGESTED, slots, relations, _INTERVIEW_SUGGESTION)
     if request == "fill-all":

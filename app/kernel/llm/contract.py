@@ -7,6 +7,7 @@ missing model, a refused credential — are what a refusal a user can act on
 becomes; every other endpoint failure propagates unclassified.
 """
 
+import re
 from collections.abc import AsyncIterator  # noqa: TC003
 from dataclasses import dataclass
 from typing import Protocol
@@ -59,6 +60,21 @@ INTERVIEW_MARKERS: tuple[str, ...] = (
     REQUEST_PREFIX,
 )
 """The marker prefixes every interview render must carry, in the template's order."""
+
+_LINE_BREAK_RUN = re.compile(r"[\r\n\x85\u2028\u2029]+")
+"""Every run of line-break characters, including the Unicode separators."""
+
+
+def single_line(text: str) -> str:
+    """One turn as exactly one line: every run of breaks becomes a space, ends stripped.
+
+    The interview's rendering invariant. A turn is rendered as its ``USER:`` or
+    ``ASSISTANT:`` prefix plus this function's result, so a writer's text can
+    never begin a line — and a line that looks like a machine marker is then
+    always the template's own, whatever its order. Covers ``\\r``, ``\\n``,
+    ``\\r\\n`` and the Unicode separators ``\\x85``, ``\\u2028`` and ``\\u2029``.
+    """
+    return _LINE_BREAK_RUN.sub(" ", text).strip()
 
 
 @dataclass(frozen=True)

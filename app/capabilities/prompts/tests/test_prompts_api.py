@@ -289,6 +289,35 @@ async def test_an_interview_override_with_the_markers_but_no_payload_is_refused(
         assert await _rows() == []
 
 
+async def test_a_reworded_interview_override_saves() -> None:
+    """The accept path: a re-voice that keeps every marker and variable saves.
+
+    Beside the two refusals above: the author may rewrite the prose, reorder
+    or drop the question tracks, as long as the purpose line, every marker
+    and every variable the fake reads ride the render.
+    """
+    content = (
+        "PURPOSE: entity-interview\n"
+        "Du fragst die Schreibenden nach einer neuen Figur oder einem neuen Ort.\n"
+        "TYPE: {{ entity_type }}\n"
+        "SLOTS: {{ slots }}\n"
+        "RELATIONS: {{ relations }}\n"
+        "TURNS:\n{{ transcript }}\n"
+        "ROSTER:\n{{ roster }}\n"
+        "REQUEST: {{ request }}\n"
+    )
+    async with _client() as client:
+        saved = await client.put(f"/api/prompts/{INTERVIEW}", json={"content": content})
+        assert saved.status_code == 200, saved.text
+        assert saved.json()["override"] == {"scope": "global", "content": content}
+
+    rows = await _rows()
+    assert len(rows) == 1
+    assert rows[0][0] == INTERVIEW
+    assert rows[0][1] is None  # the global tier
+    assert rows[0][2] == content
+
+
 async def test_a_novel_scoped_save_on_a_global_only_key_names_the_key() -> None:
     """``chat.ask`` carries no novel scope; the refusal names it."""
     novel_id = await _novel()

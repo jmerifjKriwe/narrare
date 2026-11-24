@@ -317,7 +317,9 @@ turn (oldest first), `ROSTER:` followed by one `name (type; aliases)` line per
 entity, and `REQUEST: <act>`. `request` is the act's name — `answer` on a plain
 turn, `accept-suggestion`, `no-idea`, `fill-all` — and the template explains in
 prose what each one asks of the model. The fake provider reads these lines and
-nothing else; that is how it tells an interview from any other prompt.
+nothing else; that is how it tells an interview from any other prompt. Every
+turn is exactly one line (`single_line`), so a writer's text can never forge a
+marker line.
 
 **Type tracks.** The template carries one block of question areas per entity
 type — a figure is asked other things than a place, an object or an event — and

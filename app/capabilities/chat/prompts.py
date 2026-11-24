@@ -33,6 +33,7 @@ from app.kernel.llm import (
     SLOTS_PREFIX,
     SOURCE_PREFIX,
     USER_PREFIX,
+    single_line,
 )
 from app.kernel.prompts import (
     AssembledContext,
@@ -208,6 +209,7 @@ INTERVIEW_TEMPLATE = (
     "SLOTS: {{ slots }}\n"
     "RELATIONS: {{ relations }}\n"
     "TURNS:\n"
+    "{# every turn is one line — single_line — so a writer's text can never forge a marker #}"
     "{{ transcript }}\n"
     "ROSTER:\n"
     "{{ roster }}\n"
@@ -219,10 +221,23 @@ _SAMPLE_SLOTS: Final[dict[str, object]] = {}
 """The sample's proposal: empty, so the preview shows an interview at its start."""
 _SAMPLE_RELATIONS: Final[list[dict[str, str]]] = []
 """The sample proposes no relation until the interview names a target."""
-_SAMPLE_TRANSCRIPT: Final = (
-    f"{ASSISTANT_PREFIX}Wie heißt die Figur, und welche Rolle spielt sie in der Geschichte?\n"
-    f"{USER_PREFIX}Eine Wächterin am See; einen Namen habe ich noch nicht."
+_SAMPLE_TURNS: Final[tuple[tuple[str, str], ...]] = (
+    (ASSISTANT_PREFIX, "Wie heißt die Figur, und welche Rolle spielt sie in der Geschichte?"),
+    (USER_PREFIX, "Eine Wächterin am See; einen Namen habe ich noch nicht."),
 )
+
+
+def _turn_line(prefix: str, text: str) -> str:
+    """One transcript line: the turn's text behind its prefix on a single line.
+
+    The interview's rendering invariant, through the kernel helper. The live
+    renderer (Task 7) builds every turn the same way, so a writer's line breaks
+    become spaces and the text can never start a line that looks like a marker.
+    """
+    return f"{prefix}{single_line(text)}"
+
+
+_SAMPLE_TRANSCRIPT: Final = "\n".join(_turn_line(prefix, text) for prefix, text in _SAMPLE_TURNS)
 _SAMPLE_ROSTER: Final = (
     "Mira (character; Die Wanderin)\n"
     "Haus (location; Das Haus am See)\n"
