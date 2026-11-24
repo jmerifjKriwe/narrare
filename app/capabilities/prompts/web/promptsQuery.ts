@@ -6,12 +6,13 @@
  * so they do not join the shell's shared seam.
  *
  * The query keys ARE each other's invalidation family under the `["prompts"]`
- * prefix: a save or a reset moves the catalog's marks beside the editor's
- * detail, so the whole prefix re-asks. Reads are strict: a refusal or an
- * outage throws, and the page answers with its outage face and its retry —
- * never dressed-up nulls. Writes enrich the failure with the wire's status
- * and body, so the faces can name the refusal families the backend answers
- * with (the save gate's 422 by reason).
+ * prefix: a save moves the catalog's marks beside the editor's detail, so the
+ * whole prefix re-asks. A reset is narrower — it resets the exact detail entry
+ * and refreshes the catalog/diff family, never a second detail read. Reads are
+ * strict: a refusal or an outage throws, and the page answers with its outage
+ * face and its retry — never dressed-up nulls. Writes enrich the failure with
+ * the wire's status and body, so the faces can name the refusal families the
+ * backend answers with (the save gate's 422 by reason).
  *
  * The live test rides `fetch`, not the typed client: openapi-fetch buffers
  * the whole answer before it parses, and the test's answer must arrive piece
@@ -20,7 +21,7 @@
  * one terminal event). The pre-stream failures (409/429/502/503 and the
  * save gate's 422) are JSON answers, not SSE — named by their status.
  */
-import { useMutation, useQuery, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
+import { useIsMutating, useMutation, useQuery, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 
 import {
   client,
@@ -48,6 +49,23 @@ function enrich(cause: unknown, what: string): WireError {
 
 function invalidate(): void {
   void queryClient.invalidateQueries({ queryKey: ["prompts"] });
+}
+
+function invalidateCatalog(): void {
+  void queryClient.invalidateQueries({ queryKey: ["prompts", "list"] });
+  void queryClient.invalidateQueries({ queryKey: ["prompts", "diff"] });
+}
+
+/** One shared mutation identity: every mounted observer can see a reset
+ *  pending, including an editor mounted after the original one unmounted. */
+export const PROMPT_RESET_MUTATION_KEY = ["prompts", "reset"] as const;
+
+export function useResetPending(): boolean {
+  return useIsMutating({ mutationKey: PROMPT_RESET_MUTATION_KEY }) > 0;
+}
+
+function promptDetailQueryKey(key: string | null, novelId: string | null) {
+  return ["prompts", "detail", key, novelId] as const;
 }
 
 /** The catalog list: one ask shape, the scope query always named. */
@@ -82,7 +100,7 @@ export function usePromptDetail(
   novelId: string | null,
 ): UseQueryResult<PromptDetail> {
   return useQuery({
-    queryKey: ["prompts", "detail", key, novelId],
+    queryKey: promptDetailQueryKey(key, novelId),
     refetchOnWindowFocus: false,
     enabled: key !== null,
     queryFn: () => fetchPromptDetail(key as string, novelId),
@@ -131,24 +149,38 @@ export function useSavePrompt(): UseMutationResult<
   });
 }
 
-/** The scope's override reset (the other tier untouched). Idempotent 204;
- *  the fresh detail answers the caller, so the editor can follow the
- *  inherited baseline the deletion restored. */
+/** The scope's override reset (the other tier untouched). The successful
+ *  DELETE resets the exact detail entry at hook level and lets its active
+ *  observer fetch the inherited detail once. The editor never owns that
+ *  completion, so unmounting cannot lose it or leave a stale cache behind. */
 export function useResetPrompt(): UseMutationResult<
-  PromptDetail,
+  void,
   WireError,
   { key: string; novelId: string | null }
 > {
   return useMutation({
+    mutationKey: PROMPT_RESET_MUTATION_KEY,
     mutationFn: async ({ key, novelId }) => {
       const { response, error } = await client.DELETE("/api/prompts/{key}", {
         params: { path: { key }, query: novelId ? { novel_id: novelId } : {} },
       });
       if (!response.ok) throw enrich({ response, error }, "prompt reset");
-      // The 204 carries no body: one read answers the tier's new baseline.
-      return fetchPromptDetail(key, novelId);
     },
-    onSuccess: invalidate,
+    onSuccess: async (_data, { key, novelId }) => {
+      const queryKey = promptDetailQueryKey(key, novelId);
+      try {
+        // A detail refetch that began before the DELETE must not win after
+        // it. Cancel first, then reset notifies the active observer and
+        // refetches the inherited detail exactly once.
+        await queryClient.cancelQueries({ queryKey, exact: true });
+        await queryClient.resetQueries({ queryKey, exact: true });
+      } finally {
+        // The DELETE committed even if the fresh detail read is down. The
+        // catalog marks still move; the detail query's own error owns the
+        // page's outage/retry face.
+        invalidateCatalog();
+      }
+    },
   });
 }
 

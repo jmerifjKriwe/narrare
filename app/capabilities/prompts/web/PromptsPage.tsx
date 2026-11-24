@@ -36,7 +36,7 @@ import { FOCUS } from "@shell/ui/card";
 import { Icon, type IconName } from "@shell/ui/icons";
 
 import { PromptEditor, type EditorScope } from "./PromptEditor";
-import { usePromptDetail, usePromptsList } from "./promptsQuery";
+import { usePromptDetail, usePromptsList, useResetPending, useResetPrompt } from "./promptsQuery";
 
 const SERIF = "[font-family:var(--font-serif)]";
 const MONO = "[font-family:var(--font-mono)]";
@@ -63,9 +63,12 @@ export function PromptsPage() {
   const [novelId, setNovelId] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [tier, setTier] = useState<EditorScope["tier"]>("global");
+  const [editorEpoch, setEditorEpoch] = useState(0);
 
   const novels = useNovelsQuery();
   const list = usePromptsList(novelId);
+  const reset = useResetPrompt();
+  const resetPending = useResetPending();
 
   // The Geltungsbereich's chosen novel by name, for the chips' labels.
   const novelTitle =
@@ -95,6 +98,21 @@ export function PromptsPage() {
 
   const detailRead = usePromptDetail(currentKey, scope.novelId);
 
+  function runReset(key: string, novelId: string | null): void {
+    // The page owns this callback, so an editor remount cannot lose it. A
+    // route unmount still can; there the hook-level cache reset/fetch is the
+    // completion, and the next page mounts from that fresh detail.
+    reset.mutate(
+      { key, novelId },
+      { onSuccess: () => setEditorEpoch((epoch) => epoch + 1) },
+    );
+  }
+
+  const resetFailure =
+    reset.isError && reset.variables?.key === currentKey && reset.variables.novelId === scope.novelId
+      ? reset.error
+      : null;
+
   const data = novels.data !== undefined && list.data !== undefined ? { novels: novels.data, list: list.data } : null;
   // The editor's detail read is the page's third read: a failed detail is
   // the outage face, never a right column whose loading card stands forever.
@@ -110,6 +128,7 @@ export function PromptsPage() {
   }
 
   function changeScope(next: string | null): void {
+    if (resetPending) return;
     setNovelId(next);
     // A scope switch leaves the novel tier when no novel backs it; a novel
     // choice defaults the editor to that novel's own tier — the draft's
@@ -120,7 +139,7 @@ export function PromptsPage() {
   const novelOverrides = novelId !== null ? (list.data ?? []).filter((row) => row.override_novel).length : 0;
 
   return (
-    <main id="main-content" data-testid="prompts-page" aria-busy={data === null} className="h-full overflow-y-auto">
+    <main id="main-content" data-testid="prompts-page" aria-busy={data === null || resetPending} className="h-full overflow-y-auto">
       <div className="mx-auto max-w-6xl space-y-6 px-8 py-10 pb-24">
         <SettingsHub />
 
@@ -138,7 +157,8 @@ export function PromptsPage() {
               <select
                 value={novelId ?? ""}
                 onChange={(event) => changeScope(event.target.value === "" ? null : event.target.value)}
-                className={`rounded border border-border bg-panel px-2 py-1.5 text-meta font-semibold text-foreground shadow-sm ${FOCUS}`}
+                disabled={resetPending}
+                className={`rounded border border-border bg-panel px-2 py-1.5 text-meta font-semibold text-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`}
               >
                 <option value="">{t("prompts.scope.global")}</option>
                 {(novels.data ?? []).map((novel) => (
@@ -204,10 +224,12 @@ export function PromptsPage() {
                         data-key={row.key}
                         aria-pressed={selected}
                         onClick={() => {
+                          if (resetPending) return;
                           setSelectedKey(row.key);
                           setTier(novelId !== null ? "novel" : "global");
                         }}
-                        className={`w-full rounded border-2 p-3 text-start transition-colors ${FOCUS} ${
+                        disabled={resetPending}
+                        className={`w-full rounded border-2 p-3 text-start transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS} ${
                           selected
                             ? "border-primary bg-surface"
                             : "border-border bg-panel hover:bg-surface"
@@ -254,11 +276,14 @@ export function PromptsPage() {
             <div className="lg:col-span-8">
               {detailRead.data !== undefined && currentKey !== null ? (
                 <PromptEditor
-                  key={`${currentKey}:${scope.tier}:${scope.novelId ?? "global"}`}
+                  key={`${currentKey}:${scope.tier}:${scope.novelId ?? "global"}:${editorEpoch}`}
                   promptKey={currentKey}
                   detail={detailRead.data}
                   scope={scope}
                   onScopeChange={setTier}
+                  resetPending={resetPending}
+                  resetFailure={resetFailure}
+                  onReset={runReset}
                 />
               ) : (
                 <div className="rounded-lg border border-border bg-panel p-5 shadow-sm" role="status">

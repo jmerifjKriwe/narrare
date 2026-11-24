@@ -24,7 +24,7 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -100,9 +100,22 @@ function refused(status: number, reason: string, message: string): { data: null;
 let novelList: Record<string, unknown>[];
 let summaries: Record<string, unknown>[];
 let details: Record<string, Record<string, unknown>>;
+let novelOverridePresent: boolean;
+
+/** A controllable promise for the reset's in-flight network edges. */
+function deferred<T>(): { promise: Promise<T>; resolve(value: T): void } {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
 
 /** The mock instance's reads. The list answers per novel_id; the detail per
  *  key and scope — the shapes mirror the wire. */
+type GetMock = (
+  path: string,
+  init?: { params?: { path?: Record<string, string>; query?: Record<string, unknown> } },
+) => Promise<unknown>;
+
 function scriptReads(): void {
   api.GET.mockImplementation(async (path: string, init?: { params?: { path?: Record<string, string>; query?: Record<string, unknown> } }) => {
     if (path === "/api/writing/novels") return { data: novelList, response: ok() };
@@ -113,7 +126,8 @@ function scriptReads(): void {
       return {
         data: summaries.map((row) => ({
           ...row,
-          override_novel: row.key === "writing.continuation" && novelId === "novel-1",
+          override_novel:
+            row.key === "writing.continuation" && novelId === "novel-1" && novelOverridePresent,
         })),
         response: ok(),
       };
@@ -145,10 +159,15 @@ const promptsRoute = createRoute({
   path: "/settings/prompts",
   component: PromptsPage,
 });
+const awayRoute = createRoute({
+  getParentRoute: () => testRoot,
+  path: "/elsewhere",
+  component: () => <div data-testid="away">Elsewhere</div>,
+});
 
-function renderPage(): void {
+function renderPage() {
   const router = createRouter({
-    routeTree: testRoot.addChildren([promptsRoute]),
+    routeTree: testRoot.addChildren([promptsRoute, awayRoute]),
     history: createMemoryHistory({ initialEntries: ["/settings/prompts"] }),
   });
   render(
@@ -156,6 +175,7 @@ function renderPage(): void {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  return router;
 }
 
 /** Wait for the page's ready face: the catalog answered, the editor stood. */
@@ -170,6 +190,7 @@ beforeEach(() => {
   novelList = [NOVEL_A, NOVEL_B];
   summaries = baseSummaries();
   details = { "writing.continuation": detail(), "chat.ask": detail(), "knowledge.extract-entities": detail(), "knowledge.check-consistency": detail() };
+  novelOverridePresent = true;
   scriptReads();
 });
 
@@ -482,31 +503,145 @@ describe("the reset", () => {
     })));
   });
 
-  it("a confirmed reset clears the draft to the inherited baseline", async () => {
-    // The novel's override is deleted; the fresh detail answers the global
-    // standard. The editor's identity does not change on a reset, so the
-    // draft must follow that detail explicitly — otherwise preview and the
-    // live test keep using the deleted override, and Save recreates it.
+  it("locks editing and navigation until reset lands the inherited baseline", async () => {
+    const OVERRIDE = "# Globaler Override\n{{tail}}";
     const INHERITED = "# Global-Standard\n{{tail}}";
     details["writing.continuation"] = detail({
-      override: { scope: "novel", content: "# Roman-Override\n{{tail}}" },
-      effective_content: "# Roman-Override\n{{tail}}",
+      override: { scope: "global", content: OVERRIDE },
+      effective_content: OVERRIDE,
+    });
+    summaries = [summary({ override_global: true }), ...baseSummaries().slice(1)];
+    const deleted = deferred<{ data: undefined; response: Response }>();
+    api.DELETE.mockReturnValue(deleted.promise);
+
+    renderPage();
+    const editor = await readyEditor();
+    const textarea = within(editor).getByTestId("draft-textarea") as HTMLTextAreaElement;
+    expect(textarea.value).toBe(OVERRIDE);
+    fireEvent.click(within(editor).getByTestId("reset-button"));
+    fireEvent.click(within(editor).getByTestId("reset-go"));
+    await waitFor(() => expect(api.DELETE).toHaveBeenCalledTimes(1));
+
+    // Every editing door and both navigation doors are locked while the
+    // shared reset mutation is pending. Typing cannot race the deletion.
+    expect(textarea.disabled).toBe(true);
+    for (const button of within(editor).getByTestId("variables-legend").querySelectorAll("button")) {
+      expect((button as HTMLButtonElement).disabled).toBe(true);
+    }
+    for (const id of ["save-button", "preview-button", "live-button", "reset-button", "scope-chip-global"]) {
+      expect((within(editor).getByTestId(id) as HTMLButtonElement).disabled).toBe(true);
+    }
+    const select = screen.getByTestId("scope-select").querySelector("select") as HTMLSelectElement;
+    expect(select.disabled).toBe(true);
+    for (const card of screen.getAllByTestId("prompt-card")) {
+      expect((card as HTMLButtonElement).disabled).toBe(true);
+    }
+    fireEvent.change(textarea, { target: { value: "während des Resets getippt" } });
+    expect(textarea.value).toBe(OVERRIDE);
+    fireEvent.click(screen.getAllByTestId("prompt-card")[1]!);
+    fireEvent.change(select, { target: { value: "novel-1" } });
+    expect(within(editor).getByTestId("editor-key").textContent).toBe("writing.continuation");
+
+    details["writing.continuation"] = detail({ override: null, effective_content: INHERITED });
+    summaries = baseSummaries();
+    deleted.resolve({ data: undefined, response: new Response(null, { status: 204 }) });
+    await waitFor(() => expect((screen.getByTestId("draft-textarea") as HTMLTextAreaElement).value).toBe(INHERITED));
+    expect((screen.getByTestId("draft-textarea") as HTMLTextAreaElement).disabled).toBe(false);
+  });
+
+  it("a route remount during the fresh detail read never mounts the deleted draft", async () => {
+    const OVERRIDE = "# Globaler Override\n{{tail}}";
+    const INHERITED = "# Global-Standard\n{{tail}}";
+    details["writing.continuation"] = detail({
+      override: { scope: "global", content: OVERRIDE },
+      effective_content: OVERRIDE,
+    });
+    summaries = [summary({ override_global: true }), ...baseSummaries().slice(1)];
+    const fresh = deferred<{ data: Record<string, unknown>; response: Response }>();
+    const originalGet = api.GET.getMockImplementation()! as GetMock;
+    let detailReads = 0;
+    api.GET.mockImplementation(async (path: string, init?: { params?: { path?: Record<string, string>; query?: Record<string, unknown> } }) => {
+      if (
+        path === "/api/prompts/{key}" &&
+        init?.params?.path?.key === "writing.continuation" &&
+        init?.params?.query?.novel_id === undefined
+      ) {
+        detailReads += 1;
+        if (detailReads > 1) return fresh.promise;
+      }
+      return originalGet(path, init);
     });
     api.DELETE.mockImplementation(async () => {
       details["writing.continuation"] = detail({ override: null, effective_content: INHERITED });
+      summaries = baseSummaries();
       return { data: undefined, response: new Response(null, { status: 204 }) };
     });
+
+    const router = renderPage();
+    const editor = await readyEditor();
+    fireEvent.click(within(editor).getByTestId("reset-button"));
+    fireEvent.click(within(editor).getByTestId("reset-go"));
+    await waitFor(() => expect(detailReads).toBe(2));
+
+    // The successful DELETE reset the exact cache entry and its active
+    // observer. A remount can only see loading/fresh data, never OVERRIDE.
+    expect(queryClient.getQueryData(["prompts", "detail", "writing.continuation", null])).toBeUndefined();
+    expect(screen.queryByTestId("prompts-editor")).toBeNull();
+    await act(async () => { router.history.push("/elsewhere"); });
+    expect(screen.getByTestId("away")).toBeTruthy();
+    await act(async () => { router.history.push("/settings/prompts"); });
+    expect(screen.queryByTestId("draft-textarea")).toBeNull();
+    const remountedSelect = screen.getByTestId("scope-select").querySelector("select") as HTMLSelectElement;
+    expect(remountedSelect.disabled).toBe(true);
+    for (const card of screen.getAllByTestId("prompt-card")) {
+      expect((card as HTMLButtonElement).disabled).toBe(true);
+    }
+
+    fresh.resolve({ data: details["writing.continuation"]!, response: ok() });
+    await waitFor(() => expect((screen.getByTestId("draft-textarea") as HTMLTextAreaElement).value).toBe(INHERITED));
+    // One reset read, not a mutation GET plus an invalidation refetch.
+    expect(detailReads).toBe(2);
+  });
+
+  it("a failed fresh detail read keeps the stale detail out and still refreshes catalog marks", async () => {
+    const OVERRIDE = "# Roman-Override\n{{tail}}";
+    details["writing.continuation"] = detail({
+      override: { scope: "novel", content: OVERRIDE },
+      effective_content: OVERRIDE,
+    });
+    const originalGet = api.GET.getMockImplementation()! as GetMock;
+    let detailReads = 0;
+    let novelListReads = 0;
+    api.GET.mockImplementation(async (path: string, init?: { params?: { path?: Record<string, string>; query?: Record<string, unknown> } }) => {
+      if (path === "/api/prompts/{key}" && init?.params?.query?.novel_id === "novel-1") {
+        detailReads += 1;
+        if (detailReads > 1) {
+          return { data: null, error: { detail: "detail unavailable" }, response: new Response(null, { status: 503 }) };
+        }
+      }
+      if (path === "/api/prompts" && init?.params?.query?.novel_id === "novel-1") novelListReads += 1;
+      return originalGet(path, init);
+    });
+    api.DELETE.mockImplementation(async () => {
+      // The DELETE committed. Only the follow-up detail read is down.
+      novelOverridePresent = false;
+      details["writing.continuation"] = detail({ override: null, effective_content: BUNDLED });
+      return { data: undefined, response: new Response(null, { status: 204 }) };
+    });
+
     renderPage();
     await readyEditor();
     const select = screen.getByTestId("scope-select").querySelector("select") as HTMLSelectElement;
     fireEvent.change(select, { target: { value: "novel-1" } });
     const editor = await screen.findByTestId("prompts-editor");
-    const textarea = within(editor).getByTestId("draft-textarea") as HTMLTextAreaElement;
-    expect(textarea.value).toBe("# Roman-Override\n{{tail}}");
-
     fireEvent.click(within(editor).getByTestId("reset-button"));
     fireEvent.click(within(editor).getByTestId("reset-go"));
-    await waitFor(() => expect(textarea.value).toBe(INHERITED));
+
+    expect(await screen.findByTestId("prompts-outage")).toBeTruthy();
+    await waitFor(() => expect(novelListReads).toBeGreaterThanOrEqual(2));
+    expect(queryClient.getQueryData(["prompts", "detail", "writing.continuation", "novel-1"])).toBeUndefined();
+    const marks = queryClient.getQueryData<Record<string, unknown>[]>(["prompts", "list", "novel-1"]);
+    expect(marks?.find((row) => row.key === "writing.continuation")?.override_novel).toBe(false);
   });
 });
 

@@ -33,7 +33,6 @@ import {
   startLiveTest,
   usePreviewPrompt,
   usePromptDiff,
-  useResetPrompt,
   useSavePrompt,
   type LiveTestContext,
   type WireError,
@@ -44,13 +43,13 @@ const SERIF = "[font-family:var(--font-serif)]";
 const MONO = "[font-family:var(--font-mono)]";
 
 const CHIP =
-  `rounded px-2.5 py-1 text-meta font-medium transition-colors ${FOCUS}`;
+  `rounded px-2.5 py-1 text-meta font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`;
 const TOOLBAR_BUTTON =
-  `inline-flex items-center gap-1.5 rounded border border-border bg-panel px-3 py-1.5 text-meta font-semibold text-foreground shadow-sm transition-colors hover:bg-soft ${FOCUS}`;
+  `inline-flex items-center gap-1.5 rounded border border-border bg-panel px-3 py-1.5 text-meta font-semibold text-foreground shadow-sm transition-colors hover:bg-soft disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`;
 const PRIMARY_BUTTON =
-  `inline-flex items-center gap-1.5 rounded bg-primary px-3.5 py-1.5 text-meta font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 ${FOCUS}`;
+  `inline-flex items-center gap-1.5 rounded bg-primary px-3.5 py-1.5 text-meta font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`;
 const TEXTAREA =
-  `min-h-56 w-full resize-y rounded border border-border bg-surface p-3 text-meta leading-relaxed text-foreground outline-none transition-shadow focus:border-focus focus:ring-1 focus:ring-focus ${FOCUS}`;
+  `min-h-56 w-full resize-y rounded border border-border bg-surface p-3 text-meta leading-relaxed text-foreground outline-none transition-shadow focus:border-focus focus:ring-1 focus:ring-focus disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`;
 
 /** The bundled keys' glyphs, in the draft's icon order. The registry's key
  *  set is closed; an unknown key answers no glyph (it never mounts). */
@@ -99,17 +98,20 @@ export function PromptEditor(props: {
   };
   scope: EditorScope;
   onScopeChange: (tier: "novel" | "global") => void;
+  resetPending: boolean;
+  resetFailure: WireError | null;
+  onReset: (key: string, novelId: string | null) => void;
 }) {
   const t = useTranslation();
   const { promptKey, detail, scope } = props;
 
   // The draft: the override in force when one stands, the effective source
-  // otherwise — the baseline the dirty check compares against. The reset to
-  // this baseline rides the component's own identity: the page keys the
-  // editor on the key+scope, so a tier or key switch REMOUNTS and the draft
-  // starts at the new tier's baseline. A refetch that lands mid-typing (the
-  // save's invalidation, the bytes changing under the cursor) never
-  // clobbers the draft — keystrokes belong to their author.
+  // otherwise — the baseline the dirty check compares against. The page keys
+  // the editor on key+scope, so a tier or key switch REMOUNTS and the draft
+  // starts at the new tier's baseline. A confirmed reset advances the page's
+  // editor epoch, so its fresh detail remounts here too. An ordinary refetch
+  // that lands mid-typing (the save's invalidation, the bytes changing under
+  // the cursor) never clobbers the draft — keystrokes belong to their author.
   const baseline = detail.override !== null ? detail.override.content : detail.effective_content;
   const [draft, setDraft] = useState(baseline);
   const [savedFace, setSavedFace] = useState(false);
@@ -121,12 +123,14 @@ export function PromptEditor(props: {
   const novelId = scope.tier === "novel" ? scope.novelId : null;
   const diff = usePromptDiff(promptKey, novelId, diffOpen);
   const save = useSavePrompt();
-  const reset = useResetPrompt();
   const preview = usePreviewPrompt();
+  const { resetPending, resetFailure, onReset } = props;
 
   const dirty = draft !== baseline;
+  const failure = saveFailure ?? resetFailure;
 
   function insertVariable(name: string): void {
+    if (resetPending) return;
     const textarea = textareaRef.current;
     if (textarea === null) {
       setDraft((current) => `${current}{{${name}}}`);
@@ -144,6 +148,7 @@ export function PromptEditor(props: {
   }
 
   function runSave(): void {
+    if (resetPending) return;
     setSavedFace(false);
     setSaveFailure(null);
     save.mutate(
@@ -156,25 +161,14 @@ export function PromptEditor(props: {
   }
 
   function runReset(): void {
-    reset.mutate(
-      { key: promptKey, novelId },
-      {
-        onSuccess: (fresh) => {
-          setConfirmReset(false);
-          setSavedFace(false);
-          setSaveFailure(null);
-          // The reset deleted the override; the draft follows the tier's
-          // inherited baseline the fresh detail answers. The editor's
-          // identity does not change on a reset, so nothing else would move
-          // it — and Save would recreate the row the user just removed.
-          setDraft(fresh.override !== null ? fresh.override.content : fresh.effective_content);
-        },
-        onError: (cause) => setSaveFailure(cause),
-      },
-    );
+    setConfirmReset(false);
+    setSavedFace(false);
+    setSaveFailure(null);
+    onReset(promptKey, novelId);
   }
 
   function runPreview(): void {
+    if (resetPending) return;
     preview.mutate({ key: promptKey, novelId, draft: dirty ? draft : null });
   }
 
@@ -215,7 +209,8 @@ export function PromptEditor(props: {
               type="button"
               data-testid="scope-chip-global"
               aria-pressed={scope.tier === "global"}
-              onClick={() => props.onScopeChange("global")}
+              onClick={() => { if (!resetPending) props.onScopeChange("global"); }}
+              disabled={resetPending}
               className={`${CHIP} ${scope.tier === "global" ? "bg-primary font-semibold text-primary-foreground shadow-sm" : "text-muted hover:text-foreground"}`}
             >
               {t("prompts.editor.scope.global")}
@@ -225,7 +220,8 @@ export function PromptEditor(props: {
                 type="button"
                 data-testid="scope-chip-novel"
                 aria-pressed={scope.tier === "novel"}
-                onClick={() => props.onScopeChange("novel")}
+                onClick={() => { if (!resetPending) props.onScopeChange("novel"); }}
+                disabled={resetPending}
                 className={`${CHIP} ${scope.tier === "novel" ? "bg-primary font-semibold text-primary-foreground shadow-sm" : "text-muted hover:text-foreground"}`}
               >
                 {t("prompts.editor.scope.novel", { novel: scope.filteredNovelTitle })}
@@ -257,7 +253,8 @@ export function PromptEditor(props: {
                 type="button"
                 title={t("prompts.editor.variables.insert")}
                 onClick={() => insertVariable(variable.name)}
-                className={`${MONO} inline-flex items-center gap-1 rounded border border-border bg-surface px-2 py-1 text-xs text-primary transition-colors hover:bg-soft ${FOCUS}`}
+                disabled={resetPending}
+                className={`${MONO} inline-flex items-center gap-1 rounded border border-border bg-surface px-2 py-1 text-xs text-primary transition-colors hover:bg-soft disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`}
               >
                 <span className="font-bold">{`{{${variable.name}}}`}</span>
                 <span className="text-muted">„{variable.example}“</span>
@@ -302,7 +299,9 @@ export function PromptEditor(props: {
                 }
                 spellCheck={false}
                 value={draft}
+                disabled={resetPending}
                 onChange={(event) => {
+                  if (resetPending) return;
                   setDraft(event.target.value);
                   setSavedFace(false);
                 }}
@@ -319,7 +318,7 @@ export function PromptEditor(props: {
               {t("prompts.saved")}
             </p>
           )}
-          {saveFailure !== null && <RefusalFace failure={saveFailure} />}
+          {failure !== null && <RefusalFace failure={failure} />}
           {save.isPending && <p className="text-meta text-muted">{t("prompts.editor.save.busy")}</p>}
           <details className="rounded border border-border bg-surface p-3 text-meta">
             <summary className="cursor-pointer text-muted transition-colors hover:text-foreground">
@@ -337,7 +336,7 @@ export function PromptEditor(props: {
         {/* The toolbar: diff, reset, preview, live test, save. */}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-3">
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" data-testid="diff-button" onClick={() => setDiffOpen((open) => !open)} className={TOOLBAR_BUTTON}>
+            <button type="button" data-testid="diff-button" onClick={() => setDiffOpen((open) => !open)} disabled={resetPending} className={TOOLBAR_BUTTON}>
               <Icon name="viewList" size={15} />
               <span>{t("prompts.editor.diff.button")}</span>
             </button>
@@ -346,6 +345,7 @@ export function PromptEditor(props: {
               data-testid="reset-button"
               title={scope.tier === "novel" ? t("prompts.editor.resetTitle") : t("prompts.editor.deleteTitle")}
               onClick={() => setConfirmReset(true)}
+              disabled={resetPending}
               className={TOOLBAR_BUTTON}
             >
               <Icon name="refresh" size={15} />
@@ -354,14 +354,15 @@ export function PromptEditor(props: {
             {confirmReset && (
               <span className="inline-flex items-center gap-2 rounded border border-warning/50 bg-panel px-2.5 py-1 text-meta text-foreground" data-testid="reset-confirm">
                 <span>{t("prompts.editor.resetConfirm")}</span>
-                <button type="button" data-testid="reset-go" onClick={runReset} className={`rounded bg-primary px-2 py-1 text-meta font-semibold text-primary-foreground ${FOCUS}`}>
+                <button type="button" data-testid="reset-go" onClick={runReset} disabled={resetPending} className={`rounded bg-primary px-2 py-1 text-meta font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`}>
                   {t("prompts.editor.resetGo")}
                 </button>
                 <button
                   type="button"
                   data-testid="reset-cancel"
                   onClick={() => setConfirmReset(false)}
-                  className={`rounded px-2 py-1 text-meta text-muted transition-colors hover:text-foreground ${FOCUS}`}
+                  disabled={resetPending}
+                  className={`rounded px-2 py-1 text-meta text-muted transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`}
                 >
                   {t("prompts.live.cancel")}
                 </button>
@@ -370,11 +371,11 @@ export function PromptEditor(props: {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" data-testid="preview-button" onClick={runPreview} className={TOOLBAR_BUTTON}>
+            <button type="button" data-testid="preview-button" onClick={runPreview} disabled={resetPending} className={TOOLBAR_BUTTON}>
               <Icon name="insights" size={15} />
               <span>{t("prompts.preview.button")}</span>
             </button>
-            <button type="button" data-testid="save-button" onClick={runSave} disabled={save.isPending} className={PRIMARY_BUTTON}>
+            <button type="button" data-testid="save-button" onClick={runSave} disabled={save.isPending || resetPending} className={PRIMARY_BUTTON}>
               <Icon name="check" size={15} />
               <span>{save.isPending ? t("prompts.editor.save.busy") : t("prompts.editor.save")}</span>
             </button>
@@ -386,7 +387,7 @@ export function PromptEditor(props: {
           the trigger in every phase, exactly where the states reference
           draws Werkzeug 02. The overrides draft's extra toolbar button folds
           into this card's trigger: one door per action. */}
-      <LiveTest promptKey={promptKey} novelId={novelId} dirty={dirty} draft={dirty ? draft : null} />
+      <LiveTest promptKey={promptKey} novelId={novelId} dirty={dirty} draft={dirty ? draft : null} disabled={resetPending} />
 
       {/* The preview card: the provider-free render and its diagnostics. */}
       {(preview.isPending || preview.data !== undefined || preview.isError) && (
@@ -504,7 +505,7 @@ type LivePhase =
   | { phase: "failed"; kind: "rateLimited" | "noContext" | "embeddingMismatch" | "keyUnavailable" | "provider" | "interrupted" | "network" | "generic"; code?: string; retryAfter?: number }
   | { phase: "refused"; failure: WireError };
 
-function LiveTest({ promptKey, novelId, dirty, draft }: { promptKey: string; novelId: string | null; dirty: boolean; draft: string | null }) {
+function LiveTest({ promptKey, novelId, dirty, draft, disabled }: { promptKey: string; novelId: string | null; dirty: boolean; draft: string | null; disabled: boolean }) {
   const t = useTranslation();
   const [phase, setPhase] = useState<LivePhase>({ phase: "idle" });
   const controllerRef = useRef<AbortController | null>(null);
@@ -512,6 +513,7 @@ function LiveTest({ promptKey, novelId, dirty, draft }: { promptKey: string; nov
   useEffect(() => () => controllerRef.current?.abort(), []);
 
   function run(): void {
+    if (disabled) return;
     const controller = new AbortController();
     controllerRef.current = controller;
     setPhase({ phase: "running", context: null, answer: "" });
@@ -594,7 +596,7 @@ function LiveTest({ promptKey, novelId, dirty, draft }: { promptKey: string; nov
         </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button type="button" data-testid="live-button" onClick={run} disabled={running} className={PRIMARY_BUTTON}>
+        <button type="button" data-testid="live-button" onClick={run} disabled={running || disabled} className={PRIMARY_BUTTON}>
           <Icon name="play" size={15} />
           <span>{t("prompts.live.test")}</span>
         </button>
