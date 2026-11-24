@@ -661,18 +661,19 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     return api.GET.mock.calls.filter(([p]) => p === path).length;
   }
 
-  it("addEdge and merge are live; newEntity stays an honest disabled gap", async () => {
+  it("addEdge, merge and the new-entity door are live", async () => {
     await renderGraph();
     await screen.findAllByTestId("graph-node");
     const add = screen.getByRole("button", { name: de["knowledge.graph.addEdge"] });
     expect((add as HTMLButtonElement).disabled).toBe(false);
     const merge = screen.getByRole("button", { name: de["knowledge.graph.merge"] });
     expect((merge as HTMLButtonElement).disabled).toBe(false);
-    const newEntity = screen.getByRole("button", { name: new RegExp(de["knowledge.graph.newEntity"]) });
-    expect((newEntity as HTMLButtonElement).disabled).toBe(true);
-    // The gap note tells the truth — no dead „arrives with the dialogs" promise.
-    expect(newEntity.getAttribute("title")).toContain(de["knowledge.graph.newEntityNote"]);
-    expect(de["knowledge.graph.newEntityNote"]).not.toContain("CRUD");
+    const newEntity = screen.getByRole("button", { name: de["knowledge.graph.newEntity"] });
+    expect((newEntity as HTMLButtonElement).disabled).toBe(false);
+    // The door opens the hand-made create — one dialog for both paths.
+    fireEvent.click(newEntity);
+    const dialog = await screen.findByTestId("entity-create-dialog");
+    expect(within(dialog).getByText(de["knowledge.create.title"])).toBeTruthy();
   });
 
   it("the addEdge door opens the create dialog; a save refetches the edges", async () => {

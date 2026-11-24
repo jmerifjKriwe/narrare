@@ -15,6 +15,7 @@ import {
   type Activity,
   type Chapter,
   type Entity,
+  type EntityCreate,
   type Finding,
   type Hit,
   type Job,
@@ -1204,6 +1205,48 @@ export function useMergeEntities(
       void invalidateEntities(novelId);
       // The merge re-points the source's edges to the target: cards on
       // either end of a moved edge must ask again.
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+      void invalidateNovelShelf();
+    },
+  });
+}
+
+/** The create's failure, enriched for the dialog: the status picks the copy
+ *  family, `code` and `detail` carry the backend's coded refusal — the
+ *  prompt editor's precedent beside the knowledge hooks. */
+export type WireError = Error & { status?: number; code?: string; detail?: string };
+
+function createEntityFailure(cause: unknown): WireError {
+  const failure = cause as {
+    response?: Response;
+    error?: { detail?: { code?: string; detail?: string } };
+  };
+  const response = failure?.response;
+  const detail = failure?.error?.detail;
+  return Object.assign(new Error(`create refused: ${response?.status ?? "unknown"}`), {
+    status: response?.status,
+    code: detail?.code,
+    detail: detail?.detail,
+  });
+}
+
+/**
+ * Create an entity by hand, with its relation lines, in one transaction.
+ * The settle invalidates the whole entity and relation families — the graph
+ * and the dossiers refetch the server's truth, never an optimistic row — and
+ * the shelf's canon rule follows, because a birth is a write to the book.
+ */
+export function useCreateEntity(): UseMutationResult<Entity, WireError, EntityCreate> {
+  return useMutation({
+    mutationFn: async (body: EntityCreate) => {
+      const { data, response, error } = await client.POST("/api/knowledge/entities", {
+        body,
+      });
+      if (!response.ok || !data) throw createEntityFailure({ response, error });
+      return data;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "entities"] });
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
       void invalidateNovelShelf();
     },

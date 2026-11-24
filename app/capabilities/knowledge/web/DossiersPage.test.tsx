@@ -341,13 +341,14 @@ describe("a card opens the shared dossier — one component, two homes", () => {
 });
 
 describe("the invented fields stand as honest disabled gaps", () => {
-  it("the new-dossier door is disabled with the permanent truth — no create endpoint exists", async () => {
+  it("the new-dossier door opens the hand-made create", async () => {
     await renderDossiers();
     await screen.findAllByTestId("dossier-card");
-    const door = screen.getByRole("button", { name: new RegExp(de["knowledge.dossiers.newDossier"]) });
-    expect((door as HTMLButtonElement).disabled).toBe(true);
-    expect(door.getAttribute("title")).toContain(de["knowledge.graph.newEntityNote"]);
-    expect(de["knowledge.graph.newEntityNote"]).not.toContain("CRUD");
+    const door = screen.getByRole("button", { name: de["knowledge.dossiers.newDossier"] });
+    expect((door as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(door);
+    const dialog = await screen.findByTestId("entity-create-dialog");
+    expect(within(dialog).getByText(de["knowledge.create.title"])).toBeTruthy();
   });
 
   it("the draft's profile areas stand disabled inside the dossier, with their gap note", async () => {

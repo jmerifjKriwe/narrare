@@ -118,6 +118,33 @@ class RelationCreate(BaseModel):
     note: str | None = None
 
 
+class RelationLine(BaseModel):
+    """One relation line of a create-by-hand body: the target row, its type,
+    an optional note. The client resolved the target to an entity id before
+    the request; the service still checks the row belongs to the novel."""
+
+    to_entity_id: UUID
+    relation_type: str = Field(min_length=1, max_length=80)
+    note: str | None = None
+
+
+class EntityCreate(BaseModel):
+    """The POST body of an entity: its fields and the relation lines to place.
+
+    The values are checked by the service against the same contract the
+    update path reads — the schema only carries them, so a refusal is the
+    coded ``entity-invalid``, never the framework's field list.
+    """
+
+    novel_id: UUID
+    name: str
+    type: str
+    aliases: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    content: str = ""
+    relations: list[RelationLine] = Field(default_factory=list[RelationLine])
+
+
 class RelationPatch(BaseModel):
     """The PATCH body of an edge: type and note only.
 

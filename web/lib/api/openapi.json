@@ -556,6 +556,57 @@
         "title": "EmbeddingMismatchRead",
         "type": "object"
       },
+      "EntityCreate": {
+        "description": "The POST body of an entity: its fields and the relation lines to place.\n\nThe values are checked by the service against the same contract the\nupdate path reads — the schema only carries them, so a refusal is the\ncoded ``entity-invalid``, never the framework's field list.",
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "relations": {
+            "items": {
+              "$ref": "#/components/schemas/RelationLine"
+            },
+            "title": "Relations",
+            "type": "array"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "novel_id",
+          "name",
+          "type"
+        ],
+        "title": "EntityCreate",
+        "type": "object"
+      },
       "EntityMerge": {
         "description": "The merge's whole ask: which row survives.",
         "properties": {
@@ -2680,6 +2731,39 @@
         "title": "RelationCreate",
         "type": "object"
       },
+      "RelationLine": {
+        "description": "One relation line of a create-by-hand body: the target row, its type,\nan optional note. The client resolved the target to an entity id before\nthe request; the service still checks the row belongs to the novel.",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "relation_type": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Relation Type",
+            "type": "string"
+          },
+          "to_entity_id": {
+            "format": "uuid",
+            "title": "To Entity Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "to_entity_id",
+          "relation_type"
+        ],
+        "title": "RelationLine",
+        "type": "object"
+      },
       "RelationPatch": {
         "description": "The PATCH body of an edge: type and note only.\n\nThe ends are immutable — moving an edge is delete plus create — so no\nfield here could carry them. ``model_fields_set`` tells a carried\n``null`` note (cleared) from an absent one (untouched).",
         "properties": {
@@ -4535,6 +4619,48 @@
           }
         },
         "summary": "Delete Document",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/entities": {
+      "post": {
+        "description": "Create an entity by hand, with its relation lines, in one transaction.\n\nReturn the entity; raise HTTP 404 for an absent or unowned novel, or\nHTTP 422 for an invalid name, type or label (``entity-invalid``), a\nrelation line outside the novel (``relation-target-invalid``, naming\nthe row), or a duplicate line (``relation-duplicate``).",
+        "operationId": "create_entity_api_knowledge_entities_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntityCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Entity",
         "tags": [
           "knowledge"
         ]

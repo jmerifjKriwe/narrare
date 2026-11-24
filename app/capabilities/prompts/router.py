@@ -47,6 +47,7 @@ from app.capabilities.prompts.service import (
 from app.kernel.auth import current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
+from app.kernel.errors import coded_detail
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionEvent, CompletionRequest, Delta, Message, error_code
 from app.kernel.llm.streaming import (
@@ -194,7 +195,7 @@ async def preview_prompt(
 
 def _coded(status: int, code: str, detail: str) -> HTTPException:
     """The live test's coded face: the code the surfaces localize, the detail."""
-    return HTTPException(status_code=status, detail={"code": code, "detail": detail})
+    return HTTPException(status_code=status, detail=coded_detail(code, detail))
 
 
 def _live_test_responses() -> dict[int | str, dict[str, Any]]:

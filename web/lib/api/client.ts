@@ -63,6 +63,10 @@ export type Assignment = components["schemas"]["AssignmentRead"];
  *  or named why. */
 export type ModelTestResult = components["schemas"]["ModelTestResult"];
 export type Entity = components["schemas"]["EntityRead"];
+/** The create-by-hand POST body (W9): the entity's fields and the relation
+ *  lines to place in the same transaction. The schema's defaults type
+ *  `content` as required; the dialog always sends it. */
+export type EntityCreate = components["schemas"]["EntityCreate"];
 export type Suggestion = components["schemas"]["SuggestionRead"];
 export type Relation = components["schemas"]["RelationRead"];
 export type Accept = components["schemas"]["AcceptRead"];

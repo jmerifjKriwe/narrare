@@ -31,7 +31,12 @@ from app.capabilities.knowledge.repository import (
     entity_search_text,
     touch_novel,
 )
-from app.capabilities.knowledge.schemas import EntityUpdate, ReembedResult, RelationPatch
+from app.capabilities.knowledge.schemas import (
+    EntityCreate,
+    EntityUpdate,
+    ReembedResult,
+    RelationPatch,
+)
 from app.kernel.auth import SetupRequiredError
 from app.kernel.contracts.models import (
     ENTITY_TYPES,
@@ -102,6 +107,18 @@ class RelationExistsError(Exception):
     this relation_type; the edge, not the wording, is the duplicate."""
 
 
+class RelationTargetInvalidError(ValueError):
+    """A create's relation line names an entity outside the novel.
+
+    ``index`` is the refused line's position in the request's list, so the
+    answer can name the row the writer has to correct.
+    """
+
+    def __init__(self, index: int) -> None:
+        super().__init__(f"relation row {index} names an entity outside the novel")
+        self.index = index
+
+
 class SkippedRelation(NamedTuple):
     """A proposed relation accept could not place. The target's name rides
     as the proposal spelled it; the type rides as accept stores it — the
@@ -132,6 +149,25 @@ def _clean_labels(values: list[str] | None, what: str) -> list[str]:
             seen.add(folded)
             cleaned.append(label)
     return cleaned
+
+
+def _validate_entity_name(name: str | None) -> str:
+    """The name the contract stores: nonblank after stripping, at most the
+    column's width. The one check both the birth and the correction read."""
+    if not name or not name.strip():
+        raise InvalidEntityUpdateError("an entity needs a name")
+    if len(name) > MAX_NAME_LENGTH:
+        raise InvalidEntityUpdateError(
+            f"an entity's name is over the {MAX_NAME_LENGTH} character limit"
+        )
+    return name
+
+
+def _validate_entity_type(type_: str | None) -> str:
+    """The type the contract stores: one of the extraction vocabulary's."""
+    if type_ is None or type_ not in ENTITY_TYPES:
+        raise InvalidEntityUpdateError(f"an entity's type is not one of {'|'.join(ENTITY_TYPES)}")
+    return type_
 
 
 def _union_labels(
@@ -322,6 +358,60 @@ class KnowledgeService:
         await self._own_novel(novel_id)
         return await self.suggestions.list_for_novel(novel_id, status)
 
+    async def _create_entity_row(
+        self,
+        novel_id: UUID,
+        name: str | None,
+        type: str | None,
+        content: str,
+        *,
+        aliases: Sequence[str] | None = None,
+        tags: Sequence[str] | None = None,
+    ) -> Entity:
+        """Validate the entity contract and flush the row; no commit.
+
+        The one birth path: accept and the hand-made create both call it, and
+        name, type and labels are checked exactly as ``update_entity`` checks
+        them, so a row born here can never carry a value the correction path
+        would refuse.
+        """
+        return await self.entities.create(
+            novel_id,
+            _validate_entity_name(name),
+            _validate_entity_type(type),
+            content or "",
+            aliases=_clean_labels(list(aliases or []), "alias"),
+            tags=_clean_labels(list(tags or []), "tag"),
+        )
+
+    async def _place_relation(
+        self,
+        entity: Entity,
+        to_entity_id: UUID,
+        relation_type: str,
+        note: str | None,
+    ) -> EntityRelation:
+        """Validate one edge from this entity and flush it; no commit.
+
+        The target must be an owned entity of the same novel, the type
+        nonblank and at most 80 characters, and the exact edge not already
+        present — the add_relation contract, shared with the hand-made create
+        and accept's proposal placement so the three cannot drift.
+        """
+        target = await self.session.scalar(
+            select(Entity).where(
+                Entity.id == to_entity_id,
+                Entity.user_id == self.user_id,
+                Entity.novel_id == entity.novel_id,
+            )
+        )
+        if target is None:
+            raise NotFoundError
+        checked = _validate_relation_type(relation_type)
+        if await self.relations.edge(entity.id, to_entity_id, checked) is not None:
+            raise RelationExistsError
+        return await self.relations.create(entity.id, to_entity_id, checked, note)
+
     async def accept_suggestion(self, suggestion_id: UUID) -> tuple[Entity, list[SkippedRelation]]:
         """Accept: create the entity, place its proposed relations, and consume
         the suggestion, one transaction.
@@ -348,7 +438,7 @@ class KnowledgeService:
             raise NotFoundError
         if suggestion.status != PENDING:
             raise AlreadyReviewedError
-        entity = await self.entities.create(
+        entity = await self._create_entity_row(
             suggestion.novel_id,
             suggestion.name,
             suggestion.type,
@@ -403,16 +493,21 @@ class KnowledgeService:
                 skipped.append(SkippedRelation(target_name, relation_type))
                 continue
             target = next(iter(matches.values()))
-            if await self.relations.edge(entity.id, target.id, relation_type) is not None:
-                continue
             try:
                 async with self.session.begin_nested():
-                    await self.relations.create(entity.id, target.id, relation_type, None)
+                    await self._place_relation(entity, target.id, relation_type, None)
+            except NotFoundError:
+                # The target vanished mid-race: the scoped absence's own
+                # semantics — one skip, and the next proposal goes on.
+                skipped.append(SkippedRelation(target_name, relation_type))
+                continue
+            except RelationExistsError:
+                # A repeated proposal folds into the look-before-write: the
+                # queue's wording never becomes a second relation.
+                continue
             except IntegrityError as error:
                 sqlstate = getattr(error.orig, "sqlstate", None)
                 if sqlstate == FOREIGN_KEY_VIOLATION:
-                    # The target vanished mid-race: the scoped absence's own
-                    # semantics — one skip, and the next proposal goes on.
                     skipped.append(SkippedRelation(target_name, relation_type))
                     continue
                 if sqlstate == UNIQUE_VIOLATION:
@@ -521,21 +616,9 @@ class KnowledgeService:
         # assignments are in-memory until the single commit below, so a
         # refusal on any field leaves the row exactly as it was.
         if "name" in provided:
-            name = changes.name
-            if not name or not name.strip():
-                raise InvalidEntityUpdateError("an entity needs a name")
-            if len(name) > MAX_NAME_LENGTH:
-                raise InvalidEntityUpdateError(
-                    f"an entity's name is over the {MAX_NAME_LENGTH} character limit"
-                )
-            entity.name = name
+            entity.name = _validate_entity_name(changes.name)
         if "type" in provided:
-            type_ = changes.type
-            if type_ not in ENTITY_TYPES:
-                raise InvalidEntityUpdateError(
-                    f"an entity's type is not one of {'|'.join(ENTITY_TYPES)}"
-                )
-            entity.type = type_
+            entity.type = _validate_entity_type(changes.type)
         if "aliases" in provided:
             entity.aliases = _clean_labels(changes.aliases, "alias")
         if "tags" in provided:
@@ -590,6 +673,63 @@ class KnowledgeService:
             raise NotFoundError
         return await self.relations.list_for_entity(entity_id)
 
+    async def create_entity(self, payload: EntityCreate) -> Entity:
+        """Create an entity by hand, with every relation line, one transaction.
+
+        The entity and its edges land together or not at all: a line whose
+        target is not an owned entity of this novel refuses the whole request
+        with the line's index, and a line repeating an earlier one is the
+        duplicate refusal — the entity row and the edges already flushed roll
+        back with it. Duplicate names are allowed (the graph can merge them);
+        the dialog warns without blocking.
+
+        Commit and return the entity. Raise NotFoundError for an absent or
+        unowned novel, InvalidEntityUpdateError for an invalid name, type,
+        alias or tag, InvalidRelationError for a blank or over-long relation
+        type, RelationTargetInvalidError for a line outside the novel, or
+        RelationExistsError for a duplicate line.
+        """
+        await self._own_novel(payload.novel_id)
+        entity = await self._create_entity_row(
+            payload.novel_id,
+            payload.name,
+            payload.type,
+            payload.content,
+            aliases=payload.aliases,
+            tags=payload.tags,
+        )
+        try:
+            for index, line in enumerate(payload.relations):
+                try:
+                    await self._place_relation(
+                        entity, line.to_entity_id, line.relation_type, line.note
+                    )
+                except NotFoundError:
+                    raise RelationTargetInvalidError(index) from None
+                except RelationExistsError as error:
+                    raise RelationExistsError(
+                        f"relation row {index} duplicates an earlier relation"
+                    ) from error
+                except IntegrityError as error:
+                    # The look-before-write raced a writer: the foreign key's
+                    # vanished target is this row's invalid target, the unique
+                    # violation its duplicate. Either way the whole create
+                    # rolls back below.
+                    if getattr(error.orig, "sqlstate", None) == FOREIGN_KEY_VIOLATION:
+                        raise RelationTargetInvalidError(index) from None
+                    if getattr(error.orig, "sqlstate", None) == UNIQUE_VIOLATION:
+                        raise RelationExistsError(
+                            f"relation row {index} duplicates an earlier relation"
+                        ) from None
+                    raise
+        except InvalidRelationError, RelationTargetInvalidError, RelationExistsError:
+            await self.session.rollback()
+            raise
+        # the canon gained a row and its edges (D8): the book was written in
+        await touch_novel(self.session, self.user_id, payload.novel_id)
+        await self.session.commit()
+        return entity
+
     async def add_relation(
         self, entity_id: UUID, to_entity_id: UUID, relation_type: str, note: str | None
     ) -> EntityRelation:
@@ -609,22 +749,8 @@ class KnowledgeService:
         entity = await self.entities.get(entity_id)
         if entity is None:
             raise NotFoundError
-        # The target must be an owned entity of the same story: an edge
-        # joins one novel, so any other answer is the scoped absence.
-        target = await self.session.scalar(
-            select(Entity).where(
-                Entity.id == to_entity_id,
-                Entity.user_id == self.user_id,
-                Entity.novel_id == entity.novel_id,
-            )
-        )
-        if target is None:
-            raise NotFoundError
-        checked = _validate_relation_type(relation_type)
-        if await self.relations.edge(entity_id, to_entity_id, checked) is not None:
-            raise RelationExistsError
         try:
-            relation = await self.relations.create(entity_id, to_entity_id, checked, note)
+            relation = await self._place_relation(entity, to_entity_id, relation_type, note)
         except IntegrityError as error:
             # The constraint caught what the look-before-write missed. The two
             # races wear different answers, told apart by the violated

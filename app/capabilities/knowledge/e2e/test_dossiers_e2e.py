@@ -54,9 +54,8 @@ def _goto_dossiers(page: Page, novel_id: str) -> None:
 
 def test_the_dossiers_browse_the_real_cast(page: Page, installed: Stack) -> None:
     """The grid on the rows' own facts, the contract's nine tabs with real
-    counts (a type the canon does not carry stands at zero), the create door
-    an honest disabled gap, and the no-selection prompt — never an invented
-    dossier."""
+    counts (a type the canon does not carry stands at zero), the live create
+    door, and the no-selection prompt — never an invented dossier."""
     novel_id, _ = _seed_dossiers()
     _goto_dossiers(page, novel_id)
 
@@ -77,14 +76,9 @@ def test_the_dossiers_browse_the_real_cast(page: Page, installed: Stack) -> None
     expect(tabs.filter(has_text="Fraktion")).to_contain_text("1")
     expect(tabs.filter(has_text="Objekt")).to_contain_text("0")
 
-    # The create door: no endpoint exists — disabled with the permanent truth.
+    # The create door: live since W9 — it opens the hand-made create.
     create = page.get_by_role("button", name="Neues Dossier")
-    expect(create).to_be_disabled()
-    expect(create).to_have_attribute(
-        "title",
-        "Neues Dossier (Entitäten entstehen über die Extraktions-Review;"
-        " die API bietet keine direkte Anlage.)",
-    )
+    expect(create).to_be_enabled()
     expect(page.get_by_test_id("dossiers-no-selection")).to_be_visible()
     assert_accessible(page)
 
