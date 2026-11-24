@@ -481,6 +481,33 @@ describe("the reset", () => {
       params: expect.objectContaining({ path: { key: "writing.continuation" }, query: {} }),
     })));
   });
+
+  it("a confirmed reset clears the draft to the inherited baseline", async () => {
+    // The novel's override is deleted; the fresh detail answers the global
+    // standard. The editor's identity does not change on a reset, so the
+    // draft must follow that detail explicitly — otherwise preview and the
+    // live test keep using the deleted override, and Save recreates it.
+    const INHERITED = "# Global-Standard\n{{tail}}";
+    details["writing.continuation"] = detail({
+      override: { scope: "novel", content: "# Roman-Override\n{{tail}}" },
+      effective_content: "# Roman-Override\n{{tail}}",
+    });
+    api.DELETE.mockImplementation(async () => {
+      details["writing.continuation"] = detail({ override: null, effective_content: INHERITED });
+      return { data: undefined, response: new Response(null, { status: 204 }) };
+    });
+    renderPage();
+    await readyEditor();
+    const select = screen.getByTestId("scope-select").querySelector("select") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "novel-1" } });
+    const editor = await screen.findByTestId("prompts-editor");
+    const textarea = within(editor).getByTestId("draft-textarea") as HTMLTextAreaElement;
+    expect(textarea.value).toBe("# Roman-Override\n{{tail}}");
+
+    fireEvent.click(within(editor).getByTestId("reset-button"));
+    fireEvent.click(within(editor).getByTestId("reset-go"));
+    await waitFor(() => expect(textarea.value).toBe(INHERITED));
+  });
 });
 
 describe("the diff", () => {

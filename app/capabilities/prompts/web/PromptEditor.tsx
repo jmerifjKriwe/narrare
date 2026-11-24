@@ -150,10 +150,15 @@ export function PromptEditor(props: {
     reset.mutate(
       { key: promptKey, novelId },
       {
-        onSuccess: () => {
+        onSuccess: (fresh) => {
           setConfirmReset(false);
           setSavedFace(false);
           setSaveFailure(null);
+          // The reset deleted the override; the draft follows the tier's
+          // inherited baseline the fresh detail answers. The editor's
+          // identity does not change on a reset, so nothing else would move
+          // it — and Save would recreate the row the user just removed.
+          setDraft(fresh.override !== null ? fresh.override.content : fresh.effective_content);
         },
         onError: (cause) => setSaveFailure(cause),
       },

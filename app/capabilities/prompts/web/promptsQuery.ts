@@ -67,6 +67,16 @@ export function usePromptsList(novelId: string | null): UseQueryResult<PromptSum
 
 /** One key as the editor shows it, for the editing scope: the bundled
  *  source, the legend, the override in force, the effective source. */
+async function fetchPromptDetail(key: string, novelId: string | null): Promise<PromptDetail> {
+  // The scope ask always names its query: an empty one is the global
+  // tier, a novel id the novel's — one shape to assert on.
+  const { data, response } = await client.GET("/api/prompts/{key}", {
+    params: { path: { key }, query: novelId ? { novel_id: novelId } : {} },
+  });
+  if (!response.ok || !data) throw new Error(`prompt unavailable: ${response.status}`);
+  return data;
+}
+
 export function usePromptDetail(
   key: string | null,
   novelId: string | null,
@@ -75,15 +85,7 @@ export function usePromptDetail(
     queryKey: ["prompts", "detail", key, novelId],
     refetchOnWindowFocus: false,
     enabled: key !== null,
-    queryFn: async () => {
-      // The scope ask always names its query: an empty one is the global
-      // tier, a novel id the novel's — one shape to assert on.
-      const { data, response } = await client.GET("/api/prompts/{key}", {
-        params: { path: { key: key as string }, query: novelId ? { novel_id: novelId } : {} },
-      });
-      if (!response.ok || !data) throw new Error(`prompt unavailable: ${response.status}`);
-      return data;
-    },
+    queryFn: () => fetchPromptDetail(key as string, novelId),
   });
 }
 
@@ -129,9 +131,11 @@ export function useSavePrompt(): UseMutationResult<
   });
 }
 
-/** The scope's override reset (the other tier untouched). Idempotent 204. */
+/** The scope's override reset (the other tier untouched). Idempotent 204;
+ *  the fresh detail answers the caller, so the editor can follow the
+ *  inherited baseline the deletion restored. */
 export function useResetPrompt(): UseMutationResult<
-  void,
+  PromptDetail,
   WireError,
   { key: string; novelId: string | null }
 > {
@@ -141,6 +145,8 @@ export function useResetPrompt(): UseMutationResult<
         params: { path: { key }, query: novelId ? { novel_id: novelId } : {} },
       });
       if (!response.ok) throw enrich({ response, error }, "prompt reset");
+      // The 204 carries no body: one read answers the tier's new baseline.
+      return fetchPromptDetail(key, novelId);
     },
     onSuccess: invalidate,
   });
