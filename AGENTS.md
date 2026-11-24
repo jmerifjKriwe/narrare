@@ -16,6 +16,13 @@ governance budget are normative in
 not restated here — read that page before your first change. A change that
 violates one of its rules is a review finding, not a style question.
 
+## Research
+
+Codebase and documentation research goes to the `explore` subagent. The
+coordinator decides, dispatches and reviews; it does not search files or browse
+docs itself unless the question is about the dispatch setup. Research returns
+paths and line numbers plus a direct answer, never a plan or a code change.
+
 ## Verify
 
 `just check` (fast) · `just test-file <path>` (inner loop) · `just test-e2e-file <path>`
@@ -120,13 +127,11 @@ as a cleanup task at the end. A plan has as many tasks as the change has seams,
 not as many as it has files — tasks that share files and a seam are one task too
 many.
 
-Standing preference (2026-11-14, owner decision, rev. 6; supersedes 2026-11-12):
-the agent-model assignment for narrare is — Coordinator
-`zai-coding-plan/glm-5.3`, Coding Agent `qwencloud/qwen4-max-preview`,
-Reviewer `zai-coding-plan/glm-5.3`, UI Agent
-`qwencloud/qwen4-max-preview`. UI tasks are implemented by the UI Agent
-and reviewed by the Reviewer. (Both implementation seats ride on qwencloud;
-OpenCode Go's monthly quota stays exhausted, so neither seat rides on Go.)
+Standing roles (owner decision): the coordinator plans and dispatches, the
+implementer implements, the reviewer reviews, and UI tasks are implemented by
+the UI Agent and reviewed by the Reviewer. Concrete model pins belong in each
+developer's local OpenCode config, never in this shared file — teammates use
+different providers and quotas.
 
 Keep the PR updated while the work continues: push after every green task
 group, so review never faces a wall of commits at the end.
