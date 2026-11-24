@@ -17,9 +17,13 @@ agent orchestration appears — not before.
 """
 
 from app.kernel.llm.contract import PURPOSE_PREFIX, SOURCE_PREFIX, TextProvider
+from app.kernel.llm.structured import AuditedCall, MalformedAnswerError, ask_structured
 
 __all__ = [
     "PURPOSE_PREFIX",
     "SOURCE_PREFIX",
+    "AuditedCall",
+    "MalformedAnswerError",
     "TextProvider",
+    "ask_structured",
 ]

@@ -53,7 +53,7 @@ async def _ask(provider: TextProvider, request: CompletionRequest) -> tuple[str,
     return "".join(pieces), round((monotonic() - started) * 1000), usage
 
 
-def _read[T](answer: str, parse: Callable[[str], list[T]]) -> tuple[list[T] | None, str]:
+def _read[T](answer: str, parse: Callable[[str], T]) -> tuple[T | None, str]:
     """Parse the answer, then its repair; report the reason the last attempt refused."""
     try:
         return parse(answer), ""
@@ -73,9 +73,9 @@ async def ask_structured[T](
     prompt: str,
     *,
     schema: dict[str, object],
-    parse: Callable[[str], list[T]],
+    parse: Callable[[str], T],
     audit: Callable[[AuditedCall], Awaitable[None]],
-) -> list[T]:
+) -> T:
     """Ask for a schema-bound answer; repair, retry once, then raise the reason.
 
     ``parse`` raises ``ValueError`` with a message a writer can act on; that
