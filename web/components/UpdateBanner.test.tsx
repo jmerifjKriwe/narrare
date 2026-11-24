@@ -288,4 +288,19 @@ describe("ReleaseNotesDialog — the markdown and the two answers", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(opener));
   });
+
+  it("a press on the scrim closes the modal", async () => {
+    renderBanner(AVAILABLE);
+    await openNotes();
+
+    // The scrim is the only control named Close outside the panel: the panel
+    // holds the other one in its footer.
+    const scrim = screen
+      .getAllByRole("button", { name: "Close" })
+      .find((button) => button.closest("[role='dialog']") === null);
+    expect(scrim).toBeDefined();
+    fireEvent.click(scrim as HTMLElement);
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
 });

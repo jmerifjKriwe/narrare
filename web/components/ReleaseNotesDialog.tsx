@@ -120,19 +120,20 @@ export function ReleaseNotesDialog({
   const version = update.latest_version ?? update.current_version;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4 backdrop-blur-[1px]"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label={t("shell.update.close")}
+        onClick={onClose}
+        className="absolute inset-0 bg-scrim backdrop-blur-[1px]"
+      />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={headingId}
         data-testid="release-notes-dialog"
-        className="flex max-h-[80vh] w-full max-w-xl flex-col rounded-lg border border-border bg-surface-container-lowest shadow-overlay"
+        className="relative flex max-h-[80vh] w-full max-w-xl flex-col rounded-lg border border-border bg-surface-container-lowest shadow-overlay"
       >
         <div className="flex items-start justify-between gap-4 border-b border-rule px-6 py-4">
           <h2 id={headingId} className="text-title font-semibold text-foreground">
