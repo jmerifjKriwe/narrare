@@ -7,7 +7,10 @@
  * The figures are the rows' own — never the draft's mock numbers.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, configure, renderHook, waitFor } from "@testing-library/react";
+
+// Full-suite load: see WorkspacePage.test.tsx.
+configure({ asyncUtilTimeout: 5000 });
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

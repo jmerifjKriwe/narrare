@@ -15,7 +15,10 @@
  * section's door routes there at the profile section's address, held while
  * edits stand like every close path.
  */
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
+
+// Full-suite load: see WorkspacePage.test.tsx.
+configure({ asyncUtilTimeout: 5000 });
 import { QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
