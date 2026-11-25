@@ -12,7 +12,7 @@ import { FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 
 import { NAME_MAX } from "../crudDialogs";
-import { SuggestedMark } from "./SuggestedMark";
+import { SuggestedMark } from "../SuggestedMark";
 
 /** The chip list after a draft: trimmed, folded into an existing chip
  *  case-insensitively, or appended when it is new. The API dedupes too, so

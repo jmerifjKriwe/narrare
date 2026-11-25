@@ -15,15 +15,7 @@ import { CARD_EYEBROW, FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 
 import { relationTypeLabel } from "../relations";
-
-function SuggestedMark() {
-  const t = useTranslation();
-  return (
-    <span className="rounded bg-secondary-container/50 px-1 py-0.5 font-mono text-[9px] text-primary">
-      {t("knowledge.interview.suggested")}
-    </span>
-  );
-}
+import { SuggestedMark } from "../SuggestedMark";
 
 function hasSuggestedPart(proposal: Proposal): boolean {
   return (

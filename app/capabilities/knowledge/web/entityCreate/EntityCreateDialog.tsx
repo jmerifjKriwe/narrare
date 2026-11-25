@@ -34,7 +34,7 @@ import { TYPE_KEYS, entityTypeLabel } from "../entityTypes";
 import { relationTypeOptions, resolveRelationType } from "../relations";
 import { ChipInput, withChip } from "./ChipInput";
 import { RelationRows } from "./RelationRows";
-import { SuggestedMark } from "./SuggestedMark";
+import { SuggestedMark } from "../SuggestedMark";
 
 const CREATE_PANEL =
   "max-h-[calc(100vh-2rem)] w-full max-w-xl space-y-3 overflow-y-auto rounded-lg border border-border bg-panel p-5 shadow-overlay";
