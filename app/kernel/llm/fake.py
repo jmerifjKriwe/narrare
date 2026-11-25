@@ -211,12 +211,13 @@ def _section_bodies(lines: list[str]) -> dict[str, range]:
     the other: the one that stands first is found first, whichever it is. A
     body runs from its own header line to the next line that is a top-level
     marker — a marker the template writes outside every body. Blank lines stay
-    inside it: the bundled template writes one right behind a header whose
-    variable rendered empty, so a boundary there would empty the body, and a
-    re-voiced prompt may leave a blank line behind the header too. Inside a
-    body every line is an entry, whatever prefix it happens to start with: an
-    entity named «ROSTER: X» or «REQUEST: fill-all» is one roster line, not a
-    boundary and not a marker.
+    inside it for the re-voiced prompt: a blank line may sit behind the header
+    with entries following, and a boundary there would lose that content. The
+    bundled template's blank comes from a header whose variable rendered empty,
+    where the body is empty either way — the marker line behind it ends it.
+    Inside a body every line is an entry, whatever prefix it happens to start
+    with: an entity named «ROSTER: X» or «REQUEST: fill-all» is one roster
+    line, not a boundary and not a marker.
 
     A prompt without either header has no bodies, so a reader falls back to
     every line being a marker candidate (the chat and extraction shapes).
