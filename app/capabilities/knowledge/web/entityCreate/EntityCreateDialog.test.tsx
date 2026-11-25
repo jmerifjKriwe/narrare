@@ -712,7 +712,11 @@ describe("EntityCreateDialog — from the interview", () => {
           {open && (
             <EntityCreateDialog
               novelId={NOVEL_ID}
-              entities={ENTITIES}
+              // The production wiring is `entities.data ?? []`: while the
+              // query is pending the roster is empty, so the empty list is the
+              // pending case's real input — a populated one would keep the
+              // «Kein Treffer» assertion true without the suppression.
+              entities={settled ? ENTITIES : []}
               openerId="opener"
               onClose={() => setOpen(false)}
               source="interview"
