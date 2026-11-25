@@ -12,8 +12,8 @@ restores the conversation, ending it leaves the transcript read-only, and
 writer's text still in the composer.
 """
 
+import json
 import re
-import time
 from typing import TYPE_CHECKING
 
 import pytest
@@ -128,6 +128,43 @@ def test_no_idea_offers_a_suggestion_with_three_actions(page: Page, installed: S
     )
 
 
+def test_a_stale_suggestion_has_its_own_face(page: Page, installed: Stack) -> None:
+    """A suggestion settled in a second tab answers 422 `suggestion-mismatch`:
+    the panel names it, offers no retry, and the current suggestion stays. The
+    refusal is forced at the network boundary — one browser cannot open the
+    second tab this stack would need."""
+    novel_id = _seed_canon()
+    _open_interview(page, novel_id)
+    _start(page)
+    page.get_by_test_id("entity-interview-no-idea").click()
+    expect(page.get_by_test_id("entity-interview-suggestion")).to_be_visible()
+
+    def _stale(route: Route) -> None:
+        route.fulfill(
+            status=422,
+            content_type="application/json",
+            body=json.dumps(
+                {
+                    "detail": {
+                        "code": "suggestion-mismatch",
+                        "detail": "there is no pending suggestion",
+                    }
+                }
+            ),
+        )
+
+    page.route("**/api/chat/sessions/*/turns", _stale)
+    page.get_by_test_id("entity-interview-suggestion-accept").click()
+    failure = page.get_by_test_id("entity-interview-failure")
+    expect(failure).to_contain_text(
+        "Der Vorschlag hat sich inzwischen geändert. Sieh dir den aktuellen Vorschlag an."
+    )
+    expect(page.get_by_test_id("entity-interview-retry")).not_to_be_visible()
+    # The refetch brings the suggestion that stands now.
+    expect(page.get_by_test_id("entity-interview-suggestion")).to_be_visible()
+    page.unroute("**/api/chat/sessions/*/turns")
+
+
 def test_hiding_the_panel_while_the_model_answers_keeps_the_reply(
     page: Page, installed: Stack
 ) -> None:
@@ -137,13 +174,8 @@ def test_hiding_the_panel_while_the_model_answers_keeps_the_reply(
     _open_interview(page, novel_id)
     _start(page)
 
-    # Shape the network so the turn is observably in flight: the request is
-    # the same real one, just delivered with a pause.
-    def _slow(route: Route) -> None:
-        time.sleep(0.8)
-        route.continue_()
-
-    page.route("**/api/chat/sessions/*/turns", _slow)
+    # Closing right after «Senden» is mid-turn on the real request; the real
+    # response wait carries the proof, so the leg needs no dispatcher pause.
     with page.expect_response(re.compile(r"/api/chat/sessions/.*/turns")):
         _say(page, f"Name: {NAME}")
         expect(page.get_by_test_id("entity-interview-transcript")).to_contain_text(
@@ -151,7 +183,6 @@ def test_hiding_the_panel_while_the_model_answers_keeps_the_reply(
         )
         page.get_by_test_id("entity-interview-close").click()
         expect(page.get_by_test_id("entity-interview")).not_to_be_visible()
-    page.unroute("**/api/chat/sessions/*/turns")
 
     page.get_by_test_id("graph-new-entity").click()
     panel = page.get_by_test_id("entity-interview")
@@ -201,6 +232,7 @@ def test_ending_makes_the_interview_read_only_and_keeps_it_savable(
     listing = page.get_by_test_id("entity-interview-list")
     expect(listing).to_contain_text("Beendet")
     expect(listing).to_contain_text(NAME)
+    assert_accessible(page)
 
 
 def test_rejecting_a_suggestion_returns_to_the_question(page: Page, installed: Stack) -> None:

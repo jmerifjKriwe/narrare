@@ -26,6 +26,9 @@ export const TURN_FAILURE_CODES = [
 export interface InterviewFailure {
   code: string;
   detail?: string;
+  /** The wire's own code when it is not one the panel names, kept beside the
+   *  generic copy so an unknown refusal stays inspectable. */
+  cause?: string;
 }
 
 export function isTurnFailure(code: string | undefined): boolean {

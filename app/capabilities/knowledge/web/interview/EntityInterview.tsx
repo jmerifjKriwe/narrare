@@ -35,6 +35,7 @@ export function EntityInterview({
   onSelectSession,
   onClose,
   onManual,
+  returnFocusId,
 }: {
   novelId: string;
   /** The interview's id, or null for the chooser (the `new` door). */
@@ -45,6 +46,9 @@ export function EntityInterview({
   onClose: () => void;
   /** «Von Hand anlegen»: the existing create dialog, one call away. */
   onManual: () => void;
+  /** The door that opened the panel; closing it hands focus back there (the
+   *  dialog opener contract — the panel's own close button unmounts with it). */
+  returnFocusId?: string;
 }) {
   const t = useTranslation();
   const titleId = useId();
@@ -64,6 +68,14 @@ export function EntityInterview({
     setListOpen(false);
     setExpanded(true);
   }, [sessionId]);
+
+  // Closing the panel unmounts the button that had focus; the house pattern
+  // hands it back to the opener rather than letting it fall to the body.
+  useEffect(() => {
+    if (returnFocusId === undefined) return;
+    const id = returnFocusId;
+    return () => document.getElementById(id)?.focus();
+  }, [returnFocusId]);
 
   const session = controller.session;
   const typeLabel = entityTypeLabel(t, session?.entity_type ?? "generic");
@@ -123,8 +135,17 @@ export function EntityInterview({
       {listOpen ? (
         <SessionList
           sessions={controller.sessions}
-          onOpen={(id) => onSelectSession(id)}
-          onNew={() => onSelectSession("new")}
+          onOpen={(id) => {
+            // The list closes in the act itself: opening the session that
+            // already stands writes the same parameter, so the session-change
+            // effect below would not fire.
+            setListOpen(false);
+            onSelectSession(id);
+          }}
+          onNew={() => {
+            setListOpen(false);
+            onSelectSession("new");
+          }}
           onClose={() => setListOpen(false)}
         />
       ) : sessionId === null ? (
@@ -212,6 +233,11 @@ export function EntityInterview({
 
           {controller.face !== "ended" && (
             <div className="shrink-0 border-t border-rule px-3 py-2">
+              {controller.endFailed && (
+                <p role="alert" className="mb-1.5 text-meta text-danger">
+                  {t("knowledge.interview.endFailed")}
+                </p>
+              )}
               <button
                 type="button"
                 data-testid="entity-interview-end"

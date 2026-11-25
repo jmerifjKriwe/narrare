@@ -589,16 +589,25 @@ export function LoreGraphPage() {
             }
             className={`flex items-center gap-1.5 rounded-[var(--radius-control)] bg-primary px-3 py-1 text-meta text-primary-foreground transition-colors hover:opacity-95 ${FOCUS}`}
           >
-            <Icon name="plus" size={14} /> {t("knowledge.graph.newEntity")}
-            {openInterviewCount > 0 && (
-              <span
-                aria-hidden="true"
-                data-testid="graph-new-entity-count"
-                className="flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary-container px-1 font-mono text-[10px] font-bold text-primary"
-              >
-                {openInterviewCount}
-              </span>
-            )}
+            {/* The visible row (and its count badge) is the sighted label; the
+                spoken name carries the count as a whole sentence. */}
+            <span aria-hidden="true" className="flex items-center gap-1.5">
+              <Icon name="plus" size={14} /> {t("knowledge.graph.newEntity")}
+              {openInterviewCount > 0 && (
+                <span
+                  aria-hidden="true"
+                  data-testid="graph-new-entity-count"
+                  className="flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary-container px-1 font-mono text-[10px] font-bold text-primary"
+                >
+                  {openInterviewCount}
+                </span>
+              )}
+            </span>
+            <span className="sr-only">
+              {openInterviewCount > 0
+                ? t("knowledge.graph.newEntityWithOpen", { count: openInterviewCount })
+                : t("knowledge.graph.newEntity")}
+            </span>
           </button>
         </div>
       </div>
@@ -913,6 +922,7 @@ export function LoreGraphPage() {
             onSelectSession={(target) => setInterview(target)}
             onClose={() => setInterview(null)}
             onManual={() => setCrud("create")}
+            returnFocusId="graph-new-entity"
           />
         )}
       </div>

@@ -85,6 +85,21 @@ const R3 = relationRow({ id: "r3", from_entity_id: "e2", to_entity_id: "e3", rel
 let entities: Entity[];
 let relations: Relation[];
 
+/** An interview row the door counts; the graph only reads `closed_at`. */
+function sessionSummary(id: string) {
+  return {
+    id,
+    novel_id: NOVEL_ID,
+    mode: "knowledge.entity",
+    entity_type: "object",
+    target_id: null,
+    name: null,
+    closed_at: null,
+    created_at: "2026-11-24T14:00:00Z",
+    updated_at: "2026-11-24T14:00:00Z",
+  };
+}
+
 function baseGet(path: string): Promise<{ data: unknown; response: Response }> {
   if (path === "/api/knowledge/novels/{novel_id}/entities") {
     return Promise.resolve({ data: entities, response: ok() });
@@ -687,6 +702,37 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     fireEvent.click(within(panel).getByTestId("entity-interview-manual"));
     const dialog = await screen.findByTestId("entity-create-dialog");
     expect(within(dialog).getByText(de["knowledge.create.title"])).toBeTruthy();
+  });
+
+  it("the door's spoken name carries the open interviews it stands for", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/chat/sessions") {
+        return Promise.resolve({ data: { items: [sessionSummary("s1"), sessionSummary("s2")] }, response: ok() });
+      }
+      return baseGet(path);
+    });
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+
+    // The count is in the accessible name, not only in the aria-hidden badge.
+    const door = await screen.findByRole("button", { name: "Neue Entität, 2 offene Interviews" });
+    expect(door).toBe(screen.getByTestId("graph-new-entity"));
+    expect(screen.getByTestId("graph-new-entity-count").textContent).toBe("2");
+    expect(screen.getByTestId("graph-new-entity-count").getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("closing the panel returns focus to the door that opened it", async () => {
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const door = screen.getByTestId("graph-new-entity");
+    fireEvent.click(door);
+    const panel = await screen.findByTestId("entity-interview");
+    const close = within(panel).getByTestId("entity-interview-close");
+    (close as HTMLElement).focus();
+    fireEvent.click(close);
+
+    await waitFor(() => expect(screen.queryByTestId("entity-interview")).toBeNull());
+    expect(document.activeElement).toBe(door);
   });
 
   it("a saved row confirms in the shell's toast with its landed relation count", async () => {

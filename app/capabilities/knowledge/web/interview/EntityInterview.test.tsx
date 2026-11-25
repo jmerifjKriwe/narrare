@@ -10,7 +10,7 @@
  * while the proposal stays readable.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -179,8 +179,13 @@ describe("the door's type chooser", () => {
       </QueryClientProvider>,
     );
 
+    // Deliberately unselected on arrival — no type is «the» default, so the
+    // start stays disabled until the writer picks one. The illustrated tile
+    // draws «Objekt» selected; that divergence is in the wave's gap ledger and
+    // is not a bug to "fix" back toward the tile.
     const start = screen.getByTestId("entity-interview-start") as HTMLButtonElement;
     expect(start.disabled).toBe(true);
+    expect(screen.getByTestId("entity-interview-type-object").getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(screen.getByTestId("entity-interview-type-object"));
     expect((screen.getByTestId("entity-interview-start") as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByTestId("entity-interview-start"));
@@ -198,6 +203,29 @@ describe("the door's type chooser", () => {
     fireEvent.click(screen.getByTestId("entity-interview-manual"));
     expect(onManual).toHaveBeenCalledTimes(1);
     expect(api.POST).not.toHaveBeenCalled();
+  });
+});
+
+describe("the list closes on the row it opens", () => {
+  it("«Neues Interview» on the chooser closes the list at once", async () => {
+    const { onSelectSession } = renderPanel(null);
+    fireEvent.click(screen.getByTestId("entity-interview-sessions"));
+    const list = await screen.findByTestId("entity-interview-list");
+    fireEvent.click(within(list).getByRole("button", { name: de["knowledge.interview.newInterview"] }));
+
+    expect(onSelectSession).toHaveBeenCalledWith("new");
+    expect(screen.queryByTestId("entity-interview-list")).toBeNull();
+  });
+
+  it("«Fortsetzen» on the session already shown closes the list at once", async () => {
+    const { onSelectSession } = renderPanel();
+    await readySession();
+    fireEvent.click(screen.getByTestId("entity-interview-sessions"));
+    const list = await screen.findByTestId("entity-interview-list");
+    fireEvent.click(within(list).getByRole("button", { name: de["knowledge.interview.resume"] }));
+
+    expect(onSelectSession).toHaveBeenCalledWith(SESSION_ID);
+    expect(screen.queryByTestId("entity-interview-list")).toBeNull();
   });
 });
 
@@ -344,6 +372,36 @@ describe("the wire's refusals find their own face", () => {
     expect(screen.queryByPlaceholderText(de["knowledge.interview.placeholder"])).toBeNull();
   });
 
+  it("a stale suggestion wears its own face, offers no retry and refetches the session", async () => {
+    detail = sessionDetail({
+      turns: [turn({ seq: 1, suggestion: "Ein Vorschlag.", suggestion_state: "pending" })],
+    });
+    api.POST.mockResolvedValueOnce({
+      data: undefined,
+      error: {
+        detail: { code: "suggestion-mismatch", detail: "there is no pending suggestion to accept" },
+      },
+      response: new Response(null, { status: 422 }),
+    });
+    renderPanel();
+    await screen.findByTestId("entity-interview-suggestion");
+    const reads = () =>
+      api.GET.mock.calls.filter(([path]) => path === "/api/chat/sessions/{session_id}").length;
+    const before = reads();
+
+    // The other tab settled it first: the next read carries the settled state,
+    // so the panel must show that rather than re-send the stale acceptance.
+    detail = sessionDetail({
+      turns: [turn({ seq: 1, suggestion: "Ein Vorschlag.", suggestion_state: "accepted" })],
+    });
+    fireEvent.click(screen.getByTestId("entity-interview-suggestion-accept"));
+
+    await screen.findByText(de["knowledge.interview.failure.suggestion-mismatch"]);
+    expect(screen.queryByTestId("entity-interview-retry")).toBeNull();
+    await waitFor(() => expect(reads()).toBeGreaterThan(before));
+    await waitFor(() => expect(screen.queryByTestId("entity-interview-suggestion")).toBeNull());
+  });
+
   it("a missing session hands the panel back to the chooser", async () => {
     api.GET.mockImplementation((path: string) => {
       if (path === "/api/chat/sessions") {
@@ -384,5 +442,29 @@ describe("ending makes it read-only", () => {
     expect(api.POST).toHaveBeenCalledWith("/api/chat/sessions/{session_id}/close", {
       params: { path: { session_id: SESSION_ID } },
     });
+  });
+
+  it("a failed close reports beside the footer and leaves the action standing", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    api.POST.mockResolvedValueOnce({
+      data: undefined,
+      error: { detail: { code: "provider-error", detail: "offline" } },
+      response: new Response(null, { status: 500 }),
+    });
+    renderPanel();
+    await readySession();
+    const end = screen.getByTestId("entity-interview-end") as HTMLButtonElement;
+    fireEvent.click(end);
+
+    await screen.findByText(de["knowledge.interview.endFailed"]);
+    expect(end.disabled).toBe(false);
+
+    api.POST.mockImplementation(() => {
+      detail = { ...detail, closed_at: "2026-11-24T14:30:00Z" };
+      return Promise.resolve({ data: detail, response: ok() });
+    });
+    fireEvent.click(end);
+    await screen.findByText(de["knowledge.interview.endedBanner"]);
+    expect(screen.queryByText(de["knowledge.interview.endFailed"])).toBeNull();
   });
 });

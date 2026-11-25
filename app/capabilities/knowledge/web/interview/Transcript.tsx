@@ -37,8 +37,12 @@ function FailureFace({
         ? t("knowledge.interview.failedUnavailable")
         : failure.code === "prompt-refused"
           ? t("knowledge.interview.failedPrompt")
-          : t("knowledge.interview.failedProvider");
-  const canRetry = failure.code !== "prompt-refused";
+          : failure.code === "suggestion-mismatch"
+            ? t("knowledge.interview.failure.suggestion-mismatch")
+            : t("knowledge.interview.failedProvider");
+  // A stale suggestion is settled by reading the current one, not by sending
+  // the same body again; a refused prompt needs its editor.
+  const canRetry = failure.code !== "prompt-refused" && failure.code !== "suggestion-mismatch";
 
   return (
     <div
@@ -50,7 +54,12 @@ function FailureFace({
         <span className="mt-0.5 shrink-0 text-warning">
           <Icon name="warning" size={18} />
         </span>
-        <p className="text-[11px] leading-snug text-foreground">{copy}</p>
+        <div className="min-w-0">
+          <p className="text-[11px] leading-snug text-foreground">{copy}</p>
+          {failure.cause !== undefined && (
+            <p className="mt-0.5 font-mono text-[10px] text-muted">{failure.cause}</p>
+          )}
+        </div>
       </div>
       <div className="flex flex-wrap justify-end gap-1.5">
         {failure.code === "provider-unavailable" && (

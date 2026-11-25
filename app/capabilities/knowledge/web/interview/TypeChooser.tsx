@@ -26,6 +26,10 @@ export function TypeChooser({
   startFailed: boolean;
 }) {
   const t = useTranslation();
+  // Deliberately unselected (ruling 2026-11-25): no type is «the» default, so
+  // «Interview starten» stays disabled until the writer picks one. The
+  // illustrated tile preselects «Objekt»; that divergence is recorded in the
+  // wave's gap ledger and must not be "fixed" toward the tile here.
   const [selected, setSelected] = useState<string | null>(null);
 
   return (

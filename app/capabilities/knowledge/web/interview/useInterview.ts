@@ -46,7 +46,6 @@ export function useInterview({
   const [text, setText] = useState("");
   const [failure, setFailure] = useState<InterviewFailure | null>(null);
   const [failedBody, setFailedBody] = useState<AssistantTurnCreate | null>(null);
-  const [startFailure, setStartFailure] = useState<string | null>(null);
 
   // A new session is a new conversation: no failure or text carries across.
   // (The panel is remounted per session anyway; this keeps a same-component
@@ -87,9 +86,19 @@ export function useInterview({
             // A 409 means the session ended elsewhere: the settle refetch
             // brings `closed_at`, and the panel turns into its ended face.
             if (error.code === "session-closed") return;
+            // A 422 `suggestion-mismatch` is a validation refusal, not a
+            // provider failure: retrying would send the same stale body. Its
+            // own face sends the writer to the suggestion that stands now —
+            // the settle refetch already brings it back into the transcript.
+            if (error.code === "suggestion-mismatch") {
+              setFailure({ code: "suggestion-mismatch", detail: error.detail });
+              return;
+            }
             setFailure({
               code: isTurnFailure(error.code) ? (error.code as string) : "provider-error",
               detail: error.detail,
+              // An unknown code keeps its name beside the generic copy.
+              cause: isTurnFailure(error.code) ? undefined : error.code,
             });
             setFailedBody(body);
           },
@@ -110,20 +119,20 @@ export function useInterview({
 
   const start = useCallback(
     (entityType: string) => {
-      setStartFailure(null);
       open.mutate(
         { novel_id: novelId, mode: "knowledge.entity", entity_type: entityType },
-        {
-          onSuccess: (opened) => onOpened(opened.id),
-          onError: (error) => setStartFailure(error.code ?? "start-failed"),
-        },
+        { onSuccess: (opened) => onOpened(opened.id) },
       );
     },
     [novelId, onOpened, open],
   );
 
   const end = useCallback(() => {
-    if (sessionId !== null) close.mutate(sessionId);
+    if (sessionId === null) return;
+    // The chooser face already reads `open.isError`; the close failure is
+    // read beside the footer and cleared when the writer asks again.
+    close.reset();
+    close.mutate(sessionId);
   }, [close, sessionId]);
 
   const turns = session.data?.turns ?? [];
@@ -146,7 +155,6 @@ export function useInterview({
     text,
     setText,
     failure,
-    startFailure,
     startFailed: open.isError,
     opening: open.isPending,
     send,
@@ -155,6 +163,7 @@ export function useInterview({
     start,
     end,
     ending: close.isPending,
+    endFailed: close.isError,
     retryRead: () => void session.refetch(),
   };
 }
