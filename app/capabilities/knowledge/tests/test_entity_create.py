@@ -220,6 +220,38 @@ def test_the_create_path_reads_the_kernel_bound() -> None:
     assert knowledge_service.MAX_RELATIONS is MAX_RELATIONS
 
 
+async def test_the_create_endpoint_reads_the_kernel_bound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The create path reads the module's name, not a literal nested into it:
+    lowering the module name here makes the refusal follow, naming the third
+    line within a bound of two, while a nested twelve would still admit three.
+    """
+    assert knowledge_service.MAX_RELATIONS is MAX_RELATIONS
+
+    monkeypatch.setattr(knowledge_service, "MAX_RELATIONS", 2)
+    novel, station, chen = await _seed_novel()
+    async with _client() as client:
+        before = await _entity_count(client, novel.id)
+        relations = [
+            {
+                "to_entity_id": str(station.id if index % 2 == 0 else chen.id),
+                "relation_type": f"verweist_{index}",
+                "note": None,
+            }
+            for index in range(3)
+        ]
+        refused = await client.post(
+            "/api/knowledge/entities", json=_body(novel.id, relations=relations)
+        )
+        assert refused.status_code == 422, refused.text
+        detail = _coded(refused)
+        assert detail["code"] == "relation-limit"
+        assert detail["row"] == 2
+        assert "at most 2" in str(detail["detail"])
+        assert await _entity_count(client, novel.id) == before
+
+
 async def test_novel_deleted_before_the_flush_is_404(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
