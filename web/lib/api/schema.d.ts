@@ -33,7 +33,7 @@ export interface paths {
         };
         /**
          * List Sessions
-         * @description The novel's interviews for this user, newest first.
+         * @description The novel's newest interviews for this user, newest first, summary rows.
          */
         get: operations["list_sessions_api_chat_sessions_get"];
         put?: never;
@@ -3226,11 +3226,11 @@ export interface components {
         };
         /**
          * SessionList
-         * @description The novel's interviews, newest first.
+         * @description The novel's newest interviews, newest first, bounded by the query.
          */
         SessionList: {
             /** Items */
-            items: components["schemas"]["SessionRead"][];
+            items: components["schemas"]["SessionSummary"][];
         };
         /**
          * SessionRead
@@ -3259,6 +3259,45 @@ export interface components {
              */
             novel_id: string;
             proposal: components["schemas"]["Proposal"] | null;
+            /** Target Id */
+            target_id: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * SessionSummary
+         * @description One row of the novel's session list: identity, type and the draft's name.
+         *
+         *     The list renders a header and a state per session, so it carries no
+         *     proposal — opening the session reads the transcript and the draft.
+         */
+        SessionSummary: {
+            /** Closed At */
+            closed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Entity Type */
+            entity_type: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mode */
+            mode: string;
+            /** Name */
+            name: string | null;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
             /** Target Id */
             target_id: string | null;
             /**

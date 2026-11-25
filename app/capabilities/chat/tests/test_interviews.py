@@ -742,8 +742,38 @@ async def test_list_sessions_is_the_novels_own() -> None:
         missing = await client.get("/api/chat/sessions", params={"novel_id": str(foreign.id)})
     assert listed.status_code == 200
     assert [item["id"] for item in listed.json()["items"]] == [str(session_id)]
+    assert listed.json()["items"][0]["name"] is None
     assert missing.status_code == 404
     assert missing.json()["detail"]["code"] == "not-found"
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_a_session_list_row_carries_the_proposals_name_not_the_proposal() -> None:
+    """A row is the summary shape: identity, type, state and the draft's name."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(
+        novel,
+        proposal=_proposal(name="Mira", content="Eine Wächterin am See."),
+    )
+    async with _client() as client:
+        listed = await client.get("/api/chat/sessions", params={"novel_id": str(novel.id)})
+
+    assert listed.status_code == 200
+    [row] = listed.json()["items"]
+    assert set(row) == {
+        "id",
+        "novel_id",
+        "mode",
+        "entity_type",
+        "target_id",
+        "name",
+        "closed_at",
+        "created_at",
+        "updated_at",
+    }
+    assert row["id"] == str(session_id)
+    assert row["name"] == "Mira"
+    assert "proposal" not in row
 
 
 @pytest.mark.usefixtures("two_users")
@@ -1561,6 +1591,36 @@ async def test_an_unchanged_list_echo_does_not_resurrect_an_item_another_turn_re
     async with _client() as client:
         response = await client.post(
             f"/api/chat/sessions/{session_id}/turns", json={"text": "Noch ein Alias."}
+        )
+
+    assert response.status_code == 200
+    proposal = response.json()["proposal"]
+    assert proposal["aliases"] == []
+    assert proposal["suggested"]["aliases"] == []
+    assert proposal["name"] == "Mira"
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_an_unchanged_list_echo_under_fill_all_does_not_resurrect_it_as_suggested(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A's fill-all echo must not bring back, marked suggested, an item B removed."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel, proposal=_proposal(name="Mira", aliases=["A"]))
+    provider = _ConcurrentTurnProvider(
+        session_id,
+        act=None,
+        b_answer=json.dumps({"reply": "Weg damit.", "slots": {"aliases": []}}, ensure_ascii=False),
+        a_answer=json.dumps(
+            {"reply": "Alles vorgeschlagen.", "slots": {"aliases": ["A"]}}, ensure_ascii=False
+        ),
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns",
+            json={"text": "Alles vorschlagen lassen", "act": "fill-all"},
         )
 
     assert response.status_code == 200

@@ -102,6 +102,26 @@ class Proposal(BaseModel):
     relations: list[ProposedRelation] = Field(default_factory=list[ProposedRelation])
 
 
+class SessionSummary(BaseModel):
+    """One row of the novel's session list: identity, type and the draft's name.
+
+    The list renders a header and a state per session, so it carries no
+    proposal — opening the session reads the transcript and the draft.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    novel_id: UUID
+    mode: str
+    entity_type: str | None
+    target_id: UUID | None
+    name: str | None
+    closed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
 class SessionRead(BaseModel):
     """One interview as every read shows it."""
 
@@ -139,9 +159,9 @@ class SessionDetail(SessionRead):
 
 
 class SessionList(BaseModel):
-    """The novel's interviews, newest first."""
+    """The novel's newest interviews, newest first, bounded by the query."""
 
-    items: list[SessionRead]
+    items: list[SessionSummary]
 
 
 class TurnReadback(BaseModel):

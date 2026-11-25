@@ -38,6 +38,7 @@ from app.capabilities.chat.repository import (
     AssistantSessionRepository,
     EntityRosterRepository,
     NovelRepository,
+    SessionListRow,
 )
 from app.capabilities.chat.schemas import (
     Proposal,
@@ -455,12 +456,12 @@ def _merge_labels(
     The locked list keeps every item; the answer's list is read as its changes
     to its input. An item the answer dropped that its input carried leaves; an
     item it added joins. An item the answer restates — its input carried it,
-    case included — is neither appended nor re-marked: whether it still exists
-    is the locked proposal's to say, so one another turn removed stays removed.
-    A restatement that differs only in case keeps the locked spelling. The
-    marks follow: an unchanged item keeps the mark the locked proposal gave it,
-    a new or changed one is suggested under ``fill-all`` and the writer's own
-    after any other act.
+    whatever its case — is neither appended nor re-marked: whether it still
+    exists is the locked proposal's to say, so one another turn removed stays
+    removed. A restatement that differs only in case keeps the locked spelling.
+    The marks follow: an unchanged item keeps the mark the locked proposal gave
+    it, a new or changed one is suggested under ``fill-all`` and the writer's
+    own after any other act.
     """
     given_by_key = {item.casefold(): item for item in given_items}
     answer_by_key = {item.casefold(): item for item in answer_items}
@@ -774,8 +775,8 @@ class InterviewService:
         await self.session.commit()
         return session
 
-    async def list_sessions(self, novel_id: UUID) -> list[AssistantSession]:
-        """The user's interviews in the novel, newest first."""
+    async def list_sessions(self, novel_id: UUID) -> list[SessionListRow]:
+        """The user's newest interviews in the novel, newest first, bounded."""
         if not await self.novels.exists(novel_id):
             raise InterviewNotFoundError(f"novel {novel_id} is absent or not yours")
         return await self.sessions.list_for_novel(novel_id)

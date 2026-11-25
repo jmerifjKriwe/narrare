@@ -6,7 +6,7 @@ leans on: one ``seq`` per session, and a deleted novel taking its sessions and
 their turns with it.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.capabilities.chat.models import AssistantSession, AssistantTurn
 from app.capabilities.chat.repository import (
+    SESSION_LIST_LIMIT,
     AssistantSessionRepository,
     EntityRosterRepository,
     NovelRepository,
@@ -197,8 +198,58 @@ async def test_list_is_newest_first_and_own_only() -> None:
     async with Session() as session:
         rows = await AssistantSessionRepository(session, LOCAL_USER_ID).list_for_novel(novel.id)
         assert [row.id for row in rows] == [newer.id, older.id]
-        assert all(row.user_id == LOCAL_USER_ID for row in rows)
         assert all(row.novel_id == novel.id for row in rows)
+        assert all(row.name is None for row in rows)
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_list_reads_the_name_from_the_proposal_without_the_proposal() -> None:
+    """A row carries the proposal's name; the draft itself is not in the row."""
+    novel = await _seed_novel()
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    async with Session() as session:
+        repo = AssistantSessionRepository(session, LOCAL_USER_ID)
+        named = await repo.create(novel.id, MODE, "character", None)
+        named.created_at = base
+        await repo.set_proposal(named, {"name": "Mira", "content": "Eine Wächterin am See."})
+        unnamed = await repo.create(novel.id, MODE, "location", None)
+        unnamed.created_at = base + timedelta(seconds=1)
+        await session.commit()
+        named_id, unnamed_id = named.id, unnamed.id
+
+    async with Session() as session:
+        rows = await AssistantSessionRepository(session, LOCAL_USER_ID).list_for_novel(novel.id)
+
+    assert [(row.id, row.name) for row in rows] == [(unnamed_id, None), (named_id, "Mira")]
+    assert not hasattr(rows[0], "proposal")
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_list_returns_only_the_newest_bounded_rows() -> None:
+    """More than the bound exists: the list is the newest ``SESSION_LIST_LIMIT``."""
+    novel = await _seed_novel()
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    async with Session() as session:
+        session.add_all(
+            AssistantSession(
+                user_id=LOCAL_USER_ID,
+                novel_id=novel.id,
+                mode=MODE,
+                entity_type="character",
+                proposal={"name": f"Row {index}"},
+                created_at=base + timedelta(seconds=index),
+            )
+            for index in range(SESSION_LIST_LIMIT + 1)
+        )
+        await session.commit()
+
+    async with Session() as session:
+        rows = await AssistantSessionRepository(session, LOCAL_USER_ID).list_for_novel(novel.id)
+
+    assert len(rows) == SESSION_LIST_LIMIT
+    assert rows[0].name == f"Row {SESSION_LIST_LIMIT}"
+    assert rows[-1].name == "Row 1"
+    assert all(row.name != "Row 0" for row in rows)
 
 
 @pytest.mark.usefixtures("two_users")

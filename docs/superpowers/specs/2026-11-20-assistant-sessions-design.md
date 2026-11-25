@@ -185,7 +185,7 @@ the client right after the create call answered 201.
 | Method | Path | What it does |
 |---|---|---|
 | POST | `/api/chat/sessions` | Open a session: `{mode, novel_id, entity_type?, target_id?}` → 201, the session read. `target_id`, when given, must be an entity of the same user in the same novel |
-| GET | `/api/chat/sessions?novel_id=` | List sessions for a novel, newest first |
+| GET | `/api/chat/sessions?novel_id=` | List sessions for a novel, newest first, the newest 200; a row carries the proposal's name, not the proposal |
 | GET | `/api/chat/sessions/{id}` | The session with its transcript |
 | POST | `/api/chat/sessions/{id}/turns` | `{text, act?}` → `{reply?, proposal?, suggestion?}` |
 | POST | `/api/chat/sessions/{id}/close` | Idempotent close → the session read |
@@ -258,18 +258,17 @@ steps and never holds a transaction across the call:
 **The proposal is merged, not replaced.** The model's output is compared with
 the input it was given: what it changed is written — a list slot or a relation
 merges item by item, so the proposal keeps every item, gains the items the
-answer added, loses only an item the answer dropped that its input carried, and
-takes a value change in place — and what it left alone is taken from the
+answer added, loses only an item the answer dropped that its input carried,
+and takes a value change in place — and what it left alone is taken from the
 proposal as it stands now. An item the answer only restates is neither added
 nor re-marked: whether it still exists is the locked proposal's to say. A slot
-the answer leaves out is untouched, one it
-gives empty (`""` or `null` for name and content, `[]` for aliases and tags; a
-`null` list counts as left out) is cleared,
-and a relation list the answer leaves out is untouched while a given list drops
-the relations it omits. A name or content given empty clears only when the
-answer's input carried a value; empty on both sides, it is untouched, and a
-value another turn saved meanwhile stands with its mark. The provenance rule
-reads the same comparison.
+the answer leaves out is untouched, one it gives empty (`""` or `null` for
+name and content, `[]` for aliases and tags; a `null` list counts as left out)
+is cleared, and a relation list the answer leaves out is untouched while a
+given list drops the relations it omits. A name or content given empty clears
+only when the answer's input carried a value; empty on both sides, it is
+untouched, and a value another turn saved meanwhile stands with its mark. The
+provenance rule reads the same comparison.
 
 Concurrent turns on one session (two tabs, a double submit) cannot interleave
 their rows and cannot erase each other: each allocates `seq` inside its own

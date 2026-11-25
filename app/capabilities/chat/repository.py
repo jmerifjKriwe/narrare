@@ -7,7 +7,9 @@ roster is a column-limited select of ``entities``, not a call into the
 capability that writes the canon.
 """
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Final
 from uuid import UUID  # noqa: TC003
 
 from sqlalchemy import Select, func, select
@@ -16,6 +18,29 @@ from sqlalchemy.orm import load_only
 from app.capabilities.chat.models import AssistantSession, AssistantTurn
 from app.kernel.contracts.models import Entity, Novel
 from app.kernel.db.base import ScopedRepository
+
+SESSION_LIST_LIMIT: Final = 200
+"""How many of a novel's sessions the list returns: the newest, newest first."""
+
+
+@dataclass(frozen=True)
+class SessionListRow:
+    """One list row: the session's identity and the proposal's name, no proposal.
+
+    The panel renders a header and a state per row; the full draft is read by
+    opening the session. Keeping the row small keeps the list bounded by
+    ``SESSION_LIST_LIMIT`` rows of fixed width instead of every proposal.
+    """
+
+    id: UUID
+    novel_id: UUID
+    mode: str
+    entity_type: str | None
+    target_id: UUID | None
+    name: str | None
+    closed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
 
 
 class AssistantSessionRepository(ScopedRepository[AssistantSession]):
@@ -50,14 +75,30 @@ class AssistantSessionRepository(ScopedRepository[AssistantSession]):
         """The session, scoped: another user's answers as absent."""
         return await self.session.scalar(self.query().where(AssistantSession.id == session_id))
 
-    async def list_for_novel(self, novel_id: UUID) -> list[AssistantSession]:
-        """This user's sessions in the novel, newest first."""
-        result = await self.session.scalars(
-            self.query()
-            .where(AssistantSession.novel_id == novel_id)
+    async def list_for_novel(self, novel_id: UUID) -> list[SessionListRow]:
+        """This user's newest sessions in the novel, newest first, bounded.
+
+        The name comes from the proposal JSON in the same query, so a list row
+        never carries the draft; the old sessions beyond ``SESSION_LIST_LIMIT``
+        are not selected at all.
+        """
+        rows = await self.session.execute(
+            select(
+                AssistantSession.id,
+                AssistantSession.novel_id,
+                AssistantSession.mode,
+                AssistantSession.entity_type,
+                AssistantSession.target_id,
+                AssistantSession.proposal["name"].astext.label("name"),
+                AssistantSession.closed_at,
+                AssistantSession.created_at,
+                AssistantSession.updated_at,
+            )
+            .where(self.owned(), AssistantSession.novel_id == novel_id)
             .order_by(AssistantSession.created_at.desc(), AssistantSession.id)
+            .limit(SESSION_LIST_LIMIT)
         )
-        return list(result.all())
+        return [SessionListRow(*row) for row in rows]
 
     async def lock(self, session_id: UUID) -> AssistantSession | None:
         """The session with its row lock taken (SELECT ... FOR UPDATE), scoped.

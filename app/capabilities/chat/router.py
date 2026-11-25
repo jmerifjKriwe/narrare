@@ -20,6 +20,7 @@ from app.capabilities.chat.schemas import (
     SessionDetail,
     SessionList,
     SessionRead,
+    SessionSummary,
     TurnCreate,
     TurnReadback,
 )
@@ -188,12 +189,12 @@ async def open_session(payload: SessionCreate, service: InterviewServiceDep) -> 
 
 @router.get("/sessions", response_model=SessionList)
 async def list_sessions(novel_id: UUID, service: InterviewServiceDep) -> SessionList:
-    """The novel's interviews for this user, newest first."""
+    """The novel's newest interviews for this user, newest first, summary rows."""
     try:
         sessions = await service.list_sessions(novel_id)
     except InterviewRefusalError as error:
         raise _refusal(error) from None
-    return SessionList(items=[SessionRead.model_validate(session) for session in sessions])
+    return SessionList(items=[SessionSummary.model_validate(session) for session in sessions])
 
 
 @router.get("/sessions/{session_id}", response_model=SessionDetail)

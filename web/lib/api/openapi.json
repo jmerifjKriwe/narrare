@@ -3498,11 +3498,11 @@
         "type": "object"
       },
       "SessionList": {
-        "description": "The novel's interviews, newest first.",
+        "description": "The novel's newest interviews, newest first, bounded by the query.",
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/SessionRead"
+              "$ref": "#/components/schemas/SessionSummary"
             },
             "title": "Items",
             "type": "array"
@@ -3599,6 +3599,94 @@
           "updated_at"
         ],
         "title": "SessionRead",
+        "type": "object"
+      },
+      "SessionSummary": {
+        "description": "One row of the novel's session list: identity, type and the draft's name.\n\nThe list renders a header and a state per session, so it carries no\nproposal — opening the session reads the transcript and the draft.",
+        "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "novel_id",
+          "mode",
+          "entity_type",
+          "target_id",
+          "name",
+          "closed_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SessionSummary",
         "type": "object"
       },
       "SettingsRead": {
@@ -4931,7 +5019,7 @@
     },
     "/api/chat/sessions": {
       "get": {
-        "description": "The novel's interviews for this user, newest first.",
+        "description": "The novel's newest interviews for this user, newest first, summary rows.",
         "operationId": "list_sessions_api_chat_sessions_get",
         "parameters": [
           {
