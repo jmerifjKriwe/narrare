@@ -60,8 +60,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     nextId.current += 1;
     remaining.current = TOAST_LIFETIME_MS;
     startedAt.current = null;
-    setHovered(false);
-    setFocused(false);
+    // A replacement inherits the pause: the pointer or focus already inside
+    // stays inside, and no new `mouseenter`/`focusin` fires for the new text.
+    // Clearing the flags here would let the message vanish under the reader.
     setToast({ id: nextId.current, message });
   }, []);
 
@@ -129,7 +130,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               type="button"
               aria-label={t("shell.toast.dismiss")}
               onClick={dismiss}
-              className={`-mr-1 shrink-0 rounded p-0.5 text-muted transition-colors hover:text-foreground ${FOCUS}`}
+              className={`-mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-foreground ${FOCUS}`}
             >
               <Icon name="cross" size={12} />
             </button>

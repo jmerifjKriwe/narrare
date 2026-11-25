@@ -69,6 +69,39 @@ describe("ToastProvider", () => {
     expect(screen.getByTestId("toast").textContent).toContain("zweite");
   });
 
+  it("keeps a replacement message paused while the pointer stays on it", () => {
+    vi.useFakeTimers();
+    render(
+      <ToastProvider>
+        <Opener messages={["erste", "zweite"]} />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "erste" }));
+    const toast = screen.getByTestId("toast");
+    fireEvent.mouseEnter(toast);
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    // The replacement lands under the pointer: no new mouseenter follows.
+    fireEvent.click(screen.getByRole("button", { name: "zweite" }));
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(screen.getByTestId("toast").textContent).toContain("zweite");
+
+    // The fresh lifetime starts only once the pointer actually leaves.
+    fireEvent.mouseLeave(screen.getByTestId("toast"));
+    act(() => {
+      vi.advanceTimersByTime(5999);
+    });
+    expect(screen.getByTestId("toast")).toBeTruthy();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.queryByTestId("toast")).toBeNull();
+  });
+
   it("pauses on hover and resumes when the pointer leaves", () => {
     vi.useFakeTimers();
     render(
@@ -129,6 +162,26 @@ describe("ToastProvider", () => {
       vi.advanceTimersByTime(1);
     });
     expect(screen.queryByTestId("toast")).toBeNull();
+  });
+
+  it("gives the close control a 24 px hit area without growing the icon", () => {
+    render(
+      <ToastProvider>
+        <Opener messages={["Meldung"]} />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Meldung" }));
+    const close = screen.getByRole("button", { name: catalogs.de["shell.toast.dismiss"] });
+
+    // jsdom lays nothing out, so the box is asserted as the class contract:
+    // h-6/w-6 are 24 CSS px on the shell's 16 px root (WCAG 2.2 2.5.8).
+    expect(close.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["h-6", "w-6", "items-center", "justify-center"]),
+    );
+    // The glyph's own visual size is unchanged at 12 px.
+    const icon = close.querySelector("svg");
+    expect(icon?.getAttribute("width")).toBe("12");
+    expect(icon?.getAttribute("height")).toBe("12");
   });
 
   it("dismisses at once from its named close button and leaves no timer", () => {
