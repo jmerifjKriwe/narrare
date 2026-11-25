@@ -186,7 +186,7 @@ What the roadmap waits for, and why it blocks.
 
 | Area | Missing | Blocks |
 |---|---|---|
-| Chat | The entity panel's harmonization round (the draft carries invented scores and a graph preview); no draft for the free chat, the prose sink or the session list | Phase 1's assistant surface, and cut 2 |
+| Chat | A draft for the free chat and the prose sink | Cut 2 |
 | Analysis | A hub draft and seven families (emotional curve, readability, POV, coreference, author voice, character voice, drift) | Wave 3.2 |
 | Editing | A harmonization round: real fields instead of mock ones, plus states | Wave 3.5 |
 | Production | A verdict, then a harmonization round for the screens v1 never built | Wave 3.7 |
