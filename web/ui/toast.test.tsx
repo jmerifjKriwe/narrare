@@ -78,6 +78,12 @@ describe("ToastProvider", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "erste" }));
     const toast = screen.getByTestId("toast");
+    // jsdom does not track :hover, so the pointer resting on the toast is
+    // modelled by the element's own match: the replacement reads it live.
+    const matches = toast.matches.bind(toast);
+    vi.spyOn(toast, "matches").mockImplementation((selector: string) =>
+      selector === ":hover" ? true : matches(selector),
+    );
     fireEvent.mouseEnter(toast);
 
     act(() => {
@@ -102,7 +108,32 @@ describe("ToastProvider", () => {
     expect(screen.queryByTestId("toast")).toBeNull();
   });
 
-  it("a message shown right after a dismissal starts paused while the pointer stays", () => {
+  it("a message shown after a keyboard dismissal dismisses itself", () => {
+    vi.useFakeTimers();
+    render(
+      <ToastProvider>
+        <Opener messages={["erste", "zweite"]} />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "erste" }));
+    const close = screen.getByRole("button", { name: catalogs.de["shell.toast.dismiss"] });
+    // Tab to the control and press Enter: focus sits inside the toast.
+    // A real focus() (not a synthetic event) moves document.activeElement,
+    // which is what the live pause reads.
+    close.focus();
+    fireEvent.click(close);
+    expect(screen.queryByTestId("toast")).toBeNull();
+
+    // The focused element left with its toast (focus falls to the body), so
+    // the next message is not paused by a flag that outlived it.
+    fireEvent.click(screen.getByRole("button", { name: "zweite" }));
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+    expect(screen.queryByTestId("toast")).toBeNull();
+  });
+
+  it("a message shown after a pointer dismissal dismisses itself", () => {
     vi.useFakeTimers();
     render(
       <ToastProvider>
@@ -111,20 +142,83 @@ describe("ToastProvider", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "erste" }));
     fireEvent.mouseEnter(screen.getByTestId("toast"));
-
-    // Dismiss while the pointer rests on the toast's area: the close button
-    // goes with the toast, so no mouseleave can follow until a new one mounts.
     fireEvent.click(screen.getByRole("button", { name: catalogs.de["shell.toast.dismiss"] }));
     expect(screen.queryByTestId("toast")).toBeNull();
 
+    // The pointer left while no toast existed: the new message is not paused
+    // by a hover flag nothing could lower.
+    fireEvent.click(screen.getByRole("button", { name: "zweite" }));
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+    expect(screen.queryByTestId("toast")).toBeNull();
+  });
+
+  it("a message shown under a resting pointer starts paused and the leave resumes it", () => {
+    vi.useFakeTimers();
+    render(
+      <ToastProvider>
+        <Opener messages={["erste", "zweite"]} />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "erste" }));
+    fireEvent.mouseEnter(screen.getByTestId("toast"));
+    fireEvent.click(screen.getByRole("button", { name: catalogs.de["shell.toast.dismiss"] }));
+    expect(screen.queryByTestId("toast")).toBeNull();
+
+    // jsdom does not track :hover, so the pointer that never left is modelled
+    // by the element's own match; the new toast reads it when it mounts.
+    const original = Element.prototype.matches;
+    const hover = vi.spyOn(Element.prototype, "matches").mockImplementation(function (
+      this: Element,
+      selector: string,
+    ) {
+      return selector === ":hover" ? true : original.call(this, selector);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "zweite" }));
+    hover.mockRestore();
+
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(screen.getByTestId("toast").textContent).toContain("zweite");
+
+    // The pointer is resting on the message, so its leave is real here.
+    fireEvent.mouseLeave(screen.getByTestId("toast"));
+    act(() => {
+      vi.advanceTimersByTime(5999);
+    });
+    expect(screen.getByTestId("toast")).toBeTruthy();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.queryByTestId("toast")).toBeNull();
+  });
+
+  it("a replacement under focus stays paused while the control keeps focus", () => {
+    vi.useFakeTimers();
+    render(
+      <ToastProvider>
+        <Opener messages={["erste", "zweite"]} />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "erste" }));
+    const close = screen.getByRole("button", { name: catalogs.de["shell.toast.dismiss"] });
+    // A real focus() moves document.activeElement, as the browser does when
+    // the writer tabbed here; the replacement keeps that element focused.
+    close.focus();
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    // The replacement keeps the same element and focus: no new focusin fires.
     fireEvent.click(screen.getByRole("button", { name: "zweite" }));
     act(() => {
       vi.advanceTimersByTime(60_000);
     });
     expect(screen.getByTestId("toast").textContent).toContain("zweite");
 
-    // The fresh lifetime starts only when the pointer actually leaves.
-    fireEvent.mouseLeave(screen.getByTestId("toast"));
+    fireEvent.blur(close);
     act(() => {
       vi.advanceTimersByTime(5999);
     });

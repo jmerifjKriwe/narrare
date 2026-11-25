@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -54,25 +55,34 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const remaining = useRef(TOAST_LIFETIME_MS);
   const startedAt = useRef<number | null>(null);
   const timer = useRef<number | null>(null);
+  const toastEl = useRef<HTMLDivElement | null>(null);
   const paused = hovered || focused;
+  const toastId = toast?.id ?? null;
 
   const show = useCallback((message: string) => {
     nextId.current += 1;
     remaining.current = TOAST_LIFETIME_MS;
     startedAt.current = null;
-    // A replacement inherits the pause: the pointer or focus already inside
-    // stays inside, and no new `mouseenter`/`focusin` fires for the new text.
-    // Clearing the flags here would let the message vanish under the reader.
     setToast({ id: nextId.current, message });
   }, []);
 
   const dismiss = useCallback(() => {
-    // The pointer or focus is still over the toast's area even though the
-    // message is gone: keeping the flags makes a `show` right after a
-    // dismissal start paused, where clearing them would let the next message
-    // vanish under the reader. A real leave/blur lowers them again.
     setToast(null);
   }, []);
+
+  // The pause follows the element that is actually on screen, never a flag a
+  // dismissed toast left behind: closing removes the element, so no boundary
+  // event can follow to lower its flags. A mount or a replacement therefore
+  // reads the live pointer and focus state again; the boundary events keep
+  // both current afterwards. jsdom does not track `:hover` — the unit tests
+  // mock `matches` for the resting-pointer case.
+  useLayoutEffect(() => {
+    if (toastId === null) return;
+    const el = toastEl.current;
+    if (el === null) return;
+    setHovered(el.matches(":hover"));
+    setFocused(el.contains(document.activeElement));
+  }, [toastId]);
 
   useEffect(() => {
     if (toast === null) return;
@@ -111,6 +121,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       >
         {toast !== null && (
           <div
+            ref={toastEl}
             data-testid="toast"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
