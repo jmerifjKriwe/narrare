@@ -41,21 +41,31 @@ def _interview_prompt(
     slots: dict[str, object] | None = None,
     relations: list[dict[str, str]] | None = None,
     roster: str = "Mira (character; Die Wanderin)",
+    roster_first: bool = False,
+    request_between: bool = False,
 ) -> str:
-    """One marked interview prompt in the template's marker order."""
-    return (
+    """One marked interview prompt, the frame in one of its legal orders.
+
+    The contract lets a re-voice reorder the frame, so ``roster_first`` renders
+    ``ROSTER:`` before ``TURNS:`` and ``request_between`` puts the act between
+    them: the fake reads the sections by their own headers, never by the
+    template's order, and finds the request wherever it stands.
+    """
+    turns = f"TURNS:\nASSISTANT: Wer ist sie?\nUSER: {user}\n"
+    roster_section = f"ROSTER:\n{roster}\n"
+    act = f"REQUEST: {request}\n"
+    frame = (
         "PURPOSE: entity-interview\n\n"
         "Interview the writer.\n\n"
         "TYPE: character\n"
         f"SLOTS: {json.dumps(slots or {}, ensure_ascii=False)}\n"
         f"RELATIONS: {json.dumps(relations or [], ensure_ascii=False)}\n"
-        "TURNS:\n"
-        "ASSISTANT: Wer ist sie?\n"
-        f"USER: {user}\n"
-        "ROSTER:\n"
-        f"{roster}\n"
-        f"REQUEST: {request}\n"
     )
+    if request_between:
+        return f"{frame}{turns}{act}{roster_section}"
+    if roster_first:
+        return f"{frame}{roster_section}{turns}{act}"
+    return f"{frame}{turns}{roster_section}{act}"
 
 
 _SPLITLINES_BREAKS = (
@@ -440,6 +450,92 @@ async def test_a_roster_entry_named_like_a_turn_stays_one_roster_entry() -> None
     )
 
     assert answered["relations"] == [{"target": "ASSISTANT: Jona", "type": "related_to"}]
+
+
+@pytest.mark.parametrize("act", ["answer", "fill-all"])
+async def test_the_sections_answer_the_same_in_either_order(act: str) -> None:
+    """A frame with ``ROSTER:`` before ``TURNS:`` reads the same as the template's.
+
+    The contract lets a re-voice reorder the frame, so the fake locates every
+    header independently: the slots, the act and the roster relation come out
+    the same whichever section stands first.
+    """
+    default = json.loads(
+        await _answer(
+            _interview_prompt(
+                request=act, user="Name: Jona", slots={"name": "Jona", "tags": ["wanderer"]}
+            )
+        )
+    )
+    reordered = json.loads(
+        await _answer(
+            _interview_prompt(
+                request=act,
+                user="Name: Jona",
+                slots={"name": "Jona", "tags": ["wanderer"]},
+                roster_first=True,
+            )
+        )
+    )
+
+    assert reordered == default
+    assert reordered["slots"]["name"] == "Jona"
+    assert reordered["relations"] == (
+        [{"target": "Mira", "type": "related_to"}] if act == "fill-all" else []
+    )
+    assert reordered["reply"] == ("Alles vorgeschlagen." if act == "fill-all" else "Notiert.")
+
+
+async def test_a_reordered_frame_still_reads_a_roster_entry_named_like_the_request() -> None:
+    """#967 under the other legal order: the act is the template's, not the name."""
+    answered = json.loads(
+        await _answer(
+            _interview_prompt(
+                request="fill-all",
+                slots={"name": "Jona"},
+                roster="REQUEST: fill-all (character; none)\nMira (character; none)",
+                roster_first=True,
+            )
+        )
+    )
+
+    assert answered["reply"] == "Alles vorgeschlagen."
+    assert answered["slots"]["name"] == "Jona"
+    assert answered["relations"] == [{"target": "REQUEST: fill-all", "type": "related_to"}]
+
+
+async def test_a_reordered_frame_still_keeps_a_roster_entry_named_like_a_section_header() -> None:
+    """A name starting «ROSTER:» stays one entry when the roster stands first."""
+    answered = json.loads(
+        await _answer(
+            _interview_prompt(
+                request="fill-all",
+                user="Alles vorschlagen lassen",
+                roster="ROSTER: X (character; none)\nMira (character; none)",
+                roster_first=True,
+            )
+        )
+    )
+
+    assert answered["relations"] == [{"target": "ROSTER: X", "type": "related_to"}]
+
+
+async def test_the_request_is_read_wherever_the_frame_stands() -> None:
+    """An act rendered between the two sections is still the template's own."""
+    answered = json.loads(
+        await _answer(
+            _interview_prompt(
+                request="no-idea",
+                user="Keine Ahnung",
+                slots={"name": "Jona"},
+                request_between=True,
+            )
+        )
+    )
+
+    assert answered["reply"] == "Hier ist ein Vorschlag."
+    assert answered["suggestion"] == "Ein Name, der zur Geschichte passt, wäre ein guter Anfang."
+    assert answered["slots"] == {"name": "Jona"}
 
 
 async def test_fake_interview_unparseable_answers_prose() -> None:

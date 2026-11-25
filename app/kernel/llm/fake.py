@@ -23,6 +23,7 @@ from app.kernel.llm.contract import (
     SLOTS_PREFIX,
     SOURCE_PREFIX,
     TURNS_PREFIX,
+    TYPE_PREFIX,
     USER_PREFIX,
     CompletionEvent,
     CompletionRequest,
@@ -179,41 +180,65 @@ _FILL_CONTENT = "Ein Vorschlag des Fake-Treibers."
 never derived from the story, because the fake stands in for a model."""
 
 
+SECTION_HEADERS: tuple[str, ...] = (TURNS_PREFIX, ROSTER_PREFIX)
+"""The lines that head a section body: the marker alone, nothing after it.
+
+A roster entry can begin with ``ROSTER:`` — the name is user-derived — but never
+amounts to the bare header, so an exact match is a section and nothing else.
+"""
+
+TOP_LEVEL_MARKERS: tuple[str, ...] = (
+    PURPOSE_PREFIX,
+    TYPE_PREFIX,
+    SLOTS_PREFIX,
+    RELATIONS_PREFIX,
+    *SECTION_HEADERS,
+    REQUEST_PREFIX,
+)
+"""The markers the template writes as lines of its own, outside every body."""
+
+
+def _is_roster_entry(line: str) -> bool:
+    """Whether a line has a roster line's shape: a name, then ``(type; aliases)``."""
+    return line.rstrip().endswith(")") and " (" in line
+
+
 def _section_bodies(lines: list[str]) -> dict[str, range]:
-    """The line indices behind ``TURNS:`` and ``ROSTER:``, in the template's order.
+    """The line indices behind each section header, located independently.
 
-    The template renders ``TURNS:`` then one turn per line, ``ROSTER:`` then one
-    roster entry per line, and ``REQUEST:`` last. A body ends at the next
-    section's header — the transcript cannot carry one because every turn is
-    one line through ``single_line``, and the roster ends at the request line
-    the template renders after it. Inside a body every line is an entry,
-    whatever prefix it happens to start with: an entity named «REQUEST:
-    fill-all» or «ROSTER: X» is one roster entry, never a marker.
+    ``TURNS:`` and ``ROSTER:`` each head one body, and the interview's contract
+    lets a re-voice render them in either order, so neither header is read off
+    the other: the one that stands first is found first, whichever it is. A
+    body runs from its own header line to the next line that is a top-level
+    marker — a marker the template writes outside every body. Inside a body
+    every line is an entry, whatever prefix it happens to start with: an entity
+    named «ROSTER: X» or «REQUEST: fill-all» is one roster line, not a boundary
+    and not a marker.
 
-    A prompt without both headers has no bodies, so a reader falls back to
+    A prompt without either header has no bodies, so a reader falls back to
     every line being a marker candidate (the chat and extraction shapes).
     """
-    turns = next((index for index, line in enumerate(lines) if line.startswith(TURNS_PREFIX)), None)
-    if turns is None:
-        return {}
-    roster = next(
-        (
-            index
-            for index, line in enumerate(lines[turns + 1 :], turns + 1)
-            if line.startswith(ROSTER_PREFIX)
-        ),
-        None,
-    )
-    if roster is None:
-        return {}
-    # The request marker closes the template; the last REQUEST line is the
-    # template's own even while a roster entry earlier carries that prefix.
-    request = max(
-        (index for index, line in enumerate(lines) if line.startswith(REQUEST_PREFIX)),
-        default=None,
-    )
-    end = request if request is not None and request > roster else len(lines)
-    return {TURNS_PREFIX: range(turns + 1, roster), ROSTER_PREFIX: range(roster + 1, end)}
+    bodies: dict[str, range] = {}
+    for header in SECTION_HEADERS:
+        header_index = next(
+            (index for index, line in enumerate(lines) if line.strip() == header), None
+        )
+        if header_index is None:
+            continue
+        end = len(lines)
+        for index in range(header_index + 1, len(lines)):
+            line = lines[index]
+            if not line.strip() or line.strip() in SECTION_HEADERS:
+                end = index
+                break
+            if not line.startswith(TOP_LEVEL_MARKERS):
+                continue
+            if header == ROSTER_PREFIX and _is_roster_entry(line):
+                continue
+            end = index
+            break
+        bodies[header] = range(header_index + 1, end)
+    return bodies
 
 
 def _line_after(prompt: str, prefix: str) -> str | None:
@@ -249,9 +274,10 @@ def _json_line(prompt: str, prefix: str, default: object) -> object:
 def _section_lines(prompt: str, header: str) -> list[str]:
     """The non-empty lines of a section body, in order.
 
-    The body's extent comes from the template's own order (``_section_bodies``),
-    so an entry starting with a marker prefix stays an entry; a blank line
-    after the entries ends the block early, as the rendered roster has none.
+    The body's extent comes from ``_section_bodies``, which finds the header
+    wherever the re-voice placed it, so an entry starting with a marker prefix
+    stays an entry; a blank line after the entries ends the block early, as the
+    rendered roster has none.
     """
     lines = prompt.splitlines()
     body = _section_bodies(lines).get(header)
