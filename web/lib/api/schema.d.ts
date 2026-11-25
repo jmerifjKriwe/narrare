@@ -3226,7 +3226,7 @@ export interface components {
         };
         /**
          * SessionList
-         * @description The novel's newest interviews, newest first, bounded by the query.
+         * @description The novel's interviews: open first, then closed, newest first in each state.
          */
         SessionList: {
             /** Items */

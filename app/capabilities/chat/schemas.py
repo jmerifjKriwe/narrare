@@ -159,7 +159,7 @@ class SessionDetail(SessionRead):
 
 
 class SessionList(BaseModel):
-    """The novel's newest interviews, newest first, bounded by the query."""
+    """The novel's interviews: open first, then closed, newest first in each state."""
 
     items: list[SessionSummary]
 

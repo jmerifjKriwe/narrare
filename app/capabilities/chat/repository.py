@@ -9,10 +9,10 @@ capability that writes the canon.
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Final
+from typing import Any, Final
 from uuid import UUID  # noqa: TC003
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, literal, select
 from sqlalchemy.orm import load_only
 
 from app.capabilities.chat.models import AssistantSession, AssistantTurn
@@ -33,8 +33,9 @@ class SessionListRow:
     """One list row: the session's identity and the proposal's name, no proposal.
 
     The panel renders a header and a state per row; the full draft is read by
-    opening the session. Keeping the row small keeps the list bounded by
-    ``SESSION_LIST_LIMIT`` rows of fixed width instead of every proposal.
+    opening the session. Keeping the row small keeps the list to
+    ``SESSION_LIST_LIMIT`` rows per state of fixed width instead of every
+    proposal.
     """
 
     id: UUID
@@ -86,35 +87,54 @@ class AssistantSessionRepository(ScopedRepository[AssistantSession]):
         The order follows the spec's surface, not the clock: the panel shows the
         open interviews before the ended ones, so the door's «newest open
         session» is the list's first row whenever one exists. Each state is
-        bounded by ``SESSION_LIST_LIMIT`` on its own — two scoped selects — so an
-        old open session is not crowded out by a long closed history.
+        bounded by ``SESSION_LIST_LIMIT`` on its own.
 
-        The name comes from the proposal JSON in the same query, so a list row
-        never carries the draft.
+        Both states come from one statement — a ``UNION ALL`` of the two
+        limited selects, the open block first — so the list is one snapshot: a
+        session closed between two reads cannot match both states and appear
+        twice. The name comes from the proposal JSON in the same query, so a
+        list row never carries the draft.
         """
-        newest = (
-            select(
-                AssistantSession.id,
-                AssistantSession.novel_id,
-                AssistantSession.mode,
-                AssistantSession.entity_type,
-                AssistantSession.target_id,
-                AssistantSession.proposal["name"].astext.label("name"),
-                AssistantSession.closed_at,
-                AssistantSession.created_at,
-                AssistantSession.updated_at,
-            )
-            .where(self.owned(), AssistantSession.novel_id == novel_id)
-            .order_by(AssistantSession.created_at.desc(), AssistantSession.id)
-            .limit(SESSION_LIST_LIMIT)
+        columns = (
+            AssistantSession.id,
+            AssistantSession.novel_id,
+            AssistantSession.mode,
+            AssistantSession.entity_type,
+            AssistantSession.target_id,
+            AssistantSession.proposal["name"].astext.label("name"),
+            AssistantSession.closed_at,
+            AssistantSession.created_at,
+            AssistantSession.updated_at,
         )
-        rows: list[SessionListRow] = []
-        open_state = AssistantSession.closed_at.is_(None)
-        closed_state = AssistantSession.closed_at.is_not(None)
-        for state in (open_state, closed_state):
-            result = await self.session.execute(newest.where(state))
-            rows.extend(SessionListRow(*row) for row in result)
-        return rows
+
+        def block(state: Any, rank: int) -> Any:
+            """One state's newest rows, with the state's position in the list's order."""
+            return (
+                select(*columns, literal(rank).label("state_rank"))
+                .where(self.owned(), AssistantSession.novel_id == novel_id, state)
+                .order_by(AssistantSession.created_at.desc(), AssistantSession.id)
+                .limit(SESSION_LIST_LIMIT)
+            )
+
+        listed = (
+            block(AssistantSession.closed_at.is_(None), 0)
+            .union_all(block(AssistantSession.closed_at.is_not(None), 1))
+            .subquery()
+        )
+        result = await self.session.execute(
+            select(
+                listed.c.id,
+                listed.c.novel_id,
+                listed.c.mode,
+                listed.c.entity_type,
+                listed.c.target_id,
+                listed.c.name,
+                listed.c.closed_at,
+                listed.c.created_at,
+                listed.c.updated_at,
+            ).order_by(listed.c.state_rank, listed.c.created_at.desc(), listed.c.id)
+        )
+        return [SessionListRow(*row) for row in result]
 
     async def lock(self, session_id: UUID) -> AssistantSession | None:
         """The session with its row lock taken (SELECT ... FOR UPDATE), scoped.

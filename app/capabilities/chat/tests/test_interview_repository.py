@@ -7,10 +7,11 @@ their turns with it.
 """
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, event, func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.capabilities.chat.models import AssistantSession, AssistantTurn
@@ -22,7 +23,7 @@ from app.capabilities.chat.repository import (
 )
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Entity, Novel
-from app.kernel.db.session import Session
+from app.kernel.db.session import Session, engine
 from app.kernel.db.testsupport import seed_user
 
 MODE = "knowledge.entity"
@@ -227,6 +228,53 @@ async def test_list_shows_the_open_sessions_before_the_closed_ones() -> None:
     # The door's «newest open» is the first row, though a closed session is newer.
     assert [row.id for row in rows] == [*open_ids, closed_id]
     assert [row.closed_at is None for row in rows] == [True, True, False]
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_the_list_is_one_statement_so_a_close_cannot_duplicate_a_row() -> None:
+    """The list is one ``UNION ALL`` statement: a close between two reads cannot duplicate a row.
+
+    Under read-committed, two selects are two snapshots, so a session closed
+    between them would match the open select and the closed one. The test reads
+    the statement off the wire — one ``SELECT ... UNION ALL SELECT ...`` with a
+    ``LIMIT`` on each side — rather than racing a closer against the query.
+    """
+    novel = await _seed_novel()
+    async with Session() as session:
+        session.add_all(
+            AssistantSession(
+                user_id=LOCAL_USER_ID,
+                novel_id=novel.id,
+                mode=MODE,
+                entity_type="character",
+            )
+            for _ in range(2)
+        )
+        await session.commit()
+
+    statements: list[str] = []
+
+    def record(
+        conn: Any,
+        cursor: Any,
+        statement: str,
+        parameters: Any,
+        context: Any,
+        executemany: bool,
+    ) -> None:
+        statements.append(statement)
+
+    event.listen(engine.sync_engine, "before_cursor_execute", record)
+    try:
+        async with Session() as session:
+            rows = await AssistantSessionRepository(session, LOCAL_USER_ID).list_for_novel(novel.id)
+    finally:
+        event.remove(engine.sync_engine, "before_cursor_execute", record)
+
+    assert len(rows) == 2
+    assert len(statements) == 1
+    assert statements[0].count("UNION ALL") == 1
+    assert statements[0].count("LIMIT") == 2
 
 
 @pytest.mark.usefixtures("two_users")
