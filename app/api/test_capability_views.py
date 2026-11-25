@@ -149,9 +149,21 @@ def test_ui_rows_are_exactly_the_web_owning_capabilities() -> None:
         assert capability.title in loaded[SOURCE_LOCALE]
 
 
-def _facts_tree(tmp_path: Path, *, title: str, owns_web: bool) -> Path:
-    """A miniature repo: one capability, one locale, the facts' title as given."""
-    catalog = {key: key for key in REQUIRED_DOC_KEYS}
+def _facts_tree(
+    tmp_path: Path,
+    *,
+    title: str,
+    owns_web: bool,
+    fields: str = "path: /demo\nneeds: []\nnav: true",
+    catalog_keys: tuple[str, ...] = (),
+) -> Path:
+    """A miniature repo: one capability, one locale, the facts' title as given.
+
+    `fields` is the yaml below the id and title, so a test can leave a field
+    out; `catalog_keys` are extra words the locale already resolves, for a
+    web-owning capability whose title must.
+    """
+    catalog = {key: key for key in REQUIRED_DOC_KEYS + catalog_keys}
     (tmp_path / "i18n").mkdir()
     (tmp_path / "i18n" / "en.json").write_text(
         json.dumps(dict(sorted(catalog.items()))), encoding="utf-8"
@@ -159,7 +171,7 @@ def _facts_tree(tmp_path: Path, *, title: str, owns_web: bool) -> Path:
     folder = tmp_path / "app" / "capabilities" / "demo"
     folder.mkdir(parents=True)
     (folder / "capability.yaml").write_text(
-        f"id: demo\ntitle: {title}\npath: /demo\nneeds: []\nnav: true\n",
+        f"id: demo\ntitle: {title}\n{fields}\n",
         encoding="utf-8",
     )
     if owns_web:
@@ -191,6 +203,44 @@ def test_a_capability_without_web_keeps_facts_the_catalog_does_not_resolve(
     entries = facts(root, known, loaded)
     assert [entry.id for entry in entries] == ["demo"]
     assert ui_facts(entries, root) == ()
+
+
+def test_a_capability_with_neither_path_nor_nav_still_generates(tmp_path: Path) -> None:
+    # Chat states sessions and endpoints but owns no screen: its panel lives
+    # on another capability's page, so a route path and a nav entry would
+    # promise a surface that does not exist. facts() reads the absent fields
+    # as no path and no nav, and the views leave the capability out the way
+    # they leave out one without web/.
+    root = _facts_tree(tmp_path, title="demo.gone", owns_web=False, fields="needs: []")
+    known = locales(root)
+    loaded = catalogs(root, known)
+    entries = facts(root, known, loaded)
+    assert [(entry.id, entry.path, entry.nav) for entry in entries] == [("demo", None, False)]
+    assert ui_facts(entries, root) == ()
+    assert 'id: "demo"' not in typescript_nav(ui_facts(entries, root))
+    assert "demo.gone" not in docs_index(entries, known, loaded, root)
+
+
+def test_an_absent_path_never_reaches_a_view_as_none(tmp_path: Path) -> None:
+    # The home page navigates by path and the INDEX prints one per row: a
+    # nav flag alone cannot carry a nav row, so the entry is skipped rather
+    # than rendered at the string "None"; the INDEX has a dash for the path
+    # it does not have.
+    root = _facts_tree(
+        tmp_path,
+        title="demo.heading",
+        owns_web=True,
+        fields="needs: []\nnav: true",
+        catalog_keys=("demo.heading",),
+    )
+    known = locales(root)
+    loaded = catalogs(root, known)
+    entries = facts(root, known, loaded)
+    assert [(entry.id, entry.path, entry.nav) for entry in entries] == [("demo", None, True)]
+    assert 'id: "demo"' not in typescript_nav(entries)
+    index = docs_index(entries, known, loaded, root)
+    assert "| demo.heading | — | ✓ | — |" in index
+    assert "None" not in index
 
 
 def test_two_docks_at_one_path_stop_the_scan_naming_both_capabilities() -> None:
