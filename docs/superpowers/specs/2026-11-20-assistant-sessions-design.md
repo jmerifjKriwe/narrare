@@ -264,7 +264,10 @@ proposal as it stands now. A slot the answer leaves out is untouched, one it
 gives empty (`""` or `null` for name and content, `[]` for aliases and tags; a
 `null` list counts as left out) is cleared,
 and a relation list the answer leaves out is untouched while a given list drops
-the relations it omits. The provenance rule reads the same comparison.
+the relations it omits. A name or content given empty clears only when the
+answer's input carried a value; empty on both sides, it is untouched, and a
+value another turn saved meanwhile stands with its mark. The provenance rule
+reads the same comparison.
 
 Concurrent turns on one session (two tabs, a double submit) cannot interleave
 their rows and cannot erase each other: each allocates `seq` inside its own

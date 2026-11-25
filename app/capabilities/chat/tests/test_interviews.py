@@ -330,6 +330,53 @@ class _NewSuggestionProvider:
         yield DONE
 
 
+class _ConcurrentSaveProvider:
+    """Answers once, but saves a proposal from a second session first.
+
+    The save lands while the turn's model call is in flight, after step 1 read
+    the proposal and before step 3 takes the lock: the window in which an
+    answer echoing the empty input it was given must not erase what the other
+    turn saved, while an answer that changes a value it was given still does.
+    """
+
+    def __init__(
+        self,
+        session_id: UUID,
+        proposal: dict[str, object],
+        slots: dict[str, object],
+    ) -> None:
+        self.session_id = session_id
+        self.proposal = proposal
+        self.slots = slots
+        self.requests: list[CompletionRequest] = []
+
+    def describe(self) -> str:
+        """Identify the racing stand-in."""
+        return "concurrent-save"
+
+    def configuration_problems(self) -> list[str]:
+        """Ready by construction."""
+        return []
+
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Save the other turn's proposal, then answer with the given slots."""
+        self.requests.append(request)
+        async with Session() as session:
+            repo = AssistantSessionRepository(session, LOCAL_USER_ID)
+            row = await repo.get(self.session_id)
+            assert row is not None
+            await repo.set_proposal(row, self.proposal)
+            await session.commit()
+        yield Delta(
+            json.dumps(
+                {"reply": "Notiert.", "slots": self.slots},
+                ensure_ascii=False,
+            )
+        )
+        yield Usage(input_tokens=1, output_tokens=1)
+        yield DONE
+
+
 class _MalformedThenFailingProvider:
     """First answer is prose; the retry raises before a single event.
 
@@ -1369,6 +1416,78 @@ async def test_clearing_the_content_unsets_it(monkeypatch: pytest.MonkeyPatch) -
     proposal = response.json()["proposal"]
     assert proposal["content"] == ""
     assert proposal["suggested"]["content"] is False
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_an_empty_name_does_not_erase_a_name_another_turn_saved(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A's input carried no name, so A's empty echo leaves B's «Mira» and its mark."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel)
+    provider = _ConcurrentSaveProvider(
+        session_id,
+        _proposal(name="Mira", name_suggested=True),
+        {"name": ""},
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Wie heißt sie?"}
+        )
+
+    assert response.status_code == 200
+    proposal = response.json()["proposal"]
+    assert proposal["name"] == "Mira"
+    assert proposal["name_suggested"] is True
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_an_empty_content_does_not_erase_a_content_another_turn_saved(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A's input carried no content, so A's empty echo leaves B's content and its mark."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel)
+    provider = _ConcurrentSaveProvider(
+        session_id,
+        _proposal(
+            content="Eine Wächterin am See.",
+            suggested={"aliases": [], "tags": [], "content": True},
+        ),
+        {"content": ""},
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Erzähl mir von ihr."}
+        )
+
+    assert response.status_code == 200
+    proposal = response.json()["proposal"]
+    assert proposal["content"] == "Eine Wächterin am See."
+    assert proposal["suggested"]["content"] is True
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_an_empty_name_still_clears_one_its_input_carried(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A's input carried «Mira», so A's empty echo is a real clear, B's «Vera» included."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel, proposal=_proposal(name="Mira"))
+    provider = _ConcurrentSaveProvider(session_id, _proposal(name="Vera"), {"name": ""})
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Den Namen doch nicht."}
+        )
+
+    assert response.status_code == 200
+    assert response.json()["proposal"] is None
 
 
 @pytest.mark.usefixtures("two_users")

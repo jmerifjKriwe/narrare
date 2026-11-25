@@ -583,12 +583,16 @@ def _merge_proposal(
                 slots.pop(key, None)
             suggested[key] = merged_marks
             continue
-        if value == given_slots.get(key):
+        if value == (given_slots.get(key) or ""):
+            # Unchanged relative to its input — including empty both ways — so
+            # the locked value stands, with its mark, even when another turn
+            # wrote it while the model answered.
             continue
         if not value:
-            # The third state: the answer gave the key empty, so the slot is
-            # cleared and its mark with it. A list path above reaches the same
-            # result through the union: an empty list drops what it was given.
+            # The third state: the answer gave the key empty while its input
+            # carried a value, so it changed it — the slot is cleared and its
+            # mark with it. A list path above reaches the same result through
+            # the union: an empty list drops what it was given.
             slots.pop(key, None)
             if key == "name":
                 name_suggested = False
