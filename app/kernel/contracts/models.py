@@ -8,6 +8,7 @@ models should be added to the per-domain module, not here.
 
 from app.kernel.contracts.knowledge import (
     ENTITY_TYPES,
+    MAX_RELATIONS,
     Chunk,
     ConsistencyFinding,
     Document,
@@ -37,6 +38,7 @@ __all__ = [
     "CANON_STRICTNESS_MIN",
     "DRAMATIC_FORM_MAX_LENGTH",
     "ENTITY_TYPES",
+    "MAX_RELATIONS",
     "WORD_GOAL_MAX",
     "WORD_GOAL_MIN",
     "Chapter",

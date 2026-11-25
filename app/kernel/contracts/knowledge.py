@@ -32,6 +32,14 @@ PG enum and not a table: the set is fixed by the prompt, not by data, and
 every consumer — prompts, parse, service validation, panel labels — imports
 it from here."""
 
+MAX_RELATIONS = 12
+"""The spec's bound on one proposal's relation set — «at most 12 relations»
+(2026-11-20 design) — refused by both doors that carry one: the create
+endpoint rejects a thirteenth line with ``relation-limit``, and the
+interview's normalisation drops what twelve do not fit. Chat and knowledge
+never import each other (rule 1), so the bound lives here and both import
+it."""
+
 
 class Entity(UserOwned):
     """An entity the user kept: one thing of the story, with its type, its

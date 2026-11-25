@@ -40,6 +40,7 @@ from app.capabilities.knowledge.schemas import (
 from app.kernel.auth import SetupRequiredError
 from app.kernel.contracts.models import (
     ENTITY_TYPES,
+    MAX_RELATIONS,
     Chapter,
     ConsistencyFinding,
     Document,
@@ -59,11 +60,6 @@ hold the worker and, with a paid provider, bill without limit."""
 
 MAX_LABEL_LENGTH = 200
 """The width an alias or tag may carry, the name column's own limit."""
-
-MAX_RELATIONS = 12
-"""The spec's bound for a proposal's relation set (2026-11-20 design, «at most
-12 relations»). The create endpoint applies the same limit the interview's
-normalisation applies, from this one constant, so the two cannot drift."""
 
 
 class EmptyDocumentError(Exception):
