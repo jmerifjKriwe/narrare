@@ -107,8 +107,10 @@ def test_create_by_hand_from_the_graph(page: Page, installed: Stack) -> None:
     dialog.get_by_test_id("entity-create-save").click()
     expect(dialog).not_to_be_visible()
 
-    # The save confirms in the shell's toast with the edges that landed.
+    # The save confirms in the shell's toast with the edges that landed;
+    # the toast's close control must clear the same a11y floor.
     expect(page.get_by_test_id("toast")).to_contain_text("Entität angelegt · 1 Beziehung verknüpft")
+    assert_accessible(page)
 
     # The save selects the new row: its dossier names the entity and the edge.
     dossier = page.get_by_test_id("entity-dossier")
