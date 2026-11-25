@@ -17,9 +17,9 @@ keeps its mark.
 """
 
 import json
-from collections.abc import Mapping  # noqa: TC003  signatures evaluate
+from collections.abc import AsyncIterator, Mapping  # noqa: TC003  signatures evaluate
 from dataclasses import dataclass
-from typing import Final, cast
+from typing import TYPE_CHECKING, Final, cast
 from uuid import UUID  # noqa: TC003  signatures and the dataclass evaluate
 
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002  the service's field
@@ -43,12 +43,16 @@ from app.kernel.llm import (
     USER_PREFIX,
     AuditedCall,
     MalformedAnswerError,
+    TextProvider,
     ask_structured,
     single_line,
 )
 from app.kernel.llm.audit import record_call
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
-from app.kernel.prompts import render
+from app.kernel.prompts import PromptRenderError, render
+
+if TYPE_CHECKING:
+    from app.kernel.llm.contract import CompletionEvent, CompletionRequest
 
 MODE_KNOWLEDGE_ENTITY: Final = "knowledge.entity"
 """The one mode cut 1 carries; the vocabulary is checked at the request boundary."""
@@ -67,8 +71,9 @@ ROSTER_LIMIT: Final = 200
 ROSTER_CUT_LINE: Final = "(more entities exist; they are not listed)"
 """The roster's last line when the bound dropped entities: the template cannot know."""
 
-TURN_HISTORY_LIMIT: Final = 10_000
-"""The detail's transcript read: far past any real session, so nothing is hidden."""
+TRANSCRIPT_READ_LIMIT: Final = 10_000
+"""The most turns the detail and the suggestion search read: far past any real
+session, so nothing a writer can reach is hidden."""
 
 NAME_LIMIT: Final = 200
 """The longest name, alias, tag or relation target the dialog stores."""
@@ -172,6 +177,13 @@ class ProviderCallError(InterviewRefusalError):
     code = "provider-error"
 
 
+class PromptRefusedError(InterviewRefusalError):
+    """The interview prompt's effective source no longer renders."""
+
+    status = 502
+    code = "prompt-refused"
+
+
 @dataclass(frozen=True)
 class InterviewAnswer:
     """What the model answered, still unnormalised: the parse's typed result."""
@@ -180,6 +192,34 @@ class InterviewAnswer:
     slots: dict[str, object]
     relations: list[dict[str, str]]
     suggestion: str | None
+
+
+class _PromptRecorder:
+    """The provider view that remembers the prompt of the attempt in flight.
+
+    ``ask_structured`` audits a call only after it returns; a provider that
+    raises never reaches that callback, so the failure's own row needs the
+    prompt of the attempt that died. Recording the request before delegating
+    keeps that row exact, the retry correction included.
+    """
+
+    def __init__(self, provider: TextProvider) -> None:
+        self.provider = provider
+        self.prompt = ""
+
+    def describe(self) -> str:
+        """The wrapped provider's one-line description."""
+        return self.provider.describe()
+
+    def configuration_problems(self) -> list[str]:
+        """The wrapped provider's readiness."""
+        return self.provider.configuration_problems()
+
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Record the request, then yield the wrapped provider's events."""
+        self.prompt = "\n".join(message.content for message in request.messages)
+        async for event in self.provider.stream(request):
+            yield event
 
 
 @dataclass(frozen=True)
@@ -355,16 +395,59 @@ def _proposal_relations(
     ]
 
 
-def _suggested_map(proposal: dict[str, object] | None) -> dict[str, bool]:
-    """Which label slots the proposal marks suggested; absent means the writer's."""
-    marks = {"aliases": False, "tags": False, "content": False}
+def _text_list(value: object) -> list[str]:
+    """A list slot's items as strings; anything else is the empty list."""
+    if not isinstance(value, list):
+        return []
+    return [item for item in cast("list[object]", value) if isinstance(item, str)]
+
+
+def _suggested_map(proposal: dict[str, object] | None) -> dict[str, object]:
+    """Which parts the proposal marks suggested: item values for lists, a flag for content.
+
+    A label slot carries its provenance per item, as the design's example
+    does for tags. A proposal stored before that rule may hold a boolean
+    instead; a true flag then marks every item the slot currently holds, so
+    an old draft keeps its meaning.
+    """
+    marks: dict[str, object] = {"aliases": [], "tags": [], "content": False}
     if not proposal:
         return marks
     raw = proposal.get("suggested")
     if not isinstance(raw, dict):
         return marks
     record = cast("dict[str, object]", raw)
-    return {key: bool(record.get(key)) for key in marks}
+    for key in LABEL_KEYS:
+        stored = record.get(key)
+        if isinstance(stored, list):
+            marks[key] = _text_list(cast("object", stored))
+        elif stored is True:
+            marks[key] = _text_list(proposal.get(key))
+    marks["content"] = bool(record.get("content"))
+    return marks
+
+
+def _label_marks(
+    given_items: list[str],
+    now_marks: list[str],
+    answer_items: list[str],
+    act: str | None,
+) -> list[str]:
+    """The items of a list slot that stay suggested after the merge.
+
+    An item the model carried over keeps the mark the locked proposal gave it;
+    an item it added is suggested under ``fill-all`` and the writer's own after
+    any other act.
+    """
+    given_keys = {item.casefold() for item in given_items}
+    marked_keys = {item.casefold() for item in now_marks}
+    marks: list[str] = []
+    for item in answer_items:
+        key = item.casefold()
+        suggested = key in marked_keys if key in given_keys else act == "fill-all"
+        if suggested:
+            marks.append(item)
+    return marks
 
 
 def _relation_key(relation: Mapping[str, object]) -> tuple[str, str, str]:
@@ -420,8 +503,13 @@ def _merge_proposal(
     given: dict[str, object] | None,
     answer: InterviewAnswer,
     act: str | None,
-) -> dict[str, object]:
-    """The locked proposal with the answer's changes, and only its changes."""
+) -> dict[str, object] | None:
+    """The locked proposal with the answer's changes, and only its changes.
+
+    A merged proposal with nothing in it — no name, aliases, tags, content or
+    relation — is ``None``: a turn that changed nothing leaves the session's
+    ``proposal`` as empty as it found it, not an empty object.
+    """
     given_slots = _proposal_slots(given)
     slots = dict(_proposal_slots(now))
     suggested = _suggested_map(now)
@@ -429,23 +517,36 @@ def _merge_proposal(
     for key, value in _normalise_slots(answer.slots).items():
         if value == given_slots.get(key):
             continue
-        slots[key] = value
-        if key == "name":
+        if key in LABEL_KEYS:
+            suggested[key] = _label_marks(
+                _text_list(given_slots.get(key)),
+                cast("list[str]", suggested[key]),
+                cast("list[str]", value),
+                act,
+            )
+        elif key == "name":
             name_suggested = act == "fill-all"
         else:
             suggested[key] = act == "fill-all"
+        slots[key] = value
     relations = _merge_relations(
         _proposal_relations(now),
         _proposal_relations(given),
         _normalise_relations(answer.relations),
         act,
     )
+    name = _text(slots.get("name"))
+    aliases = _text_list(slots.get("aliases"))
+    tags = _text_list(slots.get("tags"))
+    content = _text(slots.get("content"))
+    if not name and not aliases and not tags and not content and not relations:
+        return None
     return {
-        "name": slots.get("name"),
-        "name_suggested": name_suggested and bool(slots.get("name")),
-        "aliases": slots.get("aliases", []),
-        "tags": slots.get("tags", []),
-        "content": slots.get("content", ""),
+        "name": name or None,
+        "name_suggested": name_suggested and bool(name),
+        "aliases": aliases,
+        "tags": tags,
+        "content": content,
         "suggested": suggested,
         "relations": relations,
     }
@@ -461,9 +562,15 @@ def _drop_suggested(
     suggested = _suggested_map(proposal)
     if bool(proposal.get("name_suggested")):
         slots.pop("name", None)
-    for key in (*LABEL_KEYS, "content"):
-        if suggested[key]:
+    for key in LABEL_KEYS:
+        marked = {item.casefold() for item in cast("list[str]", suggested[key])}
+        kept = [item for item in _text_list(slots.get(key)) if item.casefold() not in marked]
+        if kept:
+            slots[key] = kept
+        else:
             slots.pop(key, None)
+    if bool(suggested["content"]):
+        slots.pop("content", None)
     relations = [
         dict(relation)
         for relation in _proposal_relations(proposal)
@@ -477,7 +584,7 @@ def _drop_suggested(
         "aliases": slots.get("aliases", []),
         "tags": slots.get("tags", []),
         "content": slots.get("content", ""),
-        "suggested": {"aliases": False, "tags": False, "content": False},
+        "suggested": {"aliases": [], "tags": [], "content": False},
         "relations": relations,
     }
 
@@ -563,11 +670,11 @@ class InterviewService:
         return await self.sessions.list_for_novel(novel_id)
 
     async def read_session(self, session_id: UUID) -> AssistantSession:
-        """The session with its whole transcript attached as ``turns``."""
+        """The session with the transcript, up to ``TRANSCRIPT_READ_LIMIT`` turns, as ``turns``."""
         session = await self.sessions.get(session_id)
         if session is None:
-            raise InterviewNotFoundError(f"session {session_id} is absent or not yours")
-        turns = await self.sessions.last_turns(session_id, TURN_HISTORY_LIMIT)
+            raise InterviewNotFoundError("the session is absent or not yours")
+        turns = await self.sessions.last_turns(session_id, TRANSCRIPT_READ_LIMIT)
         # The detail's schema reads the transcript off the row; the model has
         # no relationship, so the read attaches the loaded list.
         session.turns = turns  # pyright: ignore[reportAttributeAccessIssue]
@@ -577,7 +684,7 @@ class InterviewService:
         """End the interview; closing an already closed one changes nothing."""
         session = await self.sessions.get(session_id)
         if session is None:
-            raise InterviewNotFoundError(f"session {session_id} is absent or not yours")
+            raise InterviewNotFoundError("the session is absent or not yours")
         if session.closed_at is None:
             await self.sessions.close(session)
             await self.session.commit()
@@ -598,7 +705,10 @@ class InterviewService:
         resolved: ResolvedProvider | None = None
         answer: InterviewAnswer | None = None
         if model_act:
-            prompt = await self._render_prompt(state, payload)
+            try:
+                prompt = await self._render_prompt(state, payload)
+            except PromptRenderError as error:
+                raise PromptRefusedError(str(error)) from None
             try:
                 resolved = await resolve_provider(self.session, self.user_id, CHAT_KEY)
             except Exception as error:
@@ -613,7 +723,7 @@ class InterviewService:
         """Step 1: the session, its proposal and the turns the prompt may need."""
         session = await self.sessions.get(session_id)
         if session is None:
-            raise InterviewNotFoundError(f"session {session_id} is absent or not yours")
+            raise InterviewNotFoundError("the session is absent or not yours")
         # The writer's current turn takes the transcript's last place, so the
         # model reads at most twenty conversation turns including this answer.
         turns = await self.sessions.last_turns(session_id, TRANSCRIPT_LIMIT - 1)
@@ -677,21 +787,40 @@ class InterviewService:
         async def audit(call: AuditedCall) -> None:
             calls.append(call)
 
+        recorder = _PromptRecorder(resolved.provider)
         try:
             return await ask_structured(
-                resolved.provider,
+                recorder,
                 prompt,
                 schema=INTERVIEW_SCHEMA,
                 parse=_parse_answer,
                 audit=audit,
             )
         except MalformedAnswerError as error:
-            await self._write_calls(calls, resolved, novel_id)
-            raise ExtractionFailedError(
-                str(error) or "the answer is not the contracted JSON"
-            ) from None
+            reason = str(error) or "the answer is not the contracted JSON"
+            await self._write_calls(
+                calls,
+                resolved,
+                novel_id,
+                status="error",
+                error_code="extraction-failed",
+                error=reason,
+            )
+            raise ExtractionFailedError(reason) from None
         except Exception as error:
-            await self._write_calls(calls, resolved, novel_id)
+            # The attempt that raised never reached the audit callback; its row
+            # is written here, with the prompt the recorder kept for it.
+            failed = AuditedCall(
+                prompt=recorder.prompt or prompt, answer="", latency_ms=0, usage=None
+            )
+            await self._write_calls(
+                calls,
+                resolved,
+                novel_id,
+                failed=failed,
+                error=_failure_name(error),
+                error_code="provider-error",
+            )
             raise ProviderCallError(_failure_name(error)) from None
 
     async def _write_turn(
@@ -708,11 +837,13 @@ class InterviewService:
             await self.session.rollback()
             if resolved is not None:
                 await self._write_calls(calls, resolved, state.novel_id)
-            raise InterviewNotFoundError(f"session {state.session_id} is absent or not yours")
+            raise InterviewNotFoundError("the session is absent or not yours")
         if locked.closed_at is not None:
             await self.session.rollback()
             if resolved is not None:
-                await self._write_calls(calls, resolved, locked.novel_id)
+                # The rollback expired every identity-map row: read the novel
+                # from the step-1 state, never from ``locked`` after it.
+                await self._write_calls(calls, resolved, state.novel_id)
             raise SessionClosedError(f"session {state.session_id} was closed")
 
         seq = await self.sessions.next_seq(state.session_id)
@@ -780,10 +911,11 @@ class InterviewService:
         """The newest suggestion still pending, read under the session's lock.
 
         The two settlement acts name the suggestion the panel showed, which may
-        be older than the prompt's twenty-turn window; the read is the whole
-        transcript, so a suggestion is settled however long the interview ran.
+        be older than the prompt's twenty-turn window; the read is the
+        transcript, up to ``TRANSCRIPT_READ_LIMIT`` turns, so a suggestion is
+        settled however long the interview ran.
         """
-        turns = await self.sessions.last_turns(session_id, TURN_HISTORY_LIMIT)
+        turns = await self.sessions.last_turns(session_id, TRANSCRIPT_READ_LIMIT)
         return _pending(turns)
 
     async def _write_calls(
@@ -791,11 +923,26 @@ class InterviewService:
         calls: list[AuditedCall],
         resolved: ResolvedProvider,
         novel_id: UUID,
+        *,
+        status: str = "ok",
+        error: str | None = None,
+        error_code: str | None = None,
+        failed: AuditedCall | None = None,
     ) -> None:
-        """A failed turn's audit rows, alone in their own short transaction."""
-        if not calls:
+        """A failed turn's audit rows, alone in their own short transaction.
+
+        ``calls`` are the attempts that returned and take ``status``; ``failed``
+        is the attempt that raised, always an error row with the turn's reason.
+        """
+        if not calls and failed is None:
             return
-        await self._record_calls(calls, resolved, novel_id)
+        await self._record_calls(
+            calls, resolved, novel_id, status=status, error=error, error_code=error_code
+        )
+        if failed is not None:
+            await self._record_calls(
+                [failed], resolved, novel_id, status="error", error=error, error_code=error_code
+            )
         await self.session.commit()
 
     async def _record_calls(
@@ -803,6 +950,10 @@ class InterviewService:
         calls: list[AuditedCall],
         resolved: ResolvedProvider,
         novel_id: UUID,
+        *,
+        status: str = "ok",
+        error: str | None = None,
+        error_code: str | None = None,
     ) -> None:
         """One audit row per provider attempt in the caller's transaction."""
         for call in calls:
@@ -814,9 +965,11 @@ class InterviewService:
                 provider_kind=resolved.kind,
                 model=resolved.model,
                 latency_ms=call.latency_ms,
-                status="ok",
+                status=status,
                 prompt_text=call.prompt,
                 response_text=call.answer,
+                error=error,
+                error_code=error_code,
                 input_tokens=call.usage.input_tokens if call.usage else None,
                 output_tokens=call.usage.output_tokens if call.usage else None,
                 novel_id=novel_id,

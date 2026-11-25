@@ -7,6 +7,7 @@ prove the scope, and the racing test proves the merge under the session's lock.
 
 import asyncio
 import json
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, cast
 from uuid import UUID, uuid4
 
@@ -18,11 +19,12 @@ from app.api.main import app
 from app.capabilities.chat import interviews
 from app.capabilities.chat.repository import AssistantSessionRepository
 from app.kernel.auth import LOCAL_USER_ID
-from app.kernel.contracts.models import Novel
+from app.kernel.contracts.models import Entity, Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.llm.contract import (
     DONE,
+    USER_PREFIX,
     CompletionEvent,
     CompletionRequest,
     Delta,
@@ -30,6 +32,7 @@ from app.kernel.llm.contract import (
     Usage,
 )
 from app.kernel.llm.resolution import ResolvedProvider
+from app.kernel.prompts.models import PromptTemplateRepository
 from app.kernel.secrets import KeyUnavailableError
 
 if TYPE_CHECKING:
@@ -188,12 +191,62 @@ class _RacingProvider:
         yield DONE
 
 
+class _ClosingProvider:
+    """Answers once, but closes the interview from a second session first.
+
+    The close lands while the first call is in flight, after step 1 read the
+    session as open and before step 3 takes the lock: the «closed while the
+    model answered» race, driven through its real window.
+    """
+
+    def __init__(self, session_id: UUID) -> None:
+        self.session_id = session_id
+        self.requests: list[CompletionRequest] = []
+
+    def describe(self) -> str:
+        """Identify the closing stand-in."""
+        return "closing"
+
+    def configuration_problems(self) -> list[str]:
+        """Ready by construction."""
+        return []
+
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Close the session from another session, then answer."""
+        self.requests.append(request)
+        async with Session() as session:
+            repo = AssistantSessionRepository(session, LOCAL_USER_ID)
+            row = await repo.get(self.session_id)
+            assert row is not None
+            if row.closed_at is None:
+                await repo.close(row)
+                await session.commit()
+        yield Delta(
+            json.dumps({"reply": "Notiert.", "slots": {}, "relations": []}, ensure_ascii=False)
+        )
+        yield Usage(input_tokens=1, output_tokens=1)
+        yield DONE
+
+
 def _prompt_json(prompt: str, prefix: str, default: object) -> object:
     """The JSON payload on a marked line, or the default when absent."""
     for line in prompt.splitlines():
         if line.startswith(prefix):
             return json.loads(line.removeprefix(prefix))
     return default
+
+
+def _prompt_block(prompt: str, start: str, end: str) -> list[str]:
+    """The lines between a marker line and the next line that begins ``end``."""
+    lines = prompt.splitlines()
+    begin = lines.index(start) + 1
+    finish = next(index for index in range(begin, len(lines)) if lines[index].startswith(end))
+    return lines[begin:finish]
+
+
+def _user_prompt(request: CompletionRequest) -> str:
+    """The prompt text the provider received, joined as the kernel joins it."""
+    return "\n".join(message.content for message in request.messages if message.role == "user")
 
 
 async def _seed_novel(
@@ -250,6 +303,47 @@ async def _stored_turns(session_id: UUID) -> list[AssistantTurn]:
         return await AssistantSessionRepository(session, LOCAL_USER_ID).last_turns(session_id, 100)
 
 
+async def _seed_turns(session_id: UUID, count: int) -> None:
+    """Fill the transcript with ``count`` numbered user turns, oldest first."""
+    async with Session() as session:
+        repo = AssistantSessionRepository(session, LOCAL_USER_ID)
+        for seq in range(1, count + 1):
+            await repo.append_turn(session_id, seq, "user", f"Turn {seq}")
+        await session.commit()
+
+
+async def _seed_entities(novel: Novel, count: int) -> None:
+    """Put ``count`` roster entities in the novel, name-ordered and distinct."""
+    async with Session() as session:
+        session.add_all(
+            Entity(
+                user_id=LOCAL_USER_ID,
+                novel_id=novel.id,
+                name=f"Entity {index:03d}",
+                type="character",
+            )
+            for index in range(count)
+        )
+        await session.commit()
+
+
+async def _set_created_at(session_id: UUID, moment: datetime) -> None:
+    """Stamp a session's creation so list ordering is checkable, not clock-luck."""
+    async with Session() as session:
+        await session.execute(
+            text("UPDATE assistant_sessions SET created_at = :moment WHERE id = :id"),
+            {"moment": moment, "id": session_id},
+        )
+        await session.commit()
+
+
+async def _save_override(prompt_key: str, content: str, novel_id: UUID | None) -> None:
+    """Store a prompt override the way the prompts editor does, sans validation."""
+    async with Session() as session:
+        await PromptTemplateRepository(session, LOCAL_USER_ID).save(prompt_key, content, novel_id)
+        await session.commit()
+
+
 async def _audit_rows() -> list[tuple[str, str, str]]:
     """The audit's task key, prompt key and status, in insertion order."""
     async with Session() as session:
@@ -261,6 +355,29 @@ async def _audit_rows() -> list[tuple[str, str, str]]:
     return [(row.task_key, row.prompt_key, row.status) for row in rows]
 
 
+async def _audit_details() -> list[dict[str, object]]:
+    """The audit's successful and failed facts, in insertion order."""
+    async with Session() as session:
+        rows = (
+            await session.execute(
+                text(
+                    "SELECT status, error_code, error, prompt_text, response_text "
+                    "FROM llm_calls ORDER BY id"
+                )
+            )
+        ).all()
+    return [
+        {
+            "status": row.status,
+            "error_code": row.error_code,
+            "error": row.error,
+            "prompt_text": row.prompt_text,
+            "response_text": row.response_text,
+        }
+        for row in rows
+    ]
+
+
 def _proposal(**overrides: object) -> dict[str, object]:
     """A full proposal in the shape the session stores."""
     proposal: dict[str, object] = {
@@ -269,7 +386,7 @@ def _proposal(**overrides: object) -> dict[str, object]:
         "aliases": [],
         "tags": [],
         "content": "",
-        "suggested": {"aliases": False, "tags": False, "content": False},
+        "suggested": {"aliases": [], "tags": [], "content": False},
         "relations": [],
     }
     proposal.update(overrides)
@@ -281,7 +398,7 @@ COMPLETE = _proposal(
     aliases=["Die Wächterin"],
     tags=["wachsam"],
     content="Eine Wächterin am See.",
-    suggested={"aliases": False, "tags": True, "content": True},
+    suggested={"aliases": [], "tags": ["wachsam"], "content": True},
     relations=[
         {"target": "Haus", "type": "located_in", "note": "", "suggested": False},
     ],
@@ -439,7 +556,7 @@ async def test_fill_all_marks_its_parts_and_a_plain_turn_does_not(
         aliases=["Die Wächterin"],
         tags=["wachsam"],
         content="Eine Wächterin am See.",
-        suggested={"aliases": True, "tags": True, "content": True},
+        suggested={"aliases": ["Die Wächterin"], "tags": ["wachsam"], "content": True},
         relations=[{"target": "Haus", "type": "located_in", "note": "", "suggested": True}],
     )
     assert plain.status_code == 200
@@ -548,7 +665,7 @@ async def test_drop_suggestions_removes_the_marked_parts_and_keeps_the_rest() ->
             aliases=["Die Wächterin"],
             tags=["wachsam"],
             content="Eine Wächterin am See.",
-            suggested={"aliases": False, "tags": True, "content": True},
+            suggested={"aliases": [], "tags": ["wachsam"], "content": True},
             relations=[
                 {"target": "Haus", "type": "located_in", "note": "", "suggested": True},
                 {"target": "See", "type": "near", "note": "", "suggested": False},
@@ -600,25 +717,30 @@ async def test_reject_and_drop_make_no_provider_call(
 
 @pytest.mark.usefixtures("two_users")
 async def test_a_foreign_session_answers_the_absent_404() -> None:
-    """A turn, a read and a close on another user's session answer the absent 404."""
+    """A turn, a read and a close on another user's session answer the absent 404.
+
+    The bodies are byte-identical, detail included: the answer cannot tell the
+    two apart.
+    """
     foreign_novel = await _seed_novel(user_id=OTHER_USER)
     foreign_id = await _seed_session(foreign_novel, user_id=OTHER_USER)
 
     async with _client() as client:
-        for session_id in (foreign_id, uuid4()):
-            read = await client.get(f"/api/chat/sessions/{session_id}")
-            assert read.status_code == 404
-            assert read.json()["detail"]["code"] == "not-found"
+        foreign = [
+            await client.get(f"/api/chat/sessions/{foreign_id}"),
+            await client.post(f"/api/chat/sessions/{foreign_id}/turns", json={"text": "Hallo"}),
+            await client.post(f"/api/chat/sessions/{foreign_id}/close"),
+        ]
+        absent_id = uuid4()
+        absent = [
+            await client.get(f"/api/chat/sessions/{absent_id}"),
+            await client.post(f"/api/chat/sessions/{absent_id}/turns", json={"text": "Hallo"}),
+            await client.post(f"/api/chat/sessions/{absent_id}/close"),
+        ]
 
-            turn = await client.post(
-                f"/api/chat/sessions/{session_id}/turns", json={"text": "Hallo"}
-            )
-            assert turn.status_code == 404
-            assert turn.json()["detail"]["code"] == "not-found"
-
-            closed = await client.post(f"/api/chat/sessions/{session_id}/close")
-            assert closed.status_code == 404
-            assert closed.json()["detail"]["code"] == "not-found"
+    assert [response.status_code for response in (*foreign, *absent)] == [404] * 6
+    assert [response.json() for response in foreign] == [response.json() for response in absent]
+    assert all(response.json()["detail"]["code"] == "not-found" for response in (*foreign, *absent))
 
 
 @pytest.mark.usefixtures("two_users")
@@ -715,9 +837,12 @@ async def test_unparseable_twice_is_502_with_two_audit_rows_and_no_turn(
     assert detail.json()["turns"] == []
     assert detail.json()["proposal"] is None
     assert await _audit_rows() == [
-        ("chat.ask", "knowledge.entity-interview", "ok"),
-        ("chat.ask", "knowledge.entity-interview", "ok"),
+        ("chat.ask", "knowledge.entity-interview", "error"),
+        ("chat.ask", "knowledge.entity-interview", "error"),
     ]
+    rows = await _audit_details()
+    assert [row["error_code"] for row in rows] == ["extraction-failed", "extraction-failed"]
+    assert all(row["error"] for row in rows)
 
 
 @pytest.mark.usefixtures("two_users")
@@ -782,7 +907,12 @@ async def test_provider_error_is_502_provider_error(
     assert response.json()["detail"]["code"] == "provider-error"
     assert type(failure).__name__ in response.json()["detail"]["detail"]
     assert detail.json()["turns"] == []
-    assert await _audit_rows() == []
+    assert await _audit_rows() == [("chat.ask", "knowledge.entity-interview", "error")]
+    [row] = await _audit_details()
+    assert row["error_code"] == "provider-error"
+    assert str(failure) in cast("str", row["error"])
+    assert row["response_text"] == ""
+    assert cast("str", row["prompt_text"])
 
 
 @pytest.mark.usefixtures("two_users")
@@ -821,3 +951,219 @@ async def test_close_is_idempotent() -> None:
     assert second.status_code == 200
     assert first.json()["closed_at"] is not None
     assert second.json()["closed_at"] == first.json()["closed_at"]
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_a_close_between_the_read_and_the_write_answers_409(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A session closed while the model answered is the coded 409, not a 500.
+
+    Step 1 read the session as open; the provider then closes it from a second
+    session; step 3's lock sees the close, rolls back and writes the completed
+    call's audit row without touching the expired locked row.
+    """
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel)
+    provider = _ClosingProvider(session_id)
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Sie heißt Mira."}
+        )
+        detail = await client.get(f"/api/chat/sessions/{session_id}")
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "session-closed"
+    assert len(provider.requests) == 1
+    assert detail.json()["turns"] == []
+    assert detail.json()["closed_at"] is not None
+    assert await _audit_rows() == [("chat.ask", "knowledge.entity-interview", "ok")]
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_a_refused_prompt_answers_502_prompt_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An override that no longer renders is a named 502, never a bare 500."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel)
+    await _save_override(interviews.INTERVIEW_KEY, "{{ not_a_variable }}", novel.id)
+    provider = _StubProvider([])
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Sie heißt Mira."}
+        )
+        detail = await client.get(f"/api/chat/sessions/{session_id}")
+
+    assert response.status_code == 502
+    assert response.json()["detail"]["code"] == "prompt-refused"
+    assert "undefined-variable" in response.json()["detail"]["detail"]
+    assert provider.requests == []
+    assert detail.json()["turns"] == []
+    assert await _audit_rows() == []
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_fill_all_marks_only_the_alias_the_model_adds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """fill-all appends one alias: only that alias is suggested, the writer's keeps its mark."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel, proposal=_proposal(aliases=["Die Wächterin"]))
+    answer = json.dumps(
+        {
+            "reply": "Noch ein Name.",
+            "slots": {"aliases": ["Die Wächterin", "Die Hüterin"]},
+            "relations": [],
+        },
+        ensure_ascii=False,
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(_StubProvider([answer])))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns",
+            json={"text": "Alles vorschlagen lassen", "act": "fill-all"},
+        )
+
+    assert response.status_code == 200
+    proposal = response.json()["proposal"]
+    assert proposal["aliases"] == ["Die Wächterin", "Die Hüterin"]
+    assert proposal["suggested"] == {
+        "aliases": ["Die Hüterin"],
+        "tags": [],
+        "content": False,
+    }
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_a_turn_that_changes_nothing_keeps_the_proposal_null(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An answer with no slots leaves ``proposal`` null; it never becomes an empty object."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel)
+    provider = _StubProvider(
+        [
+            json.dumps(
+                {"reply": "Erzähl mir mehr.", "slots": {}, "relations": []},
+                ensure_ascii=False,
+            )
+        ]
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Ich weiß noch nichts."}
+        )
+        detail = await client.get(f"/api/chat/sessions/{session_id}")
+
+    assert response.status_code == 200
+    assert response.json()["proposal"] is None
+    assert detail.json()["proposal"] is None
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_the_model_output_is_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Thirteen relations keep twelve; type and content cut; blank labels drop."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel)
+    answer = json.dumps(
+        {
+            "reply": "Alles, was ich habe.",
+            "slots": {
+                "aliases": ["", "   ", "Mira"],
+                "tags": ["", "Wächterin"],
+                "content": "x" * 10_050,
+            },
+            "relations": [{"target": f"Target {index}", "type": "r" * 100} for index in range(13)],
+        },
+        ensure_ascii=False,
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(_StubProvider([answer])))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Sie heißt Mira."}
+        )
+
+    assert response.status_code == 200
+    proposal = response.json()["proposal"]
+    assert len(proposal["relations"]) == 12
+    assert all(len(relation["type"]) == 80 for relation in proposal["relations"])
+    assert len(proposal["content"]) == 10_000
+    assert proposal["aliases"] == ["Mira"]
+    assert proposal["tags"] == ["Wächterin"]
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_the_roster_cut_line_closes_the_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    """More than 200 entities: the ROSTER block carries 200 lines and the cut line last."""
+    novel = await _seed_novel()
+    await _seed_entities(novel, 201)
+    session_id = await _seed_session(novel)
+    provider = _StubProvider(
+        [json.dumps({"reply": "Notiert.", "slots": {}, "relations": []}, ensure_ascii=False)]
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Sie heißt Mira."}
+        )
+
+    assert response.status_code == 200
+    roster = _prompt_block(_user_prompt(provider.requests[0]), "ROSTER:", "REQUEST:")
+    assert len(roster) == 201
+    assert roster[0] == "Entity 000 (character; none)"
+    assert roster[-1] == interviews.ROSTER_CUT_LINE
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_the_prompt_carries_the_last_twenty_turns(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Twenty stored turns: the 21st line is the writer's current turn, the first is gone."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel)
+    await _seed_turns(session_id, 20)
+    provider = _StubProvider(
+        [json.dumps({"reply": "Notiert.", "slots": {}, "relations": []}, ensure_ascii=False)]
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Jetzt."}
+        )
+
+    assert response.status_code == 200
+    prompt = _user_prompt(provider.requests[0])
+    turns = _prompt_block(prompt, "TURNS:", "ROSTER:")
+    assert len(turns) == 20
+    assert turns[0] == f"{USER_PREFIX}Turn 2"
+    assert turns[-1] == f"{USER_PREFIX}Jetzt."
+    assert f"{USER_PREFIX}Turn 1" not in turns
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_the_list_is_newest_first() -> None:
+    """Several sessions list newest first by their creation stamp, not by chance."""
+    novel = await _seed_novel()
+    ids = [await _seed_session(novel) for _ in range(3)]
+    base = datetime(2026, 11, 1, 12, tzinfo=UTC)
+    for offset, session_id in enumerate(ids):
+        await _set_created_at(session_id, base + timedelta(minutes=offset))
+
+    async with _client() as client:
+        response = await client.get("/api/chat/sessions", params={"novel_id": str(novel.id)})
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()["items"]] == [
+        str(session_id) for session_id in reversed(ids)
+    ]

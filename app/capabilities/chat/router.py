@@ -198,7 +198,7 @@ async def list_sessions(novel_id: UUID, service: InterviewServiceDep) -> Session
 
 @router.get("/sessions/{session_id}", response_model=SessionDetail)
 async def read_session(session_id: UUID, service: InterviewServiceDep) -> SessionDetail:
-    """The session with its whole transcript, oldest first."""
+    """The session with its transcript, up to ``TRANSCRIPT_READ_LIMIT`` turns, oldest first."""
     try:
         session = await service.read_session(session_id)
     except InterviewRefusalError as error:

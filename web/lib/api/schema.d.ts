@@ -57,7 +57,7 @@ export interface paths {
         };
         /**
          * Read Session
-         * @description The session with its whole transcript, oldest first.
+         * @description The session with its transcript, up to ``TRANSCRIPT_READ_LIMIT`` turns, oldest first.
          */
         get: operations["read_session_api_chat_sessions__session_id__get"];
         put?: never;
@@ -3439,23 +3439,19 @@ export interface components {
         /**
          * SuggestedParts
          * @description Which slot values the model proposed rather than the writer.
+         *
+         *     A list slot carries its provenance per item: the values that are suggested.
          */
         SuggestedParts: {
-            /**
-             * Aliases
-             * @default false
-             */
-            aliases: boolean;
+            /** Aliases */
+            aliases?: string[];
             /**
              * Content
              * @default false
              */
             content: boolean;
-            /**
-             * Tags
-             * @default false
-             */
-            tags: boolean;
+            /** Tags */
+            tags?: string[];
         };
         /** SuggestionRead */
         SuggestionRead: {

@@ -60,10 +60,13 @@ class TurnCreate(BaseModel):
 
 
 class SuggestedParts(BaseModel):
-    """Which slot values the model proposed rather than the writer."""
+    """Which slot values the model proposed rather than the writer.
 
-    aliases: bool = False
-    tags: bool = False
+    A list slot carries its provenance per item: the values that are suggested.
+    """
+
+    aliases: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
     content: bool = False
 
 

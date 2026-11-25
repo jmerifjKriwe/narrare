@@ -4106,12 +4106,14 @@
         "type": "object"
       },
       "SuggestedParts": {
-        "description": "Which slot values the model proposed rather than the writer.",
+        "description": "Which slot values the model proposed rather than the writer.\n\nA list slot carries its provenance per item: the values that are suggested.",
         "properties": {
           "aliases": {
-            "default": false,
+            "items": {
+              "type": "string"
+            },
             "title": "Aliases",
-            "type": "boolean"
+            "type": "array"
           },
           "content": {
             "default": false,
@@ -4119,9 +4121,11 @@
             "type": "boolean"
           },
           "tags": {
-            "default": false,
+            "items": {
+              "type": "string"
+            },
             "title": "Tags",
-            "type": "boolean"
+            "type": "array"
           }
         },
         "title": "SuggestedParts",
@@ -5012,7 +5016,7 @@
     },
     "/api/chat/sessions/{session_id}": {
       "get": {
-        "description": "The session with its whole transcript, oldest first.",
+        "description": "The session with its transcript, up to ``TRANSCRIPT_READ_LIMIT`` turns, oldest first.",
         "operationId": "read_session_api_chat_sessions__session_id__get",
         "parameters": [
           {

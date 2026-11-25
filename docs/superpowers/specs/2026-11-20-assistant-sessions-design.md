@@ -280,18 +280,23 @@ non-blank, at most 80 characters; targets at most 200; at most 12 relations and
 10,000 characters of content. A string over its limit is cut to the limit and
 a list over its cap keeps its first entries — the dialog shows the stored
 value, so nothing changes silently; blank entries are dropped, and a name that
-would be blank is not stored at all. Every string the answer carries is reduced
-to one line before it is stored: the JSON the prompt renders with
-`ensure_ascii=False` lets three line-separator characters through, and a stored
-string must not contain one.
+would be blank is not stored at all. Every string that becomes a slot or a
+relation is reduced to one line before it is stored, and a turn's text is
+reduced to one line when it is rendered into the prompt: the JSON the prompt
+renders with `ensure_ascii=False` lets three line-separator characters through,
+and a stored slot or relation must not contain one.
 
 **Provenance is the server's.** Every part of the proposal is either the
 writer's own or suggested: `{"slots": {...}, "relations": [...], "suggested":
 {"tags": [...], "content": true, ...}, ...}` records which. The rule is
 mechanical: a part that is new after `fill-all` is suggested; a part that is new
 or changed after any other turn is the writer's own; a part that is unchanged
-keeps what it was. A per-question suggestion is not part of the proposal until
-the writer takes it over — then it lands as her own answer.
+keeps what it was. A list slot carries its provenance per item: after `fill-all`
+only the items the model added are suggested and the writer's items keep their
+mark, while a name or content the model changed is suggested under `fill-all`
+and the writer's own under any other act. A per-question suggestion is not part
+of the proposal until the writer takes it over — then it lands as her own
+answer.
 
 **`ready` is not the model's to decide.** The interface enables «Als Entität
 speichern» once the proposal holds a name (the type is always there), which is a
@@ -417,6 +422,7 @@ kernel gains one and both capabilities call it.
 | Extraction unparseable twice | 502 `extraction-failed`; nothing was written, the composer keeps the text, «erneut versuchen» re-sends it |
 | No serving tier for `chat.ask` | 502 `provider-unavailable`, with the cascade's reason; «KI-Regeln öffnen» beside it |
 | The provider call fails or times out | 502 `provider-error`, the error class named; the composer keeps the text |
+| The interview prompt refuses to render (an override that no longer renders) | 502 `prompt-refused`, the render error as the detail |
 | Session closed | 409 `session-closed` |
 | Foreign or absent session | 404, identical |
 | Unknown mode, missing or unknown type | 422, `mode-unknown`, `entity-type-required`, `entity-type-unknown` |
