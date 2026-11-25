@@ -176,6 +176,32 @@ async def test_the_list_shows_all_five_keys_with_their_facts() -> None:
     assert by_key[CONTINUATION]["bundled_summary"].startswith("Novel:")
 
 
+async def test_the_earlier_summaries_stay_the_interview_hides_its_marker() -> None:
+    """The four earlier cards keep their exact subtitle; the fifth drops ``PURPOSE:``."""
+    async with _client() as client:
+        listed = (await client.get("/api/prompts")).json()
+
+    by_key = {row["key"]: row["bundled_summary"] for row in listed}
+    assert by_key[CONTINUATION] == (
+        "Novel: Der Nebel\nChapter: Ankunft\n\nText so far:\nDer Nebel kam von See.\n\n"
+        "Referenced entities:\n### Mira (character)\nDie Wa"
+    )
+    assert by_key[CHAT] == (
+        "Answer the question using only the sources below. Quote the passage that carries "
+        "the answer verbatim, and do not add kno"
+    )
+    assert by_key[EXTRACT] == (
+        "PURPOSE: extract-entities\n\nExtract the entities that appear in the chapter below. "
+        "For each one judge a type — character|"
+    )
+    assert by_key[CONSISTENCY] == (
+        "PURPOSE: check-consistency\n\nRead the chapters below as one story and find where the "
+        "text contradicts itself: an age that"
+    )
+    assert by_key[INTERVIEW].startswith("You are interviewing the writer")
+    assert "PURPOSE:" not in by_key[INTERVIEW]
+
+
 async def test_deleting_the_global_tier_leaves_the_novel_row_in_place() -> None:
     """DELETE removes exactly its scope; the other tier survives."""
     novel_id = await _novel()

@@ -101,7 +101,11 @@ REQUIRED_DOC_KEYS = (
 
 @dataclass(frozen=True)
 class Facts:
-    """One capability's facts, exactly as the yaml holds them."""
+    """One capability's facts, validated from the yaml and normalised on load.
+
+    Absence is normalised: a missing ``path`` is ``None`` and a missing
+    ``nav`` is ``False``, so no view has to know the yaml's optional shape.
+    """
 
     id: str
     title: str

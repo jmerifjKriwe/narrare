@@ -42,6 +42,19 @@ from app.capabilities.prompts.schemas import (
 from app.kernel.context import BudgetImpossibleError
 from app.kernel.contracts.models import Novel
 from app.kernel.embeddings.contract import EmbeddingProvider  # noqa: TC001  the live test's param
+from app.kernel.llm import (
+    ASSISTANT_PREFIX,
+    PURPOSE_INTERVIEW,
+    PURPOSE_PREFIX,
+    RELATIONS_PREFIX,
+    REQUEST_PREFIX,
+    ROSTER_PREFIX,
+    SLOTS_PREFIX,
+    SOURCE_PREFIX,
+    TURNS_PREFIX,
+    TYPE_PREFIX,
+    USER_PREFIX,
+)
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
 from app.kernel.prompts import (
     REASONS,
@@ -481,6 +494,35 @@ def _claim_live_test_slot(user_id: UUID) -> float:
     return 0.0
 
 
+_SUMMARY_MARKER_PREFIXES: Final = (
+    f"{PURPOSE_PREFIX}{PURPOSE_INTERVIEW}",
+    SOURCE_PREFIX,
+    TYPE_PREFIX,
+    SLOTS_PREFIX,
+    RELATIONS_PREFIX,
+    TURNS_PREFIX,
+    ROSTER_PREFIX,
+    REQUEST_PREFIX,
+    USER_PREFIX,
+    ASSISTANT_PREFIX,
+)
+"""The lines a list row's subtitle never shows: the interview purpose, the markers.
+
+The four earlier prompts open with prose or with their own purpose line, and
+those summaries stay byte-identical; the interview's purpose line is a machine
+token ahead of the prose the card should read, so it is skipped with the
+section markers.
+"""
+
+
 def _bundled_summary(spec: PromptSpec) -> str:
-    """The bundled prompt rendered at sample scope, cut for the list row."""
-    return render_source(spec.template, spec.sample_variables(), include=_bundled_include)[:120]
+    """The bundled prompt rendered at sample scope, cut for the list row.
+
+    Machine marker lines never reach the card's subtitle; the prose after them
+    does, and the cut stays at 120 characters.
+    """
+    rendered = render_source(spec.template, spec.sample_variables(), include=_bundled_include)
+    lines = [
+        line for line in rendered.splitlines() if not line.startswith(_SUMMARY_MARKER_PREFIXES)
+    ]
+    return "\n".join(lines).strip()[:120]

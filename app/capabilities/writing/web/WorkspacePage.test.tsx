@@ -1206,8 +1206,10 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     // The workspace chrome's room is gone — the zen surface owns the desk.
     expect(screen.queryByTestId("workspace-ribbon")).toBeNull();
     expect(screen.queryByTestId("workspace-running-head")).toBeNull();
-    // The scene's own prose stands centered, the overline real.
-    const box = screen.getByRole("textbox", { name: PROSE });
+    // The scene's own prose stands centered, the overline real. The editor
+    // mounts asynchronously, so wait for its box instead of assuming it
+    // landed in the same commit as the zen surface.
+    const box = await screen.findByRole("textbox", { name: PROSE });
     await waitFor(() => expect(box.textContent).toContain("Ich kalibrierte die Sensoren."));
     expect(screen.getByText("Forschungsstation 7 · 27. Oktober 2094, 03:14 UTC")).toBeTruthy();
     // Today's words are the aggregate's own (412), the session starts at 0.
@@ -1313,7 +1315,9 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
     expect(await screen.findByTestId("ghost-preview")).toBeTruthy();
     await enterZen();
-    const box = screen.getByRole("textbox", { name: PROSE });
+    // The prose editor mounts asynchronously under the zen surface: wait for
+    // its box instead of racing the commit that renders EXIT.
+    const box = await screen.findByRole("textbox", { name: PROSE });
     fireEvent.keyDown(box, { key: "Tab" });
     await waitFor(() => expect(screen.queryByTestId("ghost-preview")).toBeNull());
     expect(box.textContent).toContain("Der Nebel hob sich.");

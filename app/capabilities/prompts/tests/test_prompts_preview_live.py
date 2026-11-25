@@ -105,6 +105,22 @@ async def _entity(novel_id: UUID, name: str, type_: str) -> None:
         await session.commit()
 
 
+async def _entities(novel_id: UUID, count: int) -> None:
+    """``count`` roster rows in one commit, name-ordered and distinct."""
+    async with Session() as session:
+        session.add_all(
+            Entity(
+                user_id=LOCAL_USER_ID,
+                novel_id=novel_id,
+                name=f"Entity {index:03d}",
+                type="character",
+                content="",
+            )
+            for index in range(count)
+        )
+        await session.commit()
+
+
 async def _passage(title: str, passage: str) -> None:
     """One document and chunk in the user's knowledge base, chat's own seed."""
     [vector] = await FakeEmbeddingProvider().embed([passage])
@@ -434,6 +450,28 @@ async def test_interview_live_test_resolves_and_audits_chat_ask() -> None:
     assert "Mira (character; none)" in row["prompt_text"]
     assert 'novel "Der Nebel" in the genre Mystery' in row["prompt_text"]
     assert '"reply"' in row["response_text"]
+
+
+async def test_the_interview_live_roster_is_cut_at_the_turn_bound() -> None:
+    """At 201 entities the live test shows the same 200 plus the cut line as a turn."""
+    novel_id = await _novel("Die Reisende")
+    await _entities(novel_id, 201)
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/prompts/{INTERVIEW}/live-test", json={"novel_id": str(novel_id)}
+        )
+        assert response.status_code == 200, response.text
+
+    frames = _frames(response.text)
+    assert frames[0]["context"]["facts"]["roster"] == "200"
+    [row] = await _audit_rows()
+    lines = row["prompt_text"].splitlines()
+    start = lines.index("ROSTER:") + 1
+    end = next(index for index in range(start, len(lines)) if lines[index].startswith("REQUEST:"))
+    assert len(lines[start:end]) == 201
+    assert lines[start] == "Entity 000 (character; none)"
+    assert lines[end - 1] == "(more entities exist; they are not listed)"
 
 
 async def test_the_knowledge_live_tests_assemble_the_latest_chapters() -> None:

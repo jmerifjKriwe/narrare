@@ -282,7 +282,7 @@ async def test_fake_interview_answers_each_act() -> None:
     assert no_idea["suggestion"]
     assert no_idea["slots"] == {"name": "Jona"}
 
-    # Accepting the suggestion records the turn; nothing else moves.
+    # Accepting the suggestion records the accepted text in content; nothing else moves.
     accepted = json.loads(
         await _answer(
             _interview_prompt(
@@ -291,8 +291,20 @@ async def test_fake_interview_answers_each_act() -> None:
         )
     )
     assert accepted["reply"] == "Notiert."
-    assert accepted["slots"] == {"name": "Jona"}
+    assert accepted["slots"] == {"name": "Jona", "content": "Übernehmen"}
     assert "suggestion" not in accepted
+
+    # An existing description gains the accepted text after a space.
+    appended = json.loads(
+        await _answer(
+            _interview_prompt(
+                request="accept-suggestion",
+                user="Eine Wächterin am See.",
+                slots={"name": "Jona", "content": "Jona wacht."},
+            )
+        )
+    )
+    assert appended["slots"]["content"] == "Jona wacht. Eine Wächterin am See."
 
     # Fill all: every open slot from the canned values, one relation to the roster.
     filled = json.loads(

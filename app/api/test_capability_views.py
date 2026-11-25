@@ -205,20 +205,23 @@ def test_a_capability_without_web_keeps_facts_the_catalog_does_not_resolve(
     assert ui_facts(entries, root) == ()
 
 
-def test_a_capability_with_neither_path_nor_nav_still_generates(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "fields",
+    ["needs: []", 'path: ""\nneeds: []'],
+    ids=["absent", "empty"],
+)
+def test_a_capability_with_neither_path_nor_nav_still_generates(
+    tmp_path: Path, fields: str
+) -> None:
     # Chat states sessions and endpoints but owns no screen: its panel lives
     # on another capability's page, so a route path and a nav entry would
-    # promise a surface that does not exist. facts() reads the absent fields
-    # as no path and no nav, and the views leave the capability out the way
-    # they leave out one without web/.
-    root = _facts_tree(tmp_path, title="demo.gone", owns_web=False, fields="needs: []")
+    # promise a surface that does not exist. facts() reads the absent field
+    # and the empty one alike as no path, and the absent nav as false.
+    root = _facts_tree(tmp_path, title="demo.gone", owns_web=False, fields=fields)
     known = locales(root)
     loaded = catalogs(root, known)
     entries = facts(root, known, loaded)
     assert [(entry.id, entry.path, entry.nav) for entry in entries] == [("demo", None, False)]
-    assert ui_facts(entries, root) == ()
-    assert 'id: "demo"' not in typescript_nav(ui_facts(entries, root))
-    assert "demo.gone" not in docs_index(entries, known, loaded, root)
 
 
 def test_an_absent_path_never_reaches_a_view_as_none(tmp_path: Path) -> None:

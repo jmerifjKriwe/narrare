@@ -3617,6 +3617,9 @@ export interface components {
         /**
          * TurnCreate
          * @description One writer turn: what the panel sent, and the choice it named.
+         *
+         *     ``text`` may be empty only for ``accept-suggestion``: there the server
+         *     stores the settled suggestion's own text, never the client's words.
          */
         TurnCreate: {
             /** Act */

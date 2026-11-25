@@ -1,10 +1,10 @@
 """Request and response shapes for the chat capability."""
 
 from datetime import datetime  # noqa: TC003  Pydantic resolves these at runtime
-from typing import Literal
+from typing import Literal, Self
 from uuid import UUID  # noqa: TC003
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.capabilities.chat.prompts import RETRIEVAL_LIMIT
 
@@ -53,10 +53,21 @@ class SessionCreate(BaseModel):
 
 
 class TurnCreate(BaseModel):
-    """One writer turn: what the panel sent, and the choice it named."""
+    """One writer turn: what the panel sent, and the choice it named.
 
-    text: str = Field(min_length=1, max_length=4000)
+    ``text`` may be empty only for ``accept-suggestion``: there the server
+    stores the settled suggestion's own text, never the client's words.
+    """
+
+    text: str = Field(max_length=4000)
     act: TurnAct | None = None
+
+    @model_validator(mode="after")
+    def _text_required_unless_accepting(self) -> Self:
+        """Every other act needs the writer's text; accepting may send none."""
+        if not self.text and self.act != "accept-suggestion":
+            raise ValueError("the turn needs text")
+        return self
 
 
 class SuggestedParts(BaseModel):

@@ -26,7 +26,14 @@ from uuid import UUID  # noqa: TC003  signatures and the dataclass evaluate
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002  the service's field
 
 from app.capabilities.chat.models import AssistantSession, AssistantTurn  # noqa: TC001
-from app.capabilities.chat.prompts import CHAT_KEY, INTERVIEW_KEY, roster_block
+from app.capabilities.chat.prompts import (
+    CHAT_KEY,
+    INTERVIEW_KEY,
+    ROSTER_LIMIT,
+    novel_variables,
+    roster_for_prompt,
+    turn_line,
+)
 from app.capabilities.chat.repository import (
     AssistantSessionRepository,
     EntityRosterRepository,
@@ -65,12 +72,6 @@ MODEL_ACTS: Final[frozenset[str | None]] = frozenset(
 
 TRANSCRIPT_LIMIT: Final = 20
 """How many conversation turns the model sees, the writer's current one included."""
-
-ROSTER_LIMIT: Final = 200
-"""How many roster entities the model sees before the list is declared cut."""
-
-ROSTER_CUT_LINE: Final = "(more entities exist; they are not listed)"
-"""The roster's last line when the bound dropped entities: the template cannot know."""
 
 TRANSCRIPT_READ_LIMIT: Final = 10_000
 """The most turns the detail and the suggestion search read: far past any real
@@ -425,31 +426,56 @@ def _suggested_map(proposal: dict[str, object] | None) -> dict[str, object]:
     return marks
 
 
-def _label_marks(
-    given_items: list[str],
+def _merge_labels(
+    now_items: list[str],
     now_marks: list[str],
+    given_items: list[str],
     answer_items: list[str],
     act: str | None,
-) -> list[str]:
-    """The items of a list slot that stay suggested after the merge.
+) -> tuple[list[str], list[str]]:
+    """Merge the answer's list into the locked list, item by item.
 
-    An item the model carried over keeps the mark the locked proposal gave it;
-    an item it added is suggested under ``fill-all`` and the writer's own after
+    The locked list keeps every item; the answer's list is read as its changes
+    to its input. An item the answer dropped that its input carried leaves; an
+    item it added joins; a value change replaces the item in place. The marks
+    follow: an unchanged item keeps the mark the locked proposal gave it, a new
+    or changed one is suggested under ``fill-all`` and the writer's own after
     any other act.
     """
-    given_keys = {item.casefold() for item in given_items}
-    marked_keys = {item.casefold() for item in now_marks}
-    marks: list[str] = []
+    given_by_key = {item.casefold(): item for item in given_items}
+    answer_by_key = {item.casefold(): item for item in answer_items}
+    merged: list[str] = []
+    positions: dict[str, int] = {}
+    for item in now_items:
+        key = item.casefold()
+        if key in given_by_key and key not in answer_by_key:
+            continue
+        if key in answer_by_key:
+            item = answer_by_key[key]
+        if key in positions:
+            continue
+        positions[key] = len(merged)
+        merged.append(item)
+    now_by_key = {item.casefold(): item for item in now_items}
     for item in answer_items:
         key = item.casefold()
-        suggested = key in marked_keys if key in given_keys else act == "fill-all"
+        if key in positions:
+            continue
+        positions[key] = len(merged)
+        merged.append(item)
+    marked_keys = {item.casefold() for item in now_marks}
+    marks: list[str] = []
+    for item in merged:
+        key = item.casefold()
+        locked = now_by_key.get(key)
+        suggested = act == "fill-all" if locked is None or locked != item else key in marked_keys
         if suggested:
             marks.append(item)
-    return marks
+    return merged, marks
 
 
 def _relation_key(relation: Mapping[str, object]) -> tuple[str, str, str]:
-    """A relation's identity for the merge: its target, type and note."""
+    """A relation's unchanged identity for the merge: its target, type and note."""
     return (
         _text(relation.get("target")).strip().casefold(),
         _text(relation.get("type")),
@@ -457,9 +483,9 @@ def _relation_key(relation: Mapping[str, object]) -> tuple[str, str, str]:
     )
 
 
-def _target_key(relation: Mapping[str, object]) -> str:
-    """The case-folded target a relation replaces by."""
-    return _text(relation.get("target")).strip().casefold()
+def _relation_position(relation: Mapping[str, object]) -> tuple[str, str]:
+    """A relation's identity for the merge: its target and type; the note is a field."""
+    return (_text(relation.get("target")).strip().casefold(), _text(relation.get("type")))
 
 
 def _merge_relations(
@@ -468,14 +494,27 @@ def _merge_relations(
     model: list[dict[str, str]],
     act: str | None,
 ) -> list[dict[str, object]]:
-    """Merge the answer's relations into the locked proposal, per relation.
+    """Merge the answer's relations into the locked proposal, relation by relation.
 
-    A relation the answer carried unchanged is left to the locked proposal; a
-    new or changed one is written and takes its provenance from the act. The
-    model never removes a relation, so a concurrent turn's row survives.
+    The answer's list is read as its changes to its input: the locked proposal
+    keeps every relation, loses only one the answer dropped that its input
+    carried, and takes a changed or new one in place — keyed by target and
+    type, so two relations to one target survive with their own types. A
+    relation the answer carried unchanged is left to the locked proposal; a new
+    or changed one takes its provenance from the act.
     """
-    merged = [dict(relation) for relation in now]
-    positions = {_target_key(relation): index for index, relation in enumerate(merged)}
+    given_positions = {_relation_position(relation) for relation in given}
+    answer_positions = {_relation_position(relation) for relation in model}
+    merged: list[dict[str, object]] = []
+    positions: dict[tuple[str, str], int] = {}
+    for relation in now:
+        position = _relation_position(relation)
+        if position in given_positions and position not in answer_positions:
+            continue
+        if position in positions:
+            continue
+        positions[position] = len(merged)
+        merged.append(dict(relation))
     unchanged = {_relation_key(relation) for relation in given}
     for relation in model:
         if _relation_key(relation) in unchanged:
@@ -486,13 +525,13 @@ def _merge_relations(
             "note": relation["note"],
             "suggested": act == "fill-all",
         }
-        target = _target_key(relation)
-        position = positions.get(target)
-        if position is None:
-            positions[target] = len(merged)
+        position = _relation_position(relation)
+        index = positions.get(position)
+        if index is None:
+            positions[position] = len(merged)
             merged.append(stored)
         else:
-            merged[position] = stored
+            merged[index] = stored
     return merged
 
 
@@ -513,16 +552,23 @@ def _merge_proposal(
     suggested = _suggested_map(now)
     name_suggested = bool(now.get("name_suggested")) if now else False
     for key, value in _normalise_slots(answer.slots).items():
-        if value == given_slots.get(key):
-            continue
         if key in LABEL_KEYS:
-            suggested[key] = _label_marks(
-                _text_list(given_slots.get(key)),
+            merged_items, merged_marks = _merge_labels(
+                _text_list(slots.get(key)),
                 cast("list[str]", suggested[key]),
+                _text_list(given_slots.get(key)),
                 cast("list[str]", value),
                 act,
             )
-        elif key == "name":
+            if merged_items:
+                slots[key] = merged_items
+            else:
+                slots.pop(key, None)
+            suggested[key] = merged_marks
+            continue
+        if value == given_slots.get(key):
+            continue
+        if key == "name":
             name_suggested = act == "fill-all"
         else:
             suggested[key] = act == "fill-all"
@@ -610,18 +656,28 @@ def _pending(turns: list[AssistantTurn]) -> AssistantTurn | None:
     return None
 
 
+def _accepted_text(text: str, settled: str | None) -> str:
+    """An accepted suggestion's text, or the coded refusal when the client's differs.
+
+    The server owns the answer: the settled suggestion's own text is stored as
+    the writer's turn, so a client cannot put words in the writer's mouth. An
+    empty ``text`` takes the suggestion; anything else must equal it.
+    """
+    if not settled:
+        raise InterviewValidationError(
+            "suggestion-mismatch", "there is no pending suggestion to accept"
+        )
+    if text and text != settled:
+        raise InterviewValidationError(
+            "suggestion-mismatch", "the text is not the pending suggestion"
+        )
+    return settled
+
+
 def _failure_name(error: Exception) -> str:
     """The provider error's class, with its message when it carries one."""
     message = str(error)
     return f"{type(error).__name__}: {message}" if message else type(error).__name__
-
-
-def _roster_for_prompt(entities: list[Entity], cut: bool) -> str:
-    """The roster lines, with the cut declared when the bound dropped entities."""
-    block = roster_block(entities)
-    if not cut:
-        return block
-    return f"{block}\n{ROSTER_CUT_LINE}" if block else ROSTER_CUT_LINE
 
 
 def _relations_for_prompt(proposal: dict[str, object] | None) -> list[dict[str, str]]:
@@ -702,6 +758,10 @@ class InterviewService:
         """Run one turn's three steps: the short read, the call, the write."""
         model_act = payload.act in MODEL_ACTS
         state = await self._read_turn_state(session_id, with_prompt=model_act)
+        text = payload.text
+        if payload.act == "accept-suggestion":
+            pending = await self._pending_suggestion(session_id)
+            text = _accepted_text(payload.text, pending.suggestion if pending else None)
         await self.session.commit()
         # The read's rows leave the identity map: step 3 must load the session
         # as it stands under the lock, not as step 1 saw it.
@@ -714,7 +774,7 @@ class InterviewService:
         answer: InterviewAnswer | None = None
         if model_act:
             try:
-                prompt = await self._render_prompt(state, payload)
+                prompt = await self._render_prompt(state, payload, text)
             except PromptRenderError as error:
                 raise PromptRefusedError(str(error)) from None
             try:
@@ -725,7 +785,7 @@ class InterviewService:
             # reads the database while the provider is answering.
             await self.session.commit()
             answer = await self._ask(prompt, state.novel_id, calls, resolved)
-        return await self._write_turn(state, payload, answer, calls, resolved)
+        return await self._write_turn(state, payload, text, answer, calls, resolved)
 
     async def _read_turn_state(self, session_id: UUID, *, with_prompt: bool) -> _TurnState:
         """Step 1: the session, its proposal and the turns the prompt may need."""
@@ -756,23 +816,21 @@ class InterviewService:
             roster_cut=roster_cut,
         )
 
-    async def _render_prompt(self, state: _TurnState, payload: TurnCreate) -> str:
+    async def _render_prompt(self, state: _TurnState, payload: TurnCreate, text: str) -> str:
         """Step 2: render the registered interview prompt for this turn."""
         title, genre = state.heading
         lines = [
-            f"{ASSISTANT_PREFIX if turn.role == 'assistant' else USER_PREFIX}"
-            f"{single_line(turn.text)}"
+            turn_line(ASSISTANT_PREFIX if turn.role == "assistant" else USER_PREFIX, turn.text)
             for turn in state.turns
         ]
-        lines.append(f"{USER_PREFIX}{single_line(payload.text)}")
+        lines.append(turn_line(USER_PREFIX, text))
         variables: dict[str, object] = {
-            "novel_title": single_line(title),
-            "novel_genre": single_line(genre or ""),
+            **novel_variables(title, genre or ""),
             "entity_type": state.entity_type,
             "slots": json.dumps(_proposal_slots(state.proposal), ensure_ascii=False),
             "relations": json.dumps(_relations_for_prompt(state.proposal), ensure_ascii=False),
             "transcript": "\n".join(lines),
-            "roster": _roster_for_prompt(state.roster, state.roster_cut),
+            "roster": roster_for_prompt(state.roster, state.roster_cut),
             "request": payload.act or "answer",
         }
         return await render(
@@ -838,6 +896,7 @@ class InterviewService:
         self,
         state: _TurnState,
         payload: TurnCreate,
+        text: str,
         answer: InterviewAnswer | None,
         calls: list[AuditedCall],
         resolved: ResolvedProvider | None,
@@ -847,20 +906,50 @@ class InterviewService:
         if locked is None:
             await self.session.rollback()
             if resolved is not None:
-                await self._write_calls(calls, resolved, state.novel_id)
+                await self._write_calls(
+                    calls,
+                    resolved,
+                    state.novel_id,
+                    status="error",
+                    error_code="not-found",
+                    error="the session is absent or not yours",
+                )
             raise InterviewNotFoundError("the session is absent or not yours")
         if locked.closed_at is not None:
             await self.session.rollback()
             if resolved is not None:
                 # The rollback expired every identity-map row: read the novel
                 # from the step-1 state, never from ``locked`` after it.
-                await self._write_calls(calls, resolved, state.novel_id)
+                await self._write_calls(
+                    calls,
+                    resolved,
+                    state.novel_id,
+                    status="error",
+                    error_code="session-closed",
+                    error=f"session {state.session_id} was closed",
+                )
             raise SessionClosedError(f"session {state.session_id} was closed")
 
+        pending: AssistantTurn | None = None
+        if payload.act == "accept-suggestion":
+            pending = await self._pending_suggestion(state.session_id)
+            try:
+                text = _accepted_text(payload.text, pending.suggestion if pending else None)
+            except InterviewValidationError as error:
+                await self.session.rollback()
+                if resolved is not None:
+                    await self._write_calls(
+                        calls,
+                        resolved,
+                        state.novel_id,
+                        status="error",
+                        error_code=error.code,
+                        error=str(error),
+                    )
+                raise
+
         seq = await self.sessions.next_seq(state.session_id)
-        await self.sessions.append_turn(
-            state.session_id, seq, "user", payload.text, act=payload.act
-        )
+        await self.sessions.append_turn(state.session_id, seq, "user", text, act=payload.act)
 
         if payload.act == "reject-suggestion":
             pending = await self._pending_suggestion(state.session_id)
@@ -890,10 +979,8 @@ class InterviewService:
             # check keeps the write path typed without an assert in production.
             raise ProviderCallError("the model act produced no answer")
 
-        if payload.act == "accept-suggestion":
-            pending = await self._pending_suggestion(state.session_id)
-            if pending is not None:
-                await self.sessions.set_suggestion_state(pending, "accepted")
+        if payload.act == "accept-suggestion" and pending is not None:
+            await self.sessions.set_suggestion_state(pending, "accepted")
 
         suggestion = None
         if answer.suggestion is not None:
@@ -907,8 +994,13 @@ class InterviewService:
             suggestion=suggestion,
             suggestion_state="pending" if suggestion is not None else None,
         )
-        proposal = _merge_proposal(locked.proposal, state.proposal, answer, payload.act)
-        await self.sessions.set_proposal(locked, proposal)
+        if payload.act == "no-idea":
+            # The model proposes an answer to its last question; the proposal
+            # is not changed, so a guessed slot never becomes the writer's.
+            proposal = locked.proposal
+        else:
+            proposal = _merge_proposal(locked.proposal, state.proposal, answer, payload.act)
+            await self.sessions.set_proposal(locked, proposal)
         await self._record_calls(calls, resolved, locked.novel_id)
         await self.session.commit()
         return TurnReadback(
@@ -919,12 +1011,15 @@ class InterviewService:
         )
 
     async def _pending_suggestion(self, session_id: UUID) -> AssistantTurn | None:
-        """The newest suggestion still pending, read under the session's lock.
+        """The newest suggestion still pending, read over the whole transcript.
 
-        The two settlement acts name the suggestion the panel showed, which may
-        be older than the prompt's twenty-turn window; the read is the
-        transcript, up to ``TRANSCRIPT_READ_LIMIT`` turns, so a suggestion is
-        settled however long the interview ran.
+        Step 1 reads it for an accepted turn, so the prompt carries the settled
+        answer; step 3 re-reads it under the session's lock, which is the
+        authoritative read the settlement uses. The two settlement acts name
+        the suggestion the panel showed, which may be older than the prompt's
+        twenty-turn window; the read is the transcript, up to
+        ``TRANSCRIPT_READ_LIMIT`` turns, so a suggestion is settled however long
+        the interview ran.
         """
         turns = await self.sessions.last_turns(session_id, TRANSCRIPT_READ_LIMIT)
         return _pending(turns)

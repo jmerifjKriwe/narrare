@@ -1,6 +1,6 @@
 """The effective-chain render: novel row, then global row, then bundled.
 
-``render`` is the resolution glue the four prompt call sites share: the
+``render`` is the resolution glue the five prompt call sites share: the
 source is the user's effective override for the scope — the novel's row,
 else the global one — and the bundled template when neither exists, and
 every ``{% include %}`` inside a stored override walks the same chain in

@@ -297,9 +297,10 @@ def _interview_answer(prompt: str) -> str:
     updated by the writer's recognized key line or by ``fill-all``'s canned
     values. ``no-idea`` offers a suggestion and leaves the slots as received;
     ``fill-all`` also proposes one ``related_to`` to the first roster entry;
-    ``accept-suggestion`` and every other act acknowledge the turn. A last
-    user turn of ``unparseable`` answers prose, so the structured ask's parse
-    fails loudly instead of deriving a proposal from nothing.
+    ``accept-suggestion`` records the accepted text in ``content`` (set when
+    empty, appended with a space otherwise); every other act acknowledges the
+    turn. A last user turn of ``unparseable`` answers prose, so the structured
+    ask's parse fails loudly instead of deriving a proposal from nothing.
     """
     parsed_slots = _json_line(prompt, SLOTS_PREFIX, {})
     slots = cast("dict[str, object]", parsed_slots) if isinstance(parsed_slots, dict) else {}
@@ -327,6 +328,11 @@ def _interview_answer(prompt: str) -> str:
             if target and not any(relation.get("target") == target for relation in relations):
                 relations.append({"target": target, "type": RELATION_TYPE})
         return _interview_json(_INTERVIEW_FILLED, slots, relations, None)
+    if request == "accept-suggestion":
+        content = slots.get("content")
+        body = content if isinstance(content, str) and content else ""
+        slots["content"] = f"{body} {user_text}".strip() if body else user_text
+        return _interview_json(_INTERVIEW_NOTED, slots, relations, None)
     _apply_interview_line(user_text, slots, relations)
     return _interview_json(_INTERVIEW_NOTED, slots, relations, None)
 

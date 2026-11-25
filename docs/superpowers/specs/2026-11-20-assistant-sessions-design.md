@@ -256,9 +256,11 @@ steps and never holds a transaction across the call:
    the calls are written.
 
 **The proposal is merged, not replaced.** The model's output is compared with
-the input it was given: what it changed is written, what it left alone is taken
-from the proposal as it stands now. The provenance rule reads the same
-comparison.
+the input it was given: what it changed is written — a list slot or a relation
+merges item by item, so the proposal keeps every item, gains the items the
+answer added, loses only an item the answer dropped that its input carried, and
+takes a value change in place — and what it left alone is taken from the
+proposal as it stands now. The provenance rule reads the same comparison.
 
 Concurrent turns on one session (two tabs, a double submit) cannot interleave
 their rows and cannot erase each other: each allocates `seq` inside its own
@@ -426,6 +428,7 @@ kernel gains one and both capabilities call it.
 | Session closed | 409 `session-closed` |
 | Foreign or absent session | 404, identical |
 | Unknown mode, missing or unknown type | 422, `mode-unknown`, `entity-type-required`, `entity-type-unknown` |
+| An `accept-suggestion` text that is neither empty nor the pending suggestion's | 422 `suggestion-mismatch`; the server stores the suggestion's own text |
 | A relation line names an entity outside the novel | 422 `relation-target-invalid`, naming the row; nothing is written |
 | Proposal conflicts with a duplicate name | Not an error: the roster hint already flagged it; the create dialog shows a notice and saves |
 

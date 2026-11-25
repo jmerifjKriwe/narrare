@@ -227,17 +227,17 @@ _SAMPLE_TURNS: Final[tuple[tuple[str, str], ...]] = (
 )
 
 
-def _turn_line(prefix: str, text: str) -> str:
+def turn_line(prefix: str, text: str) -> str:
     """One transcript line: the turn's text behind its prefix on a single line.
 
     The interview's rendering invariant, through the kernel helper. The live
-    renderer (Task 7) builds every turn the same way, so a writer's line breaks
+    renderer builds every turn through this helper, so a writer's line breaks
     become spaces and the text can never start a line that looks like a marker.
     """
     return f"{prefix}{single_line(text)}"
 
 
-_SAMPLE_TRANSCRIPT: Final = "\n".join(_turn_line(prefix, text) for prefix, text in _SAMPLE_TURNS)
+_SAMPLE_TRANSCRIPT: Final = "\n".join(turn_line(prefix, text) for prefix, text in _SAMPLE_TURNS)
 _SAMPLE_ROSTER: Final = (
     "Mira (character; Die Wanderin)\n"
     "Haus (location; Das Haus am See)\n"
@@ -273,12 +273,28 @@ def roster_block(entities: Sequence[Entity]) -> str:
     )
 
 
-def _novel_variables(title: str, genre: str) -> dict[str, str]:
+ROSTER_LIMIT: Final = 200
+"""How many roster entities the model sees before the list is declared cut."""
+
+ROSTER_CUT_LINE: Final = "(more entities exist; they are not listed)"
+"""The roster's last line when the bound dropped entities: the template cannot know."""
+
+
+def roster_for_prompt(entities: Sequence[Entity], cut: bool) -> str:
+    """The roster lines, with the cut declared when the bound dropped entities."""
+    block = roster_block(entities)
+    if not cut:
+        return block
+    return f"{block}\n{ROSTER_CUT_LINE}" if block else ROSTER_CUT_LINE
+
+
+def novel_variables(title: str, genre: str) -> dict[str, str]:
     """The novel heading's two variables, each one line — the one way they are built.
 
     The template renders both inline, outside any marker line, so a break in
     either would begin a line once rendered. The sample's values pass through
-    as a no-op; the helper is the single path so no caller can bypass it.
+    as a no-op; the live renderer builds its variables here too, so no caller
+    can bypass it.
     """
     return {"novel_title": single_line(title), "novel_genre": single_line(genre)}
 
@@ -291,7 +307,7 @@ def interview_sample_variables() -> dict[str, object]:
     and roster are the ones the other bundled samples use.
     """
     return {
-        **_novel_variables("Der Nebel", "Mystery"),
+        **novel_variables("Der Nebel", "Mystery"),
         "entity_type": _SAMPLE_ENTITY_TYPE,
         "slots": _SAMPLE_SLOTS_JSON,
         "relations": _SAMPLE_RELATIONS_JSON,
@@ -333,10 +349,12 @@ async def _assemble_interview(context: LiveTestContext) -> AssembledContext:
     roster_count = len(_SAMPLE_ROSTER.splitlines())
     if context.novel_id is not None:
         entities = await EntityRosterRepository(context.session, context.user_id).names_for_novel(
-            context.novel_id
+            context.novel_id, ROSTER_LIMIT + 1
         )
-        variables["roster"] = roster_block(entities)
-        roster_count = len(entities)
+        cut = len(entities) > ROSTER_LIMIT
+        shown = entities[:ROSTER_LIMIT]
+        variables["roster"] = roster_for_prompt(shown, cut)
+        roster_count = len(shown)
     prompt = await render(
         context.session,
         context.user_id,

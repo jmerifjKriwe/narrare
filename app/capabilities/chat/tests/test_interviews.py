@@ -17,6 +17,7 @@ from sqlalchemy import text
 
 from app.api.main import app
 from app.capabilities.chat import interviews
+from app.capabilities.chat.prompts import ROSTER_CUT_LINE
 from app.capabilities.chat.repository import AssistantSessionRepository
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Entity, Novel
@@ -184,6 +185,57 @@ class _RacingProvider:
             self.second_arrived.set()
             tags = cast("list[object]", slots.get("tags", []))
             slots["tags"] = [*tags, "wachsam"]
+        yield Delta(
+            json.dumps(
+                {"reply": "Notiert.", "slots": slots, "relations": relations},
+                ensure_ascii=False,
+            )
+        )
+        yield Usage(input_tokens=1, output_tokens=1)
+        yield DONE
+
+
+class _AliasRacingProvider:
+    """Two calls, both adding an alias to one list slot from the same start.
+
+    The first call parks until the second has read the same starting proposal;
+    the second releases both. Each answers with its own alias appended to the
+    slots its prompt carried, so the merge must union the two additions.
+    """
+
+    def __init__(self) -> None:
+        self.calls = 0
+        self.first_arrived = asyncio.Event()
+        self.second_arrived = asyncio.Event()
+
+    def describe(self) -> str:
+        """Identify the barrier provider."""
+        return "alias-racing"
+
+    def configuration_problems(self) -> list[str]:
+        """Ready by construction."""
+        return []
+
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Hold until both calls have read, then answer each with its own alias."""
+        self.calls += 1
+        call = self.calls
+        prompt = "\n".join(
+            message.content for message in request.messages if message.role == "user"
+        )
+        raw_slots = _prompt_json(prompt, "SLOTS: ", {})
+        slots = dict(cast("dict[str, object]", raw_slots)) if isinstance(raw_slots, dict) else {}
+        relations = _prompt_json(prompt, "RELATIONS: ", [])
+        if call == 1:
+            self.first_arrived.set()
+            await self.second_arrived.wait()
+            alias = "Die Wächterin"
+        else:
+            await self.first_arrived.wait()
+            self.second_arrived.set()
+            alias = "Die Hüterin"
+        aliases = cast("list[object]", slots.get("aliases", []))
+        slots["aliases"] = [*aliases, alias]
         yield Delta(
             json.dumps(
                 {"reply": "Notiert.", "slots": slots, "relations": relations},
@@ -615,7 +667,11 @@ async def test_fill_all_marks_its_parts_and_a_plain_turn_does_not(
 async def test_no_idea_sets_a_pending_suggestion_and_keeps_the_proposal(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """no-idea proposes an answer, keeps the proposal, and leaves a pending turn."""
+    """no-idea proposes an answer, keeps the proposal, and leaves a pending turn.
+
+    The stub returns a changed slot beside its suggestion; the guess must not
+    land in the proposal as the writer's own.
+    """
     novel = await _seed_novel()
     proposal = _proposal(name="Mira")
     session_id = await _seed_session(novel, proposal=proposal)
@@ -624,8 +680,8 @@ async def test_no_idea_sets_a_pending_suggestion_and_keeps_the_proposal(
             json.dumps(
                 {
                     "reply": "Hier ist ein Vorschlag.",
-                    "slots": {"name": "Mira"},
-                    "relations": [],
+                    "slots": {"name": "Der See", "tags": ["neu"]},
+                    "relations": [{"target": "Haus", "type": "located_in"}],
                     "suggestion": "Eine Wächterin, die den See bewacht.",
                 },
                 ensure_ascii=False,
@@ -643,6 +699,7 @@ async def test_no_idea_sets_a_pending_suggestion_and_keeps_the_proposal(
 
     assert response.status_code == 200
     assert response.json()["proposal"] == proposal
+    assert detail.json()["proposal"] == proposal
     assert response.json()["suggestion"] == "Eine Wächterin, die den See bewacht."
     assistant = detail.json()["turns"][-1]
     assert assistant["role"] == "assistant"
@@ -693,6 +750,60 @@ async def test_accept_and_reject_settle_the_suggestion(
         (2, "user", "reject-suggestion", None),
     ]
     assert reject_provider.requests == []
+
+
+@pytest.mark.usefixtures("two_users")
+@pytest.mark.parametrize("text", ["Vielleicht Mira.", ""], ids=["match", "empty"])
+async def test_accept_stores_the_settled_suggestion_text(
+    text: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The suggestion's own text is stored, whether the client echoes it or sends none."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel)
+    await _seed_suggestion(session_id, "Vielleicht Mira.")
+    provider = _StubProvider(echo=True)
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns",
+            json={"text": text, "act": "accept-suggestion"},
+        )
+
+    assert response.status_code == 200, response.text
+    turns = await _stored_turns(session_id)
+    assert [(turn.seq, turn.role, turn.text) for turn in turns] == [
+        (1, "assistant", "Wie heißt sie?"),
+        (2, "user", "Vielleicht Mira."),
+        (3, "assistant", "Notiert."),
+    ]
+    assert turns[0].suggestion_state == "accepted"
+    assert f"{USER_PREFIX}Vielleicht Mira." in _user_prompt(provider.requests[0])
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_accept_with_a_mismatched_text_is_422(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A client text that is not the pending suggestion is refused before any call."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel)
+    await _seed_suggestion(session_id, "Vielleicht Mira.")
+    provider = _StubProvider(echo=True)
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns",
+            json={"text": "Etwas anderes", "act": "accept-suggestion"},
+        )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "suggestion-mismatch"
+    turns = await _stored_turns(session_id)
+    assert [(turn.seq, turn.role) for turn in turns] == [(1, "assistant")]
+    assert turns[0].suggestion_state == "pending"
+    assert provider.requests == []
 
 
 @pytest.mark.usefixtures("two_users")
@@ -862,6 +973,98 @@ async def test_two_turns_in_parallel_land_with_distinct_seq_and_keep_both_answer
     assert "Die Wächterin" in proposal["aliases"]
     assert "wachsam" in proposal["tags"]
     assert proposal["name"] == "Mira"
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_two_turns_racing_on_one_list_slot_keep_both_items(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Both racing aliases survive: the merge unions the slot, never replaces it."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel, proposal=_proposal(name="Mira"))
+    provider = _AliasRacingProvider()
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        first, second = await asyncio.gather(
+            client.post(f"/api/chat/sessions/{session_id}/turns", json={"text": "Ein Alias."}),
+            client.post(f"/api/chat/sessions/{session_id}/turns", json={"text": "Noch ein Alias."}),
+        )
+        detail = await client.get(f"/api/chat/sessions/{session_id}")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    proposal = detail.json()["proposal"]
+    assert set(proposal["aliases"]) == {"Die Wächterin", "Die Hüterin"}
+    assert proposal["name"] == "Mira"
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_a_list_merge_takes_the_answers_changes_not_its_whole_list(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One item dropped, one added: the untouched item and the answer's change are exact."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel, proposal=_proposal(aliases=["A", "B"]))
+    answer = json.dumps(
+        {
+            "reply": "Notiert.",
+            "slots": {"aliases": ["A", "C"]},
+            "relations": [],
+        },
+        ensure_ascii=False,
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(_StubProvider([answer])))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Zwei Aliasse."}
+        )
+
+    assert response.status_code == 200
+    assert response.json()["proposal"]["aliases"] == ["A", "C"]
+    assert response.json()["proposal"]["suggested"]["aliases"] == []
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_two_relations_to_one_target_with_different_types_both_survive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A relation's merge identity is its target and type, so both rows stay."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(
+        novel,
+        proposal=_proposal(
+            name="Mira",
+            relations=[
+                {"target": "Haus", "type": "located_in", "note": "", "suggested": False},
+            ],
+        ),
+    )
+    answer = json.dumps(
+        {
+            "reply": "Notiert.",
+            "slots": {"name": "Mira"},
+            "relations": [
+                {"target": "Haus", "type": "located_in", "note": ""},
+                {"target": "Haus", "type": "guards", "note": "seit Jahren"},
+            ],
+        },
+        ensure_ascii=False,
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(_StubProvider([answer])))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Sie bewacht das Haus."}
+        )
+
+    assert response.status_code == 200
+    relations = response.json()["proposal"]["relations"]
+    assert [(relation["target"], relation["type"]) for relation in relations] == [
+        ("Haus", "located_in"),
+        ("Haus", "guards"),
+    ]
 
 
 @pytest.mark.usefixtures("two_users")
@@ -1055,7 +1258,9 @@ async def test_a_close_between_the_read_and_the_write_answers_409(
     assert len(provider.requests) == 1
     assert detail.json()["turns"] == []
     assert detail.json()["closed_at"] is not None
-    assert await _audit_rows() == [("chat.ask", "knowledge.entity-interview", "ok")]
+    assert await _audit_rows() == [("chat.ask", "knowledge.entity-interview", "error")]
+    [row] = await _audit_details()
+    assert row["error_code"] == "session-closed"
 
 
 @pytest.mark.usefixtures("two_users")
@@ -1197,7 +1402,7 @@ async def test_the_roster_cut_line_closes_the_list(monkeypatch: pytest.MonkeyPat
     roster = _prompt_block(_user_prompt(provider.requests[0]), "ROSTER:", "REQUEST:")
     assert len(roster) == 201
     assert roster[0] == "Entity 000 (character; none)"
-    assert roster[-1] == interviews.ROSTER_CUT_LINE
+    assert roster[-1] == ROSTER_CUT_LINE
 
 
 @pytest.mark.usefixtures("two_users")
