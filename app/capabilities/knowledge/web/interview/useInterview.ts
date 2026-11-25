@@ -11,7 +11,7 @@
  * ended face through the invalidation the mutation settles with, the second
  * hands the panel back to the chooser.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { AssistantTurnCreate } from "@shell/lib/api/client";
 import type { WireError } from "@shell/lib/query";
@@ -52,13 +52,25 @@ export function useInterview({
   const [failure, setFailure] = useState<InterviewFailure | null>(null);
   const [failedBody, setFailedBody] = useState<AssistantTurnCreate | null>(null);
 
-  // The turn's callbacks are fixed when it starts, so they read visibility
-  // through a ref: a failure that lands after the panel was hidden must not
-  // open the chooser behind the writer's back.
+  // The turn's callbacks are fixed when it starts, so they read the panel's
+  // visibility and the session it was sent for through refs: a failure that
+  // lands after the panel was hidden must not open the chooser behind the
+  // writer's back, and a turn of the interview the writer left must not touch
+  // the one now shown. Both are written in a LAYOUT effect, so no settle can
+  // land between a hide's commit and a passive effect still reading `true`.
   const visibleRef = useRef(visible);
-  useEffect(() => {
+  const sessionIdRef = useRef(sessionId);
+  useLayoutEffect(() => {
+    const wasHidden = !visibleRef.current;
     visibleRef.current = visible;
-  }, [visible]);
+    sessionIdRef.current = sessionId;
+    // Showing the panel asks its session read again. The host keeps the read
+    // subscribed for the page's lifetime, so without this ask an interview
+    // ended in another tab while the panel was hidden would look open until a
+    // turn settles or the window regains focus — a remount used to ask. The
+    // chooser has no session to read.
+    if (visible && wasHidden && sessionId !== null) void session.refetch();
+  }, [visible, sessionId, session.refetch]);
 
   // A new session is a new conversation: no failure or text carries across.
   // (The panel is remounted per session anyway; this keeps a same-component
@@ -88,12 +100,18 @@ export function useInterview({
       turn.mutate(
         { sessionId, body },
         {
-          onSuccess: () => {
+          onSuccess: (_data, variables) => {
+            // A turn belongs to the session it was sent for: when the writer
+            // has moved on, A's answer changes nothing in B.
+            if (variables.sessionId !== sessionIdRef.current) return;
             // Only the composer's own answer leaves the composer; a chip sends
             // its label, never what the writer had typed beside it.
             if (body.act === undefined || body.act === null) setText("");
           },
-          onError: (error: WireError) => {
+          onError: (error: WireError, variables) => {
+            // The same scope for the failure: A's error face, A's failed body
+            // and A's eventual retry stay out of B's conversation.
+            if (variables.sessionId !== sessionIdRef.current) return;
             if (error.code === "not-found") {
               // A hidden turn's missing session is the read's own 404: the
               // settle refetch finds it, and that effect waits for the panel
@@ -154,10 +172,17 @@ export function useInterview({
   }, [close, sessionId]);
 
   const turns = session.data?.turns ?? [];
+  // A turn or a close belongs to the session it was sent for: while another
+  // interview is shown, A's in-flight turn must not draw B's thinking row or
+  // keep B's composer closed, and A's close must not disable B's end button
+  // or report its failure above it. The settle's invalidation still refreshes
+  // A's own read, so A's truth is there when A is shown again.
+  const turnIsHere = turn.variables?.sessionId === sessionId;
+  const closeIsHere = close.variables === sessionId;
   const face = interviewFace({
     session: session.data ?? null,
     turns,
-    pending: turn.isPending,
+    pending: turn.isPending && turnIsHere,
     failure,
   });
 
@@ -180,8 +205,8 @@ export function useInterview({
     retry,
     start,
     end,
-    ending: close.isPending,
-    endFailed: close.isError,
+    ending: close.isPending && closeIsHere,
+    endFailed: close.isError && closeIsHere,
     retryRead: () => void session.refetch(),
   };
 }

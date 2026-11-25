@@ -37,6 +37,7 @@ configure({ asyncUtilTimeout: 5000 });
 
 const NOVEL_ID = "11111111-1111-1111-1111-111111111111";
 const SESSION_ID = "s1";
+const SECOND_ID = "s2";
 
 function ok(): Response {
   return new Response(null, { status: 200 });
@@ -108,6 +109,27 @@ function detailGet(path: string): Promise<{ data: unknown; response: Response }>
     return Promise.resolve({ data: detail, response: ok() });
   }
   throw new Error(`unexpected GET: ${path}`);
+}
+
+/** Two interviews at once: the read answers each id with its own row, so a
+ *  switch can never pass A's transcript off as B's. */
+function readsById(second: AssistantSession) {
+  return (path: string, init?: { params?: { path?: { session_id?: string } } }) => {
+    if (path === "/api/chat/sessions") {
+      return Promise.resolve({ data: { items: sessions }, response: ok() });
+    }
+    if (path === "/api/chat/sessions/{session_id}") {
+      const id = init?.params?.path?.session_id ?? "";
+      return Promise.resolve({ data: id === second.id ? second : detail, response: ok() });
+    }
+    throw new Error(`unexpected GET: ${path}`);
+  };
+}
+
+/** How often the panel asked for one session: the counter the settle's
+ *  invalidation and the show's own ask are read by. */
+function sessionReads(): number {
+  return api.GET.mock.calls.filter(([path]) => path === "/api/chat/sessions/{session_id}").length;
 }
 
 function readback(overrides: Record<string, unknown> = {}) {
@@ -530,6 +552,163 @@ describe("the conversation outlives the panel's hide", () => {
 
     show(SESSION_ID);
     await waitFor(() => expect(onSelectSession).toHaveBeenCalledWith("new"));
+  });
+});
+
+describe("a turn belongs to the session it was sent for", () => {
+  /** The interview the writer moves on to: nothing of A's may appear in it. */
+  function secondSession(): AssistantSession {
+    return sessionDetail({
+      id: SECOND_ID,
+      entity_type: "location",
+      proposal: proposal({ name: "Forschungsstation" }),
+    });
+  }
+
+  it("a reply for the interview the writer left leaves this one quiet", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    api.GET.mockImplementation(readsById(secondSession()));
+    let release: (value: unknown) => void = () => {};
+    const held = new Promise((resolve) => {
+      release = resolve;
+    });
+    api.POST.mockImplementation(() => held);
+
+    const { show } = renderPanel();
+    await readySession();
+    fireEvent.change(composer(), { target: { value: "Es stammt aus dem Labor von Lin." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await screen.findByText(de["knowledge.interview.thinking"]);
+
+    // The writer moves on while A's answer is still on its way: A's turn is
+    // no reason for B to look busy or to keep B's composer closed.
+    show(SECOND_ID);
+    await readySession();
+    expect(screen.queryByText(de["knowledge.interview.thinking"])).toBeNull();
+    expect(composerField().disabled).toBe(false);
+
+    fireEvent.change(composer(), { target: { value: "Gehört zu B." } });
+    const reads = sessionReads();
+    release({ data: readback(), response: ok() });
+    // The settle invalidates the family; B's own read is the anchor.
+    await waitFor(() => expect(sessionReads()).toBeGreaterThan(reads));
+
+    // A's answer is A's: it neither reaches B's transcript nor its composer.
+    expect(composer().value).toBe("Gehört zu B.");
+    expect(screen.getByTestId("entity-interview-transcript").textContent).not.toContain("Notiert.");
+  });
+
+  it("a failure of the interview the writer left shows no face here", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    api.GET.mockImplementation(readsById(secondSession()));
+    let fail: (value: unknown) => void = () => {};
+    const held = new Promise((resolve) => {
+      fail = resolve;
+    });
+    api.POST.mockImplementation(() => held);
+
+    const { show } = renderPanel();
+    await readySession();
+    fireEvent.change(composer(), { target: { value: "Es stammt aus dem Labor von Lin." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await screen.findByText(de["knowledge.interview.thinking"]);
+
+    show(SECOND_ID);
+    await readySession();
+    const reads = sessionReads();
+    fail({
+      data: undefined,
+      error: { detail: { code: "provider-error", detail: "offline" } },
+      response: new Response(null, { status: 502 }),
+    });
+    await waitFor(() => expect(sessionReads()).toBeGreaterThan(reads));
+
+    // A's failure (and A's failed body) never land in B: no face, and no
+    // retry that would send A's text through B's session.
+    expect(screen.queryByTestId("entity-interview-failure")).toBeNull();
+    expect(screen.queryByTestId("entity-interview-retry")).toBeNull();
+  });
+
+  it("a 404 of the interview the writer left does not open the chooser here", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    api.GET.mockImplementation(readsById(secondSession()));
+    let fail: (value: unknown) => void = () => {};
+    const held = new Promise((resolve) => {
+      fail = resolve;
+    });
+    api.POST.mockImplementation(() => held);
+
+    const { show, onSelectSession } = renderPanel();
+    await readySession();
+    fireEvent.change(composer(), { target: { value: "Noch eine Antwort." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await screen.findByText(de["knowledge.interview.thinking"]);
+
+    show(SECOND_ID);
+    await readySession();
+    const reads = sessionReads();
+    fail({
+      data: undefined,
+      error: { detail: { code: "not-found", detail: "no such session" } },
+      response: new Response(null, { status: 404 }),
+    });
+    await waitFor(() => expect(sessionReads()).toBeGreaterThan(reads));
+
+    // A vanished; B did not. The chooser is not B's answer.
+    expect(onSelectSession).not.toHaveBeenCalled();
+    expect(screen.getByTestId("entity-interview-proposal").textContent).toContain("Forschungsstation");
+  });
+
+  it("a close of the other interview reports nothing here, while this one still does", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    api.GET.mockImplementation(readsById(secondSession()));
+    api.POST.mockImplementation((path: string) =>
+      path === "/api/chat/sessions/{session_id}/close"
+        ? Promise.resolve({
+            data: undefined,
+            error: { detail: { code: "provider-error", detail: "offline" } },
+            response: new Response(null, { status: 500 }),
+          })
+        : Promise.resolve({ data: readback(), response: ok() }),
+    );
+    const { show } = renderPanel();
+    await readySession();
+    fireEvent.click(screen.getByTestId("entity-interview-end"));
+    await screen.findByText(de["knowledge.interview.endFailed"]);
+
+    // A's failed close is A's; B's footer owes no explanation for it.
+    show(SECOND_ID);
+    await readySession();
+    expect(screen.queryByText(de["knowledge.interview.endFailed"])).toBeNull();
+
+    // B's own failed close still names itself.
+    fireEvent.click(screen.getByTestId("entity-interview-end"));
+    await screen.findByText(de["knowledge.interview.endFailed"]);
+  });
+});
+
+describe("showing the panel asks its session read again", () => {
+  it("a session hidden for a while is read again when the panel is shown", async () => {
+    const { show } = renderPanel();
+    await readySession();
+    const before = sessionReads();
+
+    show(undefined);
+    show(SESSION_ID);
+
+    await waitFor(() => expect(sessionReads()).toBe(before + 1));
+  });
+
+  it("the chooser has no session to ask for", async () => {
+    const { show } = renderPanel();
+    await readySession();
+    const before = sessionReads();
+
+    show(undefined);
+    show(null);
+    await screen.findByTestId("entity-interview-type-object");
+
+    expect(sessionReads()).toBe(before);
   });
 });
 
