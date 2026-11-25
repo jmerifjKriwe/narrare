@@ -665,6 +665,22 @@ def test_the_answer_normalisation_keeps_the_kernel_bound() -> None:
     assert kept[-1]["target"] == f"Target {MAX_RELATIONS - 1}"
 
 
+def test_the_answer_normalisation_reads_the_kernel_bound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The name the interview bounds by is the kernel's own object, and the
+    normalisation reads it: a literal nested back into the function keeps its
+    twelve, while lowering the module name here makes the answer follow."""
+    assert interviews.MAX_RELATIONS is MAX_RELATIONS
+
+    monkeypatch.setattr(interviews, "MAX_RELATIONS", 3)
+    answered = [{"target": f"Target {index}", "type": "knows", "note": ""} for index in range(5)]
+    kept = interviews._normalise_relations(  # pyright: ignore[reportPrivateUsage]  the pure normalisation is the unit under test
+        answered
+    )
+    assert len(kept) == 3
+
+
 @pytest.mark.usefixtures("two_users")
 async def test_open_requires_a_known_mode_and_type() -> None:
     """A mode or type outside the contract is a coded 422; a valid open lands."""
