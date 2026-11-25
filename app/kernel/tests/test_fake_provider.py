@@ -491,8 +491,10 @@ async def test_a_reordered_frame_still_reads_the_turns_body() -> None:
 
     The equality test above already carries ``name`` in the slots, so a reader
     that found no turns body at all would answer the same JSON. Here the empty
-    slots make the writer's ``USER:`` line the only source of the name, and
-    only a read of the reordered turns body can put it into the answer.
+    slots make the writer's ``USER:`` line the only source of the name, and the
+    prompt carries a ``TURNS:`` header, so the body-authoritative read takes no
+    all-lines fallback: a missed or mis-scoped turns body answers ``{}`` and
+    fails this test.
     """
     answered = json.loads(
         await _answer(_interview_prompt(user="Name: Jona", slots={}, roster_first=True))

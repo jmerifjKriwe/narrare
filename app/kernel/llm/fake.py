@@ -294,10 +294,22 @@ def _section_lines(prompt: str, header: str) -> list[str]:
 
 
 def _last_user_text(prompt: str) -> str:
-    """The last ``USER:`` line inside the turns body — the writer's latest turn."""
+    """The last ``USER:`` line of the turns body — the writer's latest turn.
+
+    For an interview prompt the turns body is the transcript: when the prompt
+    carries a ``TURNS:`` header, only that body is read, so a body that is
+    missing or mis-scoped means no user turn at all instead of a ``USER:`` line
+    found elsewhere in the frame. A prompt without the header keeps the
+    all-lines scan the other purposes rely on.
+    """
     lines = prompt.splitlines()
     body = _section_bodies(lines).get(TURNS_PREFIX)
-    candidates = (lines[index] for index in body) if body is not None else iter(lines)
+    if body is not None:
+        candidates = (lines[index] for index in body)
+    elif any(line.strip() == TURNS_PREFIX for line in lines):
+        candidates = iter(())
+    else:
+        candidates = iter(lines)
     text = ""
     for line in candidates:
         if line.startswith(USER_PREFIX):
