@@ -1218,9 +1218,10 @@ export function useMergeEntities(
 }
 
 /** The create's failure, enriched for the dialog: the status picks the copy
- *  family, `code` and `detail` carry the backend's coded refusal, and the
- *  structured `row`/`field` name what the surface marks — the prompt
- *  editor's precedent beside the knowledge hooks. */
+ *  family, `code` and `detail` carry the backend's coded refusal, `row` names
+ *  the visible row the dialog marks, and `field` is carried for a field-level
+ *  marking the dialog does not do — the refusal's sentence says what to check
+ *  (the prompt editor's precedent beside the knowledge hooks). */
 export type WireError = Error & {
   status?: number;
   code?: string;
