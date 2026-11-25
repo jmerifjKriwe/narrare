@@ -280,7 +280,10 @@ non-blank, at most 80 characters; targets at most 200; at most 12 relations and
 10,000 characters of content. A string over its limit is cut to the limit and
 a list over its cap keeps its first entries — the dialog shows the stored
 value, so nothing changes silently; blank entries are dropped, and a name that
-would be blank is not stored at all.
+would be blank is not stored at all. Every string the answer carries is reduced
+to one line before it is stored: the JSON the prompt renders with
+`ensure_ascii=False` lets three line-separator characters through, and a stored
+string must not contain one.
 
 **Provenance is the server's.** Every part of the proposal is either the
 writer's own or suggested: `{"slots": {...}, "relations": [...], "suggested":
