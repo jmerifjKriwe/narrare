@@ -405,6 +405,29 @@ describe("the wire's refusals find their own face", () => {
     await waitFor(() => expect(screen.queryByTestId("entity-interview-suggestion")).toBeNull());
   });
 
+  it("an unknown refusal keeps its wire code beside the generic copy", async () => {
+    api.POST.mockResolvedValueOnce({
+      data: undefined,
+      error: { detail: { code: "rate-limited", detail: "the provider asked us to wait" } },
+      response: new Response(null, { status: 502 }),
+    });
+    renderPanel();
+    await readySession();
+
+    fireEvent.change(composer(), { target: { value: "Noch eine Antwort." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+
+    const failure = await screen.findByTestId("entity-interview-failure");
+    // The closed set names its own copy; an unknown code falls back to the
+    // generic sentence and shows the raw code beside it, never the wire's
+    // English detail.
+    expect(within(failure).getByText(de["knowledge.interview.failedProvider"])).toBeTruthy();
+    expect(within(failure).getByText("rate-limited")).toBeTruthy();
+    expect(failure.textContent).not.toContain("the provider asked us to wait");
+    expect(screen.getByTestId("entity-interview-retry")).toBeTruthy();
+    expect(composer().value).toBe("Noch eine Antwort.");
+  });
+
   it("a missing session hands the panel back to the chooser", async () => {
     api.GET.mockImplementation((path: string) => {
       if (path === "/api/chat/sessions") {

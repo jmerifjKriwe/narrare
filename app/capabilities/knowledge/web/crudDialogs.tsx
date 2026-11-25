@@ -208,7 +208,7 @@ export function FormHeader({
         disabled={held}
         aria-label={t("knowledge.crud.close")}
         onClick={onClose}
-        className={`rounded p-0.5 text-muted transition-colors hover:text-foreground ${FOCUS} ${held ? "cursor-not-allowed opacity-50" : ""}`}
+        className={`flex h-6 w-6 items-center justify-center rounded text-muted transition-colors hover:text-foreground ${FOCUS} ${held ? "cursor-not-allowed opacity-50" : ""}`}
       >
         <Icon name="cross" size={14} />
       </button>

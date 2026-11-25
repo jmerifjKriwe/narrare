@@ -102,6 +102,39 @@ describe("ToastProvider", () => {
     expect(screen.queryByTestId("toast")).toBeNull();
   });
 
+  it("a message shown right after a dismissal starts paused while the pointer stays", () => {
+    vi.useFakeTimers();
+    render(
+      <ToastProvider>
+        <Opener messages={["erste", "zweite"]} />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "erste" }));
+    fireEvent.mouseEnter(screen.getByTestId("toast"));
+
+    // Dismiss while the pointer rests on the toast's area: the close button
+    // goes with the toast, so no mouseleave can follow until a new one mounts.
+    fireEvent.click(screen.getByRole("button", { name: catalogs.de["shell.toast.dismiss"] }));
+    expect(screen.queryByTestId("toast")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "zweite" }));
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(screen.getByTestId("toast").textContent).toContain("zweite");
+
+    // The fresh lifetime starts only when the pointer actually leaves.
+    fireEvent.mouseLeave(screen.getByTestId("toast"));
+    act(() => {
+      vi.advanceTimersByTime(5999);
+    });
+    expect(screen.getByTestId("toast")).toBeTruthy();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.queryByTestId("toast")).toBeNull();
+  });
+
   it("pauses on hover and resumes when the pointer leaves", () => {
     vi.useFakeTimers();
     render(

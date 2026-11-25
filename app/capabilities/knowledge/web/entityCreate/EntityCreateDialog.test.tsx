@@ -375,8 +375,7 @@ describe("EntityCreateDialog — create by hand", () => {
     expect(screen.getByTestId("entity-create-dialog")).toBeTruthy();
   });
 
-  it("a duplicate refusal's sent row maps to the visible row it names", async () => {
-    api.POST.mockResolvedValue({
+  it("a duplicate refusal's sent row maps to the visible row it names", async () => {    api.POST.mockResolvedValue({
       data: undefined,
       error: {
         detail: {
@@ -471,6 +470,64 @@ describe("EntityCreateDialog — create by hand", () => {
         screen.getByTestId(`entity-create-relation-${index}-entity`).getAttribute("aria-invalid"),
       ).toBeNull();
     }
+  });
+
+  it("a refused and duplicated row describes both the duplicate and the failure", async () => {
+    api.POST.mockResolvedValue({
+      data: undefined,
+      error: {
+        detail: {
+          code: "relation-duplicate",
+          detail: "relation row 0 duplicates an earlier relation",
+          row: 0,
+        },
+      },
+      response: ok(422),
+    });
+    openCreate();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Nevada-Trümmerfeld" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "location" } });
+    // Two sent rows with the same target and label: both carry the duplicate
+    // note, and the server's refusal names the first of them.
+    for (const index of [0, 1]) {
+      fireEvent.click(screen.getByTestId("entity-create-add-relation"));
+      fireEvent.change(screen.getByTestId(`entity-create-relation-${index}-entity`), {
+        target: { value: "Station 7" },
+      });
+      fireEvent.change(screen.getByTestId(`entity-create-relation-${index}-label`), {
+        target: { value: de["knowledge.relation.located_in"] },
+      });
+    }
+    fireEvent.click(screen.getByTestId("entity-create-save"));
+    const alert = await screen.findByRole("alert");
+
+    const duplicateNoteId = screen.getByTestId("entity-create-relation-duplicate-note").id;
+    expect(duplicateNoteId).not.toBe("");
+    expect(alert.id).not.toBe("");
+    // The joined value names both reasons, in the order they are drawn.
+    expect(
+      screen.getByTestId("entity-create-relation-0-entity").getAttribute("aria-describedby"),
+    ).toBe(`${duplicateNoteId} ${alert.id}`);
+    expect(
+      screen.getByTestId("entity-create-relation-0-label").getAttribute("aria-describedby"),
+    ).toBe(`${duplicateNoteId} ${alert.id}`);
+  });
+
+  it("the dialog's own close control clears the 24 px hit area floor", () => {
+    openCreate();
+    const close = screen.getByRole("button", { name: de["knowledge.crud.close"] });
+
+    // jsdom lays nothing out: the box is the class contract, as the toast's
+    // own test reads it (WCAG 2.2 2.5.8).
+    expect(close.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["h-6", "w-6", "items-center", "justify-center"]),
+    );
+    // The glyph stays 14 px; only the hit area grew.
+    const icon = close.querySelector("svg");
+    expect(icon?.getAttribute("width")).toBe("14");
+    expect(icon?.getAttribute("height")).toBe("14");
   });
 });
 

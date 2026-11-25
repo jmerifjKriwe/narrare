@@ -717,6 +717,8 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     // The count is in the accessible name, not only in the aria-hidden badge.
     const door = await screen.findByRole("button", { name: "Neue Entität, 2 offene Interviews" });
     expect(door).toBe(screen.getByTestId("graph-new-entity"));
+    // The title repeats none of it: assistive technology hears the count once.
+    expect(door.getAttribute("title")).toBe(de["knowledge.graph.newEntity"]);
     expect(screen.getByTestId("graph-new-entity-count").textContent).toBe("2");
     expect(screen.getByTestId("graph-new-entity-count").getAttribute("aria-hidden")).toBe("true");
   });

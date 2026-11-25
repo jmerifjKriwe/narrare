@@ -588,11 +588,7 @@ export function LoreGraphPage() {
             id="graph-new-entity"
             data-testid="graph-new-entity"
             onClick={openInterviewDoor}
-            title={
-              openInterviewCount > 0
-                ? `${t("knowledge.graph.newEntity")} — ${t("knowledge.interview.openInterviews", { count: openInterviewCount })}`
-                : t("knowledge.graph.newEntity")
-            }
+            title={t("knowledge.graph.newEntity")}
             className={`flex items-center gap-1.5 rounded-[var(--radius-control)] bg-primary px-3 py-1 text-meta text-primary-foreground transition-colors hover:opacity-95 ${FOCUS}`}
           >
             {/* The visible row (and its count badge) is the sighted label; the

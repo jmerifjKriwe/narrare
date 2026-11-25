@@ -67,9 +67,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const dismiss = useCallback(() => {
+    // The pointer or focus is still over the toast's area even though the
+    // message is gone: keeping the flags makes a `show` right after a
+    // dismissal start paused, where clearing them would let the next message
+    // vanish under the reader. A real leave/blur lowers them again.
     setToast(null);
-    setHovered(false);
-    setFocused(false);
   }, []);
 
   useEffect(() => {
