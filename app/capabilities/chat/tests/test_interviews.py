@@ -21,7 +21,7 @@ from app.capabilities.chat.prompts import ROSTER_CUT_LINE
 from app.capabilities.chat.repository import AssistantSessionRepository
 from app.capabilities.chat.schemas import TurnCreate
 from app.kernel.auth import LOCAL_USER_ID
-from app.kernel.contracts.models import Entity, Novel
+from app.kernel.contracts.models import MAX_RELATIONS, Entity, Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.llm.contract import (
@@ -646,6 +646,23 @@ COMPLETE = _proposal(
     ],
 )
 """A proposal with every slot set and mixed provenance: fill-all must not move it."""
+
+
+def test_the_answer_normalisation_keeps_the_kernel_bound() -> None:
+    """The thirteenth proposed relation is the one the answer loses, and the
+    bound itself is the kernel's — the interview imports it, never a copy
+    (the direction rule 1 allows)."""
+    answered = [
+        {"target": f"Target {index}", "type": "knows", "note": ""}
+        for index in range(MAX_RELATIONS + 1)
+    ]
+
+    kept = interviews._normalise_relations(  # pyright: ignore[reportPrivateUsage]  the pure normalisation is the unit under test
+        answered
+    )
+
+    assert len(kept) == MAX_RELATIONS
+    assert kept[-1]["target"] == f"Target {MAX_RELATIONS - 1}"
 
 
 @pytest.mark.usefixtures("two_users")
