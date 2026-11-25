@@ -10,10 +10,16 @@ import { describe, expect, it } from "vitest";
 import type { Entity } from "@shell/lib/api/client";
 
 import {
+  MAX_RELATIONS,
+  REFUSAL_CODES,
   buildEntityCreateBody,
+  duplicateRelationRows,
   findDuplicateName,
+  keptRelationRows,
+  refusalCatalogKey,
   relationRowOutcome,
   resolveRelationTarget,
+  visibleRowForSentIndex,
   type EntityCreateForm,
 } from "./entityCreate";
 
@@ -115,6 +121,76 @@ describe("buildEntityCreateBody", () => {
       }),
     );
     expect(body.relations).toEqual([]);
+  });
+});
+
+describe("keptRelationRows", () => {
+  it("names the visible rows the save sends, so a sent index finds its row", () => {
+    const rows = [
+      { target: "Nebel", relationType: "kennt", note: "" },
+      { target: "Forschungsstation 7", relationType: "Liegt in", note: "" },
+      { target: "Forschungsstation 7", relationType: "", note: "nördlich" },
+      { target: "Dr. Maya Chen", relationType: "kennt", note: "" },
+    ];
+    const kept = keptRelationRows(rows, ENTITIES);
+    expect(kept).toEqual([1, 3]);
+    expect(visibleRowForSentIndex(kept, 0)).toBe(1);
+    expect(visibleRowForSentIndex(kept, 1)).toBe(3);
+    expect(visibleRowForSentIndex(kept, 2)).toBeNull();
+  });
+
+  it("mirrors the server's twelve-relation bound", () => {
+    expect(MAX_RELATIONS).toBe(12);
+  });
+});
+
+describe("duplicateRelationRows", () => {
+  it("flags both rows whose normalized target and label repeat", () => {
+    const rows = [
+      { target: "Forschungsstation 7", relationType: "located_in", note: "" },
+      { target: "  forschungsstation 7 ", relationType: "located_in", note: "anders" },
+      { target: "Dr. Maya Chen", relationType: "located_in", note: "" },
+    ];
+    expect(duplicateRelationRows(rows, ENTITIES)).toEqual([0, 1]);
+  });
+
+  it("ignores a different label, a different target and the note", () => {
+    const rows = [
+      { target: "Forschungsstation 7", relationType: "located_in", note: "a" },
+      { target: "Forschungsstation 7", relationType: "kennt", note: "a" },
+      { target: "Dr. Maya Chen", relationType: "located_in", note: "a" },
+    ];
+    expect(duplicateRelationRows(rows, ENTITIES)).toEqual([]);
+  });
+
+  it("flags only rows the save sends", () => {
+    const rows = [
+      { target: "Forschungsstation 7", relationType: "located_in", note: "" },
+      { target: "Nebel", relationType: "located_in", note: "" },
+      { target: "Forschungsstation 7", relationType: "located_in", note: "" },
+    ];
+    expect(duplicateRelationRows(rows, ENTITIES)).toEqual([0, 2]);
+  });
+});
+
+describe("refusalCatalogKey", () => {
+  it("maps every closed code to its catalog sentence key", () => {
+    expect(REFUSAL_CODES).toEqual([
+      "not-found",
+      "entity-invalid",
+      "relation-target-invalid",
+      "relation-duplicate",
+      "relation-limit",
+    ]);
+    for (const code of REFUSAL_CODES) {
+      expect(refusalCatalogKey(code)).toBe(`knowledge.create.refused.${code}`);
+    }
+  });
+
+  it("leaves the synthetic transport code and unknown codes unmapped", () => {
+    expect(refusalCatalogKey("transport")).toBeNull();
+    expect(refusalCatalogKey("something-else")).toBeNull();
+    expect(refusalCatalogKey(undefined)).toBeNull();
   });
 });
 

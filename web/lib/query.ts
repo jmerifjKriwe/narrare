@@ -1212,14 +1212,21 @@ export function useMergeEntities(
 }
 
 /** The create's failure, enriched for the dialog: the status picks the copy
- *  family, `code` and `detail` carry the backend's coded refusal — the
- *  prompt editor's precedent beside the knowledge hooks. */
-export type WireError = Error & { status?: number; code?: string; detail?: string };
+ *  family, `code` and `detail` carry the backend's coded refusal, and the
+ *  structured `row`/`field` name what the surface marks — the prompt
+ *  editor's precedent beside the knowledge hooks. */
+export type WireError = Error & {
+  status?: number;
+  code?: string;
+  detail?: string;
+  row?: number;
+  field?: string;
+};
 
 function createEntityFailure(cause: unknown): WireError {
   const failure = cause as {
     response?: Response;
-    error?: { detail?: { code?: string; detail?: string } };
+    error?: { detail?: { code?: string; detail?: string; row?: number; field?: string } };
   };
   const response = failure?.response;
   if (response === undefined) {
@@ -1233,6 +1240,8 @@ function createEntityFailure(cause: unknown): WireError {
     status: response.status,
     code: detail?.code,
     detail: detail?.detail,
+    row: detail?.row,
+    field: detail?.field,
   });
 }
 

@@ -15,6 +15,10 @@ import type { Entity, EntityCreate } from "@shell/lib/api/client";
 /** The POST body the create hook carries; the generated contract is the truth. */
 export type EntityCreateBody = EntityCreate;
 
+/** The server's own bound (the spec's «at most 12 relations»), mirrored so
+ *  the dialog disables its add control before the refusal can be met. */
+export const MAX_RELATIONS = 12;
+
 /** One relation row while the dialog edits it: the typed target, its label,
  *  an optional note. The target resolves at save time, never on keystroke. */
 export type EntityRelationRow = {
@@ -105,14 +109,95 @@ export function relationRowOutcome(
 }
 
 /**
+ * The visible indices of the rows the save sends, in order — the body
+ * builder's own kept list, exposed so a refusal's sent-list index can be
+ * mapped back to the row on screen instead of printing the number.
+ */
+export function keptRelationRows(
+  rows: readonly EntityRelationRow[],
+  entities: readonly Entity[],
+): number[] {
+  const kept: number[] = [];
+  rows.forEach((row, index) => {
+    if (relationRowOutcome(row, entities) === "kept") kept.push(index);
+  });
+  return kept;
+}
+
+/**
+ * The visible row a refusal's sent-list index names, or null when the
+ * index lies outside the sent list (a server answer about a row the client
+ * no longer holds).
+ */
+export function visibleRowForSentIndex(
+  kept: readonly number[],
+  sentIndex: number,
+): number | null {
+  return kept[sentIndex] ?? null;
+}
+
+/**
+ * The visible rows whose normalized (target, label) pair equals an earlier
+ * sent row's — the dialog's pre-save duplicate flag. The label has already
+ * passed through `resolveRelationType`, so a localized wording beside its
+ * canonical key counts as the same relation; the note is not part of the
+ * server's identity and is ignored. Only rows the save sends can duplicate.
+ */
+export function duplicateRelationRows(
+  rows: readonly EntityRelationRow[],
+  entities: readonly Entity[],
+): number[] {
+  const firstByPair = new Map<string, number>();
+  const duplicates = new Set<number>();
+  for (const index of keptRelationRows(rows, entities)) {
+    const row = rows[index];
+    const resolution = resolveRelationTarget(row.target, entities);
+    if (resolution.kind !== "one") continue;
+    const pair = `${resolution.entity.id}\u0000${row.relationType.trim()}`;
+    const first = firstByPair.get(pair);
+    if (first === undefined) {
+      firstByPair.set(pair, index);
+    } else {
+      duplicates.add(first);
+      duplicates.add(index);
+    }
+  }
+  return [...duplicates].sort((left, right) => left - right);
+}
+
+/** The closed set of refusal codes the create endpoint speaks. */
+export const REFUSAL_CODES = [
+  "not-found",
+  "entity-invalid",
+  "relation-target-invalid",
+  "relation-duplicate",
+  "relation-limit",
+] as const;
+
+export type RefusalCode = (typeof REFUSAL_CODES)[number];
+
+/**
+ * The catalog sentence for a wire refusal, keyed by its closed-set code.
+ * A synthetic code (`transport`) or an unknown one maps to null: the face
+ * falls back to the generic catalog sentence and never renders the wire's
+ * English detail.
+ */
+export function refusalCatalogKey(
+  code: string | undefined,
+): `knowledge.create.refused.${RefusalCode}` | null {
+  if (code === undefined || !REFUSAL_CODES.some((candidate) => candidate === code)) return null;
+  return `knowledge.create.refused.${code as RefusalCode}`;
+}
+
+/**
  * The POST body: every row the roster resolves to exactly one entity and
  * that carries a relation label. The rest are left out — the dialog counts
  * them and says they will not be created.
  */
 export function buildEntityCreateBody(form: EntityCreateForm): EntityCreateBody {
   const relations = [];
-  for (const row of form.relations) {
-    if (relationRowOutcome(row, form.entities) !== "kept") continue;
+  for (const index of keptRelationRows(form.relations, form.entities)) {
+    const row = form.relations[index];
     const resolution = resolveRelationTarget(row.target, form.entities);
     if (resolution.kind !== "one") continue;
     relations.push({

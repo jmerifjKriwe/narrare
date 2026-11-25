@@ -457,6 +457,23 @@ describe("EntityCreateDialog — create by hand", () => {
     });
   });
 
+  it("the add control stops at twelve rows and names the bound", () => {
+    openCreate();
+    const add = screen.getByTestId("entity-create-add-relation") as HTMLButtonElement;
+    expect(screen.queryByTestId("entity-create-relation-limit-note")).toBeNull();
+    for (let index = 0; index < 12; index += 1) fireEvent.click(add);
+    expect(screen.getAllByTestId(/entity-create-relation-\d+-entity$/)).toHaveLength(12);
+    expect(add.disabled).toBe(true);
+    expect(screen.getByTestId("entity-create-relation-limit-note").textContent).toBe(
+      de["knowledge.create.relationLimit"],
+    );
+
+    // Removing a row reopens the door.
+    fireEvent.click(screen.getAllByLabelText(de["knowledge.create.removeRelation"])[0]);
+    expect(add.disabled).toBe(false);
+    expect(screen.queryByTestId("entity-create-relation-limit-note")).toBeNull();
+  });
+
   it("a resolved target without a label is counted into the notice and marked", () => {
     openCreate();
     fireEvent.change(screen.getByTestId("entity-create-name"), {
@@ -585,19 +602,22 @@ describe("EntityCreateDialog — create by hand", () => {
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(de["knowledge.create.failedTransport"]);
     expect(alert.textContent).not.toContain("Failed to fetch");
+    // «transport» is a front-end pseudo-code, not a wire code: no chip.
+    expect(alert.querySelector("p.font-mono")).toBeNull();
     // The fields stand; the dialog is the writer's again.
     expect((screen.getByTestId("entity-create-name") as HTMLInputElement).value).toBe(
       "Nevada-Trümmerfeld",
     );
   });
 
-  it("a refused save shows code and detail and keeps the fields", async () => {
+  it("a coded refusal speaks the catalog and keeps the code chip", async () => {
     api.POST.mockResolvedValue({
       data: undefined,
       error: {
         detail: {
           code: "relation-target-invalid",
           detail: "relation row 0 names an entity outside the novel",
+          row: 0,
         },
       },
       response: ok(422),
@@ -607,15 +627,117 @@ describe("EntityCreateDialog — create by hand", () => {
       target: { value: "Nevada-Trümmerfeld" },
     });
     fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "location" } });
+    fireEvent.click(screen.getByTestId("entity-create-add-relation"));
+    fireEvent.change(screen.getByTestId("entity-create-relation-0-entity"), {
+      target: { value: "Station 7" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-relation-0-label"), {
+      target: { value: de["knowledge.relation.located_in"] },
+    });
     fireEvent.click(screen.getByTestId("entity-create-save"));
     const alert = await screen.findByRole("alert");
-    expect(within(alert).getByText(/relation-target-invalid/)).toBeTruthy();
-    expect(within(alert).getByText(/relation row 0/)).toBeTruthy();
+    expect(alert.textContent).toContain(de["knowledge.create.refused.relation-target-invalid"]);
+    expect(alert.textContent).not.toContain("relation row 0");
+    expect(within(alert).getByText("relation-target-invalid")).toBeTruthy();
+    // The refused row is the one on screen.
+    expect(
+      screen.getByTestId("entity-create-relation-0-entity").getAttribute("aria-invalid"),
+    ).toBe("true");
     // The answer is kept, the dialog stands.
     expect((screen.getByTestId("entity-create-name") as HTMLInputElement).value).toBe(
       "Nevada-Trümmerfeld",
     );
     expect(screen.getByTestId("entity-create-dialog")).toBeTruthy();
+  });
+
+  it("a duplicate refusal's sent row maps to the visible row it names", async () => {
+    api.POST.mockResolvedValue({
+      data: undefined,
+      error: {
+        detail: {
+          code: "relation-duplicate",
+          detail: "relation row 1 duplicates an earlier relation",
+          row: 1,
+        },
+      },
+      response: ok(422),
+    });
+    openCreate();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Nevada-Trümmerfeld" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "location" } });
+    // Row 0 stays an untouched add-row: dropped before the wire, so the sent
+    // list starts at visible row 1.
+    fireEvent.click(screen.getByTestId("entity-create-add-relation"));
+    for (const index of [1, 2]) {
+      fireEvent.click(screen.getByTestId("entity-create-add-relation"));
+      fireEvent.change(screen.getByTestId(`entity-create-relation-${index}-entity`), {
+        target: { value: "Station 7" },
+      });
+      fireEvent.change(screen.getByTestId(`entity-create-relation-${index}-label`), {
+        target: { value: de["knowledge.relation.located_in"] },
+      });
+    }
+    fireEvent.click(screen.getByTestId("entity-create-save"));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(de["knowledge.create.refused.relation-duplicate"]);
+    expect(alert.textContent).not.toContain("relation row 1");
+
+    // Sent row 1 is visible row 2; the blank row 0 is not the refusal's row.
+    expect(
+      screen.getByTestId("entity-create-relation-2-entity").closest("[data-refused]"),
+    ).not.toBeNull();
+    expect(
+      screen.getByTestId("entity-create-relation-0-entity").closest("[data-refused]"),
+    ).toBeNull();
+  });
+
+  it("two rows with one target and a localized label beside its key are both flagged", () => {
+    openCreate();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Nevada-Trümmerfeld" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-type"), { target: { value: "location" } });
+    fireEvent.click(screen.getByTestId("entity-create-add-relation"));
+    fireEvent.change(screen.getByTestId("entity-create-relation-0-entity"), {
+      target: { value: "Station 7" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-relation-0-label"), {
+      target: { value: de["knowledge.relation.located_in"] },
+    });
+    fireEvent.click(screen.getByTestId("entity-create-add-relation"));
+    fireEvent.change(screen.getByTestId("entity-create-relation-1-entity"), {
+      target: { value: "Station 7" },
+    });
+    fireEvent.change(screen.getByTestId("entity-create-relation-1-label"), {
+      target: { value: "located_in" },
+    });
+
+    expect(screen.getByTestId("entity-create-relation-duplicate-note").textContent).toBe(
+      de["knowledge.create.relationDuplicate"],
+    );
+    for (const index of [0, 1]) {
+      expect(
+        screen.getByTestId(`entity-create-relation-${index}-entity`).getAttribute("aria-invalid"),
+      ).toBe("true");
+      expect(
+        screen.getByTestId(`entity-create-relation-${index}-label`).getAttribute("aria-invalid"),
+      ).toBe("true");
+    }
+    // The duplicate is a flag, not a block: the save stays possible.
+    expect((screen.getByTestId("entity-create-save") as HTMLButtonElement).disabled).toBe(false);
+
+    // A genuinely different label lifts both flags.
+    fireEvent.change(screen.getByTestId("entity-create-relation-1-label"), {
+      target: { value: de["knowledge.relation.enemy_of"] },
+    });
+    expect(screen.queryByTestId("entity-create-relation-duplicate-note")).toBeNull();
+    for (const index of [0, 1]) {
+      expect(
+        screen.getByTestId(`entity-create-relation-${index}-entity`).getAttribute("aria-invalid"),
+      ).toBeNull();
+    }
   });
 });
 

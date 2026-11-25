@@ -58,9 +58,14 @@ import { Icon } from "@shell/ui/icons";
 import { useModalKeys } from "@shell/ui/modalKeys";
 
 import {
+  MAX_RELATIONS,
   buildEntityCreateBody,
+  duplicateRelationRows,
   findDuplicateName,
+  keptRelationRows,
+  refusalCatalogKey,
   relationRowOutcome,
+  visibleRowForSentIndex,
   type EntityRelationRow,
 } from "./entityCreate";
 import { TYPE_KEYS, entityTypeLabel } from "./entityTypes";
@@ -559,6 +564,9 @@ export function EntityCreateDialog({
   const [content, setContent] = useState("");
   const [relations, setRelations] = useState<(EntityRelationRow & { key: number })[]>([]);
   const [failure, setFailure] = useState<WireError | null>(null);
+  /** The visible row a relation refusal names; the sent list's index is
+   *  mapped back through the rows the body builder kept. */
+  const [refusedRow, setRefusedRow] = useState<number | null>(null);
   const create = useCreateEntity();
   const busy = create.isPending;
   const dirty =
@@ -578,6 +586,14 @@ export function EntityCreateDialog({
   const labelListId = useId();
 
   const duplicate = findDuplicateName(name, entities);
+  // The labels as the save will send them, so the duplicate flag compares
+  // the same identity the server's unique constraint does: a localized
+  // wording beside its canonical key is one relation.
+  const normalizedRelations = relations.map((row) => ({
+    ...row,
+    relationType: resolveRelationType(t, row.relationType),
+  }));
+  const duplicateRows = duplicateRelationRows(normalizedRelations, entities);
   // Every filled row the save will drop — an unresolved target and a
   // resolved target without its label both count; only an untouched add-row
   // stays silent.
@@ -586,18 +602,23 @@ export function EntityCreateDialog({
     return outcome === "unresolved-target" || outcome === "missing-label";
   }).length;
   const ready = name.trim() !== "" && type !== "";
+  // The closed-set code's catalog sentence; a synthetic or unknown code
+  // falls back to the generic catalog sentence, never the wire's English.
+  const refusalKey = failure === null ? null : refusalCatalogKey(failure.code);
   const entityNames = useMemo(
     () => [...new Set(entities.flatMap((entity) => [entity.name, ...entity.aliases]))],
     [entities],
   );
 
   function updateRelation(index: number, patch: Partial<EntityRelationRow>) {
+    setRefusedRow(null);
     setRelations((rows) =>
       rows.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)),
     );
   }
 
   function addRelationRow() {
+    setRefusedRow(null);
     relationKey.current += 1;
     setRelations((rows) => [
       ...rows,
@@ -605,8 +626,14 @@ export function EntityCreateDialog({
     ]);
   }
 
+  function removeRelationRow(index: number) {
+    setRefusedRow(null);
+    setRelations((rows) => rows.filter((_row, rowIndex) => rowIndex !== index));
+  }
+
   function save() {
     setFailure(null);
+    setRefusedRow(null);
     if (!ready) return;
     // A chip the writer typed but never confirmed with Enter still belongs to
     // the save: flush both drafts into the lists, then send the lists.
@@ -624,17 +651,28 @@ export function EntityCreateDialog({
       tags: nextTags,
       content,
       entities,
-      relations: relations.map((row) => ({
-        ...row,
-        relationType: resolveRelationType(t, row.relationType),
-      })),
+      relations: normalizedRelations,
     });
     create.mutate(body, {
       onSuccess: (entity) => {
         onCreated?.(entity, body.relations?.length ?? 0);
         onClose();
       },
-      onError: (error) => setFailure(error),
+      onError: (error) => {
+        setFailure(error);
+        // The three relation codes carry the refused line's index in the
+        // SENT list; the writer sees visible rows, so it is mapped back.
+        if (
+          error.row !== undefined &&
+          (error.code === "relation-target-invalid" ||
+            error.code === "relation-duplicate" ||
+            error.code === "relation-limit")
+        ) {
+          setRefusedRow(
+            visibleRowForSentIndex(keptRelationRows(normalizedRelations, entities), error.row),
+          );
+        }
+      },
     });
   }
 
@@ -750,12 +788,21 @@ export function EntityCreateDialog({
               <button
                 type="button"
                 data-testid="entity-create-add-relation"
+                disabled={relations.length >= MAX_RELATIONS}
                 onClick={addRelationRow}
-                className={`inline-flex items-center gap-1 text-meta font-medium text-primary transition-colors hover:text-foreground ${FOCUS}`}
+                className={`inline-flex items-center gap-1 text-meta font-medium text-primary transition-colors hover:text-foreground ${FOCUS} ${relations.length >= MAX_RELATIONS ? "cursor-not-allowed opacity-50" : ""}`}
               >
                 <Icon name="plus" size={14} /> {t("knowledge.create.addRelation")}
               </button>
             </div>
+            {relations.length >= MAX_RELATIONS && (
+              <p
+                data-testid="entity-create-relation-limit-note"
+                className="text-[11px] leading-snug text-muted"
+              >
+                {t("knowledge.create.relationLimit")}
+              </p>
+            )}
             {relations.length === 0 ? (
               <p className="rounded border border-rule bg-surface-container-low px-4 py-6 text-center text-meta text-muted">
                 {t("knowledge.create.noRelations")}
@@ -766,8 +813,16 @@ export function EntityCreateDialog({
                   const outcome = relationRowOutcome(row, entities);
                   const missingLabel = outcome === "missing-label";
                   const unresolvedTarget = outcome === "unresolved-target";
+                  const duplicated = duplicateRows.includes(index);
+                  const refused = refusedRow === index;
+                  const targetInvalid = unresolvedTarget || duplicated || refused;
+                  const labelInvalid = missingLabel || duplicated || refused;
                   return (
-                    <div key={row.key} className="flex items-center gap-2">
+                    <div
+                      key={row.key}
+                      data-refused={refused ? "true" : undefined}
+                      className="flex items-center gap-2"
+                    >
                       <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
                         <input
                           data-testid={`entity-create-relation-${index}-entity`}
@@ -775,10 +830,10 @@ export function EntityCreateDialog({
                           list={entityListId}
                           value={row.target}
                           aria-label={t("knowledge.create.entityLabel")}
-                          aria-invalid={unresolvedTarget || undefined}
+                          aria-invalid={targetInvalid || undefined}
                           placeholder={t("knowledge.create.entityLabel")}
                           onChange={(event) => updateRelation(index, { target: event.target.value })}
-                          className={`${INPUT} ${FOCUS} ${unresolvedTarget ? "ring-1 ring-danger" : ""}`}
+                          className={`${INPUT} ${FOCUS} ${targetInvalid ? "ring-1 ring-danger" : ""}`}
                         />
                         <input
                           data-testid={`entity-create-relation-${index}-label`}
@@ -786,13 +841,13 @@ export function EntityCreateDialog({
                           list={labelListId}
                           value={row.relationType}
                           aria-label={t("knowledge.create.relationLabelLabel")}
-                          aria-invalid={missingLabel || undefined}
+                          aria-invalid={labelInvalid || undefined}
                           placeholder={t("knowledge.create.relationLabelPlaceholder")}
                           maxLength={RELATION_TYPE_MAX}
                           onChange={(event) =>
                             updateRelation(index, { relationType: event.target.value })
                           }
-                          className={`${INPUT} ${FOCUS} ${missingLabel ? "ring-1 ring-danger" : ""}`}
+                          className={`${INPUT} ${FOCUS} ${labelInvalid ? "ring-1 ring-danger" : ""}`}
                         />
                         <input
                           data-testid={`entity-create-relation-${index}-note`}
@@ -807,9 +862,7 @@ export function EntityCreateDialog({
                       <button
                         type="button"
                         aria-label={t("knowledge.create.removeRelation")}
-                        onClick={() =>
-                          setRelations((rows) => rows.filter((_row, rowIndex) => rowIndex !== index))
-                        }
+                        onClick={() => removeRelationRow(index)}
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-danger ${FOCUS}`}
                       >
                         <Icon name="trash" size={15} />
@@ -820,6 +873,14 @@ export function EntityCreateDialog({
                 {dropped > 0 && (
                   <p data-testid="entity-create-unresolved-note" className="text-[11px] leading-snug text-muted">
                     {t("knowledge.create.unresolvedNote")}
+                  </p>
+                )}
+                {duplicateRows.length > 0 && (
+                  <p
+                    data-testid="entity-create-relation-duplicate-note"
+                    className="text-[11px] leading-snug text-danger"
+                  >
+                    {t("knowledge.create.relationDuplicate")}
                   </p>
                 )}
               </div>
@@ -846,13 +907,11 @@ export function EntityCreateDialog({
                 <p className="leading-snug">
                   {failure.code === "transport"
                     ? t("knowledge.create.failedTransport")
-                    : failure.code === undefined
-                      ? t("knowledge.create.failedUnexpected")
-                      : t("knowledge.create.failed", {
-                          detail: failure.detail ?? failure.message,
-                        })}
+                    : refusalKey !== null
+                      ? t(refusalKey)
+                      : t("knowledge.create.failedUnexpected")}
                 </p>
-                {failure.code !== undefined && (
+                {failure.code !== undefined && failure.code !== "transport" && (
                   <p className="mt-0.5 font-mono text-[11px] text-danger">{failure.code}</p>
                 )}
                 <button
