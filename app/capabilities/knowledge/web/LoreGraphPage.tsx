@@ -112,6 +112,9 @@ export function LoreGraphPage() {
   /** The interview's draft while the create dialog is open through the
    *  handover; null is the hand-made door, which starts empty. */
   const [prefill, setPrefill] = useState<EntityPrefill | null>(null);
+  /** The handover's close failed after the row landed: the panel stays and
+   *  names the failed end until it is ended again. */
+  const [closeFailed, setCloseFailed] = useState(false);
   const closeInterview = useCloseAssistantSession();
 
   const entityList = useMemo(() => entities.data ?? [], [entities.data]);
@@ -296,6 +299,7 @@ export function LoreGraphPage() {
   async function openInterviewDoor() {
     // The list is the door's truth: the newest open session, or the chooser.
     // A click that beats the first list read awaits it rather than guessing.
+    setCloseFailed(false);
     const rows = interviewSessions.data ?? (await interviewSessions.refetch()).data ?? [];
     const newest = rows.find((session) => session.closed_at === null);
     setInterview(newest !== undefined ? newest.id : "new");
@@ -921,17 +925,24 @@ export function LoreGraphPage() {
           <EntityInterview
             novelId={novelId}
             sessionId={interview === "new" ? null : interview}
-            onSelectSession={(target) => setInterview(target)}
-            onClose={() => setInterview(null)}
+            onSelectSession={(target) => {
+              setCloseFailed(false);
+              setInterview(target);
+            }}
+            onClose={() => {
+              setCloseFailed(false);
+              setInterview(null);
+            }}
             onManual={() => {
-              setPrefill(null);
               setCrud("create");
             }}
             onSave={(draft) => {
+              setCloseFailed(false);
               setPrefill(draft);
               setCrud("create");
             }}
             returnFocusId="graph-new-entity"
+            closeFailed={closeFailed}
           />
         )}
       </div>
@@ -962,24 +973,56 @@ export function LoreGraphPage() {
         <EntityCreateDialog
           novelId={novelId}
           entities={entityList}
+          rosterSettled={!entities.isPending}
           openerId={prefill === null ? "graph-new-entity" : "entity-interview-save"}
           source={prefill === null ? "manual" : "interview"}
           prefill={prefill ?? undefined}
-          onClose={() => setCrud(null)}
+          onClose={() => {
+            // The handover's draft belongs to this dialog: a later manual
+            // door must never inherit it.
+            setPrefill(null);
+            setCrud(null);
+          }}
           onCreated={(entity, relations) => {
+            const closesInterview =
+              prefill !== null && interview !== undefined && interview !== "new";
+            const sessionId = interview;
+            setPrefill(null);
+            toast.show(t("knowledge.create.created", { count: relations }));
             // The interview's proposal became the row: close the session and
             // leave its parameter behind, so the graph owns the column again.
-            if (prefill !== null && interview !== undefined && interview !== "new") {
-              closeInterview.mutate(interview);
+            // A failed close is not a failed save: the panel stays beside the
+            // selected row and names the failed end above its own action.
+            if (closesInterview && sessionId !== undefined) {
+              closeInterview.mutate(sessionId, {
+                onSuccess: () => {
+                  setCloseFailed(false);
+                  void navigate({
+                    to: GRAPH_PATH,
+                    params: { novelId },
+                    search: { entity: entity.id },
+                    replace: true,
+                  });
+                },
+                onError: () => {
+                  setCloseFailed(true);
+                  select(entity.id);
+                },
+              });
+              return;
             }
             // A hand-made row born from the panel returns to the graph too: the
             // panel yields the column so the new row's dossier can show.
-            if (interview !== undefined) {
-              void navigate({ to: GRAPH_PATH, params: { novelId }, search: { entity: entity.id }, replace: true });
+            if (sessionId !== undefined) {
+              void navigate({
+                to: GRAPH_PATH,
+                params: { novelId },
+                search: { entity: entity.id },
+                replace: true,
+              });
             } else {
               select(entity.id);
             }
-            toast.show(t("knowledge.create.created", { count: relations }));
           }}
         />
       )}

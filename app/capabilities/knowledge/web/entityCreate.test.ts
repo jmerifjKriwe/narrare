@@ -338,19 +338,45 @@ describe("createFormState", () => {
 });
 
 describe("a chosen ambiguity stays chosen", () => {
-  it("a picked target saves to the chosen row even when its name is another row's alias", () => {
-    // «ARIA» is a name and (in this roster) not an alias, but the row carries
-    // the explicit pick: the choice answers the row, not the typed word.
-    const rows = [
-      { target: "ARIA", relationType: "related_to", note: "", chosenId: "e2" },
-    ];
-    expect(relationRowOutcome(rows[0], ENTITIES)).toBe("kept");
-    const body = buildEntityCreateBody(form({ relations: rows }));
-    expect(body.relations).toEqual([
-      { to_entity_id: "e2", relation_type: "related_to", note: null },
-    ]);
+  // The browser leg's collision shape: «Kavic» names the location and is
+  // Mira's alias. The typed word alone is ambiguous; only the explicit pick
+  // says which row the writer meant.
+  const KAVIC = entityRow({ id: "e5", name: "Kavic", type: "location" });
+  const MIRA = entityRow({ id: "e6", name: "Mira", aliases: ["Kavic"] });
+  const COLLISION = [KAVIC, MIRA];
 
-    // Typing the target again drops the pick: the word resolves on its own.
-    expect(relationRowOutcome({ ...rows[0], chosenId: undefined }, ENTITIES)).toBe("kept");
+  it("a name that is another row's alias stays many and the body drops the row", () => {
+    const row = { target: "Kavic", relationType: "located_in", note: "" };
+    const resolution = resolveRelationTarget(row.target, COLLISION);
+    expect(resolution.kind).toBe("many");
+    if (resolution.kind !== "many") throw new Error("expected many");
+    expect(new Set(resolution.entities.map((entity) => entity.id))).toEqual(new Set(["e5", "e6"]));
+
+    // No pick yet: the row is unresolved, so the save would leave it out.
+    expect(relationRowOutcome(row, COLLISION)).toBe("unresolved-target");
+    expect(
+      buildEntityCreateBody(form({ relations: [row], entities: COLLISION })).relations,
+    ).toEqual([]);
   });
+
+  it.each([KAVIC, MIRA])(
+    "the pick saves to $name even though the typed word resolves to both",
+    (chosen) => {
+      const row = {
+        target: "Kavic",
+        relationType: "located_in",
+        note: "",
+        chosenId: chosen.id,
+      };
+      expect(relationRowOutcome(row, COLLISION)).toBe("kept");
+      expect(buildEntityCreateBody(form({ relations: [row], entities: COLLISION })).relations).toEqual([
+        { to_entity_id: chosen.id, relation_type: "located_in", note: null },
+      ]);
+
+      // Typing the target again drops the pick: the word is ambiguous again.
+      expect(relationRowOutcome({ ...row, chosenId: undefined }, COLLISION)).toBe(
+        "unresolved-target",
+      );
+    },
+  );
 });

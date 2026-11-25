@@ -375,7 +375,8 @@ describe("EntityCreateDialog — create by hand", () => {
     expect(screen.getByTestId("entity-create-dialog")).toBeTruthy();
   });
 
-  it("a duplicate refusal's sent row maps to the visible row it names", async () => {    api.POST.mockResolvedValue({
+  it("a duplicate refusal's sent row maps to the visible row it names", async () => {
+    api.POST.mockResolvedValue({
       data: undefined,
       error: {
         detail: {
@@ -587,8 +588,11 @@ describe("EntityCreateDialog — from the interview", () => {
     const description = screen.getByText(de["knowledge.create.descriptionLabel"]);
     expect(within(description).getByText(de["knowledge.interview.suggested"])).toBeTruthy();
 
-    // The proposed row carries the spark before its entity name.
-    expect(screen.getByTestId("entity-create-relation-0-suggested")).toBeTruthy();
+    // The proposed row carries the spark before its entity name, with the
+    // mark's text alternative (the icon itself stays decorative).
+    const spark = screen.getByTestId("entity-create-relation-0-suggested");
+    expect(within(spark).getByText(de["knowledge.interview.suggested"])).toBeTruthy();
+    expect(spark.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
     expect(
       (screen.getByTestId("entity-create-relation-0-entity") as HTMLInputElement).value,
     ).toBe("Station 7");
@@ -618,33 +622,47 @@ describe("EntityCreateDialog — from the interview", () => {
     });
   });
 
-  it("an ambiguous alias offers both and the writer picks", () => {
-    const ambiguous = [
-      entityRow({ id: "e1", name: "Dr. Maya Chen", aliases: ["May"] }),
-      entityRow({ id: "e2", name: "ARIA", aliases: ["May"] }),
-      STATION,
-    ];
+  it("a target naming one row and aliasing another stays unresolved until the writer picks", async () => {
+    api.POST.mockResolvedValue({
+      data: entityRow({ id: "e9", name: "LC-89", type: "object" }),
+      response: ok(201),
+    });
+    // The browser leg's collision shape: «Kavic» names the location and is
+    // Mira's alias, so the typed word resolves to both rows.
+    const KAVIC = entityRow({ id: "e5", name: "Kavic", type: "location" });
+    const MIRA = entityRow({ id: "e6", name: "Mira", aliases: ["Kavic"] });
     openInterview(
       {
         name: "LC-89",
         type: "object",
-        relations: [{ target: "May", relation_type: "related_to", suggested: true }],
+        relations: [{ target: "Kavic", relation_type: "related_to", suggested: true }],
       },
-      ambiguous,
+      [KAVIC, MIRA],
     );
 
     const many = screen.getByTestId("entity-create-relation-0-many");
     expect(many.textContent).toContain(de["knowledge.create.multipleMatches"]);
-    expect(within(many).getByText("Dr. Maya Chen")).toBeTruthy();
-    expect(within(many).getByText("ARIA")).toBeTruthy();
-    // Nothing is blocked: the save stands while the writer decides.
-    expect((screen.getByTestId("entity-create-save") as HTMLButtonElement).disabled).toBe(false);
+    expect(within(many).getByText("Kavic")).toBeTruthy();
+    expect(within(many).getByText("Mira")).toBeTruthy();
+    // Before the pick the row is unresolved: the save would drop it.
+    expect(screen.getByTestId("entity-create-unresolved-note")).toBeTruthy();
+    // The field names the choices panel that explains it.
+    const target = screen.getByTestId("entity-create-relation-0-entity");
+    expect(many.id).not.toBe("");
+    expect(target.getAttribute("aria-describedby")?.split(" ")).toContain(many.id);
 
-    fireEvent.click(screen.getByTestId("entity-create-relation-0-choice-e2"));
+    fireEvent.click(screen.getByTestId("entity-create-relation-0-choice-e5"));
     expect(screen.queryByTestId("entity-create-relation-0-many")).toBeNull();
-    expect(
-      (screen.getByTestId("entity-create-relation-0-entity") as HTMLInputElement).value,
-    ).toBe("ARIA");
+    expect((target as HTMLInputElement).value).toBe("Kavic");
+    // The pick is the row's answer even though the word still names two rows;
+    // without it the save would drop the relation instead of placing this one.
+    expect(screen.queryByTestId("entity-create-unresolved-note")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("entity-create-save"));
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+    expect(api.POST.mock.calls[0][1].body.relations).toEqual([
+      { to_entity_id: "e5", relation_type: "related_to", note: null },
+    ]);
   });
 
   it("unresolved rows are counted and left out", async () => {
@@ -676,5 +694,92 @@ describe("EntityCreateDialog — from the interview", () => {
     expect(api.POST.mock.calls[0][1].body.relations).toEqual([
       { to_entity_id: "e3", relation_type: "related_to", note: null },
     ]);
+  });
+
+  it("an unloaded roster shows no outcome and keeps the save closed", () => {
+    const prefill: EntityPrefill = {
+      name: "LC-89",
+      type: "object",
+      relations: [{ target: "Station 7", relation_type: "related_to", suggested: false }],
+    };
+    function RosterHarness({ settled }: { settled: boolean }) {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button id="opener" type="button" onClick={() => setOpen(true)}>
+            opener
+          </button>
+          {open && (
+            <EntityCreateDialog
+              novelId={NOVEL_ID}
+              entities={ENTITIES}
+              openerId="opener"
+              onClose={() => setOpen(false)}
+              source="interview"
+              prefill={prefill}
+              rosterSettled={settled}
+            />
+          )}
+        </>
+      );
+    }
+    const tree = (settled: boolean) => (
+      <QueryClientProvider client={queryClient}>
+        <RosterHarness settled={settled} />
+      </QueryClientProvider>
+    );
+    const view = render(tree(false));
+    openDialog();
+
+    // The roster is still loading: no verdict on any proposed row, no drop,
+    // and the save waits for the rows the outcome depends on.
+    expect(screen.queryByTestId("entity-create-relation-0-no-match")).toBeNull();
+    expect(screen.queryByTestId("entity-create-unresolved-note")).toBeNull();
+    expect(
+      screen.getByTestId("entity-create-relation-0-entity").getAttribute("aria-invalid"),
+    ).toBeNull();
+    expect((screen.getByTestId("entity-create-save") as HTMLButtonElement).disabled).toBe(true);
+
+    view.rerender(tree(true));
+    // Settled: the row resolves, so its outcome and the save return.
+    expect(screen.queryByTestId("entity-create-relation-0-no-match")).toBeNull();
+    expect((screen.getByTestId("entity-create-save") as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("an untouched prefilled dialog closes on Escape; the first edit holds it", () => {
+    mount(harnessInterview(INTERVIEW_PREFILL));
+    openDialog();
+    expect(screen.getByTestId("entity-create-dialog")).toBeTruthy();
+
+    // The prefill is the door's starting state, not a change of its own.
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByTestId("entity-create-dialog")).toBeNull();
+
+    openDialog();
+    const name = screen.getByTestId("entity-create-name") as HTMLInputElement;
+    fireEvent.change(name, { target: { value: `${name.value} II` } });
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.getByTestId("entity-create-dialog")).toBeTruthy();
+    // «Abbrechen» remains the explicit way out of a changed draft.
+    fireEvent.click(screen.getByTestId("entity-create-cancel"));
+    expect(screen.queryByTestId("entity-create-dialog")).toBeNull();
+  });
+
+  it("an untouched hand-made dialog closes on Escape; the first edit holds it", () => {
+    const harnessManual = harness((close) => (
+      <EntityCreateDialog novelId={NOVEL_ID} entities={ENTITIES} openerId="opener" onClose={close} />
+    ));
+    mount(harnessManual);
+    openDialog();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByTestId("entity-create-dialog")).toBeNull();
+
+    openDialog();
+    fireEvent.change(screen.getByTestId("entity-create-name"), {
+      target: { value: "Nebelhaus" },
+    });
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.getByTestId("entity-create-dialog")).toBeTruthy();
   });
 });

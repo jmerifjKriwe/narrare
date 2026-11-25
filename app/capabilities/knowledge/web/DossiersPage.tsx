@@ -469,6 +469,7 @@ export function DossiersPage() {
         <EntityCreateDialog
           novelId={novelId}
           entities={entityList}
+          rosterSettled={!entities.isPending}
           openerId="dossiers-new-dossier"
           onClose={() => setCreating(false)}
           onCreated={(entity, relations) => {

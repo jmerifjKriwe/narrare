@@ -39,6 +39,34 @@ import { SuggestedMark } from "./SuggestedMark";
 const CREATE_PANEL =
   "max-h-[calc(100vh-2rem)] w-full max-w-xl space-y-3 overflow-y-auto rounded-lg border border-border bg-panel p-5 shadow-overlay";
 
+/** Whether two chip lists hold the same values in the same order. */
+function sameList(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+/** Whether two relation lists are the same draft: the door's starting rows
+ *  carry no change of their own. */
+function sameRows(
+  left: readonly EntityCreateRelationRow[],
+  right: readonly EntityCreateRelationRow[],
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((row, index) => {
+      const base = right[index];
+      return (
+        base !== undefined &&
+        row.key === base.key &&
+        row.target === base.target &&
+        row.relationType === base.relationType &&
+        row.note === base.note &&
+        row.suggested === base.suggested &&
+        row.chosenId === base.chosenId
+      );
+    })
+  );
+}
+
 export function EntityCreateDialog({
   novelId,
   entities,
@@ -47,6 +75,7 @@ export function EntityCreateDialog({
   onCreated,
   source = "manual",
   prefill,
+  rosterSettled = true,
 }: {
   novelId: string;
   entities: readonly Entity[];
@@ -58,6 +87,10 @@ export function EntityCreateDialog({
   source?: EntityCreateSource;
   /** The interview's draft; absent for the hand-made form. */
   prefill?: EntityPrefill;
+  /** Whether the roster the rows resolve against has loaded. Until it has,
+   *  a proposed row carries no outcome and the save waits: resolving against
+   *  an empty list would read every proposal as «Kein Treffer» and drop it. */
+  rosterSettled?: boolean;
 }) {
   const t = useTranslation();
   // The starting state is the door's own: the hand-made form empty, the
@@ -79,15 +112,19 @@ export function EntityCreateDialog({
   const busy = create.isPending;
   const typeLocked = initial.typeLocked;
   const suggested = prefill?.suggested;
+  // Dirty means changed against this door's own starting state: empty by
+  // hand, the interview's prefill from the panel. An untouched prefilled
+  // dialog closes on Escape like an untouched manual one; the first edit
+  // brings the guard back.
   const dirty =
-    name !== "" ||
-    type !== "" ||
-    aliases.length > 0 ||
-    tags.length > 0 ||
     aliasDraft !== "" ||
     tagDraft !== "" ||
-    content !== "" ||
-    relations.length > 0;
+    name !== initial.name ||
+    type !== initial.type ||
+    !sameList(aliases, initial.aliases) ||
+    !sameList(tags, initial.tags) ||
+    content !== initial.content ||
+    !sameRows(relations, initial.relations);
 
   const nameRef = useRef<HTMLInputElement | null>(null);
   const relationKey = useRef(initial.relations.length);
@@ -108,16 +145,19 @@ export function EntityCreateDialog({
     ...row,
     relationType: resolveRelationType(t, row.relationType),
   }));
-  const duplicateRows = duplicateRelationRows(normalizedRelations, entities);
+  const duplicateRows = rosterSettled ? duplicateRelationRows(normalizedRelations, entities) : [];
   // Every filled row the save will drop — an unresolved target and a
   // resolved target without its label both count; only an untouched add-row
-  // stays silent.
-  const dropped = relations.filter((row) => {
-    const outcome = relationRowOutcome(row, entities);
-    return outcome === "unresolved-target" || outcome === "missing-label";
-  }).length;
+  // stays silent. While the roster is loading there is no outcome yet.
+  const dropped = rosterSettled
+    ? relations.filter((row) => {
+        const outcome = relationRowOutcome(row, entities);
+        return outcome === "unresolved-target" || outcome === "missing-label";
+      }).length
+    : 0;
   const atLimit = relations.length >= MAX_RELATIONS;
-  const ready = name.trim() !== "" && type !== "";
+  // The save waits for a settled roster: its body resolves every row there.
+  const ready = name.trim() !== "" && type !== "" && rosterSettled;
   // The closed-set code's catalog sentence; a synthetic or unknown code
   // falls back to the generic catalog sentence, never the wire's English.
   const refusalKey = failure === null ? null : refusalCatalogKey(failure.code);
@@ -371,6 +411,7 @@ export function EntityCreateDialog({
               entities={entities}
               entityListId={entityListId}
               labelListId={labelListId}
+              rosterSettled={rosterSettled}
               duplicateRows={duplicateRows}
               refusedRow={refusedRow}
               unresolvedNoteId={unresolvedNoteId}

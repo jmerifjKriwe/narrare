@@ -28,7 +28,7 @@ vi.mock("@shell/lib/api/client", () => ({
   client: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() },
 }));
 
-import { client, type Entity, type Relation } from "@shell/lib/api/client";
+import { client, type AssistantSession, type Entity, type Relation } from "@shell/lib/api/client";
 import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
@@ -98,6 +98,22 @@ function sessionSummary(id: string) {
     created_at: "2026-11-24T14:00:00Z",
     updated_at: "2026-11-24T14:00:00Z",
   };
+}
+
+/** A full interview read with one named proposal, as the handover needs it. */
+function sessionWithProposal(id: string, name: string): AssistantSession {
+  return {
+    ...sessionSummary(id),
+    proposal: {
+      name,
+      name_suggested: false,
+      aliases: [],
+      tags: [],
+      content: "",
+      relations: [],
+    },
+    turns: [],
+  } as AssistantSession;
 }
 
 function baseGet(path: string): Promise<{ data: unknown; response: Response }> {
@@ -873,6 +889,92 @@ describe("the subbar's CRUD doors (Task 4)", () => {
       expect(screen.queryByTestId("entity-dossier")).toBeNull();
       expect(document.activeElement).toBe(document.getElementById("graph-page"));
     });
+  });
+
+  it("a close that fails after the handover keeps the panel and names the failure", async () => {
+    let session = sessionWithProposal("s1", "Nebelhaus");
+    let closeCalls = 0;
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/chat/sessions/{session_id}") {
+        return Promise.resolve({ data: session, response: ok() });
+      }
+      return baseGet(path);
+    });
+    api.POST.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/entities") {
+        return Promise.resolve({
+          data: entityRow({ id: "e9", name: "Nebelhaus", type: "object" }),
+          response: new Response(null, { status: 201 }),
+        });
+      }
+      if (path === "/api/chat/sessions/{session_id}/close") {
+        closeCalls += 1;
+        if (closeCalls === 1) {
+          return Promise.resolve({
+            data: undefined,
+            error: { detail: { code: "provider-error", detail: "offline" } },
+            response: new Response(null, { status: 500 }),
+          });
+        }
+        session = { ...session, closed_at: "2026-11-24T14:30:00Z" };
+        return Promise.resolve({ data: session, response: ok() });
+      }
+      throw new Error(`unexpected POST: ${path}`);
+    });
+
+    const router = await renderGraph(`/novels/${NOVEL_ID}/knowledge/graph?interview=s1`);
+    const panel = await screen.findByTestId("entity-interview");
+    const saveDoor = (await within(panel).findByTestId("entity-interview-save")) as HTMLButtonElement;
+    await waitFor(() => expect(saveDoor.disabled).toBe(false));
+    fireEvent.click(saveDoor);
+    const dialog = await screen.findByTestId("entity-create-dialog");
+    fireEvent.click(within(dialog).getByTestId("entity-create-save"));
+
+    // The row landed and confirmed, but the close failed: the panel stays
+    // open beside the freshly selected row and names the failed end.
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+    expect((await screen.findByTestId("toast")).textContent).toContain("Entität angelegt");
+    const stayed = screen.getByTestId("entity-interview");
+    expect(await within(stayed).findByText(de["knowledge.interview.endFailed"])).toBeTruthy();
+    expect(router.state.location.search).toMatchObject({ entity: "e9", interview: "s1" });
+
+    // The end action is the retry; its success reaches the ended face.
+    fireEvent.click(within(stayed).getByTestId("entity-interview-end"));
+    await screen.findByText(de["knowledge.interview.endedBanner"]);
+    await waitFor(() =>
+      expect(screen.queryByText(de["knowledge.interview.endFailed"])).toBeNull(),
+    );
+  });
+
+  it("a closed interview dialog leaves no prefill for the next manual door", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/chat/sessions/{session_id}") {
+        return Promise.resolve({ data: sessionWithProposal("s1", "Nebelhaus"), response: ok() });
+      }
+      return baseGet(path);
+    });
+    await renderGraph(`/novels/${NOVEL_ID}/knowledge/graph?interview=s1`);
+    const panel = await screen.findByTestId("entity-interview");
+    const saveDoor = (await within(panel).findByTestId("entity-interview-save")) as HTMLButtonElement;
+    await waitFor(() => expect(saveDoor.disabled).toBe(false));
+
+    fireEvent.click(saveDoor);
+    const prefilled = await screen.findByTestId("entity-create-dialog");
+    expect(within(prefilled).getByText(de["knowledge.create.sourceInterview"])).toBeTruthy();
+    fireEvent.click(within(prefilled).getByTestId("entity-create-cancel"));
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+
+    // Closing the handover dialog drops its draft. The next create door is
+    // the chooser's quiet hand-made path, and it must open the empty form,
+    // not the interview's proposal again.
+    fireEvent.click(within(screen.getByTestId("entity-interview")).getByTestId("entity-interview-close"));
+    await waitFor(() => expect(screen.queryByTestId("entity-interview")).toBeNull());
+    fireEvent.click(screen.getByTestId("graph-new-entity"));
+    const chooser = await screen.findByTestId("entity-interview");
+    fireEvent.click(within(chooser).getByTestId("entity-interview-manual"));
+    const manual = await screen.findByTestId("entity-create-dialog");
+    expect(within(manual).getByText(de["knowledge.create.manualBadge"])).toBeTruthy();
+    expect((within(manual).getByTestId("entity-create-name") as HTMLInputElement).value).toBe("");
   });
 });
 

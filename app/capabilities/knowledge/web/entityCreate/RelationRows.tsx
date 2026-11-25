@@ -5,6 +5,8 @@
  * dialog's own (`unresolvedNoteId`, `duplicateNoteId`, the refusal alert), so a
  * marked field describes the sentence that explains it.
  */
+import { useId } from "react";
+
 import type { Entity } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { FOCUS } from "@shell/ui/card";
@@ -27,6 +29,7 @@ export function RelationRows({
   entities,
   entityListId,
   labelListId,
+  rosterSettled,
   duplicateRows,
   refusedRow,
   unresolvedNoteId,
@@ -41,6 +44,8 @@ export function RelationRows({
   entities: readonly Entity[];
   entityListId: string;
   labelListId: string;
+  /** Whether the roster has loaded; until then a row has no outcome to show. */
+  rosterSettled: boolean;
   duplicateRows: readonly number[];
   refusedRow: number | null;
   unresolvedNoteId: string;
@@ -54,6 +59,9 @@ export function RelationRows({
   onChoose: (index: number, entity: Entity) => void;
 }) {
   const t = useTranslation();
+  // The choices panel's own id, per row: the target field names it while the
+  // writer can pick from it.
+  const choicesBaseId = useId();
 
   if (rows.length === 0) {
     return (
@@ -66,16 +74,24 @@ export function RelationRows({
   return (
     <div className="space-y-2">
       {rows.map((row, index) => {
-        const outcome = relationRowOutcome(row, entities);
+        // Until the roster settles a row has no outcome: resolving against
+        // the empty list would call every proposal «Kein Treffer» and count
+        // it as dropped. The save waits for the same fact.
+        const outcome = rosterSettled ? relationRowOutcome(row, entities) : null;
         const missingLabel = outcome === "missing-label";
         const unresolvedTarget = outcome === "unresolved-target";
         const duplicated = duplicateRows.includes(index);
         const refused = refusedRow === index;
         const targetInvalid = unresolvedTarget || duplicated || refused;
         const labelInvalid = missingLabel || duplicated || refused;
+        const hasTarget = row.target.trim() !== "";
+        const resolution = rosterSettled ? resolveRowTarget(row, entities) : null;
+        const many = resolution?.kind === "many";
+        const choicesId = `${choicesBaseId}-${index}`;
         const targetDescribedBy = describedBy(
           unresolvedTarget && unresolvedNoteId,
           duplicated && duplicateNoteId,
+          many && choicesId,
           refused && failureId,
         );
         const labelDescribedBy = describedBy(
@@ -83,8 +99,6 @@ export function RelationRows({
           duplicated && duplicateNoteId,
           refused && failureId,
         );
-        const hasTarget = row.target.trim() !== "";
-        const resolution = resolveRowTarget(row, entities);
         return (
           <div key={row.key} data-refused={refused ? "true" : undefined} className="space-y-1">
             <div className="flex items-center gap-2">
@@ -93,10 +107,12 @@ export function RelationRows({
                   {row.suggested && (
                     <span
                       data-testid={`entity-create-relation-${index}-suggested`}
-                      aria-hidden="true"
                       className="shrink-0 text-warning"
                     >
-                      <Icon name="spark" size={13} />
+                      <span aria-hidden="true">
+                        <Icon name="spark" size={13} />
+                      </span>
+                      <span className="sr-only">{t("knowledge.interview.suggested")}</span>
                     </span>
                   )}
                   <input
@@ -144,8 +160,9 @@ export function RelationRows({
                 <Icon name="trash" size={15} />
               </button>
             </div>
-            {hasTarget && resolution.kind === "many" && (
+            {hasTarget && resolution !== null && resolution.kind === "many" && (
               <div
+                id={choicesId}
                 data-testid={`entity-create-relation-${index}-many`}
                 className="rounded border border-warning/40 bg-surface-container px-2 py-1.5"
               >
@@ -170,7 +187,7 @@ export function RelationRows({
                 </div>
               </div>
             )}
-            {hasTarget && resolution.kind === "none" && (
+            {hasTarget && resolution !== null && resolution.kind === "none" && (
               <p
                 data-testid={`entity-create-relation-${index}-no-match`}
                 className="text-[11px] leading-snug text-foreground"

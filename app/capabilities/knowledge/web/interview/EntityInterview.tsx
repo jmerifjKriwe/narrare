@@ -38,6 +38,7 @@ export function EntityInterview({
   onManual,
   onSave,
   returnFocusId,
+  closeFailed = false,
 }: {
   novelId: string;
   /** The interview's id, or null for the chooser (the `new` door). */
@@ -53,6 +54,9 @@ export function EntityInterview({
   /** The door that opened the panel; closing it hands focus back there (the
    *  dialog opener contract — the panel's own close button unmounts with it). */
   returnFocusId?: string;
+  /** A close fired by the handover (the save) failed after the row landed:
+   *  the panel stays and names the failed end beside its own action. */
+  closeFailed?: boolean;
 }) {
   const t = useTranslation();
   const titleId = useId();
@@ -227,7 +231,7 @@ export function EntityInterview({
           )}
 
           <div className="shrink-0 border-t border-rule px-3 py-2">
-            {controller.face !== "ended" && controller.endFailed && (
+            {controller.face !== "ended" && (controller.endFailed || closeFailed) && (
               <p role="alert" className="mb-1.5 text-meta text-danger">
                 {t("knowledge.interview.endFailed")}
               </p>
@@ -237,7 +241,7 @@ export function EntityInterview({
                 type="button"
                 id="entity-interview-save"
                 data-testid="entity-interview-save"
-                disabled={!canSave}
+                disabled={!canSave || busy}
                 onClick={() =>
                   onSave(entityPrefillFromProposal(session.proposal, session.entity_type))
                 }

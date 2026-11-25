@@ -448,7 +448,8 @@ describe("the wire's refusals find their own face", () => {
 });
 
 describe("ending makes it read-only", () => {
-  it("removes the composer, keeps the proposal and closes the session", async () => {    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+  it("removes the composer, keeps the proposal and closes the session", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
     api.POST.mockImplementation((path: string) => {
       if (path === "/api/chat/sessions/{session_id}/close") {
         detail = { ...detail, closed_at: "2026-11-24T14:30:00Z" };
@@ -530,6 +531,26 @@ describe("the proposal becomes an entity", () => {
         { target: "Forschungsstation", relation_type: "related_to", note: undefined, suggested: true },
       ],
     });
+  });
+
+  it("the save waits for the running turn", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    let release: (value: { data: unknown; response: Response }) => void = () => {};
+    api.POST.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    renderPanel();
+    await readySession();
+
+    const save = screen.getByTestId("entity-interview-save") as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+
+    // A turn is in flight: the proposal can still change under the save, so
+    // the door waits until the landing answer has settled.
+    fireEvent.change(composer(), { target: { value: "Es stammt aus dem Labor von Lin." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await waitFor(() => expect(save.disabled).toBe(true));
+
+    release({ data: readback(), response: ok() });
+    await waitFor(() => expect(save.disabled).toBe(false));
   });
 
   it("an ended interview keeps the proposal savable", async () => {
