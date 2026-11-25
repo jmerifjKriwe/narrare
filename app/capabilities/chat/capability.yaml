@@ -2,5 +2,4 @@
 # app/generated/capabilities.py, web/lib/generated/capabilities.ts and
 # docs/user/INDEX.md. Behaviour, schemas and prompts never go here.
 id: chat
-title: chat.heading # i18n key; checked only for a capability that owns a web/ module
 needs: [llm, embeddings]

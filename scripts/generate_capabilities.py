@@ -105,10 +105,13 @@ class Facts:
 
     Absence is normalised: a missing ``path`` is ``None`` and a missing
     ``nav`` is ``False``, so no view has to know the yaml's optional shape.
+    ``title`` is ``None`` only for a capability without ``web/``: no generated
+    view renders a title for it, so the field exists only while a view reads
+    it.
     """
 
     id: str
-    title: str
+    title: str | None
     path: str | None
     needs: tuple[str, ...]
     nav: bool
@@ -240,11 +243,11 @@ def facts(
 
     The registry reads every capability: the backend mounts a router for
     each one, ``web/`` or not. A capability that owns a ``web/`` directory
-    renders UI rows from its facts, so its title key must resolve in every
-    merged catalog — a typo stops generation here, naming the file and the
-    key, instead of vanishing from the nav and the INDEX. A capability
-    without ``web/`` keeps its facts unchecked: its catalog left with the
-    directory, and the registry reads only id and needs.
+    renders UI rows from its facts, so it must declare a title key and that
+    key must resolve in every merged catalog — a missing or typo'd key stops
+    generation here, naming the file and the key, instead of vanishing from
+    the nav and the INDEX. A capability without ``web/`` reads no title: no
+    view renders one, so the field is optional and its value is not checked.
 
     ``path`` and ``nav`` may be absent: a capability whose surface lives on
     another capability's page declares neither, and an empty ``path`` counts
@@ -263,7 +266,7 @@ def facts(
             raise SystemExit(f"{source}: unknown fields {sorted(unknown)}; facts only (spec §4)")
         entry = Facts(
             id=raw["id"],
-            title=raw["title"],
+            title=raw.get("title"),
             path=raw.get("path") or None,
             needs=tuple(sorted(raw["needs"])),
             nav=bool(raw.get("nav", False)),
@@ -274,6 +277,8 @@ def facts(
         if unknown_needs:
             raise SystemExit(f"{source}: unknown needs {sorted(unknown_needs)}")
         if entry.id in present:
+            if entry.title is None:
+                raise SystemExit(f"{source}: a capability that owns web/ must declare a title key")
             for locale in known:
                 if entry.title not in loaded[locale]:
                     raise SystemExit(
@@ -304,11 +309,19 @@ def ui_facts(entries: tuple[Facts, ...], root: Path) -> tuple[Facts, ...]:
 
     A row needs a capability that owns a ``web/`` directory — the one
     rule, ``web_ids``. The title key every row renders is already
-    guaranteed: ``facts`` stops generation when a web-owning capability's
-    key resolves nowhere, so no row reaches a view with blank words.
+    guaranteed: ``facts`` stops generation when a web-owning capability has
+    no key or its key resolves nowhere, so no row reaches a view with blank
+    words.
     """
     present = web_ids(root)
     return tuple(entry for entry in entries if entry.id in present)
+
+
+def _title_key(entry: Facts) -> str:
+    """A UI row's title key; only a capability ``ui_facts`` kept reaches this."""
+    if entry.title is None:
+        raise SystemExit(f"app/capabilities/{entry.id}: a UI row needs its title key")
+    return entry.title
 
 
 def python_locales(known: tuple[str, ...]) -> str:
@@ -494,7 +507,7 @@ def python_registry(entries: tuple[Facts, ...]) -> str:
 def typescript_nav(entries: tuple[Facts, ...]) -> str:
     """The web-side view: the nav entries the home page renders."""
     rows = "".join(
-        f'  {{ id: "{entry.id}", path: "{entry.path}", titleKey: "{entry.title}" }},\n'
+        f'  {{ id: "{entry.id}", path: "{entry.path}", titleKey: "{_title_key(entry)}" }},\n'
         for entry in entries
         if entry.nav and entry.path
     )
@@ -1472,7 +1485,7 @@ def docs_index(
         nav_column = catalog["docs.table.nav"]
         needs_column = catalog["docs.table.needs"]
         rows = "".join(
-            f"| {catalog[entry.title]} | {entry.path or '—'} | "
+            f"| {catalog[_title_key(entry)]} | {entry.path or '—'} | "
             + ("✓" if entry.nav else "—")
             + " | "
             + (", ".join(catalog[f"needs.{need}"] for need in entry.needs) or "—")

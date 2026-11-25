@@ -146,13 +146,14 @@ def test_ui_rows_are_exactly_the_web_owning_capabilities() -> None:
     rows = ui_facts(loaded_facts, ROOT)
     assert {row.id for row in rows} == set(web_ids(ROOT))
     for capability in rows:
+        assert capability.title is not None
         assert capability.title in loaded[SOURCE_LOCALE]
 
 
 def _facts_tree(
     tmp_path: Path,
     *,
-    title: str,
+    title: str | None,
     owns_web: bool,
     fields: str = "path: /demo\nneeds: []\nnav: true",
     catalog_keys: tuple[str, ...] = (),
@@ -161,7 +162,8 @@ def _facts_tree(
 
     `fields` is the yaml below the id and title, so a test can leave a field
     out; `catalog_keys` are extra words the locale already resolves, for a
-    web-owning capability whose title must.
+    web-owning capability whose title must. A `None` title writes no title
+    line at all — the shape a capability without ``web/`` may use.
     """
     catalog = {key: key for key in REQUIRED_DOC_KEYS + catalog_keys}
     (tmp_path / "i18n").mkdir()
@@ -170,10 +172,11 @@ def _facts_tree(
     )
     folder = tmp_path / "app" / "capabilities" / "demo"
     folder.mkdir(parents=True)
-    (folder / "capability.yaml").write_text(
-        f"id: demo\ntitle: {title}\n{fields}\n",
-        encoding="utf-8",
-    )
+    lines = ["id: demo"]
+    if title is not None:
+        lines.append(f"title: {title}")
+    lines.append(fields)
+    (folder / "capability.yaml").write_text("\n".join(lines) + "\n", encoding="utf-8")
     if owns_web:
         (folder / "web").mkdir()
     return tmp_path
@@ -189,6 +192,30 @@ def test_a_web_owning_capability_with_a_typoed_title_stops_generation(tmp_path: 
     loaded = catalogs(root, known)
     with pytest.raises(SystemExit, match=r"title key 'demo\.typo' missing"):
         facts(root, known, loaded)
+
+
+def test_a_web_owning_capability_without_a_title_stops_generation(tmp_path: Path) -> None:
+    # A capability that owns web/ renders a nav row and an INDEX row, both
+    # keyed by its title; no key means no words, so generation stops naming
+    # the file instead of writing a row that renders blank.
+    root = _facts_tree(tmp_path, title=None, owns_web=True)
+    known = locales(root)
+    loaded = catalogs(root, known)
+    with pytest.raises(SystemExit, match="must declare a title key"):
+        facts(root, known, loaded)
+
+
+def test_a_web_less_capability_needs_only_its_id_and_needs(tmp_path: Path) -> None:
+    # No UI row reads a title for a capability without web/, so the field is
+    # absent rather than validated: chat's shape, and the registry keeps it.
+    root = _facts_tree(tmp_path, title=None, owns_web=False, fields="needs: []")
+    known = locales(root)
+    loaded = catalogs(root, known)
+    entries = facts(root, known, loaded)
+    assert [(entry.id, entry.title, entry.path, entry.nav) for entry in entries] == [
+        ("demo", None, None, False)
+    ]
+    assert ui_facts(entries, root) == ()
 
 
 def test_a_capability_without_web_keeps_facts_the_catalog_does_not_resolve(
