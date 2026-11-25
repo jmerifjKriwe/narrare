@@ -57,9 +57,11 @@ export function readyToSave(proposal: Proposal | null): boolean {
 
 /**
  * The one face the panel draws. A closed session is read-only whatever else
- * stands; a running turn is the thinking row; a named failure keeps the
- * writer's text in the composer; a pending suggestion turns the question into
- * its three actions. With none of those, the interview is simply asking.
+ * stands; a running turn is the thinking row; a named failure keeps a typed
+ * answer's text in the composer — a button's label was never there, so its
+ * face promises only the failed body for the retry; a pending suggestion
+ * turns the question into its three actions. With none of those, the
+ * interview is simply asking.
  */
 export function interviewFace(input: {
   session: Pick<AssistantSession, "closed_at"> | null;
