@@ -39,7 +39,7 @@ export interface paths {
         put?: never;
         /**
          * Open Session
-         * @description Open an interview: the mode, its type and the novel decide; a coded 404 or 422.
+         * @description Open an interview: mode, type, novel and any target decide; a coded 404 or 422.
          */
         post: operations["open_session_api_chat_sessions_post"];
         delete?: never;

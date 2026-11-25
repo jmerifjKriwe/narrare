@@ -172,6 +172,20 @@ class EntityRosterRepository(ScopedRepository[Entity]):
         )
         return list(result.all())
 
+    async def owns_entity(self, novel_id: UUID, entity_id: UUID) -> bool:
+        """Whether this user owns the entity and it belongs to the novel.
+
+        The door's target is a reference the session will hold, so it is
+        checked through the scoped roster: another user's entity and one in a
+        different novel both answer ``False``, like an absent one.
+        """
+        found = await self.session.scalar(
+            select(Entity.id).where(
+                self.owned(), Entity.novel_id == novel_id, Entity.id == entity_id
+            )
+        )
+        return found is not None
+
 
 class NovelRepository(ScopedRepository[Novel]):
     """The novel the interview hangs off: its existence and its heading."""

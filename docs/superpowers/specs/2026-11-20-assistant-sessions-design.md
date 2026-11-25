@@ -260,7 +260,10 @@ the input it was given: what it changed is written — a list slot or a relation
 merges item by item, so the proposal keeps every item, gains the items the
 answer added, loses only an item the answer dropped that its input carried, and
 takes a value change in place — and what it left alone is taken from the
-proposal as it stands now. The provenance rule reads the same comparison.
+proposal as it stands now. A slot the answer leaves out is untouched, one it
+gives empty (`""` for name and content, `[]` for aliases and tags) is cleared,
+and a relation list the answer leaves out is untouched while a given list drops
+the relations it omits. The provenance rule reads the same comparison.
 
 Concurrent turns on one session (two tabs, a double submit) cannot interleave
 their rows and cannot erase each other: each allocates `seq` inside its own

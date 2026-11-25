@@ -40,12 +40,18 @@ class MalformedAnswerError(ValueError):
 
 @dataclass(frozen=True)
 class AuditedCall:
-    """One provider call as the handler audits it: what was asked, what came back."""
+    """One provider call as the handler audits it: what was asked, what came back.
+
+    ``parse_error`` is the reason this attempt's answer could not be read
+    (``None`` when it parsed): the caller's audit row tells each attempt's own
+    outcome instead of borrowing the turn's final one.
+    """
 
     prompt: str
     answer: str
     latency_ms: int
     usage: Usage | None
+    parse_error: str | None = None
 
 
 async def _ask(provider: TextProvider, request: CompletionRequest) -> tuple[str, int, Usage | None]:
@@ -92,8 +98,19 @@ async def ask_structured[T](
     """
     first = CompletionRequest(messages=(Message("user", prompt),), response_schema=schema)
     answer, latency_ms, usage = await _ask(provider, first)
-    await audit(AuditedCall(prompt=prompt, answer=answer, latency_ms=latency_ms, usage=usage))
     parsed, reason = _read(answer, parse)
+    # The row is audited after the attempt's own read, so it carries whether
+    # THIS answer parsed — a malformed attempt beside a raising retry keeps
+    # its extraction failure instead of the retry's provider error.
+    await audit(
+        AuditedCall(
+            prompt=prompt,
+            answer=answer,
+            latency_ms=latency_ms,
+            usage=usage,
+            parse_error=reason or None,
+        )
+    )
     if parsed is not _UNREAD:
         return cast("T", parsed)
 
@@ -106,15 +123,17 @@ async def ask_structured[T](
         response_schema=schema,
     )
     answer, latency_ms, usage = await _ask(provider, retry)
+    retry_prompt = f"{prompt}\n\n{correction}"
+    parsed, reason = _read(answer, parse)
     await audit(
         AuditedCall(
-            prompt=f"{prompt}\n\n{correction}",
+            prompt=retry_prompt,
             answer=answer,
             latency_ms=latency_ms,
             usage=usage,
+            parse_error=reason or None,
         )
     )
-    parsed, reason = _read(answer, parse)
     if parsed is not _UNREAD:
         return cast("T", parsed)
     raise MalformedAnswerError(reason)

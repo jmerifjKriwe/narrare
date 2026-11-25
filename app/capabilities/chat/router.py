@@ -178,7 +178,7 @@ async def ask(
 
 @router.post("/sessions", status_code=201, response_model=SessionRead)
 async def open_session(payload: SessionCreate, service: InterviewServiceDep) -> SessionRead:
-    """Open an interview: the mode, its type and the novel decide; a coded 404 or 422."""
+    """Open an interview: mode, type, novel and any target decide; a coded 404 or 422."""
     try:
         session = await service.open_session(payload)
     except InterviewRefusalError as error:

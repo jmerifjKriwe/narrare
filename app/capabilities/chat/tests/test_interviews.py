@@ -283,6 +283,83 @@ class _ClosingProvider:
         yield DONE
 
 
+class _NewSuggestionProvider:
+    """Answers once, but stores a newer pending suggestion from a second session first.
+
+    The new suggestion lands while the accepted turn's model call is in
+    flight, after step 1 captured the pending one and before step 3 takes the
+    lock: the window in which the turn must refuse rather than accept the
+    newer suggestion under an answer generated for the older one.
+    """
+
+    def __init__(self, session_id: UUID, suggestion: str) -> None:
+        self.session_id = session_id
+        self.suggestion = suggestion
+        self.requests: list[CompletionRequest] = []
+
+    def describe(self) -> str:
+        """Identify the racing stand-in."""
+        return "new-suggestion"
+
+    def configuration_problems(self) -> list[str]:
+        """Ready by construction."""
+        return []
+
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Store a newer pending suggestion from another session, then answer."""
+        self.requests.append(request)
+        async with Session() as session:
+            repo = AssistantSessionRepository(session, LOCAL_USER_ID)
+            seq = await repo.next_seq(self.session_id)
+            await repo.append_turn(
+                self.session_id,
+                seq,
+                "assistant",
+                "Noch eine Frage?",
+                suggestion=self.suggestion,
+                suggestion_state="pending",
+            )
+            await session.commit()
+        yield Delta(
+            json.dumps(
+                {"reply": "Notiert.", "slots": {"name": "Jona"}, "relations": []},
+                ensure_ascii=False,
+            )
+        )
+        yield Usage(input_tokens=1, output_tokens=1)
+        yield DONE
+
+
+class _MalformedThenFailingProvider:
+    """First answer is prose; the retry raises before a single event.
+
+    The completed first attempt's row must keep its own extraction failure
+    beside the retry's provider error.
+    """
+
+    def __init__(self, failure: Exception) -> None:
+        self.failure = failure
+        self.calls = 0
+
+    def describe(self) -> str:
+        """Identify the failing retry stand-in."""
+        return "malformed-then-failing"
+
+    def configuration_problems(self) -> list[str]:
+        """Ready by construction."""
+        return []
+
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Answer unordered prose once, then die on the retry."""
+        self.calls += 1
+        if self.calls == 1:
+            yield Delta("this is prose, not JSON {{")
+            yield Usage(input_tokens=1, output_tokens=1)
+            yield DONE
+            return
+        raise self.failure
+
+
 def _prompt_json(prompt: str, prefix: str, default: object) -> object:
     """The JSON payload on a marked line, or the default when absent."""
     for line in prompt.splitlines():
@@ -380,6 +457,15 @@ async def _seed_entities(novel: Novel, count: int) -> None:
             for index in range(count)
         )
         await session.commit()
+
+
+async def _seed_entity_id(novel: Novel, name: str = "Mira", user_id: UUID = LOCAL_USER_ID) -> UUID:
+    """One stored entity, its id returned for a door's target."""
+    async with Session() as session:
+        entity = Entity(user_id=user_id, novel_id=novel.id, name=name, type="character")
+        session.add(entity)
+        await session.commit()
+        return entity.id
 
 
 async def _set_created_at(session_id: UUID, moment: datetime) -> None:
@@ -503,6 +589,46 @@ async def test_foreign_novel_is_404() -> None:
             )
             assert response.status_code == 404
             assert response.json()["detail"]["code"] == "not-found"
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_open_stores_only_a_target_that_is_this_novels() -> None:
+    """A target is the novel's own entity: own is stored, foreign and absent are one 404."""
+    novel = await _seed_novel()
+    other_novel = await _seed_novel(title="The Other Lighthouse")
+    own = await _seed_entity_id(novel)
+    elsewhere = await _seed_entity_id(other_novel, name="Haus")
+    foreign_novel = await _seed_novel(title="Their Lighthouse", user_id=OTHER_USER)
+    foreign = await _seed_entity_id(foreign_novel, user_id=OTHER_USER)
+
+    async with _client() as client:
+        opened = await client.post(
+            "/api/chat/sessions",
+            json={
+                "mode": MODE,
+                "novel_id": str(novel.id),
+                "entity_type": "character",
+                "target_id": str(own),
+            },
+        )
+        refused = [
+            await client.post(
+                "/api/chat/sessions",
+                json={
+                    "mode": MODE,
+                    "novel_id": str(novel.id),
+                    "entity_type": "character",
+                    "target_id": str(target),
+                },
+            )
+            for target in (elsewhere, foreign, uuid4())
+        ]
+
+    assert opened.status_code == 201
+    assert opened.json()["target_id"] == str(own)
+    assert [response.status_code for response in refused] == [404, 404, 404]
+    assert refused[0].json() == refused[1].json() == refused[2].json()
+    assert all(response.json()["detail"]["code"] == "not-found" for response in refused)
 
 
 @pytest.mark.usefixtures("two_users")
@@ -807,6 +933,48 @@ async def test_accept_with_a_mismatched_text_is_422(
 
 
 @pytest.mark.usefixtures("two_users")
+async def test_accept_refuses_when_another_suggestion_became_pending(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A suggestion stored during the call is never accepted under an answer prepared for another.
+
+    Step 1 settles on the pending suggestion's text and ``seq``; the provider
+    stores a newer pending suggestion while the answer is generated; step 3
+    finds that its own turn is no longer the pending one and refuses. The
+    transcript, the proposal and the older suggestion stand untouched, and the
+    completed call's audit row tells that refusal.
+    """
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel, proposal=_proposal(name="Mira"))
+    await _seed_suggestion(session_id, "Vielleicht Mira.")
+    provider = _NewSuggestionProvider(session_id, "Vielleicht Jona.")
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns",
+            json={"text": "", "act": "accept-suggestion"},
+        )
+        detail = await client.get(f"/api/chat/sessions/{session_id}")
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "suggestion-mismatch"
+    turns = await _stored_turns(session_id)
+    assert [
+        (turn.seq, turn.role, turn.text, turn.suggestion, turn.suggestion_state) for turn in turns
+    ] == [
+        (1, "assistant", "Wie heißt sie?", "Vielleicht Mira.", "pending"),
+        (2, "assistant", "Noch eine Frage?", "Vielleicht Jona.", "pending"),
+    ]
+    assert detail.json()["proposal"] == _proposal(name="Mira")
+    rows = await _audit_details()
+    assert [(row["status"], row["error_code"]) for row in rows] == [
+        ("error", "suggestion-mismatch"),
+    ]
+    assert len(provider.requests) == 1
+
+
+@pytest.mark.usefixtures("two_users")
 async def test_drop_suggestions_removes_the_marked_parts_and_keeps_the_rest() -> None:
     """Every suggested slot and relation leaves; what the writer said stays."""
     novel = await _seed_novel()
@@ -1061,6 +1229,175 @@ async def test_a_case_only_restatement_keeps_its_mark(
 
 
 @pytest.mark.usefixtures("two_users")
+async def test_an_answer_without_relations_leaves_them_in_place(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An omitted relations key is untouched, provenance included: no list, no drops."""
+    novel = await _seed_novel()
+    relations = [
+        {"target": "Haus", "type": "located_in", "note": "", "suggested": False},
+        {"target": "See", "type": "near", "note": "bei Nacht", "suggested": True},
+    ]
+    session_id = await _seed_session(
+        novel, proposal=_proposal(name="Mira", relations=[dict(row) for row in relations])
+    )
+    answer = json.dumps({"reply": "Notiert.", "slots": {"name": "Mira"}}, ensure_ascii=False)
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(_StubProvider([answer])))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Sie heißt Mira."}
+        )
+
+    assert response.status_code == 200
+    assert response.json()["proposal"]["relations"] == relations
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_a_relation_list_drops_only_the_one_it_omits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A given list is the answer's changes: the relation it omits leaves, the rest stays."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(
+        novel,
+        proposal=_proposal(
+            name="Mira",
+            relations=[
+                {"target": "Haus", "type": "located_in", "note": "", "suggested": False},
+                {"target": "See", "type": "near", "note": "", "suggested": True},
+            ],
+        ),
+    )
+    answer = json.dumps(
+        {
+            "reply": "Notiert.",
+            "slots": {"name": "Mira"},
+            "relations": [{"target": "Haus", "type": "located_in", "note": ""}],
+        },
+        ensure_ascii=False,
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(_StubProvider([answer])))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Nur das Haus."}
+        )
+
+    assert response.status_code == 200
+    assert response.json()["proposal"]["relations"] == [
+        {"target": "Haus", "type": "located_in", "note": "", "suggested": False},
+    ]
+
+
+@pytest.mark.usefixtures("two_users")
+@pytest.mark.parametrize("empty", ["", None], ids=["empty-string", "null"])
+async def test_a_cleared_name_leaves_the_proposal_unready(
+    empty: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A name given "" or null clears the slot; the rest of the proposal stays."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(
+        novel, proposal=_proposal(name="Mira", content="Eine Wächterin am See.")
+    )
+    answer = json.dumps({"reply": "Ohne Namen.", "slots": {"name": empty}}, ensure_ascii=False)
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(_StubProvider([answer])))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Den Namen doch nicht."}
+        )
+
+    assert response.status_code == 200
+    proposal = response.json()["proposal"]
+    assert proposal["name"] is None
+    assert proposal["content"] == "Eine Wächterin am See."
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_clearing_every_alias_empties_the_slot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An empty alias list drops every alias its input carried, marks included."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(
+        novel,
+        proposal=_proposal(
+            name="Mira",
+            aliases=["Die Wächterin", "Mira"],
+            suggested={"aliases": ["Mira"], "tags": [], "content": False},
+        ),
+    )
+    answer = json.dumps({"reply": "Keine Aliasse.", "slots": {"aliases": []}}, ensure_ascii=False)
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(_StubProvider([answer])))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Keine anderen Namen."}
+        )
+
+    assert response.status_code == 200
+    proposal = response.json()["proposal"]
+    assert proposal["aliases"] == []
+    assert proposal["suggested"]["aliases"] == []
+    assert proposal["name"] == "Mira"
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_clearing_the_content_unsets_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A content given "" clears the body and its suggested mark."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(
+        novel,
+        proposal=_proposal(
+            name="Mira",
+            content="Eine Wächterin am See.",
+            suggested={"aliases": [], "tags": [], "content": True},
+        ),
+    )
+    answer = json.dumps(
+        {"reply": "Ohne Beschreibung.", "slots": {"content": ""}}, ensure_ascii=False
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(_StubProvider([answer])))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Die Beschreibung weg."}
+        )
+
+    assert response.status_code == 200
+    proposal = response.json()["proposal"]
+    assert proposal["content"] == ""
+    assert proposal["suggested"]["content"] is False
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_an_omitted_slot_is_still_untouched(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Only the key the answer gives moves: name, aliases and content keep their values."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(
+        novel,
+        proposal=_proposal(
+            name="Mira", aliases=["Die Wächterin"], content="Eine Wächterin am See."
+        ),
+    )
+    answer = json.dumps({"reply": "Notiert.", "slots": {"tags": ["wachsam"]}}, ensure_ascii=False)
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(_StubProvider([answer])))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Sie ist wachsam."}
+        )
+
+    assert response.status_code == 200
+    proposal = response.json()["proposal"]
+    assert proposal["name"] == "Mira"
+    assert proposal["aliases"] == ["Die Wächterin"]
+    assert proposal["content"] == "Eine Wächterin am See."
+    assert proposal["tags"] == ["wachsam"]
+
+
+@pytest.mark.usefixtures("two_users")
 async def test_two_relations_to_one_target_with_different_types_both_survive(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1226,6 +1563,36 @@ async def test_provider_error_is_502_provider_error(
     # The attempt slept 10 ms before raising: its row carries the measured time,
     # never the constant zero a missing measurement wrote.
     assert cast("int", row["latency_ms"]) >= 5
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_a_malformed_first_attempt_keeps_its_own_audit_beside_a_raising_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The completed malformed attempt is extraction-failed, not the retry's provider-error."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel)
+    provider = _MalformedThenFailingProvider(RuntimeError("the retry died"))
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Sie heißt Mira."}
+        )
+        detail = await client.get(f"/api/chat/sessions/{session_id}")
+
+    assert response.status_code == 502
+    assert response.json()["detail"]["code"] == "provider-error"
+    assert detail.json()["turns"] == []
+    assert detail.json()["proposal"] is None
+    rows = await _audit_details()
+    by_answer = {cast("str", row["response_text"]): row for row in rows}
+    malformed = by_answer["this is prose, not JSON {{"]
+    failed = by_answer[""]
+    assert (malformed["status"], malformed["error_code"]) == ("error", "extraction-failed")
+    assert "reply" in cast("str", malformed["error"])
+    assert (failed["status"], failed["error_code"]) == ("error", "provider-error")
+    assert "the retry died" in cast("str", failed["error"])
 
 
 @pytest.mark.usefixtures("two_users")

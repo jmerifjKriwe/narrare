@@ -120,10 +120,12 @@ GOLDENS: dict[str, str] = {
         'Answer with a JSON object and nothing else: {"reply": string, "slots":\n'
         '{"name": string, "aliases": [string], "tags": [string], "content": string},\n'
         '"relations": [{"target": string, "type": string, "note": string}],\n'
-        '"suggestion": string}. "slots" is the complete state so far: every value known,\n'
-        'not only what changed, and a slot with no value is left out. "suggestion" is\n'
-        'present only after no-idea. "relations" carries every proposal so far, and an\n'
-        "empty list when there is none.\n"
+        '"suggestion": string}. "slots" is the complete state so far: a key left out\n'
+        'is untouched, a key given empty ("name": "", "content": "", "aliases": [],\n'
+        '"tags": []) clears it, and a key with a value sets or extends it.\n'
+        '"suggestion" is present only after no-idea. "relations" carries every\n'
+        "proposal so far: leave the key out to keep the ones you were given, and give\n"
+        "the full list so a relation you leave out is dropped.\n"
         "\n"
         "TYPE: character\n"
         "SLOTS: {}\n"

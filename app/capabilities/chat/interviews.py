@@ -188,11 +188,16 @@ class PromptRefusedError(InterviewRefusalError):
 
 @dataclass(frozen=True)
 class InterviewAnswer:
-    """What the model answered, still unnormalised: the parse's typed result."""
+    """What the model answered, still unnormalised: the parse's typed result.
+
+    ``relations`` is ``None`` when the answer left the key out — untouched —
+    and a list, empty included, when it gave one: the list is the answer's
+    changes to the relations it was shown.
+    """
 
     reply: str
     slots: dict[str, object]
-    relations: list[dict[str, str]]
+    relations: list[dict[str, str]] | None
     suggestion: str | None
 
 
@@ -273,17 +278,27 @@ def _parse_answer(answer: str) -> InterviewAnswer:
         raise ValueError("the answer's slots are not a JSON object")
     slot_record = cast("dict[str, object]", raw_slots)
     slots: dict[str, object] = {}
-    if (name := slot_record.get("name")) is not None:
-        if not isinstance(name, str):
-            raise ValueError("the answer's name is not a string")
-        slots["name"] = name
-    if (content := slot_record.get("content")) is not None:
-        if not isinstance(content, str):
-            raise ValueError("the answer's content is not a string")
-        slots["content"] = content
+    # A slot key's PRESENCE is the contract's first state: a key left out is
+    # untouched, while a key given empty — "" or null for name and content,
+    # [] for aliases and tags — asks for the clear. So both the key and its
+    # empty form are kept here; only an absent key stays absent.
+    for key in ("name", "content"):
+        if key not in slot_record:
+            continue
+        value = slot_record[key]
+        if value is None:
+            slots[key] = ""
+            continue
+        if not isinstance(value, str):
+            raise ValueError(f"the answer's {key} is not a string")
+        slots[key] = value
     for key in LABEL_KEYS:
-        labels = slot_record.get(key)
+        if key not in slot_record:
+            continue
+        labels = slot_record[key]
         if labels is None:
+            # A null list is no list: the contract names [] as the clear, so
+            # a null leaves the slot untouched rather than guessing a meaning.
             continue
         if not isinstance(labels, list):
             raise ValueError(f"the answer's {key} are not a JSON array")
@@ -294,24 +309,26 @@ def _parse_answer(answer: str) -> InterviewAnswer:
             cleaned.append(label)
         slots[key] = cleaned
 
-    raw_relations = record.get("relations", [])
-    if not isinstance(raw_relations, list):
-        raise ValueError("the answer's relations are not a JSON array")
-    relations: list[dict[str, str]] = []
-    for entry in cast("list[object]", raw_relations):
-        if not isinstance(entry, dict):
-            raise ValueError("a relation is not a JSON object")
-        relation = cast("dict[str, object]", entry)
-        target = relation.get("target")
-        type_ = relation.get("type")
-        note = relation.get("note")
-        if not isinstance(target, str) or not target.strip():
-            raise ValueError("a relation carries no target")
-        if not isinstance(type_, str) or not type_.strip():
-            raise ValueError("a relation carries no type")
-        if note is not None and not isinstance(note, str):
-            raise ValueError("a relation's note is not a string")
-        relations.append({"target": target, "type": type_, "note": note or ""})
+    relations: list[dict[str, str]] | None = None
+    raw_relations = record.get("relations")
+    if raw_relations is not None:
+        if not isinstance(raw_relations, list):
+            raise ValueError("the answer's relations are not a JSON array")
+        relations = []
+        for entry in cast("list[object]", raw_relations):
+            if not isinstance(entry, dict):
+                raise ValueError("a relation is not a JSON object")
+            relation = cast("dict[str, object]", entry)
+            target = relation.get("target")
+            type_ = relation.get("type")
+            note = relation.get("note")
+            if not isinstance(target, str) or not target.strip():
+                raise ValueError("a relation carries no target")
+            if not isinstance(type_, str) or not type_.strip():
+                raise ValueError("a relation carries no type")
+            if note is not None and not isinstance(note, str):
+                raise ValueError("a relation's note is not a string")
+            relations.append({"target": target, "type": type_, "note": note or ""})
 
     suggestion = record.get("suggestion")
     if suggestion is not None and not isinstance(suggestion, str):
@@ -339,24 +356,24 @@ def _labels(values: list[str]) -> list[str]:
 
 
 def _normalise_slots(slots: dict[str, object]) -> dict[str, object]:
-    """The answer's slots after the server's normalisation: blank parts dropped."""
+    """The answer's slots after normalisation, each present key kept.
+
+    Presence is the answer's own signal: a key the answer did not give is
+    absent here too, while a key it gave empty stays — ``""`` for name and
+    content, ``[]`` for a list whose entries were all blank — so the merge can
+    apply the clear instead of losing it.
+    """
     cleaned: dict[str, object] = {}
-    name = slots.get("name")
-    if isinstance(name, str):
-        label = _one_line(name, NAME_LIMIT)
-        if label:
-            cleaned["name"] = label
+    if "name" in slots:
+        name = slots["name"]
+        cleaned["name"] = _one_line(name, NAME_LIMIT) if isinstance(name, str) else ""
     for key in LABEL_KEYS:
-        values = slots.get(key)
-        if isinstance(values, list):
-            labels = _labels(cast("list[str]", values))
-            if labels:
-                cleaned[key] = labels
-    content = slots.get("content")
-    if isinstance(content, str):
-        body = _one_line(content, CONTENT_LIMIT)
-        if body:
-            cleaned["content"] = body
+        if key in slots:
+            values = slots[key]
+            cleaned[key] = _labels(cast("list[str]", values)) if isinstance(values, list) else []
+    if "content" in slots:
+        content = slots["content"]
+        cleaned["content"] = _one_line(content, CONTENT_LIMIT) if isinstance(content, str) else ""
     return cleaned
 
 
@@ -568,16 +585,30 @@ def _merge_proposal(
             continue
         if value == given_slots.get(key):
             continue
+        if not value:
+            # The third state: the answer gave the key empty, so the slot is
+            # cleared and its mark with it. A list path above reaches the same
+            # result through the union: an empty list drops what it was given.
+            slots.pop(key, None)
+            if key == "name":
+                name_suggested = False
+            else:
+                suggested[key] = False
+            continue
         if key == "name":
             name_suggested = act == "fill-all"
         else:
             suggested[key] = act == "fill-all"
         slots[key] = value
-    relations = _merge_relations(
-        _proposal_relations(now),
-        _proposal_relations(given),
-        _normalise_relations(answer.relations),
-        act,
+    relations = (
+        _merge_relations(
+            _proposal_relations(now),
+            _proposal_relations(given),
+            _normalise_relations(answer.relations),
+            act,
+        )
+        if answer.relations is not None
+        else _proposal_relations(now)
     )
     name = _text(slots.get("name"))
     aliases = _text_list(slots.get("aliases"))
@@ -721,6 +752,13 @@ class InterviewService:
             )
         if not await self.novels.exists(payload.novel_id):
             raise InterviewNotFoundError(f"novel {payload.novel_id} is absent or not yours")
+        if payload.target_id is not None and not await self.roster.owns_entity(
+            payload.novel_id, payload.target_id
+        ):
+            # The target is a stored reference, so it is checked like the
+            # novel: absent, another user's and another novel's answer one 404
+            # with one body, the id never quoted back.
+            raise InterviewNotFoundError("the target is absent or not yours in this novel")
         session = await self.sessions.create(
             payload.novel_id, payload.mode, entity_type, payload.target_id
         )
@@ -764,8 +802,10 @@ class InterviewService:
         if state.closed:
             raise SessionClosedError(f"session {session_id} was closed")
         text = payload.text
+        pending_seq: int | None = None
         if payload.act == "accept-suggestion":
             pending = await self._pending_suggestion(session_id)
+            pending_seq = pending.seq if pending is not None else None
             text = _accepted_text(payload.text, pending.suggestion if pending else None)
         await self.session.commit()
         # The read's rows leave the identity map: step 3 must load the session
@@ -788,7 +828,7 @@ class InterviewService:
             # reads the database while the provider is answering.
             await self.session.commit()
             answer = await self._ask(prompt, state.novel_id, calls, resolved)
-        return await self._write_turn(state, payload, text, answer, calls, resolved)
+        return await self._write_turn(state, payload, text, answer, calls, resolved, pending_seq)
 
     async def _read_turn_state(self, session_id: UUID, *, with_prompt: bool) -> _TurnState:
         """Step 1: the session, its proposal and the turns the prompt may need."""
@@ -867,18 +907,15 @@ class InterviewService:
             )
         except MalformedAnswerError as error:
             reason = str(error) or "the answer is not the contracted JSON"
-            await self._write_calls(
-                calls,
-                resolved,
-                novel_id,
-                status="error",
-                error_code="extraction-failed",
-                error=reason,
-            )
+            # Each completed attempt's own read decides its row: both failed
+            # here, and each carries the reason its own answer gave.
+            await self._write_calls(calls, resolved, novel_id)
             raise ExtractionFailedError(reason) from None
         except Exception as error:
             # The attempt that raised never reached the audit callback; its row
-            # is written here, with the prompt the recorder kept for it.
+            # is written here, with the prompt the recorder kept for it. A
+            # completed attempt before it keeps its own outcome: a malformed
+            # first answer stays extraction-failed beside this provider error.
             failed = AuditedCall(
                 prompt=recorder.prompt or prompt,
                 answer="",
@@ -903,8 +940,15 @@ class InterviewService:
         answer: InterviewAnswer | None,
         calls: list[AuditedCall],
         resolved: ResolvedProvider | None,
+        accepted_seq: int | None,
     ) -> TurnReadback:
-        """Step 3: lock, allocate, write, merge and audit in one transaction."""
+        """Step 3: lock, allocate, write, merge and audit in one transaction.
+
+        ``accepted_seq`` is the suggestion step 1 settled on: step 3 accepts
+        only that same turn, still pending, so a suggestion another turn
+        created while the model answered is never accepted under an answer
+        prepared for its predecessor.
+        """
         locked = await self.sessions.lock(state.session_id)
         if locked is None:
             await self.session.rollback()
@@ -936,8 +980,21 @@ class InterviewService:
         pending: AssistantTurn | None = None
         if payload.act == "accept-suggestion":
             pending = await self._pending_suggestion(state.session_id)
+            if pending is None or pending.seq != accepted_seq:
+                reason = "the pending suggestion changed while the answer was prepared"
+                await self.session.rollback()
+                if resolved is not None:
+                    await self._write_calls(
+                        calls,
+                        resolved,
+                        state.novel_id,
+                        status="error",
+                        error_code="suggestion-mismatch",
+                        error=reason,
+                    )
+                raise InterviewValidationError("suggestion-mismatch", reason)
             try:
-                text = _accepted_text(payload.text, pending.suggestion if pending else None)
+                text = _accepted_text(payload.text, pending.suggestion)
             except InterviewValidationError as error:
                 await self.session.rollback()
                 if resolved is not None:
@@ -1040,8 +1097,10 @@ class InterviewService:
     ) -> None:
         """A failed turn's audit rows, alone in their own short transaction.
 
-        ``calls`` are the attempts that returned and take ``status``; ``failed``
-        is the attempt that raised, always an error row with the turn's reason.
+        ``calls`` are the attempts that returned; a row whose attempt's answer
+        did not parse is its own ``extraction-failed`` row with that attempt's
+        reason, the rest take ``status``/``error_code``. ``failed`` is the
+        attempt that raised, always an error row with the turn's reason.
         """
         if not calls and failed is None:
             return
@@ -1064,8 +1123,14 @@ class InterviewService:
         error: str | None = None,
         error_code: str | None = None,
     ) -> None:
-        """One audit row per provider attempt in the caller's transaction."""
+        """One audit row per provider attempt in the caller's transaction.
+
+        A completed attempt whose answer did not parse tells its own outcome:
+        ``error``/``extraction-failed`` and the parse reason, whatever the
+        turn's later fate was. Every other row takes the caller's status.
+        """
         for call in calls:
+            parsed = call.parse_error is None
             await record_call(
                 self.session,
                 user_id=self.user_id,
@@ -1074,11 +1139,11 @@ class InterviewService:
                 provider_kind=resolved.kind,
                 model=resolved.model,
                 latency_ms=call.latency_ms,
-                status=status,
+                status=status if parsed else "error",
                 prompt_text=call.prompt,
                 response_text=call.answer,
-                error=error,
-                error_code=error_code,
+                error=error if parsed else call.parse_error,
+                error_code=error_code if parsed else "extraction-failed",
                 input_tokens=call.usage.input_tokens if call.usage else None,
                 output_tokens=call.usage.output_tokens if call.usage else None,
                 novel_id=novel_id,

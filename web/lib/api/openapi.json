@@ -4973,7 +4973,7 @@
         ]
       },
       "post": {
-        "description": "Open an interview: the mode, its type and the novel decide; a coded 404 or 422.",
+        "description": "Open an interview: mode, type, novel and any target decide; a coded 404 or 422.",
         "operationId": "open_session_api_chat_sessions_post",
         "requestBody": {
           "content": {
