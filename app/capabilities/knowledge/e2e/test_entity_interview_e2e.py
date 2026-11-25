@@ -10,13 +10,16 @@ restores the conversation, ending it leaves the transcript read-only, and
 `unparseable` reaches the named «nicht auswertbar» face for real — with the
 writer's text still in the composer.
 
-Two legs hold the turn at the route, so the panel's hidden state is
-deterministic rather than a race: the handler keeps the `Route` and returns
-(the request stays pending), and the test thread releases it once. The first
-reopens the panel before that release — still thinking, composer closed — and
-then lets the reply land. The second hides the panel, fulfils the held request
-with the 502 `provider-error` body, and reopens to the named failure with the
-sent text: the hidden panel never opened itself.
+Three legs hold the turn at the route, so a running answer is deterministic
+rather than a race: the handler keeps the `Route` and returns (the request
+stays pending), and the test thread releases it once. The first reopens the
+panel before that release — still thinking, composer closed — and then lets
+the reply land. The second hides the panel, fulfils the held request with the
+502 `provider-error` body, and reopens to the named failure with the sent
+text: the hidden panel never opened itself. The third holds one turn each in
+two interviews: returning to the first before either answer lands still shows
+it thinking with a closed composer, and each release lands in its own
+conversation.
 """
 
 import json
@@ -286,6 +289,86 @@ def test_hiding_the_panel_when_the_answer_fails_keeps_its_explanation(
             "Die Antwort kam nicht. Dein Text ist noch im Eingabefeld."
         )
         expect(_composer(page)).to_have_value(sent)
+    finally:
+        while held:
+            held.pop().continue_()
+        page.unroute_all(behavior="ignoreErrors")
+
+
+def test_returning_to_an_interview_whose_answer_is_out_keeps_it_busy(
+    page: Page, installed: Stack
+) -> None:
+    """A turn belongs to the interview it was sent for: with A's and B's
+    answers both held, returning to A shows its thinking row and a closed
+    composer, and each release lands in its own conversation."""
+    novel_id = _seed_canon()
+    _open_interview(page, novel_id)
+    _start(page)
+
+    held: list[Route] = []
+    ready = [threading.Event(), threading.Event()]
+
+    def _hold(route: Route) -> None:
+        index = len(held)
+        held.append(route)
+        ready[index].set()
+
+    def _resume(entity_type: str) -> None:
+        """Pick the open interview of one type from the list — the type is
+        what tells the two open rows apart while neither has a name. The
+        type label is matched exactly: «Fortsetzen» contains an «ort»."""
+        page.get_by_test_id("entity-interview-sessions").click()
+        listing = page.get_by_test_id("entity-interview-list")
+        row = listing.locator("div.flex.items-center.justify-between").filter(
+            has=page.get_by_text(entity_type, exact=True)
+        )
+        expect(row).to_have_count(1)
+        row.get_by_role("button", name="Fortsetzen").click()
+
+    page.route("**/api/chat/sessions/*/turns", _hold)
+    try:
+        _say(page, f"Name: {NAME}")
+        expect(page.get_by_test_id("entity-interview-transcript")).to_contain_text(
+            "Der Assistent überlegt ..."
+        )
+        assert ready[0].wait(timeout=10), "A's turn never reached the route handler"
+
+        # A second interview while A's answer is still out.
+        page.get_by_test_id("entity-interview-sessions").click()
+        page.get_by_test_id("entity-interview-list").get_by_role(
+            "button", name="Neues Interview"
+        ).click()
+        _start(page, "location")
+        _say(page, "Ein Ort an der Küste.")
+        expect(page.get_by_test_id("entity-interview-transcript")).to_contain_text(
+            "Der Assistent überlegt ..."
+        )
+        assert ready[1].wait(timeout=10), "B's turn never reached the route handler"
+
+        # Back in A before its answer lands: it is still thinking, whoever
+        # was answered after it; its save door and end button wait too.
+        _resume("Objekt")
+        panel = page.get_by_test_id("entity-interview")
+        expect(panel).to_contain_text("Der Assistent überlegt ...")
+        expect(_composer(page)).to_be_disabled()
+        expect(page.get_by_test_id("entity-interview-save")).to_be_disabled()
+        expect(page.get_by_test_id("entity-interview-end")).to_be_disabled()
+
+        assert len(held) == 2
+        held.pop(0).continue_()
+        expect(panel).to_contain_text("Notiert.")
+        expect(_composer(page)).to_be_enabled()
+
+        # A's settle leaves B alone: B's own answer is still out.
+        _resume("Ort")
+        expect(page.get_by_test_id("entity-interview")).to_contain_text(
+            "Der Assistent überlegt ..."
+        )
+        expect(_composer(page)).to_be_disabled()
+
+        held.pop(0).continue_()
+        expect(page.get_by_test_id("entity-interview")).to_contain_text("Notiert.")
+        expect(_composer(page)).to_be_enabled()
     finally:
         while held:
             held.pop().continue_()

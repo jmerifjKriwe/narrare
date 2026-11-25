@@ -671,6 +671,160 @@ describe("a turn belongs to the session it was sent for", () => {
     expect(screen.getByTestId("entity-interview-proposal").textContent).toContain("Forschungsstation");
   });
 
+  it("an answer still out marks its own interview when the writer returns to it", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    const second = secondSession();
+    api.GET.mockImplementation(readsById(second));
+    let releaseA: (value: unknown) => void = () => {};
+    let releaseB: (value: unknown) => void = () => {};
+    const heldA = new Promise((resolve) => {
+      releaseA = resolve;
+    });
+    const heldB = new Promise((resolve) => {
+      releaseB = resolve;
+    });
+    api.POST.mockImplementationOnce(() => heldA).mockImplementationOnce(() => heldB);
+
+    const { show } = renderPanel();
+    await readySession();
+    fireEvent.change(composer(), { target: { value: "Es stammt aus dem Labor von Lin." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await screen.findByText(de["knowledge.interview.thinking"]);
+
+    // A's answer is still out; the writer answers B meanwhile.
+    show(SECOND_ID);
+    await readySession();
+    expect(screen.queryByText(de["knowledge.interview.thinking"])).toBeNull();
+    fireEvent.change(composer(), { target: { value: "Gehört zu B." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await screen.findByText(de["knowledge.interview.thinking"]);
+
+    // Back in A before its answer lands: A's own turn still runs, whoever
+    // was sent after it. Its composer, save door and end button wait.
+    show(SESSION_ID);
+    await readySession();
+    expect(screen.getByText(de["knowledge.interview.thinking"])).toBeTruthy();
+    expect(composerField().disabled).toBe(true);
+    expect((screen.getByTestId("entity-interview-save") as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId("entity-interview-end") as HTMLButtonElement).disabled).toBe(true);
+
+    detail = sessionDetail({
+      proposal: proposal({ name: "Resonanz-Transponder LC-89" }),
+      turns: [
+        turn({ seq: 1, role: "user", text: "Es stammt aus dem Labor von Lin." }),
+        turn({ seq: 2, text: "Notiert." }),
+      ],
+    });
+    releaseA({ data: readback(), response: ok() });
+    await waitFor(() => expect(composerField().disabled).toBe(false));
+    expect(screen.queryByText(de["knowledge.interview.thinking"])).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByTestId("entity-interview-transcript").textContent).toContain("Notiert."),
+    );
+
+    // A's settle leaves B alone: B's own turn is still out.
+    show(SECOND_ID);
+    await readySession();
+    expect(screen.getByText(de["knowledge.interview.thinking"])).toBeTruthy();
+    expect(composerField().disabled).toBe(true);
+
+    second.turns = [
+      turn({ seq: 1, role: "user", text: "Gehört zu B." }),
+      turn({ seq: 2, text: "Notiert." }),
+    ];
+    releaseB({ data: readback(), response: ok() });
+    await waitFor(() => expect(composerField().disabled).toBe(false));
+    expect(screen.queryByText(de["knowledge.interview.thinking"])).toBeNull();
+
+    // The count cannot leak: after both answers landed, both are idle.
+    show(SESSION_ID);
+    await readySession();
+    expect(screen.queryByText(de["knowledge.interview.thinking"])).toBeNull();
+    expect(composerField().disabled).toBe(false);
+  });
+
+  it("a failure of the interview the writer returned to keeps its face and its text", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    const second = secondSession();
+    api.GET.mockImplementation(readsById(second));
+    let releaseA: (value: unknown) => void = () => {};
+    const heldA = new Promise((resolve) => {
+      releaseA = resolve;
+    });
+    api.POST.mockImplementationOnce(() => heldA).mockImplementation(() => new Promise<never>(() => {}));
+    const sent = "Es stammt aus dem Labor von Lin.";
+
+    const { show } = renderPanel();
+    await readySession();
+    fireEvent.change(composer(), { target: { value: sent } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await screen.findByText(de["knowledge.interview.thinking"]);
+
+    show(SECOND_ID);
+    await readySession();
+    fireEvent.change(composer(), { target: { value: "Gehört zu B." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await screen.findByText(de["knowledge.interview.thinking"]);
+
+    // A switch cleared the composer; A's own failure brings its text back,
+    // exactly as the failure face promises.
+    show(SESSION_ID);
+    await readySession();
+    releaseA({
+      data: undefined,
+      error: { detail: { code: "provider-error", detail: "offline" } },
+      response: new Response(null, { status: 502 }),
+    });
+    const failure = await screen.findByTestId("entity-interview-failure");
+    expect(failure.textContent).toContain(de["knowledge.interview.failedProvider"]);
+    expect(composer().value).toBe(sent);
+
+    // «Erneut versuchen» sends A's body to A, not to the interview shown
+    // when the turn failed.
+    api.POST.mockResolvedValueOnce({ data: readback(), response: ok() });
+    fireEvent.click(screen.getByTestId("entity-interview-retry"));
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenLastCalledWith("/api/chat/sessions/{session_id}/turns", {
+        params: { path: { session_id: SESSION_ID } },
+        body: { text: sent },
+      }),
+    );
+  });
+
+  it("a 404 of the interview the writer returned to sends it to the chooser", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    const second = secondSession();
+    api.GET.mockImplementation(readsById(second));
+    let releaseA: (value: unknown) => void = () => {};
+    const heldA = new Promise((resolve) => {
+      releaseA = resolve;
+    });
+    api.POST.mockImplementationOnce(() => heldA).mockImplementation(() => new Promise<never>(() => {}));
+
+    const { show, onSelectSession } = renderPanel();
+    await readySession();
+    fireEvent.change(composer(), { target: { value: "Noch eine Antwort." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await screen.findByText(de["knowledge.interview.thinking"]);
+
+    show(SECOND_ID);
+    await readySession();
+    fireEvent.change(composer(), { target: { value: "Gehört zu B." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await screen.findByText(de["knowledge.interview.thinking"]);
+
+    // A vanished while the writer was in B; back in A, its own failure is
+    // the one that hands this panel back to the chooser.
+    show(SESSION_ID);
+    await readySession();
+    releaseA({
+      data: undefined,
+      error: { detail: { code: "not-found", detail: "no such session" } },
+      response: new Response(null, { status: 404 }),
+    });
+    await waitFor(() => expect(onSelectSession).toHaveBeenCalledWith("new"));
+  });
+
   it("a close of the other interview reports nothing here, while this one still does", async () => {
     detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
     api.GET.mockImplementation(readsById(secondSession()));

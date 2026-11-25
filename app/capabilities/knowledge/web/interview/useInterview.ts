@@ -51,6 +51,13 @@ export function useInterview({
   const [text, setText] = useState("");
   const [failure, setFailure] = useState<InterviewFailure | null>(null);
   const [failedBody, setFailedBody] = useState<AssistantTurnCreate | null>(null);
+  // The turns this controller sent, counted per session. TanStack Query's
+  // mutation observer follows only the newest `mutate` call, so the hook's
+  // `isPending`/`variables` cannot say whether the session now shown has an
+  // answer out: sending in A and then in B would make A look idle and detach
+  // A's own settle callbacks. The count is the controller's own, and every
+  // turn settles on its own promise instead of on the observer.
+  const [turnsInFlight, setTurnsInFlight] = useState<Record<string, number>>({});
 
   // The turn's callbacks are fixed when it starts, so they read the panel's
   // visibility and the session it was sent for through refs: a failure that
@@ -92,56 +99,79 @@ export function useInterview({
     if (error?.status === 404 || error?.code === "not-found") onNotFound();
   }, [session.error, onNotFound, visible]);
 
+  /** One turn settled: its session's count goes down, whether its answer
+   *  landed or failed — and for the session it was sent for, never for the
+   *  one shown. */
+  const settleTurn = useCallback((sentFor: string) => {
+    setTurnsInFlight((counts) => {
+      const next = { ...counts };
+      const left = (next[sentFor] ?? 1) - 1;
+      if (left > 0) next[sentFor] = left;
+      else delete next[sentFor];
+      return next;
+    });
+  }, []);
+
   const send = useCallback(
     (body: AssistantTurnCreate) => {
       if (sessionId === null) return;
+      const sentFor = sessionId;
       setFailure(null);
       setFailedBody(null);
-      turn.mutate(
-        { sessionId, body },
-        {
-          onSuccess: (_data, variables) => {
-            // A turn belongs to the session it was sent for: when the writer
-            // has moved on, A's answer changes nothing in B.
-            if (variables.sessionId !== sessionIdRef.current) return;
-            // Only the composer's own answer leaves the composer; a chip sends
-            // its label, never what the writer had typed beside it.
-            if (body.act === undefined || body.act === null) setText("");
-          },
-          onError: (error: WireError, variables) => {
-            // The same scope for the failure: A's error face, A's failed body
-            // and A's eventual retry stay out of B's conversation.
-            if (variables.sessionId !== sessionIdRef.current) return;
-            if (error.code === "not-found") {
-              // A hidden turn's missing session is the read's own 404: the
-              // settle refetch finds it, and that effect waits for the panel
-              // to be shown rather than opening it behind the writer's back.
-              if (visibleRef.current) onNotFound();
-              return;
-            }
-            // A 409 means the session ended elsewhere: the settle refetch
-            // brings `closed_at`, and the panel turns into its ended face.
-            if (error.code === "session-closed") return;
-            // A 422 `suggestion-mismatch` is a validation refusal, not a
-            // provider failure: retrying would send the same stale body. Its
-            // own face sends the writer to the suggestion that stands now —
-            // the settle refetch already brings it back into the transcript.
-            if (error.code === "suggestion-mismatch") {
-              setFailure({ code: "suggestion-mismatch", detail: error.detail });
-              return;
-            }
-            setFailure({
-              code: isTurnFailure(error.code) ? (error.code as string) : "provider-error",
-              detail: error.detail,
-              // An unknown code keeps its name beside the generic copy.
-              cause: isTurnFailure(error.code) ? undefined : error.code,
-            });
-            setFailedBody(body);
-          },
-        },
-      );
+      setTurnsInFlight((counts) => ({ ...counts, [sentFor]: (counts[sentFor] ?? 0) + 1 }));
+      // `mutateAsync`'s promise settles for THIS turn, whoever was sent after
+      // it; the per-call callbacks of `mutate` would stop firing once the
+      // hook's observer followed a later call. The catch takes the wire's
+      // rejection, so no turn can escape as an unhandled rejection.
+      void (async () => {
+        try {
+          await turn.mutateAsync({ sessionId: sentFor, body });
+          // A turn belongs to the session it was sent for: when the writer
+          // has moved on, A's answer changes nothing in B.
+          if (sentFor !== sessionIdRef.current) return;
+          // Only the composer's own answer leaves the composer; a chip sends
+          // its label, never what the writer had typed beside it.
+          if (body.act === undefined || body.act === null) setText("");
+        } catch (error) {
+          // The same scope for the failure: A's error face, A's failed body
+          // and A's eventual retry stay out of B's conversation.
+          if (sentFor !== sessionIdRef.current) return;
+          const wire = error as WireError;
+          if (wire.code === "not-found") {
+            // A hidden turn's missing session is the read's own 404: the
+            // settle refetch finds it, and that effect waits for the panel
+            // to be shown rather than opening it behind the writer's back.
+            if (visibleRef.current) onNotFound();
+            return;
+          }
+          // A 409 means the session ended elsewhere: the settle refetch
+          // brings `closed_at`, and the panel turns into its ended face.
+          if (wire.code === "session-closed") return;
+          // A 422 `suggestion-mismatch` is a validation refusal, not a
+          // provider failure: retrying would send the same stale body. Its
+          // own face sends the writer to the suggestion that stands now —
+          // the settle refetch already brings it back into the transcript.
+          if (wire.code === "suggestion-mismatch") {
+            setFailure({ code: "suggestion-mismatch", detail: wire.detail });
+            return;
+          }
+          setFailure({
+            code: isTurnFailure(wire.code) ? (wire.code as string) : "provider-error",
+            detail: wire.detail,
+            // An unknown code keeps its name beside the generic copy.
+            cause: isTurnFailure(wire.code) ? undefined : wire.code,
+          });
+          setFailedBody(body);
+          // The failure face says the text is still in the composer. A
+          // switch cleared it, so the current session's failed plain answer
+          // puts its own text back; a chip's label was never the composer's.
+          if (body.act === undefined || body.act === null) setText(body.text);
+        } finally {
+          settleTurn(sentFor);
+        }
+      })();
     },
-    [onNotFound, sessionId, turn],
+    [onNotFound, sessionId, settleTurn, turn],
   );
 
   const sendText = useCallback(() => {
@@ -172,17 +202,18 @@ export function useInterview({
   }, [close, sessionId]);
 
   const turns = session.data?.turns ?? [];
-  // A turn or a close belongs to the session it was sent for: while another
-  // interview is shown, A's in-flight turn must not draw B's thinking row or
-  // keep B's composer closed, and A's close must not disable B's end button
-  // or report its failure above it. The settle's invalidation still refreshes
-  // A's own read, so A's truth is there when A is shown again.
-  const turnIsHere = turn.variables?.sessionId === sessionId;
+  // Busy is the shown interview's own count of turns in flight — not the
+  // mutation observer's, which only ever names the latest call. A close
+  // belongs to the session it was sent for the same way: while another
+  // interview is shown, A's close must not disable B's end button or report
+  // its failure above it. The settle's invalidation still refreshes A's own
+  // read, so A's truth is there when A is shown again.
+  const pending = sessionId !== null && (turnsInFlight[sessionId] ?? 0) > 0;
   const closeIsHere = close.variables === sessionId;
   const face = interviewFace({
     session: session.data ?? null,
     turns,
-    pending: turn.isPending && turnIsHere,
+    pending,
     failure,
   });
 
