@@ -5,15 +5,23 @@
 The canon is seeded through the real extraction → accept path, and every leg
 drives the real panel against the real fake provider at its boundary: the
 chooser's type decides the opening question, a key-value answer lands in the
-proposal, «Keine Ahnung» offers a suggestion with its three actions, the panel
-may be hidden while the model answers and returns with the reply, a reload
+proposal, «Keine Ahnung» offers a suggestion with its three actions, a reload
 restores the conversation, ending it leaves the transcript read-only, and
 `unparseable` reaches the named «nicht auswertbar» face for real — with the
 writer's text still in the composer.
+
+Two legs hold the turn at the route, so the panel's hidden state is
+deterministic rather than a race: the handler keeps the `Route` and returns
+(the request stays pending), and the test thread releases it once. The first
+reopens the panel before that release — still thinking, composer closed — and
+then lets the reply land. The second hides the panel, fulfils the held request
+with the 502 `provider-error` body, and reopens to the named failure with the
+sent text: the hidden panel never opened itself.
 """
 
 import json
 import re
+import threading
 from typing import TYPE_CHECKING
 
 import httpx
@@ -190,9 +198,11 @@ def test_hiding_the_panel_while_the_model_answers_keeps_the_turn(
     _start(page)
 
     held: list[Route] = []
+    held_ready = threading.Event()
 
     def _hold(route: Route) -> None:
         held.append(route)
+        held_ready.set()
 
     page.route("**/api/chat/sessions/*/turns", _hold)
     try:
@@ -210,6 +220,9 @@ def test_hiding_the_panel_while_the_model_answers_keeps_the_turn(
         expect(_composer(page)).to_be_disabled()
         expect(page.get_by_test_id("entity-interview-save")).to_be_disabled()
 
+        # The thinking row is drawn when the mutation starts, before the
+        # handler is guaranteed to have run: wait for the handler itself.
+        assert held_ready.wait(timeout=10), "the turn never reached the route handler"
         assert len(held) == 1
         held.pop().continue_()
         expect(panel).to_contain_text("Notiert.")
@@ -233,9 +246,11 @@ def test_hiding_the_panel_when_the_answer_fails_keeps_its_explanation(
 
     sent = "Es stammt aus dem Labor von Lin."
     held: list[Route] = []
+    held_ready = threading.Event()
 
     def _hold(route: Route) -> None:
         held.append(route)
+        held_ready.set()
 
     page.route("**/api/chat/sessions/*/turns", _hold)
     try:
@@ -246,6 +261,8 @@ def test_hiding_the_panel_when_the_answer_fails_keeps_its_explanation(
         page.get_by_test_id("entity-interview-close").click()
         expect(page.get_by_test_id("entity-interview")).not_to_be_visible()
 
+        # As above: the thinking row predates the handler, so wait for it.
+        assert held_ready.wait(timeout=10), "the turn never reached the route handler"
         assert len(held) == 1
         held.pop().fulfill(
             status=502,
@@ -260,6 +277,10 @@ def test_hiding_the_panel_when_the_answer_fails_keeps_its_explanation(
             ),
         )
 
+        # The failure lands while the panel is hidden and must not open it.
+        # The door below selects the same session, so without this assertion
+        # the leg could not tell whether the panel had opened itself.
+        expect(page.get_by_test_id("entity-interview")).not_to_be_visible()
         page.get_by_test_id("graph-new-entity").click()
         expect(page.get_by_test_id("entity-interview-failure")).to_contain_text(
             "Die Antwort kam nicht. Dein Text ist noch im Eingabefeld."

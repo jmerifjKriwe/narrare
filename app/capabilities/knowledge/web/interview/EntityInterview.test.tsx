@@ -410,9 +410,21 @@ describe("the conversation outlives the panel's hide", () => {
     expect(composerField().disabled).toBe(true);
     expect((screen.getByTestId("entity-interview-save") as HTMLButtonElement).disabled).toBe(true);
 
+    // The settle's refetch is the transcript's own truth: the reply stands
+    // there, not merely as the mutation's answer.
+    detail = sessionDetail({
+      proposal: proposal({ name: "Resonanz-Transponder LC-89" }),
+      turns: [
+        turn({ seq: 1, role: "user", text: "Es stammt aus dem Labor von Lin." }),
+        turn({ seq: 2, text: "Notiert." }),
+      ],
+    });
     release({ data: readback(), response: ok() });
     await waitFor(() => expect(composerField().disabled).toBe(false));
     expect(screen.queryByText(de["knowledge.interview.thinking"])).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByTestId("entity-interview-transcript").textContent).toContain("Notiert."),
+    );
   });
 
   it("a turn that fails while hidden keeps its face and the sent text", async () => {
