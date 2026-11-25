@@ -172,7 +172,11 @@ answer. No retention job in cut 1.
 
 **Lifecycle.** A session is open until the user ends it. Closing the panel only
 hides it; the door reopens the newest open session and offers «Neues Interview»
-beside it. Several sessions may be open at once — the list shows them — and
+beside it. Hiding keeps the conversation's state: the host component owns it,
+so a turn in flight keeps running and a panel reopened during it shows the
+thinking state with the composer closed; a turn that fails while hidden keeps
+its face and its text for the reopening; an unsent draft survives the hide.
+Several sessions may be open at once — the list shows them — and
 ending one is explicit and irreversible: the transcript becomes read-only, the
 proposal stays savable. Deleting a novel deletes its sessions with it; the
 cascade is the database's, not a cleanup job.
@@ -273,7 +277,10 @@ provenance rule reads the same comparison.
 Concurrent turns on one session (two tabs, a double submit) cannot interleave
 their rows and cannot erase each other: each allocates `seq` inside its own
 write transaction, and each merges only its own changes. The composer is
-disabled while a turn runs, so the case stays an edge, not a feature.
+disabled while a turn runs, so the case stays an edge, not a feature. The
+client's guard is scoped: a turn's settle acts on the interview it was sent
+for, and the shown interview reads busy only while its own turn is in flight,
+whoever was sent after it.
 
 Model output, per turn:
 `{"reply": str, "slots": {"name"?, "aliases"?, "tags"?, "content"?},
@@ -442,6 +449,8 @@ kernel gains one and both capabilities call it.
 | The pending suggestion changed while an `accept-suggestion` answer was prepared | 422 `suggestion-mismatch`; nothing is written — only the suggestion the writer accepted is ever settled |
 | A relation line names an entity outside the novel | 422 `relation-target-invalid`, naming the row; nothing is written |
 | Proposal conflicts with a duplicate name | Not an error: the roster hint already flagged it; the create dialog shows a notice and saves |
+| The create endpoint receives more than twelve relation lines | 422 `relation-limit`, `row` naming the thirteenth line; nothing is written |
+| A coded refusal of the create endpoint | beside its sentence, `detail` carries `row` for `relation-limit`, `relation-target-invalid` and `relation-duplicate`, and `field` for `entity-invalid` |
 
 ## Cuts
 
