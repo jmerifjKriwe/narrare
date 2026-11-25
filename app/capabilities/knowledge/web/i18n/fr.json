@@ -238,7 +238,7 @@
   "knowledge.interview.retry": "Réessayer",
   "knowledge.interview.saveAsEntity": "Enregistrer comme entité",
   "knowledge.interview.send": "Envoyer",
-  "knowledge.interview.sessionsCount": "{count, plural, one {# session} other {# sessions}}",
+  "knowledge.interview.sessionsCount": "{count, plural, one {# entretien} other {# entretiens}}",
   "knowledge.interview.settingsDoor": "Ouvrir les règles IA",
   "knowledge.interview.start": "Démarrer l'entretien",
   "knowledge.interview.startFailed": "L'entretien n'a pas pu démarrer.",

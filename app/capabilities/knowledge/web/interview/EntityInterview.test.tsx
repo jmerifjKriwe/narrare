@@ -261,6 +261,28 @@ describe("the list closes on the row it opens", () => {
   });
 });
 
+describe("the list counts its interviews", () => {
+  it("says «2 Interviews» for two open rows, never «Sitzungen»", async () => {
+    sessions = [summary(), summary({ id: SECOND_ID, entity_type: "location" })];
+    renderPanel();
+    await readySession();
+    fireEvent.click(screen.getByTestId("entity-interview-sessions"));
+    const list = await screen.findByTestId("entity-interview-list");
+
+    expect(list.textContent).toContain("2 Interviews");
+    expect(list.textContent).not.toContain("Sitzung");
+  });
+
+  it("says «1 Interview» for one open row", async () => {
+    renderPanel();
+    await readySession();
+    fireEvent.click(screen.getByTestId("entity-interview-sessions"));
+    const list = await screen.findByTestId("entity-interview-list");
+
+    expect(list.textContent).toContain("1 Interview");
+  });
+});
+
 describe("each chip sends its act", () => {
   it("no-idea and fill-all send their labels with their acts", async () => {
     renderPanel();
@@ -1197,5 +1219,33 @@ describe("the proposal becomes an entity", () => {
     expect(save.disabled).toBe(false);
     expect(screen.getByTestId("entity-interview-new")).toBeTruthy();
     expect(screen.queryByTestId("entity-interview-end")).toBeNull();
+  });
+
+  it("an ended interview offers no write beside the save", async () => {
+    detail = sessionDetail({
+      closed_at: "2026-11-24T14:30:00Z",
+      proposal: proposal({
+        name: "Resonanz-Transponder LC-89",
+        tags: ["Technologie"],
+        suggested: { aliases: [], tags: ["Technologie"], content: false },
+      }),
+      turns: [turn({ seq: 1, suggestion: "Ein Vorschlag.", suggestion_state: "pending" })],
+    });
+    renderPanel();
+    await screen.findByText(de["knowledge.interview.endedBanner"]);
+
+    // The transcript is read-only: every action that would write or edit is
+    // disabled, while the save door and «Neues Interview» stay open.
+    for (const action of ["accept", "edit", "reject"]) {
+      const button = screen.getByTestId(
+        `entity-interview-suggestion-${action}`,
+      ) as HTMLButtonElement;
+      expect(button.disabled).toBe(true);
+    }
+    const drop = screen.getByTestId("entity-interview-drop-suggestions") as HTMLButtonElement;
+    expect(drop.disabled).toBe(true);
+    const save = screen.getByTestId("entity-interview-save") as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+    expect(screen.getByTestId("entity-interview-new")).toBeTruthy();
   });
 });

@@ -238,7 +238,7 @@
   "knowledge.interview.retry": "Try again",
   "knowledge.interview.saveAsEntity": "Save as entity",
   "knowledge.interview.send": "Send",
-  "knowledge.interview.sessionsCount": "{count, plural, one {# session} other {# sessions}}",
+  "knowledge.interview.sessionsCount": "{count, plural, one {# interview} other {# interviews}}",
   "knowledge.interview.settingsDoor": "Open AI rules",
   "knowledge.interview.start": "Start interview",
   "knowledge.interview.startFailed": "The interview could not be started.",

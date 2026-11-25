@@ -150,6 +150,11 @@ function EntityInterviewView({
   const session = controller.session;
   const typeLabel = entityTypeLabel(t, session?.entity_type ?? "generic");
   const busy = controller.face === "thinking" || controller.ending;
+  // The ended face is read-only where the transcript writes: a suggestion's
+  // three actions and the proposal's discard would get a silent
+  // `session-closed` refusal or edit a composer that is not rendered. The
+  // save door and «Neues Interview» stay live, so they read `busy` alone.
+  const readOnly = controller.face === "ended";
   const canSave = session !== null && readyToSave(session.proposal);
 
   function accept(turn: AssistantTurnRead) {
@@ -261,7 +266,7 @@ function EntityInterviewView({
             typeLabel={typeLabel}
             expanded={expanded}
             onToggle={() => setExpanded((open) => !open)}
-            dropping={busy}
+            dropping={busy || readOnly}
             onDropSuggestions={() =>
               controller.send({ text: t("knowledge.interview.dropSuggestions"), act: "drop-suggestions" })
             }
@@ -272,7 +277,7 @@ function EntityInterviewView({
             turns={session.turns}
             pending={controller.face === "thinking"}
             failure={controller.face === "failed" ? controller.failure : null}
-            busy={busy}
+            busy={busy || readOnly}
             onAccept={accept}
             onEdit={(turn) => controller.setText(turn.suggestion ?? "")}
             onReject={() =>

@@ -238,7 +238,7 @@
   "knowledge.interview.retry": "Erneut versuchen",
   "knowledge.interview.saveAsEntity": "Als Entität speichern",
   "knowledge.interview.send": "Senden",
-  "knowledge.interview.sessionsCount": "{count, plural, one {# Sitzung} other {# Sitzungen}}",
+  "knowledge.interview.sessionsCount": "{count, plural, one {# Interview} other {# Interviews}}",
   "knowledge.interview.settingsDoor": "KI-Regeln öffnen",
   "knowledge.interview.start": "Interview starten",
   "knowledge.interview.startFailed": "Das Interview konnte nicht begonnen werden.",

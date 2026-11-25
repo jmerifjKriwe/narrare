@@ -6,6 +6,9 @@
  * per slot for the scalars); an open field says «noch offen»; and while any
  * mark stands, «Vorschläge verwerfen» offers the one act that clears them all.
  * The card collapses but never hides its readiness: the header is a button.
+ * The expanded body is bounded and scrolls, so a long description and twelve
+ * relations never push the composer, the save door or the end button out of
+ * the panel.
  */
 import { useId } from "react";
 
@@ -57,10 +60,11 @@ export function ProposalCard({
     <section
       data-testid="entity-interview-proposal"
       aria-label={t("knowledge.interview.proposalTitle")}
-      className="mx-3 mt-3 shrink-0 overflow-hidden rounded-[var(--radius-surface)] border border-rule bg-card shadow-card"
+      className="mx-3 mt-3 flex max-h-[35%] shrink-0 flex-col overflow-hidden rounded-[var(--radius-surface)] border border-rule bg-card shadow-card"
     >
       <button
         type="button"
+        data-testid="entity-interview-proposal-toggle"
         aria-expanded={expanded}
         aria-controls={bodyId}
         onClick={onToggle}
@@ -75,7 +79,12 @@ export function ProposalCard({
         </span>
       </button>
       {expanded && (
-        <div id={bodyId} className="px-3 pb-3">
+        <div
+          id={bodyId}
+          data-testid="entity-interview-proposal-body"
+          tabIndex={0}
+          className="min-h-0 flex-1 overflow-y-auto px-3 pb-3"
+        >
           <dl className="flex flex-col gap-2 text-meta">
             <div className="flex flex-col gap-0.5">
               <dt className="text-muted">{t("knowledge.interview.nameLabel")}</dt>

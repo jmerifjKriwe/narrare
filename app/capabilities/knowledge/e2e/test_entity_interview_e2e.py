@@ -439,6 +439,56 @@ def test_a_failure_of_the_interview_the_writer_left_waits_there(
         page.unroute_all(behavior="ignoreErrors")
 
 
+def test_a_long_proposal_keeps_the_conversation_reachable(page: Page, installed: Stack) -> None:
+    """A long description and twelve relations stay bounded: the proposal's
+    body scrolls inside the card, and the collapse control, the composer, the
+    save door and the end button stay in the viewport — in the wide column and
+    on the small-screen overlay, without collapsing the proposal first. The
+    transcript never shrinks to nothing.
+
+    The writer's turn carries at most 4,000 characters and a model's answer
+    may fill the description to 10,000; the leg walks the longest description
+    a turn can carry, and the card's bound does not depend on the length."""
+    novel_id = _seed_canon()
+    _open_interview(page, novel_id)
+    _start(page)
+
+    description = ("Ein Relais, das den Puls der Station misst. " * 100)[:3_960]
+    _say(page, f"Beschreibung: {description}")
+    proposal = page.get_by_test_id("entity-interview-proposal")
+    expect(proposal).to_contain_text("Ein Relais, das den Puls der Station misst.")
+    for index in range(12):
+        _say(page, f"Beziehung: Ziel {index}|kennt")
+        expect(proposal).to_contain_text(f"Ziel {index}")
+
+    def _bounded() -> None:
+        expect(page.get_by_test_id("entity-interview-proposal-toggle")).to_be_in_viewport()
+        expect(page.get_by_test_id("entity-interview-composer")).to_be_in_viewport()
+        expect(page.get_by_test_id("entity-interview-save")).to_be_in_viewport()
+        expect(page.get_by_test_id("entity-interview-end")).to_be_in_viewport()
+        # The conversation keeps a readable share of the panel.
+        transcript = page.get_by_test_id("entity-interview-transcript")
+        height = transcript.evaluate("element => element.getBoundingClientRect().height")
+        assert height >= 80, f"the transcript collapsed to {height}px"
+        # The proposal's own body scrolls inside its bound.
+        body = page.get_by_test_id("entity-interview-proposal-body")
+        measured = body.evaluate(
+            """(element) => ({
+                scrollHeight: element.scrollHeight,
+                clientHeight: element.clientHeight,
+                overflowY: getComputedStyle(element).overflowY,
+            })"""
+        )
+        assert measured["scrollHeight"] > measured["clientHeight"], measured
+        assert measured["overflowY"] in ("auto", "scroll"), measured
+
+    _bounded()
+    # The small-screen overlay holds the same bound.
+    page.set_viewport_size({"width": 390, "height": 844})
+    _bounded()
+    page.set_viewport_size({"width": 1280, "height": 720})
+
+
 def test_the_interview_survives_a_reload(page: Page, installed: Stack) -> None:
     """The session and its transcript ride the route's parameter: a reload
     restores the conversation, not a fresh panel."""
