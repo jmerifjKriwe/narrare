@@ -19,6 +19,7 @@ keeps its mark.
 import json
 from collections.abc import AsyncIterator, Mapping  # noqa: TC003  signatures evaluate
 from dataclasses import dataclass
+from time import monotonic
 from typing import TYPE_CHECKING, Final, cast
 from uuid import UUID  # noqa: TC003  signatures and the dataclass evaluate
 
@@ -206,6 +207,7 @@ class _PromptRecorder:
     def __init__(self, provider: TextProvider) -> None:
         self.provider = provider
         self.prompt = ""
+        self.latency_ms = 0
 
     def describe(self) -> str:
         """The wrapped provider's one-line description."""
@@ -216,10 +218,14 @@ class _PromptRecorder:
         return self.provider.configuration_problems()
 
     async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
-        """Record the request, then yield the wrapped provider's events."""
+        """Record the request and its elapsed time, then yield the provider's events."""
         self.prompt = "\n".join(message.content for message in request.messages)
-        async for event in self.provider.stream(request):
-            yield event
+        started = monotonic()
+        try:
+            async for event in self.provider.stream(request):
+                yield event
+        finally:
+            self.latency_ms = round((monotonic() - started) * 1000)
 
 
 @dataclass(frozen=True)
@@ -403,13 +409,7 @@ def _text_list(value: object) -> list[str]:
 
 
 def _suggested_map(proposal: dict[str, object] | None) -> dict[str, object]:
-    """Which parts the proposal marks suggested: item values for lists, a flag for content.
-
-    A label slot carries its provenance per item, as the design's example
-    does for tags. A proposal stored before that rule may hold a boolean
-    instead; a true flag then marks every item the slot currently holds, so
-    an old draft keeps its meaning.
-    """
+    """Which parts the proposal marks suggested: item values for lists, a flag for content."""
     marks: dict[str, object] = {"aliases": [], "tags": [], "content": False}
     if not proposal:
         return marks
@@ -421,8 +421,6 @@ def _suggested_map(proposal: dict[str, object] | None) -> dict[str, object]:
         stored = record.get(key)
         if isinstance(stored, list):
             marks[key] = _text_list(cast("object", stored))
-        elif stored is True:
-            marks[key] = _text_list(proposal.get(key))
     marks["content"] = bool(record.get("content"))
     return marks
 
@@ -555,7 +553,11 @@ def _merge_proposal(
 def _drop_suggested(
     proposal: dict[str, object] | None,
 ) -> dict[str, object] | None:
-    """The proposal without any suggested part; what the writer said stays."""
+    """The proposal without any suggested part; what the writer said stays.
+
+    A proposal with nothing left after the drop — no name, aliases, tags, content
+    or relation — is ``None``, as an empty merge is.
+    """
     if proposal is None:
         return None
     slots = _proposal_slots(proposal)
@@ -578,12 +580,18 @@ def _drop_suggested(
     ]
     for relation in relations:
         relation["suggested"] = False
+    name = _text(slots.get("name"))
+    aliases = _text_list(slots.get("aliases"))
+    tags = _text_list(slots.get("tags"))
+    content = _text(slots.get("content"))
+    if not name and not aliases and not tags and not content and not relations:
+        return None
     return {
-        "name": slots.get("name"),
+        "name": name or None,
         "name_suggested": False,
-        "aliases": slots.get("aliases", []),
-        "tags": slots.get("tags", []),
-        "content": slots.get("content", ""),
+        "aliases": aliases,
+        "tags": tags,
+        "content": content,
         "suggested": {"aliases": [], "tags": [], "content": False},
         "relations": relations,
     }
@@ -811,7 +819,10 @@ class InterviewService:
             # The attempt that raised never reached the audit callback; its row
             # is written here, with the prompt the recorder kept for it.
             failed = AuditedCall(
-                prompt=recorder.prompt or prompt, answer="", latency_ms=0, usage=None
+                prompt=recorder.prompt or prompt,
+                answer="",
+                latency_ms=recorder.latency_ms,
+                usage=None,
             )
             await self._write_calls(
                 calls,

@@ -122,7 +122,7 @@ class TurnRead(BaseModel):
 
 
 class SessionDetail(SessionRead):
-    """The session with its whole transcript, oldest first."""
+    """The session with its transcript, up to the read limit, oldest first."""
 
     turns: list[TurnRead]
 

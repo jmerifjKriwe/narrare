@@ -121,8 +121,9 @@ class _StubProvider:
 class _FailingProvider:
     """A provider that dies on the scripted failure: the provider-error path."""
 
-    def __init__(self, failure: Exception) -> None:
+    def __init__(self, failure: Exception, *, delay: float = 0.0) -> None:
         self.failure = failure
+        self.delay = delay
         self.requests: list[CompletionRequest] = []
 
     def describe(self) -> str:
@@ -134,8 +135,10 @@ class _FailingProvider:
         return []
 
     async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
-        """Raise before a single event."""
+        """Wait out the scripted delay, then raise before a single event."""
         self.requests.append(request)
+        if self.delay:
+            await asyncio.sleep(self.delay)
         raise self.failure
         yield Delta("")  # pragma: no cover — the raise above makes this unreachable
 
@@ -361,7 +364,7 @@ async def _audit_details() -> list[dict[str, object]]:
         rows = (
             await session.execute(
                 text(
-                    "SELECT status, error_code, error, prompt_text, response_text "
+                    "SELECT status, error_code, error, prompt_text, response_text, latency_ms "
                     "FROM llm_calls ORDER BY id"
                 )
             )
@@ -373,6 +376,7 @@ async def _audit_details() -> list[dict[str, object]]:
             "error": row.error,
             "prompt_text": row.prompt_text,
             "response_text": row.response_text,
+            "latency_ms": row.latency_ms,
         }
         for row in rows
     ]
@@ -514,6 +518,44 @@ async def test_a_turn_writes_two_rows_and_the_proposal(
         (2, "assistant", "Notiert. Wie sieht sie aus?"),
     ]
     assert await _audit_rows() == [("chat.ask", "knowledge.entity-interview", "ok")]
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_a_written_proposal_round_trips_through_the_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The per-item shape a turn writes is the shape the detail read validates."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel)
+    provider = _StubProvider(
+        [
+            json.dumps(
+                {
+                    "reply": "Notiert.",
+                    "slots": {
+                        "name": "Mira",
+                        "aliases": ["Die Wächterin"],
+                        "tags": ["wachsam"],
+                        "content": "Eine Wächterin am See.",
+                    },
+                    "relations": [{"target": "Haus", "type": "located_in", "note": ""}],
+                },
+                ensure_ascii=False,
+            )
+        ]
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        turn = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Sie heißt Mira."}
+        )
+        detail = await client.get(f"/api/chat/sessions/{session_id}")
+
+    assert turn.status_code == 200
+    written = turn.json()["proposal"]
+    assert detail.status_code == 200
+    assert detail.json()["proposal"] == written
 
 
 @pytest.mark.usefixtures("two_users")
@@ -686,6 +728,37 @@ async def test_drop_suggestions_removes_the_marked_parts_and_keeps_the_rest() ->
     )
     turns = await _stored_turns(session_id)
     assert [(turn.seq, turn.role, turn.act) for turn in turns] == [(1, "user", "drop-suggestions")]
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_dropping_every_suggestion_stores_no_proposal() -> None:
+    """A proposal whose every part was suggested drops to ``None``, not an empty object."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(
+        novel,
+        proposal=_proposal(
+            name="Mira",
+            name_suggested=True,
+            aliases=["Die Wächterin"],
+            tags=["wachsam"],
+            content="Eine Wächterin am See.",
+            suggested={"aliases": ["Die Wächterin"], "tags": ["wachsam"], "content": True},
+            relations=[
+                {"target": "Haus", "type": "located_in", "note": "", "suggested": True},
+            ],
+        ),
+    )
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns",
+            json={"text": "Vorschläge verwerfen", "act": "drop-suggestions"},
+        )
+        detail = await client.get(f"/api/chat/sessions/{session_id}")
+
+    assert response.status_code == 200
+    assert response.json()["proposal"] is None
+    assert detail.json()["proposal"] is None
 
 
 @pytest.mark.usefixtures("two_users")
@@ -894,7 +967,7 @@ async def test_provider_error_is_502_provider_error(
     """A provider that fails mid-call names its class; the turn writes nothing."""
     novel = await _seed_novel()
     session_id = await _seed_session(novel)
-    provider = _FailingProvider(failure)
+    provider = _FailingProvider(failure, delay=0.01)
     monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
 
     async with _client() as client:
@@ -913,6 +986,9 @@ async def test_provider_error_is_502_provider_error(
     assert str(failure) in cast("str", row["error"])
     assert row["response_text"] == ""
     assert cast("str", row["prompt_text"])
+    # The attempt slept 10 ms before raising: its row carries the measured time,
+    # never the constant zero a missing measurement wrote.
+    assert cast("int", row["latency_ms"]) >= 5
 
 
 @pytest.mark.usefixtures("two_users")

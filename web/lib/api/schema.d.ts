@@ -3189,7 +3189,7 @@ export interface components {
         };
         /**
          * SessionDetail
-         * @description The session with its whole transcript, oldest first.
+         * @description The session with its transcript, up to the read limit, oldest first.
          */
         SessionDetail: {
             /** Closed At */
