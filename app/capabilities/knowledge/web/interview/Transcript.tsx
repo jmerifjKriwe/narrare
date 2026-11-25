@@ -4,8 +4,9 @@
  * actually said, oldest first, each answer a status region. A pending
  * suggestion draws its own inset card with the three actions; a settled
  * acceptance keeps its «übernommen» mark. A named failure stands where the
- * answer would have been, names the reason and keeps the writer's text in
- * the composer beside it.
+ * answer would have been and names the reason; a plain answer's text is still
+ * in the composer beside it, while a chip's failure — whose label, not the
+ * field, was the body — promises no text.
  */
 import type { AssistantTurnRead } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
@@ -30,16 +31,19 @@ function FailureFace({
   onRetry: () => void;
 }) {
   const t = useTranslation();
+  // A chip sent its label; the composer held no such text. The two sentences
+  // that speak of the field have a second, shorter key for that turn.
+  const chip = failure.chip === true;
   const copy =
     failure.code === "extraction-failed"
-      ? t("knowledge.interview.failedExtraction")
+      ? t(chip ? "knowledge.interview.failedExtractionChip" : "knowledge.interview.failedExtraction")
       : failure.code === "provider-unavailable"
         ? t("knowledge.interview.failedUnavailable")
         : failure.code === "prompt-refused"
           ? t("knowledge.interview.failedPrompt")
           : failure.code === "suggestion-mismatch"
             ? t("knowledge.interview.failure.suggestion-mismatch")
-            : t("knowledge.interview.failedProvider");
+            : t(chip ? "knowledge.interview.failedProviderChip" : "knowledge.interview.failedProvider");
   // A stale suggestion is settled by reading the current one, not by sending
   // the same body again; a refused prompt needs its editor.
   const canRetry = failure.code !== "prompt-refused" && failure.code !== "suggestion-mismatch";

@@ -155,17 +155,20 @@ export function useInterview({
             setFailure({ code: "suggestion-mismatch", detail: wire.detail });
             return;
           }
+          const chip = body.act !== undefined && body.act !== null;
           setFailure({
             code: isTurnFailure(wire.code) ? (wire.code as string) : "provider-error",
             detail: wire.detail,
             // An unknown code keeps its name beside the generic copy.
             cause: isTurnFailure(wire.code) ? undefined : wire.code,
+            chip,
           });
           setFailedBody(body);
           // The failure face says the text is still in the composer. A
           // switch cleared it, so the current session's failed plain answer
-          // puts its own text back; a chip's label was never the composer's.
-          if (body.act === undefined || body.act === null) setText(body.text);
+          // puts its own text back; a chip's label was never the composer's,
+          // so a chip's failure says nothing about the field.
+          if (!chip) setText(body.text);
         } finally {
           settleTurn(sentFor);
         }

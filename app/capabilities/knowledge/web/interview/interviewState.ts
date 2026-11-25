@@ -29,6 +29,10 @@ export interface InterviewFailure {
   /** The wire's own code when it is not one the panel names, kept beside the
    *  generic copy so an unknown refusal stays inspectable. */
   cause?: string;
+  /** True when the failed turn was a chip's: its label was the body, never
+   *  the composer's text, so the copy must not promise a text standing in the
+   *  input field. */
+  chip?: boolean;
 }
 
 export function isTurnFailure(code: string | undefined): boolean {

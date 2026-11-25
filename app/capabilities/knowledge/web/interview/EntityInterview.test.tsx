@@ -375,6 +375,56 @@ describe("a failed turn keeps the writer's text", () => {
   });
 });
 
+describe("a chip's failed turn promises no text", () => {
+  it("names the failure without the composer clause and retries the chip's label", async () => {
+    api.POST.mockResolvedValueOnce({
+      data: undefined,
+      error: { detail: { code: "provider-error", detail: "offline" } },
+      response: new Response(null, { status: 502 }),
+    });
+    renderPanel();
+    await readySession();
+
+    // The plain path: the field was never typed in — the chip sends its own
+    // label, so the typed answer's «Dein Text ist noch im Eingabefeld» would
+    // name a text that never existed.
+    fireEvent.click(screen.getByTestId("entity-interview-no-idea"));
+
+    const failure = await screen.findByTestId("entity-interview-failure");
+    expect(failure.textContent).not.toContain("Dein Text ist noch im Eingabefeld.");
+    expect(within(failure).getByText(de["knowledge.interview.failedProviderChip"])).toBeTruthy();
+    expect(composer().value).toBe("");
+    expect(screen.getByTestId("entity-interview-retry")).toBeTruthy();
+
+    // «Erneut versuchen» re-sends the failed body exactly: the chip's label
+    // and its act, never the composer's (empty) draft.
+    api.POST.mockResolvedValueOnce({ data: readback(), response: ok() });
+    fireEvent.click(screen.getByTestId("entity-interview-retry"));
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenLastCalledWith("/api/chat/sessions/{session_id}/turns", {
+        params: { path: { session_id: SESSION_ID } },
+        body: { text: de["knowledge.interview.noIdea"], act: "no-idea" },
+      }),
+    );
+  });
+
+  it("an unparseable chip answer wears its own sentence, without the composer clause", async () => {
+    api.POST.mockResolvedValueOnce({
+      data: undefined,
+      error: { detail: { code: "extraction-failed", detail: "unparseable" } },
+      response: new Response(null, { status: 502 }),
+    });
+    renderPanel();
+    await readySession();
+
+    fireEvent.click(screen.getByTestId("entity-interview-fill-all"));
+
+    const failure = await screen.findByTestId("entity-interview-failure");
+    expect(failure.textContent).not.toContain("Dein Text ist noch im Eingabefeld.");
+    expect(within(failure).getByText(de["knowledge.interview.failedExtractionChip"])).toBeTruthy();
+  });
+});
+
 describe("hiding is not ending", () => {
   it("the close button hides the panel and never closes the session", async () => {
     const { onClose } = renderPanel();
@@ -735,6 +785,11 @@ describe("a turn belongs to the session it was sent for", () => {
     releaseB({ data: readback(), response: ok() });
     await waitFor(() => expect(composerField().disabled).toBe(false));
     expect(screen.queryByText(de["knowledge.interview.thinking"])).toBeNull();
+    // B's own answer landed in B's transcript, exactly as A's did in A's:
+    // the release is the refetch's truth, not just the mutation's promise.
+    await waitFor(() =>
+      expect(screen.getByTestId("entity-interview-transcript").textContent).toContain("Notiert."),
+    );
 
     // The count cannot leak: after both answers landed, both are idle.
     show(SESSION_ID);
