@@ -11,7 +11,7 @@
  * ended face through the invalidation the mutation settles with, the second
  * hands the panel back to the chooser.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { AssistantTurnCreate } from "@shell/lib/api/client";
 import type { WireError } from "@shell/lib/query";
@@ -28,12 +28,17 @@ import { interviewFace, isTurnFailure, type InterviewFailure } from "./interview
 export function useInterview({
   novelId,
   sessionId,
+  visible = true,
   onOpened,
   onNotFound,
 }: {
   novelId: string;
   /** Null is the chooser (`new`); a string reads that interview. */
   sessionId: string | null;
+  /** False while the panel is hidden: the session read keeps following a
+   *  running turn, but a 404 waits for the panel to be shown again instead of
+   *  taking the writer to the chooser behind their back. */
+  visible?: boolean;
   onOpened: (id: string) => void;
   onNotFound: () => void;
 }) {
@@ -47,6 +52,14 @@ export function useInterview({
   const [failure, setFailure] = useState<InterviewFailure | null>(null);
   const [failedBody, setFailedBody] = useState<AssistantTurnCreate | null>(null);
 
+  // The turn's callbacks are fixed when it starts, so they read visibility
+  // through a ref: a failure that lands after the panel was hidden must not
+  // open the chooser behind the writer's back.
+  const visibleRef = useRef(visible);
+  useEffect(() => {
+    visibleRef.current = visible;
+  }, [visible]);
+
   // A new session is a new conversation: no failure or text carries across.
   // (The panel is remounted per session anyway; this keeps a same-component
   // switch — a session row clicked from the list — equally clean.)
@@ -57,13 +70,15 @@ export function useInterview({
     setText("");
   }, [sessionId]);
 
-  // A missing session goes back to the chooser, not to a dead panel. The
-  // invalidating settle of the read's own family may ask again meanwhile; the
-  // navigation clears the parameter, so the read turns off with it.
+  // A missing session goes back to the chooser, not to a dead panel — but only
+  // once the panel is shown. The invalidating settle of the read's own family
+  // may ask again meanwhile; the navigation clears the parameter, so the read
+  // turns off with it.
   useEffect(() => {
+    if (!visible) return;
     const error = session.error as WireError | null;
     if (error?.status === 404 || error?.code === "not-found") onNotFound();
-  }, [session.error, onNotFound]);
+  }, [session.error, onNotFound, visible]);
 
   const send = useCallback(
     (body: AssistantTurnCreate) => {
@@ -80,7 +95,10 @@ export function useInterview({
           },
           onError: (error: WireError) => {
             if (error.code === "not-found") {
-              onNotFound();
+              // A hidden turn's missing session is the read's own 404: the
+              // settle refetch finds it, and that effect waits for the panel
+              // to be shown rather than opening it behind the writer's back.
+              if (visibleRef.current) onNotFound();
               return;
             }
             // A 409 means the session ended elsewhere: the settle refetch

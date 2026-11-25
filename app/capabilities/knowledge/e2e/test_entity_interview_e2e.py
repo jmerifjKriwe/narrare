@@ -175,18 +175,27 @@ def test_a_stale_suggestion_has_its_own_face(page: Page, installed: Stack) -> No
     page.unroute("**/api/chat/sessions/*/turns")
 
 
-def test_hiding_the_panel_while_the_model_answers_keeps_the_reply(
+def test_hiding_the_panel_while_the_model_answers_keeps_the_turn(
     page: Page, installed: Stack
 ) -> None:
-    """Review Focus 4: the panel may be hidden mid-turn; the reply still lands,
-    reopening shows it, and the composer is free again."""
+    """Review Focus 4: the panel may be hidden mid-turn. Reopening before the
+    answer lands still shows it thinking with the composer closed; releasing
+    the held request lets the reply land in the open panel.
+
+    The turn's request is held at the route (the handler keeps it and returns,
+    which leaves it pending) and released from the test thread, so the in-flight
+    state is deterministic — no dispatcher sleep, no handler that blocks."""
     novel_id = _seed_canon()
     _open_interview(page, novel_id)
     _start(page)
 
-    # Closing right after «Senden» is mid-turn on the real request; the real
-    # response wait carries the proof, so the leg needs no dispatcher pause.
-    with page.expect_response(re.compile(r"/api/chat/sessions/.*/turns")):
+    held: list[Route] = []
+
+    def _hold(route: Route) -> None:
+        held.append(route)
+
+    page.route("**/api/chat/sessions/*/turns", _hold)
+    try:
         _say(page, f"Name: {NAME}")
         expect(page.get_by_test_id("entity-interview-transcript")).to_contain_text(
             "Der Assistent überlegt ..."
@@ -194,12 +203,72 @@ def test_hiding_the_panel_while_the_model_answers_keeps_the_reply(
         page.get_by_test_id("entity-interview-close").click()
         expect(page.get_by_test_id("entity-interview")).not_to_be_visible()
 
-    page.get_by_test_id("graph-new-entity").click()
-    panel = page.get_by_test_id("entity-interview")
-    expect(panel).to_be_visible()
-    expect(panel).to_contain_text("Notiert.")
-    expect(page.get_by_test_id("entity-interview-proposal")).to_contain_text(NAME)
-    expect(_composer(page)).to_be_enabled()
+        page.get_by_test_id("graph-new-entity").click()
+        panel = page.get_by_test_id("entity-interview")
+        expect(panel).to_be_visible()
+        expect(panel).to_contain_text("Der Assistent überlegt ...")
+        expect(_composer(page)).to_be_disabled()
+        expect(page.get_by_test_id("entity-interview-save")).to_be_disabled()
+
+        assert len(held) == 1
+        held.pop().continue_()
+        expect(panel).to_contain_text("Notiert.")
+        expect(page.get_by_test_id("entity-interview-proposal")).to_contain_text(NAME)
+        expect(_composer(page)).to_be_enabled()
+    finally:
+        while held:
+            held.pop().continue_()
+        page.unroute_all(behavior="ignoreErrors")
+
+
+def test_hiding_the_panel_when_the_answer_fails_keeps_its_explanation(
+    page: Page, installed: Stack
+) -> None:
+    """A turn that fails while the panel is hidden keeps its named face and
+    the writer's text: reopening shows the explanation, not an empty composer
+    and no error."""
+    novel_id = _seed_canon()
+    _open_interview(page, novel_id)
+    _start(page)
+
+    sent = "Es stammt aus dem Labor von Lin."
+    held: list[Route] = []
+
+    def _hold(route: Route) -> None:
+        held.append(route)
+
+    page.route("**/api/chat/sessions/*/turns", _hold)
+    try:
+        _say(page, sent)
+        expect(page.get_by_test_id("entity-interview-transcript")).to_contain_text(
+            "Der Assistent überlegt ..."
+        )
+        page.get_by_test_id("entity-interview-close").click()
+        expect(page.get_by_test_id("entity-interview")).not_to_be_visible()
+
+        assert len(held) == 1
+        held.pop().fulfill(
+            status=502,
+            content_type="application/json",
+            body=json.dumps(
+                {
+                    "detail": {
+                        "code": "provider-error",
+                        "detail": "the provider is offline",
+                    }
+                }
+            ),
+        )
+
+        page.get_by_test_id("graph-new-entity").click()
+        expect(page.get_by_test_id("entity-interview-failure")).to_contain_text(
+            "Die Antwort kam nicht. Dein Text ist noch im Eingabefeld."
+        )
+        expect(_composer(page)).to_have_value(sent)
+    finally:
+        while held:
+            held.pop().continue_()
+        page.unroute_all(behavior="ignoreErrors")
 
 
 def test_the_interview_survives_a_reload(page: Page, installed: Stack) -> None:

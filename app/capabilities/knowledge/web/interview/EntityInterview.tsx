@@ -1,19 +1,21 @@
 /**
  * The entity interview (W9 Task 10) — the graph page's right column while the
- * route's `interview` parameter stands. It owns the conversation and every
- * face the states reference draws: the type chooser (with «Von Hand anlegen»
- * as the quiet second path), the first question, the assistant thinking, the
- * answered proposal, a suggestion for one question, everything suggested, the
- * named failures, the ended interview and the list. The proposal card and the
- * transcript are separate faces of the same session; the footer offers
- * «Interview beenden» — the handover into the create dialog is its own task.
+ * route's `interview` parameter stands. The host owns the conversation and
+ * every face the states reference draws: the type chooser (with «Von Hand
+ * anlegen» as the quiet second path), the first question, the assistant
+ * thinking, the answered proposal, a suggestion for one question, everything
+ * suggested, the named failures, the ended interview and the list. The
+ * proposal card and the transcript are separate faces of the same session; the
+ * footer offers «Interview beenden» — the handover into the create dialog is
+ * its own task.
  *
  * The opening question is chrome from knowledge's catalog, one per type: it
  * is not a turn and costs no model call. The panel is a labelled complementary
  * region; hiding it (the header's close button) only leaves the URL, never
- * closes the session.
+ * closes the session — which is why the host outlives the view: hiding must
+ * not throw the conversation away.
  */
-import { useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 
 import type { AssistantTurnRead } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
@@ -30,6 +32,16 @@ import { TypeChooser } from "./TypeChooser";
 import { openingQuestionKey, readyToSave } from "./interviewState";
 import { useInterview } from "./useInterview";
 
+type InterviewController = ReturnType<typeof useInterview>;
+
+/**
+ * The host the graph page renders for as long as the page stands. It owns the
+ * conversation's state — the controller — so hiding the panel (dropping the
+ * `interview` parameter) never resets a running turn, a failure or an unsent
+ * draft. `undefined` hides it, `null` shows the chooser; the host remembers
+ * the last session id it was shown so the read keeps following the turn while
+ * the panel is away.
+ */
 export function EntityInterview({
   novelId,
   sessionId,
@@ -41,8 +53,9 @@ export function EntityInterview({
   closeFailed = false,
 }: {
   novelId: string;
-  /** The interview's id, or null for the chooser (the `new` door). */
-  sessionId: string | null;
+  /** The interview's id, null for the chooser (the `new` door), or undefined
+   *  while the page hides the panel. */
+  sessionId: string | null | undefined;
   /** A row of the list or a fresh `new`; the graph writes the URL. */
   onSelectSession: (target: string) => void;
   /** The header's close button: hide the panel, never close the session. */
@@ -58,14 +71,63 @@ export function EntityInterview({
    *  the panel stays and names the failed end beside its own action. */
   closeFailed?: boolean;
 }) {
-  const t = useTranslation();
-  const titleId = useId();
+  const hidden = sessionId === undefined;
+  const [lastSessionId, setLastSessionId] = useState<string | null>(sessionId ?? null);
+
+  // Hiding is not a session switch: the host keeps feeding the last id, so the
+  // controller's `[sessionId]` reset stays off and a running turn still
+  // settles while the panel is away.
+  useEffect(() => {
+    if (sessionId !== undefined) setLastSessionId(sessionId);
+  }, [sessionId]);
+
+  const onNotFound = useCallback(() => onSelectSession("new"), [onSelectSession]);
   const controller = useInterview({
     novelId,
-    sessionId,
+    sessionId: hidden ? lastSessionId : sessionId,
+    visible: !hidden,
     onOpened: onSelectSession,
-    onNotFound: () => onSelectSession("new"),
+    onNotFound,
   });
+
+  if (hidden) return null;
+  return (
+    <EntityInterviewView
+      sessionId={sessionId}
+      controller={controller}
+      onSelectSession={onSelectSession}
+      onClose={onClose}
+      onManual={onManual}
+      onSave={onSave}
+      returnFocusId={returnFocusId}
+      closeFailed={closeFailed}
+    />
+  );
+}
+
+/** Everything the writer sees; it unmounts with the `interview` parameter and
+ *  takes the host's controller as its prop. */
+function EntityInterviewView({
+  sessionId,
+  controller,
+  onSelectSession,
+  onClose,
+  onManual,
+  onSave,
+  returnFocusId,
+  closeFailed,
+}: {
+  sessionId: string | null;
+  controller: InterviewController;
+  onSelectSession: (target: string) => void;
+  onClose: () => void;
+  onManual: () => void;
+  onSave: (prefill: EntityPrefill) => void;
+  returnFocusId?: string;
+  closeFailed: boolean;
+}) {
+  const t = useTranslation();
+  const titleId = useId();
   const [listOpen, setListOpen] = useState(false);
   const [expanded, setExpanded] = useState(true);
 

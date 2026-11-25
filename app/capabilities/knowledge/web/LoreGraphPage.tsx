@@ -921,30 +921,31 @@ export function LoreGraphPage() {
           )}
         </div>
 
-        {interview !== undefined && (
-          <EntityInterview
-            novelId={novelId}
-            sessionId={interview === "new" ? null : interview}
-            onSelectSession={(target) => {
-              setCloseFailed(false);
-              setInterview(target);
-            }}
-            onClose={() => {
-              setCloseFailed(false);
-              setInterview(null);
-            }}
-            onManual={() => {
-              setCrud("create");
-            }}
-            onSave={(draft) => {
-              setCloseFailed(false);
-              setPrefill(draft);
-              setCrud("create");
-            }}
-            returnFocusId="graph-new-entity"
-            closeFailed={closeFailed}
-          />
-        )}
+        {/* The interview host stands for the page's lifetime; the panel inside
+            it renders only while the `interview` parameter stands, so hiding
+            it never loses a running turn, a failure or an unsent draft. */}
+        <EntityInterview
+          novelId={novelId}
+          sessionId={interview === undefined ? undefined : interview === "new" ? null : interview}
+          onSelectSession={(target) => {
+            setCloseFailed(false);
+            setInterview(target);
+          }}
+          onClose={() => {
+            setCloseFailed(false);
+            setInterview(null);
+          }}
+          onManual={() => {
+            setCrud("create");
+          }}
+          onSave={(draft) => {
+            setCloseFailed(false);
+            setPrefill(draft);
+            setCrud("create");
+          }}
+          returnFocusId="graph-new-entity"
+          closeFailed={closeFailed}
+        />
       </div>
 
       {/* The subbar's CRUD dialogs (Task 4). The selected entity is the fixed

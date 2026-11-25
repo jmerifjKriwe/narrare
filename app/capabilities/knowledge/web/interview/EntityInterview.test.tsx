@@ -120,28 +120,35 @@ function readback(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function renderPanel(sessionId: string | null = SESSION_ID) {
+function renderPanel(sessionId: string | null | undefined = SESSION_ID) {
   const onSelectSession = vi.fn();
   const onClose = vi.fn();
   const onManual = vi.fn();
   const onSave = vi.fn();
-  render(
+  const handlers = { onSelectSession, onClose, onManual, onSave };
+  const view = render(
     <QueryClientProvider client={queryClient}>
-      <EntityInterview
-        novelId={NOVEL_ID}
-        sessionId={sessionId}
-        onSelectSession={onSelectSession}
-        onClose={onClose}
-        onManual={onManual}
-        onSave={onSave}
-      />
+      <EntityInterview novelId={NOVEL_ID} sessionId={sessionId} {...handlers} />
     </QueryClientProvider>,
   );
-  return { onSelectSession, onClose, onManual, onSave };
+  /** Hide (undefined), reopen a session (its id) or show the chooser (null). */
+  const show = (next: string | null | undefined) =>
+    view.rerender(
+      <QueryClientProvider client={queryClient}>
+        <EntityInterview novelId={NOVEL_ID} sessionId={next} {...handlers} />
+      </QueryClientProvider>,
+    );
+  return { ...handlers, show };
 }
 
 function composer(): HTMLTextAreaElement {
   return screen.getByPlaceholderText(de["knowledge.interview.placeholder"]) as HTMLTextAreaElement;
+}
+
+/** The textarea even while a turn runs and its placeholder names the wait. */
+function composerField(): HTMLTextAreaElement {
+  const field = within(screen.getByTestId("entity-interview-composer")).getByRole("textbox");
+  return field as HTMLTextAreaElement;
 }
 
 async function readySession(): Promise<void> {
@@ -353,6 +360,176 @@ describe("hiding is not ending", () => {
     fireEvent.click(screen.getByTestId("entity-interview-close"));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(api.POST).not.toHaveBeenCalled();
+  });
+});
+
+describe("the conversation outlives the panel's hide", () => {
+  it("reopening mid-turn still shows it thinking and keeps the composer closed", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    let release: (value: unknown) => void = () => {};
+    const held = new Promise((resolve) => {
+      release = resolve;
+    });
+    api.POST.mockImplementation(() => held);
+    const { show } = renderPanel();
+    await readySession();
+
+    fireEvent.change(composer(), { target: { value: "Es stammt aus dem Labor von Lin." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await screen.findByText(de["knowledge.interview.thinking"]);
+
+    show(undefined);
+    expect(screen.queryByTestId("entity-interview")).toBeNull();
+
+    // The turn still runs: the reopened panel must not look idle. The save
+    // waits for the same answer the composer does.
+    show(SESSION_ID);
+    expect(screen.getByText(de["knowledge.interview.thinking"])).toBeTruthy();
+    expect(composerField().disabled).toBe(true);
+    expect((screen.getByTestId("entity-interview-save") as HTMLButtonElement).disabled).toBe(true);
+
+    release({ data: readback(), response: ok() });
+    await waitFor(() => expect(composerField().disabled).toBe(false));
+    expect(screen.queryByText(de["knowledge.interview.thinking"])).toBeNull();
+  });
+
+  it("a turn that fails while hidden keeps its face and the sent text", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    let fail: (value: unknown) => void = () => {};
+    const held = new Promise((resolve) => {
+      fail = resolve;
+    });
+    api.POST.mockImplementation(() => held);
+    const { show } = renderPanel();
+    await readySession();
+
+    fireEvent.change(composer(), { target: { value: "Es stammt aus dem Labor von Lin." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await screen.findByText(de["knowledge.interview.thinking"]);
+
+    show(undefined);
+    fail({
+      data: undefined,
+      error: { detail: { code: "provider-error", detail: "offline" } },
+      response: new Response(null, { status: 502 }),
+    });
+
+    show(SESSION_ID);
+    const failure = await screen.findByTestId("entity-interview-failure");
+    expect(failure.textContent).toContain(de["knowledge.interview.failedProvider"]);
+    expect(composer().value).toBe("Es stammt aus dem Labor von Lin.");
+
+    // «Erneut versuchen» re-sends the body the hidden turn failed with.
+    api.POST.mockResolvedValueOnce({ data: readback(), response: ok() });
+    fireEvent.click(screen.getByTestId("entity-interview-retry"));
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenLastCalledWith("/api/chat/sessions/{session_id}/turns", {
+        params: { path: { session_id: SESSION_ID } },
+        body: { text: "Es stammt aus dem Labor von Lin." },
+      }),
+    );
+  });
+
+  it("an unsent draft survives hiding", async () => {
+    const { show } = renderPanel();
+    await readySession();
+
+    fireEvent.change(composer(), { target: { value: "Ein Name für später." } });
+    show(undefined);
+    show(SESSION_ID);
+
+    await waitFor(() => expect(composer().value).toBe("Ein Name für später."));
+  });
+
+  it("switching sessions still resets the text and the failure", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    api.POST.mockResolvedValueOnce({
+      data: undefined,
+      error: { detail: { code: "provider-error", detail: "offline" } },
+      response: new Response(null, { status: 502 }),
+    });
+    const { show } = renderPanel();
+    await readySession();
+
+    fireEvent.change(composer(), { target: { value: "Bleibt nicht." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await screen.findByTestId("entity-interview-failure");
+    expect(composer().value).toBe("Bleibt nicht.");
+
+    show("s2");
+    await waitFor(() => expect(screen.queryByTestId("entity-interview-failure")).toBeNull());
+    await waitFor(() => expect(composer().value).toBe(""));
+  });
+
+  it("a hidden session's 404 waits for the panel to be shown again", async () => {
+    const { show, onSelectSession } = renderPanel();
+    await readySession();
+    const sessionReads = () =>
+      api.GET.mock.calls.filter(([path]) => path === "/api/chat/sessions/{session_id}").length;
+    const before = sessionReads();
+
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/chat/sessions") {
+        return Promise.resolve({ data: { items: sessions }, response: ok() });
+      }
+      return Promise.resolve({
+        data: undefined,
+        error: { detail: { code: "not-found", detail: "no such session" } },
+        response: new Response(null, { status: 404 }),
+      });
+    });
+
+    show(undefined);
+    void queryClient.invalidateQueries({ queryKey: ["chat", "session", SESSION_ID] });
+    await waitFor(() => expect(sessionReads()).toBeGreaterThan(before));
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["chat", "session", SESSION_ID])?.status).toBe("error"),
+    );
+    // The hidden read must not take the writer to the chooser behind their back.
+    expect(onSelectSession).not.toHaveBeenCalled();
+
+    show(SESSION_ID);
+    await waitFor(() => expect(onSelectSession).toHaveBeenCalledWith("new"));
+  });
+
+  it("a turn's 404 that lands while hidden does not open the chooser", async () => {
+    let fail: (value: unknown) => void = () => {};
+    const held = new Promise((resolve) => {
+      fail = resolve;
+    });
+    api.POST.mockImplementation(() => held);
+    const { show, onSelectSession } = renderPanel();
+    await readySession();
+
+    fireEvent.change(composer(), { target: { value: "Noch eine Antwort." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await screen.findByText(de["knowledge.interview.thinking"]);
+    show(undefined);
+
+    // The session vanished mid-turn: the settle refetch answers the same 404
+    // the read would, and neither may open the panel behind the writer.
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/chat/sessions") {
+        return Promise.resolve({ data: { items: sessions }, response: ok() });
+      }
+      return Promise.resolve({
+        data: undefined,
+        error: { detail: { code: "not-found", detail: "no such session" } },
+        response: new Response(null, { status: 404 }),
+      });
+    });
+    fail({
+      data: undefined,
+      error: { detail: { code: "not-found", detail: "no such session" } },
+      response: new Response(null, { status: 404 }),
+    });
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["chat", "session", SESSION_ID])?.status).toBe("error"),
+    );
+    expect(onSelectSession).not.toHaveBeenCalled();
+
+    show(SESSION_ID);
+    await waitFor(() => expect(onSelectSession).toHaveBeenCalledWith("new"));
   });
 });
 
