@@ -34,6 +34,8 @@ export interface paths {
         /**
          * List Sessions
          * @description The novel's interviews for this user, open first then closed, newest first per state.
+         *
+         *     Up to ``SESSION_LIST_LIMIT`` per state.
          */
         get: operations["list_sessions_api_chat_sessions_get"];
         put?: never;
@@ -3227,6 +3229,8 @@ export interface components {
         /**
          * SessionList
          * @description The novel's interviews: open first, then closed, newest first in each state.
+         *
+         *     Up to ``SESSION_LIST_LIMIT`` in each state.
          */
         SessionList: {
             /** Items */

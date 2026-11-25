@@ -189,7 +189,10 @@ async def open_session(payload: SessionCreate, service: InterviewServiceDep) -> 
 
 @router.get("/sessions", response_model=SessionList)
 async def list_sessions(novel_id: UUID, service: InterviewServiceDep) -> SessionList:
-    """The novel's interviews for this user, open first then closed, newest first per state."""
+    """The novel's interviews for this user, open first then closed, newest first per state.
+
+    Up to ``SESSION_LIST_LIMIT`` per state.
+    """
     try:
         sessions = await service.list_sessions(novel_id)
     except InterviewRefusalError as error:

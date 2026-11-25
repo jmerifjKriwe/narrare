@@ -3498,7 +3498,7 @@
         "type": "object"
       },
       "SessionList": {
-        "description": "The novel's interviews: open first, then closed, newest first in each state.",
+        "description": "The novel's interviews: open first, then closed, newest first in each state.\n\nUp to ``SESSION_LIST_LIMIT`` in each state.",
         "properties": {
           "items": {
             "items": {
@@ -5019,7 +5019,7 @@
     },
     "/api/chat/sessions": {
       "get": {
-        "description": "The novel's interviews for this user, open first then closed, newest first per state.",
+        "description": "The novel's interviews for this user, open first then closed, newest first per state.\n\nUp to ``SESSION_LIST_LIMIT`` per state.",
         "operationId": "list_sessions_api_chat_sessions_get",
         "parameters": [
           {
