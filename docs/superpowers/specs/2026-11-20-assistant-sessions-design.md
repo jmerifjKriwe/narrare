@@ -184,7 +184,7 @@ the client right after the create call answered 201.
 
 | Method | Path | What it does |
 |---|---|---|
-| POST | `/api/chat/sessions` | Open a session: `{mode, novel_id, entity_type?, target_id?}` → 201, the session read |
+| POST | `/api/chat/sessions` | Open a session: `{mode, novel_id, entity_type?, target_id?}` → 201, the session read. `target_id`, when given, must be an entity of the same user in the same novel |
 | GET | `/api/chat/sessions?novel_id=` | List sessions for a novel, newest first |
 | GET | `/api/chat/sessions/{id}` | The session with its transcript |
 | POST | `/api/chat/sessions/{id}/turns` | `{text, act?}` → `{reply?, proposal?, suggestion?}` |
@@ -261,7 +261,8 @@ merges item by item, so the proposal keeps every item, gains the items the
 answer added, loses only an item the answer dropped that its input carried, and
 takes a value change in place — and what it left alone is taken from the
 proposal as it stands now. A slot the answer leaves out is untouched, one it
-gives empty (`""` for name and content, `[]` for aliases and tags) is cleared,
+gives empty (`""` or `null` for name and content, `[]` for aliases and tags; a
+`null` list counts as left out) is cleared,
 and a relation list the answer leaves out is untouched while a given list drops
 the relations it omits. The provenance rule reads the same comparison.
 
@@ -284,8 +285,9 @@ at most 200 characters, labels deduplicated case-insensitively; relation types
 non-blank, at most 80 characters; targets at most 200; at most 12 relations and
 10,000 characters of content. A string over its limit is cut to the limit and
 a list over its cap keeps its first entries — the dialog shows the stored
-value, so nothing changes silently; blank entries are dropped, and a name that
-would be blank is not stored at all. Every string that becomes a slot or a
+value, so nothing changes silently; a blank entry inside a list is dropped,
+and a name the answer gives blank is stored as no name — the cleared slot of
+the merge rule above — never as an empty string. Every string that becomes a slot or a
 relation is reduced to one line before it is stored, and a turn's text is
 reduced to one line when it is rendered into the prompt: the JSON the prompt
 renders with `ensure_ascii=False` lets three line-separator characters through,
@@ -430,8 +432,10 @@ kernel gains one and both capabilities call it.
 | The interview prompt refuses to render (an override that no longer renders) | 502 `prompt-refused`, the render error as the detail |
 | Session closed | 409 `session-closed` |
 | Foreign or absent session | 404, identical |
+| A `target_id` that is absent, another user's or another novel's | 404 `not-found`, identical for all three; no session is written |
 | Unknown mode, missing or unknown type | 422, `mode-unknown`, `entity-type-required`, `entity-type-unknown` |
 | An `accept-suggestion` text that is neither empty nor the pending suggestion's | 422 `suggestion-mismatch`; the server stores the suggestion's own text |
+| The pending suggestion changed while an `accept-suggestion` answer was prepared | 422 `suggestion-mismatch`; nothing is written — only the suggestion the writer accepted is ever settled |
 | A relation line names an entity outside the novel | 422 `relation-target-invalid`, naming the row; nothing is written |
 | Proposal conflicts with a duplicate name | Not an error: the roster hint already flagged it; the create dialog shows a notice and saves |
 
