@@ -429,7 +429,10 @@ def test_a_failure_of_the_interview_the_writer_left_waits_there(
             held.pop(0).continue_()
         assert answered.value.status == 502
 
-        # The refusal belongs to the interview that was answered, not to this.
+        # The writer's next action is the settle marker: the interview that
+        # stood in between is opened again, so the failure's queued state has
+        # been written before «B unchanged» is asserted.
+        _resume(page, "Ort")
         expect(page.get_by_test_id("entity-interview")).not_to_contain_text(
             "Die Antwort war nicht auswertbar."
         )
@@ -499,9 +502,11 @@ def test_a_long_proposal_keeps_the_conversation_reachable(page: Page, installed:
         assert measured["overflowY"] in ("auto", "scroll"), measured
 
     _bounded()
+    assert_accessible(page)
     # The small-screen overlay holds the same bound.
     page.set_viewport_size({"width": 390, "height": 844})
     _bounded()
+    assert_accessible(page)
     page.set_viewport_size({"width": 1280, "height": 720})
 
 

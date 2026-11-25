@@ -15,10 +15,11 @@ import pytest
 from httpx import ASGITransport, AsyncClient, Response
 
 from app.api.main import app
+from app.capabilities.knowledge import service as knowledge_service
 from app.capabilities.knowledge.repository import EntityRepository
 from app.capabilities.knowledge.service import KnowledgeService
 from app.kernel.auth import LOCAL_USER_ID
-from app.kernel.contracts.models import Chapter, Entity, EntitySuggestion, Novel
+from app.kernel.contracts.models import MAX_RELATIONS, Chapter, Entity, EntitySuggestion, Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 
@@ -211,6 +212,12 @@ async def test_more_than_twelve_relation_lines_is_the_coded_relation_limit() -> 
         assert detail["row"] == 12
         assert "12" in str(detail["detail"])
         assert await _entity_count(client, novel.id) == before
+
+
+def test_the_create_path_reads_the_kernel_bound() -> None:
+    """The name the create refuses by is the kernel's own object, not a copy
+    nested into the service — the direction rule 1 allows."""
+    assert knowledge_service.MAX_RELATIONS is MAX_RELATIONS
 
 
 async def test_novel_deleted_before_the_flush_is_404(
