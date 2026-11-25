@@ -109,12 +109,13 @@ class RelationCreate(BaseModel):
 
     The type is free text on purpose (D7) — the suggested vocabulary is a
     UI autocomplete, not an API constraint; the service checks blankness
-    and length, the ends are taken from the path and this body and are
-    immutable afterwards.
+    and length, and the refusal is the coded ``entity-invalid`` the create
+    endpoint speaks, never the framework's field list. The ends are taken
+    from the path and this body and are immutable afterwards.
     """
 
     to_entity_id: UUID
-    relation_type: str = Field(min_length=1, max_length=80)
+    relation_type: str
     note: str | None = None
 
 
@@ -155,10 +156,12 @@ class RelationPatch(BaseModel):
 
     The ends are immutable — moving an edge is delete plus create — so no
     field here could carry them. ``model_fields_set`` tells a carried
-    ``null`` note (cleared) from an absent one (untouched).
+    ``null`` note (cleared) from an absent one (untouched). The type carries
+    no schema bounds: a blank or over-long label is the service's coded
+    ``entity-invalid``, the create endpoint's own answer.
     """
 
-    relation_type: str | None = Field(default=None, min_length=1, max_length=80)
+    relation_type: str | None = None
     note: str | None = None
 
 

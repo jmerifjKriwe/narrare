@@ -211,9 +211,10 @@ export interface paths {
          * @description Create an entity by hand, with its relation lines, in one transaction.
          *
          *     Return the entity; raise HTTP 404 for an absent or unowned novel, or
-         *     HTTP 422 for an invalid name, type or label (``entity-invalid``), a
-         *     relation line outside the novel (``relation-target-invalid``, naming
-         *     the row), or a duplicate line (``relation-duplicate``).
+         *     HTTP 422 for an invalid name, type or label (``entity-invalid``), more
+         *     than twelve relation lines (``relation-limit``), a relation line outside
+         *     the novel (``relation-target-invalid``, naming the row), or a duplicate
+         *     line (``relation-duplicate``).
          */
         post: operations["create_entity_api_knowledge_entities_post"];
         delete?: never;
@@ -300,7 +301,8 @@ export interface paths {
          *
          *     Self-relations are allowed. Raise HTTP 404 when either end is absent
          *     or unowned or not of this novel, HTTP 422 for a blank or over-long
-         *     type, or HTTP 409 when this exact edge carries the type already.
+         *     type (``entity-invalid``, the create endpoint's own shape), or HTTP 409
+         *     when this exact edge carries the type already.
          */
         post: operations["add_relation_api_knowledge_entities__entity_id__relations_post"];
         delete?: never;
@@ -512,8 +514,9 @@ export interface paths {
          * @description Retype or re-note an edge; the ends are immutable.
          *
          *     Return the edge; raise HTTP 404 for an absent or unowned edge,
-         *     HTTP 422 for a blank or over-long type, or HTTP 409 when the new type
-         *     would duplicate the edge's sibling.
+         *     HTTP 422 for a blank or over-long type (``entity-invalid``, the create
+         *     endpoint's own shape), or HTTP 409 when the new type would duplicate the
+         *     edge's sibling.
          */
         patch: operations["update_relation_api_knowledge_relations__relation_id__patch"];
         trace?: never;
@@ -2839,8 +2842,9 @@ export interface components {
          *
          *     The type is free text on purpose (D7) — the suggested vocabulary is a
          *     UI autocomplete, not an API constraint; the service checks blankness
-         *     and length, the ends are taken from the path and this body and are
-         *     immutable afterwards.
+         *     and length, and the refusal is the coded ``entity-invalid`` the create
+         *     endpoint speaks, never the framework's field list. The ends are taken
+         *     from the path and this body and are immutable afterwards.
          */
         RelationCreate: {
             /** Note */
@@ -2880,7 +2884,9 @@ export interface components {
          *
          *     The ends are immutable — moving an edge is delete plus create — so no
          *     field here could carry them. ``model_fields_set`` tells a carried
-         *     ``null`` note (cleared) from an absent one (untouched).
+         *     ``null`` note (cleared) from an absent one (untouched). The type carries
+         *     no schema bounds: a blank or over-long label is the service's coded
+         *     ``entity-invalid``, the create endpoint's own answer.
          */
         RelationPatch: {
             /** Note */
