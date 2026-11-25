@@ -99,6 +99,19 @@ def _say(page: Page, text: str) -> None:
     page.get_by_test_id("entity-interview-send").click()
 
 
+def _resume(page: Page, entity_type: str) -> None:
+    """Pick the open interview of one type from the list — the type is what
+    tells two open rows apart while neither has a name. The type label is
+    matched exactly: «Fortsetzen» contains an «ort»."""
+    page.get_by_test_id("entity-interview-sessions").click()
+    listing = page.get_by_test_id("entity-interview-list")
+    row = listing.locator("div.flex.items-center.justify-between").filter(
+        has=page.get_by_text(entity_type, exact=True)
+    )
+    expect(row).to_have_count(1)
+    row.get_by_role("button", name="Fortsetzen").click()
+
+
 def test_the_interview_asks_and_collects(page: Page, installed: Stack) -> None:
     """The door opens on the chooser; «Objekt» fixes the type, the opening
     question fits it, and a key-value answer lands in the proposal."""
@@ -313,18 +326,6 @@ def test_returning_to_an_interview_whose_answer_is_out_keeps_it_busy(
         held.append(route)
         ready[index].set()
 
-    def _resume(entity_type: str) -> None:
-        """Pick the open interview of one type from the list — the type is
-        what tells the two open rows apart while neither has a name. The
-        type label is matched exactly: «Fortsetzen» contains an «ort»."""
-        page.get_by_test_id("entity-interview-sessions").click()
-        listing = page.get_by_test_id("entity-interview-list")
-        row = listing.locator("div.flex.items-center.justify-between").filter(
-            has=page.get_by_text(entity_type, exact=True)
-        )
-        expect(row).to_have_count(1)
-        row.get_by_role("button", name="Fortsetzen").click()
-
     page.route("**/api/chat/sessions/*/turns", _hold)
     try:
         _say(page, f"Name: {NAME}")
@@ -347,7 +348,7 @@ def test_returning_to_an_interview_whose_answer_is_out_keeps_it_busy(
 
         # Back in A before its answer lands: it is still thinking, whoever
         # was answered after it; its save door and end button wait too.
-        _resume("Objekt")
+        _resume(page, "Objekt")
         panel = page.get_by_test_id("entity-interview")
         expect(panel).to_contain_text("Der Assistent überlegt ...")
         expect(_composer(page)).to_be_disabled()
@@ -360,7 +361,7 @@ def test_returning_to_an_interview_whose_answer_is_out_keeps_it_busy(
         expect(_composer(page)).to_be_enabled()
 
         # A's settle leaves B alone: B's own answer is still out.
-        _resume("Ort")
+        _resume(page, "Ort")
         expect(page.get_by_test_id("entity-interview")).to_contain_text(
             "Der Assistent überlegt ..."
         )
@@ -369,6 +370,69 @@ def test_returning_to_an_interview_whose_answer_is_out_keeps_it_busy(
         held.pop(0).continue_()
         expect(page.get_by_test_id("entity-interview")).to_contain_text("Notiert.")
         expect(_composer(page)).to_be_enabled()
+    finally:
+        while held:
+            held.pop().continue_()
+        page.unroute_all(behavior="ignoreErrors")
+
+
+def test_a_failure_of_the_interview_the_writer_left_waits_there(
+    page: Page, installed: Stack
+) -> None:
+    """A turn that fails while another interview is shown keeps its face and
+    its words in the interview it was sent for: returning to it, the writer
+    finds the named failure, the text still in the composer and the retry —
+    and the interview that stood in between took nothing of it.
+
+    The refusal is the server's own: `unparseable` makes the real extraction
+    fail twice, so the release answers a real 502 — no fabricated body."""
+    novel_id = _seed_canon()
+    _open_interview(page, novel_id)
+    _start(page)
+
+    held: list[Route] = []
+    ready = threading.Event()
+
+    def _hold(route: Route) -> None:
+        held.append(route)
+        ready.set()
+
+    page.route("**/api/chat/sessions/*/turns", _hold)
+    try:
+        _say(page, "unparseable")
+        expect(page.get_by_test_id("entity-interview-transcript")).to_contain_text(
+            "Der Assistent überlegt ..."
+        )
+        assert ready.wait(timeout=10), "the turn never reached the route handler"
+
+        # A second interview while the first answer is still out.
+        page.get_by_test_id("entity-interview-sessions").click()
+        page.get_by_test_id("entity-interview-list").get_by_role(
+            "button", name="Neues Interview"
+        ).click()
+        _start(page, "location")
+
+        # The released turn fails for real while this interview is shown.
+        with page.expect_response(
+            lambda answer: answer.request.method == "POST" and "/turns" in answer.url
+        ) as answered:
+            held.pop(0).continue_()
+        assert answered.value.status == 502
+
+        # The refusal belongs to the interview that was answered, not to this.
+        expect(page.get_by_test_id("entity-interview")).not_to_contain_text(
+            "Die Antwort war nicht auswertbar."
+        )
+        expect(_composer(page)).to_be_enabled()
+
+        # Back in it: the face, the words, the retry.
+        _resume(page, "Objekt")
+        failure = page.get_by_test_id("entity-interview-failure")
+        expect(failure).to_contain_text(
+            "Die Antwort war nicht auswertbar. Dein Text ist noch im Eingabefeld."
+        )
+        expect(_composer(page)).to_have_value("unparseable")
+        expect(page.get_by_test_id("entity-interview-retry")).to_be_visible()
     finally:
         while held:
             held.pop().continue_()

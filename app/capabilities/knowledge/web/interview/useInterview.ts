@@ -1,15 +1,19 @@
 /**
  * The interview's controller (W9 Task 10): the session read, its list, the
- * three writes, the writer's composer text and the last failed turn. The
+ * three writes, and each interview's own conversation state — the writer's
+ * composer text, the last failed turn and the body its retry re-sends. The
  * component owns the chrome; this owns the conversation's state.
  *
- * The writer's text is never cleared when a turn starts — only when its own
- * answer landed — so a failed turn keeps it exactly as the wire's copy
- * promises, and «Erneut versuchen» re-sends the body that failed (the chips
- * included: their label is the turn's text, not what stands in the composer).
- * A closed session answers 409 and a missing one 404: the first becomes the
- * ended face through the invalidation the mutation settles with, the second
- * hands the panel back to the chooser.
+ * That state is keyed by the session, not by what is shown: a turn sent in A
+ * keeps its draft, its failure and its retry when the writer moves to B, and
+ * a failure that lands while B is shown is there on return — nothing of one
+ * interview ever shows in another. The writer's text is never cleared when a
+ * turn starts — only when its own answer landed — so a failed turn keeps it
+ * exactly as the wire's copy promises, and «Erneut versuchen» re-sends the
+ * body that failed (the chips included: their label is the turn's text, not
+ * what stands in the composer). A closed session answers 409 and a missing
+ * one 404: the first becomes the ended face through the invalidation the
+ * mutation settles with, the second hands the panel back to the chooser.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
@@ -24,6 +28,24 @@ import {
 } from "@shell/lib/query";
 
 import { interviewFace, isTurnFailure, type InterviewFailure } from "./interviewState";
+
+/** One interview's conversation state: the draft the writer has typed, the
+ *  last turn's named failure and the refused turn the retry re-sends — keyed
+ *  by the session, so nothing of one interview shows in another and a failure
+ *  that lands while another is shown is still there on return. */
+interface InterviewSlot {
+  text: string;
+  failure: InterviewFailure | null;
+  /** The refused turn's session beside its body, so a retry can never send
+   *  one interview's text through another. */
+  failed: { sessionId: string; body: AssistantTurnCreate } | null;
+}
+
+const EMPTY_SLOT: InterviewSlot = { text: "", failure: null, failed: null };
+
+function slotOf(slots: Record<string, InterviewSlot>, id: string | null): InterviewSlot {
+  return id === null ? EMPTY_SLOT : (slots[id] ?? EMPTY_SLOT);
+}
 
 export function useInterview({
   novelId,
@@ -48,9 +70,7 @@ export function useInterview({
   const turn = useAssistantTurn();
   const close = useCloseAssistantSession();
 
-  const [text, setText] = useState("");
-  const [failure, setFailure] = useState<InterviewFailure | null>(null);
-  const [failedBody, setFailedBody] = useState<AssistantTurnCreate | null>(null);
+  const [slots, setSlots] = useState<Record<string, InterviewSlot>>({});
   // The turns this controller sent, counted per session. TanStack Query's
   // mutation observer follows only the newest `mutate` call, so the hook's
   // `isPending`/`variables` cannot say whether the session now shown has an
@@ -58,6 +78,25 @@ export function useInterview({
   // A's own settle callbacks. The count is the controller's own, and every
   // turn settles on its own promise instead of on the observer.
   const [turnsInFlight, setTurnsInFlight] = useState<Record<string, number>>({});
+
+  /** One interview's slot, replaced wholesale so React sees a new object. */
+  const updateSlot = useCallback(
+    (id: string, update: (slot: InterviewSlot) => InterviewSlot) => {
+      setSlots((all) => ({ ...all, [id]: update(all[id] ?? EMPTY_SLOT) }));
+    },
+    [],
+  );
+
+  /** The interview now shown; the chooser has no slot to read. */
+  const shown = slotOf(slots, sessionId);
+
+  const setText = useCallback(
+    (value: string) => {
+      if (sessionId === null) return;
+      updateSlot(sessionId, (slot) => ({ ...slot, text: value }));
+    },
+    [sessionId, updateSlot],
+  );
 
   // The turn's callbacks are fixed when it starts, so they read the panel's
   // visibility and the session it was sent for through refs: a failure that
@@ -78,16 +117,6 @@ export function useInterview({
     // chooser has no session to read.
     if (visible && wasHidden && sessionId !== null) void session.refetch();
   }, [visible, sessionId, session.refetch]);
-
-  // A new session is a new conversation: no failure or text carries across.
-  // (The panel is remounted per session anyway; this keeps a same-component
-  // switch — a session row clicked from the list — equally clean.)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: sessionId is the deliberate reset trigger; the body only clears state.
-  useEffect(() => {
-    setFailure(null);
-    setFailedBody(null);
-    setText("");
-  }, [sessionId]);
 
   // A missing session goes back to the chooser, not to a dead panel — but only
   // once the panel is shown. The invalidating settle of the read's own family
@@ -116,8 +145,9 @@ export function useInterview({
     (body: AssistantTurnCreate) => {
       if (sessionId === null) return;
       const sentFor = sessionId;
-      setFailure(null);
-      setFailedBody(null);
+      const chip = body.act !== undefined && body.act !== null;
+      // Sending spends this interview's own failure; no other interview's.
+      updateSlot(sentFor, (slot) => ({ ...slot, failure: null, failed: null }));
       setTurnsInFlight((counts) => ({ ...counts, [sentFor]: (counts[sentFor] ?? 0) + 1 }));
       // `mutateAsync`'s promise settles for THIS turn, whoever was sent after
       // it; the per-call callbacks of `mutate` would stop firing once the
@@ -126,22 +156,22 @@ export function useInterview({
       void (async () => {
         try {
           await turn.mutateAsync({ sessionId: sentFor, body });
-          // A turn belongs to the session it was sent for: when the writer
-          // has moved on, A's answer changes nothing in B.
-          if (sentFor !== sessionIdRef.current) return;
-          // Only the composer's own answer leaves the composer; a chip sends
-          // its label, never what the writer had typed beside it.
-          if (body.act === undefined || body.act === null) setText("");
+          // The answer landed in the interview it was sent for, whoever is
+          // shown: its failure is spent, and a plain answer leaves its own
+          // composer. A chip's label was never the composer's text.
+          updateSlot(sentFor, (slot) => ({
+            ...slot,
+            failure: null,
+            failed: null,
+            text: chip ? slot.text : "",
+          }));
         } catch (error) {
-          // The same scope for the failure: A's error face, A's failed body
-          // and A's eventual retry stay out of B's conversation.
-          if (sentFor !== sessionIdRef.current) return;
           const wire = error as WireError;
           if (wire.code === "not-found") {
-            // A hidden turn's missing session is the read's own 404: the
-            // settle refetch finds it, and that effect waits for the panel
-            // to be shown rather than opening it behind the writer's back.
-            if (visibleRef.current) onNotFound();
+            // A missing session is the read's own 404: navigate only when it
+            // is the interview now shown and the panel is visible, so a turn
+            // never opens the chooser behind the writer's back.
+            if (sentFor === sessionIdRef.current && visibleRef.current) onNotFound();
             return;
           }
           // A 409 means the session ended elsewhere: the settle refetch
@@ -152,39 +182,52 @@ export function useInterview({
           // own face sends the writer to the suggestion that stands now —
           // the settle refetch already brings it back into the transcript.
           if (wire.code === "suggestion-mismatch") {
-            setFailure({ code: "suggestion-mismatch", detail: wire.detail });
+            updateSlot(sentFor, (slot) => ({
+              ...slot,
+              failure: { code: "suggestion-mismatch", detail: wire.detail },
+              failed: null,
+            }));
             return;
           }
-          const chip = body.act !== undefined && body.act !== null;
-          setFailure({
-            code: isTurnFailure(wire.code) ? (wire.code as string) : "provider-error",
-            detail: wire.detail,
-            // An unknown code keeps its name beside the generic copy.
-            cause: isTurnFailure(wire.code) ? undefined : wire.code,
-            chip,
-          });
-          setFailedBody(body);
-          // The failure face says the text is still in the composer. A
-          // switch cleared it, so the current session's failed plain answer
-          // puts its own text back; a chip's label was never the composer's,
-          // so a chip's failure says nothing about the field.
-          if (!chip) setText(body.text);
+          // A provider failure is this interview's too, whether or not it is
+          // shown: the writer finds it, and its retry, on return.
+          updateSlot(sentFor, (slot) => ({
+            ...slot,
+            failure: {
+              code: isTurnFailure(wire.code) ? (wire.code as string) : "provider-error",
+              detail: wire.detail,
+              // An unknown code keeps its name beside the generic copy.
+              cause: isTurnFailure(wire.code) ? undefined : wire.code,
+              chip,
+            },
+            failed: { sessionId: sentFor, body },
+            // The failure face says the text is still in the composer. A
+            // failed plain answer puts its own text back even when the writer
+            // had switched away and the composer had been emptied; a chip's
+            // label was never the composer's, so its failure says nothing
+            // about the field.
+            text: chip ? slot.text : body.text,
+          }));
         } finally {
           settleTurn(sentFor);
         }
       })();
     },
-    [onNotFound, sessionId, settleTurn, turn],
+    [onNotFound, sessionId, settleTurn, turn, updateSlot],
   );
 
   const sendText = useCallback(() => {
-    if (text.trim() === "") return;
-    send({ text });
-  }, [send, text]);
+    if (shown.text.trim() === "") return;
+    send({ text: shown.text });
+  }, [send, shown.text]);
 
   const retry = useCallback(() => {
-    if (failedBody !== null) send(failedBody);
-  }, [failedBody, send]);
+    // The refused body goes back to the interview it failed in — never to
+    // whichever interview happens to be shown.
+    const refused = shown.failed;
+    if (refused === null || refused.sessionId !== sessionId) return;
+    send(refused.body);
+  }, [send, sessionId, shown.failed]);
 
   const start = useCallback(
     (entityType: string) => {
@@ -217,7 +260,7 @@ export function useInterview({
     session: session.data ?? null,
     turns,
     pending,
-    failure,
+    failure: shown.failure,
   });
 
   return {
@@ -229,9 +272,9 @@ export function useInterview({
     session: session.data ?? null,
     sessions: sessions.data ?? [],
     sessionsPending: sessions.isPending,
-    text,
+    text: shown.text,
     setText,
-    failure,
+    failure: shown.failure,
     startFailed: open.isError,
     opening: open.isPending,
     send,

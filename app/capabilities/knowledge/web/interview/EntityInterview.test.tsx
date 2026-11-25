@@ -525,8 +525,11 @@ describe("the conversation outlives the panel's hide", () => {
     await waitFor(() => expect(composer().value).toBe("Ein Name für später."));
   });
 
-  it("switching sessions still resets the text and the failure", async () => {
+  it("each interview keeps its own draft and failure across a switch", async () => {
     detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    api.GET.mockImplementation(
+      readsById(sessionDetail({ id: SECOND_ID, entity_type: "location" })),
+    );
     api.POST.mockResolvedValueOnce({
       data: undefined,
       error: { detail: { code: "provider-error", detail: "offline" } },
@@ -535,14 +538,45 @@ describe("the conversation outlives the panel's hide", () => {
     const { show } = renderPanel();
     await readySession();
 
-    fireEvent.change(composer(), { target: { value: "Bleibt nicht." } });
+    fireEvent.change(composer(), { target: { value: "Bleibt hier." } });
     fireEvent.click(screen.getByTestId("entity-interview-send"));
     await screen.findByTestId("entity-interview-failure");
-    expect(composer().value).toBe("Bleibt nicht.");
+    expect(composer().value).toBe("Bleibt hier.");
 
-    show("s2");
-    await waitFor(() => expect(screen.queryByTestId("entity-interview-failure")).toBeNull());
-    await waitFor(() => expect(composer().value).toBe(""));
+    // The other interview starts clean: nothing of A's failure or text.
+    show(SECOND_ID);
+    await readySession();
+    expect(screen.queryByTestId("entity-interview-failure")).toBeNull();
+    expect(composer().value).toBe("");
+
+    // The first one still holds its own failure and the text it was sent with.
+    show(SESSION_ID);
+    await readySession();
+    await screen.findByTestId("entity-interview-failure");
+    expect(composer().value).toBe("Bleibt hier.");
+  });
+
+  it("an unsent draft is each interview's own across a switch", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    api.GET.mockImplementation(
+      readsById(sessionDetail({ id: SECOND_ID, entity_type: "location" })),
+    );
+    const { show } = renderPanel();
+    await readySession();
+    fireEvent.change(composer(), { target: { value: "Ein Name für später." } });
+
+    show(SECOND_ID);
+    await readySession();
+    expect(composer().value).toBe("");
+    fireEvent.change(composer(), { target: { value: "Für B." } });
+
+    show(SESSION_ID);
+    await readySession();
+    expect(composer().value).toBe("Ein Name für später.");
+
+    show(SECOND_ID);
+    await readySession();
+    expect(composer().value).toBe("Für B.");
   });
 
   it("a hidden session's 404 waits for the panel to be shown again", async () => {
@@ -651,6 +685,13 @@ describe("a turn belongs to the session it was sent for", () => {
 
     fireEvent.change(composer(), { target: { value: "Gehört zu B." } });
     const reads = sessionReads();
+    detail = sessionDetail({
+      proposal: proposal({ name: "Resonanz-Transponder LC-89" }),
+      turns: [
+        turn({ seq: 1, role: "user", text: "Es stammt aus dem Labor von Lin." }),
+        turn({ seq: 2, text: "Notiert." }),
+      ],
+    });
     release({ data: readback(), response: ok() });
     // The settle invalidates the family; B's own read is the anchor.
     await waitFor(() => expect(sessionReads()).toBeGreaterThan(reads));
@@ -658,6 +699,16 @@ describe("a turn belongs to the session it was sent for", () => {
     // A's answer is A's: it neither reaches B's transcript nor its composer.
     expect(composer().value).toBe("Gehört zu B.");
     expect(screen.getByTestId("entity-interview-transcript").textContent).not.toContain("Notiert.");
+
+    // The interview the writer left kept its own answer: its transcript holds
+    // the reply, its composer is empty and no failure stands.
+    show(SESSION_ID);
+    await readySession();
+    expect(composer().value).toBe("");
+    expect(screen.queryByTestId("entity-interview-failure")).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByTestId("entity-interview-transcript").textContent).toContain("Notiert."),
+    );
   });
 
   it("a failure of the interview the writer left shows no face here", async () => {
@@ -798,7 +849,7 @@ describe("a turn belongs to the session it was sent for", () => {
     expect(composerField().disabled).toBe(false);
   });
 
-  it("a failure of the interview the writer returned to keeps its face and its text", async () => {
+  it("a failure of the interview the writer left is there when they return", async () => {
     detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
     const second = secondSession();
     api.GET.mockImplementation(readsById(second));
@@ -815,21 +866,25 @@ describe("a turn belongs to the session it was sent for", () => {
     fireEvent.click(screen.getByTestId("entity-interview-send"));
     await screen.findByText(de["knowledge.interview.thinking"]);
 
+    // The writer moves on; B holds a draft of its own.
     show(SECOND_ID);
     await readySession();
     fireEvent.change(composer(), { target: { value: "Gehört zu B." } });
-    fireEvent.click(screen.getByTestId("entity-interview-send"));
-    await screen.findByText(de["knowledge.interview.thinking"]);
 
-    // A switch cleared the composer; A's own failure brings its text back,
-    // exactly as the failure face promises.
-    show(SESSION_ID);
-    await readySession();
+    // A fails while B is shown: nothing of it lands in B.
     releaseA({
       data: undefined,
       error: { detail: { code: "provider-error", detail: "offline" } },
       response: new Response(null, { status: 502 }),
     });
+    await waitFor(() => expect(composer().value).toBe("Gehört zu B."));
+    expect(screen.queryByTestId("entity-interview-failure")).toBeNull();
+    expect(screen.queryByTestId("entity-interview-retry")).toBeNull();
+
+    // Back in A: its own failure, its own text — the switch did not erase the
+    // turn that failed while the writer was away.
+    show(SESSION_ID);
+    await readySession();
     const failure = await screen.findByTestId("entity-interview-failure");
     expect(failure.textContent).toContain(de["knowledge.interview.failedProvider"]);
     expect(composer().value).toBe(sent);
