@@ -18,7 +18,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from app.api.main import app
-from app.capabilities.prompts.service import PromptService
+from app.capabilities.prompts.service import SUMMARY_MARKER_PREFIXES, PromptService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Novel
 from app.kernel.db.session import Session
@@ -176,8 +176,8 @@ async def test_the_list_shows_all_five_keys_with_their_facts() -> None:
     assert by_key[CONTINUATION]["bundled_summary"].startswith("Novel:")
 
 
-async def test_the_earlier_summaries_stay_the_interview_hides_its_marker() -> None:
-    """The four earlier cards keep their exact subtitle; the fifth drops ``PURPOSE:``."""
+async def test_every_card_hides_its_purpose_marker() -> None:
+    """One rule for every key: a summary starts at the first prose line, no marker."""
     async with _client() as client:
         listed = (await client.get("/api/prompts")).json()
 
@@ -191,15 +191,17 @@ async def test_the_earlier_summaries_stay_the_interview_hides_its_marker() -> No
         "the answer verbatim, and do not add kno"
     )
     assert by_key[EXTRACT] == (
-        "PURPOSE: extract-entities\n\nExtract the entities that appear in the chapter below. "
-        "For each one judge a type — character|"
+        "Extract the entities that appear in the chapter below. For each one judge a type — "
+        "character|location|faction|object|sys"
     )
     assert by_key[CONSISTENCY] == (
-        "PURPOSE: check-consistency\n\nRead the chapters below as one story and find where the "
-        "text contradicts itself: an age that"
+        "Read the chapters below as one story and find where the text contradicts itself: "
+        "an age that changes between chapters, a"
     )
     assert by_key[INTERVIEW].startswith("You are interviewing the writer")
-    assert "PURPOSE:" not in by_key[INTERVIEW]
+    for summary in by_key.values():
+        assert not summary.startswith(SUMMARY_MARKER_PREFIXES)
+        assert "PURPOSE:" not in summary
 
 
 async def test_deleting_the_global_tier_leaves_the_novel_row_in_place() -> None:

@@ -44,7 +44,6 @@ from app.kernel.contracts.models import Novel
 from app.kernel.embeddings.contract import EmbeddingProvider  # noqa: TC001  the live test's param
 from app.kernel.llm import (
     ASSISTANT_PREFIX,
-    PURPOSE_INTERVIEW,
     PURPOSE_PREFIX,
     RELATIONS_PREFIX,
     REQUEST_PREFIX,
@@ -494,8 +493,8 @@ def _claim_live_test_slot(user_id: UUID) -> float:
     return 0.0
 
 
-_SUMMARY_MARKER_PREFIXES: Final = (
-    f"{PURPOSE_PREFIX}{PURPOSE_INTERVIEW}",
+SUMMARY_MARKER_PREFIXES: Final = (
+    PURPOSE_PREFIX,
     SOURCE_PREFIX,
     TYPE_PREFIX,
     SLOTS_PREFIX,
@@ -506,12 +505,12 @@ _SUMMARY_MARKER_PREFIXES: Final = (
     USER_PREFIX,
     ASSISTANT_PREFIX,
 )
-"""The lines a list row's subtitle never shows: the interview purpose, the markers.
+"""The lines a list row's subtitle never shows: the purpose line and the markers.
 
-The four earlier prompts open with prose or with their own purpose line, and
-those summaries stay byte-identical; the interview's purpose line is a machine
-token ahead of the prose the card should read, so it is skipped with the
-section markers.
+One rule for every key: a machine token never reaches the card, whatever its
+purpose, so a card whose template opens with ``PURPOSE: <purpose>`` starts at
+its first prose line. The section markers are skipped too, so the prose after
+a ``TURNS:`` or ``ROSTER:`` header is read the same way.
 """
 
 
@@ -522,7 +521,5 @@ def _bundled_summary(spec: PromptSpec) -> str:
     does, and the cut stays at 120 characters.
     """
     rendered = render_source(spec.template, spec.sample_variables(), include=_bundled_include)
-    lines = [
-        line for line in rendered.splitlines() if not line.startswith(_SUMMARY_MARKER_PREFIXES)
-    ]
+    lines = [line for line in rendered.splitlines() if not line.startswith(SUMMARY_MARKER_PREFIXES)]
     return "\n".join(lines).strip()[:120]
