@@ -184,8 +184,8 @@ the client right after the create call answered 201.
 
 | Method | Path | What it does |
 |---|---|---|
-| POST | `/api/chat/sessions` | Open a session: `{mode, novel_id, entity_type?, target_id?}` → 201, the session read |
-| GET | `/api/chat/sessions?novel_id=` | List sessions for a novel, newest first |
+| POST | `/api/chat/sessions` | Open a session: `{mode, novel_id, entity_type?, target_id?}` → 201, the session read. `target_id`, when given, must be an entity of the same user in the same novel |
+| GET | `/api/chat/sessions?novel_id=` | List sessions for a novel: the open ones first, then the closed ones, newest first in each state, the newest 200 per state; a row carries the proposal's name, not the proposal |
 | GET | `/api/chat/sessions/{id}` | The session with its transcript |
 | POST | `/api/chat/sessions/{id}/turns` | `{text, act?}` → `{reply?, proposal?, suggestion?}` |
 | POST | `/api/chat/sessions/{id}/close` | Idempotent close → the session read |
@@ -251,12 +251,29 @@ steps and never holds a transaction across the call:
    client keeps the text in the composer. Retry is therefore not a second user
    turn: the failed attempt left no row.
 3. One transaction: the session row is locked, «closed» is checked again, both
-   turns are written with `seq` allocated under the lock, the session's proposal
-   is replaced, the audit rows of the calls are written.
+   turns are written with `seq` allocated under the lock, the model's changes
+   are merged into the proposal as it stands under the lock, the audit rows of
+   the calls are written.
+
+**The proposal is merged, not replaced.** The model's output is compared with
+the input it was given: what it changed is written — a list slot or a relation
+merges item by item, so the proposal keeps every item, gains the items the
+answer added, loses only an item the answer dropped that its input carried,
+and takes a value change in place — and what it left alone is taken from the
+proposal as it stands now. An item the answer only restates is neither added
+nor re-marked: whether it still exists is the locked proposal's to say. A slot
+the answer leaves out is untouched, one it gives empty (`""` or `null` for
+name and content, `[]` for aliases and tags; a `null` list counts as left out)
+is cleared, and a relation list the answer leaves out is untouched while a
+given list drops the relations it omits. A name or content given empty clears
+only when the answer's input carried a value; empty on both sides, it is
+untouched, and a value another turn saved meanwhile stands with its mark. The
+provenance rule reads the same comparison.
 
 Concurrent turns on one session (two tabs, a double submit) cannot interleave
-their rows: each allocates `seq` inside its own write transaction. The composer
-is disabled while a turn runs, so the case stays an edge, not a feature.
+their rows and cannot erase each other: each allocates `seq` inside its own
+write transaction, and each merges only its own changes. The composer is
+disabled while a turn runs, so the case stays an edge, not a feature.
 
 Model output, per turn:
 `{"reply": str, "slots": {"name"?, "aliases"?, "tags"?, "content"?},
@@ -272,16 +289,25 @@ at most 200 characters, labels deduplicated case-insensitively; relation types
 non-blank, at most 80 characters; targets at most 200; at most 12 relations and
 10,000 characters of content. A string over its limit is cut to the limit and
 a list over its cap keeps its first entries — the dialog shows the stored
-value, so nothing changes silently; blank entries are dropped, and a name that
-would be blank is not stored at all.
+value, so nothing changes silently; a blank entry inside a list is dropped,
+and a name the answer gives blank is stored as no name — the cleared slot of
+the merge rule above — never as an empty string. Every string that becomes a slot or a
+relation is reduced to one line before it is stored, and a turn's text is
+reduced to one line when it is rendered into the prompt: the JSON the prompt
+renders with `ensure_ascii=False` lets three line-separator characters through,
+and a stored slot or relation must not contain one.
 
 **Provenance is the server's.** Every part of the proposal is either the
 writer's own or suggested: `{"slots": {...}, "relations": [...], "suggested":
 {"tags": [...], "content": true, ...}, ...}` records which. The rule is
 mechanical: a part that is new after `fill-all` is suggested; a part that is new
 or changed after any other turn is the writer's own; a part that is unchanged
-keeps what it was. A per-question suggestion is not part of the proposal until
-the writer takes it over — then it lands as her own answer.
+keeps what it was. A list slot carries its provenance per item: after `fill-all`
+only the items the model added are suggested and the writer's items keep their
+mark, while a name or content the model changed is suggested under `fill-all`
+and the writer's own under any other act. A per-question suggestion is not part
+of the proposal until the writer takes it over — then it lands as her own
+answer.
 
 **`ready` is not the model's to decide.** The interface enables «Als Entität
 speichern» once the proposal holds a name (the type is always there), which is a
@@ -310,7 +336,9 @@ turn (oldest first), `ROSTER:` followed by one `name (type; aliases)` line per
 entity, and `REQUEST: <act>`. `request` is the act's name — `answer` on a plain
 turn, `accept-suggestion`, `no-idea`, `fill-all` — and the template explains in
 prose what each one asks of the model. The fake provider reads these lines and
-nothing else; that is how it tells an interview from any other prompt.
+nothing else; that is how it tells an interview from any other prompt. Every
+turn is exactly one line (`single_line`), so a writer's text can never forge a
+marker line.
 
 **Type tracks.** The template carries one block of question areas per entity
 type — a figure is asked other things than a place, an object or an event — and
@@ -405,9 +433,13 @@ kernel gains one and both capabilities call it.
 | Extraction unparseable twice | 502 `extraction-failed`; nothing was written, the composer keeps the text, «erneut versuchen» re-sends it |
 | No serving tier for `chat.ask` | 502 `provider-unavailable`, with the cascade's reason; «KI-Regeln öffnen» beside it |
 | The provider call fails or times out | 502 `provider-error`, the error class named; the composer keeps the text |
+| The interview prompt refuses to render (an override that no longer renders) | 502 `prompt-refused`, the render error as the detail |
 | Session closed | 409 `session-closed` |
 | Foreign or absent session | 404, identical |
+| A `target_id` that is absent, another user's or another novel's | 404 `not-found`, identical for all three; no session is written |
 | Unknown mode, missing or unknown type | 422, `mode-unknown`, `entity-type-required`, `entity-type-unknown` |
+| An `accept-suggestion` text that is neither empty nor the pending suggestion's | 422 `suggestion-mismatch`; the server stores the suggestion's own text |
+| The pending suggestion changed while an `accept-suggestion` answer was prepared | 422 `suggestion-mismatch`; nothing is written — only the suggestion the writer accepted is ever settled |
 | A relation line names an entity outside the novel | 422 `relation-target-invalid`, naming the row; nothing is written |
 | Proposal conflicts with a duplicate name | Not an error: the roster hint already flagged it; the create dialog shows a notice and saves |
 

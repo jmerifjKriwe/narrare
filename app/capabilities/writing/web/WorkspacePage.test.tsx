@@ -1206,8 +1206,10 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     // The workspace chrome's room is gone — the zen surface owns the desk.
     expect(screen.queryByTestId("workspace-ribbon")).toBeNull();
     expect(screen.queryByTestId("workspace-running-head")).toBeNull();
-    // The scene's own prose stands centered, the overline real.
-    const box = screen.getByRole("textbox", { name: PROSE });
+    // The scene's own prose stands centered, the overline real. The editor
+    // mounts asynchronously, so wait for its box instead of assuming it
+    // landed in the same commit as the zen surface.
+    const box = await screen.findByRole("textbox", { name: PROSE });
     await waitFor(() => expect(box.textContent).toContain("Ich kalibrierte die Sensoren."));
     expect(screen.getByText("Forschungsstation 7 · 27. Oktober 2094, 03:14 UTC")).toBeTruthy();
     // Today's words are the aggregate's own (412), the session starts at 0.
@@ -1313,7 +1315,9 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.promptBar.continue"] }));
     expect(await screen.findByTestId("ghost-preview")).toBeTruthy();
     await enterZen();
-    const box = screen.getByRole("textbox", { name: PROSE });
+    // The prose editor mounts asynchronously under the zen surface: wait for
+    // its box instead of racing the commit that renders EXIT.
+    const box = await screen.findByRole("textbox", { name: PROSE });
     fireEvent.keyDown(box, { key: "Tab" });
     await waitFor(() => expect(screen.queryByTestId("ghost-preview")).toBeNull());
     expect(box.textContent).toContain("Der Nebel hob sich.");
@@ -1343,7 +1347,9 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
         body: { body: expect.stringContaining("Mehr Text.") },
       }),
     );
-    const box = screen.getByRole("textbox", { name: PROSE });
+    // The prose editor mounts asynchronously under the zen surface: wait for
+    // its box instead of racing the commit that rendered the room.
+    const box = await screen.findByRole("textbox", { name: PROSE });
     await waitFor(() => expect(box.textContent).toContain("Mehr Text."));
   });
 
@@ -1362,7 +1368,9 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
         body: { body: expect.stringContaining("Noch ein Satz.") },
       }),
     );
-    const box = screen.getByRole("textbox", { name: PROSE });
+    // The desk returns asynchronously after the exit: wait for the prose box
+    // instead of racing the commit that renders the workspace.
+    const box = await screen.findByRole("textbox", { name: PROSE });
     await waitFor(() => expect(box.textContent).toContain("Noch ein Satz."));
   });
 
@@ -1377,6 +1385,10 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     // The guard owns the room — the failed write asks before anything leaves.
     expect(await screen.findByRole("alertdialog")).toBeTruthy();
     // Esc belongs to the guard first (the page defers): stay, zen stands.
+    // The guard's keyboard listener lands with its mount effect; wait for the
+    // safe answer to take focus before sending the Escape that asks it.
+    const stay = screen.getByRole("button", { name: de["writing.workspace.guard.stay"] });
+    await waitFor(() => expect(document.activeElement).toBe(stay));
     fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(screen.getByRole("button", { name: EXIT })).toBeTruthy();
@@ -1394,7 +1406,8 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.guard.discard"] }));
     expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
     // The discarded words never reached the wire — the cache's truth stands.
-    const box = screen.getByRole("textbox", { name: PROSE });
+    // The desk's editor mounts asynchronously after the exit, so await it.
+    const box = await screen.findByRole("textbox", { name: PROSE });
     await waitFor(() => expect(box.textContent).toContain("Ich kalibrierte die Sensoren."));
     expect(box.textContent).not.toContain("Words.");
     // The discard exit returns the desk's focus (the healthy exit's own
@@ -1491,7 +1504,9 @@ describe("the zen swap window (the Codacy fix) — the transition locks the live
     // The swap lands: the room stands on the saved words, its editor live,
     // the pending flag lifted (the exit chip wears its resting face).
     expect(await screen.findByRole("button", { name: EXIT })).toBeTruthy();
-    const zenBox = screen.getByRole("textbox", { name: PROSE });
+    // The entry swap lands on a freshly mounted room: wait for its prose box
+    // instead of racing the commit that rendered EXIT.
+    const zenBox = await screen.findByRole("textbox", { name: PROSE });
     await waitFor(() => expect(zenBox.getAttribute("contenteditable")).toBe("true"));
     expect(zenBox.textContent).toContain("Mehr Text.");
     expect(zenBox.textContent).not.toContain("Fensterwort.");
@@ -1523,7 +1538,9 @@ describe("the zen swap window (the Codacy fix) — the transition locks the live
     gate.release();
     // The desk returns on the saved words, its editor live, the door resting.
     expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
-    const deskBox = screen.getByRole("textbox", { name: PROSE });
+    // The exit swap lands on a freshly mounted desk: wait for its prose box
+    // instead of racing the commit that rendered the ribbon.
+    const deskBox = await screen.findByRole("textbox", { name: PROSE });
     await waitFor(() => expect(deskBox.getAttribute("contenteditable")).toBe("true"));
     expect(deskBox.textContent).toContain("Noch ein Satz.");
     expect(deskBox.textContent).not.toContain("Fensterwort.");

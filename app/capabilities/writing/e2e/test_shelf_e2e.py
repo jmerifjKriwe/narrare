@@ -974,24 +974,46 @@ def test_the_chrome_frames_the_shelf(page: Page, installed: Stack) -> None:
 
     # The language chip is the real switcher (D17): the choice PATCHes the
     # row, the whole chrome and shelf speak it, and the row is the record.
+    # The heading flips from the bundled catalog at once, so the row assert
+    # must wait for the write itself, not for a re-read the UI never makes.
     topbar.get_by_role("button", name=re.compile("Sprache")).click()
-    page.get_by_role("menu", name="Sprache").get_by_role(
-        "menuitemradio", name=re.compile("English")
-    ).click()
+    with page.expect_response(
+        lambda response: (
+            response.url.endswith("/api/settings") and response.request.method == "PATCH"
+        )
+    ) as locale_write:
+        page.get_by_role("menu", name="Sprache").get_by_role(
+            "menuitemradio", name=re.compile("English")
+        ).click()
+    assert locale_write.value.ok
     expect(page.get_by_role("heading", name="The Bookshelf")).to_be_visible()
     expect(rail.get_by_role("link", name="Bookshelf")).to_be_visible()
     assert _rows("SELECT locale FROM users") == [("en",)]
     # And back through the same chip — one contract, every face.
     topbar.get_by_role("button", name=re.compile("Language")).click()
-    page.get_by_role("menu", name="Language").get_by_role(
-        "menuitemradio", name=re.compile("Deutsch")
-    ).click()
+    with page.expect_response(
+        lambda response: (
+            response.url.endswith("/api/settings") and response.request.method == "PATCH"
+        )
+    ) as locale_write_back:
+        page.get_by_role("menu", name="Language").get_by_role(
+            "menuitemradio", name=re.compile("Deutsch")
+        ).click()
+    assert locale_write_back.value.ok
     expect(page.get_by_role("heading", name=SHELF_TITLE)).to_be_visible()
     assert _rows("SELECT locale FROM users") == [("de",)]
 
     # The theme toggle: the first step leaves the system for light, applied
-    # at once and stored on the row — the document and the row agree.
-    aside.get_by_role("button", name=re.compile("Erscheinungsbild")).click()
+    # at once and stored on the row — the document and the row agree. The
+    # painting is optimistic, so the row's assert waits for the PATCH's own
+    # response instead of racing it on a slow runner.
+    with page.expect_response(
+        lambda response: (
+            response.url.endswith("/api/settings/theme") and response.request.method == "PATCH"
+        )
+    ) as theme_write:
+        aside.get_by_role("button", name=re.compile("Erscheinungsbild")).click()
+    assert theme_write.value.ok
     expect(page.locator("html")).to_have_attribute("data-theme", "light")
     assert _rows("SELECT theme FROM users") == [("light",)]
 

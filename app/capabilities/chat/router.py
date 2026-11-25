@@ -9,11 +9,26 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.capabilities.chat.schemas import ChatRequest, EmbeddingMismatchRead
+from app.capabilities.chat.interviews import (
+    InterviewRefusalError,
+    InterviewService,
+)
+from app.capabilities.chat.schemas import (
+    ChatRequest,
+    EmbeddingMismatchRead,
+    SessionCreate,
+    SessionDetail,
+    SessionList,
+    SessionRead,
+    SessionSummary,
+    TurnCreate,
+    TurnReadback,
+)
 from app.capabilities.chat.service import ChatService
 from app.kernel.auth import current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
+from app.kernel.errors import coded_detail
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
@@ -44,6 +59,19 @@ def _service(session: SessionDep, user_id: UserDep, embeddings: EmbeddingsDep) -
 
 
 ServiceDep = Annotated[ChatService, Depends(_service)]
+
+
+def _interview_service(session: SessionDep, user_id: UserDep) -> InterviewService:
+    """Build the interview service with the request session and its owner."""
+    return InterviewService(session, user_id)
+
+
+InterviewServiceDep = Annotated[InterviewService, Depends(_interview_service)]
+
+
+def _refusal(error: InterviewRefusalError) -> HTTPException:
+    """The coded refusal: a code the surfaces localize and its sentence."""
+    return HTTPException(status_code=error.status, detail=coded_detail(error.code, str(error)))
 
 
 async def _events(
@@ -147,3 +175,57 @@ async def ask(
         media_type="text/event-stream",
         headers=SSE_HEADERS,
     )
+
+
+@router.post("/sessions", status_code=201, response_model=SessionRead)
+async def open_session(payload: SessionCreate, service: InterviewServiceDep) -> SessionRead:
+    """Open an interview: mode, type, novel and any target decide; a coded 404 or 422."""
+    try:
+        session = await service.open_session(payload)
+    except InterviewRefusalError as error:
+        raise _refusal(error) from None
+    return SessionRead.model_validate(session)
+
+
+@router.get("/sessions", response_model=SessionList)
+async def list_sessions(novel_id: UUID, service: InterviewServiceDep) -> SessionList:
+    """The novel's interviews for this user, open first then closed, newest first per state.
+
+    Up to ``SESSION_LIST_LIMIT`` per state.
+    """
+    try:
+        sessions = await service.list_sessions(novel_id)
+    except InterviewRefusalError as error:
+        raise _refusal(error) from None
+    return SessionList(items=[SessionSummary.model_validate(session) for session in sessions])
+
+
+@router.get("/sessions/{session_id}", response_model=SessionDetail)
+async def read_session(session_id: UUID, service: InterviewServiceDep) -> SessionDetail:
+    """The session with its transcript, up to ``TRANSCRIPT_READ_LIMIT`` turns, oldest first."""
+    try:
+        session = await service.read_session(session_id)
+    except InterviewRefusalError as error:
+        raise _refusal(error) from None
+    return SessionDetail.model_validate(session)
+
+
+@router.post("/sessions/{session_id}/turns", response_model=TurnReadback)
+async def take_turn(
+    session_id: UUID, payload: TurnCreate, service: InterviewServiceDep
+) -> TurnReadback:
+    """Take one turn; the refusal names why nothing (or only the marks) moved."""
+    try:
+        return await service.take_turn(session_id, payload)
+    except InterviewRefusalError as error:
+        raise _refusal(error) from None
+
+
+@router.post("/sessions/{session_id}/close", response_model=SessionRead)
+async def close_session(session_id: UUID, service: InterviewServiceDep) -> SessionRead:
+    """End the interview; closing an already closed session answers it unchanged."""
+    try:
+        session = await service.close_session(session_id)
+    except InterviewRefusalError as error:
+        raise _refusal(error) from None
+    return SessionRead.model_validate(session)

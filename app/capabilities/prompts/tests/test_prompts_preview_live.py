@@ -51,6 +51,7 @@ CONTINUATION = "writing.continuation"
 CHAT = "chat.ask"
 EXTRACT = "knowledge.extract-entities"
 CONSISTENCY = "knowledge.check-consistency"
+INTERVIEW = "knowledge.entity-interview"
 
 SAMPLE_TAIL = "Der Nebel kam von See."
 # The writing sample factory's tail — what a SAMPLE-scope render would carry.
@@ -100,6 +101,22 @@ async def _entity(novel_id: UUID, name: str, type_: str) -> None:
     async with Session() as session:
         session.add(
             Entity(user_id=LOCAL_USER_ID, novel_id=novel_id, name=name, type=type_, content="")
+        )
+        await session.commit()
+
+
+async def _entities(novel_id: UUID, count: int) -> None:
+    """``count`` roster rows in one commit, name-ordered and distinct."""
+    async with Session() as session:
+        session.add_all(
+            Entity(
+                user_id=LOCAL_USER_ID,
+                novel_id=novel_id,
+                name=f"Entity {index:03d}",
+                type="character",
+                content="",
+            )
+            for index in range(count)
         )
         await session.commit()
 
@@ -400,6 +417,61 @@ async def test_the_chat_live_test_retrieves_real_passages() -> None:
     assert row["task_key"] == CHAT
     assert PASSAGE in row["prompt_text"]
     assert "Wo war der Leuchtturm?" in row["prompt_text"]
+
+
+async def test_interview_live_test_resolves_and_audits_chat_ask() -> None:
+    """The fifth key rides chat.ask but audits under its own prompt key.
+
+    The resolution follows ``spec.task_key``; the audit names the task the
+    call rode and the prompt that produced it — ``chat.ask`` and
+    ``knowledge.entity-interview`` — and the facts name the sample type, its
+    two turns and the novel's real roster. The sample's own heading stands:
+    only the roster is the user's, per the spec.
+    """
+    novel_id = await _novel("Die Reisende")
+    await _entity(novel_id, "Mira", "character")
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/prompts/{INTERVIEW}/live-test", json={"novel_id": str(novel_id)}
+        )
+        assert response.status_code == 200, response.text
+
+    frames = _frames(response.text)
+    facts = frames[0]["context"]["facts"]
+    assert facts["type"] == "character"
+    assert facts["turns"] == "2"
+    assert facts["roster"] == "1"
+
+    [row] = await _audit_rows()
+    assert row["task_key"] == CHAT
+    assert row["prompt_key"] == INTERVIEW
+    assert "PURPOSE: entity-interview" in row["prompt_text"]
+    assert "Mira (character; none)" in row["prompt_text"]
+    assert 'novel "Der Nebel" in the genre Mystery' in row["prompt_text"]
+    assert '"reply"' in row["response_text"]
+
+
+async def test_the_interview_live_roster_is_cut_at_the_turn_bound() -> None:
+    """At 201 entities the live test shows the same 200 plus the cut line as a turn."""
+    novel_id = await _novel("Die Reisende")
+    await _entities(novel_id, 201)
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/prompts/{INTERVIEW}/live-test", json={"novel_id": str(novel_id)}
+        )
+        assert response.status_code == 200, response.text
+
+    frames = _frames(response.text)
+    assert frames[0]["context"]["facts"]["roster"] == "200"
+    [row] = await _audit_rows()
+    lines = row["prompt_text"].splitlines()
+    start = lines.index("ROSTER:") + 1
+    end = next(index for index in range(start, len(lines)) if lines[index].startswith("REQUEST:"))
+    assert len(lines[start:end]) == 201
+    assert lines[start] == "Entity 000 (character; none)"
+    assert lines[end - 1] == "(more entities exist; they are not listed)"
 
 
 async def test_the_knowledge_live_tests_assemble_the_latest_chapters() -> None:

@@ -31,9 +31,8 @@ from app.capabilities.knowledge.repository import (
 from app.kernel.contracts.models import ENTITY_TYPES, Chapter, Novel, Scene
 from app.kernel.llm.audit import record_call
 from app.kernel.llm.resolution import resolve_provider
+from app.kernel.llm.structured import AuditedCall, MalformedAnswerError, ask_structured
 from app.kernel.prompts import render
-
-from .structured import AuditedCall, MalformedAnswerError, ask_structured
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

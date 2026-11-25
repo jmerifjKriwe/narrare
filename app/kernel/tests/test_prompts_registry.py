@@ -64,6 +64,18 @@ def test_register_defaults() -> None:
     spec = registry.spec("toy.bare")
     assert spec.contract is None
     assert spec.novel_scopable is True
+    assert spec.task_key == "toy.bare"
+
+
+def test_register_keeps_an_explicit_task_key() -> None:
+    """A key may ride another task's assignment without renaming itself."""
+    registry = PromptRegistry()
+    registry.register(
+        "toy.interview", template="x", sample_variables=lambda: {}, task_key="toy.ask"
+    )
+    spec = registry.spec("toy.interview")
+    assert spec.key == "toy.interview"
+    assert spec.task_key == "toy.ask"
 
 
 def test_keys_preserve_entry_order() -> None:

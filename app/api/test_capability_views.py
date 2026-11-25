@@ -146,22 +146,37 @@ def test_ui_rows_are_exactly_the_web_owning_capabilities() -> None:
     rows = ui_facts(loaded_facts, ROOT)
     assert {row.id for row in rows} == set(web_ids(ROOT))
     for capability in rows:
+        assert capability.title is not None
         assert capability.title in loaded[SOURCE_LOCALE]
 
 
-def _facts_tree(tmp_path: Path, *, title: str, owns_web: bool) -> Path:
-    """A miniature repo: one capability, one locale, the facts' title as given."""
-    catalog = {key: key for key in REQUIRED_DOC_KEYS}
+def _facts_tree(
+    tmp_path: Path,
+    *,
+    title: str | None,
+    owns_web: bool,
+    fields: str = "path: /demo\nneeds: []\nnav: true",
+    catalog_keys: tuple[str, ...] = (),
+) -> Path:
+    """A miniature repo: one capability, one locale, the facts' title as given.
+
+    `fields` is the yaml below the id and title, so a test can leave a field
+    out; `catalog_keys` are extra words the locale already resolves, for a
+    web-owning capability whose title must. A `None` title writes no title
+    line at all — the shape a capability without ``web/`` may use.
+    """
+    catalog = {key: key for key in REQUIRED_DOC_KEYS + catalog_keys}
     (tmp_path / "i18n").mkdir()
     (tmp_path / "i18n" / "en.json").write_text(
         json.dumps(dict(sorted(catalog.items()))), encoding="utf-8"
     )
     folder = tmp_path / "app" / "capabilities" / "demo"
     folder.mkdir(parents=True)
-    (folder / "capability.yaml").write_text(
-        f"id: demo\ntitle: {title}\npath: /demo\nneeds: []\nnav: true\n",
-        encoding="utf-8",
-    )
+    lines = ["id: demo"]
+    if title is not None:
+        lines.append(f"title: {title}")
+    lines.append(fields)
+    (folder / "capability.yaml").write_text("\n".join(lines) + "\n", encoding="utf-8")
     if owns_web:
         (folder / "web").mkdir()
     return tmp_path
@@ -179,6 +194,30 @@ def test_a_web_owning_capability_with_a_typoed_title_stops_generation(tmp_path: 
         facts(root, known, loaded)
 
 
+def test_a_web_owning_capability_without_a_title_stops_generation(tmp_path: Path) -> None:
+    # A capability that owns web/ renders a nav row and an INDEX row, both
+    # keyed by its title; no key means no words, so generation stops naming
+    # the file instead of writing a row that renders blank.
+    root = _facts_tree(tmp_path, title=None, owns_web=True)
+    known = locales(root)
+    loaded = catalogs(root, known)
+    with pytest.raises(SystemExit, match="must declare a title key"):
+        facts(root, known, loaded)
+
+
+def test_a_web_less_capability_needs_only_its_id_and_needs(tmp_path: Path) -> None:
+    # No UI row reads a title for a capability without web/, so the field is
+    # absent rather than validated: chat's shape, and the registry keeps it.
+    root = _facts_tree(tmp_path, title=None, owns_web=False, fields="needs: []")
+    known = locales(root)
+    loaded = catalogs(root, known)
+    entries = facts(root, known, loaded)
+    assert [(entry.id, entry.title, entry.path, entry.nav) for entry in entries] == [
+        ("demo", None, None, False)
+    ]
+    assert ui_facts(entries, root) == ()
+
+
 def test_a_capability_without_web_keeps_facts_the_catalog_does_not_resolve(
     tmp_path: Path,
 ) -> None:
@@ -191,6 +230,47 @@ def test_a_capability_without_web_keeps_facts_the_catalog_does_not_resolve(
     entries = facts(root, known, loaded)
     assert [entry.id for entry in entries] == ["demo"]
     assert ui_facts(entries, root) == ()
+
+
+@pytest.mark.parametrize(
+    "fields",
+    ["needs: []", 'path: ""\nneeds: []'],
+    ids=["absent", "empty"],
+)
+def test_a_capability_with_neither_path_nor_nav_still_generates(
+    tmp_path: Path, fields: str
+) -> None:
+    # Chat states sessions and endpoints but owns no screen: its panel lives
+    # on another capability's page, so a route path and a nav entry would
+    # promise a surface that does not exist. facts() reads the absent field
+    # and the empty one alike as no path, and the absent nav as false.
+    root = _facts_tree(tmp_path, title="demo.gone", owns_web=False, fields=fields)
+    known = locales(root)
+    loaded = catalogs(root, known)
+    entries = facts(root, known, loaded)
+    assert [(entry.id, entry.path, entry.nav) for entry in entries] == [("demo", None, False)]
+
+
+def test_an_absent_path_never_reaches_a_view_as_none(tmp_path: Path) -> None:
+    # The home page navigates by path and the INDEX prints one per row: a
+    # nav flag alone cannot carry a nav row, so the entry is skipped rather
+    # than rendered at the string "None"; the INDEX has a dash for the path
+    # it does not have.
+    root = _facts_tree(
+        tmp_path,
+        title="demo.heading",
+        owns_web=True,
+        fields="needs: []\nnav: true",
+        catalog_keys=("demo.heading",),
+    )
+    known = locales(root)
+    loaded = catalogs(root, known)
+    entries = facts(root, known, loaded)
+    assert [(entry.id, entry.path, entry.nav) for entry in entries] == [("demo", None, True)]
+    assert 'id: "demo"' not in typescript_nav(entries)
+    index = docs_index(entries, known, loaded, root)
+    assert "| demo.heading | — | ✓ | — |" in index
+    assert "None" not in index
 
 
 def test_two_docks_at_one_path_stop_the_scan_naming_both_capabilities() -> None:

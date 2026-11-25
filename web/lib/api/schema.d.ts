@@ -24,6 +24,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chat/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Sessions
+         * @description The novel's interviews for this user, open first then closed, newest first per state.
+         *
+         *     Up to ``SESSION_LIST_LIMIT`` per state.
+         */
+        get: operations["list_sessions_api_chat_sessions_get"];
+        put?: never;
+        /**
+         * Open Session
+         * @description Open an interview: mode, type, novel and any target decide; a coded 404 or 422.
+         */
+        post: operations["open_session_api_chat_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Session
+         * @description The session with its transcript, up to ``TRANSCRIPT_READ_LIMIT`` turns, oldest first.
+         */
+        get: operations["read_session_api_chat_sessions__session_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat/sessions/{session_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close Session
+         * @description End the interview; closing an already closed session answers it unchanged.
+         */
+        post: operations["close_session_api_chat_sessions__session_id__close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat/sessions/{session_id}/turns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Take Turn
+         * @description Take one turn; the refusal names why nothing (or only the marks) moved.
+         */
+        post: operations["take_turn_api_chat_sessions__session_id__turns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -2588,6 +2674,51 @@ export interface components {
             value: string;
         };
         /**
+         * Proposal
+         * @description The dialog's draft: the slot set, its marks and the proposed relations.
+         */
+        Proposal: {
+            /** Aliases */
+            aliases?: string[];
+            /**
+             * Content
+             * @default
+             */
+            content: string;
+            /** Name */
+            name?: string | null;
+            /**
+             * Name Suggested
+             * @default false
+             */
+            name_suggested: boolean;
+            /** Relations */
+            relations?: components["schemas"]["ProposedRelation"][];
+            suggested?: components["schemas"]["SuggestedParts"];
+            /** Tags */
+            tags?: string[];
+        };
+        /**
+         * ProposedRelation
+         * @description One proposed relation, with the provenance the server decided.
+         */
+        ProposedRelation: {
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /**
+             * Suggested
+             * @default false
+             */
+            suggested: boolean;
+            /** Target */
+            target: string;
+            /** Type */
+            type: string;
+        };
+        /**
          * ProposedRelationRead
          * @description One proposed relation as review reads it: the target's name and the type.
          *
@@ -3041,6 +3172,144 @@ export interface components {
             /** Title */
             title: string;
         };
+        /**
+         * SessionCreate
+         * @description The door's request: one novel, one mode, and the type the panel fixed.
+         */
+        SessionCreate: {
+            /** Entity Type */
+            entity_type?: string | null;
+            /** Mode */
+            mode: string;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            /** Target Id */
+            target_id?: string | null;
+        };
+        /**
+         * SessionDetail
+         * @description The session with its transcript, up to the read limit, oldest first.
+         */
+        SessionDetail: {
+            /** Closed At */
+            closed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Entity Type */
+            entity_type: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mode */
+            mode: string;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            proposal: components["schemas"]["Proposal"] | null;
+            /** Target Id */
+            target_id: string | null;
+            /** Turns */
+            turns: components["schemas"]["TurnRead"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * SessionList
+         * @description The novel's interviews: open first, then closed, newest first in each state.
+         *
+         *     Up to ``SESSION_LIST_LIMIT`` in each state.
+         */
+        SessionList: {
+            /** Items */
+            items: components["schemas"]["SessionSummary"][];
+        };
+        /**
+         * SessionRead
+         * @description One interview as every read shows it.
+         */
+        SessionRead: {
+            /** Closed At */
+            closed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Entity Type */
+            entity_type: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mode */
+            mode: string;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            proposal: components["schemas"]["Proposal"] | null;
+            /** Target Id */
+            target_id: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * SessionSummary
+         * @description One row of the novel's session list: identity, type and the draft's name.
+         *
+         *     The list renders a header and a state per session, so it carries no
+         *     proposal — opening the session reads the transcript and the draft.
+         */
+        SessionSummary: {
+            /** Closed At */
+            closed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Entity Type */
+            entity_type: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mode */
+            mode: string;
+            /** Name */
+            name: string | null;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            /** Target Id */
+            target_id: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** SettingsRead */
         SettingsRead: {
             /** Author Name */
@@ -3210,6 +3479,23 @@ export interface components {
             /** To */
             to: number;
         };
+        /**
+         * SuggestedParts
+         * @description Which slot values the model proposed rather than the writer.
+         *
+         *     A list slot carries its provenance per item: the values that are suggested.
+         */
+        SuggestedParts: {
+            /** Aliases */
+            aliases?: string[];
+            /**
+             * Content
+             * @default false
+             */
+            content: boolean;
+            /** Tags */
+            tags?: string[];
+        };
         /** SuggestionRead */
         SuggestionRead: {
             /**
@@ -3372,6 +3658,55 @@ export interface components {
             title?: string | null;
         };
         /**
+         * TurnCreate
+         * @description One writer turn: what the panel sent, and the choice it named.
+         *
+         *     ``text`` may be empty only for ``accept-suggestion``: there the server
+         *     stores the settled suggestion's own text, never the client's words.
+         */
+        TurnCreate: {
+            /** Act */
+            act?: ("accept-suggestion" | "no-idea" | "fill-all" | "reject-suggestion" | "drop-suggestions") | null;
+            /** Text */
+            text: string;
+        };
+        /**
+         * TurnRead
+         * @description One transcript line and its suggestion state.
+         */
+        TurnRead: {
+            /** Act */
+            act: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Role */
+            role: string;
+            /** Seq */
+            seq: number;
+            /** Suggestion */
+            suggestion: string | null;
+            /** Suggestion State */
+            suggestion_state: string | null;
+            /** Text */
+            text: string;
+        };
+        /**
+         * TurnReadback
+         * @description What one turn answered: the reply, the merged proposal, the suggestion.
+         */
+        TurnReadback: {
+            proposal: components["schemas"]["Proposal"] | null;
+            /** Reply */
+            reply: string | null;
+            /** Seq */
+            seq: number;
+            /** Suggestion */
+            suggestion: string | null;
+        };
+        /**
          * ValidationBody
          * @description The framework's own 422 body, mirrored for the union beside the
          *     refusal — FastAPI builds its schema from a dict, so nothing imports.
@@ -3528,6 +3863,167 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmbeddingMismatchRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sessions_api_chat_sessions_get: {
+        parameters: {
+            query: {
+                novel_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    open_session_api_chat_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_session_api_chat_sessions__session_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_session_api_chat_sessions__session_id__close_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    take_turn_api_chat_sessions__session_id__turns_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TurnCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnReadback"];
                 };
             };
             /** @description Validation Error */

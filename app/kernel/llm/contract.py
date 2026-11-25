@@ -7,6 +7,7 @@ missing model, a refused credential — are what a refusal a user can act on
 becomes; every other endpoint failure propagates unclassified.
 """
 
+import re
 from collections.abc import AsyncIterator  # noqa: TC003
 from dataclasses import dataclass
 from typing import Protocol
@@ -24,6 +25,67 @@ derives the answer that purpose contracts; a real provider reads it as part
 of the instruction. A kernel constant for the same reason the source marker
 is: prompt builders and providers must agree on it and live in different
 trees."""
+
+PURPOSE_INTERVIEW = "entity-interview"
+"""The interview prompt's purpose: a turn-based conversation that proposes an entity.
+
+The template declares it, the interview's contract requires it, and the fake
+dispatches on it — the one line that tells an interview from any other prompt.
+"""
+
+TYPE_PREFIX = "TYPE: "
+SLOTS_PREFIX = "SLOTS: "
+RELATIONS_PREFIX = "RELATIONS: "
+TURNS_PREFIX = "TURNS:"
+ROSTER_PREFIX = "ROSTER:"
+REQUEST_PREFIX = "REQUEST: "
+USER_PREFIX = "USER: "
+ASSISTANT_PREFIX = "ASSISTANT: "
+"""The interview's machine markers: the kernel-fed variables on their own lines.
+
+The template renders each variable behind its marker, the interview's contract
+requires every prefix in a saved re-voice, and the fake reads exactly these
+lines — ``SLOTS:`` and ``RELATIONS:`` carry JSON, ``TURNS:`` and ``ROSTER:``
+head one line per turn or entity, and ``REQUEST:`` names the writer's act. They
+live beside ``PURPOSE_PREFIX`` and ``SOURCE_PREFIX`` because the template, the
+contract check and the fake all read them.
+"""
+
+INTERVIEW_MARKERS: tuple[str, ...] = (
+    TYPE_PREFIX,
+    SLOTS_PREFIX,
+    RELATIONS_PREFIX,
+    TURNS_PREFIX,
+    ROSTER_PREFIX,
+    REQUEST_PREFIX,
+)
+"""The marker prefixes every interview render must carry, in the template's order."""
+
+_LINE_BREAK_RUN = re.compile(r"[\r\n\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029]+")
+"""Every run of characters ``str.splitlines()`` treats as a line boundary.
+
+The set is the documented one, not a guess: line feed, carriage return, line
+tabulation (``\\v``), form feed (``\\f``), file/group/record separator, next
+line, line separator and paragraph separator. Checked against the interpreter
+itself — every other code point leaves ``str.splitlines()`` with one line.
+"""
+
+
+def single_line(text: str) -> str:
+    """One turn as exactly one line: every run of breaks becomes a space, ends stripped.
+
+    The interview's rendering invariant. A turn is rendered as its ``USER:`` or
+    ``ASSISTANT:`` prefix plus this function's result, so a writer's text can
+    never begin a line — and a line that looks like a machine marker is then
+    always the template's own, whatever its order.
+
+    Collapses exactly what ``str.splitlines()`` treats as a line boundary —
+    ``\\n``, ``\\r``, ``\\r\\n``, ``\\v`` (``\\x0b``), ``\\f`` (``\\x0c``),
+    ``\\x1c``, ``\\x1d``, ``\\x1e``, ``\\x85``, ``\\u2028`` and ``\\u2029`` —
+    because the fake reads the prompt with ``splitlines()``. Ordinary spaces and
+    tabs stay untouched, and the ends are stripped.
+    """
+    return _LINE_BREAK_RUN.sub(" ", text).strip()
 
 
 @dataclass(frozen=True)

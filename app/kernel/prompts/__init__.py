@@ -5,7 +5,7 @@ spec — key, Jinja template, sample-variable factory, contract, novel scope —
 the sandboxed render (:mod:`app.kernel.prompts.rendering`) turns a source into
 text, refusing every failure by name, and :func:`render` walks the effective
 chain (novel row → user-global row → bundled) to pick that source, includes
-following. Later work docks the four bundled prompts and the user-facing
+following. Later work docks the five bundled prompts and the user-facing
 overrides onto this; nothing else enters here.
 """
 

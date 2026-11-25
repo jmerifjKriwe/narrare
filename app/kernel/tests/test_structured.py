@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from app.capabilities.knowledge.structured import (
+from app.kernel.llm.contract import Delta, Usage
+from app.kernel.llm.structured import (
     AuditedCall,
     MalformedAnswerError,
     ask_structured,
 )
-from app.kernel.llm.contract import Delta, Usage
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -70,6 +70,45 @@ def _audit_into(calls: list[AuditedCall]):
         calls.append(call)
 
     return audit
+
+
+async def test_ask_structured_returns_an_object() -> None:
+    provider = StubProvider(['{"reply": "ok"}'])
+    calls: list[AuditedCall] = []
+
+    assert await ask_structured(
+        provider,
+        "prompt",
+        schema={"type": "object"},
+        parse=loads,
+        audit=_audit_into(calls),
+    ) == {"reply": "ok"}
+
+    assert len(provider.requests) == 1
+    assert provider.requests[0].response_schema == {"type": "object"}
+    assert len(calls) == 1
+
+
+async def test_ask_structured_returns_none_when_the_answer_is_null() -> None:
+    # None is a legitimate parse result, not the failure signal: one call, one
+    # audit, nothing retried.
+    provider = StubProvider(["null"])
+    calls: list[AuditedCall] = []
+
+    assert (
+        await ask_structured(
+            provider,
+            "prompt",
+            schema={"type": "null"},
+            parse=loads,
+            audit=_audit_into(calls),
+        )
+        is None
+    )
+
+    assert len(provider.requests) == 1
+    assert provider.requests[0].response_schema == {"type": "null"}
+    assert len(calls) == 1
 
 
 async def test_a_valid_answer_parses_with_one_call_and_one_audit() -> None:

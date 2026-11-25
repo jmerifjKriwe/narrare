@@ -104,9 +104,15 @@ class PromptSpec:
     draft-or-chain source against them. ``None`` until a capability docks
     it — the prompts surface's live test refuses a key without one, a
     registration gap the smoke suite names.
+
+    ``task_key`` is the assignment cascade key the prompt's calls ride. It
+    equals the prompt key unless a capability registers a prompt that rides
+    another task's assignment — the interview is a chat and rides
+    ``chat.ask`` while keeping its own editable key.
     """
 
     key: str
+    task_key: str
     template: str
     sample_variables: Callable[[], dict[str, object]]
     contract: Callable[[str], bool] | None = None
@@ -150,12 +156,19 @@ class PromptRegistry:
         contract: Callable[[str], bool] | None = None,
         novel_scopable: bool = True,
         assemble: Callable[[LiveTestContext], Awaitable[AssembledContext]] | None = None,
+        task_key: str | None = None,
     ) -> None:
-        """Register the bundled template under ``key``; a duplicate key is refused."""
+        """Register the bundled template under ``key``; a duplicate key is refused.
+
+        ``task_key`` defaults to the prompt key itself: the four bundled keys
+        predating the seam ride their own task, and only a prompt registered
+        with an explicit task (the interview's ``chat.ask``) differs.
+        """
         if key in self._specs:
             raise ValueError(f"prompt key '{key}' is already registered")
         self._specs[key] = PromptSpec(
             key=key,
+            task_key=task_key or key,
             template=template,
             sample_variables=sample_variables,
             contract=contract,

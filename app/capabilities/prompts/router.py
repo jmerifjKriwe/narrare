@@ -332,7 +332,7 @@ async def live_test_prompt(
         prepared.resolved,
         request,
         user_id=user_id,
-        task_key=prepared.key,
+        task_key=prepared.task_key,
         novel_id=prepared.novel_id,
         prompt_key=prepared.key,
     )

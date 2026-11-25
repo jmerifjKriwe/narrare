@@ -2368,6 +2368,87 @@
         "title": "PromptVariableProvenance",
         "type": "object"
       },
+      "Proposal": {
+        "description": "The dialog's draft: the slot set, its marks and the proposed relations.",
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "name_suggested": {
+            "default": false,
+            "title": "Name Suggested",
+            "type": "boolean"
+          },
+          "relations": {
+            "items": {
+              "$ref": "#/components/schemas/ProposedRelation"
+            },
+            "title": "Relations",
+            "type": "array"
+          },
+          "suggested": {
+            "$ref": "#/components/schemas/SuggestedParts"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "title": "Proposal",
+        "type": "object"
+      },
+      "ProposedRelation": {
+        "description": "One proposed relation, with the provenance the server decided.",
+        "properties": {
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "suggested": {
+            "default": false,
+            "title": "Suggested",
+            "type": "boolean"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target",
+          "type"
+        ],
+        "title": "ProposedRelation",
+        "type": "object"
+      },
       "ProposedRelationRead": {
         "description": "One proposed relation as review reads it: the target's name and the type.\n\nThe stored proposals speak the extraction answer's keys (``target``,\n``type``); the read shape names them target_name and relation_type, and\nboth spellings validate.",
         "properties": {
@@ -3278,6 +3359,336 @@
         "title": "SeriesRead",
         "type": "object"
       },
+      "SessionCreate": {
+        "description": "The door's request: one novel, one mode, and the type the panel fixed.",
+        "properties": {
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          }
+        },
+        "required": [
+          "mode",
+          "novel_id"
+        ],
+        "title": "SessionCreate",
+        "type": "object"
+      },
+      "SessionDetail": {
+        "description": "The session with its transcript, up to the read limit, oldest first.",
+        "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Proposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "turns": {
+            "items": {
+              "$ref": "#/components/schemas/TurnRead"
+            },
+            "title": "Turns",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "novel_id",
+          "mode",
+          "entity_type",
+          "target_id",
+          "proposal",
+          "closed_at",
+          "created_at",
+          "updated_at",
+          "turns"
+        ],
+        "title": "SessionDetail",
+        "type": "object"
+      },
+      "SessionList": {
+        "description": "The novel's interviews: open first, then closed, newest first in each state.\n\nUp to ``SESSION_LIST_LIMIT`` in each state.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SessionSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SessionList",
+        "type": "object"
+      },
+      "SessionRead": {
+        "description": "One interview as every read shows it.",
+        "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Proposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "novel_id",
+          "mode",
+          "entity_type",
+          "target_id",
+          "proposal",
+          "closed_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SessionRead",
+        "type": "object"
+      },
+      "SessionSummary": {
+        "description": "One row of the novel's session list: identity, type and the draft's name.\n\nThe list renders a header and a state per session, so it carries no\nproposal — opening the session reads the transcript and the draft.",
+        "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "novel_id",
+          "mode",
+          "entity_type",
+          "target_id",
+          "name",
+          "closed_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SessionSummary",
+        "type": "object"
+      },
       "SettingsRead": {
         "properties": {
           "author_name": {
@@ -3782,6 +4193,32 @@
         "title": "StoryboardStageRead",
         "type": "object"
       },
+      "SuggestedParts": {
+        "description": "Which slot values the model proposed rather than the writer.\n\nA list slot carries its provenance per item: the values that are suggested.",
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "content": {
+            "default": false,
+            "title": "Content",
+            "type": "boolean"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "title": "SuggestedParts",
+        "type": "object"
+      },
       "SuggestionRead": {
         "properties": {
           "chapter_id": {
@@ -4120,6 +4557,154 @@
         "title": "TimelineEventUpdate",
         "type": "object"
       },
+      "TurnCreate": {
+        "description": "One writer turn: what the panel sent, and the choice it named.\n\n``text`` may be empty only for ``accept-suggestion``: there the server\nstores the settled suggestion's own text, never the client's words.",
+        "properties": {
+          "act": {
+            "anyOf": [
+              {
+                "enum": [
+                  "accept-suggestion",
+                  "no-idea",
+                  "fill-all",
+                  "reject-suggestion",
+                  "drop-suggestions"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Act"
+          },
+          "text": {
+            "maxLength": 4000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "TurnCreate",
+        "type": "object"
+      },
+      "TurnRead": {
+        "description": "One transcript line and its suggestion state.",
+        "properties": {
+          "act": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Act"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          },
+          "suggestion_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion State"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "role",
+          "text",
+          "act",
+          "suggestion",
+          "suggestion_state",
+          "created_at"
+        ],
+        "title": "TurnRead",
+        "type": "object"
+      },
+      "TurnReadback": {
+        "description": "What one turn answered: the reply, the merged proposal, the suggestion.",
+        "properties": {
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Proposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reply": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          }
+        },
+        "required": [
+          "reply",
+          "proposal",
+          "suggestion",
+          "seq"
+        ],
+        "title": "TurnReadback",
+        "type": "object"
+      },
       "ValidationBody": {
         "description": "The framework's own 422 body, mirrored for the union beside the\nrefusal — FastAPI builds its schema from a dict, so nothing imports.",
         "properties": {
@@ -4427,6 +5012,232 @@
           }
         },
         "summary": "Ask",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/chat/sessions": {
+      "get": {
+        "description": "The novel's interviews for this user, open first then closed, newest first per state.\n\nUp to ``SESSION_LIST_LIMIT`` per state.",
+        "operationId": "list_sessions_api_chat_sessions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Sessions",
+        "tags": [
+          "chat"
+        ]
+      },
+      "post": {
+        "description": "Open an interview: mode, type, novel and any target decide; a coded 404 or 422.",
+        "operationId": "open_session_api_chat_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Open Session",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/chat/sessions/{session_id}": {
+      "get": {
+        "description": "The session with its transcript, up to ``TRANSCRIPT_READ_LIMIT`` turns, oldest first.",
+        "operationId": "read_session_api_chat_sessions__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Session",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/chat/sessions/{session_id}/close": {
+      "post": {
+        "description": "End the interview; closing an already closed session answers it unchanged.",
+        "operationId": "close_session_api_chat_sessions__session_id__close_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Close Session",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/chat/sessions/{session_id}/turns": {
+      "post": {
+        "description": "Take one turn; the refusal names why nothing (or only the marks) moved.",
+        "operationId": "take_turn_api_chat_sessions__session_id__turns_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TurnCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnReadback"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Take Turn",
         "tags": [
           "chat"
         ]
