@@ -214,12 +214,6 @@ async def test_more_than_twelve_relation_lines_is_the_coded_relation_limit() -> 
         assert await _entity_count(client, novel.id) == before
 
 
-def test_the_create_path_reads_the_kernel_bound() -> None:
-    """The name the create refuses by is the kernel's own object, not a copy
-    nested into the service — the direction rule 1 allows."""
-    assert knowledge_service.MAX_RELATIONS is MAX_RELATIONS
-
-
 async def test_the_create_endpoint_reads_the_kernel_bound(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
