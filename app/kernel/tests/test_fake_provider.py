@@ -486,6 +486,22 @@ async def test_the_sections_answer_the_same_in_either_order(act: str) -> None:
     assert reordered["reply"] == ("Alles vorgeschlagen." if act == "fill-all" else "Notiert.")
 
 
+async def test_a_reordered_frame_still_reads_the_turns_body() -> None:
+    """The turns body stays load-bearing when the roster stands first.
+
+    The equality test above already carries ``name`` in the slots, so a reader
+    that found no turns body at all would answer the same JSON. Here the empty
+    slots make the writer's ``USER:`` line the only source of the name, and
+    only a read of the reordered turns body can put it into the answer.
+    """
+    answered = json.loads(
+        await _answer(_interview_prompt(user="Name: Jona", slots={}, roster_first=True))
+    )
+
+    assert answered["slots"] == {"name": "Jona"}
+    assert answered["reply"] == "Notiert."
+
+
 async def test_a_reordered_frame_still_reads_a_roster_entry_named_like_the_request() -> None:
     """#967 under the other legal order: the act is the template's, not the name."""
     answered = json.loads(
