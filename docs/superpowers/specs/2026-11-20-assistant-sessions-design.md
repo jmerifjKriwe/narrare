@@ -174,7 +174,7 @@ answer. No retention job in cut 1.
 hides it; the door reopens the newest open session and offers «Neues Interview»
 beside it. Hiding keeps the conversation's state: the host component owns it,
 so a turn in flight keeps running and a panel reopened during it shows the
-thinking state with the composer closed; a turn that fails while hidden keeps
+thinking state with the composer disabled; a turn that fails while hidden keeps
 its face and its text for the reopening; an unsent draft survives the hide.
 Several sessions may be open at once — the list shows them — and
 ending one is explicit and irreversible: the transcript becomes read-only, the

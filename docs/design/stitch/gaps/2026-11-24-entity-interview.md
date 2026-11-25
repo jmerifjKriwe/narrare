@@ -18,8 +18,14 @@
 > `entity-interview`, `entity-interview-states`, `entity-interview-dark`,
 > `entity-interview-states-dark`, `entity-create-dialog` and
 > `entity-create-dialog-dark` (brief:
-> `docs/superpowers/specs/2026-11-24-entity-interview-stitch-brief.md`). Light
-> drafts win; the dark faces ride the shell's token ladder. The gap contract
+> `docs/superpowers/specs/2026-11-24-entity-interview-stitch-brief.md`). Rows 1–8
+> do not come from these six screens: they record the chrome of the superseded
+> Genesis draft
+> ([`entity-genesis-ai-dialog.html`](../screens/knowledge/entity-genesis-ai-dialog.html),
+> marked «überholt durch `entity-interview`» in the
+> [`README.md`](../README.md)), which the 2026-11-24 round did not draw; their
+> «Drafted» column quotes that draft. Light drafts win; the dark faces ride the
+> shell's token ladder. The gap contract
 > is the W9 design's owner rulings (2026-11-24: relations are rows, the type
 > is fixed once the interview starts) and the Stitch round's owner checkpoint
 > (2026-11-24, passed without a note): the round ported as committed, no
@@ -59,7 +65,8 @@ flicker.
 ## The gap list
 
 „Drafted" is what the round authority draws (or, for the rows the wave
-decided itself, what a complete surface would ask). „Shipped in W9" is the
+decided itself, what a complete surface would ask; rows 1–8 quote the
+superseded Genesis draft, which the round did not draw). „Shipped in W9" is the
 interim the wave commits to. „Trigger" is the surface, field or decision that
 must exist before the interim can become the drafted value. „Wave/issue"
 names the owner of the trigger and the row's child under the wave's index.
@@ -77,23 +84,24 @@ names the owner of the trigger and the row's child under the wave's index.
 | 9 | The states sheet's head label | „Narrare — Dokumentation & Referenz" above the app chrome | not copied — sheet chrome, not app chrome; the panel's header reads „Neue Entität" and the session's type | a corrected draft whose head is app chrome | draft gap · no issue |
 | 10 | The states sheet's count word | „Sitzungen" as the list's count word, where the product says „Interviews" | the list is titled „Interviews" and its count says „1 Interview"/„2 Interviews" („1 entretien"/„2 entretiens"); a row's state reads „offen" or „beendet" | — (fixed in-wave: the catalog pass counts interviews) | resolved · no issue |
 | 11 | The dialog sheet's copy | the button „Speichern"; the line „Toast-Meldung schließt automatisch" | „Entität speichern" (the catalog's word); the toast closes itself after six seconds, pauses while the pointer rests on it or a control inside it has focus, and carries a named close button — the surface shows the behaviour instead of promising it | a corrected draft that draws the real button and drops the toast line | draft gap · no issue |
-| 12 | The dialog sheet's variant B | the word „Fixiert" set beside the type as if it were a value, and a type name cut off in row 1's select | the locked type is a chip with the lock glyph and the catalog's type word, the badge beside it the catalog's „Fixiert"; no name is truncated — the field grows and the row wraps | a corrected draft that draws the locked chip and truncates nothing | draft gap · no issue |
+| 12 | The dialog sheet's variant B | the word „Fixiert" set beside the type as if it were a value, and a type name cut off in row 1's select | the locked type is a chip with the lock glyph and the catalog's type word, the badge beside it the catalog's „Fixiert"; the port never truncates a name | a corrected draft that draws the locked chip and truncates nothing | draft gap · no issue |
 | 13 | The dialog sheet's dark variant | dimmed entity cards behind the dialogs („Subraum-Relaisnetz") | not copied — backdrop decoration, not app chrome; the dark face rides the shell's token ladder with a plain scrim | a corrected dark draft without the backdrop cards | draft gap · no issue |
 | 14 | The type tiles' icons | icon names the app does not carry | the port maps every type through `TYPE_ICONS` (`app/capabilities/knowledge/web/entityTypes.ts`), so a tile's glyph is the app's own | a corrected draft that draws the app's icon set | draft gap · no issue |
 | 15 | The type chooser's first state | the states tile draws „Objekt" selected, and the panel header a type chip in every state | nothing is preselected — no type is the default, so „Interview starten" waits for a pick — and the header chip appears once a session exists | an owner call preselecting a type | owner decision · no issue |
 | 16 | The no-model face's actions | one action („KI-Regeln öffnen") | both „KI-Regeln öffnen" and „Erneut versuchen", each real: the first opens the AI-Regeln page, the second re-sends the turn | a corrected draft or an owner call dropping one | owner decision · no issue |
 | 17 | Failure faces the reference does not draw | none — the states sheet draws the not-evaluable and the no-model faces | three honest faces for codes the wire answers with: `provider-error`, `prompt-refused` (with the door to `/settings/prompts`) and `suggestion-mismatch` (its own face, no retry — retrying would send a stale body); an unknown code shows the generic face with its code | a corrected states reference drawing them | draft gap · no issue |
 | 18 | The create dialog's hardening beyond the approved screen | the approved screen, without the edges PR 1's review found | PR 1's parked findings, fixed in PR 3's first round: the add control stops at twelve relations with a note; every coded refusal has a catalog sentence, and a relation code marks the visible row it names; duplicate rows are flagged before the save; the toast pauses while read and closes on demand; the sibling relation routes answer the create endpoint's coded 422 | — (fixed in-wave) | resolved · no issue |
-| 19 | The panel's hidden state | the spec's „Closing the panel only hides it" | the conversation's state outlives the hide (a host component owns it): reopened during a turn, the panel shows that it is thinking with the composer closed; a turn that fails keeps its face and the text; an unsent draft survives; a turn acts only on the interview it was sent for; the shown interview is busy while its own turn is in flight, whoever was sent after it; and the draft, a failure and its refused body are kept per interview, so a failure that lands while another is shown is there — with its text and its retry — when the writer returns | — (fixed in-wave) | resolved · no issue |
-| 20 | The save door between a turn's settle and the session's refetch | — | for one read's duration the save door is open while the cache still holds the previous proposal; the writer saves the proposal on screen. Ruled no action: widening `busy` would flicker the composer after every answer | a report of a save that missed the last answer | no action recorded · no issue |
-| 21 | Two closes in flight on different interviews | — | the close's busy and failed flags read the latest close sent, so a close of A still in flight after the writer ended B leaves A's end button enabled (the server's close is idempotent — a second click is harmless) and its failure unreported. Ruled no action: the window is one request's flight time; the fix is the turn's per-session count | a report or a browser leg showing it | no action recorded · no issue |
-| 22 | Resolution against a list that failed to load | — | a roster that is still loading withholds the outcome and the save; a roster whose read failed is settled-empty, so proposed rows read „Kein Treffer — zuordnen oder streichen" beside the note that unassigned relations are not created (the manual dialog's long-standing exposure) | an error face for the roster's read | later wave · no issue |
-| 23 | An invalid `act` on a turn | — | the framework's own 422, not a coded refusal — the panel's chips send only the five defined acts | chat gaining client-chosen acts beyond the five | chat wave · no issue |
+| 19 | The panel's hidden state | the spec's „Closing the panel only hides it" | the conversation's state outlives the hide (a host component owns it): reopened during a turn, the panel shows that it is thinking with the composer disabled; a turn that fails keeps its face and the text; an unsent draft survives; a turn acts only on the interview it was sent for; the shown interview is busy while its own turn is in flight, whoever was sent after it; and the draft, a failure and its refused body are kept per interview, so a failure that lands while another is shown is there — with its text and its retry — when the writer returns | — (fixed in-wave) | resolved · no issue |
+| 20 | The save door between a turn's settle and the session's refetch | undrafted — no face draws the moment between an answer and its refetch | for one read's duration the save door is open while the cache still holds the previous proposal; the writer saves the proposal on screen. Ruled no action: widening `busy` would flicker the composer after every answer | a report of a save that missed the last answer | no action recorded · no issue |
+| 21 | Two closes in flight on different interviews | undrafted — no face draws two closes at once | the close's busy and failed flags read the latest close sent, so a close of A still in flight after the writer ended B leaves A's end button enabled (the server's close is idempotent — a second click is harmless) and its failure unreported. Ruled no action: the window is one request's flight time; the fix is the turn's per-session count | a report or a browser leg showing it | no action recorded · no issue |
+| 22 | Resolution against a list that failed to load | undrafted — no face draws the roster's failed read | a roster that is still loading withholds the outcome and the save; a roster whose read failed is settled-empty, so proposed rows read „Kein Treffer — zuordnen oder streichen" beside the note that unassigned relations are not created (the manual dialog's long-standing exposure) | an error face for the roster's read | later wave · no issue |
+| 23 | An invalid `act` on a turn | undrafted — the wire's contract, not a face | the framework's own 422, not a coded refusal — the panel's chips send only the five defined acts | chat gaining client-chosen acts beyond the five | chat wave · no issue |
 | 24 | The interviews list's bound | an unbounded list | `SESSION_LIST_LIMIT` (200) per state, open sessions first, newest first in each; the door opens row one | a novel with more than 200 open interviews | later wave · no issue |
 | 25 | A turn in flight cannot be cancelled | none — the reference draws no cancel | a turn runs to its end; the panel may be hidden meanwhile and the answer lands anyway; nothing reaches the novel without the author's save | the streaming cut (the free chat) or an owner call | later wave · no issue |
 | 26 | The expanded proposal's height | a short proposal — the reference draws no bound on one | the card is bounded at 35% of the panel and its body scrolls with keyboard access, so a long description and twelve relations leave the collapse control, the composer, the save door and the end button in view and the transcript with a share | a corrected draft that draws a long proposal and its bound | draft gap · no issue |
 | 27 | The suggested name's mark in the create dialog | the approved dialog screen marks the tag, the description and a relation row with „vorgeschlagen" — not the name | `entityPrefillFromProposal` drops `proposal.name_suggested`, so the dialog shows the name without the mark the proposal card gives it | an owner call to mark the name too, or a corrected draft that draws it | owner decision · no issue |
 | 28 | `field` on the create's wire refusal | a refusal names the row or field it points at, and the dialog marks it | `row` is consumed — the dialog flags the visible relation row the refusal names; `field` is carried with no field marked by it, and only the refusal's sentence names what to check | a field-level marking of the named field in the create dialog | later wave · no issue |
+| 29 | The composer in the thinking state | the states sheet draws the composer at the foot, every control disabled, with «Warten auf Antwort …»; the spec's lifecycle sentence called it «closed» | the port matches the sheet — the composer stays at the foot with every control disabled and the waiting line in its field — and the spec's word is corrected in the same commit | — (fixed in-wave: the spec now names what the sheet and the port draw) | resolved · no issue |
 
 ## Resolved this wave (recorded so nobody re-opens them as gaps)
 
@@ -141,9 +149,9 @@ names the owner of the trigger and the row's child under the wave's index.
 ## Handovers
 
 - **The W5 ledger's row 1** (the create-entity door, child #914): resolved
-  with W9 — the door is live since #956 (`38e1e58a4`); both subbars open the
-  create dialog, and from the graph also the interview's door (PR #974);
-  #914 closed with PR 1. The W5 ledger
+  with W9 — the door is live since #956 (`38e1e58a4`); both subbars lead to the
+  create dialog — the dossiers' directly, the graph's through the interview's
+  door (PR #974); #914 closed with PR 1. The W5 ledger
   ([`2026-11-19-knowledge.md`](2026-11-19-knowledge.md)) marks the row in the
   same commit that opens this ledger.
 - **The W8 ledger's rows**: none resolves with W9 — the settings and prompts
