@@ -12,11 +12,13 @@ import type { Entity } from "@shell/lib/api/client";
 import {
   MAX_RELATIONS,
   REFUSAL_CODES,
+  RELATION_ROW_CODES,
   buildEntityCreateBody,
   duplicateRelationRows,
   findDuplicateName,
   keptRelationRows,
   refusalCatalogKey,
+  refusalNamesRelationRow,
   relationRowOutcome,
   resolveRelationTarget,
   visibleRowForSentIndex,
@@ -191,6 +193,24 @@ describe("refusalCatalogKey", () => {
     expect(refusalCatalogKey("transport")).toBeNull();
     expect(refusalCatalogKey("something-else")).toBeNull();
     expect(refusalCatalogKey(undefined)).toBeNull();
+  });
+});
+
+describe("refusalNamesRelationRow", () => {
+  it("names the three row-carrying codes and nothing else", () => {
+    expect([...RELATION_ROW_CODES].sort()).toEqual([
+      "relation-duplicate",
+      "relation-limit",
+      "relation-target-invalid",
+    ]);
+    for (const code of RELATION_ROW_CODES) {
+      expect(refusalNamesRelationRow(code)).toBe(true);
+    }
+    // `entity-invalid` marks a form field; transport and unknown codes no row.
+    expect(refusalNamesRelationRow("entity-invalid")).toBe(false);
+    expect(refusalNamesRelationRow("not-found")).toBe(false);
+    expect(refusalNamesRelationRow("transport")).toBe(false);
+    expect(refusalNamesRelationRow(undefined)).toBe(false);
   });
 });
 

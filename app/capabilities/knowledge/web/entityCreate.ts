@@ -15,8 +15,10 @@ import type { Entity, EntityCreate } from "@shell/lib/api/client";
 /** The POST body the create hook carries; the generated contract is the truth. */
 export type EntityCreateBody = EntityCreate;
 
-/** The server's own bound (the spec's «at most 12 relations»), mirrored so
- *  the dialog disables its add control before the refusal can be met. */
+/** The server's own bound — `MAX_RELATIONS` in
+ *  `app/kernel/contracts/knowledge.py` (the spec's «at most 12 relations»),
+ *  shared by the create endpoint and the interview — mirrored so the dialog
+ *  disables its add control before the refusal can be met. */
 export const MAX_RELATIONS = 12;
 
 /** One relation row while the dialog edits it: the typed target, its label,
@@ -175,6 +177,19 @@ export const REFUSAL_CODES = [
 ] as const;
 
 export type RefusalCode = (typeof REFUSAL_CODES)[number];
+
+/** The refusal codes whose `row` names a line of the sent relation list; the
+ *  other codes carry no row (or none the dialog could mark). */
+export const RELATION_ROW_CODES: ReadonlySet<string> = new Set<RefusalCode>([
+  "relation-target-invalid",
+  "relation-duplicate",
+  "relation-limit",
+]);
+
+/** Whether a wire code's `row` marks a relation line rather than the form. */
+export function refusalNamesRelationRow(code: string | undefined): boolean {
+  return code !== undefined && RELATION_ROW_CODES.has(code);
+}
 
 /**
  * The catalog sentence for a wire refusal, keyed by its closed-set code.

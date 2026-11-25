@@ -464,14 +464,17 @@ describe("EntityCreateDialog — create by hand", () => {
     for (let index = 0; index < 12; index += 1) fireEvent.click(add);
     expect(screen.getAllByTestId(/entity-create-relation-\d+-entity$/)).toHaveLength(12);
     expect(add.disabled).toBe(true);
-    expect(screen.getByTestId("entity-create-relation-limit-note").textContent).toBe(
-      de["knowledge.create.relationLimit"],
-    );
+    const limitNote = screen.getByTestId("entity-create-relation-limit-note");
+    expect(limitNote.textContent).toBe(de["knowledge.create.relationLimit"]);
+    // The note is readable on its own and describes the control it explains.
+    expect(limitNote.id).not.toBe("");
+    expect(add.getAttribute("aria-describedby")).toBe(limitNote.id);
 
     // Removing a row reopens the door.
     fireEvent.click(screen.getAllByLabelText(de["knowledge.create.removeRelation"])[0]);
     expect(add.disabled).toBe(false);
     expect(screen.queryByTestId("entity-create-relation-limit-note")).toBeNull();
+    expect(add.getAttribute("aria-describedby")).toBeNull();
   });
 
   it("a resolved target without a label is counted into the notice and marked", () => {
@@ -488,10 +491,14 @@ describe("EntityCreateDialog — create by hand", () => {
     expect(note.textContent).toBe(de["knowledge.create.unresolvedNote"]);
     const label = screen.getByTestId("entity-create-relation-0-label");
     expect(label.getAttribute("aria-invalid")).toBe("true");
+    // The marked field points at the note that says why.
+    expect(note.id).not.toBe("");
+    expect(label.getAttribute("aria-describedby")).toBe(note.id);
 
     // Filling the label lifts both signals: the row will land.
     fireEvent.change(label, { target: { value: de["knowledge.relation.located_in"] } });
     expect(screen.queryByTestId("entity-create-unresolved-note")).toBeNull();
+    expect(label.getAttribute("aria-describedby")).toBeNull();
     expect(label.getAttribute("aria-invalid")).toBeNull();
   });
 
@@ -570,11 +577,16 @@ describe("EntityCreateDialog — create by hand", () => {
       de["knowledge.create.unresolvedNote"],
     );
     expect(target.getAttribute("aria-invalid")).toBe("true");
+    // A blank target's marked field names the same note.
+    expect(target.getAttribute("aria-describedby")).toBe(
+      screen.getByTestId("entity-create-unresolved-note").id,
+    );
 
     // The target the writer meant lifts both signals.
     fireEvent.change(target, { target: { value: "Station 7" } });
     expect(screen.queryByTestId("entity-create-unresolved-note")).toBeNull();
     expect(target.getAttribute("aria-invalid")).toBeNull();
+    expect(target.getAttribute("aria-describedby")).toBeNull();
   });
 
   it("an HTTP failure without a coded detail speaks the catalog, not the raw message", async () => {
@@ -588,7 +600,7 @@ describe("EntityCreateDialog — create by hand", () => {
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(de["knowledge.create.failedUnexpected"]);
     expect(alert.textContent).not.toContain("create refused");
-    expect(alert.querySelector("p.font-mono")).toBeNull();
+    expect(within(alert).queryByTestId("entity-create-refusal-code")).toBeNull();
   });
 
   it("a transport failure speaks the catalog's sentence, never the browser's English", async () => {
@@ -603,7 +615,7 @@ describe("EntityCreateDialog — create by hand", () => {
     expect(alert.textContent).toContain(de["knowledge.create.failedTransport"]);
     expect(alert.textContent).not.toContain("Failed to fetch");
     // «transport» is a front-end pseudo-code, not a wire code: no chip.
-    expect(alert.querySelector("p.font-mono")).toBeNull();
+    expect(within(alert).queryByTestId("entity-create-refusal-code")).toBeNull();
     // The fields stand; the dialog is the writer's again.
     expect((screen.getByTestId("entity-create-name") as HTMLInputElement).value).toBe(
       "Nevada-Trümmerfeld",
@@ -638,11 +650,17 @@ describe("EntityCreateDialog — create by hand", () => {
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(de["knowledge.create.refused.relation-target-invalid"]);
     expect(alert.textContent).not.toContain("relation row 0");
-    expect(within(alert).getByText("relation-target-invalid")).toBeTruthy();
-    // The refused row is the one on screen.
+    expect(within(alert).getByTestId("entity-create-refusal-code").textContent).toBe(
+      "relation-target-invalid",
+    );
+    // The refused row is the one on screen, and its field describes the alert.
     expect(
       screen.getByTestId("entity-create-relation-0-entity").getAttribute("aria-invalid"),
     ).toBe("true");
+    expect(
+      screen.getByTestId("entity-create-relation-0-entity").getAttribute("aria-describedby"),
+    ).toBe(alert.id);
+    expect(alert.id).not.toBe("");
     // The answer is kept, the dialog stands.
     expect((screen.getByTestId("entity-create-name") as HTMLInputElement).value).toBe(
       "Nevada-Trümmerfeld",
@@ -717,13 +735,21 @@ describe("EntityCreateDialog — create by hand", () => {
     expect(screen.getByTestId("entity-create-relation-duplicate-note").textContent).toBe(
       de["knowledge.create.relationDuplicate"],
     );
+    const duplicateNoteId = screen.getByTestId("entity-create-relation-duplicate-note").id;
+    expect(duplicateNoteId).not.toBe("");
     for (const index of [0, 1]) {
       expect(
         screen.getByTestId(`entity-create-relation-${index}-entity`).getAttribute("aria-invalid"),
       ).toBe("true");
       expect(
+        screen.getByTestId(`entity-create-relation-${index}-entity`).getAttribute("aria-describedby"),
+      ).toBe(duplicateNoteId);
+      expect(
         screen.getByTestId(`entity-create-relation-${index}-label`).getAttribute("aria-invalid"),
       ).toBe("true");
+      expect(
+        screen.getByTestId(`entity-create-relation-${index}-label`).getAttribute("aria-describedby"),
+      ).toBe(duplicateNoteId);
     }
     // The duplicate is a flag, not a block: the save stays possible.
     expect((screen.getByTestId("entity-create-save") as HTMLButtonElement).disabled).toBe(false);

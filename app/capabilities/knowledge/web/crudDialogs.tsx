@@ -37,6 +37,12 @@
  * The module imports no other capability (rule 1): the busy spinner and the
  * error line are re-owned here on the shell's tokens, the writing family's
  * geometry, speaking the knowledge catalog's own words.
+ *
+ * Test seams: the create dialog's stable hooks are `entity-create-…`
+ * `data-testid`s, the house convention. `data-refused` on a relation row is
+ * the one attribute seam: the row container is already the state carrier,
+ * and a test asks `closest("[data-refused]")` which row the refusal names —
+ * a second test id there would name the same element twice.
  */
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 
@@ -64,6 +70,7 @@ import {
   findDuplicateName,
   keptRelationRows,
   refusalCatalogKey,
+  refusalNamesRelationRow,
   relationRowOutcome,
   visibleRowForSentIndex,
   type EntityRelationRow,
@@ -78,6 +85,13 @@ const SERIF = "[font-family:var(--font-serif)]";
  *  before the wire does: the name column's width, the relation type's cap. */
 const NAME_MAX = 200;
 const RELATION_TYPE_MAX = 80;
+
+/** The ids that describe a field, joined for `aria-describedby`; absent
+ *  parts drop out, so one reason is one id and two are two, space-separated. */
+function describedBy(...ids: (string | false | undefined)[]): string | undefined {
+  const kept = ids.filter((id): id is string => typeof id === "string");
+  return kept.length === 0 ? undefined : kept.join(" ");
+}
 
 const INPUT =
   "w-full rounded border border-border bg-surface-container-low px-2.5 py-1.5 text-body text-foreground";
@@ -584,6 +598,11 @@ export function EntityCreateDialog({
   const headingId = useId();
   const entityListId = useId();
   const labelListId = useId();
+  // The notes a marked field points at; the alert describes a wire refusal.
+  const unresolvedNoteId = `${headingId}-unresolved-note`;
+  const relationDuplicateNoteId = `${headingId}-relation-duplicate-note`;
+  const relationLimitNoteId = `${headingId}-relation-limit-note`;
+  const failureId = `${headingId}-create-failure`;
 
   const duplicate = findDuplicateName(name, entities);
   // The labels as the save will send them, so the duplicate flag compares
@@ -601,6 +620,7 @@ export function EntityCreateDialog({
     const outcome = relationRowOutcome(row, entities);
     return outcome === "unresolved-target" || outcome === "missing-label";
   }).length;
+  const atLimit = relations.length >= MAX_RELATIONS;
   const ready = name.trim() !== "" && type !== "";
   // The closed-set code's catalog sentence; a synthetic or unknown code
   // falls back to the generic catalog sentence, never the wire's English.
@@ -660,14 +680,9 @@ export function EntityCreateDialog({
       },
       onError: (error) => {
         setFailure(error);
-        // The three relation codes carry the refused line's index in the
-        // SENT list; the writer sees visible rows, so it is mapped back.
-        if (
-          error.row !== undefined &&
-          (error.code === "relation-target-invalid" ||
-            error.code === "relation-duplicate" ||
-            error.code === "relation-limit")
-        ) {
+        // The relation codes carry the refused line's index in the SENT
+        // list; the writer sees visible rows, so it is mapped back.
+        if (error.row !== undefined && refusalNamesRelationRow(error.code)) {
           setRefusedRow(
             visibleRowForSentIndex(keptRelationRows(normalizedRelations, entities), error.row),
           );
@@ -788,15 +803,17 @@ export function EntityCreateDialog({
               <button
                 type="button"
                 data-testid="entity-create-add-relation"
-                disabled={relations.length >= MAX_RELATIONS}
+                disabled={atLimit}
+                aria-describedby={atLimit ? relationLimitNoteId : undefined}
                 onClick={addRelationRow}
-                className={`inline-flex items-center gap-1 text-meta font-medium text-primary transition-colors hover:text-foreground ${FOCUS} ${relations.length >= MAX_RELATIONS ? "cursor-not-allowed opacity-50" : ""}`}
+                className={`inline-flex items-center gap-1 text-meta font-medium text-primary transition-colors hover:text-foreground ${FOCUS} ${atLimit ? "cursor-not-allowed opacity-50" : ""}`}
               >
                 <Icon name="plus" size={14} /> {t("knowledge.create.addRelation")}
               </button>
             </div>
-            {relations.length >= MAX_RELATIONS && (
+            {atLimit && (
               <p
+                id={relationLimitNoteId}
                 data-testid="entity-create-relation-limit-note"
                 className="text-[11px] leading-snug text-muted"
               >
@@ -817,6 +834,16 @@ export function EntityCreateDialog({
                   const refused = refusedRow === index;
                   const targetInvalid = unresolvedTarget || duplicated || refused;
                   const labelInvalid = missingLabel || duplicated || refused;
+                  const targetDescribedBy = describedBy(
+                    unresolvedTarget && unresolvedNoteId,
+                    duplicated && relationDuplicateNoteId,
+                    refused && failureId,
+                  );
+                  const labelDescribedBy = describedBy(
+                    missingLabel && unresolvedNoteId,
+                    duplicated && relationDuplicateNoteId,
+                    refused && failureId,
+                  );
                   return (
                     <div
                       key={row.key}
@@ -831,6 +858,7 @@ export function EntityCreateDialog({
                           value={row.target}
                           aria-label={t("knowledge.create.entityLabel")}
                           aria-invalid={targetInvalid || undefined}
+                          aria-describedby={targetDescribedBy}
                           placeholder={t("knowledge.create.entityLabel")}
                           onChange={(event) => updateRelation(index, { target: event.target.value })}
                           className={`${INPUT} ${FOCUS} ${targetInvalid ? "ring-1 ring-danger" : ""}`}
@@ -842,6 +870,7 @@ export function EntityCreateDialog({
                           value={row.relationType}
                           aria-label={t("knowledge.create.relationLabelLabel")}
                           aria-invalid={labelInvalid || undefined}
+                          aria-describedby={labelDescribedBy}
                           placeholder={t("knowledge.create.relationLabelPlaceholder")}
                           maxLength={RELATION_TYPE_MAX}
                           onChange={(event) =>
@@ -871,12 +900,17 @@ export function EntityCreateDialog({
                   );
                 })}
                 {dropped > 0 && (
-                  <p data-testid="entity-create-unresolved-note" className="text-[11px] leading-snug text-muted">
+                  <p
+                    id={unresolvedNoteId}
+                    data-testid="entity-create-unresolved-note"
+                    className="text-[11px] leading-snug text-muted"
+                  >
                     {t("knowledge.create.unresolvedNote")}
                   </p>
                 )}
                 {duplicateRows.length > 0 && (
                   <p
+                    id={relationDuplicateNoteId}
                     data-testid="entity-create-relation-duplicate-note"
                     className="text-[11px] leading-snug text-danger"
                   >
@@ -898,7 +932,11 @@ export function EntityCreateDialog({
           </div>
         </fieldset>
         {failure !== null && (
-          <div role="alert" className="rounded border border-danger/40 bg-danger/10 px-2.5 py-2 text-meta text-foreground">
+          <div
+            id={failureId}
+            role="alert"
+            className="rounded border border-danger/40 bg-danger/10 px-2.5 py-2 text-meta text-foreground"
+          >
             <div className="flex items-start gap-1.5">
               <span className="mt-0.5 shrink-0 text-danger">
                 <Icon name="warning" size={13} />
@@ -912,7 +950,12 @@ export function EntityCreateDialog({
                       : t("knowledge.create.failedUnexpected")}
                 </p>
                 {failure.code !== undefined && failure.code !== "transport" && (
-                  <p className="mt-0.5 font-mono text-[11px] text-danger">{failure.code}</p>
+                  <p
+                    data-testid="entity-create-refusal-code"
+                    className="mt-0.5 font-mono text-[11px] text-danger"
+                  >
+                    {failure.code}
+                  </p>
                 )}
                 <button
                   type="button"
