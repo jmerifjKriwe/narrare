@@ -68,7 +68,7 @@ export function ProposalCard({
         aria-expanded={expanded}
         aria-controls={bodyId}
         onClick={onToggle}
-        className={`flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-surface-container-low ${FOCUS}`}
+        className={`flex w-full shrink-0 items-center justify-between px-3 py-2 text-left transition-colors hover:bg-surface-container-low ${FOCUS}`}
       >
         <span className={CARD_EYEBROW}>{t("knowledge.interview.proposalTitle")}</span>
         <span className="flex items-center gap-2">
@@ -83,7 +83,7 @@ export function ProposalCard({
           id={bodyId}
           data-testid="entity-interview-proposal-body"
           tabIndex={0}
-          className="min-h-0 flex-1 overflow-y-auto px-3 pb-3"
+          className="min-h-0 overflow-y-auto px-3 pb-3"
         >
           <dl className="flex flex-col gap-2 text-meta">
             <div className="flex flex-col gap-0.5">

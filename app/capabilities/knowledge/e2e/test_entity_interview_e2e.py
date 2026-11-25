@@ -463,6 +463,12 @@ def test_a_long_proposal_keeps_the_conversation_reachable(page: Page, installed:
     _open_interview(page, novel_id)
     _start(page)
 
+    # A short proposal draws its content: the bound must not collapse the
+    # body to nothing before a long one ever arrives.
+    body = page.get_by_test_id("entity-interview-proposal-body")
+    short = body.evaluate("element => element.getBoundingClientRect().height")
+    assert short > 40, f"the short proposal's body collapsed to {short}px"
+
     description = ("Ein Relais, das den Puls der Station misst. " * 100)[:3_960]
     _say(page, f"Beschreibung: {description}")
     proposal = page.get_by_test_id("entity-interview-proposal")
