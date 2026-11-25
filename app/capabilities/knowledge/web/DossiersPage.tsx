@@ -48,7 +48,7 @@ import { Icon } from "@shell/ui/icons";
 import { useToast } from "@shell/ui/toast";
 
 import { EntityDossier } from "./EntityDossier";
-import { EntityCreateDialog } from "./crudDialogs";
+import { EntityCreateDialog } from "./entityCreate/EntityCreateDialog";
 import { TYPE_KEYS, entityTypeIcon, entityTypeLabel, typeTheme } from "./entityTypes";
 
 const DOSSIERS_PATH = "/novels/$novelId/knowledge/dossiers";

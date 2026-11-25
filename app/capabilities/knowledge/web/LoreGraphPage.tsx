@@ -52,7 +52,8 @@ import { Icon } from "@shell/ui/icons";
 import { useToast } from "@shell/ui/toast";
 
 import { EntityDossier } from "./EntityDossier";
-import { CreateRelationDialog, EntityCreateDialog, MergeDialog } from "./crudDialogs";
+import { CreateRelationDialog, MergeDialog } from "./crudDialogs";
+import { EntityCreateDialog } from "./entityCreate/EntityCreateDialog";
 import { entityTypeIcon, entityTypeLabel, typeTheme } from "./entityTypes";
 import { fitTransform, graphBounds, graphSignature, layoutGraph, type Transform } from "./graphLayout";
 import { EntityInterview } from "./interview/EntityInterview";

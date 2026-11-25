@@ -1,0 +1,154 @@
+/**
+ * The create dialog's relation rows (moved from crudDialogs, W9 Task 11): one
+ * row per edge the save will place — the target, its label, an optional note —
+ * with the marks that say why a filled row will not land. The notes are the
+ * dialog's own (`unresolvedNoteId`, `duplicateNoteId`, the refusal alert), so a
+ * marked field describes the sentence that explains it.
+ */
+import type { Entity } from "@shell/lib/api/client";
+import { useTranslation } from "@shell/lib/i18n";
+import { FOCUS } from "@shell/ui/card";
+import { Icon } from "@shell/ui/icons";
+
+import { RELATION_TYPE_MAX, INPUT } from "../crudDialogs";
+import type { EntityRelationRow } from "../entityCreate";
+import { relationRowOutcome } from "../entityCreate";
+
+/** The ids that describe a field, joined for `aria-describedby`; absent
+ *  parts drop out, so one reason is one id and two are two, space-separated. */
+function describedBy(...ids: (string | false | undefined)[]): string | undefined {
+  const kept = ids.filter((id): id is string => typeof id === "string");
+  return kept.length === 0 ? undefined : kept.join(" ");
+}
+
+export function RelationRows({
+  rows,
+  entities,
+  entityListId,
+  labelListId,
+  duplicateRows,
+  refusedRow,
+  unresolvedNoteId,
+  duplicateNoteId,
+  failureId,
+  dropped,
+  onUpdate,
+  onRemove,
+}: {
+  rows: readonly (EntityRelationRow & { key: number })[];
+  entities: readonly Entity[];
+  entityListId: string;
+  labelListId: string;
+  duplicateRows: readonly number[];
+  refusedRow: number | null;
+  unresolvedNoteId: string;
+  duplicateNoteId: string;
+  failureId: string;
+  dropped: number;
+  onUpdate: (index: number, patch: Partial<EntityRelationRow>) => void;
+  onRemove: (index: number) => void;
+}) {
+  const t = useTranslation();
+
+  if (rows.length === 0) {
+    return (
+      <p className="rounded border border-rule bg-surface-container-low px-4 py-6 text-center text-meta text-muted">
+        {t("knowledge.create.noRelations")}
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {rows.map((row, index) => {
+        const outcome = relationRowOutcome(row, entities);
+        const missingLabel = outcome === "missing-label";
+        const unresolvedTarget = outcome === "unresolved-target";
+        const duplicated = duplicateRows.includes(index);
+        const refused = refusedRow === index;
+        const targetInvalid = unresolvedTarget || duplicated || refused;
+        const labelInvalid = missingLabel || duplicated || refused;
+        const targetDescribedBy = describedBy(
+          unresolvedTarget && unresolvedNoteId,
+          duplicated && duplicateNoteId,
+          refused && failureId,
+        );
+        const labelDescribedBy = describedBy(
+          missingLabel && unresolvedNoteId,
+          duplicated && duplicateNoteId,
+          refused && failureId,
+        );
+        return (
+          <div
+            key={row.key}
+            data-refused={refused ? "true" : undefined}
+            className="flex items-center gap-2"
+          >
+            <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
+              <input
+                data-testid={`entity-create-relation-${index}-entity`}
+                type="text"
+                list={entityListId}
+                value={row.target}
+                aria-label={t("knowledge.create.entityLabel")}
+                aria-invalid={targetInvalid || undefined}
+                aria-describedby={targetDescribedBy}
+                placeholder={t("knowledge.create.entityLabel")}
+                onChange={(event) => onUpdate(index, { target: event.target.value })}
+                className={`${INPUT} ${FOCUS} ${targetInvalid ? "ring-1 ring-danger" : ""}`}
+              />
+              <input
+                data-testid={`entity-create-relation-${index}-label`}
+                type="text"
+                list={labelListId}
+                value={row.relationType}
+                aria-label={t("knowledge.create.relationLabelLabel")}
+                aria-invalid={labelInvalid || undefined}
+                aria-describedby={labelDescribedBy}
+                placeholder={t("knowledge.create.relationLabelPlaceholder")}
+                maxLength={RELATION_TYPE_MAX}
+                onChange={(event) => onUpdate(index, { relationType: event.target.value })}
+                className={`${INPUT} ${FOCUS} ${labelInvalid ? "ring-1 ring-danger" : ""}`}
+              />
+              <input
+                data-testid={`entity-create-relation-${index}-note`}
+                type="text"
+                value={row.note}
+                aria-label={t("knowledge.crud.noteLabel")}
+                placeholder={t("knowledge.crud.noteLabel")}
+                onChange={(event) => onUpdate(index, { note: event.target.value })}
+                className={`${INPUT} ${FOCUS}`}
+              />
+            </div>
+            <button
+              type="button"
+              aria-label={t("knowledge.create.removeRelation")}
+              onClick={() => onRemove(index)}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-danger ${FOCUS}`}
+            >
+              <Icon name="trash" size={15} />
+            </button>
+          </div>
+        );
+      })}
+      {dropped > 0 && (
+        <p
+          id={unresolvedNoteId}
+          data-testid="entity-create-unresolved-note"
+          className="text-[11px] leading-snug text-muted"
+        >
+          {t("knowledge.create.unresolvedNote")}
+        </p>
+      )}
+      {duplicateRows.length > 0 && (
+        <p
+          id={duplicateNoteId}
+          data-testid="entity-create-relation-duplicate-note"
+          className="text-[11px] leading-snug text-danger"
+        >
+          {t("knowledge.create.relationDuplicate")}
+        </p>
+      )}
+    </div>
+  );
+}
