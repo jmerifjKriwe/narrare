@@ -17,6 +17,7 @@ import { FormHeader, INPUT, Modal, NAME_MAX, Spinner } from "../crudDialogs";
 import {
   MAX_RELATIONS,
   buildEntityCreateBody,
+  createFormState,
   duplicateRelationRows,
   findDuplicateName,
   keptRelationRows,
@@ -24,12 +25,16 @@ import {
   refusalNamesRelationRow,
   relationRowOutcome,
   visibleRowForSentIndex,
+  type EntityCreateRelationRow,
+  type EntityCreateSource,
+  type EntityPrefill,
   type EntityRelationRow,
 } from "../entityCreate";
 import { TYPE_KEYS, entityTypeLabel } from "../entityTypes";
 import { relationTypeOptions, resolveRelationType } from "../relations";
 import { ChipInput, withChip } from "./ChipInput";
 import { RelationRows } from "./RelationRows";
+import { SuggestedMark } from "./SuggestedMark";
 
 const CREATE_PANEL =
   "max-h-[calc(100vh-2rem)] w-full max-w-xl space-y-3 overflow-y-auto rounded-lg border border-border bg-panel p-5 shadow-overlay";
@@ -40,6 +45,8 @@ export function EntityCreateDialog({
   openerId,
   onClose,
   onCreated,
+  source = "manual",
+  prefill,
 }: {
   novelId: string;
   entities: readonly Entity[];
@@ -47,22 +54,31 @@ export function EntityCreateDialog({
   onClose: () => void;
   /** The write landed: the home selects the new row and counts its edges. */
   onCreated?: (entity: Entity, relations: number) => void;
+  /** Which door opened the dialog: the hand-made form or the interview. */
+  source?: EntityCreateSource;
+  /** The interview's draft; absent for the hand-made form. */
+  prefill?: EntityPrefill;
 }) {
   const t = useTranslation();
-  const [name, setName] = useState("");
-  const [type, setType] = useState("");
-  const [aliases, setAliases] = useState<string[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
+  // The starting state is the door's own: the hand-made form empty, the
+  // interview's prefill carried with its marks and its locked type.
+  const [initial] = useState(() => createFormState({ source, prefill }));
+  const [name, setName] = useState(initial.name);
+  const [type, setType] = useState(initial.type);
+  const [aliases, setAliases] = useState<string[]>(initial.aliases);
+  const [tags, setTags] = useState<string[]>(initial.tags);
   const [aliasDraft, setAliasDraft] = useState("");
   const [tagDraft, setTagDraft] = useState("");
-  const [content, setContent] = useState("");
-  const [relations, setRelations] = useState<(EntityRelationRow & { key: number })[]>([]);
+  const [content, setContent] = useState(initial.content);
+  const [relations, setRelations] = useState<EntityCreateRelationRow[]>(initial.relations);
   const [failure, setFailure] = useState<WireError | null>(null);
   /** The visible row a relation refusal names; the sent list's index is
    *  mapped back through the rows the body builder kept. */
   const [refusedRow, setRefusedRow] = useState<number | null>(null);
   const create = useCreateEntity();
   const busy = create.isPending;
+  const typeLocked = initial.typeLocked;
+  const suggested = prefill?.suggested;
   const dirty =
     name !== "" ||
     type !== "" ||
@@ -74,7 +90,7 @@ export function EntityCreateDialog({
     relations.length > 0;
 
   const nameRef = useRef<HTMLInputElement | null>(null);
-  const relationKey = useRef(0);
+  const relationKey = useRef(initial.relations.length);
   const headingId = useId();
   const entityListId = useId();
   const labelListId = useId();
@@ -113,7 +129,17 @@ export function EntityCreateDialog({
   function updateRelation(index: number, patch: Partial<EntityRelationRow>) {
     setRefusedRow(null);
     setRelations((rows) =>
-      rows.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)),
+      rows.map((row, rowIndex) =>
+        rowIndex === index
+          ? {
+              ...row,
+              ...patch,
+              // A typed target is a new question: the old pick no longer
+              // answers it. An explicit pick carries its id in the patch.
+              chosenId: patch.target !== undefined ? patch.chosenId : row.chosenId,
+            }
+          : row,
+      ),
     );
   }
 
@@ -122,13 +148,19 @@ export function EntityCreateDialog({
     relationKey.current += 1;
     setRelations((rows) => [
       ...rows,
-      { key: relationKey.current, target: "", relationType: "", note: "" },
+      { key: relationKey.current, target: "", relationType: "", note: "", suggested: false },
     ]);
   }
 
   function removeRelationRow(index: number) {
     setRefusedRow(null);
     setRelations((rows) => rows.filter((_row, rowIndex) => rowIndex !== index));
+  }
+
+  /** A pick from «Mehrere Treffer — wählen»: the row remembers the entity, so
+   *  the choice holds even when the name is another row's alias. */
+  function chooseRelationTarget(index: number, entity: Entity) {
+    updateRelation(index, { target: entity.name, chosenId: entity.id });
   }
 
   function save() {
@@ -187,7 +219,11 @@ export function EntityCreateDialog({
       <FormHeader
         headingId={headingId}
         title={t("knowledge.create.title")}
-        badge={t("knowledge.create.manualBadge")}
+        badge={
+          source === "interview"
+            ? t("knowledge.create.sourceInterview")
+            : t("knowledge.create.manualBadge")
+        }
         busy={busy}
         dirty={dirty}
         onClose={onClose}
@@ -223,23 +259,50 @@ export function EntityCreateDialog({
             </div>
           )}
           <div>
-            <label htmlFor={`${headingId}-type`} className="mb-1 block text-meta font-medium text-foreground">
-              {t("knowledge.create.typeLabel")}
-            </label>
-            <select
-              id={`${headingId}-type`}
-              data-testid="entity-create-type"
-              value={type}
-              onChange={(event) => setType(event.target.value)}
-              className={`${INPUT} ${FOCUS}`}
-            >
-              <option value="">{t("knowledge.create.typePlaceholder")}</option>
-              {Object.keys(TYPE_KEYS).map((key) => (
-                <option key={key} value={key}>
-                  {entityTypeLabel(t, key)}
-                </option>
-              ))}
-            </select>
+            {typeLocked ? (
+              <span
+                id={`${headingId}-type-label`}
+                className="mb-1 block text-meta font-medium text-foreground"
+              >
+                {t("knowledge.create.typeLabel")}
+              </span>
+            ) : (
+              <label htmlFor={`${headingId}-type`} className="mb-1 block text-meta font-medium text-foreground">
+                {t("knowledge.create.typeLabel")}
+              </label>
+            )}
+            {typeLocked ? (
+              <div
+                id={`${headingId}-type`}
+                role="group"
+                aria-labelledby={`${headingId}-type-label`}
+                data-testid="entity-create-type-locked"
+                className="flex items-center justify-between gap-2 rounded border border-border bg-surface-container-low px-2.5 py-1.5"
+              >
+                <span className="flex items-center gap-1.5 text-body text-foreground">
+                  <Icon name="lock" size={14} />
+                  <span className="font-medium">{entityTypeLabel(t, type)}</span>
+                </span>
+                <span className="rounded bg-surface-container-high px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground">
+                  {t("knowledge.create.locked")}
+                </span>
+              </div>
+            ) : (
+              <select
+                id={`${headingId}-type`}
+                data-testid="entity-create-type"
+                value={type}
+                onChange={(event) => setType(event.target.value)}
+                className={`${INPUT} ${FOCUS}`}
+              >
+                <option value="">{t("knowledge.create.typePlaceholder")}</option>
+                {Object.keys(TYPE_KEYS).map((key) => (
+                  <option key={key} value={key}>
+                    {entityTypeLabel(t, key)}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <ChipInput
             testId="entity-create-aliases"
@@ -250,6 +313,7 @@ export function EntityCreateDialog({
             draft={aliasDraft}
             onDraftChange={setAliasDraft}
             onChange={setAliases}
+            suggestedValues={suggested?.aliases}
           />
           <ChipInput
             testId="entity-create-tags"
@@ -260,10 +324,12 @@ export function EntityCreateDialog({
             draft={tagDraft}
             onDraftChange={setTagDraft}
             onChange={setTags}
+            suggestedValues={suggested?.tags}
           />
           <div>
-            <label htmlFor={`${headingId}-content`} className="mb-1 block text-meta font-medium text-foreground">
+            <label htmlFor={`${headingId}-content`} className="mb-1 flex items-center gap-1 text-meta font-medium text-foreground">
               {t("knowledge.create.descriptionLabel")}
+              {suggested?.content === true && <SuggestedMark />}
             </label>
             <textarea
               id={`${headingId}-content`}
@@ -313,6 +379,7 @@ export function EntityCreateDialog({
               dropped={dropped}
               onUpdate={updateRelation}
               onRemove={removeRelationRow}
+              onChoose={chooseRelationTarget}
             />
             <datalist id={entityListId}>
               {entityNames.map((entityName) => (

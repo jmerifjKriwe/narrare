@@ -46,7 +46,7 @@ import {
 import type { Relation } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
-import { useEntitiesQuery, useNovelRelationsQuery, useAssistantSessionsQuery } from "@shell/lib/query";
+import { useEntitiesQuery, useNovelRelationsQuery, useAssistantSessionsQuery, useCloseAssistantSession } from "@shell/lib/query";
 import { CARD_EYEBROW, FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 import { useToast } from "@shell/ui/toast";
@@ -54,6 +54,7 @@ import { useToast } from "@shell/ui/toast";
 import { EntityDossier } from "./EntityDossier";
 import { CreateRelationDialog, MergeDialog } from "./crudDialogs";
 import { EntityCreateDialog } from "./entityCreate/EntityCreateDialog";
+import type { EntityPrefill } from "./entityCreate";
 import { entityTypeIcon, entityTypeLabel, typeTheme } from "./entityTypes";
 import { fitTransform, graphBounds, graphSignature, layoutGraph, type Transform } from "./graphLayout";
 import { EntityInterview } from "./interview/EntityInterview";
@@ -108,6 +109,10 @@ export function LoreGraphPage() {
   // Which subbar CRUD dialog stands open (Task 4; the create since W9); the
   // dossier owns its own.
   const [crud, setCrud] = useState<null | "addRelation" | "merge" | "create">(null);
+  /** The interview's draft while the create dialog is open through the
+   *  handover; null is the hand-made door, which starts empty. */
+  const [prefill, setPrefill] = useState<EntityPrefill | null>(null);
+  const closeInterview = useCloseAssistantSession();
 
   const entityList = useMemo(() => entities.data ?? [], [entities.data]);
   const relationList = useMemo(() => relations.data ?? [], [relations.data]);
@@ -922,7 +927,14 @@ export function LoreGraphPage() {
             sessionId={interview === "new" ? null : interview}
             onSelectSession={(target) => setInterview(target)}
             onClose={() => setInterview(null)}
-            onManual={() => setCrud("create")}
+            onManual={() => {
+              setPrefill(null);
+              setCrud("create");
+            }}
+            onSave={(draft) => {
+              setPrefill(draft);
+              setCrud("create");
+            }}
             returnFocusId="graph-new-entity"
           />
         )}
@@ -954,10 +966,17 @@ export function LoreGraphPage() {
         <EntityCreateDialog
           novelId={novelId}
           entities={entityList}
-          openerId="graph-new-entity"
+          openerId={prefill === null ? "graph-new-entity" : "entity-interview-save"}
+          source={prefill === null ? "manual" : "interview"}
+          prefill={prefill ?? undefined}
           onClose={() => setCrud(null)}
           onCreated={(entity, relations) => {
-            // A hand-made row born from the panel returns to the graph: the
+            // The interview's proposal became the row: close the session and
+            // leave its parameter behind, so the graph owns the column again.
+            if (prefill !== null && interview !== undefined && interview !== "new") {
+              closeInterview.mutate(interview);
+            }
+            // A hand-made row born from the panel returns to the graph too: the
             // panel yields the column so the new row's dossier can show.
             if (interview !== undefined) {
               void navigate({ to: GRAPH_PATH, params: { novelId }, search: { entity: entity.id }, replace: true });

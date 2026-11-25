@@ -7,14 +7,16 @@
  */
 import { describe, expect, it } from "vitest";
 
-import type { Entity } from "@shell/lib/api/client";
+import type { Entity, Proposal } from "@shell/lib/api/client";
 
 import {
   MAX_RELATIONS,
   REFUSAL_CODES,
   RELATION_ROW_CODES,
   buildEntityCreateBody,
+  createFormState,
   duplicateRelationRows,
+  entityPrefillFromProposal,
   findDuplicateName,
   keptRelationRows,
   refusalCatalogKey,
@@ -247,5 +249,108 @@ describe("relationRowOutcome", () => {
     expect(relationRowOutcome({ target: "", relationType: "", note: "  alter Weg  " }, ENTITIES)).toBe(
       "unresolved-target",
     );
+  });
+});
+
+function proposed(overrides: Partial<Proposal> = {}): Proposal {
+  return {
+    name: null,
+    name_suggested: false,
+    aliases: [],
+    tags: [],
+    content: "",
+    relations: [],
+    ...overrides,
+  };
+}
+
+describe("entityPrefillFromProposal", () => {
+  it("the prefill maps the proposal", () => {
+    const prefill = entityPrefillFromProposal(
+      proposed({
+        name: "Resonanz-Transponder LC-89",
+        name_suggested: true,
+        aliases: ["LC-89", "Transponder"],
+        tags: ["Technologie", "Relikt"],
+        content: "Verschlossenes Prototyp-Subraumrelais.",
+        suggested: { aliases: ["Transponder"], tags: ["Technologie"], content: true },
+        relations: [
+          { target: "Forschungsstation 7", type: "related_to", note: "dort gefunden", suggested: true },
+          { target: "Dr. Maya Chen", type: "built_by", note: "", suggested: false },
+        ],
+      }),
+      "object",
+    );
+
+    expect(prefill.name).toBe("Resonanz-Transponder LC-89");
+    expect(prefill.type).toBe("object");
+    expect(prefill.aliases).toEqual(["LC-89", "Transponder"]);
+    expect(prefill.tags).toEqual(["Technologie", "Relikt"]);
+    expect(prefill.content).toBe("Verschlossenes Prototyp-Subraumrelais.");
+    expect(prefill.suggested).toEqual({
+      aliases: ["Transponder"],
+      tags: ["Technologie"],
+      content: true,
+    });
+    expect(prefill.relations).toEqual([
+      { target: "Forschungsstation 7", relation_type: "related_to", note: "dort gefunden", suggested: true },
+      { target: "Dr. Maya Chen", relation_type: "built_by", note: undefined, suggested: false },
+    ]);
+  });
+
+  it("an empty proposal maps to an empty prefill with the session's type", () => {
+    expect(entityPrefillFromProposal(null, "location")).toEqual({
+      type: "location",
+      relations: [],
+    });
+  });
+});
+
+describe("createFormState", () => {
+  it("the interview locks the type", () => {
+    const prefill = entityPrefillFromProposal(proposed({ name: "LC-89" }), "object");
+    const interview = createFormState({ source: "interview", prefill });
+    expect(interview.typeLocked).toBe(true);
+    expect(interview.type).toBe("object");
+    // The hand-made form owns its type box and starts empty.
+    const manual = createFormState({ source: "manual" });
+    expect(manual.typeLocked).toBe(false);
+    expect(manual.type).toBe("");
+  });
+
+  it("an ambiguous alias offers both", () => {
+    const prefill = entityPrefillFromProposal(
+      proposed({
+        name: "LC-89",
+        relations: [{ target: "May", type: "related_to", note: "", suggested: true }],
+      }),
+      "object",
+    );
+    const rows = createFormState({ source: "interview", prefill }).relations;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].target).toBe("May");
+
+    const resolution = resolveRelationTarget(rows[0].target, ENTITIES);
+    expect(resolution.kind).toBe("many");
+    if (resolution.kind !== "many") throw new Error("expected many");
+    expect(resolution.entities.map((row) => row.name)).toEqual(["Dr. Maya Chen", "ARIA"]);
+  });
+});
+
+describe("a chosen ambiguity stays chosen", () => {
+  it("a picked target saves to the chosen row even when its name is another row's alias", () => {
+    // «ARIA» is a name and (in this roster) not an alias, but the row carries
+    // the explicit pick: the choice answers the row, not the typed word.
+    const rows = [
+      { target: "ARIA", relationType: "related_to", note: "", chosenId: "e2" },
+    ];
+    expect(relationRowOutcome(rows[0], ENTITIES)).toBe("kept");
+    const body = buildEntityCreateBody(form({ relations: rows }));
+    expect(body.relations).toEqual([
+      { to_entity_id: "e2", relation_type: "related_to", note: null },
+    ]);
+
+    // Typing the target again drops the pick: the word resolves on its own.
+    expect(relationRowOutcome({ ...rows[0], chosenId: undefined }, ENTITIES)).toBe("kept");
   });
 });

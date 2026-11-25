@@ -21,12 +21,13 @@ import { FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 
 import { entityTypeLabel } from "../entityTypes";
+import { entityPrefillFromProposal, type EntityPrefill } from "../entityCreate";
 import { Composer } from "./Composer";
 import { ProposalCard } from "./ProposalCard";
 import { SessionList } from "./SessionList";
 import { Transcript } from "./Transcript";
 import { TypeChooser } from "./TypeChooser";
-import { openingQuestionKey } from "./interviewState";
+import { openingQuestionKey, readyToSave } from "./interviewState";
 import { useInterview } from "./useInterview";
 
 export function EntityInterview({
@@ -35,6 +36,7 @@ export function EntityInterview({
   onSelectSession,
   onClose,
   onManual,
+  onSave,
   returnFocusId,
 }: {
   novelId: string;
@@ -46,6 +48,8 @@ export function EntityInterview({
   onClose: () => void;
   /** «Von Hand anlegen»: the existing create dialog, one call away. */
   onManual: () => void;
+  /** «Als Entität speichern»: the proposal becomes the create dialog's prefill. */
+  onSave: (prefill: EntityPrefill) => void;
   /** The door that opened the panel; closing it hands focus back there (the
    *  dialog opener contract — the panel's own close button unmounts with it). */
   returnFocusId?: string;
@@ -80,6 +84,7 @@ export function EntityInterview({
   const session = controller.session;
   const typeLabel = entityTypeLabel(t, session?.entity_type ?? "generic");
   const busy = controller.face === "thinking" || controller.ending;
+  const canSave = session !== null && readyToSave(session.proposal);
 
   function accept(turn: AssistantTurnRead) {
     if (turn.suggestion === null) return;
@@ -210,7 +215,7 @@ export function EntityInterview({
             onRetry={controller.retry}
           />
 
-          {controller.face !== "ended" ? (
+          {controller.face !== "ended" && (
             <Composer
               text={controller.text}
               onChange={controller.setText}
@@ -219,36 +224,49 @@ export function EntityInterview({
               onFillAll={() => controller.send({ text: t("knowledge.interview.fillAll"), act: "fill-all" })}
               disabled={busy}
             />
-          ) : (
-            <div className="shrink-0 border-t border-rule px-3 py-2">
-              <button
-                type="button"
-                onClick={() => onSelectSession("new")}
-                className={`h-7 w-full rounded-[var(--radius-control)] border border-rule bg-card text-label text-primary transition-colors hover:bg-surface-container-low ${FOCUS}`}
-              >
-                {t("knowledge.interview.newInterview")}
-              </button>
-            </div>
           )}
 
-          {controller.face !== "ended" && (
-            <div className="shrink-0 border-t border-rule px-3 py-2">
-              {controller.endFailed && (
-                <p role="alert" className="mb-1.5 text-meta text-danger">
-                  {t("knowledge.interview.endFailed")}
-                </p>
-              )}
+          <div className="shrink-0 border-t border-rule px-3 py-2">
+            {controller.face !== "ended" && controller.endFailed && (
+              <p role="alert" className="mb-1.5 text-meta text-danger">
+                {t("knowledge.interview.endFailed")}
+              </p>
+            )}
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                data-testid="entity-interview-end"
-                disabled={busy}
-                onClick={controller.end}
-                className={`h-7 w-full rounded-[var(--radius-control)] border border-rule bg-card text-label text-muted transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 ${FOCUS}`}
+                id="entity-interview-save"
+                data-testid="entity-interview-save"
+                disabled={!canSave}
+                onClick={() =>
+                  onSave(entityPrefillFromProposal(session.proposal, session.entity_type))
+                }
+                className={`h-7 flex-1 rounded-[var(--radius-control)] bg-primary text-label font-medium text-primary-foreground shadow-sm transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:bg-surface-container disabled:text-muted ${FOCUS}`}
               >
-                {t("knowledge.interview.endInterview")}
+                {t("knowledge.interview.saveAsEntity")}
               </button>
+              {controller.face === "ended" ? (
+                <button
+                  type="button"
+                  data-testid="entity-interview-new"
+                  onClick={() => onSelectSession("new")}
+                  className={`h-7 shrink-0 rounded-[var(--radius-control)] border border-rule bg-card px-2 text-label text-primary transition-colors hover:bg-surface-container-low ${FOCUS}`}
+                >
+                  {t("knowledge.interview.newInterview")}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  data-testid="entity-interview-end"
+                  disabled={busy}
+                  onClick={controller.end}
+                  className={`h-7 shrink-0 rounded-[var(--radius-control)] border border-rule bg-card px-2 text-label text-muted transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 ${FOCUS}`}
+                >
+                  {t("knowledge.interview.endInterview")}
+                </button>
+              )}
             </div>
-          )}
+          </div>
         </div>
       )}
     </aside>

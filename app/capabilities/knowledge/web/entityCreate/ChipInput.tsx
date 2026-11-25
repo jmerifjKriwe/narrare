@@ -12,6 +12,7 @@ import { FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 
 import { NAME_MAX } from "../crudDialogs";
+import { SuggestedMark } from "./SuggestedMark";
 
 /** The chip list after a draft: trimmed, folded into an existing chip
  *  case-insensitively, or appended when it is new. The API dedupes too, so
@@ -32,6 +33,7 @@ export function ChipInput({
   draft,
   onDraftChange,
   onChange,
+  suggestedValues,
 }: {
   testId: string;
   label: string;
@@ -41,6 +43,8 @@ export function ChipInput({
   draft: string;
   onDraftChange: (draft: string) => void;
   onChange: (values: string[]) => void;
+  /** The values the interview's model proposed; each carries its mark. */
+  suggestedValues?: readonly string[];
 }) {
   const id = useId();
   const t = useTranslation();
@@ -65,6 +69,7 @@ export function ChipInput({
             className="inline-flex items-center gap-1 rounded bg-surface-container-high px-2 py-0.5 text-[12px] font-medium text-foreground"
           >
             {value}
+            {suggestedValues?.includes(value) === true && <SuggestedMark />}
             <button
               type="button"
               aria-label={`${t("knowledge.create.removeChip")}: ${value}`}

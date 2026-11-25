@@ -124,6 +124,7 @@ function renderPanel(sessionId: string | null = SESSION_ID) {
   const onSelectSession = vi.fn();
   const onClose = vi.fn();
   const onManual = vi.fn();
+  const onSave = vi.fn();
   render(
     <QueryClientProvider client={queryClient}>
       <EntityInterview
@@ -132,10 +133,11 @@ function renderPanel(sessionId: string | null = SESSION_ID) {
         onSelectSession={onSelectSession}
         onClose={onClose}
         onManual={onManual}
+        onSave={onSave}
       />
     </QueryClientProvider>,
   );
-  return { onSelectSession, onClose, onManual };
+  return { onSelectSession, onClose, onManual, onSave };
 }
 
 function composer(): HTMLTextAreaElement {
@@ -175,6 +177,7 @@ describe("the door's type chooser", () => {
           onSelectSession={onSelect}
           onClose={vi.fn()}
           onManual={vi.fn()}
+          onSave={vi.fn()}
         />
       </QueryClientProvider>,
     );
@@ -422,8 +425,7 @@ describe("the wire's refusals find their own face", () => {
 });
 
 describe("ending makes it read-only", () => {
-  it("removes the composer, keeps the proposal and closes the session", async () => {
-    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+  it("removes the composer, keeps the proposal and closes the session", async () => {    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
     api.POST.mockImplementation((path: string) => {
       if (path === "/api/chat/sessions/{session_id}/close") {
         detail = { ...detail, closed_at: "2026-11-24T14:30:00Z" };
@@ -466,5 +468,58 @@ describe("ending makes it read-only", () => {
     fireEvent.click(end);
     await screen.findByText(de["knowledge.interview.endedBanner"]);
     expect(screen.queryByText(de["knowledge.interview.endFailed"])).toBeNull();
+  });
+});
+
+describe("the proposal becomes an entity", () => {
+  it("the save door is enabled only by a ready proposal and hands the prefill over", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: null }) });
+    const { onSave } = renderPanel();
+    await readySession();
+
+    const save = screen.getByTestId("entity-interview-save") as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    expect(save.textContent).toBe(de["knowledge.interview.saveAsEntity"]);
+
+    // The proposal gains its name: the door opens and maps the whole draft.
+    detail = sessionDetail({
+      proposal: proposal({
+        name: "Resonanz-Transponder LC-89",
+        aliases: ["LC-89"],
+        tags: ["Technologie"],
+        content: "Ein Relais.",
+        suggested: { aliases: ["LC-89"], tags: ["Technologie"], content: true },
+        relations: [{ target: "Forschungsstation", type: "related_to", note: "", suggested: true }],
+      }),
+    });
+    await queryClient.invalidateQueries({ queryKey: ["chat", "session", SESSION_ID] });
+    await waitFor(() => expect((screen.getByTestId("entity-interview-save") as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByTestId("entity-interview-save"));
+
+    expect(onSave).toHaveBeenCalledWith({
+      name: "Resonanz-Transponder LC-89",
+      type: "object",
+      aliases: ["LC-89"],
+      tags: ["Technologie"],
+      content: "Ein Relais.",
+      suggested: { aliases: ["LC-89"], tags: ["Technologie"], content: true },
+      relations: [
+        { target: "Forschungsstation", relation_type: "related_to", note: undefined, suggested: true },
+      ],
+    });
+  });
+
+  it("an ended interview keeps the proposal savable", async () => {
+    detail = sessionDetail({
+      closed_at: "2026-11-24T14:30:00Z",
+      proposal: proposal({ name: "Resonanz-Transponder LC-89" }),
+    });
+    renderPanel();
+    await screen.findByText(de["knowledge.interview.endedBanner"]);
+
+    const save = screen.getByTestId("entity-interview-save") as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+    expect(screen.getByTestId("entity-interview-new")).toBeTruthy();
+    expect(screen.queryByTestId("entity-interview-end")).toBeNull();
   });
 });

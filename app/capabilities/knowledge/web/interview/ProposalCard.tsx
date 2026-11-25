@@ -83,86 +83,88 @@ export function ProposalCard({
         </span>
       </button>
       {expanded && (
-        <dl id={bodyId} className="flex flex-col gap-2 px-3 pb-3 text-meta">
-          <div className="flex flex-col gap-0.5">
-            <dt className="text-muted">{t("knowledge.interview.nameLabel")}</dt>
-            <dd className="flex items-center gap-1.5">
-              {name !== "" ? (
-                <span className="font-semibold text-foreground">{name}</span>
-              ) : (
-                <span className="italic text-muted">{t("knowledge.interview.openValue")}</span>
-              )}
-              {proposal?.name_suggested && <SuggestedMark />}
-            </dd>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <dt className="text-muted">{t("knowledge.interview.typeLabel")}</dt>
-            <dd className="text-foreground">{typeLabel}</dd>
-          </div>
-          <div className="flex flex-col gap-1">
-            <dt className="text-muted">{t("knowledge.interview.aliasesLabel")}</dt>
-            <dd className="flex flex-wrap gap-1">
-              {aliases.length === 0 ? (
-                <span className="italic text-muted">{t("knowledge.interview.openValue")}</span>
-              ) : (
-                aliases.map((alias) => (
-                  <span key={alias} className="inline-flex items-center gap-1 rounded bg-surface-container-low px-1.5 py-0.5 text-[10px] text-foreground">
-                    {alias}
-                    {suggestedAliases.includes(alias) && <SuggestedMark />}
-                  </span>
-                ))
-              )}
-            </dd>
-          </div>
-          <div className="flex flex-col gap-1">
-            <dt className="text-muted">{t("knowledge.interview.tagsLabel")}</dt>
-            <dd className="flex flex-wrap gap-1">
-              {tags.length === 0 ? (
-                <span className="italic text-muted">{t("knowledge.interview.openValue")}</span>
-              ) : (
-                tags.map((tag) => (
-                  <span key={tag} className="inline-flex items-center gap-1 rounded bg-surface-container-low px-1.5 py-0.5 text-[10px] text-foreground">
-                    {tag}
-                    {suggestedTags.includes(tag) && <SuggestedMark />}
-                  </span>
-                ))
-              )}
-            </dd>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <dt className="flex items-center gap-1 text-muted">
-              {t("knowledge.interview.descriptionLabel")}
-              {proposal?.suggested?.content === true && <SuggestedMark />}
-            </dt>
-            {content !== "" ? (
-              <dd className="whitespace-pre-line leading-snug text-foreground">{content}</dd>
-            ) : (
-              <dd className="italic text-muted">{t("knowledge.interview.openValue")}</dd>
-            )}
-          </div>
-          <div className="flex flex-col gap-1">
-            <dt className="text-muted">{t("knowledge.interview.relationsLabel")}</dt>
-            <dd className="flex flex-col gap-1">
-              {relations.length === 0 ? (
-                <span className="italic text-muted">{t("knowledge.interview.openValue")}</span>
-              ) : (
-                relations.map((relation, index) => (
-                  <span
-                    key={`${relation.target}\u0000${relation.type}\u0000${index}`}
-                    className="flex items-start justify-between gap-1 rounded border border-rule bg-surface-container-low/60 px-2 py-1 text-[11px] text-foreground"
-                  >
-                    <span>
-                      {relation.target} — {relationTypeLabel(t, relation.type)}
-                      {relation.note !== "" && <span className="block text-muted">{relation.note}</span>}
+        <div id={bodyId} className="px-3 pb-3">
+          <dl className="flex flex-col gap-2 text-meta">
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-muted">{t("knowledge.interview.nameLabel")}</dt>
+              <dd className="flex items-center gap-1.5">
+                {name !== "" ? (
+                  <span className="font-semibold text-foreground">{name}</span>
+                ) : (
+                  <span className="italic text-muted">{t("knowledge.interview.openValue")}</span>
+                )}
+                {proposal?.name_suggested && <SuggestedMark />}
+              </dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-muted">{t("knowledge.interview.typeLabel")}</dt>
+              <dd className="text-foreground">{typeLabel}</dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-muted">{t("knowledge.interview.aliasesLabel")}</dt>
+              <dd className="flex flex-wrap gap-1">
+                {aliases.length === 0 ? (
+                  <span className="italic text-muted">{t("knowledge.interview.openValue")}</span>
+                ) : (
+                  aliases.map((alias) => (
+                    <span key={alias} className="inline-flex items-center gap-1 rounded bg-surface-container-low px-1.5 py-0.5 text-[10px] text-foreground">
+                      {alias}
+                      {suggestedAliases.includes(alias) && <SuggestedMark />}
                     </span>
-                    {relation.suggested && <SuggestedMark />}
-                  </span>
-                ))
+                  ))
+                )}
+              </dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-muted">{t("knowledge.interview.tagsLabel")}</dt>
+              <dd className="flex flex-wrap gap-1">
+                {tags.length === 0 ? (
+                  <span className="italic text-muted">{t("knowledge.interview.openValue")}</span>
+                ) : (
+                  tags.map((tag) => (
+                    <span key={tag} className="inline-flex items-center gap-1 rounded bg-surface-container-low px-1.5 py-0.5 text-[10px] text-foreground">
+                      {tag}
+                      {suggestedTags.includes(tag) && <SuggestedMark />}
+                    </span>
+                  ))
+                )}
+              </dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="flex items-center gap-1 text-muted">
+                {t("knowledge.interview.descriptionLabel")}
+                {proposal?.suggested?.content === true && <SuggestedMark />}
+              </dt>
+              {content !== "" ? (
+                <dd className="whitespace-pre-line leading-snug text-foreground">{content}</dd>
+              ) : (
+                <dd className="italic text-muted">{t("knowledge.interview.openValue")}</dd>
               )}
-            </dd>
-          </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-muted">{t("knowledge.interview.relationsLabel")}</dt>
+              <dd className="flex flex-col gap-1">
+                {relations.length === 0 ? (
+                  <span className="italic text-muted">{t("knowledge.interview.openValue")}</span>
+                ) : (
+                  relations.map((relation, index) => (
+                    <span
+                      key={`${relation.target}\u0000${relation.type}\u0000${index}`}
+                      className="flex items-start justify-between gap-1 rounded border border-rule bg-surface-container-low/60 px-2 py-1 text-[11px] text-foreground"
+                    >
+                      <span>
+                        {relation.target} — {relationTypeLabel(t, relation.type)}
+                        {relation.note !== "" && <span className="block text-muted">{relation.note}</span>}
+                      </span>
+                      {relation.suggested && <SuggestedMark />}
+                    </span>
+                  ))
+                )}
+              </dd>
+            </div>
+          </dl>
           {anySuggested && (
-            <div className="border-t border-rule pt-1 text-right">
+            <div className="mt-2 border-t border-rule pt-1 text-right">
               <button
                 type="button"
                 data-testid="entity-interview-drop-suggestions"
@@ -174,7 +176,7 @@ export function ProposalCard({
               </button>
             </div>
           )}
-        </dl>
+        </div>
       )}
     </section>
   );

@@ -16,17 +16,19 @@ import json
 import re
 from typing import TYPE_CHECKING
 
+import httpx
 import pytest
 from playwright.sync_api import Page, Route, expect
 
 from app.capabilities.knowledge.e2e.conftest import (
     create_chapter,
     create_novel,
+    list_entities,
     seed_canon,
     write_scene,
 )
 from app.kernel.testing.a11y import assert_accessible
-from app.kernel.testing.stack import WEB_URL
+from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -50,6 +52,14 @@ def _seed_canon() -> str:
     write_scene(str(chapter["id"]), CAST_PROSE)
     seed_canon(novel_id, str(chapter["id"]))
     return novel_id
+
+
+def _add_alias(entity_id: str, alias: str) -> None:
+    """Give an existing row one alias through the real correction path — the
+    ambiguous-target leg's second match."""
+    with httpx.Client(base_url=API_URL, timeout=30.0) as client:
+        response = client.patch(f"/api/knowledge/entities/{entity_id}", json={"aliases": [alias]})
+    response.raise_for_status()
 
 
 def _goto_graph(page: Page, novel_id: str) -> None:
@@ -289,4 +299,81 @@ def test_unparseable_shows_the_named_face_and_keeps_the_text(page: Page, install
     )
     expect(_composer(page)).to_have_value("unparseable")
     expect(page.get_by_test_id("entity-interview-retry")).to_be_visible()
+    assert_accessible(page)
+
+
+def test_the_interview_ends_in_an_entity_with_relations(page: Page, installed: Stack) -> None:
+    """The handover: «Alles vorschlagen lassen» fills and marks the proposal,
+    «Als Entität speichern» opens the create dialog prefilled with the locked
+    type and the resolved relation, and saving puts the entity and its edge
+    into the graph, closes the interview and selects the new row. The fake
+    proposes one ``related_to`` to the first roster entry, name-ordered:
+    «Forschungsstation»."""
+    novel_id = _seed_canon()
+    entities = {row["name"]: row for row in list_entities(novel_id)}
+    # «Kavic» names the location and is also Mira's alias: one word, two rows.
+    _add_alias(str(entities["Mira"]["id"]), "Kavic")
+    _open_interview(page, novel_id)
+    _start(page)
+    _say(page, f"Name: {NAME}")
+    expect(page.get_by_test_id("entity-interview-proposal")).to_contain_text(NAME)
+
+    page.get_by_test_id("entity-interview-fill-all").click()
+    proposal = page.get_by_test_id("entity-interview-proposal")
+    expect(proposal).to_contain_text("vorgeschlagen")
+    expect(proposal).to_contain_text("Forschungsstation")
+    expect(proposal).to_contain_text("Verbunden mit")
+
+    save_door = page.get_by_test_id("entity-interview-save")
+    expect(save_door).to_be_enabled()
+    save_door.click()
+
+    dialog = page.get_by_test_id("entity-create-dialog")
+    expect(dialog).to_be_visible()
+    expect(dialog).to_contain_text("Aus dem Interview")
+    # The session fixed the type: a locked chip, no select.
+    expect(dialog.get_by_test_id("entity-create-type")).to_have_count(0)
+    locked = dialog.get_by_test_id("entity-create-type-locked")
+    expect(locked).to_contain_text("Objekt")
+    expect(locked).to_contain_text("Fixiert")
+    # The proposed parts keep their mark; the relation resolves to the real row.
+    expect(dialog).to_contain_text("vorgeschlagen")
+    expect(dialog.get_by_test_id("entity-create-relation-0-entity")).to_have_value(
+        "Forschungsstation"
+    )
+    expect(dialog.get_by_test_id("entity-create-relation-0-suggested")).to_be_visible()
+    assert_accessible(page)
+
+    # Review Focus 3: a target that names one row and aliases another offers
+    # both and blocks nothing. The writer picks the location before saving.
+    target = dialog.get_by_test_id("entity-create-relation-0-entity")
+    target.fill("Kavic")
+    many = dialog.get_by_test_id("entity-create-relation-0-many")
+    expect(many).to_contain_text("Mehrere Treffer — wählen")
+    expect(many).to_contain_text("Kavic")
+    expect(many).to_contain_text("Mira")
+    assert_accessible(page)
+    dialog.get_by_test_id(f"entity-create-relation-0-choice-{entities['Kavic']['id']}").click()
+    expect(dialog.get_by_test_id("entity-create-relation-0-many")).to_have_count(0)
+    expect(target).to_have_value("Kavic")
+
+    dialog.get_by_test_id("entity-create-save").click()
+    expect(dialog).not_to_be_visible()
+    expect(page.get_by_test_id("toast")).to_contain_text("Entität angelegt · 1 Beziehung verknüpft")
+
+    # The save selects the new row and the edge stands in its dossier.
+    dossier = page.get_by_test_id("entity-dossier")
+    expect(dossier).to_be_visible()
+    expect(dossier).to_contain_text(NAME)
+    expect(dossier).to_contain_text("Kavic")
+    expect(dossier).to_contain_text("Verbunden mit")
+    assert_accessible(page)
+
+    # The interview is closed; its row moved to «Beendet» in the list.
+    page.get_by_test_id("graph-new-entity").click()
+    expect(page.get_by_test_id("entity-interview")).to_be_visible()
+    page.get_by_test_id("entity-interview-sessions").click()
+    listing = page.get_by_test_id("entity-interview-list")
+    expect(listing).to_contain_text("Beendet")
+    expect(listing).to_contain_text(NAME)
     assert_accessible(page)

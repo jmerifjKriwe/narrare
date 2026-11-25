@@ -21,6 +21,7 @@ import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 
 import { EntityCreateDialog } from "./EntityCreateDialog";
+import type { EntityPrefill } from "../entityCreate";
 
 const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "POST" | "PATCH" | "DELETE", ReturnType<typeof vi.fn>>;
@@ -470,5 +471,153 @@ describe("EntityCreateDialog — create by hand", () => {
         screen.getByTestId(`entity-create-relation-${index}-entity`).getAttribute("aria-invalid"),
       ).toBeNull();
     }
+  });
+});
+
+const INTERVIEW_PREFILL: EntityPrefill = {
+  name: "Resonanz-Transponder LC-89",
+  type: "object",
+  aliases: ["LC-89", "Transponder"],
+  tags: ["Technologie", "Relikt"],
+  content: "Verschlossenes Prototyp-Subraumrelais.",
+  suggested: { aliases: ["Transponder"], tags: ["Technologie"], content: true },
+  relations: [
+    { target: "Station 7", relation_type: "related_to", note: "dort gefunden", suggested: true },
+  ],
+};
+
+describe("EntityCreateDialog — from the interview", () => {
+  function harnessInterview(prefill: EntityPrefill, entities: readonly Entity[] = ENTITIES) {
+    return harness((close) => (
+      <EntityCreateDialog
+        novelId={NOVEL_ID}
+        entities={entities}
+        openerId="opener"
+        onClose={close}
+        source="interview"
+        prefill={prefill}
+      />
+    ));
+  }
+
+  function openInterview(prefill: EntityPrefill, entities: readonly Entity[] = ENTITIES) {
+    mount(harnessInterview(prefill, entities));
+    openDialog();
+    return screen.getByTestId("entity-create-dialog");
+  }
+
+  it("suggested parts are marked", () => {
+    openInterview(INTERVIEW_PREFILL);
+
+    expect(screen.getByText(de["knowledge.create.sourceInterview"])).toBeTruthy();
+    // The type is a locked chip, not a select.
+    expect(screen.queryByTestId("entity-create-type")).toBeNull();
+    const locked = screen.getByTestId("entity-create-type-locked");
+    expect(locked.textContent).toContain(de["knowledge.type.object"]);
+    expect(locked.textContent).toContain(de["knowledge.create.locked"]);
+    expect(locked.querySelector("svg")).not.toBeNull();
+
+    const aliasChip = screen.getByText("Transponder").closest("span") as HTMLElement;
+    expect(within(aliasChip).getByText(de["knowledge.interview.suggested"])).toBeTruthy();
+    const ownAlias = screen.getByText("LC-89").closest("span") as HTMLElement;
+    expect(within(ownAlias).queryByText(de["knowledge.interview.suggested"])).toBeNull();
+
+    const tagChip = screen.getByText("Technologie").closest("span") as HTMLElement;
+    expect(within(tagChip).getByText(de["knowledge.interview.suggested"])).toBeTruthy();
+    const ownTag = screen.getByText("Relikt").closest("span") as HTMLElement;
+    expect(within(ownTag).queryByText(de["knowledge.interview.suggested"])).toBeNull();
+
+    const description = screen.getByText(de["knowledge.create.descriptionLabel"]);
+    expect(within(description).getByText(de["knowledge.interview.suggested"])).toBeTruthy();
+
+    // The proposed row carries the spark before its entity name.
+    expect(screen.getByTestId("entity-create-relation-0-suggested")).toBeTruthy();
+    expect(
+      (screen.getByTestId("entity-create-relation-0-entity") as HTMLInputElement).value,
+    ).toBe("Station 7");
+  });
+
+  it("save sends the locked type and the suggested parts", async () => {
+    api.POST.mockResolvedValue({
+      data: entityRow({ id: "e9", name: "Resonanz-Transponder LC-89", type: "object" }),
+      response: ok(201),
+    });
+    openInterview(INTERVIEW_PREFILL);
+    expect(screen.getByTestId("entity-create-save").textContent).toContain(
+      de["knowledge.create.save"],
+    );
+    fireEvent.click(screen.getByTestId("entity-create-save"));
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+    expect(api.POST.mock.calls[0][1].body).toEqual({
+      novel_id: NOVEL_ID,
+      name: "Resonanz-Transponder LC-89",
+      type: "object",
+      aliases: ["LC-89", "Transponder"],
+      tags: ["Technologie", "Relikt"],
+      content: "Verschlossenes Prototyp-Subraumrelais.",
+      relations: [
+        { to_entity_id: "e3", relation_type: "related_to", note: "dort gefunden" },
+      ],
+    });
+  });
+
+  it("an ambiguous alias offers both and the writer picks", () => {
+    const ambiguous = [
+      entityRow({ id: "e1", name: "Dr. Maya Chen", aliases: ["May"] }),
+      entityRow({ id: "e2", name: "ARIA", aliases: ["May"] }),
+      STATION,
+    ];
+    openInterview(
+      {
+        name: "LC-89",
+        type: "object",
+        relations: [{ target: "May", relation_type: "related_to", suggested: true }],
+      },
+      ambiguous,
+    );
+
+    const many = screen.getByTestId("entity-create-relation-0-many");
+    expect(many.textContent).toContain(de["knowledge.create.multipleMatches"]);
+    expect(within(many).getByText("Dr. Maya Chen")).toBeTruthy();
+    expect(within(many).getByText("ARIA")).toBeTruthy();
+    // Nothing is blocked: the save stands while the writer decides.
+    expect((screen.getByTestId("entity-create-save") as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(screen.getByTestId("entity-create-relation-0-choice-e2"));
+    expect(screen.queryByTestId("entity-create-relation-0-many")).toBeNull();
+    expect(
+      (screen.getByTestId("entity-create-relation-0-entity") as HTMLInputElement).value,
+    ).toBe("ARIA");
+  });
+
+  it("unresolved rows are counted and left out", async () => {
+    api.POST.mockResolvedValue({
+      data: entityRow({ id: "e9", name: "LC-89", type: "object" }),
+      response: ok(201),
+    });
+    openInterview({
+      name: "LC-89",
+      type: "object",
+      relations: [
+        { target: "Nebel", relation_type: "related_to", suggested: false },
+        { target: "Station 7", relation_type: "related_to", suggested: false },
+      ],
+    });
+
+    expect(screen.getByTestId("entity-create-relation-0-no-match").textContent).toBe(
+      de["knowledge.create.noMatch"],
+    );
+    expect(screen.getByTestId("entity-create-unresolved-note").textContent).toBe(
+      de["knowledge.create.unresolvedNote"],
+    );
+    expect(
+      screen.getByTestId("entity-create-relation-0-entity").getAttribute("aria-invalid"),
+    ).toBe("true");
+
+    fireEvent.click(screen.getByTestId("entity-create-save"));
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+    expect(api.POST.mock.calls[0][1].body.relations).toEqual([
+      { to_entity_id: "e3", relation_type: "related_to", note: null },
+    ]);
   });
 });

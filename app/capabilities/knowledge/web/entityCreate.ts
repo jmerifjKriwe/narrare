@@ -10,7 +10,9 @@
  * disappears without the writer hearing about it. Duplicate names are
  * allowed by the API; the dialog only warns.
  */
-import type { Entity, EntityCreate } from "@shell/lib/api/client";
+import type { Entity, EntityCreate, Proposal } from "@shell/lib/api/client";
+
+import { TYPE_KEYS, type EntityType } from "./entityTypes";
 
 /** The POST body the create hook carries; the generated contract is the truth. */
 export type EntityCreateBody = EntityCreate;
@@ -22,12 +24,121 @@ export type EntityCreateBody = EntityCreate;
 export const MAX_RELATIONS = 12;
 
 /** One relation row while the dialog edits it: the typed target, its label,
- *  an optional note. The target resolves at save time, never on keystroke. */
+ *  an optional note. The target resolves at save time, never on keystroke.
+ *  `chosenId` remembers a pick from «Mehrere Treffer — wählen»: an explicit
+ *  choice stays the row's answer even when the chosen name is also another
+ *  row's alias, and typing a new target clears it. */
 export type EntityRelationRow = {
   target: string;
   relationType: string;
   note: string;
+  chosenId?: string;
 };
+
+/** Which door opened the create dialog. From the interview the type is the
+ *  session's and cannot change; the hand-made form owns its type box. */
+export type EntityCreateSource = "manual" | "interview";
+
+/** One proposed relation as the interview hands it over: the model's target
+ *  words (or a roster name), the label it chose, an optional note, and whether
+ *  the model suggested it. The target resolves against the roster in the
+ *  dialog, never here — one match is silent, several ask, none drops the row. */
+export type EntityRelationPrefill = {
+  target: string;
+  relation_type: string;
+  note?: string;
+  suggested: boolean;
+};
+
+/** The interview's draft as the create dialog's starting state. Every part the
+ *  model proposed keeps its mark; `type` is the session's own type. */
+export type EntityPrefill = {
+  name?: string;
+  type?: EntityType;
+  aliases?: string[];
+  tags?: string[];
+  content?: string;
+  suggested?: { aliases?: string[]; tags?: string[]; content?: boolean };
+  relations: EntityRelationPrefill[];
+};
+
+/** A prefill row as the dialog edits it; the key is React's, the mark travels
+ *  so the row can wear the spark the proposal card drew. */
+export type EntityCreateRelationRow = EntityRelationRow & { key: number; suggested: boolean };
+
+/** The dialog's starting state. `typeLocked` is the interview's one rule: the
+ *  session fixed the type before the form existed, so the writer cannot change
+ *  it — the hand-made form starts unlocked and empty. */
+export type EntityCreateFormState = {
+  name: string;
+  type: string;
+  typeLocked: boolean;
+  aliases: string[];
+  tags: string[];
+  content: string;
+  relations: EntityCreateRelationRow[];
+};
+
+const ENTITY_TYPE_NAMES = Object.keys(TYPE_KEYS);
+
+function toEntityType(value: string | null): EntityType | undefined {
+  return value !== null && ENTITY_TYPE_NAMES.includes(value) ? (value as EntityType) : undefined;
+}
+
+/**
+ * The interview's proposal as the create dialog's prefill. The proposal's
+ * `name` may still be null; the session's type is the locked one, and each
+ * suggested list item and the description keep the mark the wire gave them.
+ */
+export function entityPrefillFromProposal(
+  proposal: Proposal | null,
+  entityType: string | null,
+): EntityPrefill {
+  const type = toEntityType(entityType);
+  if (proposal === null) return { type, relations: [] };
+  return {
+    name: proposal.name ?? undefined,
+    type,
+    aliases: [...(proposal.aliases ?? [])],
+    tags: [...(proposal.tags ?? [])],
+    content: proposal.content ?? "",
+    suggested: {
+      aliases: [...(proposal.suggested?.aliases ?? [])],
+      tags: [...(proposal.suggested?.tags ?? [])],
+      content: proposal.suggested?.content ?? false,
+    },
+    relations: (proposal.relations ?? []).map((relation) => ({
+      target: relation.target,
+      relation_type: relation.type,
+      note: relation.note === "" ? undefined : relation.note,
+      suggested: relation.suggested,
+    })),
+  };
+}
+
+/** The dialog's initial state: the hand-made form is empty and unlocked; the
+ *  interview's prefill carries its fields, its marks and its locked type. */
+export function createFormState(input: {
+  source: EntityCreateSource;
+  prefill?: EntityPrefill;
+}): EntityCreateFormState {
+  const prefill = input.prefill;
+  return {
+    name: prefill?.name ?? "",
+    type: prefill?.type ?? "",
+    typeLocked: input.source === "interview",
+    aliases: [...(prefill?.aliases ?? [])],
+    tags: [...(prefill?.tags ?? [])],
+    content: prefill?.content ?? "",
+    relations: (prefill?.relations ?? []).map((relation, index) => ({
+      key: index,
+      target: relation.target,
+      relationType: relation.relation_type,
+      note: relation.note ?? "",
+      suggested: relation.suggested,
+    })),
+  };
+}
 
 /** The dialog's whole form, roster included so the body builder can resolve
  *  every row without the caller passing a second list. */
@@ -79,6 +190,21 @@ export function resolveRelationTarget(
   return { kind: "many", entities: found };
 }
 
+/** A row's resolution, honoring an explicit pick. When the writer chose one
+ *  of several matches, that entity is the answer — even if its own name is
+ *  another row's alias — until the target is typed again and the choice is
+ *  cleared. */
+export function resolveRowTarget(
+  row: Pick<EntityRelationRow, "target" | "chosenId">,
+  entities: readonly Entity[],
+): RelationResolution {
+  if (row.chosenId !== undefined) {
+    const chosen = entities.find((entity) => entity.id === row.chosenId);
+    if (chosen !== undefined) return { kind: "one", entity: chosen };
+  }
+  return resolveRelationTarget(row.target, entities);
+}
+
 /** The row whose name already exists, or null. Names only — an alias is a
  *  different identity the merge path owns; the notice names the duplicate. */
 export function findDuplicateName(name: string, entities: readonly Entity[]): Entity | null {
@@ -103,7 +229,7 @@ export function relationRowOutcome(
   const hasLabel = row.relationType.trim() !== "";
   const hasNote = row.note.trim() !== "";
   if (!hasTarget && !hasLabel && !hasNote) return "empty";
-  if (!hasTarget || resolveRelationTarget(row.target, entities).kind !== "one") {
+  if (!hasTarget || resolveRowTarget(row, entities).kind !== "one") {
     return "unresolved-target";
   }
   if (!hasLabel) return "missing-label";
@@ -153,7 +279,7 @@ export function duplicateRelationRows(
   const duplicates = new Set<number>();
   for (const index of keptRelationRows(rows, entities)) {
     const row = rows[index];
-    const resolution = resolveRelationTarget(row.target, entities);
+    const resolution = resolveRowTarget(row, entities);
     if (resolution.kind !== "one") continue;
     const pair = `${resolution.entity.id}\u0000${row.relationType.trim()}`;
     const first = firstByPair.get(pair);
@@ -213,7 +339,7 @@ export function buildEntityCreateBody(form: EntityCreateForm): EntityCreateBody 
   const relations = [];
   for (const index of keptRelationRows(form.relations, form.entities)) {
     const row = form.relations[index];
-    const resolution = resolveRelationTarget(row.target, form.entities);
+    const resolution = resolveRowTarget(row, form.entities);
     if (resolution.kind !== "one") continue;
     relations.push({
       to_entity_id: resolution.entity.id,

@@ -11,8 +11,9 @@ import { FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 
 import { RELATION_TYPE_MAX, INPUT } from "../crudDialogs";
-import type { EntityRelationRow } from "../entityCreate";
-import { relationRowOutcome } from "../entityCreate";
+import type { EntityCreateRelationRow, EntityRelationRow } from "../entityCreate";
+import { relationRowOutcome, resolveRowTarget } from "../entityCreate";
+import { entityTypeLabel } from "../entityTypes";
 
 /** The ids that describe a field, joined for `aria-describedby`; absent
  *  parts drop out, so one reason is one id and two are two, space-separated. */
@@ -34,8 +35,9 @@ export function RelationRows({
   dropped,
   onUpdate,
   onRemove,
+  onChoose,
 }: {
-  rows: readonly (EntityRelationRow & { key: number })[];
+  rows: readonly EntityCreateRelationRow[];
   entities: readonly Entity[];
   entityListId: string;
   labelListId: string;
@@ -47,6 +49,9 @@ export function RelationRows({
   dropped: number;
   onUpdate: (index: number, patch: Partial<EntityRelationRow>) => void;
   onRemove: (index: number) => void;
+  /** The writer picked one of several matches: the row's target becomes the
+   *  chosen entity's own name, so save-time resolution is silent again. */
+  onChoose: (index: number, entity: Entity) => void;
 }) {
   const t = useTranslation();
 
@@ -78,56 +83,101 @@ export function RelationRows({
           duplicated && duplicateNoteId,
           refused && failureId,
         );
+        const hasTarget = row.target.trim() !== "";
+        const resolution = resolveRowTarget(row, entities);
         return (
-          <div
-            key={row.key}
-            data-refused={refused ? "true" : undefined}
-            className="flex items-center gap-2"
-          >
-            <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
-              <input
-                data-testid={`entity-create-relation-${index}-entity`}
-                type="text"
-                list={entityListId}
-                value={row.target}
-                aria-label={t("knowledge.create.entityLabel")}
-                aria-invalid={targetInvalid || undefined}
-                aria-describedby={targetDescribedBy}
-                placeholder={t("knowledge.create.entityLabel")}
-                onChange={(event) => onUpdate(index, { target: event.target.value })}
-                className={`${INPUT} ${FOCUS} ${targetInvalid ? "ring-1 ring-danger" : ""}`}
-              />
-              <input
-                data-testid={`entity-create-relation-${index}-label`}
-                type="text"
-                list={labelListId}
-                value={row.relationType}
-                aria-label={t("knowledge.create.relationLabelLabel")}
-                aria-invalid={labelInvalid || undefined}
-                aria-describedby={labelDescribedBy}
-                placeholder={t("knowledge.create.relationLabelPlaceholder")}
-                maxLength={RELATION_TYPE_MAX}
-                onChange={(event) => onUpdate(index, { relationType: event.target.value })}
-                className={`${INPUT} ${FOCUS} ${labelInvalid ? "ring-1 ring-danger" : ""}`}
-              />
-              <input
-                data-testid={`entity-create-relation-${index}-note`}
-                type="text"
-                value={row.note}
-                aria-label={t("knowledge.crud.noteLabel")}
-                placeholder={t("knowledge.crud.noteLabel")}
-                onChange={(event) => onUpdate(index, { note: event.target.value })}
-                className={`${INPUT} ${FOCUS}`}
-              />
+          <div key={row.key} data-refused={refused ? "true" : undefined} className="space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
+                <div className="flex min-w-0 items-center gap-1">
+                  {row.suggested && (
+                    <span
+                      data-testid={`entity-create-relation-${index}-suggested`}
+                      aria-hidden="true"
+                      className="shrink-0 text-warning"
+                    >
+                      <Icon name="spark" size={13} />
+                    </span>
+                  )}
+                  <input
+                    data-testid={`entity-create-relation-${index}-entity`}
+                    type="text"
+                    list={entityListId}
+                    value={row.target}
+                    aria-label={t("knowledge.create.entityLabel")}
+                    aria-invalid={targetInvalid || undefined}
+                    aria-describedby={targetDescribedBy}
+                    placeholder={t("knowledge.create.entityLabel")}
+                    onChange={(event) => onUpdate(index, { target: event.target.value })}
+                    className={`${INPUT} ${FOCUS} ${targetInvalid ? "ring-1 ring-danger" : ""}`}
+                  />
+                </div>
+                <input
+                  data-testid={`entity-create-relation-${index}-label`}
+                  type="text"
+                  list={labelListId}
+                  value={row.relationType}
+                  aria-label={t("knowledge.create.relationLabelLabel")}
+                  aria-invalid={labelInvalid || undefined}
+                  aria-describedby={labelDescribedBy}
+                  placeholder={t("knowledge.create.relationLabelPlaceholder")}
+                  maxLength={RELATION_TYPE_MAX}
+                  onChange={(event) => onUpdate(index, { relationType: event.target.value })}
+                  className={`${INPUT} ${FOCUS} ${labelInvalid ? "ring-1 ring-danger" : ""}`}
+                />
+                <input
+                  data-testid={`entity-create-relation-${index}-note`}
+                  type="text"
+                  value={row.note}
+                  aria-label={t("knowledge.crud.noteLabel")}
+                  placeholder={t("knowledge.crud.noteLabel")}
+                  onChange={(event) => onUpdate(index, { note: event.target.value })}
+                  className={`${INPUT} ${FOCUS}`}
+                />
+              </div>
+              <button
+                type="button"
+                aria-label={t("knowledge.create.removeRelation")}
+                onClick={() => onRemove(index)}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-danger ${FOCUS}`}
+              >
+                <Icon name="trash" size={15} />
+              </button>
             </div>
-            <button
-              type="button"
-              aria-label={t("knowledge.create.removeRelation")}
-              onClick={() => onRemove(index)}
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-danger ${FOCUS}`}
-            >
-              <Icon name="trash" size={15} />
-            </button>
+            {hasTarget && resolution.kind === "many" && (
+              <div
+                data-testid={`entity-create-relation-${index}-many`}
+                className="rounded border border-warning/40 bg-surface-container px-2 py-1.5"
+              >
+                <p className="text-[11px] font-medium text-foreground">
+                  {t("knowledge.create.multipleMatches")}
+                </p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {resolution.entities.map((entity) => (
+                    <button
+                      key={entity.id}
+                      type="button"
+                      data-testid={`entity-create-relation-${index}-choice-${entity.id}`}
+                      onClick={() => onChoose(index, entity)}
+                      className={`inline-flex items-center gap-1.5 rounded border border-rule bg-card px-2 py-1 text-[11px] text-foreground transition-colors hover:bg-surface-container-low ${FOCUS}`}
+                    >
+                      {entity.name}
+                      <span className="text-[10px] text-muted">
+                        {entityTypeLabel(t, entity.type)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {hasTarget && resolution.kind === "none" && (
+              <p
+                data-testid={`entity-create-relation-${index}-no-match`}
+                className="text-[11px] leading-snug text-foreground"
+              >
+                {t("knowledge.create.noMatch")}
+              </p>
+            )}
           </div>
         );
       })}
