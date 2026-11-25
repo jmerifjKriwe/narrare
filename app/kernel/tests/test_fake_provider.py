@@ -15,6 +15,7 @@ import pytest
 from app.kernel.context import CHARS_PER_TOKEN
 from app.kernel.llm.contract import (
     DONE,
+    ROSTER_PREFIX,
     CompletionEvent,
     CompletionRequest,
     Delta,
@@ -24,7 +25,20 @@ from app.kernel.llm.contract import (
 from app.kernel.llm.fake import (
     FakeProvider,
     _last_user_text,  # pyright: ignore[reportPrivateUsage]  the body read is the unit under test
+    _section_lines,  # pyright: ignore[reportPrivateUsage]  the entry read is the unit under test
 )
+from app.kernel.prompts import get_registry, render_source
+
+
+def _bundled_interview(**variables: str) -> str:
+    """The bundled interview template rendered with the named variables overridden."""
+    registry = get_registry()
+    spec = registry.spec("knowledge.entity-interview")
+    return render_source(
+        spec.template,
+        {**spec.sample_variables(), **variables},
+        include=lambda name: registry.spec(name).template,
+    )
 
 
 async def _events(prompt: str) -> list[CompletionEvent]:
@@ -510,12 +524,103 @@ async def test_a_reordered_frame_still_reads_the_turns_body() -> None:
 def test_a_turns_header_with_an_empty_body_finds_no_user_turn() -> None:
     """A present ``TURNS:`` header makes the body the only place a turn may live.
 
-    The blank line ends the body at once, so the ``USER:`` line below it is
-    outside it and no all-lines fallback runs: a lost or mis-scoped body means
-    no user turn, not a turn read from the rest of the frame. Every prompt the
-    tests above build writes ``TURNS:``, so this edge is pinned here directly.
+    The next top-level marker ends the body, so the ``USER:`` line behind it is
+    outside: a lost or mis-scoped body means no user turn, not a turn read from
+    the rest of the frame. Every prompt the tests above build writes ``TURNS:``,
+    so this edge is pinned here directly.
     """
-    assert _last_user_text("TURNS:\n\nUSER: Name: Jona\n") == ""
+    assert _last_user_text("TURNS:\nROSTER:\nMira (character; none)\nUSER: Name: Jona\n") == ""
+
+
+async def test_a_blank_line_behind_the_turns_header_keeps_the_latest_turn() -> None:
+    """A blank line behind ``TURNS:`` does not empty the body.
+
+    The bundled template writes that blank line when the transcript renders
+    empty, and a re-voiced prompt may write one behind the header too. Only a
+    top-level marker ends a body, so the writer's latest turn still names the
+    entity.
+    """
+    assert _last_user_text("TURNS:\n\nUSER: Name: Jona\nROSTER:\nMira (character; none)\n") == (
+        "Name: Jona"
+    )
+
+    answered = json.loads(
+        await _answer(
+            "PURPOSE: entity-interview\n"
+            "\n"
+            "Interview the writer.\n"
+            "\n"
+            "TYPE: character\n"
+            "SLOTS: {}\n"
+            "RELATIONS: []\n"
+            "TURNS:\n"
+            "\n"
+            "ASSISTANT: Wer ist sie?\n"
+            "USER: Name: Jona\n"
+            "ROSTER:\n"
+            "Mira (character; none)\n"
+            "REQUEST: answer\n"
+        )
+    )
+
+    assert answered["slots"] == {"name": "Jona"}
+    assert answered["reply"] == "Notiert."
+
+
+async def test_a_blank_line_behind_the_roster_header_keeps_the_entries() -> None:
+    """A blank line behind ``ROSTER:`` does not empty the roster.
+
+    The template writes that blank line when the roster renders empty. Only a
+    top-level marker ends the body, so ``fill-all`` still proposes the first
+    entry.
+    """
+    assert _section_lines(
+        "ROSTER:\n\nMira (character; none)\nREQUEST: fill-all\n", ROSTER_PREFIX
+    ) == ["Mira (character; none)"]
+
+    answered = json.loads(
+        await _answer(
+            "PURPOSE: entity-interview\n"
+            "\n"
+            "Interview the writer.\n"
+            "\n"
+            "TYPE: character\n"
+            'SLOTS: {"name": "Jona"}\n'
+            "RELATIONS: []\n"
+            "TURNS:\n"
+            "ASSISTANT: Wer ist sie?\n"
+            "USER: Alles vorschlagen lassen\n"
+            "ROSTER:\n"
+            "\n"
+            "Mira (character; none)\n"
+            "REQUEST: fill-all\n"
+        )
+    )
+
+    assert answered["reply"] == "Alles vorgeschlagen."
+    assert answered["slots"]["name"] == "Jona"
+    assert answered["relations"] == [{"target": "Mira", "type": "related_to"}]
+
+
+def test_the_bundled_empty_transcript_render_keeps_an_empty_turns_body() -> None:
+    """The template's empty-variable render draws the header, then the next marker.
+
+    The blank line behind ``TURNS:`` is the template's own newline around an
+    empty variable; the ``ROSTER:`` header behind it ends the body, so the
+    render still means «no turn», never a body that swallowed the roster.
+    """
+    rendered = _bundled_interview(transcript="")
+
+    assert "TURNS:\n\nROSTER:" in rendered
+    assert _last_user_text(rendered) == ""
+
+
+def test_the_bundled_empty_roster_render_keeps_an_empty_roster_body() -> None:
+    """The same render with an empty roster ends at the ``REQUEST:`` header."""
+    rendered = _bundled_interview(roster="")
+
+    assert "ROSTER:\n\nREQUEST:" in rendered
+    assert _section_lines(rendered, ROSTER_PREFIX) == []
 
 
 def test_a_prompt_without_the_turns_header_keeps_the_all_lines_fallback() -> None:

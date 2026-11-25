@@ -210,10 +210,13 @@ def _section_bodies(lines: list[str]) -> dict[str, range]:
     lets a re-voice render them in either order, so neither header is read off
     the other: the one that stands first is found first, whichever it is. A
     body runs from its own header line to the next line that is a top-level
-    marker — a marker the template writes outside every body. Inside a body
-    every line is an entry, whatever prefix it happens to start with: an entity
-    named «ROSTER: X» or «REQUEST: fill-all» is one roster line, not a boundary
-    and not a marker.
+    marker — a marker the template writes outside every body. Blank lines stay
+    inside it: the bundled template writes one right behind a header whose
+    variable rendered empty, so a boundary there would empty the body, and a
+    re-voiced prompt may leave a blank line behind the header too. Inside a
+    body every line is an entry, whatever prefix it happens to start with: an
+    entity named «ROSTER: X» or «REQUEST: fill-all» is one roster line, not a
+    boundary and not a marker.
 
     A prompt without either header has no bodies, so a reader falls back to
     every line being a marker candidate (the chat and extraction shapes).
@@ -228,7 +231,7 @@ def _section_bodies(lines: list[str]) -> dict[str, range]:
         end = len(lines)
         for index in range(header_index + 1, len(lines)):
             line = lines[index]
-            if not line.strip() or line.strip() in SECTION_HEADERS:
+            if line.strip() in SECTION_HEADERS:
                 end = index
                 break
             if not line.startswith(TOP_LEVEL_MARKERS):
@@ -275,9 +278,11 @@ def _section_lines(prompt: str, header: str) -> list[str]:
     """The non-empty lines of a section body, in order.
 
     The body's extent comes from ``_section_bodies``, which finds the header
-    wherever the re-voice placed it, so an entry starting with a marker prefix
-    stays an entry; a blank line after the entries ends the block early, as the
-    rendered roster has none.
+    wherever the re-voice placed it and keeps blank lines inside the body, so
+    an entry starting with a marker prefix stays an entry. A blank line behind
+    the header is skipped — the bundled template writes one when the roster
+    variable rendered empty — and a blank line after the entries ends the block
+    early, as the rendered roster has none.
     """
     lines = prompt.splitlines()
     body = _section_bodies(lines).get(header)
