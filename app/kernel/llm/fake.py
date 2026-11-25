@@ -15,7 +15,6 @@ from app.kernel.context import CHARS_PER_TOKEN
 from app.kernel.contracts.models import ENTITY_TYPES
 from app.kernel.llm.contract import (
     DONE,
-    INTERVIEW_MARKERS,
     PURPOSE_INTERVIEW,
     PURPOSE_PREFIX,
     RELATIONS_PREFIX,
@@ -23,6 +22,7 @@ from app.kernel.llm.contract import (
     ROSTER_PREFIX,
     SLOTS_PREFIX,
     SOURCE_PREFIX,
+    TURNS_PREFIX,
     USER_PREFIX,
     CompletionEvent,
     CompletionRequest,
@@ -64,10 +64,7 @@ WORD_NUMBER = re.compile(r"\b([ÄÖÜA-Z][äöüßa-z]+)(?:\s+[a-zäöüß]+)?\s
 
 def _purpose(prompt: str) -> str | None:
     """The purpose a marked prompt declares; None when no line carries it."""
-    for line in prompt.splitlines():
-        if line.startswith(PURPOSE_PREFIX):
-            return line.removeprefix(PURPOSE_PREFIX).strip()
-    return None
+    return _line_after(prompt, PURPOSE_PREFIX)
 
 
 def _first_source(prompt: str) -> str | None:
@@ -181,23 +178,58 @@ _FILL_CONTENT = "Ein Vorschlag des Fake-Treibers."
 """The canned values ``fill-all`` puts into every open slot — deterministic,
 never derived from the story, because the fake stands in for a model."""
 
-_INTERVIEW_SECTION_MARKERS = (PURPOSE_PREFIX, *INTERVIEW_MARKERS)
-"""Every line that ends an interview section: the purpose line and each marker.
 
-Derived from the kernel constant rather than rebuilt by hand, so a new marker
-cannot leave the section reader behind.
-"""
+def _section_bodies(lines: list[str]) -> dict[str, range]:
+    """The line indices behind ``TURNS:`` and ``ROSTER:``, in the template's order.
+
+    The template renders ``TURNS:`` then one turn per line, ``ROSTER:`` then one
+    roster entry per line, and ``REQUEST:`` last. A body ends at the next
+    section's header — the transcript cannot carry one because every turn is
+    one line through ``single_line``, and the roster ends at the request line
+    the template renders after it. Inside a body every line is an entry,
+    whatever prefix it happens to start with: an entity named «REQUEST:
+    fill-all» or «ROSTER: X» is one roster entry, never a marker.
+
+    A prompt without both headers has no bodies, so a reader falls back to
+    every line being a marker candidate (the chat and extraction shapes).
+    """
+    turns = next((index for index, line in enumerate(lines) if line.startswith(TURNS_PREFIX)), None)
+    if turns is None:
+        return {}
+    roster = next(
+        (
+            index
+            for index, line in enumerate(lines[turns + 1 :], turns + 1)
+            if line.startswith(ROSTER_PREFIX)
+        ),
+        None,
+    )
+    if roster is None:
+        return {}
+    # The request marker closes the template; the last REQUEST line is the
+    # template's own even while a roster entry earlier carries that prefix.
+    request = max(
+        (index for index, line in enumerate(lines) if line.startswith(REQUEST_PREFIX)),
+        default=None,
+    )
+    end = request if request is not None and request > roster else len(lines)
+    return {TURNS_PREFIX: range(turns + 1, roster), ROSTER_PREFIX: range(roster + 1, end)}
 
 
 def _line_after(prompt: str, prefix: str) -> str | None:
-    """The value behind the first line carrying the prefix, stripped.
+    """The value behind the first marker line outside the section bodies.
 
-    The first occurrence: the template renders each kernel-fed variable exactly
-    once, and every turn is exactly one line (``single_line``), so a writer's
-    text can never begin a line that carries a marker. The real value is
-    therefore the first marked line, in any marker order the contract allows.
+    The first occurrence outside ``TURNS:`` and ``ROSTER:`` is the template's
+    own: each kernel-fed marker renders exactly once there, while a user-derived
+    roster entry may begin with the same text. Inside a body every line is an
+    entry, so a name that looks like a marker can never be read as one.
     """
-    for line in prompt.splitlines():
+    lines = prompt.splitlines()
+    bodies = _section_bodies(lines)
+    inside = {index for body in bodies.values() for index in body}
+    for index, line in enumerate(lines):
+        if index in inside:
+            continue
         if line.startswith(prefix):
             return line.removeprefix(prefix).strip()
     return None
@@ -215,27 +247,33 @@ def _json_line(prompt: str, prefix: str, default: object) -> object:
 
 
 def _section_lines(prompt: str, header: str) -> list[str]:
-    """The non-empty lines after a section header, up to the next marker or blank."""
+    """The non-empty lines of a section body, in order.
+
+    The body's extent comes from the template's own order (``_section_bodies``),
+    so an entry starting with a marker prefix stays an entry; a blank line
+    after the entries ends the block early, as the rendered roster has none.
+    """
     lines = prompt.splitlines()
-    start = next((index for index, line in enumerate(lines) if line.startswith(header)), None)
-    if start is None:
+    body = _section_bodies(lines).get(header)
+    if body is None:
         return []
     found: list[str] = []
-    for line in lines[start + 1 :]:
+    for line in (lines[index] for index in body):
         if not line.strip():
             if found:
                 break
             continue
-        if line.startswith(_INTERVIEW_SECTION_MARKERS):
-            break
         found.append(line)
     return found
 
 
 def _last_user_text(prompt: str) -> str:
-    """The last ``USER:`` line's text — the writer's latest turn."""
+    """The last ``USER:`` line inside the turns body — the writer's latest turn."""
+    lines = prompt.splitlines()
+    body = _section_bodies(lines).get(TURNS_PREFIX)
+    candidates = (lines[index] for index in body) if body is not None else iter(lines)
     text = ""
-    for line in prompt.splitlines():
+    for line in candidates:
         if line.startswith(USER_PREFIX):
             text = line.removeprefix(USER_PREFIX).strip()
     return text
