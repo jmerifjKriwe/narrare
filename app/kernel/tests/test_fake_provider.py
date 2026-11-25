@@ -21,7 +21,10 @@ from app.kernel.llm.contract import (
     Usage,
     single_line,
 )
-from app.kernel.llm.fake import FakeProvider
+from app.kernel.llm.fake import (
+    FakeProvider,
+    _last_user_text,  # pyright: ignore[reportPrivateUsage]  the body read is the unit under test
+)
 
 
 async def _events(prompt: str) -> list[CompletionEvent]:
@@ -502,6 +505,27 @@ async def test_a_reordered_frame_still_reads_the_turns_body() -> None:
 
     assert answered["slots"] == {"name": "Jona"}
     assert answered["reply"] == "Notiert."
+
+
+def test_a_turns_header_with_an_empty_body_finds_no_user_turn() -> None:
+    """A present ``TURNS:`` header makes the body the only place a turn may live.
+
+    The blank line ends the body at once, so the ``USER:`` line below it is
+    outside it and no all-lines fallback runs: a lost or mis-scoped body means
+    no user turn, not a turn read from the rest of the frame. Every prompt the
+    tests above build writes ``TURNS:``, so this edge is pinned here directly.
+    """
+    assert _last_user_text("TURNS:\n\nUSER: Name: Jona\n") == ""
+
+
+def test_a_prompt_without_the_turns_header_keeps_the_all_lines_fallback() -> None:
+    """A headerless interview frame still reads its ``USER:`` line.
+
+    A re-voiced prompt may drop the ``TURNS:`` line; then every line is a
+    candidate and the last ``USER:`` one is the writer's turn. The other
+    purposes never call this function, so the fallback serves them nothing.
+    """
+    assert _last_user_text("USER: Name: Jona\n") == "Name: Jona"
 
 
 async def test_a_reordered_frame_still_reads_a_roster_entry_named_like_the_request() -> None:

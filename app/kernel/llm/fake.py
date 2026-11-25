@@ -299,8 +299,10 @@ def _last_user_text(prompt: str) -> str:
     For an interview prompt the turns body is the transcript: when the prompt
     carries a ``TURNS:`` header, only that body is read, so a body that is
     missing or mis-scoped means no user turn at all instead of a ``USER:`` line
-    found elsewhere in the frame. A prompt without the header keeps the
-    all-lines scan the other purposes rely on.
+    found elsewhere in the frame. A prompt without the header falls back to an
+    all-lines scan, which serves a headerless interview frame — a re-voiced
+    prompt that dropped the ``TURNS:`` line. The other purposes' answers are
+    unchanged because they never call this function.
     """
     lines = prompt.splitlines()
     body = _section_bodies(lines).get(TURNS_PREFIX)
