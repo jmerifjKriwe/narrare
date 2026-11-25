@@ -10,19 +10,24 @@ restores the conversation, ending it leaves the transcript read-only, and
 `unparseable` reaches the named «nicht auswertbar» face for real — with the
 writer's text still in the composer.
 
-Three legs hold the turn at the route, so a running answer is deterministic
-rather than a race: the handler keeps the `Route` and returns (the request
-stays pending), and the test thread releases it once. The first reopens the
-panel before that release — still thinking, composer closed — and then lets
-the reply land. The second hides the panel, fulfils the held request with the
-502 `provider-error` body, and reopens to the named failure with the sent
-text: the hidden panel never opened itself. The third holds one turn each in
-two interviews: returning to the first before either answer lands still shows
+Every refusal in this file is the server's own: a suggestion settled by a
+second request through the real API answers the real 422 `suggestion-mismatch`,
+and `unparseable` makes the real extraction fail. A route may hold a request
+for timing and then continue it; it never answers in the server's place.
+
+Four legs hold a turn at the route, so a running answer is deterministic rather
+than a race: the handler keeps the `Route` and returns (the request stays
+pending), and the test thread releases it once. The first reopens the panel
+before that release — still thinking, composer closed — and then lets the reply
+land. The second hides the panel, continues the held request so the server's
+own 502 `extraction-failed` lands, and reopens to the named failure with the
+sent text: the hidden panel never opened itself. The third holds one turn each
+in two interviews: returning to the first before either answer lands still shows
 it thinking with a closed composer, and each release lands in its own
-conversation.
+conversation. The fourth continues a held refusal while a second interview is
+shown, and finds the face, the text and the retry in the first on return.
 """
 
-import json
 import re
 import threading
 from typing import TYPE_CHECKING
@@ -76,6 +81,25 @@ def _add_alias(entity_id: str, alias: str) -> None:
 def _goto_graph(page: Page, novel_id: str) -> None:
     page.goto(f"{BASE}/novels/{novel_id}/knowledge/graph")
     expect(page.get_by_test_id("graph-page")).to_be_visible()
+
+
+def _interview_id(page: Page) -> str:
+    """The open interview's id, from the route's `interview` parameter."""
+    found = re.search(r"[?&]interview=([0-9a-f-]{36})", page.url)
+    assert found is not None, f"the panel's interview parameter is missing on {page.url}"
+    return found.group(1)
+
+
+def _accept_suggestion(session_id: str) -> None:
+    """Settle the pending suggestion through the real turn endpoint — the
+    pattern ``_add_alias`` uses — so the panel's own press meets a real
+    refusal instead of one this test invented."""
+    with httpx.Client(base_url=API_URL, timeout=30.0) as client:
+        response = client.post(
+            f"/api/chat/sessions/{session_id}/turns",
+            json={"text": "", "act": "accept-suggestion"},
+        )
+    response.raise_for_status()
 
 
 def _open_interview(page: Page, novel_id: str) -> None:
@@ -163,40 +187,29 @@ def test_no_idea_offers_a_suggestion_with_three_actions(page: Page, installed: S
 
 
 def test_a_stale_suggestion_has_its_own_face(page: Page, installed: Stack) -> None:
-    """A suggestion settled in a second tab answers 422 `suggestion-mismatch`:
-    the panel names it, offers no retry, and the current suggestion stays. The
-    refusal is forced at the network boundary — one browser cannot open the
-    second tab this stack would need."""
+    """A suggestion settled before the press answers the real 422
+    `suggestion-mismatch`: the panel names it, offers no retry, and the
+    suggestion that stands now stays on screen. The second writer is this test,
+    through the real turn endpoint — one browser cannot open the second tab
+    this stack would need, and a fabricated response would drive neither the
+    server nor the database."""
     novel_id = _seed_canon()
     _open_interview(page, novel_id)
     _start(page)
     page.get_by_test_id("entity-interview-no-idea").click()
     expect(page.get_by_test_id("entity-interview-suggestion")).to_be_visible()
 
-    def _stale(route: Route) -> None:
-        route.fulfill(
-            status=422,
-            content_type="application/json",
-            body=json.dumps(
-                {
-                    "detail": {
-                        "code": "suggestion-mismatch",
-                        "detail": "there is no pending suggestion",
-                    }
-                }
-            ),
-        )
+    # Another writer settles the pending suggestion first, through the API.
+    _accept_suggestion(_interview_id(page))
 
-    page.route("**/api/chat/sessions/*/turns", _stale)
     page.get_by_test_id("entity-interview-suggestion-accept").click()
     failure = page.get_by_test_id("entity-interview-failure")
     expect(failure).to_contain_text(
         "Der Vorschlag hat sich inzwischen geändert. Sieh dir den aktuellen Vorschlag an."
     )
     expect(page.get_by_test_id("entity-interview-retry")).not_to_be_visible()
-    # The refetch brings the suggestion that stands now.
-    expect(page.get_by_test_id("entity-interview-suggestion")).to_be_visible()
-    page.unroute("**/api/chat/sessions/*/turns")
+    # The refetch brings the suggestion that stands now: settled and marked.
+    expect(page.get_by_test_id("entity-interview-transcript")).to_contain_text("übernommen")
 
 
 def test_hiding_the_panel_while_the_model_answers_keeps_the_turn(
@@ -255,12 +268,16 @@ def test_hiding_the_panel_when_the_answer_fails_keeps_its_explanation(
 ) -> None:
     """A turn that fails while the panel is hidden keeps its named face and
     the writer's text: reopening shows the explanation, not an empty composer
-    and no error."""
+    and no error.
+
+    The refusal is the server's own: `unparseable` makes the real extraction
+    fail twice, and the held request is continued rather than answered here,
+    so a real 502 lands while the panel is away."""
     novel_id = _seed_canon()
     _open_interview(page, novel_id)
     _start(page)
 
-    sent = "Es stammt aus dem Labor von Lin."
+    sent = "unparseable"
     held: list[Route] = []
     held_ready = threading.Event()
 
@@ -280,18 +297,11 @@ def test_hiding_the_panel_when_the_answer_fails_keeps_its_explanation(
         # As above: the thinking row predates the handler, so wait for it.
         assert held_ready.wait(timeout=10), "the turn never reached the route handler"
         assert len(held) == 1
-        held.pop().fulfill(
-            status=502,
-            content_type="application/json",
-            body=json.dumps(
-                {
-                    "detail": {
-                        "code": "provider-error",
-                        "detail": "the provider is offline",
-                    }
-                }
-            ),
-        )
+        with page.expect_response(
+            lambda answer: answer.request.method == "POST" and "/turns" in answer.url
+        ) as answered:
+            held.pop().continue_()
+        assert answered.value.status == 502
 
         # The failure lands while the panel is hidden and must not open it.
         # The door below selects the same session, so without this assertion
@@ -299,7 +309,7 @@ def test_hiding_the_panel_when_the_answer_fails_keeps_its_explanation(
         expect(page.get_by_test_id("entity-interview")).not_to_be_visible()
         page.get_by_test_id("graph-new-entity").click()
         expect(page.get_by_test_id("entity-interview-failure")).to_contain_text(
-            "Die Antwort kam nicht. Dein Text ist noch im Eingabefeld."
+            "Die Antwort war nicht auswertbar. Dein Text ist noch im Eingabefeld."
         )
         expect(_composer(page)).to_have_value(sent)
     finally:
