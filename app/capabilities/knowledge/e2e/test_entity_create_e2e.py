@@ -79,6 +79,11 @@ def _goto_dossiers(page: Page, novel_id: str) -> None:
 
 def _open_create(page: Page, door: str) -> Locator:
     page.get_by_test_id(door).click()
+    if door == "graph-new-entity":
+        # W9 Task 10: the graph's door opens the interview; the chooser's quiet
+        # second path is the hand-made create this leg drives.
+        expect(page.get_by_test_id("entity-interview")).to_be_visible()
+        page.get_by_test_id("entity-interview-manual").click()
     dialog = page.get_by_test_id("entity-create-dialog")
     expect(dialog).to_be_visible()
     return dialog

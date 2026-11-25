@@ -46,7 +46,7 @@ import {
 import type { Relation } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
-import { useEntitiesQuery, useNovelRelationsQuery } from "@shell/lib/query";
+import { useEntitiesQuery, useNovelRelationsQuery, useAssistantSessionsQuery } from "@shell/lib/query";
 import { CARD_EYEBROW, FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 import { useToast } from "@shell/ui/toast";
@@ -55,6 +55,7 @@ import { EntityDossier } from "./EntityDossier";
 import { CreateRelationDialog, EntityCreateDialog, MergeDialog } from "./crudDialogs";
 import { entityTypeIcon, entityTypeLabel, typeTheme } from "./entityTypes";
 import { fitTransform, graphBounds, graphSignature, layoutGraph, type Transform } from "./graphLayout";
+import { EntityInterview } from "./interview/EntityInterview";
 import { relationTypeLabel } from "./relations";
 
 const GRAPH_PATH = "/novels/$novelId/knowledge/graph";
@@ -87,12 +88,18 @@ export function LoreGraphPage() {
   const t = useTranslation();
   const toast = useToast();
   const { novelId } = useParams({ from: GRAPH_PATH });
-  const { entity: selectedId } = useSearch({ from: GRAPH_PATH });
+  const { entity: selectedId, interview } = useSearch({ from: GRAPH_PATH });
   const navigate = useNavigate();
   usePageTitle(t("knowledge.graph.title"));
 
   const entities = useEntitiesQuery(novelId);
   const relations = useNovelRelationsQuery(novelId);
+  // The door's count and the panel's list read the same cached rows; the
+  // panel opens on the newest open session, or on the type chooser.
+  const interviewSessions = useAssistantSessionsQuery(novelId);
+  const openInterviewCount = (interviewSessions.data ?? []).filter(
+    (session) => session.closed_at === null,
+  ).length;
 
   const [activeType, setActiveType] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -252,12 +259,41 @@ export function LoreGraphPage() {
       void navigate({
         to: GRAPH_PATH,
         params: { novelId },
-        search: id !== null ? { entity: id } : {},
+        search: {
+          ...(id !== null ? { entity: id } : {}),
+          ...(interview !== undefined ? { interview } : {}),
+        },
         replace: true,
       });
     },
-    [navigate, novelId],
+    [interview, navigate, novelId],
   );
+
+  // The panel's open state rides the URL beside the selection, as the
+  // selected entity does: a reload restores the conversation, and closing
+  // the panel only drops the parameter — the session stays open.
+  const setInterview = useCallback(
+    (target: string | null) => {
+      void navigate({
+        to: GRAPH_PATH,
+        params: { novelId },
+        search: {
+          ...(selectedId !== undefined ? { entity: selectedId } : {}),
+          ...(target !== null ? { interview: target } : {}),
+        },
+        replace: true,
+      });
+    },
+    [navigate, novelId, selectedId],
+  );
+
+  async function openInterviewDoor() {
+    // The list is the door's truth: the newest open session, or the chooser.
+    // A click that beats the first list read awaits it rather than guessing.
+    const rows = interviewSessions.data ?? (await interviewSessions.refetch()).data ?? [];
+    const newest = rows.find((session) => session.closed_at === null);
+    setInterview(newest !== undefined ? newest.id : "new");
+  }
 
   // --- The edge popover's focus contract ---------------------------------
   // Each edge is a keyboard button; the refs let Escape (and the close door)
@@ -545,16 +581,34 @@ export function LoreGraphPage() {
             type="button"
             id="graph-new-entity"
             data-testid="graph-new-entity"
-            onClick={() => setCrud("create")}
+            onClick={openInterviewDoor}
+            title={
+              openInterviewCount > 0
+                ? `${t("knowledge.graph.newEntity")} — ${t("knowledge.interview.openInterviews", { count: openInterviewCount })}`
+                : t("knowledge.graph.newEntity")
+            }
             className={`flex items-center gap-1.5 rounded-[var(--radius-control)] bg-primary px-3 py-1 text-meta text-primary-foreground transition-colors hover:opacity-95 ${FOCUS}`}
           >
             <Icon name="plus" size={14} /> {t("knowledge.graph.newEntity")}
+            {openInterviewCount > 0 && (
+              <span
+                aria-hidden="true"
+                data-testid="graph-new-entity-count"
+                className="flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary-container px-1 font-mono text-[10px] font-bold text-primary"
+              >
+                {openInterviewCount}
+              </span>
+            )}
           </button>
         </div>
       </div>
 
-      {/* The body — the honest state's own face; the bar above stays. */}
-      {pending ? (
+      {/* The body — the honest state's own face; the bar above stays. While
+          the interview parameter stands, the panel owns the right column and
+          the selected dossier yields; closing the panel returns it. */}
+      <div className="relative flex min-h-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {pending ? (
         <div data-testid="graph-loading" className="flex min-h-0 flex-1 items-center justify-center">
           <p role="status" className="text-body text-muted">
             {t("knowledge.graph.loading")}
@@ -834,8 +888,9 @@ export function LoreGraphPage() {
             )}
           </div>
 
-          {/* The dossier dock — the selected entity's inline panel. */}
-          {selected !== null && (
+          {/* The dossier dock — the selected entity's inline panel. It yields
+              while the interview panel owns the column. */}
+          {interview === undefined && selected !== null && (
             <div className="w-[360px] shrink-0">
               <EntityDossier
                 entity={selected}
@@ -848,7 +903,19 @@ export function LoreGraphPage() {
             </div>
           )}
         </div>
-      )}
+          )}
+        </div>
+
+        {interview !== undefined && (
+          <EntityInterview
+            novelId={novelId}
+            sessionId={interview === "new" ? null : interview}
+            onSelectSession={(target) => setInterview(target)}
+            onClose={() => setInterview(null)}
+            onManual={() => setCrud("create")}
+          />
+        )}
+      </div>
 
       {/* The subbar's CRUD dialogs (Task 4). The selected entity is the fixed
           end when one stands; the merge moves the selection to the survivor.
@@ -879,7 +946,13 @@ export function LoreGraphPage() {
           openerId="graph-new-entity"
           onClose={() => setCrud(null)}
           onCreated={(entity, relations) => {
-            select(entity.id);
+            // A hand-made row born from the panel returns to the graph: the
+            // panel yields the column so the new row's dossier can show.
+            if (interview !== undefined) {
+              void navigate({ to: GRAPH_PATH, params: { novelId }, search: { entity: entity.id }, replace: true });
+            } else {
+              select(entity.id);
+            }
             toast.show(t("knowledge.create.created", { count: relations }));
           }}
         />

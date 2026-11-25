@@ -92,6 +92,9 @@ function baseGet(path: string): Promise<{ data: unknown; response: Response }> {
   if (path === "/api/knowledge/novels/{novel_id}/relations") {
     return Promise.resolve({ data: relations, response: ok() });
   }
+  if (path === "/api/chat/sessions") {
+    return Promise.resolve({ data: { items: [] }, response: ok() });
+  }
   throw new Error(`unexpected GET: ${path}`);
 }
 
@@ -103,8 +106,12 @@ async function renderGraph(entry = `/novels/${NOVEL_ID}/knowledge/graph`) {
   const graph = createRoute({
     getParentRoute: () => harnessRoot,
     path: GRAPH_PATH,
-    validateSearch: (search: Record<string, unknown>): { entity?: string } =>
-      typeof search.entity === "string" && search.entity !== "" ? { entity: search.entity } : {},
+    validateSearch: (search: Record<string, unknown>): { entity?: string; interview?: string } => {
+      const next: { entity?: string; interview?: string } = {};
+      if (typeof search.entity === "string" && search.entity !== "") next.entity = search.entity;
+      if (typeof search.interview === "string" && search.interview !== "") next.interview = search.interview;
+      return next;
+    },
     component: LoreGraphPage,
   });
   // The dossiers stub the subbar's sibling door navigates to (W5 Task 5);
@@ -673,8 +680,11 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     expect((merge as HTMLButtonElement).disabled).toBe(false);
     const newEntity = screen.getByRole("button", { name: de["knowledge.graph.newEntity"] });
     expect((newEntity as HTMLButtonElement).disabled).toBe(false);
-    // The door opens the hand-made create — one dialog for both paths.
+    // The door opens the interview on its chooser; «Von Hand anlegen» is the
+    // quiet second path onto the same hand-made create — one dialog for both.
     fireEvent.click(newEntity);
+    const panel = await screen.findByTestId("entity-interview");
+    fireEvent.click(within(panel).getByTestId("entity-interview-manual"));
     const dialog = await screen.findByTestId("entity-create-dialog");
     expect(within(dialog).getByText(de["knowledge.create.title"])).toBeTruthy();
   });
@@ -687,6 +697,8 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     await renderGraph();
     await screen.findAllByTestId("graph-node");
     fireEvent.click(screen.getByRole("button", { name: de["knowledge.graph.newEntity"] }));
+    const panel = await screen.findByTestId("entity-interview");
+    fireEvent.click(within(panel).getByTestId("entity-interview-manual"));
     const dialog = await screen.findByTestId("entity-create-dialog");
     fireEvent.change(within(dialog).getByTestId("entity-create-name"), {
       target: { value: "Nebelhaus" },

@@ -84,6 +84,18 @@ export type TimelineEventUpdate = components["schemas"]["TimelineEventUpdate"];
 /** Planning's scene aggregate (W6): one chapter's scenes in position
  *  order, with the chapter's stamp as the version a drill-in compares. */
 export type SceneAggregate = components["schemas"]["SceneAggregateRead"];
+/** The assistant interview (W9): the session with its transcript and draft,
+ *  a list row (no proposal), the door's create body and one turn's readback.
+ *  The graph page's panel is the only surface in cut 1; chat owns the wire. */
+export type AssistantSession = components["schemas"]["SessionDetail"];
+export type AssistantSessionRead = components["schemas"]["SessionRead"];
+export type AssistantSessionSummary = components["schemas"]["SessionSummary"];
+export type AssistantSessionCreate = components["schemas"]["SessionCreate"];
+export type AssistantTurnRead = components["schemas"]["TurnRead"];
+export type AssistantTurnCreate = components["schemas"]["TurnCreate"];
+export type AssistantTurnReadback = components["schemas"]["TurnReadback"];
+export type Proposal = components["schemas"]["Proposal"];
+export type ProposedRelation = components["schemas"]["ProposedRelation"];
 /** The prompts surface's reads (W8 Task 12): the catalog row with its two
  *  override tiers' facts, the editor's detail, the provider-free preview
  *  and the saved diff. */
