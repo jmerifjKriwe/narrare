@@ -178,10 +178,9 @@ async def test_set_suggestion_state_persists() -> None:
 
 @pytest.mark.usefixtures("two_users")
 async def test_list_is_newest_first_and_own_only() -> None:
-    """The novel's list is this user's sessions, newest first, and no others."""
+    """The novel's list is this user's sessions; another user's row in the same novel is absent."""
     novel = await _seed_novel()
     other_novel = await _seed_novel(title="Another Book")
-    foreign_novel = await _seed_novel(OTHER_USER, "The Stranger's Book")
 
     async with Session() as session:
         repo = AssistantSessionRepository(session, LOCAL_USER_ID)
@@ -189,9 +188,12 @@ async def test_list_is_newest_first_and_own_only() -> None:
         older.created_at = datetime(2026, 1, 1, tzinfo=UTC)
         newer = await repo.create(novel.id, MODE, "location", None)
         newer.created_at = datetime(2026, 1, 2, tzinfo=UTC)
+        # The novel filter: this user's session in another novel.
         await repo.create(other_novel.id, MODE, "object", None)
+        # The user predicate: a stranger's session in *this* novel, which the
+        # novel filter alone would let through.
         await AssistantSessionRepository(session, OTHER_USER).create(
-            foreign_novel.id, MODE, "faction", None
+            novel.id, MODE, "faction", None
         )
         await session.commit()
 
@@ -200,6 +202,72 @@ async def test_list_is_newest_first_and_own_only() -> None:
         assert [row.id for row in rows] == [newer.id, older.id]
         assert all(row.novel_id == novel.id for row in rows)
         assert all(row.name is None for row in rows)
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_list_shows_the_open_sessions_before_the_closed_ones() -> None:
+    """The list's order is the surface's: open first, closed after, newest first within each."""
+    novel = await _seed_novel()
+    async with Session() as session:
+        repo = AssistantSessionRepository(session, LOCAL_USER_ID)
+        oldest_open = await repo.create(novel.id, MODE, "character", None)
+        oldest_open.created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        newest_closed = await repo.create(novel.id, MODE, "location", None)
+        newest_closed.created_at = datetime(2026, 1, 3, tzinfo=UTC)
+        await repo.close(newest_closed)
+        newer_open = await repo.create(novel.id, MODE, "object", None)
+        newer_open.created_at = datetime(2026, 1, 2, tzinfo=UTC)
+        await session.commit()
+        open_ids = [newer_open.id, oldest_open.id]
+        closed_id = newest_closed.id
+
+    async with Session() as session:
+        rows = await AssistantSessionRepository(session, LOCAL_USER_ID).list_for_novel(novel.id)
+
+    # The door's «newest open» is the first row, though a closed session is newer.
+    assert [row.id for row in rows] == [*open_ids, closed_id]
+    assert [row.closed_at is None for row in rows] == [True, True, False]
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_each_list_state_is_bounded_on_its_own() -> None:
+    """A closed history beyond the bound cannot push an old open session off the list."""
+    novel = await _seed_novel()
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    async with Session() as session:
+        session.add_all(
+            AssistantSession(
+                user_id=LOCAL_USER_ID,
+                novel_id=novel.id,
+                mode=MODE,
+                entity_type="character",
+                proposal={"name": f"Row {index}"},
+                closed_at=base,
+                created_at=base + timedelta(seconds=index + 1),
+            )
+            for index in range(SESSION_LIST_LIMIT + 1)
+        )
+        still_open = AssistantSession(
+            user_id=LOCAL_USER_ID,
+            novel_id=novel.id,
+            mode=MODE,
+            entity_type="location",
+            proposal={"name": "Still open"},
+            created_at=base,
+        )
+        session.add(still_open)
+        await session.commit()
+        open_id = still_open.id
+
+    async with Session() as session:
+        rows = await AssistantSessionRepository(session, LOCAL_USER_ID).list_for_novel(novel.id)
+
+    assert len(rows) == SESSION_LIST_LIMIT + 1
+    assert rows[0].id == open_id
+    assert rows[0].name == "Still open"
+    # The closed state is capped: its oldest row is dropped, its newest kept.
+    assert rows[1].name == f"Row {SESSION_LIST_LIMIT}"
+    assert all(row.name != "Row 0" for row in rows)
 
 
 @pytest.mark.usefixtures("two_users")
@@ -226,7 +294,7 @@ async def test_list_reads_the_name_from_the_proposal_without_the_proposal() -> N
 
 @pytest.mark.usefixtures("two_users")
 async def test_list_returns_only_the_newest_bounded_rows() -> None:
-    """More than the bound exists: the list is the newest ``SESSION_LIST_LIMIT``."""
+    """More than the bound exists in one state: the list is the newest ``SESSION_LIST_LIMIT``."""
     novel = await _seed_novel()
     base = datetime(2026, 1, 1, tzinfo=UTC)
     async with Session() as session:

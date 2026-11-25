@@ -185,7 +185,7 @@ the client right after the create call answered 201.
 | Method | Path | What it does |
 |---|---|---|
 | POST | `/api/chat/sessions` | Open a session: `{mode, novel_id, entity_type?, target_id?}` → 201, the session read. `target_id`, when given, must be an entity of the same user in the same novel |
-| GET | `/api/chat/sessions?novel_id=` | List sessions for a novel, newest first, the newest 200; a row carries the proposal's name, not the proposal |
+| GET | `/api/chat/sessions?novel_id=` | List sessions for a novel: the open ones first, then the closed ones, newest first in each state, the newest 200 per state; a row carries the proposal's name, not the proposal |
 | GET | `/api/chat/sessions/{id}` | The session with its transcript |
 | POST | `/api/chat/sessions/{id}/turns` | `{text, act?}` → `{reply?, proposal?, suggestion?}` |
 | POST | `/api/chat/sessions/{id}/close` | Idempotent close → the session read |

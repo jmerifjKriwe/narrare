@@ -20,7 +20,12 @@ from app.kernel.contracts.models import Entity, Novel
 from app.kernel.db.base import ScopedRepository
 
 SESSION_LIST_LIMIT: Final = 200
-"""How many of a novel's sessions the list returns: the newest, newest first."""
+"""How many of a novel's sessions the list returns per state: the newest, newest first.
+
+The bound is per state, not over the whole list: the panel shows the open
+interviews first, so a long history of closed ones cannot push an open session
+— the door's next stop — off the wire.
+"""
 
 
 @dataclass(frozen=True)
@@ -76,13 +81,18 @@ class AssistantSessionRepository(ScopedRepository[AssistantSession]):
         return await self.session.scalar(self.query().where(AssistantSession.id == session_id))
 
     async def list_for_novel(self, novel_id: UUID) -> list[SessionListRow]:
-        """This user's newest sessions in the novel, newest first, bounded.
+        """This user's sessions in the novel: open first, then closed, newest first.
+
+        The order follows the spec's surface, not the clock: the panel shows the
+        open interviews before the ended ones, so the door's «newest open
+        session» is the list's first row whenever one exists. Each state is
+        bounded by ``SESSION_LIST_LIMIT`` on its own — two scoped selects — so an
+        old open session is not crowded out by a long closed history.
 
         The name comes from the proposal JSON in the same query, so a list row
-        never carries the draft; the old sessions beyond ``SESSION_LIST_LIMIT``
-        are not selected at all.
+        never carries the draft.
         """
-        rows = await self.session.execute(
+        newest = (
             select(
                 AssistantSession.id,
                 AssistantSession.novel_id,
@@ -98,7 +108,13 @@ class AssistantSessionRepository(ScopedRepository[AssistantSession]):
             .order_by(AssistantSession.created_at.desc(), AssistantSession.id)
             .limit(SESSION_LIST_LIMIT)
         )
-        return [SessionListRow(*row) for row in rows]
+        rows: list[SessionListRow] = []
+        open_state = AssistantSession.closed_at.is_(None)
+        closed_state = AssistantSession.closed_at.is_not(None)
+        for state in (open_state, closed_state):
+            result = await self.session.execute(newest.where(state))
+            rows.extend(SessionListRow(*row) for row in result)
+        return rows
 
     async def lock(self, session_id: UUID) -> AssistantSession | None:
         """The session with its row lock taken (SELECT ... FOR UPDATE), scoped.

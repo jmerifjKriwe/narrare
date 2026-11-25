@@ -776,7 +776,7 @@ class InterviewService:
         return session
 
     async def list_sessions(self, novel_id: UUID) -> list[SessionListRow]:
-        """The user's newest interviews in the novel, newest first, bounded."""
+        """The user's interviews in the novel: open first, then closed, newest first."""
         if not await self.novels.exists(novel_id):
             raise InterviewNotFoundError(f"novel {novel_id} is absent or not yours")
         return await self.sessions.list_for_novel(novel_id)

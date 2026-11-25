@@ -733,9 +733,12 @@ async def test_open_stores_only_a_target_that_is_this_novels() -> None:
 
 @pytest.mark.usefixtures("two_users")
 async def test_list_sessions_is_the_novels_own() -> None:
-    """The list is this user's sessions in the novel; a foreign novel is absent."""
+    """The list is this user's sessions in the novel; a stranger's row is absent."""
     novel = await _seed_novel()
     session_id = await _seed_session(novel)
+    # The user predicate on its own: a stranger's session in *this* novel, which
+    # the novel check above the list would let through.
+    await _seed_session(novel, user_id=OTHER_USER)
     foreign = await _seed_novel(user_id=OTHER_USER)
     async with _client() as client:
         listed = await client.get("/api/chat/sessions", params={"novel_id": str(novel.id)})
@@ -2152,18 +2155,27 @@ async def test_the_prompt_carries_the_last_twenty_turns(
 
 
 @pytest.mark.usefixtures("two_users")
-async def test_the_list_is_newest_first() -> None:
-    """Several sessions list newest first by their creation stamp, not by chance."""
+async def test_the_list_is_newest_first_per_state() -> None:
+    """The open sessions lead, newest first; a newer closed one still follows them."""
     novel = await _seed_novel()
     ids = [await _seed_session(novel) for _ in range(3)]
     base = datetime(2026, 11, 1, 12, tzinfo=UTC)
     for offset, session_id in enumerate(ids):
         await _set_created_at(session_id, base + timedelta(minutes=offset))
+    ended = await _seed_session(novel, closed=True)
+    await _set_created_at(ended, base + timedelta(hours=1))
 
     async with _client() as client:
         response = await client.get("/api/chat/sessions", params={"novel_id": str(novel.id)})
 
     assert response.status_code == 200
     assert [item["id"] for item in response.json()["items"]] == [
-        str(session_id) for session_id in reversed(ids)
+        *(str(session_id) for session_id in reversed(ids)),
+        str(ended),
+    ]
+    assert [item["closed_at"] is None for item in response.json()["items"]] == [
+        True,
+        True,
+        True,
+        False,
     ]
