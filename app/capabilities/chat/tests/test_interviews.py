@@ -1027,6 +1027,40 @@ async def test_a_list_merge_takes_the_answers_changes_not_its_whole_list(
 
 
 @pytest.mark.usefixtures("two_users")
+async def test_a_case_only_restatement_keeps_its_mark(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """«mira» restates «Mira»: identity is case-insensitive, so spelling and mark stay."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(
+        novel,
+        proposal=_proposal(
+            name="Die Wächterin",
+            aliases=["Mira"],
+            suggested={"aliases": ["Mira"], "tags": [], "content": False},
+        ),
+    )
+    answer = json.dumps(
+        {
+            "reply": "Notiert.",
+            "slots": {"aliases": ["mira"]},
+            "relations": [],
+        },
+        ensure_ascii=False,
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(_StubProvider([answer])))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Sie heißt mira."}
+        )
+
+    assert response.status_code == 200
+    assert response.json()["proposal"]["aliases"] == ["Mira"]
+    assert response.json()["proposal"]["suggested"]["aliases"] == ["Mira"]
+
+
+@pytest.mark.usefixtures("two_users")
 async def test_two_relations_to_one_target_with_different_types_both_survive(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1213,6 +1247,31 @@ async def test_closed_session_refuses_a_turn_with_409(
     assert response.status_code == 409
     assert response.json()["detail"]["code"] == "session-closed"
     assert detail.json()["turns"] == []
+    assert provider.requests == []
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_a_closed_session_answers_409_before_a_suggestion_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Closed outranks a mismatch: the suggestion stays pending and no call runs."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel, closed=True)
+    await _seed_suggestion(session_id, "Vielleicht Mira.")
+    provider = _StubProvider(echo=True)
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns",
+            json={"text": "Etwas anderes", "act": "accept-suggestion"},
+        )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "session-closed"
+    turns = await _stored_turns(session_id)
+    assert [(turn.seq, turn.role) for turn in turns] == [(1, "assistant")]
+    assert turns[0].suggestion_state == "pending"
     assert provider.requests == []
 
 

@@ -437,10 +437,10 @@ def _merge_labels(
 
     The locked list keeps every item; the answer's list is read as its changes
     to its input. An item the answer dropped that its input carried leaves; an
-    item it added joins; a value change replaces the item in place. The marks
-    follow: an unchanged item keeps the mark the locked proposal gave it, a new
-    or changed one is suggested under ``fill-all`` and the writer's own after
-    any other act.
+    item it added joins. A restatement that differs only in case is unchanged,
+    so it keeps the locked spelling. The marks follow: an unchanged item keeps
+    the mark the locked proposal gave it, a new or changed one is suggested
+    under ``fill-all`` and the writer's own after any other act.
     """
     given_by_key = {item.casefold(): item for item in given_items}
     answer_by_key = {item.casefold(): item for item in answer_items}
@@ -450,8 +450,6 @@ def _merge_labels(
         key = item.casefold()
         if key in given_by_key and key not in answer_by_key:
             continue
-        if key in answer_by_key:
-            item = answer_by_key[key]
         if key in positions:
             continue
         positions[key] = len(merged)
@@ -466,9 +464,11 @@ def _merge_labels(
     marked_keys = {item.casefold() for item in now_marks}
     marks: list[str] = []
     for item in merged:
+        # Identity is case-insensitive here as everywhere else: a restatement
+        # that differs only in case is the locked item, so it keeps its mark.
         key = item.casefold()
         locked = now_by_key.get(key)
-        suggested = act == "fill-all" if locked is None or locked != item else key in marked_keys
+        suggested = act == "fill-all" if locked is None else key in marked_keys
         if suggested:
             marks.append(item)
     return merged, marks
@@ -758,6 +758,11 @@ class InterviewService:
         """Run one turn's three steps: the short read, the call, the write."""
         model_act = payload.act in MODEL_ACTS
         state = await self._read_turn_state(session_id, with_prompt=model_act)
+        # Closed answers first, before the turn's own validation: the spec's
+        # table gives a turn against a closed session one answer, and step 3
+        # checks closed before it reads a suggestion too.
+        if state.closed:
+            raise SessionClosedError(f"session {session_id} was closed")
         text = payload.text
         if payload.act == "accept-suggestion":
             pending = await self._pending_suggestion(session_id)
@@ -766,8 +771,6 @@ class InterviewService:
         # The read's rows leave the identity map: step 3 must load the session
         # as it stands under the lock, not as step 1 saw it.
         self.session.expunge_all()
-        if state.closed:
-            raise SessionClosedError(f"session {session_id} was closed")
 
         calls: list[AuditedCall] = []
         resolved: ResolvedProvider | None = None
