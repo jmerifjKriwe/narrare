@@ -260,7 +260,9 @@ the input it was given: what it changed is written — a list slot or a relation
 merges item by item, so the proposal keeps every item, gains the items the
 answer added, loses only an item the answer dropped that its input carried, and
 takes a value change in place — and what it left alone is taken from the
-proposal as it stands now. A slot the answer leaves out is untouched, one it
+proposal as it stands now. An item the answer only restates is neither added
+nor re-marked: whether it still exists is the locked proposal's to say. A slot
+the answer leaves out is untouched, one it
 gives empty (`""` or `null` for name and content, `[]` for aliases and tags; a
 `null` list counts as left out) is cleared,
 and a relation list the answer leaves out is untouched while a given list drops

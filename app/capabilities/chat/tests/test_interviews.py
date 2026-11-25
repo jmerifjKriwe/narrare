@@ -19,6 +19,7 @@ from app.api.main import app
 from app.capabilities.chat import interviews
 from app.capabilities.chat.prompts import ROSTER_CUT_LINE
 from app.capabilities.chat.repository import AssistantSessionRepository
+from app.capabilities.chat.schemas import TurnCreate
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Entity, Novel
 from app.kernel.db.session import Session
@@ -42,6 +43,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.capabilities.chat.models import AssistantTurn
+    from app.capabilities.chat.schemas import TurnAct
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -373,6 +375,57 @@ class _ConcurrentSaveProvider:
                 ensure_ascii=False,
             )
         )
+        yield Usage(input_tokens=1, output_tokens=1)
+        yield DONE
+
+
+class _ConcurrentTurnProvider:
+    """Answers A once, but takes turn B from a second session first.
+
+    The first call — A, the outer turn — runs B through the real service while
+    A's model call is in flight. A plain B re-enters this stand-in and is
+    answered by ``b_answer``; a B act the model does not serve
+    (``drop-suggestions``) runs on the stored session alone. A then answers
+    ``a_answer``, echoing the input its call was given.
+    """
+
+    def __init__(
+        self,
+        session_id: UUID,
+        *,
+        act: TurnAct | None,
+        b_answer: str | None,
+        a_answer: str,
+    ) -> None:
+        self.session_id = session_id
+        self.act: TurnAct | None = act
+        self.b_answer = b_answer
+        self.a_answer = a_answer
+        self.calls = 0
+        self.requests: list[CompletionRequest] = []
+
+    def describe(self) -> str:
+        """Identify the racing stand-in."""
+        return "concurrent-turn"
+
+    def configuration_problems(self) -> list[str]:
+        """Ready by construction."""
+        return []
+
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Take B's turn from another session, then answer A's call."""
+        self.requests.append(request)
+        self.calls += 1
+        if self.calls == 1:
+            async with Session() as session:
+                await interviews.InterviewService(session, LOCAL_USER_ID).take_turn(
+                    self.session_id,
+                    TurnCreate(text="Noch etwas.", act=self.act),
+                )
+            yield Delta(self.a_answer)
+        else:
+            assert self.b_answer is not None, "B's plain turn ran without its scripted answer"
+            yield Delta(self.b_answer)
         yield Usage(input_tokens=1, output_tokens=1)
         yield DONE
 
@@ -1488,6 +1541,67 @@ async def test_an_empty_name_still_clears_one_its_input_carried(
 
     assert response.status_code == 200
     assert response.json()["proposal"] is None
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_an_unchanged_list_echo_does_not_resurrect_an_item_another_turn_removed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A's input carried «A»; B's plain turn dropped it; A's echo leaves it gone."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(novel, proposal=_proposal(name="Mira", aliases=["A"]))
+    provider = _ConcurrentTurnProvider(
+        session_id,
+        act=None,
+        b_answer=json.dumps({"reply": "Weg damit.", "slots": {"aliases": []}}, ensure_ascii=False),
+        a_answer=json.dumps({"reply": "Notiert.", "slots": {"aliases": ["A"]}}, ensure_ascii=False),
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Noch ein Alias."}
+        )
+
+    assert response.status_code == 200
+    proposal = response.json()["proposal"]
+    assert proposal["aliases"] == []
+    assert proposal["suggested"]["aliases"] == []
+    assert proposal["name"] == "Mira"
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_an_unchanged_list_echo_does_not_resurrect_a_dropped_suggestion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """B drops suggestions, «A» with its mark; A's unchanged echo leaves it gone."""
+    novel = await _seed_novel()
+    session_id = await _seed_session(
+        novel,
+        proposal=_proposal(
+            name="Mira",
+            aliases=["A"],
+            suggested={"aliases": ["A"], "tags": [], "content": False},
+        ),
+    )
+    provider = _ConcurrentTurnProvider(
+        session_id,
+        act="drop-suggestions",
+        b_answer=None,
+        a_answer=json.dumps({"reply": "Notiert.", "slots": {"aliases": ["A"]}}, ensure_ascii=False),
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns", json={"text": "Noch ein Alias."}
+        )
+
+    assert response.status_code == 200
+    proposal = response.json()["proposal"]
+    assert proposal["aliases"] == []
+    assert proposal["suggested"]["aliases"] == []
+    assert proposal["name"] == "Mira"
 
 
 @pytest.mark.usefixtures("two_users")

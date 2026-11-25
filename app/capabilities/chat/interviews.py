@@ -454,10 +454,13 @@ def _merge_labels(
 
     The locked list keeps every item; the answer's list is read as its changes
     to its input. An item the answer dropped that its input carried leaves; an
-    item it added joins. A restatement that differs only in case is unchanged,
-    so it keeps the locked spelling. The marks follow: an unchanged item keeps
-    the mark the locked proposal gave it, a new or changed one is suggested
-    under ``fill-all`` and the writer's own after any other act.
+    item it added joins. An item the answer restates — its input carried it,
+    case included — is neither appended nor re-marked: whether it still exists
+    is the locked proposal's to say, so one another turn removed stays removed.
+    A restatement that differs only in case keeps the locked spelling. The
+    marks follow: an unchanged item keeps the mark the locked proposal gave it,
+    a new or changed one is suggested under ``fill-all`` and the writer's own
+    after any other act.
     """
     given_by_key = {item.casefold(): item for item in given_items}
     answer_by_key = {item.casefold(): item for item in answer_items}
@@ -474,7 +477,9 @@ def _merge_labels(
     now_by_key = {item.casefold(): item for item in now_items}
     for item in answer_items:
         key = item.casefold()
-        if key in positions:
+        # A restatement is not the answer's change: it neither resurrects an
+        # item the locked proposal lost nor re-marks one still there.
+        if key in positions or key in given_by_key:
             continue
         positions[key] = len(merged)
         merged.append(item)
