@@ -5,8 +5,12 @@ name: Screenshots
 # on every push to main; the decide job skips a push when no UI-relevant path
 # changed and no commit carries a `Screenshots: regenerate` footer. A
 # `Screenshots: skip` footer suppresses a run that would otherwise fire, unless
-# a UI path changed too. This workflow is deliberately not a required check: a
-# flaky screenshot run must never block a merge.
+# a UI path changed too. The decision itself lives in
+# `scripts/screenshots_decide.py`: it reads complete git output and ignores
+# merge-commit bodies, where GitHub writes an editable pull request title. An
+# open screenshot update PR is left in place instead of being duplicated. This
+# workflow is deliberately not a required check: a flaky screenshot run must
+# never block a merge.
 
 on:
   workflow_dispatch:
@@ -30,6 +34,7 @@ jobs:
       contents: read
     outputs:
       run: ${{ steps.decide.outputs.run }}
+      reason: ${{ steps.decide.outputs.reason }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -43,42 +48,10 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          # Manual dispatch and the weekly sweep always run.
-          if [ "$EVENT" != "push" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "trigger=$EVENT: always regenerate"
-            exit 0
-          fi
-          # First push to a branch: treat everything as changed.
-          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "first push: regenerate"
-            exit 0
-          fi
-          commits=$(git log --format=%B "${BEFORE}..${SHA}")
-          # An explicit regenerate override in any commit wins.
-          if printf '%s\n' "$commits" | grep -qiE '^Screenshots:[[:space:]]*regenerate[[:space:]]*$'; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "override: regenerate requested"
-            exit 0
-          fi
-          # An explicit skip override suppresses, unless a UI path also changed.
-          ui_changed=false
-          if git diff --name-only "$BEFORE" "$SHA" | grep -qE '^(web/|app/capabilities/[^/]+/web/|i18n/|scripts/screenshots\.py$|scripts/screenshot_manifest\.py$)'; then
-            ui_changed=true
-          fi
-          if [ "$ui_changed" = "true" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "UI path changed: regenerate"
-            exit 0
-          fi
-          if printf '%s\n' "$commits" | grep -qiE '^Screenshots:[[:space:]]*skip[[:space:]]*$'; then
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "override: skip requested and no UI path changed"
-            exit 0
-          fi
-          echo "run=false" >> "$GITHUB_OUTPUT"
-          echo "no UI path changed and no regenerate override; skipping"
+          python3 -m scripts.screenshots_decide \
+            --event "$EVENT" \
+            --before "$BEFORE" \
+            --sha "$SHA" | tee -a "$GITHUB_OUTPUT"
 
   screenshots:
     name: screenshots
@@ -133,6 +106,15 @@ jobs:
           git add assets/screenshots docs/screenshots/README.md
           if git diff --cached --quiet; then
             echo "no screenshot changes; nothing to do"
+            exit 0
+          fi
+          # A real diff is worth publishing, but a previous run may already
+          # have published the same deterministic result. Defer to that PR
+          # before creating a branch or force-updating its head. The exported
+          # GH_TOKEN authenticates the query without putting it in argv.
+          pending=$(python3 -m scripts.screenshots_pr --repository "$REPOSITORY")
+          if [ "$pending" != "pending=none" ]; then
+            echo "screenshot update PR #${pending#pending=} is already open; leaving it in place"
             exit 0
           fi
           git config user.name "github-actions[bot]"

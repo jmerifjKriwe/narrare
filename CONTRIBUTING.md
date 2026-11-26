@@ -222,9 +222,13 @@ its short `decide` job, which skips capture unless a UI-relevant path changed
 (`web/`, `app/capabilities/*/web/`, `i18n/`, `scripts/screenshots.py` or
 `scripts/screenshot_manifest.py`) or a commit footer overrides the decision.
 Manual dispatch and the Sunday schedule (`0 6 * * 0`) always capture. When a run
-changes a frame or the index it opens a pull request, and the workflow is
-advisory and never a required check. The footer `Screenshots: regenerate` forces
-a run; `Screenshots: skip` suppresses one unless a UI path changed too.
+changes a frame or the index it opens a pull request; if a screenshot update
+pull request is already open, the run leaves that one in place instead of
+opening a duplicate. The workflow is advisory and never a required check. The
+footer `Screenshots: regenerate` forces a run; `Screenshots: skip` suppresses one
+unless a UI path changed too. Footers are read from the pushed commits, never
+from a merge commit's generated body, so a pull request title cannot trigger a
+capture.
 
 **Was bei jedem Commit läuft:** Der Secret-Scan (`scripts/check_secrets.py
 --staged`) prüft die gestagten Blobs gegen `.gitleaks.toml` und blockt den
