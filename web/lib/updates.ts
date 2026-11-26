@@ -14,16 +14,17 @@ import { useEffect } from "react";
 
 import { client } from "./api/client";
 import type { components } from "./api/schema";
+import { refused } from "./query";
 
 export type UpdateRead = components["schemas"]["UpdateRead"];
 export const UPDATE_KEY = ["updates"] as const;
 
 export async function fetchUpdate(force: boolean): Promise<UpdateRead> {
-  const { data, response } = await client.GET("/api/updates", {
+  const { data, error, response } = await client.GET("/api/updates", {
     params: { query: { force } },
   });
   if (!response.ok || data === undefined) {
-    throw new Error(`update check failed: ${response.status}`);
+    throw refused("update check failed", response, error);
   }
   return data;
 }
