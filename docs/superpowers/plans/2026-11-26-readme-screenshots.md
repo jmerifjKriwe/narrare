@@ -278,12 +278,12 @@ Reviewer checks the full collection link and the design-record wording. Then com
 
 - [ ] **Step 1: Add failing README contract assertions**
 
-Extend `test_screenshot_assets.py` to parse every `<img src="assets/screenshots/...png" alt="...">` in `README.md`. Assert the sources equal `README_SHOTS` in manifest order, every source exists, every alt text is non-empty and descriptive, and the stale sentence claiming settings are "Phase 1 of the roadmap" is absent.
+Extend `test_screenshot_assets.py` to parse every `<img src="assets/screenshots/...png" alt="...">` in `README.md`. Assert the sources equal `README_SHOTS` in manifest order, every source exists, each alt text exactly equals its manifest caption, and the stale sentence claiming settings are "Phase 1 of the roadmap" is absent.
 
 - [ ] **Step 2: Run tests and verify failure**
 
 Run: `just test-file app/kernel/tests/test_screenshot_assets.py`
-Expected: FAIL on the old six-image selection and stale settings copy.
+Expected: FAIL on the current four-image transitional selection, non-manifest alt text and stale settings copy.
 
 - [ ] **Step 3: Rewrite the product narrative**
 
