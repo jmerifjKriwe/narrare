@@ -208,30 +208,34 @@ Run the existing settings, AI-rules and prompts E2E legs. In `test_ai_rules_e2e.
 - Documentation tests use marker sets/structured assertions or centralized accepted-wording constants with rationale.
 - README and collection disclosures derive from one structured source so a newly added stand-in surface cannot be omitted from one page.
 
-- [ ] **Step 1: Write failing filesystem tests**
+- [x] **Step 1: Write failing filesystem tests**
 
 Add tests proving asset tests do not import Playwright, masters and index with injected different device IDs publish without a cross-device rename, index-swap failure restores both outputs, restore-abort/failure preserves the relevant backups, successful rollback removes backups only after both restores, backup-root failure leaks no staged index, and an index-temp write failure cleans up. Use temporary directories and injected move/swap/device seams; do not rely on timing or assume two temp roots are different filesystems.
 
-- [ ] **Step 2: Extract publication helpers**
+- [x] **Step 2: Extract publication helpers**
 
 Move staging, backup, swap, rollback and cleanup into `scripts/screenshots_publish.py`. Keep capture/browser concerns in `scripts/screenshots.py`.
 
-- [ ] **Step 3: Implement cross-filesystem publication**
+- [x] **Step 3: Implement cross-filesystem publication**
 
 Create one backup root beside each output before staging the index. Use `os.replace` only between paths on the same filesystem. Preserve backups until publication or restore is fully successful; never delete the last good copy on an aborted rollback. Ignore both `assets/.screenshots-backup-*` and `assets/.screenshots-<random>` staging directories.
 
-- [ ] **Step 4: Replace literal-wording guards**
+- [x] **Step 4: Replace literal-wording guards**
 
 Replace the stale-settings literal with a scoped semantic check for settings text containing phase/roadmap/planned/not-yet language. Replace the Stitch paragraph's exact sentence with required marker sets (`design evidence`, `product captures`, `running application`) plus forbidden provenance/inversion markers. Derive the README disclosure from the same structured stand-in list as the collection index, and test that both contain every surface. Centralize only markers that genuinely carry meaning, with comments. Keep resolve-based link tests and image/caption equality strong.
 
-- [ ] **Step 5: Run focused gates**
+- [x] **Step 5: Run focused gates**
 
 Run both screenshot test files and `just check`.
 Expected: PASS.
 
-- [ ] **Step 6: Review and commit**
+- [x] **Step 6: Review and commit**
 
 Reviewer traces each failure path and confirms no Playwright import remains in the asset test. Commit `refactor(tooling): make screenshot publication filesystem-safe` with `Closes #983`, `Closes #987`, `Closes #988` and the Assisted-by trailer.
+
+- [ ] **Step 7: Close the publication recovery review findings**
+
+Ignore `docs/screenshots/.README.md-backup-*` beside the existing assets recovery ignore, and document that custom output parents are outside repository ignore coverage. Preflight that an existing output shares its parent's device; fail with a clear error before creating backups or moving data when a mount point breaks that assumption. Make index-temp unlink best-effort so cleanup failure cannot replace the publication/rollback error or skip the remaining recovery cleanup. Let `KeyboardInterrupt` propagate instead of recording it as an ordinary step failure, while preserving recovery roots. Remove the tautological derived-disclosure equality assertion and retain the meaningful surface/frame tests. Add deterministic tests for a successful cross-device copy followed by index-swap failure, target/parent device mismatch before mutation, temp-unlink failure preserving the primary error, and interrupt propagation. Clarify that a named recovery root may be empty after a successful restore. Run both screenshot test files and `just check`. Commit `fix(tooling): harden screenshot publication recovery` with the Assisted-by trailer and no duplicate `Closes` keywords.
 
 ## Task 6: Harden screenshot workflow decisions and pending PRs (#982, #990)
 

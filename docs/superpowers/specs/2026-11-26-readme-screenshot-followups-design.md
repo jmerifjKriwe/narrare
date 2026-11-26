@@ -106,7 +106,10 @@ task.
   not import Playwright.
 - Masters and index may live on different filesystems; each output is staged and
   backed up on its own filesystem, with joint rollback and preserved backups on
-  restore failure.
+  restore failure. An existing output must share its parent's device so its
+  sibling backup stays on that filesystem; a mount-point mismatch fails before
+  mutation. Canonical recovery roots are ignored, cleanup never masks the primary
+  publication error, and interrupts propagate with recovery data preserved.
 - Documentation tests assert structured meaning where practical; exact accepted
   wording is centralized and explained where semantics cannot be inferred.
 - The workflow's UI-path check consumes the full diff without `grep -q` under
