@@ -49,6 +49,26 @@ function ok(): Response {
   return new Response(null, { status: 200 });
 }
 
+// The disabled import door names its state, not a future build (#979).
+const STATUS_NOTE = {
+  en: "Not available yet.",
+  de: "Noch nicht verfügbar.",
+  fr: "Pas encore disponible.",
+} as const;
+
+const FUTURE_PROMISE =
+  /build-out|aufbau|wave|welle|vague|appear|erschein|appara|coming soon|kommt mit|arrive avec|future|becomes available|later/i;
+
+describe("the disabled import note speaks to the reader", () => {
+  it("is status-only in every catalog, never a future promise", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      const note = catalogs[locale]["setup.welcome.comingSoon"];
+      expect(note).toBe(STATUS_NOTE[locale]);
+      expect(note).not.toMatch(FUTURE_PROMISE);
+    }
+  });
+});
+
 /** The mock instance's state: setup creates the user row, and only then can
  *  the settings write land — the backend's own sequence. */
 let setUp: boolean;

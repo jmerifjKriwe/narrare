@@ -206,7 +206,7 @@
   "setup.welcome.card3.drop": "Drop manuscript files here",
   "setup.welcome.card3.dropNote": "Format-faithful scene detection & character extraction",
   "setup.welcome.card3.title": "Bring an existing manuscript",
-  "setup.welcome.comingSoon": "comes with the further build-out",
+  "setup.welcome.comingSoon": "Not available yet.",
   "setup.welcome.demoMeta": "{genre} • {count, plural, one {# chapter} other {# chapters}}",
   "setup.welcome.edition": "Edition Prima",
   "setup.welcome.engine": "Causality engine v2.4 active",

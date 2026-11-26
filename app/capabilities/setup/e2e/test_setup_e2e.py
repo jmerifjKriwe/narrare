@@ -91,7 +91,7 @@ def test_welcome_offers_the_three_real_demos_and_an_honest_import(page: Page, st
     expect(
         page.get_by_role("button", name="Manuskript importieren (.docx, .scriv)")
     ).to_be_disabled()
-    expect(page.get_by_text("kommt mit dem weiteren Aufbau")).to_be_visible()
+    expect(page.get_by_text("Noch nicht verfügbar.")).to_be_visible()
 
     assert_accessible(page)
 

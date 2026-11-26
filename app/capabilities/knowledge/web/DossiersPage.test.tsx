@@ -39,46 +39,44 @@ import { DossiersPage } from "./DossiersPage";
 const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "POST" | "DELETE", ReturnType<typeof vi.fn>>;
 
-// The draft's gap areas describe the place, not an internal programme: #979
-// removes the "later wave" wording that dominated the dossier capture.
-const GAP_NOTE = {
-  en: "Details will appear here.",
-  de: "Details erscheinen hier.",
-  fr: "Les détails apparaîtront ici.",
+// Disabled features carry a status, never a future promise (#979): the six
+// remaining placeholder keys all say the feature is unavailable now.
+const STATUS_NOTE = {
+  en: "Not available yet.",
+  de: "Noch nicht verfügbar.",
+  fr: "Pas encore disponible.",
 } as const;
 
+// Wording that promises a future build, a wave, a later release or a place
+// where content will appear is exactly what these status notes must not say.
+const FUTURE_PROMISE =
+  /build-out|aufbau|wave|welle|vague|appear|erschein|appara|coming soon|kommt mit|arrive avec|future|becomes available|later/i;
+
 describe("the dossier gap note speaks to the reader", () => {
-  it("is value-neutral in every catalog, never a wave or build-out", () => {
+  it("is status-only in every catalog, never a wave or build-out", () => {
     for (const locale of ["en", "de", "fr"] as const) {
       const note = catalogs[locale]["knowledge.dossiers.laterWaveNote"];
-      expect(note).toBe(GAP_NOTE[locale]);
-      expect(note).not.toMatch(/wave|welle|vague|build-out|aufbau/i);
+      expect(note).toBe(STATUS_NOTE[locale]);
+      expect(note).not.toMatch(FUTURE_PROMISE);
     }
   });
 });
 
 // The manuscript-excerpts area and the disabled jump door carried the same
-// "not tracked yet" sentence; both speak forward without making unbuilt
-// tracking the focus (#979). The excerpts key is the visible note in frame 25,
-// the jump key is the door's tooltip — one contract, two sites.
-const MANUSCRIPT_NOTE = {
-  en: "Manuscript references will appear here.",
-  de: "Hier erscheinen Manuskriptverweise.",
-  fr: "Les références au manuscrit apparaîtront ici.",
-} as const;
-
+// "not tracked yet" sentence; both now name the unavailable state. The
+// excerpts key is the visible note in frame 25, the jump key is the door's
+// tooltip — one contract, two sites.
 describe("the manuscript-reference notes speak to the reader", () => {
-  it("are value-neutral in every catalog, never unfinished tracking copy", () => {
+  it("are status-only in every catalog, never unfinished tracking copy", () => {
     for (const locale of ["en", "de", "fr"] as const) {
       for (const key of [
         "knowledge.dossier.excerptsGap",
         "knowledge.dossier.jumpNote",
       ] as const) {
         const note = catalogs[locale][key];
-        expect(note).toBe(MANUSCRIPT_NOTE[locale]);
-        expect(note).not.toMatch(
-          /not tracked|noch nicht erfasst|pas encore suivies|wave|welle|vague|build-out|aufbau/i,
-        );
+        expect(note).toBe(STATUS_NOTE[locale]);
+        expect(note).not.toMatch(FUTURE_PROMISE);
+        expect(note).not.toMatch(/not tracked|noch nicht erfasst|pas encore suivies/i);
       }
     }
   });
@@ -442,7 +440,11 @@ describe("the new-dossier door and the honest gaps", () => {
     fireEvent.click(cards[0]);
     const dossier = await screen.findByTestId("entity-dossier");
     expect(within(dossier).getByText(de["knowledge.dossier.status"])).toBeTruthy();
-    expect(within(dossier).getByText(de["knowledge.dossier.excerptsGap"])).toBeTruthy();
+    // Three gap areas now share the same status note, so scope the excerpts
+    // assertion to the excerpts block rather than the whole dossier.
+    const excerptsHeading = within(dossier).getByText(de["knowledge.dossier.excerpts"]);
+    const excerptsArea = excerptsHeading.parentElement as HTMLElement;
+    expect(within(excerptsArea).getByText(de["knowledge.dossier.excerptsGap"])).toBeTruthy();
     const exportDoor = within(dossier).getByRole("button", { name: new RegExp(de["knowledge.dossier.export"]) });
     expect((exportDoor as HTMLButtonElement).disabled).toBe(true);
   });

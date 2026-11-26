@@ -880,8 +880,8 @@ def _capture(
     cards.filter(has_text="Mira").click()
     expect(page.get_by_test_id("dossier-overview")).to_be_visible()
     # The gap areas carry the reader-facing note, never the retired wave copy.
-    expect(page.get_by_test_id("dossier-psych-gap")).to_contain_text("Details will appear here.")
-    expect(page.get_by_test_id("dossier-ai-gap")).to_contain_text("Details will appear here.")
+    expect(page.get_by_test_id("dossier-psych-gap")).to_contain_text("Not available yet.")
+    expect(page.get_by_test_id("dossier-ai-gap")).to_contain_text("Not available yet.")
     written.append(_shot(page, out, "25-dossiers"))
 
     # 26. The real empty sources archive: no documents, so no upload date.

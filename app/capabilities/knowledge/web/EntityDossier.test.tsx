@@ -270,5 +270,9 @@ describe("the invented fields stay honest disabled gaps", () => {
     const exportDoor = screen.getByRole("button", { name: new RegExp(de["knowledge.dossier.export"]) });
     expect((exportDoor as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText(de["knowledge.dossier.excerptsGap"])).toBeTruthy();
+    // The jump door's tooltip carries the same status note — no dead promise.
+    const jump = screen.getByRole("button", { name: new RegExp(de["knowledge.dossier.jumpNote"]) });
+    expect((jump as HTMLButtonElement).disabled).toBe(true);
+    expect(jump.getAttribute("title")).toContain(de["knowledge.dossier.jumpNote"]);
   });
 });

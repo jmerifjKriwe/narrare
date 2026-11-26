@@ -30,8 +30,8 @@ import { demoDisplayTitle } from "./wizardState";
  * The three entries are real doors: the wizard starts at `/setup/basis`,
  * each demo row opens the wizard with its world preselected (`?demo=<slug>`,
  * the search param Task 5's basis step reads), and the import entry stays
- * honestly disabled — the manuscript import comes with the further
- * build-out, and the card says so instead of pretending. The language
+ * honestly disabled — the manuscript import is not available yet, and the
+ * card says so instead of pretending. The language
  * switcher is the shared contract's welcome face (`@shell/lib/language`,
  * D17 / #892): it works before setup, when the settings row cannot hold a
  * choice yet — the mirror and the write's contract live in the one home.

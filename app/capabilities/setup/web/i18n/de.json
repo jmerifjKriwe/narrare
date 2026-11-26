@@ -206,7 +206,7 @@
   "setup.welcome.card3.drop": "Manuskript-Dateien hier ablegen",
   "setup.welcome.card3.dropNote": "Formatgetreue Szenenerkennung & Figuren-Extraktion",
   "setup.welcome.card3.title": "Bestehendes Manuskript mitbringen",
-  "setup.welcome.comingSoon": "kommt mit dem weiteren Aufbau",
+  "setup.welcome.comingSoon": "Noch nicht verfügbar.",
   "setup.welcome.demoMeta": "{genre} • {count, plural, one {# Kap.} other {# Kap.}}",
   "setup.welcome.edition": "Edition Prima",
   "setup.welcome.engine": "Kausalitäts-Engine v2.4 aktiv",

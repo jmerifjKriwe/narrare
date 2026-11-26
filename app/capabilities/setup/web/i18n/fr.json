@@ -206,7 +206,7 @@
   "setup.welcome.card3.drop": "Dépose tes fichiers de manuscrit ici",
   "setup.welcome.card3.dropNote": "Détection de scènes fidèle au format & extraction des personnages",
   "setup.welcome.card3.title": "Apporter un manuscrit existant",
-  "setup.welcome.comingSoon": "arrive avec la suite de la construction",
+  "setup.welcome.comingSoon": "Pas encore disponible.",
   "setup.welcome.demoMeta": "{genre} • {count, plural, one {# chapitre} other {# chapitres}}",
   "setup.welcome.edition": "Édition Prima",
   "setup.welcome.engine": "Moteur de causalité v2.4 actif",

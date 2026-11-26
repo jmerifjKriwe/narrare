@@ -269,7 +269,7 @@ def test_a_node_opens_its_dossier_and_the_edit_is_real(page: Page, installed: St
     expect(dossier).to_contain_text("Kavic appears in the chapter.")
     # The invented status stays a neutral gap row; the excerpts gap stands.
     expect(dossier).to_contain_text("Status")
-    expect(dossier).to_contain_text("Hier erscheinen Manuskriptverweise.")
+    expect(dossier).to_contain_text("Noch nicht verfügbar.")
     # Both real edges, both directions — the other end named as a door. The
     # select door's name STARTS with the end's name; the edit/delete
     # affordances beside it carry „Relation …: {name}" — anchor the name so

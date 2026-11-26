@@ -26,8 +26,8 @@
  *   explicit re-ask: resubmitting the same words retires their cached
  *   answer first, so the POST goes out again within the staleTime.
  * - The footnote and fact-check areas stand as the draft's honest disabled
- *   gaps („Kommt mit dem weiteren Aufbau") — no endpoint serves them, no
- *   fake content rides them. The view doors (Ansehen / Im Originaldokument
+ *   gaps (a status-only "Not available yet." note) — no endpoint serves them,
+ *   no fake content rides them. The view doors (Ansehen / Im Originaldokument
  *   anzeigen) are disabled with the same gap note: no endpoint serves the
  *   original document's bytes.
  * - The subbar's sibling doors connect the three surfaces (graph, dossiers,
