@@ -46,10 +46,10 @@ a character into a dossier.
 </table>
 
 These are captures of the running application, not mock-ups. The entity interview is the
-one frame where a model answers: the deterministic stand-in used at the tests' model
-boundary supplies that reply. The other frames show seeded product data and interface
-copy, not generated prose. The full collection, including the dark variants and the
-remaining settings and entity frames, is in
+one frame that shows a model's reply on screen: the deterministic stand-in used at the
+tests' model boundary supplies that reply. The other frames show seeded product data and
+interface copy, not generated prose. The full collection, including the dark variants and
+the remaining settings and entity frames, is in
 [docs/screenshots/README.md](docs/screenshots/README.md).
 
 ## Writing & Zen
