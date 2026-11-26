@@ -111,7 +111,7 @@ export function EntityCreateDialog({
   const create = useCreateEntity();
   const busy = create.isPending;
   const typeLocked = initial.typeLocked;
-  const suggested = prefill?.suggested;
+  const suggested = initial.suggested;
   // Dirty means changed against this door's own starting state: empty by
   // hand, the interview's prefill from the panel. An untouched prefilled
   // dialog closes on Escape like an untouched manual one; the first edit

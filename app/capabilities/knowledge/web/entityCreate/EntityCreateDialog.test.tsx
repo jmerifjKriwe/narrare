@@ -599,6 +599,58 @@ describe("EntityCreateDialog — from the interview", () => {
     return screen.getByTestId("entity-create-dialog");
   }
 
+  it("a re-render with another prefill changes neither the values nor the marks", () => {
+    const other: EntityPrefill = {
+      name: "Anderes Relais",
+      type: "object",
+      aliases: ["B-Alpha"],
+      tags: ["B-Tag"],
+      content: "Ein andere Entwurf.",
+      suggested: { aliases: ["B-Alpha"], tags: ["B-Tag"], content: false },
+      relations: [{ target: "Nebel", relation_type: "related_to", suggested: false }],
+    };
+    const view = render(
+      <QueryClientProvider client={queryClient}>
+        <EntityCreateDialog
+          novelId={NOVEL_ID}
+          entities={ENTITIES}
+          openerId="opener"
+          onClose={() => {}}
+          source="interview"
+          prefill={INTERVIEW_PREFILL}
+        />
+      </QueryClientProvider>,
+    );
+    view.rerender(
+      <QueryClientProvider client={queryClient}>
+        <EntityCreateDialog
+          novelId={NOVEL_ID}
+          entities={ENTITIES}
+          openerId="opener"
+          onClose={() => {}}
+          source="interview"
+          prefill={other}
+        />
+      </QueryClientProvider>,
+    );
+
+    // The door's own starting state is frozen: the second prefill never
+    // reaches a mounted form, so its values and its suggested marks stand.
+    expect((screen.getByTestId("entity-create-name") as HTMLInputElement).value).toBe(
+      "Resonanz-Transponder LC-89",
+    );
+    expect((screen.getByTestId("entity-create-content") as HTMLTextAreaElement).value).toBe(
+      "Verschlossenes Prototyp-Subraumrelais.",
+    );
+    expect(screen.getByText("Transponder")).toBeTruthy();
+    expect(screen.queryByText("B-Alpha")).toBeNull();
+    const aliasChip = screen.getByText("Transponder").closest("span") as HTMLElement;
+    expect(within(aliasChip).getByText(de["knowledge.interview.suggested"])).toBeTruthy();
+    const description = screen.getByText(de["knowledge.create.descriptionLabel"]);
+    expect(within(description).getByText(de["knowledge.interview.suggested"])).toBeTruthy();
+    expect(screen.getByTestId("entity-create-relation-0-suggested")).toBeTruthy();
+  });
+
   it("suggested parts are marked", () => {
     openInterview(INTERVIEW_PREFILL);
 

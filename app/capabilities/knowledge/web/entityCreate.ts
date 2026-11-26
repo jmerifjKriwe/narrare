@@ -58,7 +58,7 @@ export type EntityPrefill = {
   aliases?: string[];
   tags?: string[];
   content?: string;
-  suggested?: { aliases?: string[]; tags?: string[]; content?: boolean };
+  suggested?: EntityCreateSuggested;
   relations: EntityRelationPrefill[];
 };
 
@@ -66,9 +66,18 @@ export type EntityPrefill = {
  *  so the row can wear the spark the proposal card drew. */
 export type EntityCreateRelationRow = EntityRelationRow & { key: number; suggested: boolean };
 
+/** The interview's suggested marks, frozen with the starting state: the panel
+ *  hands them over once and the mounted form never reads a later prefill. */
+export type EntityCreateSuggested = {
+  aliases?: string[];
+  tags?: string[];
+  content?: boolean;
+};
+
 /** The dialog's starting state. `typeLocked` is the interview's one rule: the
  *  session fixed the type before the form existed, so the writer cannot change
- *  it — the hand-made form starts unlocked and empty. */
+ *  it — the hand-made form starts unlocked and empty. The marks are frozen here
+ *  for the same reason as the values: the dialog is mounted per prefill. */
 export type EntityCreateFormState = {
   name: string;
   type: string;
@@ -76,6 +85,7 @@ export type EntityCreateFormState = {
   aliases: string[];
   tags: string[];
   content: string;
+  suggested?: EntityCreateSuggested;
   relations: EntityCreateRelationRow[];
 };
 
@@ -130,6 +140,14 @@ export function createFormState(input: {
     aliases: [...(prefill?.aliases ?? [])],
     tags: [...(prefill?.tags ?? [])],
     content: prefill?.content ?? "",
+    suggested:
+      prefill?.suggested === undefined
+        ? undefined
+        : {
+            aliases: [...(prefill.suggested.aliases ?? [])],
+            tags: [...(prefill.suggested.tags ?? [])],
+            content: prefill.suggested.content ?? false,
+          },
     relations: (prefill?.relations ?? []).map((relation, index) => ({
       key: index,
       target: relation.target,
