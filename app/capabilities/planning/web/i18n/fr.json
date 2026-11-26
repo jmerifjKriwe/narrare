@@ -140,7 +140,7 @@
   "planning.timeline.all": "Tous",
   "planning.timeline.chapterChip": "Chapitre {position}",
   "planning.timeline.chapterSequence": "Ordre des chapitres",
-  "planning.timeline.chapterSequenceNote": "La vue par ordre des chapitres sera disponible plus tard.",
+  "planning.timeline.chapterSequenceNote": "Pas encore disponible.",
   "planning.timeline.chapterUnknown": "Chapitre inconnu",
   "planning.timeline.chaptersUnavailable": "Les chapitres sont indisponibles.",
   "planning.timeline.clearFilters": "Réinitialiser les filtres",

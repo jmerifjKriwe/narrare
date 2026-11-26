@@ -209,6 +209,40 @@ def _require_small_gap(first: Locator, second: Locator, *, name: str, maximum: f
         raise SystemExit(f"{name}: {gap:.1f}px gap exceeds {maximum:.1f}px")
 
 
+def _require_unclipped(locator: Locator, *, name: str) -> None:
+    """Fail when an element's own content overflows its box.
+
+    A wrapped status badge is fine; a badge whose text runs past its padding
+    is not. The comparison is against the element's own scroll and client
+    boxes, so it catches truncation without reading the rendered pixels.
+    """
+    metrics = locator.evaluate(
+        """element => ({
+            scrollWidth: element.scrollWidth,
+            clientWidth: element.clientWidth,
+            scrollHeight: element.scrollHeight,
+            clientHeight: element.clientHeight,
+        })"""
+    )
+    if (
+        metrics["scrollWidth"] > metrics["clientWidth"] + 1
+        or metrics["scrollHeight"] > metrics["clientHeight"] + 1
+    ):
+        raise SystemExit(
+            f"{name}: content {metrics['scrollWidth']}x{metrics['scrollHeight']} overflows "
+            f"its {metrics['clientWidth']}x{metrics['clientHeight']} box"
+        )
+
+
+def _require_dock_badge(page: Page) -> None:
+    """The dock's status badge is painted, readable and not clipped."""
+    badge = page.get_by_test_id("dock-soon-badge")
+    expect(badge).to_be_visible()
+    expect(badge).to_have_text("Not available yet.")
+    _require_inside(badge, name="dock status badge")
+    _require_unclipped(badge, name="dock status badge")
+
+
 def _scroll_to_show_bottom(container: Locator, target: Locator, *, margin: float = 8) -> None:
     """Scroll a real container just enough that the target's bottom is inside."""
     box = target.bounding_box()
@@ -814,9 +848,11 @@ def _capture(
     # 20/21. The rebuilt workspace in the default light and the reader's
     #     stored dark: the same signal scene, so the pair is the same desk.
     open_chapter(writing_novel, signal_chapter, 2)
+    _require_dock_badge(page)
     written.append(_shot(page, out, "20-workspace-rebuilt"))
     _set_theme(page, "dark")
     open_chapter(writing_novel, signal_chapter, 2)
+    _require_dock_badge(page)
     written.append(_shot(page, out, "21-workspace-rebuilt-dark"))
 
     # 35. The short arrival scene with the continuation offered below the prose.
@@ -828,6 +864,7 @@ def _capture(
     ghost = page.get_by_test_id("ghost-preview")
     expect(ghost).to_contain_text("relay clicked")
     ghost.scroll_into_view_if_needed()
+    _require_dock_badge(page)
     written.append(_shot(page, out, "35-workspace-continuation"))
 
     # 22. Zen: the prose alone. The clock pauses before the room mounts, so
@@ -974,6 +1011,9 @@ def _capture(
     expect(ordered).to_have_count(6)
     expect(unordered).to_have_count(3)
     _require_inside(unordered.last, name="last timeline note", bottom=VIEWPORT_HEIGHT)
+    sequence_note = page.get_by_test_id("timeline-sequence-gap").get_by_text("Not available yet.")
+    expect(sequence_note).to_be_visible()
+    _require_inside(sequence_note, name="timeline status note", top=TOP_BAR_HEIGHT)
     written.append(_shot(page, out, "41-timeline"))
     _set_theme(page, "dark")
     page.goto(f"{WEB}/novels/{timeline_novel}/planning/timeline")
@@ -983,6 +1023,9 @@ def _capture(
     expect(page.get_by_test_id("timeline-unordered").get_by_test_id("timeline-card")).to_have_count(
         3
     )
+    sequence_note = page.get_by_test_id("timeline-sequence-gap").get_by_text("Not available yet.")
+    expect(sequence_note).to_be_visible()
+    _require_inside(sequence_note, name="timeline status note", top=TOP_BAR_HEIGHT)
     written.append(_shot(page, out, "42-timeline-dark"))
 
     # 43/44. The storyboard reading the eight-chapter seed's aggregate. The

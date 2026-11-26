@@ -25,6 +25,32 @@ import { queryClient } from "@shell/lib/query";
 import { EntityDossier } from "./EntityDossier";
 
 const de = catalogs.de;
+
+// The bookmark and export doors name their state in title and aria-label,
+// never a future wave (#979).
+const STATUS_NOTE = {
+  en: "Not available yet.",
+  de: "Noch nicht verfügbar.",
+  fr: "Pas encore disponible.",
+} as const;
+
+const FUTURE_PROMISE =
+  /build-out|aufbau|wave|welle|vague|appear|erschein|appara|coming soon|kommt mit|arrive avec|future|becomes available|later/i;
+
+describe("the bookmark and export notes speak to the reader", () => {
+  it("are status-only in every catalog, never a future promise", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      for (const key of [
+        "knowledge.dossier.bookmarkNote",
+        "knowledge.dossier.exportNote",
+      ] as const) {
+        const note = catalogs[locale][key];
+        expect(note).toBe(STATUS_NOTE[locale]);
+        expect(note).not.toMatch(FUTURE_PROMISE);
+      }
+    }
+  });
+});
 const api = client as unknown as Record<"POST" | "PATCH" | "DELETE", ReturnType<typeof vi.fn>>;
 
 configure({ asyncUtilTimeout: 5000 });
@@ -265,13 +291,25 @@ describe("each relation card carries edit and delete beside the select door", ()
 describe("the invented fields stay honest disabled gaps", () => {
   it("bookmark and export remain disabled with their notes", () => {
     mountDossier();
-    const bookmark = screen.getByRole("button", { name: new RegExp(de["knowledge.dossier.bookmark"]) });
+    // Both doors carry the same status note, so anchor the full accessible
+    // name instead of the shared note regex.
+    const bookmark = screen.getByRole("button", {
+      name: `${de["knowledge.dossier.bookmark"]} (${de["knowledge.dossier.bookmarkNote"]})`,
+    });
     expect((bookmark as HTMLButtonElement).disabled).toBe(true);
-    const exportDoor = screen.getByRole("button", { name: new RegExp(de["knowledge.dossier.export"]) });
+    expect(bookmark.getAttribute("title")).toContain(de["knowledge.dossier.bookmarkNote"]);
+    expect(bookmark.getAttribute("aria-label")).toContain(de["knowledge.dossier.bookmarkNote"]);
+    const exportDoor = screen.getByRole("button", {
+      name: `${de["knowledge.dossier.export"]} (${de["knowledge.dossier.exportNote"]})`,
+    });
     expect((exportDoor as HTMLButtonElement).disabled).toBe(true);
+    expect(exportDoor.getAttribute("title")).toContain(de["knowledge.dossier.exportNote"]);
+    expect(exportDoor.getAttribute("aria-label")).toContain(de["knowledge.dossier.exportNote"]);
     expect(screen.getByText(de["knowledge.dossier.excerptsGap"])).toBeTruthy();
     // The jump door's tooltip carries the same status note — no dead promise.
-    const jump = screen.getByRole("button", { name: new RegExp(de["knowledge.dossier.jumpNote"]) });
+    const jump = screen.getByRole("button", {
+      name: `${de["knowledge.dossier.jump"]} (${de["knowledge.dossier.jumpNote"]})`,
+    });
     expect((jump as HTMLButtonElement).disabled).toBe(true);
     expect(jump.getAttribute("title")).toContain(de["knowledge.dossier.jumpNote"]);
   });

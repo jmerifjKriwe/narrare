@@ -57,20 +57,23 @@ function ok(status = 200): Response {
   return new Response(null, { status });
 }
 
-// The sequence-view note states availability in the reader's words, not a
-// drawing/roadmap metaphor (#979).
-const SEQUENCE_NOTE = {
-  en: "The chapter-order view becomes available later.",
-  de: "Die Kapitelabfolge-Ansicht wird später verfügbar.",
-  fr: "La vue par ordre des chapitres sera disponible plus tard.",
+// The disabled chapter-order view names its state, not a future drawing
+// schedule (#979).
+const STATUS_NOTE = {
+  en: "Not available yet.",
+  de: "Noch nicht verfügbar.",
+  fr: "Pas encore disponible.",
 } as const;
 
+const FUTURE_PROMISE =
+  /drawn|gezeichnet|dessinée|build-out|aufbau|wave|welle|vague|appear|erschein|appara|coming soon|kommt mit|arrive avec|future|becomes available|later/i;
+
 describe("the chapter-order note speaks to the reader", () => {
-  it("is value-neutral in every catalog, never a drawing or build-out", () => {
+  it("is status-only in every catalog, never a future promise", () => {
     for (const locale of ["en", "de", "fr"] as const) {
       const note = catalogs[locale]["planning.timeline.chapterSequenceNote"];
-      expect(note).toBe(SEQUENCE_NOTE[locale]);
-      expect(note).not.toMatch(/drawn|gezeichnet|dessinée|wave|welle|vague|build-out|aufbau/i);
+      expect(note).toBe(STATUS_NOTE[locale]);
+      expect(note).not.toMatch(FUTURE_PROMISE);
     }
   });
 });

@@ -131,9 +131,7 @@ def test_f9_enters_zen_and_the_prose_stands_centered(page: Page, installed: Stac
     expect(room.get_by_text("Esc", exact=True)).to_be_visible()
     soundscape = room.get_by_role("button", name="Klanglandschaften deaktiviert")
     expect(soundscape).to_be_disabled()
-    expect(soundscape).to_have_attribute(
-        "title", "Klanglandschaften kommen in einer späteren Welle"
-    )
+    expect(soundscape).to_have_attribute("title", "Noch nicht verfügbar.")
     expect(room.get_by_role("button", name=re.compile("Sepia"))).to_have_count(0)
 
     # Absatz-Fokus is the entry mode — the focal card stands, the rest dim.

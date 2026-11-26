@@ -140,7 +140,7 @@
   "planning.timeline.all": "All",
   "planning.timeline.chapterChip": "Chapter {position}",
   "planning.timeline.chapterSequence": "Chapter order",
-  "planning.timeline.chapterSequenceNote": "The chapter-order view becomes available later.",
+  "planning.timeline.chapterSequenceNote": "Not available yet.",
   "planning.timeline.chapterUnknown": "Chapter unknown",
   "planning.timeline.chaptersUnavailable": "The chapters are unavailable.",
   "planning.timeline.clearFilters": "Clear filters",

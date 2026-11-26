@@ -140,7 +140,7 @@
   "planning.timeline.all": "Alle",
   "planning.timeline.chapterChip": "Kapitel {position}",
   "planning.timeline.chapterSequence": "Kapitelabfolge",
-  "planning.timeline.chapterSequenceNote": "Die Kapitelabfolge-Ansicht wird später verfügbar.",
+  "planning.timeline.chapterSequenceNote": "Noch nicht verfügbar.",
   "planning.timeline.chapterUnknown": "Kapitel unbekannt",
   "planning.timeline.chaptersUnavailable": "Die Kapitel sind nicht verfügbar.",
   "planning.timeline.clearFilters": "Filter zurücksetzen",

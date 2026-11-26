@@ -21,6 +21,26 @@ const de = catalogs.de;
 const INPUT_LABEL = de["writing.workspace.promptBar.inputLabel"];
 const CONTINUE = de["writing.workspace.promptBar.continue"];
 
+// The style trigger names its state, not a future wave (#979).
+const STATUS_NOTE = {
+  en: "Not available yet.",
+  de: "Noch nicht verfügbar.",
+  fr: "Pas encore disponible.",
+} as const;
+
+const FUTURE_PROMISE =
+  /build-out|aufbau|wave|welle|vague|appear|erschein|appara|coming soon|kommt mit|arrive avec|future|becomes available|later/i;
+
+describe("the style note speaks to the reader", () => {
+  it("is status-only in every catalog, never a future promise", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      const note = catalogs[locale]["writing.workspace.promptBar.styleNote"];
+      expect(note).toBe(STATUS_NOTE[locale]);
+      expect(note).not.toMatch(FUTURE_PROMISE);
+    }
+  });
+});
+
 function continuationOf(overrides: Partial<Continuation> = {}): Continuation {
   return {
     phase: "idle",
