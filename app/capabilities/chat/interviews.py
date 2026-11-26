@@ -47,6 +47,7 @@ from app.capabilities.chat.schemas import (
     TurnReadback,
 )
 from app.kernel.contracts.models import ENTITY_TYPES, MAX_RELATIONS, Entity
+from app.kernel.errors import ErrorCode
 from app.kernel.llm import (
     ASSISTANT_PREFIX,
     USER_PREFIX,
@@ -129,21 +130,21 @@ class InterviewRefusalError(Exception):
     """A refusal the router writes as ``{"detail": {"code": …, "detail": …}}``."""
 
     status: int = 400
-    code: str = "refused"
+    code: ErrorCode
 
 
 class InterviewNotFoundError(InterviewRefusalError):
     """The session or novel is absent, or another user's: one indistinguishable answer."""
 
     status = 404
-    code = "not-found"
+    code = ErrorCode.NOT_FOUND
 
 
 class SessionClosedError(InterviewRefusalError):
     """The interview was ended; its transcript is read-only."""
 
     status = 409
-    code = "session-closed"
+    code = ErrorCode.SESSION_CLOSED
 
 
 class InterviewValidationError(InterviewRefusalError):
@@ -151,7 +152,7 @@ class InterviewValidationError(InterviewRefusalError):
 
     status = 422
 
-    def __init__(self, code: str, detail: str) -> None:
+    def __init__(self, code: ErrorCode, detail: str) -> None:
         self.code = code
         super().__init__(detail)
 
@@ -160,28 +161,28 @@ class ExtractionFailedError(InterviewRefusalError):
     """Twice-unreadable model answer; nothing was written."""
 
     status = 502
-    code = "extraction-failed"
+    code = ErrorCode.EXTRACTION_FAILED
 
 
 class ProviderUnavailableError(InterviewRefusalError):
     """No serving tier answered for ``chat.ask``; the cascade's reason rides along."""
 
     status = 502
-    code = "provider-unavailable"
+    code = ErrorCode.PROVIDER_UNAVAILABLE
 
 
 class ProviderCallError(InterviewRefusalError):
     """The provider call died; the class is named so the reader knows what failed."""
 
     status = 502
-    code = "provider-error"
+    code = ErrorCode.PROVIDER_ERROR
 
 
 class PromptRefusedError(InterviewRefusalError):
     """The interview prompt's effective source no longer renders."""
 
     status = 502
-    code = "prompt-refused"
+    code = ErrorCode.PROMPT_REFUSED
 
 
 @dataclass(frozen=True)
@@ -712,11 +713,11 @@ def _accepted_text(text: str, settled: str | None) -> str:
     """
     if not settled:
         raise InterviewValidationError(
-            "suggestion-mismatch", "there is no pending suggestion to accept"
+            ErrorCode.SUGGESTION_MISMATCH, "there is no pending suggestion to accept"
         )
     if text and text != settled:
         raise InterviewValidationError(
-            "suggestion-mismatch", "the text is not the pending suggestion"
+            ErrorCode.SUGGESTION_MISMATCH, "the text is not the pending suggestion"
         )
     return settled
 
@@ -753,17 +754,17 @@ class InterviewService:
         """Open an interview after checking the mode, its type and the novel."""
         if payload.mode != MODE_KNOWLEDGE_ENTITY:
             raise InterviewValidationError(
-                "mode-unknown",
+                ErrorCode.MODE_UNKNOWN,
                 f"mode {payload.mode!r} is not {MODE_KNOWLEDGE_ENTITY!r}",
             )
         entity_type = payload.entity_type.strip() if payload.entity_type else None
         if not entity_type:
             raise InterviewValidationError(
-                "entity-type-required", "the entity interview needs an entity type"
+                ErrorCode.ENTITY_TYPE_REQUIRED, "the entity interview needs an entity type"
             )
         if entity_type not in ENTITY_TYPES:
             raise InterviewValidationError(
-                "entity-type-unknown",
+                ErrorCode.ENTITY_TYPE_UNKNOWN,
                 f"the entity type {entity_type!r} is not one of {'|'.join(ENTITY_TYPES)}",
             )
         if not await self.novels.exists(payload.novel_id):
@@ -1008,7 +1009,7 @@ class InterviewService:
                         error_code="suggestion-mismatch",
                         error=reason,
                     )
-                raise InterviewValidationError("suggestion-mismatch", reason)
+                raise InterviewValidationError(ErrorCode.SUGGESTION_MISMATCH, reason)
             try:
                 text = _accepted_text(payload.text, pending.suggestion)
             except InterviewValidationError as error:

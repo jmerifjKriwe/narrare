@@ -47,7 +47,7 @@ from app.capabilities.prompts.service import (
 from app.kernel.auth import current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
-from app.kernel.errors import coded_detail
+from app.kernel.errors import ErrorCode, coded_detail
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionEvent, CompletionRequest, Delta, Message, error_code
 from app.kernel.llm.streaming import (
@@ -193,7 +193,7 @@ async def preview_prompt(
         raise _errors(error) from None
 
 
-def _coded(status: int, code: str, detail: str) -> HTTPException:
+def _coded(status: int, code: ErrorCode, detail: str) -> HTTPException:
     """The live test's coded face: the code the surfaces localize, the detail."""
     return HTTPException(status_code=status, detail=coded_detail(code, detail))
 
@@ -301,20 +301,20 @@ async def live_test_prompt(
     except LiveContextMissingError as error:
         # The capability's real assembly found nothing to ride: the named
         # 409, never a sample swap.
-        raise _coded(409, "no-context", str(error)) from None
+        raise _coded(409, ErrorCode.NO_CONTEXT, str(error)) from None
     except LiveTestRateLimitedError as error:
         raise HTTPException(
             status_code=429,
-            detail=coded_detail("rate-limited", str(error)),
+            detail=coded_detail(ErrorCode.RATE_LIMITED, str(error)),
             headers={"Retry-After": str(error.retry_after)},
         ) from None
     except KeyUnavailableError as error:
         # The message names the row, never the key — safe to carry.
-        raise _coded(503, "key-unavailable", str(error)) from None
+        raise _coded(503, ErrorCode.KEY_UNAVAILABLE, str(error)) from None
     except EmbeddingMismatchError as error:
         raise _coded(
             409,
-            "embedding-mismatch",
+            ErrorCode.EMBEDDING_MISMATCH,
             f"the stored corpus is embedded at width {error.stored}; "
             f"this request embeds at {error.found}",
         ) from None
@@ -344,7 +344,7 @@ async def live_test_prompt(
         first = await anext(events)
     except StopAsyncIteration:
         await events.aclose()
-        raise _coded(502, "unknown", "the provider answered nothing") from None
+        raise _coded(502, ErrorCode.UNKNOWN, "the provider answered nothing") from None
     except Exception as failure:
         await events.aclose()
         logger.exception("live test provider failed before its first token")

@@ -7,28 +7,33 @@ the literal frame, never a parsed approximation of it.
 
 import pytest
 
+from app.kernel.errors import ErrorCode
 from app.kernel.llm.contract import ModelNotFoundError, ProviderAuthError, error_code
 from app.kernel.llm.streaming import error_events, error_frame, failure_frame
 
 
 def test_a_missing_model_gets_its_own_frame() -> None:
-    assert error_frame("model-not-found", model="glm-5.3") == (
+    assert error_frame(ErrorCode.MODEL_NOT_FOUND, model="glm-5.3") == (
         'event: error\ndata: {"code": "model-not-found", "model": "glm-5.3"}\n\n'
     )
 
 
 def test_a_frame_without_parameters_carries_its_code_alone() -> None:
-    assert error_frame("prompt-refused") == ('event: error\ndata: {"code": "prompt-refused"}\n\n')
+    assert error_frame(ErrorCode.PROMPT_REFUSED) == (
+        'event: error\ndata: {"code": "prompt-refused"}\n\n'
+    )
 
 
 @pytest.mark.parametrize(
     ("code", "expected"),
     [
-        ("key-unavailable", 'event: error\ndata: {"code": "key-unavailable"}\n\n'),
-        ("prompt-refused", 'event: error\ndata: {"code": "prompt-refused"}\n\n'),
+        (ErrorCode.KEY_UNAVAILABLE, 'event: error\ndata: {"code": "key-unavailable"}\n\n'),
+        (ErrorCode.PROMPT_REFUSED, 'event: error\ndata: {"code": "prompt-refused"}\n\n'),
     ],
 )
-async def test_the_pre_call_endings_yield_exactly_their_frame(code: str, expected: str) -> None:
+async def test_the_pre_call_endings_yield_exactly_their_frame(
+    code: ErrorCode, expected: str
+) -> None:
     """The two refusals a stream can meet before any provider call are coded."""
     assert [frame async for frame in error_events(code)] == [expected]
 

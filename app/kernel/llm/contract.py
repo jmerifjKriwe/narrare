@@ -12,6 +12,8 @@ from collections.abc import AsyncIterator  # noqa: TC003
 from dataclasses import dataclass
 from typing import Protocol
 
+from app.kernel.errors import ErrorCode
+
 SOURCE_PREFIX = "SOURCE: "
 """A prompt that wants its answer to quote a supplied passage marks it with this
 prefix, one passage per line. The fake reads it; a real provider reads the
@@ -172,17 +174,8 @@ class ProviderAuthError(RuntimeError):
     """
 
 
-ERROR_MODEL_NOT_FOUND = "model-not-found"
-ERROR_PROVIDER_AUTH = "provider-auth"
-ERROR_UNKNOWN = "unknown"
-"""The wire codes an error frame can carry: the two typed failures, and
-everything else. The strings are the surfaces' localization keys' subjects —
-``errors.modelNotFound`` and friends pick the sentence from one of these —
-so renaming one is a cross-tree change, kernel and web together."""
-
-
-def error_code(failure: BaseException) -> str:
-    """The wire code a stream failure becomes: one of the three, never prose.
+def error_code(failure: BaseException) -> ErrorCode:
+    """The wire code a stream failure becomes: a member of the closed list, never prose.
 
     The two typed failures map to their codes; anything else — an endpoint
     answering the wrong shape, a wire that died mid-frame — is unclassified
@@ -190,10 +183,10 @@ def error_code(failure: BaseException) -> str:
     generic sentence.
     """
     if isinstance(failure, ModelNotFoundError):
-        return ERROR_MODEL_NOT_FOUND
+        return ErrorCode.MODEL_NOT_FOUND
     if isinstance(failure, ProviderAuthError):
-        return ERROR_PROVIDER_AUTH
-    return ERROR_UNKNOWN
+        return ErrorCode.PROVIDER_AUTH
+    return ErrorCode.UNKNOWN
 
 
 class TextProvider(Protocol):

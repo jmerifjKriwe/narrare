@@ -35,6 +35,7 @@ from scripts.generate_capabilities import (
     typescript_catalogs,
     typescript_commands,
     typescript_docks,
+    typescript_error_codes,
     typescript_nav,
     typescript_overlays,
     typescript_routes,
@@ -128,6 +129,12 @@ def test_committed_typescript_commands_match_the_command_modules() -> None:
     # change is a palette running on rows that no longer exist as written.
     assert _committed("web", "lib", "generated", "commands.ts") == typescript_commands(ROOT), (
         "web/lib/generated/commands.ts is stale: run `just generate` and commit the result"
+    )
+
+
+def test_committed_typescript_error_codes_match_the_kernel() -> None:
+    assert _committed("web", "lib", "generated", "errorCodes.ts") == typescript_error_codes(), (
+        "web/lib/generated/errorCodes.ts is stale: run `just generate` and commit the result"
     )
 
 

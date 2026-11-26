@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Final
 from anyio import CancelScope
 from starlette.responses import StreamingResponse
 
+from app.kernel.errors import ErrorCode
 from app.kernel.llm.contract import error_code
 
 if TYPE_CHECKING:
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
 DONE_FRAME: Final = "event: done\ndata: {}\n\n"
 
 
-def error_frame(code: str, **params: str) -> str:
+def error_frame(code: ErrorCode, **params: str) -> str:
     """The one frame a stream ends with when it cannot deliver an answer.
 
     ``event: error`` with a JSON payload that always names ``code`` — what
@@ -56,7 +57,7 @@ def failure_frame(failure: BaseException) -> str:
     return error_frame(error_code(failure), **params)
 
 
-async def error_events(code: str = "unknown", **params: str) -> AsyncGenerator[str]:
+async def error_events(code: ErrorCode = ErrorCode.UNKNOWN, **params: str) -> AsyncGenerator[str]:
     """Yield exactly the one error frame: a stream's whole ending, coded."""
     yield error_frame(code, **params)
 
