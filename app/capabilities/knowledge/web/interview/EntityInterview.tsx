@@ -6,8 +6,8 @@
  * thinking, the answered proposal, a suggestion for one question, everything
  * suggested, the named failures, the ended interview and the list. The
  * proposal card and the transcript are separate faces of the same session; the
- * footer offers «Interview beenden» — the handover into the create dialog is
- * its own task.
+ * footer offers «Interview beenden» and «Als Entität speichern», which hands
+ * the proposal to the create dialog as its prefill.
  *
  * The opening question is chrome from knowledge's catalog, one per type: it
  * is not a turn and costs no model call. The panel is a labelled complementary
@@ -74,9 +74,9 @@ export function EntityInterview({
   const hidden = sessionId === undefined;
   const [lastSessionId, setLastSessionId] = useState<string | null>(sessionId ?? null);
 
-  // Hiding is not a session switch: the host keeps feeding the last id, so the
-  // controller's `[sessionId]` reset stays off and a running turn still
-  // settles while the panel is away.
+  // Hiding is not a session switch: the host keeps feeding the last id, so
+  // the session read stays subscribed and the controller keeps selecting that
+  // interview's slot while its turn settles.
   useEffect(() => {
     if (sessionId !== undefined) setLastSessionId(sessionId);
   }, [sessionId]);
