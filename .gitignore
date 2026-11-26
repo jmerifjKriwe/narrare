@@ -54,6 +54,9 @@ web/.turbo/
 # pnpm
 .pnpm-store/
 
+# Screenshot publication recovery data (kept after a failed restore)
+assets/.screenshots-backup-*
+
 # Browser test artifacts
 web/playwright-report/
 web/test-results/

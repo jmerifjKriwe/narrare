@@ -80,7 +80,7 @@ reads the same on every capture."""
 
 
 CONTINUATION = " Somewhere behind the console a relay clicked, once."
-"""The ghost the editor offers at the caret: the image's whole claim."""
+"""The ghost the editor offers below the prose: the image's whole claim."""
 
 WRITING_TITLE = "The Glass Harbor"
 WRITING_SIGNAL = (
@@ -928,8 +928,9 @@ def _publish(
     Any failure removes whatever new output was written and restores both
     previous outputs. The backup is discarded only after a successful publish
     or a complete restore; a failed restore keeps it, and the raised error
-    names its path. ``swap`` is the one move seam, so a test can fail the index
-    swap deterministically without filesystem timing tricks.
+    names its path. ``swap`` is the publish move seam; tests inject ``swap``,
+    ``_move`` and ``_remove`` separately to fail the index swap, a restore, or
+    a rollback without filesystem timing tricks.
     """
     expected = {shot.filename for shot in SHOTS}
     actual = {path.name for path in written}

@@ -44,6 +44,13 @@ STAND_IN_DISCLOSURE = (
     "the fake provider card, both interview frames (33 and 34) show stand-in replies, and "
     "the continuation frame uses the chat stand-in."
 )
+README_STAND_IN_DISCLOSURE = (
+    "Some frames use deterministic stand-ins at the model boundary: the dossiers frame "
+    "shows extraction output from the fake extraction provider, the knowledge-dock frame "
+    "shows a finding from the fake consistency provider, the AI-rules frame shows the "
+    "fake provider card, both interview frames show stand-in replies, and the continuation "
+    "frame uses the chat stand-in."
+)
 
 
 def _escape_markdown(text: str) -> str:

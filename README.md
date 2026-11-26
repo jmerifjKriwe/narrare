@@ -50,10 +50,10 @@ entity through a guided interview.
 These are captures of the running application, not mock-ups. Some frames use
 deterministic stand-ins at the model boundary: the dossiers frame shows extraction output
 from the fake extraction provider, the knowledge-dock frame shows a finding from the fake
-consistency provider, the AI-rules frame (29) shows the fake provider card, both interview
-frames (33 and 34) show stand-in replies, and the continuation frame uses the chat
-stand-in. The full collection, including the dark variants and the remaining settings and
-entity frames, is in [docs/screenshots/README.md](docs/screenshots/README.md).
+consistency provider, the AI-rules frame shows the fake provider card, both interview
+frames show stand-in replies, and the continuation frame uses the chat stand-in. The full
+collection, including the dark variants and the remaining settings and entity frames, is
+in [docs/screenshots/README.md](docs/screenshots/README.md).
 
 ## Writing & Zen
 
@@ -62,7 +62,7 @@ in order; the editor autosaves after every pause, so the draft is never waiting 
 save button. `F9` clears the desk: the prose and the caret, with the chrome and docks
 gone.
 
-**Continue the scene.** *Continue writing* streams a draft at the caret. It arrives grey
+**Continue the scene.** *Continue writing* streams a ghost below the prose. It arrives grey
 and stays provisional: `Tab` accepts it, `Esc` throws it away, and a stream that dies
 never leaves half a sentence in the manuscript. A short instruction can steer the next
 attempt — more tension, more dialogue, more detail.

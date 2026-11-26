@@ -19,6 +19,7 @@ from PIL import Image
 
 from scripts.screenshot_manifest import (
     README_SHOTS,
+    README_STAND_IN_DISCLOSURE,
     SHOTS,
     STAND_IN_DISCLOSURE,
     render_index,
@@ -112,7 +113,12 @@ def test_readme_gallery_is_the_curated_manifest_in_order() -> None:
 
 def test_readme_discloses_the_model_stand_ins() -> None:
     text = " ".join(README.read_text(encoding="utf-8").split())
-    assert " ".join(STAND_IN_DISCLOSURE.split()) in text
+    assert " ".join(README_STAND_IN_DISCLOSURE.split()) in text
+    # The README shows no collection frame numbers, so its disclosure names
+    # surfaces only; the numbered version belongs to the collection index.
+    assert " ".join(STAND_IN_DISCLOSURE.split()) not in text
+    assert "(29)" not in text
+    assert "(33 and 34)" not in text
 
 
 def test_readme_does_not_call_live_settings_a_roadmap_phase() -> None:
