@@ -584,10 +584,18 @@ def test_cross_device_copy_is_cleaned_up_when_the_index_swap_fails(
     _previous_outputs(masters, index)
     staged_masters, staged_index = _staged_capture(tmp_path / "capture")
     devices = _devices((staged_masters.parent, 1), (masters.parent, 2), (index.parent, 3))
+    copies: list[Path] = []
 
     def failing_swap(source: Path, target: Path) -> None:
         if source.name.startswith(f".{index.name}-"):
             raise RuntimeError("index swap failed")
+        # The masters swap is the last step before the injected failure, so the
+        # cross-device payload must already be a real copy beside its output —
+        # not the caller's staging directory — holding the whole capture.
+        assert target == masters
+        assert source.parent.name.startswith(".screenshots-stage-")
+        assert {path.name for path in source.iterdir()} == _manifest_names()
+        copies.append(source.parent)
         os.replace(source, target)
 
     with pytest.raises(RuntimeError, match="index swap failed"):
@@ -600,11 +608,13 @@ def test_cross_device_copy_is_cleaned_up_when_the_index_swap_fails(
             device=devices,
         )
 
+    assert len(copies) == 1, "the injected failure never saw a cross-device copy"
+    assert not copies[0].exists(), "the copied stage survived the rollback"
     assert (masters / "old.png").read_bytes() == b"old master"
     assert not (masters / SHOTS[0].filename).exists()
     assert index.read_text(encoding="utf-8") == "old index\n"
-    # The non-empty copy staged beside the masters is gone; the caller's own
-    # capture directory is not publication debris.
+    # No staged copy or recovery debris remains; the caller's own capture
+    # directory is not publication debris.
     assert list(masters.parent.glob(".screenshots-stage-*")) == []
     assert _index_temps(index) == []
     assert _backups(masters.parent, index.parent) == []

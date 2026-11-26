@@ -57,7 +57,8 @@ web/.turbo/
 # Screenshot capture staging (.screenshots-<random>) and publication recovery
 # data beside each output (.screenshots-backup-* for the masters,
 # .README.md-backup-* for the collection index), kept after a failed restore.
-# A custom --out or --index parent outside the repository is not covered here.
+# Any non-canonical output or index parent, including one inside the
+# repository, is outside these patterns.
 assets/.screenshots-*
 docs/screenshots/.README.md-backup-*
 
