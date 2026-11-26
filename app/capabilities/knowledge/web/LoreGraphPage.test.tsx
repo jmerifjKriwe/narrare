@@ -1098,12 +1098,28 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     expect(document.activeElement).toBe(document.getElementById("entity-interview-manual"));
   });
 
-  it("the handover create returns focus to the save door", async () => {
+  it("the handover create returns focus to the end door, not the shut save door", async () => {
     api.GET.mockImplementation((path: string) => {
       if (path === "/api/chat/sessions/{session_id}") {
         return Promise.resolve({ data: sessionWithProposal("s1", "Nebelhaus"), response: ok() });
       }
       return baseGet(path);
+    });
+    api.POST.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/entities") {
+        return Promise.resolve({
+          data: entityRow({ id: "e9", name: "Nebelhaus", type: "object" }),
+          response: new Response(null, { status: 201 }),
+        });
+      }
+      if (path === "/api/chat/sessions/{session_id}/close") {
+        return Promise.resolve({
+          data: undefined,
+          error: { detail: { code: "provider-error", detail: "offline" } },
+          response: new Response(null, { status: 500 }),
+        });
+      }
+      throw new Error(`unexpected POST: ${path}`);
     });
     await renderGraph(`/novels/${NOVEL_ID}/knowledge/graph?interview=s1`);
     const panel = await screen.findByTestId("entity-interview");
@@ -1111,11 +1127,19 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     await waitFor(() => expect(saveDoor.disabled).toBe(false));
     fireEvent.click(saveDoor);
     const dialog = await screen.findByTestId("entity-create-dialog");
-    fireEvent.click(within(dialog).getByTestId("entity-create-cancel"));
+    fireEvent.click(within(dialog).getByTestId("entity-create-save"));
 
     await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
-    expect(screen.getByTestId("entity-interview")).toBeTruthy();
-    expect(document.activeElement).toBe(document.getElementById("entity-interview-save"));
+    const stayed = screen.getByTestId("entity-interview");
+    await within(stayed).findByText(de["knowledge.interview.endFailed"]);
+    // The proposal became a row: the door that opened the dialog is shut, so
+    // focus lands on the live action beside the failed end instead.
+    expect((within(stayed).getByTestId("entity-interview-save") as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(document.getElementById("entity-interview-end")),
+    );
   });
 
   it("a closed interview dialog leaves no prefill for the next manual door", async () => {

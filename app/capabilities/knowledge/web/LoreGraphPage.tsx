@@ -982,7 +982,7 @@ export function LoreGraphPage() {
           novelId={novelId}
           entities={entityList}
           rosterSettled={!entities.isPending}
-          openerId={prefill === null ? "entity-interview-manual" : "entity-interview-save"}
+          openerId={prefill === null ? "entity-interview-manual" : "entity-interview-end"}
           source={prefill === null ? "manual" : "interview"}
           prefill={prefill ?? undefined}
           onClose={() => {

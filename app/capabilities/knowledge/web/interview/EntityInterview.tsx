@@ -383,6 +383,7 @@ function EntityInterviewView({
               ) : (
                 <button
                   type="button"
+                  id="entity-interview-end"
                   ref={endRef}
                   data-testid="entity-interview-end"
                   disabled={busy}
