@@ -246,6 +246,23 @@ describe("the door's type chooser", () => {
     expect(onManual).toHaveBeenCalledTimes(1);
     expect(api.POST).not.toHaveBeenCalled();
   });
+
+  it("a start the wire refuses names its failure under the type grid", async () => {
+    api.POST.mockResolvedValueOnce({
+      data: undefined,
+      error: { detail: { code: "provider-unavailable", detail: "no serving tier for chat.ask" } },
+      response: new Response(null, { status: 502 }),
+    });
+    renderPanel(null);
+    fireEvent.click(screen.getByTestId("entity-interview-type-object"));
+    fireEvent.click(screen.getByTestId("entity-interview-start"));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe(de["knowledge.interview.startFailed"]);
+    // The chosen type still stands and the start can be tried again.
+    expect(screen.getByTestId("entity-interview-type-object").getAttribute("aria-pressed")).toBe("true");
+    expect((screen.getByTestId("entity-interview-start") as HTMLButtonElement).disabled).toBe(false);
+  });
 });
 
 describe("the list closes on the row it opens", () => {
@@ -1192,6 +1209,52 @@ describe("the wire's refusals find their own face", () => {
     expect(screen.queryByTestId("entity-interview-retry")).toBeNull();
     await waitFor(() => expect(reads()).toBeGreaterThan(before));
     await waitFor(() => expect(screen.queryByTestId("entity-interview-suggestion")).toBeNull());
+  });
+
+  it("a missing model names the settings door beside the retry", async () => {
+    api.POST.mockResolvedValueOnce({
+      data: undefined,
+      error: {
+        detail: { code: "provider-unavailable", detail: "no serving tier for chat.ask" },
+      },
+      response: new Response(null, { status: 502 }),
+    });
+    renderPanel();
+    await readySession();
+    fireEvent.change(composer(), { target: { value: "Noch eine Antwort." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+
+    const failure = await screen.findByTestId("entity-interview-failure");
+    expect(within(failure).getByText(de["knowledge.interview.failedUnavailable"])).toBeTruthy();
+    const door = screen.getByTestId("entity-interview-settings-door");
+    expect(door.getAttribute("href")).toBe("/settings/ai-regeln");
+    expect(door.textContent).toBe(de["knowledge.interview.settingsDoor"]);
+    // The model may be there by the time the writer returns: the retry stands.
+    expect(screen.getByTestId("entity-interview-retry")).toBeTruthy();
+    expect(screen.queryByTestId("entity-interview-prompt-door")).toBeNull();
+  });
+
+  it("a refused prompt opens the prompt editor and offers no retry", async () => {
+    api.POST.mockResolvedValueOnce({
+      data: undefined,
+      error: {
+        detail: { code: "prompt-refused", detail: "the override renders no text" },
+      },
+      response: new Response(null, { status: 502 }),
+    });
+    renderPanel();
+    await readySession();
+    fireEvent.change(composer(), { target: { value: "Noch eine Antwort." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+
+    const failure = await screen.findByTestId("entity-interview-failure");
+    expect(within(failure).getByText(de["knowledge.interview.failedPrompt"])).toBeTruthy();
+    const door = screen.getByTestId("entity-interview-prompt-door");
+    expect(door.getAttribute("href")).toBe("/settings/prompts");
+    expect(door.textContent).toBe(de["knowledge.interview.promptDoor"]);
+    // Sending the same body again cannot repair the prompt.
+    expect(screen.queryByTestId("entity-interview-retry")).toBeNull();
+    expect(screen.queryByTestId("entity-interview-settings-door")).toBeNull();
   });
 
   it("an unknown refusal keeps its wire code beside the generic copy", async () => {
