@@ -135,7 +135,7 @@
   "writing.shelf.card.percent": "{percent}%",
   "writing.shelf.chapters": "{count, plural, one {# Chapter} other {# Chapters}}",
   "writing.shelf.chapters.unit": "{count, plural, one {Chapter} other {Chapters}}",
-  "writing.shelf.comingSoon": "comes with the further build-out",
+  "writing.shelf.comingSoon": "More options become available later.",
   "writing.shelf.deletedElsewhere": "The book was deleted elsewhere — the shelf shows the current state.",
   "writing.shelf.dialog.band.epic": "Epic",
   "writing.shelf.dialog.band.novel": "Standard novel",

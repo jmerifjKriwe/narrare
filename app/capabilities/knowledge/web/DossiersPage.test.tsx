@@ -39,6 +39,24 @@ import { DossiersPage } from "./DossiersPage";
 const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "POST" | "DELETE", ReturnType<typeof vi.fn>>;
 
+// The draft's gap areas describe the place, not an internal programme: #979
+// removes the "later wave" wording that dominated the dossier capture.
+const GAP_NOTE = {
+  en: "Details will appear here.",
+  de: "Details erscheinen hier.",
+  fr: "Les détails apparaîtront ici.",
+} as const;
+
+describe("the dossier gap note speaks to the reader", () => {
+  it("is value-neutral in every catalog, never a wave or build-out", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      const note = catalogs[locale]["knowledge.dossiers.laterWaveNote"];
+      expect(note).toBe(GAP_NOTE[locale]);
+      expect(note).not.toMatch(/wave|welle|vague|build-out|aufbau/i);
+    }
+  });
+});
+
 configure({ asyncUtilTimeout: 5000 });
 
 const NOVEL_ID = "11111111-1111-1111-1111-111111111111";

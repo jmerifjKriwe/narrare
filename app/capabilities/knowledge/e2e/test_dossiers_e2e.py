@@ -137,7 +137,7 @@ def test_a_card_opens_the_shared_dossier(page: Page, installed: Stack) -> None:
     for testid in ("dossier-psych-gap", "dossier-linguistic-gap"):
         gap = page.get_by_test_id(testid)
         expect(gap).to_have_attribute("aria-disabled", "true")
-        expect(gap).to_contain_text("Kommt mit einer späteren Welle")
+        expect(gap).to_contain_text("Details erscheinen hier.")
         expect(gap.get_by_role("button")).to_have_count(0)
     expect(page.get_by_test_id("dossier-psych-gap")).to_contain_text(
         "Psychologisches Profil & Motivation"

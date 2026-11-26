@@ -145,7 +145,7 @@
   "knowledge.dossier.title": "Dossier d'entité",
   "knowledge.dossiers.aiSparring": "Sparring IA & simulation de dialogue",
   "knowledge.dossiers.graphArea": "Graphe causal des relations",
-  "knowledge.dossiers.laterWaveNote": "Arrive avec une vague ultérieure",
+  "knowledge.dossiers.laterWaveNote": "Les détails apparaîtront ici.",
   "knowledge.dossiers.linguisticProfile": "Profil linguistique & tournures de dialogue",
   "knowledge.dossiers.listHint": "Choisis une entrée de ton modèle de données :",
   "knowledge.dossiers.loadFailed": "Les dossiers sont indisponibles.",

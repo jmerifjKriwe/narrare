@@ -519,8 +519,8 @@ export function CausalityPage() {
 
             {/* The bottom disclaimer — the draft's footnote, reworded into
                 the vocabulary gate's own law: the strip mirrors only the
-                novel's real scene entries, and everything deeper comes
-                with the further build-out (the owner's one-key ruling). */}
+                novel's real scene entries, and claims nothing beyond them
+                (the owner's one-key ruling). */}
             <p data-testid="causality-note" className="border-t border-rule/30 pt-2 text-meta italic leading-relaxed text-muted">
               {t("planning.causality.laterNote")}
             </p>

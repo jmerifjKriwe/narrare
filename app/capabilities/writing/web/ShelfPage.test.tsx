@@ -68,6 +68,24 @@ function ok(): Response {
   return new Response(null, { status: 200 });
 }
 
+// The disabled doors' caption, not a programme name (#979): the shelf's
+// captures are read as product pages, not as a build plan.
+const DOORS_NOTE = {
+  en: "More options become available later.",
+  de: "Weitere Optionen werden später verfügbar.",
+  fr: "D'autres options seront disponibles plus tard.",
+} as const;
+
+describe("the disabled-door note speaks to the reader", () => {
+  it("is value-neutral in every catalog, never a wave or build-out", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      const note = catalogs[locale]["writing.shelf.comingSoon"];
+      expect(note).toBe(DOORS_NOTE[locale]);
+      expect(note).not.toMatch(/wave|welle|vague|build-out|aufbau/i);
+    }
+  });
+});
+
 /** A novel row as the API answers it — the shelf's own facts. */
 function novelRow(overrides: Partial<Novel> & { id: string; title: string }): Novel {
   return {

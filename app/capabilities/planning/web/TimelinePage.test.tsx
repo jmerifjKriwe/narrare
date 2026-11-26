@@ -57,6 +57,24 @@ function ok(status = 200): Response {
   return new Response(null, { status });
 }
 
+// The sequence-view note states availability in the reader's words, not a
+// drawing/roadmap metaphor (#979).
+const SEQUENCE_NOTE = {
+  en: "The chapter-order view becomes available later.",
+  de: "Die Kapitelabfolge-Ansicht wird später verfügbar.",
+  fr: "La vue par ordre des chapitres sera disponible plus tard.",
+} as const;
+
+describe("the chapter-order note speaks to the reader", () => {
+  it("is value-neutral in every catalog, never a drawing or build-out", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      const note = catalogs[locale]["planning.timeline.chapterSequenceNote"];
+      expect(note).toBe(SEQUENCE_NOTE[locale]);
+      expect(note).not.toMatch(/drawn|gezeichnet|dessinée|wave|welle|vague|build-out|aufbau/i);
+    }
+  });
+});
+
 function chapterRow(overrides: Partial<Chapter> & { id: string }): Chapter {
   return {
     novel_id: NOVEL_ID,

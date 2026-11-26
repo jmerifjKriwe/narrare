@@ -145,7 +145,7 @@
   "knowledge.dossier.title": "Entity dossier",
   "knowledge.dossiers.aiSparring": "AI sparring & dialogue simulation",
   "knowledge.dossiers.graphArea": "Causal relationship graph",
-  "knowledge.dossiers.laterWaveNote": "Arrives with a later wave",
+  "knowledge.dossiers.laterWaveNote": "Details will appear here.",
   "knowledge.dossiers.linguisticProfile": "Linguistic profile & dialogue patterns",
   "knowledge.dossiers.listHint": "Choose an entry from your data model:",
   "knowledge.dossiers.loadFailed": "The dossiers are unavailable.",

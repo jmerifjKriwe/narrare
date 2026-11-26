@@ -50,7 +50,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import httpx
-from playwright.sync_api import expect, sync_playwright
+from playwright.sync_api import Locator, expect, sync_playwright
 
 from app.kernel.testing.jobs import wait_for_job
 from app.kernel.testing.stack import API_PORT, WEB_PORT, run_stack, stop_shared_web
@@ -79,6 +79,12 @@ turn's, so it is pinned at the render seam; the zen pomodoro is paused before
 it mounts. Every other time is relative to this run's own fresh seed, so it
 reads the same on every capture."""
 
+VIEWPORT_HEIGHT = 1000
+"""The master's height; the shell's top bar is the first 56 pixels."""
+
+TOP_BAR_HEIGHT = 56
+"""Where the scrollable main begins, so a frame's content must start below it."""
+
 
 CONTINUATION = " Somewhere behind the console a relay clicked, once."
 """The ghost the editor offers below the prose: the image's whole claim."""
@@ -94,6 +100,16 @@ WRITING_SIGNAL = (
 )
 WRITING_CAST = "Mira meets Kavic at Vulcan."
 """The clean writing project the workspace, Zen and knowledge-dock frames share."""
+
+STORYBOARD_PROSE: tuple[tuple[str, str], ...] = (
+    ("Arrival", "The station woke in the dark."),
+    ("The Signal", "The signal crossed the harbor twice."),
+    ("The Descent", "The descent began before dawn."),
+    ("The Return", "The return found the lights burning."),
+    ("The Harbor", "The harbor kept its own counsel."),
+)
+STORYBOARD_WORDS = sum(len(body.split()) for _, body in STORYBOARD_PROSE)
+"""The storyboard's written words: the progress chip's real total, no target."""
 
 SHELF: tuple[tuple[str, str, str], ...] = (
     (
@@ -145,6 +161,37 @@ def _shot(page: Page, out: Path, name: str) -> Path:
     page.screenshot(path=str(path), animations="disabled", caret="hide")
     print(f"wrote {path}")
     return path
+
+
+def _require_inside(
+    locator: Locator,
+    *,
+    name: str,
+    top: float = 0,
+    bottom: float = VIEWPORT_HEIGHT,
+) -> None:
+    """Fail the capture when a frame's own element leaves the viewport.
+
+    The recipe's framing claims are checked at capture time, where the real
+    layout answers: a scroll position that only worked on one run fails here
+    instead of shipping a cropped master.
+    """
+    box = locator.bounding_box()
+    if box is None:
+        raise SystemExit(f"{name}: nothing to measure")
+    start, end = box["y"], box["y"] + box["height"]
+    if start < top or end > bottom:
+        raise SystemExit(f"{name}: {start:.1f}..{end:.1f} is outside {top:.1f}..{bottom:.1f}")
+
+
+def _scroll_to_show_bottom(container: Locator, target: Locator, *, margin: float = 8) -> None:
+    """Scroll a real container just enough that the target's bottom is inside."""
+    box = target.bounding_box()
+    if box is None:
+        raise SystemExit("the scroll target has no box")
+    delta = box["y"] + box["height"] - (VIEWPORT_HEIGHT - margin)
+    if delta > 0:
+        container.evaluate("(element, by) => { element.scrollTop += by; }", delta)
 
 
 def _set_theme(page: Page, theme: Literal["light", "dark"]) -> None:
@@ -361,15 +408,21 @@ def _seed_canon(api: httpx.Client, title: str, prose: str, accept_order: list[st
 
 
 def _scene(
-    title: str, *, conflict: str = "", resolution: str = "", status: str = "planned"
+    title: str,
+    *,
+    purpose: str = "",
+    conflict: str = "",
+    resolution: str = "",
+    beats: list[str] | None = None,
+    status: str = "planned",
 ) -> dict[str, object]:
     return {
         "id": str(uuid4()),
         "title": title,
-        "purpose": "",
+        "purpose": purpose,
         "conflict": conflict,
         "resolution": resolution,
-        "beats": [],
+        "beats": list(beats or ()),
         "status": status,
     }
 
@@ -385,58 +438,104 @@ def _save_scenes(
 
 
 def _seed_causality(api: httpx.Client) -> str:
-    """A two-chapter chain with one open gap, wide enough to fit the frame.
+    """A three-chapter chain with exactly one open gap, all of it in frame.
 
-    The first chapter carries the answered scene and the gapped one, so the
-    "forces" link is real; the second stands empty, the honest break the
-    strip shows when no scene was planned there. Two chapters and two scenes
-    fit the 1600px viewport without a horizontal crop.
+    The first chapter carries the gapped scene and the third the answered
+    one; the second stands empty, the honest break the strip shows when no
+    scene was planned there. The two scene cards and three label cards fit
+    the 1600px track without a horizontal crop, and the chip and the
+    methodology footer both read one open gap.
     """
     novel_id = _create_novel(api, "The Chained Bay")
     first = _create_chapter(api, novel_id, "Arrival")
     _create_chapter(api, novel_id, "The Fog")
+    third = _create_chapter(api, novel_id, "The Descent")
     _save_scenes(
         api,
         novel_id,
         first,
+        [_scene("The outage", conflict="The power fails at the worst moment.")],
+    )
+    _save_scenes(
+        api,
+        novel_id,
+        third,
         [
             _scene(
-                "Calibration of the probe",
-                conflict="The probe spikes at 14.2 Hz.",
-                resolution="The outpost is evacuated.",
+                "The signal returns",
+                conflict="The relay stays silent through the night.",
+                resolution="Mara answers it herself.",
                 status="complete",
-            ),
-            _scene("The outage", conflict="The power fails."),
+            )
         ],
     )
     return novel_id
 
 
 def _seed_timeline(api: httpx.Client) -> str:
-    """A novel with chapters and events, through the API.
+    """A novel with six placed events and three unordered notes.
 
     The events enter the world the way a writer would place them — through
-    the real create — one dated with characters and a chapter, one ordered
-    but undated, one unordered and chapterless. Returns the novel's id.
+    the real create. Three chapters give the chapter chips real names; four
+    placed rows carry free-text dates while two are ordered without one, and
+    the unordered register holds three fragments without a position. Returns
+    the novel's id.
     """
     novel_id = _create_novel(api, "The Planned Bay")
-    chapter_ids = [_create_chapter(api, novel_id, title) for title in ("Arrival", "Departure")]
+    arrival, departure, homecoming = [
+        _create_chapter(api, novel_id, title) for title in ("Arrival", "Departure", "Homecoming")
+    ]
     events: tuple[dict[str, object], ...] = (
         {
             "title": "Beginning",
             "description": "Maya reaches the station; the signal is still a rumour.",
             "date_label": "In spring",
             "character_names": ["Maya Chen", "ARIA"],
-            "chapter_id": chapter_ids[0],
+            "chapter_id": arrival,
             "position": 1,
         },
         {
-            "title": "Middle",
-            "description": "The corporation calls it an accident.",
-            "chapter_id": chapter_ids[1],
+            "title": "The sealed file",
+            "description": "The archive names Research Facility 7.",
+            "date_label": "Three days later",
+            "chapter_id": arrival,
             "position": 2,
         },
+        {
+            "title": "The corporation calls",
+            "description": "The corporation calls it an accident.",
+            "chapter_id": departure,
+            "position": 3,
+        },
+        {
+            "title": "The missing years",
+            "description": "Six years vanish from the station log.",
+            "date_label": "In the following winter",
+            "chapter_id": departure,
+            "position": 4,
+        },
+        {
+            "title": "The return",
+            "description": "The crew comes back to a deck that remembers them.",
+            "chapter_id": homecoming,
+            "position": 5,
+        },
+        {
+            "title": "The last signal",
+            "description": "The tone stops at the moment of arrival.",
+            "date_label": "At first light",
+            "chapter_id": homecoming,
+            "position": 6,
+        },
         {"title": "Coda", "description": "Three years are missing."},
+        {
+            "title": "Alternate opening",
+            "description": "A different first chapter, kept as a note.",
+        },
+        {
+            "title": "Epilogue idea",
+            "description": "The harbor closes in the fog.",
+        },
     )
     for payload in events:
         created = api.post(f"/api/planning/novels/{novel_id}/timeline-events", json=payload)
@@ -445,19 +544,105 @@ def _seed_timeline(api: httpx.Client) -> str:
 
 
 def _seed_storyboard(api: httpx.Client) -> str:
-    """A novel with chapters wearing three different sync badges, through the API."""
+    """Eight chapters with four sync faces, real scenes and words, through the API.
+
+    Position ratios put two chapters in Setup, four in Confrontation and two
+    in Resolution. The first chapter carries three planned scenes, so its
+    drill-in shows real purpose, conflict, resolution and beats. The four
+    sync faces — planned, on track, completed, empty — all derive from the
+    seeded scenes and words, never from a capture-only override.
+    """
     novel_id = _create_novel(api, "The Staged Bay")
-    chapter_ids = [
-        _create_chapter(api, novel_id, title) for title in ("Arrival", "Departure", "Homecoming")
-    ]
-    arrival, _, homecoming = chapter_ids
-    seeded: tuple[tuple[str, list[dict[str, object]]], ...] = (
-        (arrival, [{"id": str(uuid4()), "title": "Storm", "status": "planned"}]),
-        (homecoming, [{"id": str(uuid4()), "title": "Flashback", "status": "complete"}]),
+    titles = (
+        "Arrival",
+        "The Watch",
+        "The Signal",
+        "The Descent",
+        "The Outage",
+        "The Return",
+        "The Harbor",
+        "Coda",
     )
-    for chapter_id, scenes in seeded:
-        _save_scenes(api, novel_id, chapter_id, scenes)
-    _write_scene(api, homecoming, "First words in manuscript.")
+    chapters = {title: _create_chapter(api, novel_id, title) for title in titles}
+    planned: tuple[tuple[str, list[dict[str, object]]], ...] = (
+        (
+            "Arrival",
+            [
+                _scene(
+                    "First light",
+                    purpose="Show the station waking.",
+                    conflict="The console answers before anyone speaks.",
+                    resolution="Mara answers the tone.",
+                    beats=["A thin tone crosses the deck.", "Mara counts it."],
+                    status="complete",
+                ),
+                _scene(
+                    "The sealed file",
+                    purpose="Introduce the contradiction.",
+                    conflict="The file still says Facility 7.",
+                    beats=["The file opens on the old number."],
+                    status="in_progress",
+                ),
+                _scene(
+                    "The channel",
+                    purpose="Open the question.",
+                    conflict="ARIA answers from the buried place.",
+                ),
+            ],
+        ),
+        (
+            "The Watch",
+            [_scene("The long watch", conflict="Nothing moves on the scope.")],
+        ),
+        (
+            "The Signal",
+            [
+                _scene(
+                    "The carrier",
+                    conflict="The tone repeats in the same breath.",
+                    resolution="Mara records it.",
+                    status="in_progress",
+                ),
+                _scene("The triangulation", conflict="Two bearings disagree."),
+            ],
+        ),
+        (
+            "The Descent",
+            [
+                _scene(
+                    "The stairwell",
+                    conflict="The lights fail below deck.",
+                    resolution="She keeps the rail.",
+                    status="complete",
+                )
+            ],
+        ),
+        (
+            "The Return",
+            [
+                _scene(
+                    "The threshold",
+                    conflict="The airlock will not cycle.",
+                    resolution="Kavic forces it.",
+                    status="complete",
+                ),
+                _scene(
+                    "The empty deck",
+                    conflict="No one answers the hail.",
+                    resolution="They go in anyway.",
+                    status="complete",
+                ),
+            ],
+        ),
+        (
+            "The Harbor",
+            [_scene("The waterline", conflict="The tide is wrong.")],
+        ),
+    )
+    for title, scenes in planned:
+        _save_scenes(api, novel_id, chapters[title], scenes)
+    for title, body in STORYBOARD_PROSE:
+        _write_scene(api, chapters[title], body, title=title)
     return novel_id
 
 
@@ -573,15 +758,26 @@ def _capture(
         )
 
     # 37/38. The shelf, before the clean writing project exists, so it really
-    #     is the writer's three books.
+    #     is the writer's three books. The scroll lands the last grid card
+    #     (title, genre and blurb) above the fold, and the hero card starts
+    #     below the top bar with the banner just past the fold — no edge cuts
+    #     a card, a sentence or the banner.
+    def shelf_frame(name: str) -> None:
+        page.goto(f"{WEB}/")
+        heading = page.get_by_role("heading", name="The Bookshelf", exact=True)
+        expect(heading).to_be_visible()
+        main = page.locator("main#main")
+        last_card = main.locator("article").last
+        _scroll_to_show_bottom(main, last_card, margin=32)
+        hero = main.locator("section").first
+        _require_inside(last_card, name=f"{name} last shelf card", bottom=VIEWPORT_HEIGHT - 2)
+        _require_inside(hero, name=f"{name} shelf hero", top=TOP_BAR_HEIGHT)
+        written.append(_shot(page, out, name))
+
     _set_theme(page, "light")
-    page.goto(f"{WEB}/")
-    expect(page.get_by_role("heading", name="The Bookshelf", exact=True)).to_be_visible()
-    written.append(_shot(page, out, "37-shelf"))
+    shelf_frame("37-shelf")
     _set_theme(page, "dark")
-    page.goto(f"{WEB}/")
-    expect(page.get_by_role("heading", name="The Bookshelf", exact=True)).to_be_visible()
-    written.append(_shot(page, out, "38-shelf-dark"))
+    shelf_frame("38-shelf-dark")
 
     # The clean writing project: no archive headings, English prose, and the
     # planted facility pair the real consistency check reports.
@@ -658,6 +854,9 @@ def _capture(
     expect(cards).to_have_count(3)
     cards.filter(has_text="Mira").click()
     expect(page.get_by_test_id("dossier-overview")).to_be_visible()
+    # The gap areas carry the reader-facing note, never the retired wave copy.
+    expect(page.get_by_test_id("dossier-psych-gap")).to_contain_text("Details will appear here.")
+    expect(page.get_by_test_id("dossier-ai-gap")).to_contain_text("Details will appear here.")
     written.append(_shot(page, out, "25-dossiers"))
 
     # 26. The real empty sources archive: no documents, so no upload date.
@@ -669,53 +868,95 @@ def _capture(
     expect(page.get_by_test_id("sources-document")).to_have_count(0)
     written.append(_shot(page, out, "26-sources"))
 
-    # 28. The settings hub.
+    # 28. The settings hub. The page's own main scrolls; the profile section
+    #     lands its whole card above the fold, so the daily-goal field is
+    #     fully visible and the next section is not cut mid-row.
     page.goto(f"{WEB}/settings")
-    expect(page.get_by_test_id("settings-page")).to_be_visible()
+    settings = page.get_by_test_id("settings-page")
+    expect(settings).to_be_visible()
+    profile = page.locator("#profil-sektion")
+    goal = page.locator("#settings-daily-goal")
+    expect(goal).to_be_visible()
+    _scroll_to_show_bottom(settings, profile, margin=20)
+    _require_inside(goal, name="settings daily goal", top=TOP_BAR_HEIGHT)
+    _require_inside(profile, name="settings profile section", top=TOP_BAR_HEIGHT)
     expect(page.locator("#settings-author-name")).to_be_visible()
     written.append(_shot(page, out, "28-settings-hub"))
 
-    # 30. Prompts: the catalog and the selected prompt's editor.
+    # 30. Prompts: the catalog and the selected prompt's editor. The page
+    #     scrolls its own main; the fifth card's bottom lands above the fold,
+    #     so all five cards stand complete rather than as a sliver.
     page.goto(f"{WEB}/settings/prompts")
-    expect(page.get_by_test_id("prompts-page")).to_be_visible()
-    expect(page.get_by_test_id("prompt-card")).to_have_count(5)
+    prompts = page.get_by_test_id("prompts-page")
+    expect(prompts).to_be_visible()
+    cards = page.get_by_test_id("prompt-card")
+    expect(cards).to_have_count(5)
     expect(page.get_by_test_id("prompts-editor")).to_be_visible()
+    _scroll_to_show_bottom(prompts, cards.nth(4), margin=2)
+    _require_inside(cards.nth(0), name="first prompt card", top=TOP_BAR_HEIGHT)
+    _require_inside(cards.nth(4), name="fifth prompt card", top=TOP_BAR_HEIGHT)
     written.append(_shot(page, out, "30-prompts"))
 
-    # 27. Causality: the seeded chain with its one open gap.
+    # 27. Causality: the seeded three-chapter chain with its one open gap,
+    #     all three chapter groups inside the track's own width.
     causality_novel = _seed_causality(api)
     page.goto(f"{WEB}/novels/{causality_novel}/planning/causality")
     expect(page.get_by_test_id("causality-page")).to_be_visible()
+    expect(page.get_by_test_id("causality-chapter")).to_have_count(3)
+    expect(page.get_by_test_id("causality-scene")).to_have_count(2)
+    expect(page.get_by_test_id("causality-scene").filter(has_text="—")).to_have_count(1)
     expect(page.get_by_test_id("causality-chain")).to_contain_text("1 open gap")
+    track = page.get_by_test_id("causality-track")
+    track_box = track.bounding_box()
+    last_chapter_box = page.get_by_test_id("causality-chapter").last.bounding_box()
+    if track_box is None or last_chapter_box is None:
+        raise SystemExit("the causality track or its last chapter has no box")
+    if last_chapter_box["x"] + last_chapter_box["width"] > track_box["x"] + track_box["width"] + 1:
+        raise SystemExit("the last causality chapter is cropped by the track")
     written.append(_shot(page, out, "27-causality"))
 
-    # 41/42. The timeline.
+    # 41/42. The timeline: six placed events and three unordered notes.
     timeline_novel = _seed_timeline(api)
     page.goto(f"{WEB}/novels/{timeline_novel}/planning/timeline")
     expect(page.get_by_test_id("timeline-page")).to_be_visible()
     expect(page.get_by_text("In spring")).to_be_visible()
+    ordered = page.get_by_test_id("timeline-ordered").get_by_test_id("timeline-card")
+    unordered = page.get_by_test_id("timeline-unordered").get_by_test_id("timeline-card")
+    expect(ordered).to_have_count(6)
+    expect(unordered).to_have_count(3)
+    _require_inside(unordered.last, name="last timeline note", bottom=VIEWPORT_HEIGHT)
     written.append(_shot(page, out, "41-timeline"))
     _set_theme(page, "dark")
     page.goto(f"{WEB}/novels/{timeline_novel}/planning/timeline")
     expect(page.locator("html")).to_have_attribute("data-theme", "dark")
     expect(page.get_by_text("In spring")).to_be_visible()
+    expect(page.get_by_test_id("timeline-ordered").get_by_test_id("timeline-card")).to_have_count(6)
+    expect(page.get_by_test_id("timeline-unordered").get_by_test_id("timeline-card")).to_have_count(
+        3
+    )
     written.append(_shot(page, out, "42-timeline-dark"))
 
-    # 43/44. The storyboard, reading the storyboard seed's aggregate.
+    # 43/44. The storyboard reading the eight-chapter seed's aggregate. The
+    #     first card is opened so the drill-in shows its real scenes rather
+    #     than the "choose a chapter" placeholder.
+    def storyboard_frame(name: str) -> None:
+        page.goto(f"{WEB}/novels/{storyboard_novel}/planning/storyboard")
+        expect(page.get_by_test_id("storyboard-page")).to_be_visible()
+        expect(page.get_by_test_id("storyboard-stage").first).to_be_visible()
+        expect(page.get_by_test_id("storyboard-card")).to_have_count(8)
+        expect(page.get_by_test_id("storyboard-progress")).to_contain_text(
+            f"{STORYBOARD_WORDS} words"
+        )
+        page.get_by_test_id("storyboard-card").first.get_by_role("button").first.click()
+        expect(page.get_by_test_id("drill-in")).to_be_visible()
+        expect(page.get_by_test_id("drill-in-scene")).to_have_count(3)
+        written.append(_shot(page, out, name))
+
     _set_theme(page, "light")
     storyboard_novel = _seed_storyboard(api)
-    page.goto(f"{WEB}/novels/{storyboard_novel}/planning/storyboard")
-    expect(page.get_by_test_id("storyboard-page")).to_be_visible()
-    expect(page.get_by_test_id("storyboard-stage").first).to_be_visible()
-    expect(page.get_by_test_id("storyboard-card")).to_have_count(3)
-    expect(page.get_by_test_id("storyboard-progress")).to_contain_text("4 words")
-    written.append(_shot(page, out, "43-storyboard"))
+    storyboard_frame("43-storyboard")
     _set_theme(page, "dark")
-    page.goto(f"{WEB}/novels/{storyboard_novel}/planning/storyboard")
-    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
-    expect(page.get_by_test_id("storyboard-stage").first).to_be_visible()
-    expect(page.get_by_test_id("storyboard-card")).to_have_count(3)
-    written.append(_shot(page, out, "44-storyboard-dark"))
+    storyboard_frame("44-storyboard-dark")
 
     # 39/40. The lore graph. The canonical three-node/two-edge cast: the
     #     layout orders by name, so the frame is the same picture every
