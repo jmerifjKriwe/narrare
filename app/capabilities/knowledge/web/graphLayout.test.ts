@@ -161,9 +161,15 @@ describe("layoutGraph — the canon's names are the key, never the server's UUID
       { id: "a-id", name: "zebra" },
       { id: "z-id", name: "Apple" },
     ];
-    const seats = (rows: readonly { id: string; name: string }[]) => {
+    const seats = (rows: readonly { id: string; name: string }[]): Record<string, Point> => {
       const layout = layoutGraph(rows, [edge(rows[0].id, rows[1].id)]);
-      return Object.fromEntries(rows.map((row) => [row.name.toLowerCase(), layout.get(row.id)]));
+      const byLowerName: Record<string, Point> = {};
+      for (const row of rows) {
+        const point = layout.get(row.id);
+        expect(point, `seat for ${row.name}`).toBeDefined();
+        if (point !== undefined) byLowerName[row.name.toLowerCase()] = point;
+      }
+      return byLowerName;
     };
     // Under a raw, case-sensitive compare the two canons disagree: "Zebra"
     // sorts before "apple", while "Apple" sorts before "zebra".
@@ -181,7 +187,11 @@ describe("layoutGraph — the canon's names are the key, never the server's UUID
     const reversed = [...rows].reverse();
     const reversedLayout = layoutGraph(reversed, [...relations].reverse());
     for (const row of rows) {
-      expect(reversedLayout.get(row.id)).toEqual(layout.get(row.id));
+      const forwardSeat = layout.get(row.id);
+      const reversedSeat = reversedLayout.get(row.id);
+      expect(forwardSeat, `seat for ${row.name} (${row.id})`).toBeDefined();
+      expect(reversedSeat, `reversed seat for ${row.name} (${row.id})`).toBeDefined();
+      expect(reversedSeat).toEqual(forwardSeat);
     }
     // The two namesakes are two seats, not one collapsed row.
     expect(layout.get(rows[0].id)).not.toEqual(layout.get(rows[1].id));
