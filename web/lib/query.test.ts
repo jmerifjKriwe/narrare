@@ -586,6 +586,7 @@ const SETTINGS_ROW = {
   theme: "light",
   author_name: "H. Calder",
   daily_goal_words: 500,
+  update_check_interval_days: 7,
   email: "h.calder@station7.de",
 };
 
@@ -635,6 +636,17 @@ describe("useUpdateSettings — the preference write, the novel-update rule", ()
     expect(call?.[1].body).toEqual({ locale: "de", author_name: "Neuer Name" });
     // Absent keeps: the body names no goal key at all — the server's
     // model_fields_set reads the absence as "no change".
+    expect("daily_goal_words" in (call?.[1].body ?? {})).toBe(false);
+  });
+
+  it("carries the update check's interval under its wire name", async () => {
+    api.PATCH.mockResolvedValueOnce({ data: SETTINGS_ROW, response: ok() });
+    const { result } = renderHook(() => useUpdateSettings(), { wrapper });
+    result.current.mutate({ locale: "de", update_check_interval_days: 3 });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const call = api.PATCH.mock.calls.find(([path]) => path === "/api/settings");
+    expect(call?.[1].body).toEqual({ locale: "de", update_check_interval_days: 3 });
+    expect("author_name" in (call?.[1].body ?? {})).toBe(false);
     expect("daily_goal_words" in (call?.[1].body ?? {})).toBe(false);
   });
 

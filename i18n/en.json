@@ -71,5 +71,14 @@
   "shell.topbar.shelf": "The Bookshelf",
   "shell.topbar.volume": "Vol. {volume}",
   "shell.topbar.words": "{count, number} words",
-  "shell.topbar.wordsTotal": "{count, number} words total"
+  "shell.topbar.wordsTotal": "{count, number} words total",
+  "shell.update.available": "Narrare {version} is available",
+  "shell.update.close": "Close",
+  "shell.update.heading": "What changed in {version}",
+  "shell.update.ignore": "Ignore this version",
+  "shell.update.later": "Later",
+  "shell.update.noNotes": "No release notes were provided.",
+  "shell.update.notes": "Release notes",
+  "shell.update.openRelease": "Open the release on GitHub",
+  "shell.update.toast": "A newer release is available — {version}"
 }

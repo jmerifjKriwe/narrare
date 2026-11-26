@@ -39,6 +39,7 @@ import { useSettings, useTheme } from "@shell/lib/query";
 import { FOCUS } from "@shell/ui/card";
 
 import { ProfileForm } from "./profileForm";
+import { UpdatesSection } from "./UpdatesSection";
 
 const SERIF = "[font-family:var(--font-serif)]";
 
@@ -296,6 +297,10 @@ export function SettingsPage() {
                   offline note; `#profil-sektion` and `#tagesziel-feld`
                   live inside. */}
               <ProfileForm row={settings.data} />
+
+              {/* The update check's interval — one small field beside the
+                  profile form, the same row's write. */}
+              <UpdatesSection row={settings.data} />
             </>
           )
         )}

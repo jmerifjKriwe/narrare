@@ -433,13 +433,21 @@ def _environment(database: str, env: dict[str, str] | None) -> dict[str, str]:
     switch it off (#634).
     """
     if ATTACH:
-        # The instance brought its own configuration; a test's extras still win.
+        # The instance brought its own configuration — and it was already
+        # spawned with it, so only its own env can name a release source.
         return {**os.environ, **(env or {})}
-    return {
+    base = {
         **os.environ,
         "NARRE_DATABASE_URL": url_for(database),
         "NARRE_SECRET_KEY": E2E_SECRET_KEY,
         "NARRE_KEYRING": "off",
+    }
+    # The release check is a network call every stack must opt into, so the
+    # default wins over the ambient environment; the caller's `env` below still
+    # overrides it (the settings E2E names its own ReleaseVendor).
+    base["NARRE_UPDATE_CHECK_URL"] = "off"
+    return {
+        **base,
         **(env or {}),
         # Vite otherwise answers transformed modules with no-cache, and each of
         # the sweep's hard navigations revalidates the whole dev graph with

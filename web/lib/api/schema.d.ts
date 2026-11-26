@@ -1216,6 +1216,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Updates
+         * @description The last known release.
+         *
+         *     ``force`` bypasses the interval; the source is still only asked when the
+         *     in-memory cache has no fresh answer, so a reload cannot spend the quota.
+         */
+        get: operations["get_updates_api_updates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/updates/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss Update
+         * @description Stop announcing the carried version; a newer one announces again.
+         */
+        post: operations["dismiss_update_api_updates_dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/writing/activity": {
         parameters: {
             query?: never;
@@ -3328,6 +3371,8 @@ export interface components {
             locale: string | null;
             /** Theme */
             theme: string | null;
+            /** Update Check Interval Days */
+            update_check_interval_days: number | null;
         };
         /** SettingsThemeRead */
         SettingsThemeRead: {
@@ -3347,6 +3392,8 @@ export interface components {
             daily_goal_words?: number | null;
             /** Locale */
             locale: string | null;
+            /** Update Check Interval Days */
+            update_check_interval_days?: number | null;
         };
         /** SetupRequest */
         SetupRequest: {
@@ -3711,6 +3758,43 @@ export interface components {
             seq: number;
             /** Suggestion */
             suggestion: string | null;
+        };
+        /**
+         * UpdateDismiss
+         * @description The version the reader asked to ignore; a newer one announces again.
+         *
+         *     Widths are the columns': the tag is at most 64 characters, so an over-long
+         *     value is the gate's 422, never a Postgres error at the write.
+         */
+        UpdateDismiss: {
+            /** Version */
+            version: string;
+        };
+        /**
+         * UpdateRead
+         * @description The answer the shell renders: the version, the last known release, and
+         *     whether that release is still worth announcing.
+         *
+         *     ``latest_version``, the notes and the link are the last known release, so
+         *     an offline instance still shows what it heard before. ``update_available``
+         *     is computed on the server — newer than the running version and not the
+         *     dismissed one — and ``dismissed`` names the banner the reader asked to stop.
+         */
+        UpdateRead: {
+            /** Checked At */
+            checked_at: string | null;
+            /** Current Version */
+            current_version: string;
+            /** Dismissed */
+            dismissed: boolean;
+            /** Latest Version */
+            latest_version: string | null;
+            /** Release Notes */
+            release_notes: string | null;
+            /** Release Url */
+            release_url: string | null;
+            /** Update Available */
+            update_available: boolean;
         };
         /**
          * ValidationBody
@@ -6145,6 +6229,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SetupStatus"];
+                };
+            };
+        };
+    };
+    get_updates_api_updates_get: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_update_api_updates_dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDismiss"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -47,6 +47,14 @@ class SettingsService:
             user.author_name = update.author_name
         if "daily_goal_words" in update.model_fields_set:
             user.daily_goal_words = update.daily_goal_words
+        if "update_check_interval_days" in update.model_fields_set:
+            # A carried null is the user's "no opinion": the column's product
+            # default answers, the same value a fresh row carries.
+            user.update_check_interval_days = (
+                update.update_check_interval_days
+                if update.update_check_interval_days is not None
+                else 7
+            )
         await self.session.commit()
         return user
 

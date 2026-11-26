@@ -71,5 +71,14 @@
   "shell.topbar.shelf": "La Bibliothèque",
   "shell.topbar.volume": "T. {volume}",
   "shell.topbar.words": "{count, number} mots",
-  "shell.topbar.wordsTotal": "{count, number} mots au total"
+  "shell.topbar.wordsTotal": "{count, number} mots au total",
+  "shell.update.available": "Narrare {version} est disponible",
+  "shell.update.close": "Fermer",
+  "shell.update.heading": "Ce qui a changé dans {version}",
+  "shell.update.ignore": "Ignorer cette version",
+  "shell.update.later": "Plus tard",
+  "shell.update.noNotes": "Aucune note de version n'est disponible.",
+  "shell.update.notes": "Notes de version",
+  "shell.update.openRelease": "Ouvrir la version sur GitHub",
+  "shell.update.toast": "Une version plus récente est disponible — {version}"
 }

@@ -36,6 +36,10 @@ class SettingsRead(BaseModel):
     # no goal — never a guessed value.
     author_name: str | None
     daily_goal_words: int | None
+    # The update check's interval (design 2026-11-24): the user's answer, seven
+    # days by default. None only when the instance is uninstalled — an installed
+    # row always carries the product default.
+    update_check_interval_days: int | None
     # The row's own email (W4 Task 10): the user block's fallback label when
     # no author name is stored. Read-only — the preference write carries no
     # email; the local instance's row may hold none, and None is the honest
@@ -57,6 +61,10 @@ class SettingsUpdate(BaseModel):
     # A goal counts from one; the ceiling is the Integer column's own
     # (WORD_GOAL_MAX), a 422 here rather than an overflow at the write.
     daily_goal_words: int | None = Field(default=None, ge=WORD_GOAL_MIN, le=WORD_GOAL_MAX)
+    # The update check's interval, partial like the profile fields: absent keeps
+    # the stored answer, a carried ``None`` resets to the product default (7).
+    # One day is the shortest useful interval and a year the longest.
+    update_check_interval_days: int | None = Field(default=None, ge=1, le=365)
 
     @field_validator("locale")
     @classmethod
