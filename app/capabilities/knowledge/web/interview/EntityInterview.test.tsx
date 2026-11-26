@@ -368,6 +368,73 @@ describe("each chip sends its act", () => {
   });
 });
 
+describe("only the newest standing suggestion is actionable", () => {
+  it("draws the three actions on the newest card and leaves the older as a plain turn", async () => {
+    detail = sessionDetail({
+      turns: [
+        turn({ seq: 1, role: "user", text: de["knowledge.interview.noIdea"], act: "no-idea" }),
+        turn({
+          seq: 2,
+          text: "Hier ist ein Vorschlag.",
+          suggestion: "Der ältere Vorschlag.",
+          suggestion_state: "pending",
+        }),
+        turn({ seq: 3, role: "user", text: de["knowledge.interview.noIdea"], act: "no-idea" }),
+        turn({
+          seq: 4,
+          text: "Hier ist noch ein Vorschlag.",
+          suggestion: "Der neuere Vorschlag.",
+          suggestion_state: "pending",
+        }),
+      ],
+    });
+    renderPanel();
+
+    // The server settles the newest pending suggestion, so the actions stand
+    // on that card alone: an older pending suggestion is the assistant's
+    // plain turn, its text standing and no action of its own.
+    await readySession();
+    const cards = screen.getAllByTestId("entity-interview-suggestion");
+    expect(cards).toHaveLength(1);
+    const card = cards[0];
+    expect(card.textContent).toContain("Der neuere Vorschlag.");
+    for (const action of ["accept", "edit", "reject"]) {
+      expect(within(card).getByTestId(`entity-interview-suggestion-${action}`)).toBeTruthy();
+    }
+    const transcript = screen.getByTestId("entity-interview-transcript");
+    expect(transcript.textContent).toContain("Hier ist ein Vorschlag.");
+    expect(transcript.textContent).not.toContain("Der ältere Vorschlag.");
+    expect(screen.getAllByTestId("entity-interview-suggestion-accept")).toHaveLength(1);
+  });
+
+  it("moves the actions to the older suggestion once the newer one is settled", async () => {
+    detail = sessionDetail({
+      turns: [
+        turn({
+          seq: 1,
+          text: "Hier ist ein Vorschlag.",
+          suggestion: "Der ältere Vorschlag.",
+          suggestion_state: "pending",
+        }),
+        turn({
+          seq: 2,
+          text: "Hier ist noch ein Vorschlag.",
+          suggestion: "Der neuere Vorschlag.",
+          suggestion_state: "accepted",
+        }),
+      ],
+    });
+    renderPanel();
+
+    const card = await screen.findByTestId("entity-interview-suggestion");
+    expect(card.textContent).toContain("Der ältere Vorschlag.");
+    expect(card.textContent).toContain(de["knowledge.interview.accept"]);
+    expect(screen.getByTestId("entity-interview-transcript").textContent).toContain(
+      de["knowledge.interview.accepted"],
+    );
+  });
+});
+
 describe("a failed turn keeps the writer's text", () => {
   it("names the failure, keeps the text and sends it again on retry", async () => {
     api.POST.mockResolvedValueOnce({

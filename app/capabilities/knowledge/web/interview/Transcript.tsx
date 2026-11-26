@@ -1,8 +1,9 @@
 /**
  * The interview's transcript (W9 Task 10): the opening question (chrome from
  * the catalog, not a turn), then every line the writer and the assistant
- * actually said, oldest first, each answer a status region. A pending
- * suggestion draws its own inset card with the three actions; a settled
+ * actually said, oldest first, each answer a status region. The newest pending
+ * suggestion draws its own inset card with the three actions — an older pending
+ * one stays the assistant's plain turn, its text standing; a settled
  * acceptance keeps its «übernommen» mark. A named failure stands where the
  * answer would have been and names the reason; a plain answer's text is still
  * in the composer beside it, while a chip's failure — whose label, not the
@@ -14,6 +15,7 @@ import { FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 
 import type { InterviewFailure } from "./interviewState";
+import { pendingSuggestion } from "./interviewState";
 
 function timeOf(createdAt: string): string {
   const date = new Date(createdAt);
@@ -102,12 +104,16 @@ function FailureFace({
 
 function SuggestionCard({
   turn,
+  actionable,
   busy,
   onAccept,
   onEdit,
   onReject,
 }: {
   turn: AssistantTurnRead;
+  /** Whether this is the newest pending suggestion — the one the server
+   *  settles. An older pending suggestion renders no card at all. */
+  actionable: boolean;
   busy: boolean;
   onAccept: () => void;
   onEdit: () => void;
@@ -116,6 +122,11 @@ function SuggestionCard({
   const t = useTranslation();
   const pending = turn.suggestion_state === "pending";
   if (turn.suggestion === null || (!pending && turn.suggestion_state !== "accepted")) return null;
+  // Only the newest pending suggestion carries the three actions: the server
+  // settles the newest one whoever's card was pressed, so an older pending
+  // suggestion would settle a different turn. It stays the assistant's plain
+  // turn, its text standing.
+  if (pending && !actionable) return null;
   return (
     <div
       data-testid={pending ? "entity-interview-suggestion" : undefined}
@@ -191,6 +202,8 @@ export function Transcript({
   onRetry: () => void;
 }) {
   const t = useTranslation();
+  // The one pending suggestion the face and the acts act on.
+  const newest = pendingSuggestion(turns);
 
   return (
     <div
@@ -237,6 +250,7 @@ export function Transcript({
             </div>
             <SuggestionCard
               turn={turn}
+              actionable={newest !== null && turn.seq === newest.seq}
               busy={busy}
               onAccept={() => onAccept(turn)}
               onEdit={() => onEdit(turn)}

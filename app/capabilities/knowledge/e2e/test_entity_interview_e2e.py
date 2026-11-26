@@ -186,6 +186,38 @@ def test_no_idea_offers_a_suggestion_with_three_actions(page: Page, installed: S
     )
 
 
+def test_the_newest_standing_suggestion_alone_is_actionable(page: Page, installed: Stack) -> None:
+    """Two «Keine Ahnung» presses leave two pending suggestions — the fake
+    answers every press. Only the newest card carries take, change or discard:
+    the server settles the newest suggestion, so an older card's action would
+    settle another turn. The older one stands as the assistant's plain turn;
+    once the newest is taken, the older becomes the actionable suggestion."""
+    novel_id = _seed_canon()
+    _open_interview(page, novel_id)
+    _start(page)
+
+    page.get_by_test_id("entity-interview-no-idea").click()
+    expect(page.get_by_test_id("entity-interview-suggestion")).to_be_visible()
+    page.get_by_test_id("entity-interview-no-idea").click()
+
+    # Both answers landed: two pending turns stand on the wire.
+    transcript = page.get_by_test_id("entity-interview-transcript")
+    expect(transcript.get_by_text("Hier ist ein Vorschlag.")).to_have_count(2)
+    # One card, one set of actions: the older suggestion is plain turn text.
+    expect(page.get_by_test_id("entity-interview-suggestion")).to_have_count(1)
+    expect(page.get_by_test_id("entity-interview-suggestion-accept")).to_have_count(1)
+    expect(transcript).to_contain_text("Ein Name, der zur Geschichte passt")
+
+    # The one card's press settles the newest suggestion.
+    page.get_by_test_id("entity-interview-suggestion-accept").click()
+    expect(transcript).to_contain_text("übernommen")
+    # The suggestion that was older is the newest pending now: it carries the
+    # actions, and no second card stands beside it.
+    expect(page.get_by_test_id("entity-interview-suggestion")).to_have_count(1)
+    expect(page.get_by_test_id("entity-interview-suggestion-accept")).to_have_count(1)
+    assert_accessible(page)
+
+
 def test_a_stale_suggestion_has_its_own_face(page: Page, installed: Stack) -> None:
     """A suggestion settled before the press answers the real 422
     `suggestion-mismatch`: the panel names it, offers no retry, and the
