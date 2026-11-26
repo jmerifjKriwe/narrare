@@ -150,7 +150,7 @@ Expected: PASS.
 
 Reviewer checks all three locales and generated-source consistency. Commit `fix(web): remove stale and mixed-language showcase content` with `Closes #984`, `Closes #986`, `Closes #989`, a real `User-visible:` line and the Assisted-by trailer.
 
-- [ ] **Step 6: Close the setup-title review findings**
+- [x] **Step 6: Close the setup-title review findings**
 
 Add failing English-face assertions for the Structure and Provisioning display sites and a Python test for present-but-empty `title_en` fallback. Use `demoDisplayTitle(demo, locale)` at every display site while keeping the provisioning POST on `archive.title`; type the helper locale as `Locale`; use `metadata.get("title_en") or title`; document `title_en` as optional display-only metadata that is not imported into the novel. Run the setup/interchange tests, existing setup E2E, screenshot suites and `just check`. Run one fresh full capture and prove the committed masters/index remain identical. Commit `fix(setup): keep the localized demo title through provisioning` with the Assisted-by trailer and no duplicate `Closes` keywords.
 
