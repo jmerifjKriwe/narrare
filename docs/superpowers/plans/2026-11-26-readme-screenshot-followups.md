@@ -182,7 +182,7 @@ Run two independent captures, regenerate `29`/`30` if changed, then run focused 
 
 Reviewer checks all settings routes and mobile/narrow behavior. Commit `fix(settings): show the settings location in subpage breadcrumbs` with `Closes #981`, a real `User-visible:` line and the Assisted-by trailer.
 
-- [ ] **Step 5: Close the E2E and rail-consistency review findings**
+- [x] **Step 5: Close the E2E and rail-consistency review findings**
 
 Run the existing settings, AI-rules and prompts E2E legs. In `test_ai_rules_e2e.py`, assert the direct subroute's topbar shows Atelier / Einstellungen and not the bookshelf crumb. Replace IconRail's parsed-pathname `settingsActive` with the component's established route-ID selector, enumerating `/settings`, `/settings/ai-regeln` and `/settings/prompts`; leave TopBar's approved pathname predicate unchanged. Run focused TopBar/IconRail tests, the three E2E legs, both screenshot test files and `just check`. Prove one fresh capture remains identical because this is behavior-preserving on canonical pixels. Commit `refactor(settings): keep rail area matching on route ids` with the Assisted-by trailer and no duplicate `Closes` keyword.
 
