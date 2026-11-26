@@ -163,9 +163,8 @@ Documents from the same project are under [`documents/`](documents/):
 
 The Stitch screens above are design evidence, not product captures: they record
 the proposal the shell was drawn from, and the running application is the
-authority for its behaviour. Reference screens the Stitch project used come from
-the [screenshot collection](../../screenshots/README.md) — captures of the
-running application — and are not duplicated here.
+authority for its behaviour. Captures of the running application are in the
+[screenshot collection](../../screenshots/README.md).
 
 ## Refreshing the archive
 

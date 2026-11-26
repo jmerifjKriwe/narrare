@@ -114,9 +114,11 @@ def test_stitch_readme_links_the_collection_instead_of_the_masters() -> None:
 
     paragraph = _paragraph_linking(text, targets[0])
     assert "The Stitch screens above are design evidence, not product captures" in paragraph
-    assert "captures of the running application" in paragraph
+    assert "captures of the running application" in paragraph.lower()
+    assert f"[screenshot collection]({targets[0]})" in paragraph
     assert "Those captures are design evidence" not in paragraph, "the subject is inverted"
-    assert "uploaded" not in paragraph, "the unverifiable upload claim is back"
+    assert "Reference screens the Stitch project used come from" not in paragraph
+    assert "Reference screenshots uploaded into the same Stitch project" not in paragraph
 
 
 def test_index_swap_failure_restores_previous_masters_and_index(
