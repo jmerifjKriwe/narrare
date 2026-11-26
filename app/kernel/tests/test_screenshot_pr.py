@@ -225,11 +225,19 @@ def _assert_no_branch(repo: Path, remote: Path) -> None:
     assert BRANCH not in _git(repo, "--git-dir", str(remote), "branch", "--list").stdout
 
 
+@pytest.mark.parametrize(
+    "pr_number",
+    [1, 9, 42],
+    ids=["single-digit-one", "single-digit-nine", "multi-digit"],
+)
 def test_the_workflow_defers_to_an_open_pr_before_creating_a_branch(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    pr_number: int,
 ) -> None:
-    payload = [{"number": 42, "headRefName": "chore/screenshots-1234", "isCrossRepository": False}]
+    payload = [
+        {"number": pr_number, "headRefName": "chore/screenshots-1234", "isCrossRepository": False}
+    ]
     bin_dir, args_file, token_file = _fake_gh(tmp_path, payload)
     _use_fake_gh(monkeypatch, bin_dir, args_file, token_file)
     _assert_publish_script_order()
@@ -242,7 +250,7 @@ def test_the_workflow_defers_to_an_open_pr_before_creating_a_branch(
     )
 
     assert "already open" in completed.stdout
-    assert "#42" in completed.stdout
+    assert f"#{pr_number}" in completed.stdout
     _assert_no_branch(repo, remote)
     args = _args(args_file)
     assert args[:2] == ["pr", "list"]

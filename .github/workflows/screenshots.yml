@@ -130,7 +130,7 @@ jobs:
             pending=*[!0-9]*|pending=)
               fail_lookup
               ;;
-            pending=[1-9][0-9]*)
+            pending=[1-9]*)
               echo "screenshot update PR #${pending#pending=} is already open; leaving it in place"
               exit 0
               ;;
