@@ -58,8 +58,9 @@ for both that overview and a larger, browsable master collection.
 - Two consecutive captures produce identical PNG hashes and identical generated
   overview Markdown. The browser clock and all rendered time/random-dependent
   pixels are pinned. The Sources master uses the real empty upload state because
-  the server-generated upload date has no capture-local clock seam; no date is
-  rendered in that frame.
+  that is a useful real state and it avoids rendering a server-generated upload
+  date. A display-time pin exists for transcript labels, but it does not change
+  stored timestamps.
 - Materially changed images receive new stable filenames. The legacy 01–19 set is
   audited keep/rename/remove before canonical generation.
 - The workflow remains advisory. Schedule is Sunday 06:00 UTC; push is `main`
