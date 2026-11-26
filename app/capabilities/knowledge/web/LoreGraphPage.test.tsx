@@ -999,6 +999,11 @@ describe("the subbar's CRUD doors (Task 4)", () => {
       if (path === "/api/chat/sessions/{session_id}") {
         return Promise.resolve({ data: sessionWithProposal("s1", "Nebelhaus"), response: ok() });
       }
+      if (path === "/api/chat/sessions") {
+        // Production's shape: the open session is the list's, so the door's
+        // truth and the URL agree on it.
+        return Promise.resolve({ data: { items: [sessionSummary("s1")] }, response: ok() });
+      }
       return baseGet(path);
     });
     await renderGraph(`/novels/${NOVEL_ID}/knowledge/graph?interview=s1`);
@@ -1012,12 +1017,21 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     fireEvent.click(within(prefilled).getByTestId("entity-create-cancel"));
     await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
 
-    // Closing the handover dialog drops its draft. The next create door is
-    // the chooser's quiet hand-made path, and it must open the empty form,
-    // not the interview's proposal again.
+    // Closing the handover dialog drops its draft. The door then opens the
+    // open session the list carries, as production does; the list's «Neues
+    // Interview» is the manual door's path to the chooser. It must open the
+    // empty form, not the interview's proposal again.
     fireEvent.click(within(screen.getByTestId("entity-interview")).getByTestId("entity-interview-close"));
     await waitFor(() => expect(screen.queryByTestId("entity-interview")).toBeNull());
     fireEvent.click(screen.getByTestId("graph-new-entity"));
+    const reopened = await screen.findByTestId("entity-interview");
+    expect(within(reopened).queryByTestId("entity-interview-start")).toBeNull();
+    expect(within(reopened).getByTestId("entity-interview-proposal").textContent).toContain(
+      "Nebelhaus",
+    );
+    fireEvent.click(within(reopened).getByTestId("entity-interview-sessions"));
+    const list = await within(reopened).findByTestId("entity-interview-list");
+    fireEvent.click(within(list).getByRole("button", { name: de["knowledge.interview.newInterview"] }));
     const chooser = await screen.findByTestId("entity-interview");
     fireEvent.click(within(chooser).getByTestId("entity-interview-manual"));
     const manual = await screen.findByTestId("entity-create-dialog");

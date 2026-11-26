@@ -143,7 +143,10 @@ describe("keptRelationRows", () => {
     expect(visibleRowForSentIndex(kept, 2)).toBeNull();
   });
 
-  it("mirrors the server's twelve-relation bound", () => {
+  it("pins the web mirror to twelve, the kernel's MAX_RELATIONS", () => {
+    // The kernel's constant in `app/kernel/contracts/knowledge.py` is the
+    // server's bound; this guards the web mirror the dialog's add control
+    // reads, not the constant itself.
     expect(MAX_RELATIONS).toBe(12);
   });
 });

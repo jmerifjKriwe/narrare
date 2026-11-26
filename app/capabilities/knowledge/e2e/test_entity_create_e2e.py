@@ -90,8 +90,10 @@ def _open_create(page: Page, door: str) -> Locator:
 
 
 def test_create_by_hand_from_the_graph(page: Page, installed: Stack) -> None:
-    """The graph's «Neue Entität» opens the dialog; name, type, a tag and one
-    resolved relation save together, and the new row is selected at once."""
+    """The graph's «Neue Entität» opens the interview; the chooser's quiet
+    second path, «Von Hand anlegen», reaches the create dialog. Name, type, a
+    tag and one resolved relation save together, and the new row is selected
+    at once."""
     novel_id = _seed_canon_with_station()
     _goto_graph(page, novel_id)
 

@@ -9,10 +9,9 @@
  * mocked at its module boundary, the house pattern); a refusal keeps the
  * answers and names the loss-free error with a retry, a 409 on an edge names
  * the duplicate it is. The merge names source → target and the loss before it
- * happens. The hand-made create (W9) is the same frame: a name and a type
- * gate the save, a duplicate name is a notice, and a relation row the save
- * will drop is counted rather than lost. The face speaks du-tone in all
- * three catalogs.
+ * happens. New-entity creation moved to `entityCreate/` in W9 Task 11; this
+ * module keeps the shared modal frame those dialogs ride. The faces speak
+ * du-tone in all three catalogs.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
