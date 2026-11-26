@@ -88,7 +88,9 @@ task.
 
 - Setup's writing year is derived at render time or supplied through a tested
   language-neutral value; it is not hardcoded to 2025.
-- Prompt sample values are English or language-neutral on the English UI.
+- Every registered prompt factory's sample values are English or language-neutral,
+  and a registry-wide regression prevents German samples from returning through
+  chat, knowledge or writing previews.
 - Every English setup display site uses the demo's English display title; later
   wizard steps do not switch back to the German archive title. The provisioning
   POST and imported novel keep the archive's original title and language.
@@ -110,6 +112,8 @@ task.
   sibling backup stays on that filesystem; a mount-point mismatch fails before
   mutation. Canonical recovery roots are ignored, cleanup never masks the primary
   publication error, and interrupts propagate with recovery data preserved.
+  Rollback uses the backup payload's filesystem state as evidence, so an interrupt
+  immediately after a rename cannot make the publisher discard the last good copy.
 - Documentation tests assert structured meaning where practical; exact accepted
   wording is centralized and explained where semantics cannot be inferred.
 - The workflow's UI-path check consumes the full diff without `grep -q` under
@@ -119,7 +123,10 @@ task.
   updates the existing PR, so a human must close or replace it when newer UI
   changes make its captured diff stale.
 - README and collection disclosures name every stand-in source, including
-  dossier extraction, and never claim other frames contain no generated content.
+  dossier, knowledge-dock and graph extraction output, and never claim other frames
+  contain no generated content.
+- README future-work guards cover every prose section except the pure Documentation
+  link list; image alt text and link labels are excluded from semantic prose scans.
 - Framing fixes adjust real seed counts, scroll positions or capture regions;
   they do not mask UI copy. The causality page groups its existing subline,
   header/track and methodology/footnote blocks, leaving one intentional vertical
@@ -127,7 +134,9 @@ task.
 - Shelf frames prioritize the complete last card and subtitle; the page H1 may
   sit above the fixed top bar because it is not an acceptance element.
 - Unbuilt-product copy is removed from the visual focus by choosing honest live
-  states or correcting product copy in its owning capability.
+  states or correcting product copy in its owning capability. Disabled or
+  `aria-disabled` feature gaps use status-only copy (“Not available yet.” and its
+  localized equivalents), never a promise that implies a live feature is arriving.
 
 ## Acceptance
 
