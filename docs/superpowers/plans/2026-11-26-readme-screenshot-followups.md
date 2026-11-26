@@ -159,7 +159,8 @@ Add failing English-face assertions for the Structure and Provisioning display s
 **Files:**
 - Modify: `web/components/TopBar.tsx:302-306`
 - Test: `web/components/TopBar.test.tsx:141-152,308-320`
-- Modify: `web/components/TopBar.tsx:86`, `web/components/IconRail.tsx:593` for matching `aria-current`
+- Modify: `web/components/TopBar.tsx:86`, `web/components/IconRail.tsx:186,593` for matching `aria-current`
+- Test: `app/capabilities/settings/e2e/test_ai_rules_e2e.py` for the direct-subroute breadcrumb
 - Regenerate `29-ai-rules.png`, `30-prompts.png` if pixels change
 
 **Interfaces:**
@@ -177,9 +178,13 @@ Reuse the existing shell/breadcrumb abstraction; do not add a second navigation 
 
 Run two independent captures, regenerate `29`/`30` if changed, then run focused settings tests, both screenshot test files and `just check`.
 
-- [ ] **Step 4: Review and commit**
+- [x] **Step 4: Review and commit**
 
 Reviewer checks all settings routes and mobile/narrow behavior. Commit `fix(settings): show the settings location in subpage breadcrumbs` with `Closes #981`, a real `User-visible:` line and the Assisted-by trailer.
+
+- [ ] **Step 5: Close the E2E and rail-consistency review findings**
+
+Run the existing settings, AI-rules and prompts E2E legs. In `test_ai_rules_e2e.py`, assert the direct subroute's topbar shows Atelier / Einstellungen and not the bookshelf crumb. Replace IconRail's parsed-pathname `settingsActive` with the component's established route-ID selector, enumerating `/settings`, `/settings/ai-regeln` and `/settings/prompts`; leave TopBar's approved pathname predicate unchanged. Run focused TopBar/IconRail tests, the three E2E legs, both screenshot test files and `just check`. Prove one fresh capture remains identical because this is behavior-preserving on canonical pixels. Commit `refactor(settings): keep rail area matching on route ids` with the Assisted-by trailer and no duplicate `Closes` keyword.
 
 ## Task 5: Decouple and harden screenshot publication (#983, #987, #988)
 
