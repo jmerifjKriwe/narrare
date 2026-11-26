@@ -274,7 +274,7 @@ Expected: PASS.
 
 Reviewer traces all cases against the real YAML and fake `gh` responses. Commit `ci(screenshots): make regeneration decisions robust` with `Closes #982`, `Closes #990` and the Assisted-by trailer.
 
-- [ ] **Step 6: Close the workflow review findings**
+- [x] **Step 6: Close the workflow review findings**
 
 Add a real publish-step test for `pending=none` that proves publication proceeds. Validate the lookup output in YAML with an exact `pending=none` or `pending=<digits>` case; empty, warning or malformed output must fail before branch creation. Correct the module docstring and contributor/report wording: deferral deliberately leaves an existing PR untouched, but that PR may be stale after newer UI changes and a human must close or replace it when the new diff matters. Correct the report's test counts to 20 decide + 4 PR and describe the fake-gh argv assertion precisely. Run focused tests, actionlint, zizmor, both screenshot suites and `just check`. Commit `ci(screenshots): validate pending update lookup output` with the Assisted-by trailer and no duplicate `Closes` keywords.
 
