@@ -83,7 +83,9 @@ function UserBlock() {
   // („Aktives Buch: {monogram} {title}"): the glyphs are the tile's visible
   // text, so the accessible name says them too (WCAG 2.5.3 label-in-name).
   const userNameLabel = initials !== null ? `${initials} ${userName}` : userName;
-  const onSettings = pathname === "/settings";
+  // The settings area is one location across its hub and the hub's subpages
+  // (#981): the row marks itself on every settings route, not only the hub.
+  const onSettings = pathname.startsWith("/settings");
 
   const [open, setOpen] = useState(false);
   const menuId = useId();
@@ -302,8 +304,10 @@ export function TopBar() {
   const bookFace = bookId !== null;
   // The settings face (W7 Task 3): the draft's „Atelier › Einstellungen"
   // crumb on its surface — a global page wears no book, so the shelf face
-  // would name the wrong place.
-  const settingsFace = !bookFace && pathname === "/settings";
+  // would name the wrong place. The settings location spans the hub and its
+  // subpages (#981): /settings/ai-regeln and /settings/prompts are the same
+  // place, not the shelf.
+  const settingsFace = !bookFace && pathname.startsWith("/settings");
   const rows = (novels.data ?? []).filter((novel) => novel.archived_at == null);
   const totalWords = rows.reduce((sum, novel) => sum + novel.word_count, 0);
 
