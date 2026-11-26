@@ -90,6 +90,13 @@ def _collection_targets(readme: Path) -> list[str]:
     ]
 
 
+def _paragraph_linking(text: str, target: str) -> str:
+    paragraphs = re.split(r"\n\s*\n", text)
+    matching = [paragraph for paragraph in paragraphs if f"]({target})" in paragraph]
+    assert len(matching) == 1, f"expected one paragraph linking {target}"
+    return " ".join(matching[0].split())
+
+
 def test_docs_readme_links_the_screenshot_collection() -> None:
     targets = _collection_targets(DOCS_README)
     assert targets, "docs/README.md does not link the screenshot collection"
@@ -104,8 +111,12 @@ def test_stitch_readme_links_the_collection_instead_of_the_masters() -> None:
         assert (STITCH_README.parent / target).resolve() == INDEX.resolve(), target
     text = STITCH_README.read_text(encoding="utf-8")
     assert "assets/screenshots/" not in text, "the master list is duplicated again"
-    assert "design evidence" in text
-    assert "not product captures" in text
+
+    paragraph = _paragraph_linking(text, targets[0])
+    assert "The Stitch screens above are design evidence, not product captures" in paragraph
+    assert "captures of the running application" in paragraph
+    assert "Those captures are design evidence" not in paragraph, "the subject is inverted"
+    assert "uploaded" not in paragraph, "the unverifiable upload claim is back"
 
 
 def test_index_swap_failure_restores_previous_masters_and_index(

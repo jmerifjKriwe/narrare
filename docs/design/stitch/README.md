@@ -161,11 +161,11 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`chrome-rail-topbar-dark`](screens/shell/chrome-rail-topbar-dark.webp) | App-weite Chrome: Rail + Topbar (Midnight Ink; Korrektur 2026-11-16: ehrliche Autosave-Sublabels) | 4590 px |
 | Mobile | [`pocket-quick-capture`](screens/mobile/pocket-quick-capture.webp) | Narrare Pocket — Unterwegs-Studio & Quick Capture | 3238 px |
 
-Reference screenshots uploaded into the same Stitch project are the files in the
-[screenshot collection](../../screenshots/README.md); they are not duplicated
-here. Those captures are design evidence, not product captures: the running
-application is the authority for its behaviour, and the Stitch screens above
-record the proposal the shell was drawn from.
+The Stitch screens above are design evidence, not product captures: they record
+the proposal the shell was drawn from, and the running application is the
+authority for its behaviour. Reference screens the Stitch project used come from
+the [screenshot collection](../../screenshots/README.md) — captures of the
+running application — and are not duplicated here.
 
 ## Refreshing the archive
 
