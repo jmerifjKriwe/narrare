@@ -103,13 +103,13 @@ def sample_variables() -> dict[str, object]:
     reorder: whole sections, never their innards.
     """
     return {
-        "novel_title": "Der Nebel",
-        "chapter_title": "Ankunft",
-        "tail": "Der Nebel kam von See.",
-        "entities_section": "Referenced entities:\n### Mira (character)\nDie Wanderin.\n\n",
-        "predecessors_section": "Previous chapters:\n### Ursprung\nMira kam.\n\n",
-        "style_section": "Style notes:\nGenre: Mystery\nBlurb: Ein Nebeljahr.\n\n",
-        "instruction": "\n\nWriter's instruction:\nLass Mira am Ufer zögern.",
+        "novel_title": "The Fog",
+        "chapter_title": "Arrival",
+        "tail": "The fog came in from the lake.",
+        "entities_section": "Referenced entities:\n### Mira (character)\nThe wanderer.\n\n",
+        "predecessors_section": "Previous chapters:\n### Origin\nMira arrived.\n\n",
+        "style_section": "Style notes:\nGenre: Mystery\nBlurb: A year of fog.\n\n",
+        "instruction": "\n\nWriter's instruction:\nLet Mira linger at the shore.",
     }
 
 

@@ -222,7 +222,7 @@
   "setup.welcome.trust3.note": "(Stockage de causalité local chiffré)",
   "setup.welcome.trustLink": "Comment Narrare travaille (manuel de contexte)",
   "setup.welcome.wordmark": "Atelier Narrare",
-  "setup.welcome.year": "Année d'écriture 2025",
+  "setup.welcome.year": "Année d'écriture {year}",
   "setup.wizard.progress": "Progression de la configuration",
   "setup.wizard.step1": "Base du projet & modèle",
   "setup.wizard.step2": "Structure",

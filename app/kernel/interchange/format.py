@@ -3,7 +3,7 @@
 One novel is one directory (or one ZIP of the same bytes):
 
     novel/
-      metadata.json      { title, author?, genre?, blurb?, language?,
+      metadata.json      { title, title_en?, author?, genre?, blurb?, language?,
                            chapters: [{file, position}],            # ordered index
                            relations: [{from, type, to, note?}] }   # names, not ids
       chapters/<nn>-<slug>.md   frontmatter: title, position, id?, updated?
@@ -58,6 +58,7 @@ _MAX_LENGTHS: dict[str, int] = {
     # hostile or careless file is a named 422 instead of a database error
     # halfway through the import's one transaction.
     "title": 200,  # novels.title, chapters.title
+    "title_en": 200,  # the display title the English picker reads
     "author": 200,  # novels.author
     "genre": 80,  # novels.genre
     "language": 16,  # novels.language
@@ -136,6 +137,7 @@ class NovelArchive:
     """
 
     title: str
+    title_en: str | None = None
     author: str | None = None
     genre: str | None = None
     blurb: str | None = None
@@ -359,6 +361,7 @@ def parse_archive(tree: ArchiveTree) -> NovelArchive:
     metadata = _read_metadata(tree)
     return NovelArchive(
         title=_meta_str(metadata, "title") or "",
+        title_en=_meta_str(metadata, "title_en"),
         author=_meta_str(metadata, "author"),
         genre=_meta_str(metadata, "genre"),
         blurb=_meta_str(metadata, "blurb"),
@@ -592,6 +595,8 @@ def serialize_archive(archive: NovelArchive) -> dict[str, bytes]:
 
 def _metadata_bytes(archive: NovelArchive, chapter_names: list[str]) -> bytes:
     document: dict[str, Any] = {"title": archive.title}
+    if archive.title_en is not None:
+        document["title_en"] = archive.title_en
     document.update(
         {
             key: value

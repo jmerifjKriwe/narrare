@@ -140,27 +140,27 @@ GOLDENS: dict[str, str] = {
         "REQUEST: answer\n"
     ),
     "writing.continuation": (
-        "Novel: Der Nebel\n"
-        "Chapter: Ankunft\n"
+        "Novel: The Fog\n"
+        "Chapter: Arrival\n"
         "\n"
         "Text so far:\n"
-        "Der Nebel kam von See.\n"
+        "The fog came in from the lake.\n"
         "\n"
         "Referenced entities:\n"
         "### Mira (character)\n"
-        "Die Wanderin.\n"
+        "The wanderer.\n"
         "\n"
         "Previous chapters:\n"
-        "### Ursprung\n"
-        "Mira kam.\n"
+        "### Origin\n"
+        "Mira arrived.\n"
         "\n"
         "Style notes:\n"
         "Genre: Mystery\n"
-        "Blurb: Ein Nebeljahr.\n"
+        "Blurb: A year of fog.\n"
         "\n"
         "Continue the chapter in the same voice. Keep the language of the existing "
         "text. Return only the new text, without a heading or commentary."
-        "\n\nWriter's instruction:\nLass Mira am Ufer zögern."
+        "\n\nWriter's instruction:\nLet Mira linger at the shore."
     ),
 }
 
@@ -178,6 +178,15 @@ def test_every_bundled_prompt_renders_its_golden_sample(key: str) -> None:
     )
     if spec.contract is not None:
         assert spec.contract(rendered), f"the bundled render of '{key}' fails its contract"
+
+
+def test_the_writing_sample_speaks_english_not_german() -> None:
+    """The sample is the editor's legend in every catalog, so it carries no
+    German prose: the English UI must not teach a German example."""
+    sample = get_registry().spec("writing.continuation").sample_variables()
+    text = "\n".join(str(value) for value in sample.values())
+    for marker in ("ä", "ö", "ü", "ß", "Nebel", "Wanderin", "zögern"):
+        assert marker not in text, f"the writing sample still carries German {marker!r}"
 
 
 def test_the_registry_holds_exactly_the_pinned_keys() -> None:

@@ -4,8 +4,11 @@ import { useId } from "react";
 import { demos } from "@shell/lib/generated/demos";
 import { useTranslation } from "@shell/lib/i18n";
 import { LanguageSwitcher } from "@shell/lib/language";
+import { activeLocale } from "@shell/lib/locale";
 import { usePageTitle } from "@shell/lib/pageTitle";
 import { Icon } from "@shell/ui/icons";
+
+import { demoDisplayTitle } from "./wizardState";
 
 /**
  * The welcome screen — the `welcome-atelier` draft ported 1:1 onto the
@@ -53,6 +56,10 @@ const FORMATS = [".docx", ".scriv", ".epub", ".md"] as const;
 
 export function WelcomePage() {
   const t = useTranslation();
+  // `useTranslation` subscribes to the locale store, so this render-time read
+  // follows a language switch; the year is the clock's, never a literal.
+  const locale = activeLocale();
+  const writingYear = new Date().getFullYear();
   const importNoteId = useId();
   usePageTitle(t("setup.welcome"));
 
@@ -81,7 +88,7 @@ export function WelcomePage() {
             <span aria-hidden="true" className="text-outline-variant">
               •
             </span>
-            <span className="text-meta">{t("setup.welcome.year")}</span>
+            <span className="text-meta">{t("setup.welcome.year", { year: writingYear })}</span>
           </div>
         </div>
         <div className="flex items-center gap-6 text-meta">
@@ -178,7 +185,7 @@ export function WelcomePage() {
                 >
                   <span className="mb-1 flex items-center justify-between gap-2">
                     <span className={`${SERIF} text-sm font-semibold italic text-foreground`}>
-                      »{demo.title}«
+                      »{demoDisplayTitle(demo, locale)}«
                     </span>
                     <span className="shrink-0 text-[11px] text-muted">
                       {t("setup.welcome.demoMeta", { genre: demo.genre, count: demo.chapters })}

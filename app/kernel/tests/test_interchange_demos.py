@@ -12,13 +12,26 @@ from app.kernel.contracts.models import ENTITY_TYPES
 from app.kernel.interchange import parse_archive, serialize_archive
 from app.kernel.interchange.demos import DEMOS, demo_tree
 
-# The corpus facts the manifest pins: title and language must match the
-# bundled metadata.json, and the counts are the ported v1 stats.
+# The corpus facts the manifest pins: title, English display title and language
+# must match the bundled metadata.json, and the counts are the ported v1 stats.
 EXPECTED = {
-    "im-stillen-wald": {"title": "Im Stillen Wald", "language": "de", "chapters": 2, "entities": 6},
-    "dead-signal": {"title": "Dead Signal", "language": "en", "chapters": 7, "entities": 18},
+    "im-stillen-wald": {
+        "title": "Im Stillen Wald",
+        "title_en": "In the Silent Forest",
+        "language": "de",
+        "chapters": 2,
+        "entities": 6,
+    },
+    "dead-signal": {
+        "title": "Dead Signal",
+        "title_en": "Dead Signal",
+        "language": "en",
+        "chapters": 7,
+        "entities": 18,
+    },
     "echoes-of-the-thornwall": {
         "title": "Echoes of the Thornwall",
+        "title_en": "Echoes of the Thornwall",
         "language": "en",
         "chapters": 4,
         "entities": 16,
@@ -35,9 +48,12 @@ def test_every_demo_parses() -> None:
     for info in DEMOS:
         expected = EXPECTED[info.slug]
         assert info.title == expected["title"]
+        assert info.title_en == expected["title_en"]
         assert info.language == expected["language"]
         archive = parse_archive(demo_tree(info.slug))
         assert archive.title == expected["title"]
+        # An archive without title_en falls back to its own title for English.
+        assert (archive.title_en or archive.title) == expected["title_en"]
         assert archive.language == expected["language"]
         assert archive.author, "a demo without an author hides the porting source"
         assert len(archive.chapters) == expected["chapters"]

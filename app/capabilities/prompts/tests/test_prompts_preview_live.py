@@ -53,7 +53,7 @@ EXTRACT = "knowledge.extract-entities"
 CONSISTENCY = "knowledge.check-consistency"
 INTERVIEW = "knowledge.entity-interview"
 
-SAMPLE_TAIL = "Der Nebel kam von See."
+SAMPLE_TAIL = "The fog came in from the lake."
 # The writing sample factory's tail — what a SAMPLE-scope render would carry.
 # The live test's assertions lean on its absence: the real assembly rides the
 # seeded manuscript, never the samples.
@@ -198,7 +198,7 @@ async def test_the_preview_renders_the_saved_effective_and_never_calls_the_model
         assert preview.status_code == 200, preview.text
         body = preview.json()
 
-    assert body["rendered"] == "P: Der Nebel kam von See."
+    assert body["rendered"] == f"P: {SAMPLE_TAIL}"
     assert body["diagnostics"]["chars"] == len(body["rendered"])
     # The key carries no contract; the diagnostic states None, never a guess.
     assert body["diagnostics"]["contract_ok"] is None
@@ -225,7 +225,7 @@ async def test_the_preview_prefers_the_body_draft_over_the_saved() -> None:
         )
         assert preview.status_code == 200, preview.text
 
-    assert preview.json()["rendered"] == "DRAFT Der Nebel kam von See."
+    assert preview.json()["rendered"] == f"DRAFT {SAMPLE_TAIL}"
 
 
 async def test_the_preview_of_an_untouched_key_renders_the_bundled_template() -> None:

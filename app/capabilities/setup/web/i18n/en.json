@@ -222,7 +222,7 @@
   "setup.welcome.trust3.note": "(Local causality store encrypted)",
   "setup.welcome.trustLink": "How Narrare works (context handbook)",
   "setup.welcome.wordmark": "Atelier Narrare",
-  "setup.welcome.year": "Writing year 2025",
+  "setup.welcome.year": "Writing year {year}",
   "setup.wizard.progress": "Setup progress",
   "setup.wizard.step1": "Project basis & template",
   "setup.wizard.step2": "Structure",

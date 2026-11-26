@@ -87,6 +87,17 @@ export function findDemo(slug: string | null) {
   return demos.find((demo) => demo.slug === slug) ?? null;
 }
 
+/** The title a demo shows: the English face reads the archive's English
+ *  display title, every other catalog keeps the archive's own-language title.
+ *  Display only — the demo's slug is what the POST carries, and the backend
+ *  imports the archive's identity (title, language) from its metadata. */
+export function demoDisplayTitle(
+  demo: { title: string; titleEn: string },
+  locale: string,
+): string {
+  return locale === "en" ? demo.titleEn : demo.title;
+}
+
 /** Step 1 is complete iff a demo is chosen or a working title stands. */
 export function basisComplete(state: WizardState): boolean {
   return state.demo !== null || state.title.trim() !== "";

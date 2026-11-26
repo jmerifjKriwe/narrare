@@ -30,11 +30,17 @@ DEMOS_DIR = Path(__file__).parent / "demos"
 
 @dataclass(frozen=True)
 class DemoInfo:
-    """One demo as the picker shows it: its slug, its own-language title,
-    and the language the archive's metadata carries."""
+    """One demo as the picker shows it: its slug, its own-language title, the
+    English display title and the language the archive's metadata carries.
+
+    ``title_en`` is display metadata only: the English picker reads it while
+    the archive keeps ``title`` and ``language`` as its identity. An archive
+    without one falls back to its own title, so every demo has an English face.
+    """
 
     slug: str
     title: str
+    title_en: str
     language: str
 
 
@@ -42,9 +48,10 @@ def _read_demo_info(directory: Path) -> DemoInfo:
     metadata = json.loads((directory / "metadata.json").read_text(encoding="utf-8"))
     title = metadata["title"]
     language = metadata["language"]
-    if not isinstance(title, str) or not isinstance(language, str):
-        raise ValueError(f"demo {directory.name!r}: title and language must be strings")
-    return DemoInfo(slug=directory.name, title=title, language=language)
+    title_en = metadata.get("title_en", title)
+    if not isinstance(title, str) or not isinstance(language, str) or not isinstance(title_en, str):
+        raise ValueError(f"demo {directory.name!r}: title, title_en and language must be strings")
+    return DemoInfo(slug=directory.name, title=title, title_en=title_en, language=language)
 
 
 def _discover_demos() -> tuple[DemoInfo, ...]:

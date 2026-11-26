@@ -406,6 +406,10 @@ def test_the_language_contract_rides_one_home_and_the_chrome_frames_only_the_she
     expect(page.get_by_role("heading", name="Step in. Your unwritten work awaits.")).to_be_visible()
     page.reload()
     expect(page.get_by_role("heading", name="Step in. Your unwritten work awaits.")).to_be_visible()
+    # The English face reads the German archive's English display title; the
+    # archive itself keeps its own-language identity for the POST to import.
+    expect(page.get_by_text("»In the Silent Forest«")).to_be_visible()
+    expect(page.get_by_text("»Im Stillen Wald«")).to_have_count(0)
     assert _rows("SELECT id FROM users") == []
 
     # The wizard header carries the same contract — the step stands alone
