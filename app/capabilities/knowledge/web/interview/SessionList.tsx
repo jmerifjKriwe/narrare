@@ -5,8 +5,10 @@
  * type and state, and opens that interview — «Fortsetzen» while it is open,
  * «Ansehen» once it has ended. «Neues Interview» starts a fresh type choice.
  * While the read is still out the list draws its loading line alone, and a
- * read that failed draws its own sentence with «Erneut versuchen» — neither a
- * count nor a row claims a fact the wire has not answered.
+ * read that failed with nothing cached draws its own sentence with «Erneut
+ * versuchen» — neither a count nor a row claims a fact the wire has not
+ * answered. A failed background refresh is not that face: the rows already
+ * read stay, since a stale list beats an empty one.
  */
 import type { AssistantSessionSummary } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
@@ -64,8 +66,8 @@ export function SessionList({
   /** The list's read is still out: the list says so instead of counting a
    *  zero and drawing no row, which would state a fact the wire has not. */
   pending: boolean;
-  /** The list's read failed: its own sentence and the retry stand instead of
-   *  the zero and the rows the wire never answered. */
+  /** The list's read failed and no row is cached: its own sentence and the
+   *  retry stand instead of the zero and the rows the wire never answered. */
   failed: boolean;
   onOpen: (id: string) => void;
   onNew: () => void;

@@ -247,6 +247,8 @@ export function useInterview({
     close.mutate(sessionId);
   }, [close, sessionId]);
 
+  // The list's own rows; a failed background refresh keeps the last answer.
+  const sessionRows = sessions.data ?? [];
   const turns = session.data?.turns ?? [];
   // Busy is the shown interview's own count of turns in flight — not the
   // mutation observer's, which only ever names the latest call. A close
@@ -270,9 +272,12 @@ export function useInterview({
     reading: sessionId !== null && session.isPending,
     readFailed: session.isError,
     session: session.data ?? null,
-    sessions: sessions.data ?? [],
+    sessions: sessionRows,
     sessionsPending: sessions.isPending,
-    sessionsFailed: sessions.isError,
+    /** Only a read that failed with nothing cached is the failure face: a
+     *  failed background refresh keeps the rows already on screen (a stale
+     *  list beats an empty one, and its counts stay true to what is shown). */
+    sessionsFailed: sessions.isError && sessionRows.length === 0,
     /** The list's own read again; its answer restores counts and rows. */
     retrySessions: () => void sessions.refetch(),
     text: shown.text,
