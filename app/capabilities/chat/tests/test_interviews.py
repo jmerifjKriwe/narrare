@@ -706,6 +706,38 @@ def test_a_merged_relation_set_under_the_bound_is_untouched() -> None:
     ]
 
 
+def test_the_relation_merge_reads_the_kernel_bound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The name the merge cuts by is the kernel's own object, and the merge
+    reads it: a literal nested back into the function keeps its twelve, while
+    lowering the module name here makes the merged set follow."""
+    assert interviews.MAX_RELATIONS is MAX_RELATIONS
+
+    monkeypatch.setattr(interviews, "MAX_RELATIONS", 5)
+    locked = [
+        {"target": f"Locked {index}", "type": "knows", "note": "", "suggested": False}
+        for index in range(4)
+    ]
+    echoes: list[dict[str, str]] = [
+        {"target": str(row["target"]), "type": str(row["type"]), "note": str(row["note"])}
+        for row in locked
+    ]
+    added = [{"target": f"Added {index}", "type": "knows", "note": ""} for index in range(3)]
+
+    merged = interviews._merge_relations(  # pyright: ignore[reportPrivateUsage]  the pure merge is the unit under test
+        [dict(row) for row in locked],
+        [dict(row) for row in locked],
+        [*echoes, *added],
+        None,
+    )
+
+    assert [relation["target"] for relation in merged] == [
+        *[row["target"] for row in locked],
+        "Added 0",
+    ]
+
+
 @pytest.mark.usefixtures("two_users")
 async def test_open_requires_a_known_mode_and_type() -> None:
     """A mode or type outside the contract is a coded 422; a valid open lands."""
