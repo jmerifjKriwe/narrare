@@ -1,7 +1,8 @@
 import IntlMessageFormat from "intl-messageformat";
 import { describe, expect, it } from "vitest";
 
-import { catalogs, locales } from "./generated/catalogs";
+import { locales } from "./generated/catalogs";
+import { merged } from "./test/catalogs";
 
 // The categories the rule requires. A language whose complete set is exactly
 // `one/many/other` — French and Spanish report it — has a `many` with no
@@ -25,10 +26,18 @@ function isPlural(element: object): element is PluralElement {
   return "pluralType" in element;
 }
 
+interface Walked {
+  missing: string[];
+  plurals: number;
+}
+
 // Walks the parsed AST rather than the raw string: nesting, escaping and
-// `selectordinal` are the parser's business, not a regex's.
-function missingCategories(locale: string, key: string, message: string): string[] {
+// `selectordinal` are the parser's business, not a regex's. The plural count
+// lets a catalog sweep prove it walked something, so a table shrunken to no
+// languages cannot pass as clean.
+function walkMessage(locale: string, key: string, message: string): Walked {
   const missing: string[] = [];
+  let plurals = 0;
 
   function walk(node: unknown): void {
     if (Array.isArray(node)) {
@@ -39,6 +48,7 @@ function missingCategories(locale: string, key: string, message: string): string
 
     const element = node as object;
     if (isPlural(element)) {
+      plurals += 1;
       for (const category of requiredCategories(locale, element.pluralType)) {
         if (!(category in element.options)) missing.push(`${locale}:${key}:${category}`);
       }
@@ -53,7 +63,11 @@ function missingCategories(locale: string, key: string, message: string): string
   // the English ordinals as one, few, two, other; Node 24 as one, two, few,
   // other. The rule names a set, not an order, so the report is sorted and the
   // fixtures state sorted arrays.
-  return missing.sort();
+  return { missing: missing.sort(), plurals };
+}
+
+function missingCategories(locale: string, key: string, message: string): string[] {
+  return walkMessage(locale, key, message).missing;
 }
 
 describe("catalog plural rules", () => {
@@ -100,9 +114,17 @@ describe("catalog plural rules", () => {
   });
 
   it("writes every plural message in every catalog with the categories its language requires", () => {
+    const visited = new Set<string>();
     const missing = locales.flatMap((code) =>
-      Object.entries(catalogs[code]).flatMap(([key, message]) => missingCategories(code, key, message)),
+      Object.entries(merged[code]).flatMap(([key, message]) => {
+        const walked = walkMessage(code, key, message);
+        if (walked.plurals > 0) visited.add(code);
+        return walked.missing;
+      }),
     );
     expect(missing).toEqual([]);
+    // What the walk covered: every language carried at least one plural
+    // message, so the clean report above is a real sweep, not an empty one.
+    expect([...visited].sort()).toEqual([...locales].sort());
   });
 });

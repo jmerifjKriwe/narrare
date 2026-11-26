@@ -25,15 +25,13 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import type { Chapter, Novel, Scene } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import type { SaveStatus } from "@shell/lib/saveStatus";
 import { countWords } from "@shell/lib/words";
+import { de } from "@shell/lib/test/catalogs";
 
 import { EditorColumn } from "./EditorColumn";
 import type { Continuation, SceneEntry } from "./workspace";
-
-const de = catalogs.de;
 
 // jsdom lays out nothing: ProseMirror reads Range rects when it scrolls a
 // selection into view (the typing leg focuses the live editor). Hand it the

@@ -47,14 +47,13 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Finding, type Novel } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { docks } from "@shell/lib/generated/docks";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de, en, fr, merged } from "@shell/lib/test/catalogs";
 
 import { InspectorDock } from "./InspectorDock";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"GET", ReturnType<typeof vi.fn>>;
 
 function novelRow(overrides: Partial<Novel> = {}): Novel {
@@ -385,7 +384,6 @@ describe("the dock registry composition (W5 Task 1)", () => {
 describe("the dock speaks du-tone in every catalog — no German fallback", () => {
   it("the English face speaks the English catalog's own copy", async () => {
     applyLocale("en");
-    const en = catalogs.en;
     await renderDock();
     expect(screen.getByRole("heading", { name: "Consistency Checker" })).toBeTruthy();
     // The badge speaks the English plural — the checker's real count.
@@ -425,11 +423,11 @@ describe("the dock speaks du-tone in every catalog — no German fallback", () =
     // The global i18n gate pins whole-catalog parity; this pins the dock's
     // family specifically — every key present in all three, and the note
     // copy actually translated (a copied German string would pass parity).
-    const keys = Object.keys(catalogs.de).filter((key) => key.startsWith("writing.workspace.dock."));
+    const keys = Object.keys(de).filter((key) => key.startsWith("writing.workspace.dock."));
     expect(keys.length).toBeGreaterThan(0);
     for (const key of keys) {
       for (const locale of ["en", "fr"] as const) {
-        expect(catalogs[locale][key as keyof typeof catalogs.en], `${locale}/${key}`).toBeTruthy();
+        expect(merged[locale][key as keyof typeof en], `${locale}/${key}`).toBeTruthy();
       }
     }
     const translated = [
@@ -438,8 +436,8 @@ describe("the dock speaks du-tone in every catalog — no German fallback", () =
       "writing.workspace.dock.title",
     ] as const;
     for (const key of translated) {
-      expect(catalogs.en[key], key).not.toBe(catalogs.de[key]);
-      expect(catalogs.fr[key], key).not.toBe(catalogs.de[key]);
+      expect(en[key], key).not.toBe(de[key]);
+      expect(fr[key], key).not.toBe(de[key]);
     }
   });
 });

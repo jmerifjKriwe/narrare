@@ -27,7 +27,6 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { demos } from "@shell/lib/generated/demos";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
@@ -35,6 +34,7 @@ import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
 import { readPreSetupLocale, storePreSetupLocale } from "@shell/lib/preSetupLocale";
+import { de, en } from "@shell/lib/test/catalogs";
 import { routes } from "../routes";
 import { DEFAULT_TARGET_WORDS, GENRE_CAP } from "../wizardState";
 
@@ -79,7 +79,6 @@ function renderBasis(entry = "/setup/basis") {
 }
 
 /** The step's controls, named by the German catalog the mirror adopts. */
-const de = catalogs.de;
 const titleField = () =>
   screen.getByRole("textbox", { name: de["setup.basis.titleLabel"] }) as HTMLInputElement;
 const continueButton = () => screen.getByRole("button", { name: de["setup.basis.continue"] });
@@ -409,7 +408,7 @@ describe("the step's header", () => {
     expect(radios[0].getAttribute("aria-checked")).toBe("true");
 
     fireEvent.click(screen.getByRole("radio", { name: "English" }));
-    await screen.findByRole("heading", { level: 1, name: catalogs.en["setup.basis.heroTitle"] });
+    await screen.findByRole("heading", { level: 1, name: en["setup.basis.heroTitle"] });
     expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "en" } });
     // The structural 409 settled: the mirror holds the choice.
     await waitFor(() => expect(readPreSetupLocale()).toBe("en"));

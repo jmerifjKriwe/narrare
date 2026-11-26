@@ -33,16 +33,15 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client } from "@shell/lib/api/client";
-import { catalogs, type Locale } from "@shell/lib/generated/catalogs";
+import { type Locale } from "@shell/lib/generated/catalogs";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
 import { adoptServerTheme } from "@shell/lib/theme";
 import { queryClient } from "@shell/lib/query";
+import { de, en, fr } from "@shell/lib/test/catalogs";
 
 import { SettingsPage } from "./SettingsPage";
 
-const de = catalogs.de;
-const en = catalogs.en;
 const api = client as unknown as Record<
   "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
   ReturnType<typeof vi.fn>
@@ -751,10 +750,10 @@ describe("the section addresses — the menu's real doors", () => {
 describe("du-tone — the catalogs speak to the writer", () => {
   it("de duzt, fr tutoie — the three catalogs carry the same keys", () => {
     expect(de["settings.subtitle"]).toContain("deine");
-    expect(catalogs.fr["settings.subtitle"]).toMatch(/\btes\b/);
+    expect(fr["settings.subtitle"]).toMatch(/\btes\b/);
     expect(en["settings.subtitle"]).toContain("your");
-    expect(Object.keys(catalogs.de).filter((key) => key.startsWith("settings.")).sort()).toEqual(
-      Object.keys(catalogs.fr).filter((key) => key.startsWith("settings.")).sort(),
+    expect(Object.keys(de).filter((key) => key.startsWith("settings.")).sort()).toEqual(
+      Object.keys(fr).filter((key) => key.startsWith("settings.")).sort(),
     );
   });
 });

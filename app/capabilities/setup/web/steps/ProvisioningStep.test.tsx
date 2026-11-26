@@ -30,7 +30,6 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { capabilityRoutes } from "@shell/lib/generated/routes";
 import { t } from "@shell/lib/i18n";
 import { applyLocale, chosenLocale } from "@shell/lib/locale";
@@ -38,6 +37,7 @@ import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
 import { storePreSetupLocale } from "@shell/lib/preSetupLocale";
+import { de, fr } from "@shell/lib/test/catalogs";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
 const api = client as unknown as Record<
@@ -130,7 +130,6 @@ function renderProvisioning(entry: string, strict = false) {
 }
 
 /** The step's controls, named by the German catalog the mirror adopts. */
-const de = catalogs.de;
 const workspaceButton = () => screen.getByRole("button", { name: de["setup.provisioning.cta.workspace"] });
 const loreButton = () => screen.getByRole("button", { name: de["setup.provisioning.cta.lore"] });
 const retryButton = () => screen.getByRole("button", { name: de["setup.provisioning.retry"] });
@@ -461,7 +460,6 @@ describe("the provisioning step — the locale seam and the bound actions", () =
     renderProvisioning(DEMO_ENTRY);
 
     // The mirror is adopted before paint: the checklist speaks French.
-    const fr = catalogs.fr;
     expect(await screen.findByText(fr["setup.provisioning.bound.item1"])).toBeTruthy();
     await waitFor(() =>
       expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "fr" } }),
@@ -483,7 +481,6 @@ describe("the provisioning step — the locale seam and the bound actions", () =
     }));
     renderProvisioning(DEMO_ENTRY);
 
-    const fr = catalogs.fr;
     expect(await screen.findByText(fr["setup.provisioning.bound.item1"])).toBeTruthy();
     await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
     expect(localStorage.getItem("narrare.locale.preSetup")).toBe("fr");

@@ -30,16 +30,15 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Activity } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de } from "@shell/lib/test/catalogs";
 
 import { sparkline } from "./activity";
 import { ShelfBanner } from "./ShelfBanner";
 
 const api = client as unknown as Record<"GET", ReturnType<typeof vi.fn>>;
-const de = catalogs.de;
 
 function ok(): Response {
   return new Response(null, { status: 200 });

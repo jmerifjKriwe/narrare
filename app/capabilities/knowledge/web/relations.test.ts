@@ -7,9 +7,9 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { t } from "@shell/lib/i18n";
+import { de } from "@shell/lib/test/catalogs";
 
 import { RELATION_TYPES, relationTypeLabel, relationTypeOptions, resolveRelationType } from "./relations";
 
@@ -20,7 +20,7 @@ describe("relationTypeOptions", () => {
     expect(options).toHaveLength(RELATION_TYPES.length);
     expect(options.map((option) => option.key)).toEqual([...RELATION_TYPES]);
     const ally = options.find((option) => option.key === "ally_of");
-    expect(ally?.label).toBe(catalogs.de["knowledge.relation.ally_of"]);
+    expect(ally?.label).toBe(de["knowledge.relation.ally_of"]);
   });
 });
 
@@ -57,20 +57,20 @@ describe("resolveRelationType — the stored free-text guard (review fix)", () =
   it("a label-colliding free-text type round-trips as itself on an untouched save", () => {
     applyLocale("de");
     // The stored type is FREE TEXT that happens to spell the de label of ally_of.
-    const colliding = catalogs.de["knowledge.relation.ally_of"];
+    const colliding = de["knowledge.relation.ally_of"];
     expect(resolveRelationType(t, colliding, colliding)).toBe(colliding);
     expect(resolveRelationType(t, colliding, colliding)).not.toBe("ally_of");
   });
 
   it("a stored KEY still resolves its label back to the key", () => {
     applyLocale("de");
-    const label = catalogs.de["knowledge.relation.ally_of"];
+    const label = de["knowledge.relation.ally_of"];
     expect(resolveRelationType(t, label, "ally_of")).toBe("ally_of");
   });
 
   it("a fresh create (no stored type) still canonicalizes a picked suggestion", () => {
     applyLocale("de");
-    const label = catalogs.de["knowledge.relation.ally_of"];
+    const label = de["knowledge.relation.ally_of"];
     expect(resolveRelationType(t, label)).toBe("ally_of");
   });
 
@@ -78,7 +78,7 @@ describe("resolveRelationType — the stored free-text guard (review fix)", () =
     applyLocale("de");
     const stored = "Neuro-Link";
     // The writer picks a different suggestion: it canonicalizes.
-    expect(resolveRelationType(t, catalogs.de["knowledge.relation.enemy_of"], stored)).toBe("enemy_of");
+    expect(resolveRelationType(t, de["knowledge.relation.enemy_of"], stored)).toBe("enemy_of");
     // The writer types other free text: it rides as itself.
     expect(resolveRelationType(t, "Direkter Kanal", stored)).toBe("Direkter Kanal");
   });

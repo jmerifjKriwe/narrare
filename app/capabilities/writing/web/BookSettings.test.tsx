@@ -36,9 +36,9 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Novel, type Series } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de } from "@shell/lib/test/catalogs";
 
 import { BookSettings } from "./BookSettings";
 import {
@@ -51,7 +51,6 @@ import {
 } from "./bookSettings";
 import { TARGET_WORDS_MAX } from "./newBook";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "POST" | "PATCH", ReturnType<typeof vi.fn>>;
 
 /** The repo's plain assertions (no jest-dom): the input's value and the

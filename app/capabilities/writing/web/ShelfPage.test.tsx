@@ -41,12 +41,12 @@ vi.mock("@shell/lib/api/client", () => ({
 
 import { client, type Novel } from "@shell/lib/api/client";
 import { formatDate } from "@shell/lib/format";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 import { formatRelative } from "@shell/lib/time";
 import { rootRoute } from "@shell/routes/__root";
+import { de, en } from "@shell/lib/test/catalogs";
 
 import { ShelfPage } from "./ShelfPage";
 
@@ -270,7 +270,6 @@ function renderShelf() {
 }
 
 /** The shelf's copy, named by the German catalog the row holds. */
-const de = catalogs.de;
 const heroSection = () =>
   screen.getByRole("heading", { level: 2, name: HERO.title }).closest("section") as HTMLElement;
 const cardOf = (title: string) =>
@@ -643,7 +642,6 @@ describe("the shelf — the language switcher writes the row", () => {
     await waitFor(() =>
       expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "en" } }),
     );
-    const en = catalogs.en;
     expect(await screen.findByRole("link", { name: en["writing.shelf.hero.write"] })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Language/ }).textContent).toContain("EN (English)");
   });
@@ -751,7 +749,7 @@ describe("the shelf — loading, error and empty answer per the drafts", () => {
     expect((await screen.findByRole("alert")).textContent).toContain(de["errors.network"]);
     act(() => applyLocale("en"));
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toContain(catalogs.en["errors.network"]),
+      expect(screen.getByRole("alert").textContent).toContain(en["errors.network"]),
     );
   });
 

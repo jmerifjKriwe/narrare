@@ -29,14 +29,13 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Entity, type Relation } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 import { ToastProvider } from "@shell/ui/toast";
+import { de, en, fr, merged } from "@shell/lib/test/catalogs";
 
 import { DossiersPage } from "./DossiersPage";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "POST" | "DELETE", ReturnType<typeof vi.fn>>;
 
 configure({ asyncUtilTimeout: 5000 });
@@ -570,7 +569,6 @@ describe("the subbar stands in every state — the sibling doors never vanish (P
 describe("the face speaks du-tone in every catalog — no German fallback", () => {
   it("the English face speaks the English catalog's own copy", async () => {
     applyLocale("en");
-    const en = catalogs.en;
     await renderDossiers();
     const cards = await screen.findAllByTestId("dossier-card");
     expect(screen.getByTestId("dossier-search").getAttribute("placeholder")).toBe(en["knowledge.dossiers.search"]);
@@ -580,7 +578,6 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
 
   it("the French face counts zero as one — the locale's own plural rule", async () => {
     applyLocale("fr");
-    const fr = catalogs.fr;
     await renderDossiers();
     const cards = await screen.findAllByTestId("dossier-card");
     // CLDR fr puts 0 in the „one" category — the catalog's plural carries
@@ -591,11 +588,11 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
   });
 
   it("the three catalogs carry the dossiers' keys in parity, each translated", () => {
-    const keys = Object.keys(catalogs.de).filter((key) => key.startsWith("knowledge.dossiers."));
+    const keys = Object.keys(de).filter((key) => key.startsWith("knowledge.dossiers."));
     expect(keys.length).toBeGreaterThan(0);
     for (const key of keys) {
       for (const locale of ["en", "fr"] as const) {
-        expect(catalogs[locale][key as keyof typeof catalogs.en], `${locale}/${key}`).toBeTruthy();
+        expect(merged[locale][key as keyof typeof en], `${locale}/${key}`).toBeTruthy();
       }
     }
     const translated = [
@@ -605,17 +602,17 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
       "knowledge.dossiers.psychProfile",
     ] as const;
     for (const key of translated) {
-      expect(catalogs.en[key], key).not.toBe(catalogs.de[key]);
-      expect(catalogs.fr[key], key).not.toBe(catalogs.de[key]);
+      expect(en[key], key).not.toBe(de[key]);
+      expect(fr[key], key).not.toBe(de[key]);
     }
   });
 
   it("the German copy keeps the du register — no Sie form sneaks in", () => {
-    for (const [key, value] of Object.entries(catalogs.de)) {
+    for (const [key, value] of Object.entries(de)) {
       if (!key.startsWith("knowledge.dossiers.")) continue;
       expect(value, key).not.toMatch(/\b(Sie|Ihnen|Ihr|Ihre)\b/);
     }
-    expect(catalogs.de["knowledge.dossiers.listHint"]).toContain("deinem");
-    expect(catalogs.de["knowledge.dossiers.noSelection"]).toContain("Wähle");
+    expect(de["knowledge.dossiers.listHint"]).toContain("deinem");
+    expect(de["knowledge.dossiers.noSelection"]).toContain("Wähle");
   });
 });

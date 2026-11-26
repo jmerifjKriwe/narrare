@@ -25,8 +25,8 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Chapter, type Scene, type Storyboard } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { queryClient } from "@shell/lib/query";
+import { de } from "@shell/lib/test/catalogs";
 
 import type { FlushOutcome } from "./useAutosave";
 import {
@@ -228,7 +228,7 @@ describe("stageTitleKey", () => {
   it("resolves the staged chapter's stage title key from the catalog", () => {
     const key = stageTitleKey(STORYBOARD, "c1");
     expect(key).toBe("storyboard.stage.setup");
-    expect(catalogs.de[key as keyof typeof catalogs.de]).toBeTruthy();
+    expect(de[key as keyof typeof de]).toBeTruthy();
   });
 
   it("an unstaged chapter keeps the neutral", () => {

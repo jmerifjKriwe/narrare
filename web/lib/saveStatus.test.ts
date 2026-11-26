@@ -9,7 +9,6 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { catalogs } from "./generated/catalogs";
 import {
   SAVE_FACES,
   getSaveStatus,
@@ -17,8 +16,7 @@ import {
   unsavedStatus,
   useSaveStatus,
 } from "./saveStatus";
-
-const de = catalogs.de;
+import { de } from "./test/catalogs";
 
 afterEach(() => {
   cleanup();

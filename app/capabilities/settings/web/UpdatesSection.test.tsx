@@ -17,13 +17,12 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de, en } from "@shell/lib/test/catalogs";
 
 import { UpdatesSection } from "./UpdatesSection";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"PATCH", ReturnType<typeof vi.fn>>;
 
 configure({ asyncUtilTimeout: 5000 });
@@ -152,7 +151,7 @@ describe("the Updates section", () => {
     expect(await screen.findByText(de["settings.update.error"])).toBeTruthy();
 
     act(() => applyLocale("en"));
-    expect(await screen.findByText(catalogs.en["settings.update.error"])).toBeTruthy();
+    expect(await screen.findByText(en["settings.update.error"])).toBeTruthy();
     expect(screen.queryByText(de["settings.update.error"])).toBeNull();
   });
 });

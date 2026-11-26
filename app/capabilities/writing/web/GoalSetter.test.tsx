@@ -20,14 +20,13 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { useLanguageChoice } from "@shell/lib/language";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de, en } from "@shell/lib/test/catalogs";
 
 import { GoalSetterDialog } from "./GoalSetter";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "PATCH" | "PUT", ReturnType<typeof vi.fn>>;
 
 function ok(): Response {
@@ -263,7 +262,7 @@ describe("the locale the daily save carries — #933", () => {
     fireEvent.click(screen.getByRole("button", { name: "choose-en" }));
     held = true; // the choice's refetch never lands — the window stays open
     fireEvent.change(field, { target: { value: "750" } });
-    fireEvent.click(screen.getByRole("button", { name: catalogs.en["writing.workspace.crud.save"] }));
+    fireEvent.click(screen.getByRole("button", { name: en["writing.workspace.crud.save"] }));
 
     await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(2));
     const savePatch = api.PATCH.mock.calls.find(([, init]) => "daily_goal_words" in (init?.body ?? {}));

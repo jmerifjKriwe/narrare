@@ -7,8 +7,8 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
+import { de } from "@shell/lib/test/catalogs";
 
 import { ToastProvider, useToast } from "./toast";
 
@@ -116,7 +116,7 @@ describe("ToastProvider", () => {
       </ToastProvider>,
     );
     fireEvent.click(screen.getByRole("button", { name: "erste" }));
-    const close = screen.getByRole("button", { name: catalogs.de["shell.toast.dismiss"] });
+    const close = screen.getByRole("button", { name: de["shell.toast.dismiss"] });
     // Tab to the control and press Enter: focus sits inside the toast.
     // A real focus() (not a synthetic event) moves document.activeElement,
     // which is what the live pause reads.
@@ -142,7 +142,7 @@ describe("ToastProvider", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "erste" }));
     fireEvent.mouseEnter(screen.getByTestId("toast"));
-    fireEvent.click(screen.getByRole("button", { name: catalogs.de["shell.toast.dismiss"] }));
+    fireEvent.click(screen.getByRole("button", { name: de["shell.toast.dismiss"] }));
     expect(screen.queryByTestId("toast")).toBeNull();
 
     // The pointer left while no toast existed: the new message is not paused
@@ -163,7 +163,7 @@ describe("ToastProvider", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "erste" }));
     fireEvent.mouseEnter(screen.getByTestId("toast"));
-    fireEvent.click(screen.getByRole("button", { name: catalogs.de["shell.toast.dismiss"] }));
+    fireEvent.click(screen.getByRole("button", { name: de["shell.toast.dismiss"] }));
     expect(screen.queryByTestId("toast")).toBeNull();
 
     // jsdom does not track :hover, so the pointer that never left is modelled
@@ -203,7 +203,7 @@ describe("ToastProvider", () => {
       </ToastProvider>,
     );
     fireEvent.click(screen.getByRole("button", { name: "erste" }));
-    const close = screen.getByRole("button", { name: catalogs.de["shell.toast.dismiss"] });
+    const close = screen.getByRole("button", { name: de["shell.toast.dismiss"] });
     // A real focus() moves document.activeElement, as the browser does when
     // the writer tabbed here; the replacement keeps that element focused.
     close.focus();
@@ -268,7 +268,7 @@ describe("ToastProvider", () => {
       </ToastProvider>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Meldung" }));
-    const close = screen.getByRole("button", { name: catalogs.de["shell.toast.dismiss"] });
+    const close = screen.getByRole("button", { name: de["shell.toast.dismiss"] });
 
     act(() => {
       vi.advanceTimersByTime(2000);
@@ -298,7 +298,7 @@ describe("ToastProvider", () => {
       </ToastProvider>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Meldung" }));
-    const close = screen.getByRole("button", { name: catalogs.de["shell.toast.dismiss"] });
+    const close = screen.getByRole("button", { name: de["shell.toast.dismiss"] });
 
     // jsdom lays nothing out, so the box is asserted as the class contract:
     // h-6/w-6 are 24 CSS px on the shell's 16 px root (WCAG 2.2 2.5.8).
@@ -319,7 +319,7 @@ describe("ToastProvider", () => {
       </ToastProvider>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Meldung" }));
-    fireEvent.click(screen.getByRole("button", { name: catalogs.de["shell.toast.dismiss"] }));
+    fireEvent.click(screen.getByRole("button", { name: de["shell.toast.dismiss"] }));
     expect(screen.queryByTestId("toast")).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
 

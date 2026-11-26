@@ -2,8 +2,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { catalogs, locales } from "../generated/catalogs";
+import { locales } from "../generated/catalogs";
 import { ERROR_CODES } from "../generated/errorCodes";
+import { merged } from "../test/catalogs";
 import {
   ApiError,
   CODE_KEY,
@@ -67,7 +68,7 @@ describe("the one failure shape", () => {
 
   it("gives every code a sentence in every language", () => {
     for (const code of ERROR_CODES) {
-      for (const language of locales) expect(catalogs[language][CODE_KEY[code]]).toMatch(/\S/);
+      for (const language of locales) expect(merged[language][CODE_KEY[code]]).toMatch(/\S/);
     }
   });
 

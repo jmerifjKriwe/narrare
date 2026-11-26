@@ -22,13 +22,11 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import type { Chapter, Novel, Scene } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
+import { de } from "@shell/lib/test/catalogs";
 
 import { ZenMode } from "./ZenMode";
 import type { Continuation, SceneEntry } from "./workspace";
-
-const de = catalogs.de;
 
 // jsdom lays out nothing: ProseMirror reads Range rects when it scrolls a
 // selection into view (the zen entry focuses the prose tail). Hand it the

@@ -31,14 +31,13 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Chapter } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { t, type MessageKey } from "@shell/lib/i18n";
 import { queryClient } from "@shell/lib/query";
+import { de } from "@shell/lib/test/catalogs";
 
 import { CausalityPage } from "./CausalityPage";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "POST" | "PUT" | "DELETE", ReturnType<typeof vi.fn>>;
 
 /** The catalog's own formatter — a plural key formats through the active

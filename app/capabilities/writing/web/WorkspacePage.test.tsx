@@ -33,15 +33,14 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Activity, type Chapter, type Novel, type Scene, type Storyboard } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { capabilityRoutes } from "@shell/lib/generated/routes";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient, takeNovelDeletedElsewhere } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
+import { de } from "@shell/lib/test/catalogs";
 
 import { requestDeskFocus } from "./workspace";
 
-const de = catalogs.de;
 const NOVEL_ID = "11111111-1111-1111-1111-111111111111";
 
 // jsdom lays out nothing: Element geometry reports zeros, but Range geometry

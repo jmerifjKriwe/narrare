@@ -31,16 +31,13 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de, en, fr } from "@shell/lib/test/catalogs";
 
 import { AiRulesPage } from "./AiRulesPage";
 
-const de = catalogs.de;
-const en = catalogs.en;
-const fr = catalogs.fr;
 const api = client as unknown as Record<
   "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
   ReturnType<typeof vi.fn>

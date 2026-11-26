@@ -29,11 +29,11 @@ vi.mock("./api/client", () => ({
 }));
 
 import { client } from "./api/client";
-import { catalogs } from "./generated/catalogs";
 import { LanguageChip, LanguageSwitcher, useLanguageChoice } from "./language";
 import { activeLocale, applyLocale, chosenLocale } from "./locale";
 import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
 import { queryClient, useSettings, useSettingsQuery } from "./query";
+import { de } from "./test/catalogs";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
 const api = client as unknown as Record<
@@ -102,7 +102,7 @@ describe("the radio face — the draft's DE|EN|FR group", () => {
     applyLocale("de");
     render(<LanguageSwitcher variant="welcome" preSetup />);
 
-    const group = screen.getByRole("radiogroup", { name: catalogs.de["shell.language"] });
+    const group = screen.getByRole("radiogroup", { name: de["shell.language"] });
     const radios = within(group).getAllByRole("radio");
     expect(radios.map((radio) => radio.textContent)).toEqual(["DE", "EN", "FR"]);
     expect(radios.map((radio) => radio.getAttribute("aria-label"))).toEqual([
@@ -178,13 +178,13 @@ describe("the radio face — the draft's DE|EN|FR group", () => {
   it("keeps each door's drafted face — the welcome's separators, the wizard's none", () => {
     applyLocale("de");
     const { unmount } = render(<LanguageSwitcher variant="welcome" preSetup />);
-    const welcome = screen.getByRole("radiogroup", { name: catalogs.de["shell.language"] });
+    const welcome = screen.getByRole("radiogroup", { name: de["shell.language"] });
     // Three radios and the two hairline separators between them.
     expect(welcome.childElementCount).toBe(5);
     unmount();
 
     render(<LanguageSwitcher variant="wizard" preSetup />);
-    const wizard = screen.getByRole("radiogroup", { name: catalogs.de["shell.language"] });
+    const wizard = screen.getByRole("radiogroup", { name: de["shell.language"] });
     expect(wizard.childElementCount).toBe(3);
   });
 });
@@ -320,7 +320,7 @@ describe("the chrome chip — variante A, the real switcher (D17)", () => {
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
 
     fireEvent.click(trigger);
-    const menu = await screen.findByRole("menu", { name: catalogs.de["shell.language"] });
+    const menu = await screen.findByRole("menu", { name: de["shell.language"] });
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
     const items = within(menu).getAllByRole("menuitemradio");
     expect(items.map((item) => item.getAttribute("aria-checked"))).toEqual([

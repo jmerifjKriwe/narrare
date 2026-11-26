@@ -35,13 +35,12 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Chapter, type TimelineEvent } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de } from "@shell/lib/test/catalogs";
 
 import { TimelinePage } from "./TimelinePage";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "POST" | "PUT" | "DELETE", ReturnType<typeof vi.fn>>;
 
 configure({ asyncUtilTimeout: 5000 });

@@ -11,13 +11,12 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
+import { de, merged } from "@shell/lib/test/catalogs";
 
 import { PromptBar } from "./PromptBar";
 import { PROMPT_MAX_LENGTH, type Continuation } from "./workspace";
 
-const de = catalogs.de;
 const INPUT_LABEL = de["writing.workspace.promptBar.inputLabel"];
 const CONTINUE = de["writing.workspace.promptBar.continue"];
 
@@ -166,7 +165,7 @@ describe("the localized faces", () => {
   it("the pills speak the active catalog — en and fr ride the same keys", () => {
     for (const locale of ["en", "fr"] as const) {
       applyLocale(locale);
-      const catalog = catalogs[locale];
+      const catalog = merged[locale];
       const continuation = continuationOf();
       const { unmount } = render(<PromptBar continuation={continuation} />);
       fireEvent.click(

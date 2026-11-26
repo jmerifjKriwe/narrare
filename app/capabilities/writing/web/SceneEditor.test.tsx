@@ -27,8 +27,8 @@ import { useEffect, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
+import { de } from "@shell/lib/test/catalogs";
 
 import { SceneEditor, bodyToHtml } from "./SceneEditor";
 import { LeaveGuardDialog } from "./WorkspaceStates";
@@ -39,7 +39,6 @@ vi.mock("@shell/lib/api/client", () => ({
   client: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() },
 }));
 
-const de = catalogs.de;
 const api = client as unknown as { PUT: ReturnType<typeof vi.fn> };
 
 // jsdom lays out nothing: ProseMirror reads Range rects when it scrolls a

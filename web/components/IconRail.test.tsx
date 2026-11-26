@@ -35,12 +35,12 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Novel } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 import { setSaveStatus } from "@shell/lib/saveStatus";
 import { applyTheme } from "@shell/lib/theme";
+import { de } from "@shell/lib/test/catalogs";
 import { IconRail } from "./IconRail";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
@@ -267,8 +267,6 @@ function renderRail(path = "/rail-test") {
   );
   return router;
 }
-
-const de = catalogs.de;
 
 beforeEach(() => {
   novelsAnswer = async () => ({ data: ROWS, response: ok() });
