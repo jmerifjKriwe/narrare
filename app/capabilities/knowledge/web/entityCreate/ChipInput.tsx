@@ -74,7 +74,7 @@ export function ChipInput({
               type="button"
               aria-label={`${t("knowledge.create.removeChip")}: ${value}`}
               onClick={() => onChange(values.filter((existing) => existing !== value))}
-              className={`flex items-center text-muted transition-colors hover:text-foreground ${FOCUS}`}
+              className={`flex h-6 w-6 items-center justify-center text-muted transition-colors hover:text-foreground ${FOCUS}`}
             >
               <Icon name="cross" size={10} />
             </button>

@@ -184,7 +184,7 @@ describe("EntityCreateDialog — create by hand", () => {
     expect(add.getAttribute("aria-describedby")).toBeNull();
   });
 
-  it("a resolved target without a label is counted into the notice and marked", () => {
+  it("a resolved target without a label says so at its own row, not in the section notice", () => {
     openCreate();
     fireEvent.change(screen.getByTestId("entity-create-name"), {
       target: { value: "Nevada-Trümmerfeld" },
@@ -194,8 +194,12 @@ describe("EntityCreateDialog — create by hand", () => {
     fireEvent.change(screen.getByTestId("entity-create-relation-0-entity"), {
       target: { value: "Station 7" },
     });
-    const note = screen.getByTestId("entity-create-unresolved-note");
-    expect(note.textContent).toBe(de["knowledge.create.unresolvedNote"]);
+    // The target resolves, so this row is not an unresolved target: the
+    // section notice speaks only of those, and this row's own note names the
+    // reason it is still left out.
+    expect(screen.queryByTestId("entity-create-unresolved-note")).toBeNull();
+    const note = screen.getByTestId("entity-create-relation-0-missing-label");
+    expect(note.textContent).toBe(de["knowledge.create.missingLabelNote"]);
     const label = screen.getByTestId("entity-create-relation-0-label");
     expect(label.getAttribute("aria-invalid")).toBe("true");
     // The marked field points at the note that says why.
@@ -204,7 +208,7 @@ describe("EntityCreateDialog — create by hand", () => {
 
     // Filling the label lifts both signals: the row will land.
     fireEvent.change(label, { target: { value: de["knowledge.relation.located_in"] } });
-    expect(screen.queryByTestId("entity-create-unresolved-note")).toBeNull();
+    expect(screen.queryByTestId("entity-create-relation-0-missing-label")).toBeNull();
     expect(label.getAttribute("aria-describedby")).toBeNull();
     expect(label.getAttribute("aria-invalid")).toBeNull();
   });
@@ -530,6 +534,37 @@ describe("EntityCreateDialog — create by hand", () => {
     expect(icon?.getAttribute("width")).toBe("14");
     expect(icon?.getAttribute("height")).toBe("14");
   });
+
+  it("a chip's remove control clears the 24 px hit area floor", () => {
+    openCreate();
+    const aliases = screen.getByTestId("entity-create-aliases") as HTMLInputElement;
+    fireEvent.change(aliases, { target: { value: "Nevada" } });
+    fireEvent.keyDown(aliases, { key: "Enter" });
+    const remove = screen.getByRole("button", {
+      name: `${de["knowledge.create.removeChip"]}: Nevada`,
+    });
+
+    expect(remove.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["h-6", "w-6", "items-center", "justify-center"]),
+    );
+    // The glyph stays 10 px; only the hit area grew.
+    const icon = remove.querySelector("svg");
+    expect(icon?.getAttribute("width")).toBe("10");
+    expect(icon?.getAttribute("height")).toBe("10");
+  });
+
+  it("«Beziehung hinzufügen» clears the 24 px hit area floor", () => {
+    openCreate();
+    const add = screen.getByTestId("entity-create-add-relation");
+
+    expect(add.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["min-h-6", "items-center"]),
+    );
+    // The glyph stays 14 px; the box around the text line does not.
+    const icon = add.querySelector("svg");
+    expect(icon?.getAttribute("width")).toBe("14");
+    expect(icon?.getAttribute("height")).toBe("14");
+  });
 });
 
 const INTERVIEW_PREFILL: EntityPrefill = {
@@ -685,9 +720,19 @@ describe("EntityCreateDialog — from the interview", () => {
     expect(screen.getByTestId("entity-create-unresolved-note").textContent).toBe(
       de["knowledge.create.unresolvedNote"],
     );
+    // The field names the per-row «Kein Treffer» sentence, not only the
+    // section note that counts it.
+    const noMatch = screen.getByTestId("entity-create-relation-0-no-match");
+    expect(noMatch.id).not.toBe("");
+    expect(
+      screen.getByTestId("entity-create-relation-0-entity").getAttribute("aria-describedby")?.split(" "),
+    ).toContain(noMatch.id);
     expect(
       screen.getByTestId("entity-create-relation-0-entity").getAttribute("aria-invalid"),
     ).toBe("true");
+    // Neither row has a missing label, so no per-row label note appears.
+    expect(screen.queryByTestId("entity-create-relation-0-missing-label")).toBeNull();
+    expect(screen.queryByTestId("entity-create-relation-1-missing-label")).toBeNull();
 
     fireEvent.click(screen.getByTestId("entity-create-save"));
     await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());

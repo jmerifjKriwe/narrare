@@ -13,6 +13,7 @@
   "knowledge.create.footerHint": "Name und Typ sind Pflicht",
   "knowledge.create.locked": "Fixiert",
   "knowledge.create.manualBadge": "Von Hand",
+  "knowledge.create.missingLabelNote": "Ohne Bezeichnung wird diese Beziehung nicht angelegt.",
   "knowledge.create.multipleMatches": "Mehrere Treffer — wählen",
   "knowledge.create.nameLabel": "Name *",
   "knowledge.create.namePlaceholder": "z. B. Resonanz-Transponder LC-89",

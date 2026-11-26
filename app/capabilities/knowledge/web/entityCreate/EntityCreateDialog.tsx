@@ -146,14 +146,13 @@ export function EntityCreateDialog({
     relationType: resolveRelationType(t, row.relationType),
   }));
   const duplicateRows = rosterSettled ? duplicateRelationRows(normalizedRelations, entities) : [];
-  // Every filled row the save will drop — an unresolved target and a
-  // resolved target without its label both count; only an untouched add-row
-  // stays silent. While the roster is loading there is no outcome yet.
+  // Every filled row the save will drop for its target alone — a target that
+  // does not resolve (or is still blank) is an unresolved target; a row with
+  // a missing label has its own per-row note and is not counted here. Only an
+  // untouched add-row stays silent. While the roster is loading there is no
+  // outcome yet.
   const dropped = rosterSettled
-    ? relations.filter((row) => {
-        const outcome = relationRowOutcome(row, entities);
-        return outcome === "unresolved-target" || outcome === "missing-label";
-      }).length
+    ? relations.filter((row) => relationRowOutcome(row, entities) === "unresolved-target").length
     : 0;
   const atLimit = relations.length >= MAX_RELATIONS;
   // The save waits for a settled roster: its body resolves every row there.
@@ -392,7 +391,7 @@ export function EntityCreateDialog({
                 disabled={atLimit}
                 aria-describedby={atLimit ? relationLimitNoteId : undefined}
                 onClick={addRelationRow}
-                className={`inline-flex items-center gap-1 text-meta font-medium text-primary transition-colors hover:text-foreground ${FOCUS} ${atLimit ? "cursor-not-allowed opacity-50" : ""}`}
+                className={`inline-flex min-h-6 items-center gap-1 text-meta font-medium text-primary transition-colors hover:text-foreground ${FOCUS} ${atLimit ? "cursor-not-allowed opacity-50" : ""}`}
               >
                 <Icon name="plus" size={14} /> {t("knowledge.create.addRelation")}
               </button>

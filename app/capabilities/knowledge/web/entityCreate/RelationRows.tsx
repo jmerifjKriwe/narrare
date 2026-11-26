@@ -87,15 +87,19 @@ export function RelationRows({
         const hasTarget = row.target.trim() !== "";
         const resolution = rosterSettled ? resolveRowTarget(row, entities) : null;
         const many = resolution?.kind === "many";
+        const noMatch = resolution?.kind === "none";
         const choicesId = `${choicesBaseId}-${index}`;
+        const noMatchNoteId = `${choicesBaseId}-no-match-${index}`;
+        const missingLabelNoteId = `${choicesBaseId}-missing-label-${index}`;
         const targetDescribedBy = describedBy(
           unresolvedTarget && unresolvedNoteId,
+          hasTarget && noMatch && noMatchNoteId,
           duplicated && duplicateNoteId,
           many && choicesId,
           refused && failureId,
         );
         const labelDescribedBy = describedBy(
-          missingLabel && unresolvedNoteId,
+          missingLabel && missingLabelNoteId,
           duplicated && duplicateNoteId,
           refused && failureId,
         );
@@ -189,10 +193,20 @@ export function RelationRows({
             )}
             {hasTarget && resolution !== null && resolution.kind === "none" && (
               <p
+                id={noMatchNoteId}
                 data-testid={`entity-create-relation-${index}-no-match`}
                 className="text-[11px] leading-snug text-foreground"
               >
                 {t("knowledge.create.noMatch")}
+              </p>
+            )}
+            {missingLabel && (
+              <p
+                id={missingLabelNoteId}
+                data-testid={`entity-create-relation-${index}-missing-label`}
+                className="text-[11px] leading-snug text-foreground"
+              >
+                {t("knowledge.create.missingLabelNote")}
               </p>
             )}
           </div>
