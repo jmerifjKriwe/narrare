@@ -149,10 +149,11 @@ def test_index_discloses_every_model_stand_in() -> None:
             assert f"{subject} ({' and '.join(entry.frames)})" in text, entry.surface
 
 
-# The settings page is live, so describing it as future work is the stale claim
-# this guard exists for (#988). The markers below are the meanings that carry
-# that claim: a reworded roadmap sentence still trips one, and checking the
-# whole settings section rather than one phrase catches it wherever it lands.
+# Live surfaces described as future work are the stale claim this guard exists
+# for (#988). The markers below are the meanings that carry that claim: a
+# reworded roadmap sentence still trips one. The guard scans every README prose
+# section except Documentation, so a stale claim cannot hide in another
+# section's paragraph.
 _FUTURE_WORK = re.compile(
     r"\b(?:phase\s+\d|roadmap|planned|not\s+yet|coming\s+soon|upcoming|future\s+release)\b",
     re.IGNORECASE,
