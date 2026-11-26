@@ -57,7 +57,7 @@ SAMPLE_TAIL = "The fog came in from the lake."
 # The writing sample factory's tail — what a SAMPLE-scope render would carry.
 # The live test's assertions lean on its absence: the real assembly rides the
 # seeded manuscript, never the samples.
-PASSAGE = "Der Leuchtturm am Horizont war seit Jahren dunkel."
+PASSAGE = "The lighthouse on the horizon had been dark for years."
 
 
 @pytest.fixture(autouse=True)
@@ -416,7 +416,7 @@ async def test_the_chat_live_test_retrieves_real_passages() -> None:
     [row] = await _audit_rows()
     assert row["task_key"] == CHAT
     assert PASSAGE in row["prompt_text"]
-    assert "Wo war der Leuchtturm?" in row["prompt_text"]
+    assert "Where was the lighthouse?" in row["prompt_text"]
 
 
 async def test_interview_live_test_resolves_and_audits_chat_ask() -> None:
@@ -448,7 +448,7 @@ async def test_interview_live_test_resolves_and_audits_chat_ask() -> None:
     assert row["prompt_key"] == INTERVIEW
     assert "PURPOSE: entity-interview" in row["prompt_text"]
     assert "Mira (character; none)" in row["prompt_text"]
-    assert 'novel "Der Nebel" in the genre Mystery' in row["prompt_text"]
+    assert 'novel "The Fog" in the genre Mystery' in row["prompt_text"]
     assert '"reply"' in row["response_text"]
 
 

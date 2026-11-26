@@ -64,8 +64,8 @@ CHAT_TEMPLATE = (
 )
 
 
-_SAMPLE_QUESTION: Final = "Wo war der Leuchtturm?"
-_SAMPLE_PASSAGE: Final = "Der Leuchtturm am Horizont war seit Jahren dunkel."
+_SAMPLE_QUESTION: Final = "Where was the lighthouse?"
+_SAMPLE_PASSAGE: Final = "The lighthouse on the horizon had been dark for years."
 
 
 def _source_line(text: str) -> str:
@@ -224,8 +224,8 @@ _SAMPLE_SLOTS: Final[dict[str, object]] = {}
 _SAMPLE_RELATIONS: Final[list[dict[str, str]]] = []
 """The sample proposes no relation until the interview names a target."""
 _SAMPLE_TURNS: Final[tuple[tuple[str, str], ...]] = (
-    (ASSISTANT_PREFIX, "Wie heißt die Figur, und welche Rolle spielt sie in der Geschichte?"),
-    (USER_PREFIX, "Eine Wächterin am See; einen Namen habe ich noch nicht."),
+    (ASSISTANT_PREFIX, "What is the character's name, and what role do they play in the story?"),
+    (USER_PREFIX, "A keeper by the lake; I don't have a name yet."),
 )
 
 
@@ -241,9 +241,9 @@ def turn_line(prefix: str, text: str) -> str:
 
 _SAMPLE_TRANSCRIPT: Final = "\n".join(turn_line(prefix, text) for prefix, text in _SAMPLE_TURNS)
 _SAMPLE_ROSTER: Final = (
-    "Mira (character; Die Wanderin)\n"
-    "Haus (location; Das Haus am See)\n"
-    "Der Winter (event; Das Jahr ohne Sonne)"
+    "Mira (character; The Wanderer)\n"
+    "House (location; The House by the Lake)\n"
+    "Winter (event; The Year Without Sun)"
 )
 
 _SAMPLE_SLOTS_JSON: Final = json.dumps(_SAMPLE_SLOTS, ensure_ascii=False)
@@ -309,7 +309,7 @@ def interview_sample_variables() -> dict[str, object]:
     and roster are the ones the other bundled samples use.
     """
     return {
-        **novel_variables("Der Nebel", "Mystery"),
+        **novel_variables("The Fog", "Mystery"),
         "entity_type": _SAMPLE_ENTITY_TYPE,
         "slots": _SAMPLE_SLOTS_JSON,
         "relations": _SAMPLE_RELATIONS_JSON,

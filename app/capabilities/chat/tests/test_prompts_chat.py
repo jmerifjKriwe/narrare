@@ -19,9 +19,9 @@ from app.kernel.retrieval import Passage
 if TYPE_CHECKING:
     import pytest
 
-QUESTION = "Wo war der Leuchtturm?"
-FIRST_PASSAGE = "Der Leuchtturm am Horizont war seit Jahren dunkel."
-SECOND_PASSAGE = "Mira betrat das alte Haus am See."
+QUESTION = "Where was the lighthouse?"
+FIRST_PASSAGE = "The lighthouse on the horizon had been dark for years."
+SECOND_PASSAGE = "Mira entered the old house by the lake."
 
 
 def _passage(text: str) -> Passage:
@@ -179,7 +179,7 @@ def test_the_sample_renders_through_the_contract() -> None:
     from app.capabilities.chat.prompts import CHAT_TEMPLATE, chat_contract, sample_variables
 
     rendered = render_source(CHAT_TEMPLATE, sample_variables(), include=no_includes)
-    assert "Question: Wo war der Leuchtturm?" in rendered
+    assert "Question: Where was the lighthouse?" in rendered
     assert SOURCE_PREFIX in rendered
     assert chat_contract(rendered) is True
 

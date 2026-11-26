@@ -35,10 +35,10 @@ GOLDENS: dict[str, str] = {
         "Answer the question using only the sources below. Quote the passage that "
         "carries the answer verbatim, and do not add knowledge from outside them.\n"
         "\n"
-        "Question: Wo war der Leuchtturm?\n"
+        "Question: Where was the lighthouse?\n"
         "\n"
         "Sources:\n"
-        "SOURCE: Der Leuchtturm am Horizont war seit Jahren dunkel.\n"
+        "SOURCE: The lighthouse on the horizon had been dark for years.\n"
     ),
     "knowledge.extract-entities": (
         "PURPOSE: extract-entities\n"
@@ -56,9 +56,9 @@ GOLDENS: dict[str, str] = {
         'array, empty when it proposes none. Answer with {"items": []} when the '
         "chapter proposes no entity.\n"
         "\n"
-        "Chapter: Ankunft\n"
+        "Chapter: Arrival\n"
         "Text:\n"
-        "SOURCE: Der Nebel kam von See.\n"
+        "SOURCE: The fog came from the lake.\n"
     ),
     "knowledge.check-consistency": (
         "PURPOSE: check-consistency\n"
@@ -74,21 +74,21 @@ GOLDENS: dict[str, str] = {
         "\n"
         "The story's accepted entities, as grounding:\n"
         "Mira (character)\n"
-        "Haus (location)\n"
+        "House (location)\n"
         "\n"
-        "Chapter: Ankunft\n"
+        "Chapter: Arrival\n"
         "Text:\n"
-        "SOURCE: Der Nebel kam von See.\n"
+        "SOURCE: The fog came from the lake.\n"
         "\n"
-        "Chapter: Später\n"
+        "Chapter: Later\n"
         "Text:\n"
-        "SOURCE: Mira betrat das alte Haus.\n"
+        "SOURCE: Mira entered the old house.\n"
     ),
     "knowledge.entity-interview": (
         "PURPOSE: entity-interview\n"
         "\n"
         "You are interviewing the writer to build one new entity for the novel "
-        '"Der Nebel" in the genre Mystery.\n'
+        '"The Fog" in the genre Mystery.\n'
         "Ask exactly one question per turn — the most useful one for this entity — and\n"
         "never tell the writer what type of entity it is. When nothing useful is left\n"
         "to ask, say so in your reply and stop.\n"
@@ -131,12 +131,12 @@ GOLDENS: dict[str, str] = {
         "SLOTS: {}\n"
         "RELATIONS: []\n"
         "TURNS:\n"
-        "ASSISTANT: Wie heißt die Figur, und welche Rolle spielt sie in der Geschichte?\n"
-        "USER: Eine Wächterin am See; einen Namen habe ich noch nicht.\n"
+        "ASSISTANT: What is the character's name, and what role do they play in the story?\n"
+        "USER: A keeper by the lake; I don't have a name yet.\n"
         "ROSTER:\n"
-        "Mira (character; Die Wanderin)\n"
-        "Haus (location; Das Haus am See)\n"
-        "Der Winter (event; Das Jahr ohne Sonne)\n"
+        "Mira (character; The Wanderer)\n"
+        "House (location; The House by the Lake)\n"
+        "Winter (event; The Year Without Sun)\n"
         "REQUEST: answer\n"
     ),
     "writing.continuation": (
@@ -180,13 +180,43 @@ def test_every_bundled_prompt_renders_its_golden_sample(key: str) -> None:
         assert spec.contract(rendered), f"the bundled render of '{key}' fails its contract"
 
 
-def test_the_writing_sample_speaks_english_not_german() -> None:
-    """The sample is the editor's legend in every catalog, so it carries no
-    German prose: the English UI must not teach a German example."""
-    sample = get_registry().spec("writing.continuation").sample_variables()
-    text = "\n".join(str(value) for value in sample.values())
-    for marker in ("ä", "ö", "ü", "ß", "Nebel", "Wanderin", "zögern"):
-        assert marker not in text, f"the writing sample still carries German {marker!r}"
+GERMAN_SAMPLE_MARKERS = (
+    "ä",
+    "ö",
+    "ü",
+    "ß",
+    "Nebel",
+    "Wanderin",
+    "zögern",
+    "Leuchtturm",
+    "Ankunft",
+    "Später",
+    "Haus",
+    "Der Winter",
+    "Das Jahr ohne Sonne",
+    "betrat",
+    "alte",
+    "Wächterin",
+    "Wie heißt",
+    "Eine",
+)
+"""Tokens that betray a German example in the editor's legend. ``Winter`` alone
+is a legitimate language-neutral entity name in the translated roster, so the
+German marker is the phrase ``Der Winter``."""
+
+
+def test_every_bundled_sample_speaks_english_not_german() -> None:
+    """Every registered factory is the editor's legend in every catalog, so no
+    sample may carry German prose: the English UI must not teach a German
+    example."""
+    offenders: dict[str, list[str]] = {}
+    for key in get_registry().keys():  # noqa: SIM118 — the registry is not iterable
+        sample = get_registry().spec(key).sample_variables()
+        text = "\n".join(str(value) for value in sample.values())
+        found = [marker for marker in GERMAN_SAMPLE_MARKERS if marker in text]
+        if found:
+            offenders[key] = found
+    assert offenders == {}
 
 
 def test_the_registry_holds_exactly_the_pinned_keys() -> None:
