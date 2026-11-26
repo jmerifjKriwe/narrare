@@ -34,11 +34,11 @@ it from here."""
 
 MAX_RELATIONS = 12
 """The spec's bound on one proposal's relation set — «at most 12 relations»
-(2026-11-20 design). Two guards hold it: both doors that carry a proposal
-refuse a thirteenth line — the create endpoint with ``relation-limit`` — and
-the interview keeps the set at the bound inside the session, its normalisation
-cutting one answer at twelve and its merge cutting the merged set at twelve,
-so two answers computed against the same older proposal cannot add past it.
+(2026-11-20 design). Two consumers hold it, each in its own shape: the create
+endpoint refuses a thirteenth line with ``relation-limit``, while the interview
+never refuses a line — its normalisation cuts one answer at twelve and its
+merge cuts the merged set at twelve, so the stored proposal stays at the bound
+and two answers computed against the same older proposal cannot add past it.
 Chat and knowledge never import each other (rule 1), so the bound lives here
 and both import it."""
 
