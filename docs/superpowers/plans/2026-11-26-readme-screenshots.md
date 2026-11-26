@@ -250,7 +250,7 @@ Reviewer reads the legacy-name audit, selector/route changes, update-check pin a
 
 - [ ] **Step 1: Add failing documentation-link assertions**
 
-Extend `test_screenshot_assets.py` to assert `docs/README.md` links to `screenshots/README.md` and `docs/design/stitch/README.md` links to `../screenshots/README.md` instead of duplicating the master-file list.
+Extend `test_screenshot_assets.py` to assert `docs/README.md` links to `screenshots/README.md` and `docs/design/stitch/README.md` links to `../../screenshots/README.md` instead of duplicating the master-file list.
 
 - [ ] **Step 2: Run tests and verify failure**
 
@@ -259,7 +259,7 @@ Expected: FAIL on the missing links.
 
 - [ ] **Step 3: Add the documentation links**
 
-Add the screenshot collection under "Using the application" in `docs/README.md`. In `docs/design/stitch/README.md`, replace the duplicated 19-file list with a link to `../screenshots/README.md` and a short note that Stitch reference screens remain design evidence, not product captures.
+Add the screenshot collection under "Using the application" in `docs/README.md`. In `docs/design/stitch/README.md`, replace the duplicated 19-file list with a link to `../../screenshots/README.md` and a short note that Stitch reference screens remain design evidence, not product captures.
 
 - [ ] **Step 4: Run the asset tests**
 
