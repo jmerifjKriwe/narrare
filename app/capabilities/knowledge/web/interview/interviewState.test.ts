@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 
 import type { AssistantSession, AssistantTurnRead, Proposal } from "@shell/lib/api/client";
 
-import { interviewFace, pendingSuggestion, readyToSave } from "./interviewState";
+import { interviewFace, ENTITY_TYPE_ORDER, OPENING_KEYS, openingQuestionKey, pendingSuggestion, readyToSave } from "./interviewState";
 
 function turn(overrides: Partial<AssistantTurnRead> & { seq: number }): AssistantTurnRead {
   return {
@@ -52,8 +52,15 @@ describe("the face follows the session", () => {
   });
 
   it("thinks while a turn runs, before any other face", () => {
+    // A standing failure does not compete with the running turn: the panel
+    // says that it is thinking, and the failed face returns only afterwards.
     expect(
-      interviewFace({ session: open, turns: [], pending: true, failure: null }),
+      interviewFace({
+        session: open,
+        turns: [],
+        pending: true,
+        failure: { code: "provider-error" },
+      }),
     ).toBe("thinking");
   });
 
@@ -107,6 +114,22 @@ describe("the pending suggestion is the newest unsettled one", () => {
 
   it("is absent when nothing is pending", () => {
     expect(pendingSuggestion([turn({ seq: 1, role: "user", text: "Hallo" })])).toBeNull();
+  });
+});
+
+describe("the opening question follows the type", () => {
+  it("names every type's own question", () => {
+    for (const type of ENTITY_TYPE_ORDER) {
+      expect(openingQuestionKey(type)).toBe(OPENING_KEYS[type]);
+    }
+  });
+
+  it("falls back to the generic question for a type the contract may add later", () => {
+    // The type comes from a contract that may grow: an unknown name, an absent
+    // one and an interview without a session all ask the generic question.
+    expect(openingQuestionKey("artifact")).toBe("knowledge.interview.opening.generic");
+    expect(openingQuestionKey(null)).toBe("knowledge.interview.opening.generic");
+    expect(openingQuestionKey(undefined)).toBe("knowledge.interview.opening.generic");
   });
 });
 
