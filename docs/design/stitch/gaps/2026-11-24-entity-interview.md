@@ -150,7 +150,10 @@ names the owner of the trigger and the row's child under the wave's index.
   refusal with the create endpoint's coded 422, a wire shape no surface shows
   (the dialog caught a blank label before and after), so under `AGENTS.md` it
   is a hidden type and the next release's notes carry one line more than the
-  writer sees.
+  writer sees. And `8b44dbd9b` carries two `User-visible:` lines in one
+  commit — the saved proposal's shut door and the manual dialog's focus
+  return; both true, but the notes' convention is one line per commit, so
+  the release entry may read double.
 
 ## Known-pattern notes (no row owed — the pattern is the record)
 
