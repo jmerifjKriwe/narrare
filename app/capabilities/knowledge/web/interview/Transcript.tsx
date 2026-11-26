@@ -205,6 +205,9 @@ export function Transcript({
   // The one pending suggestion the face and the acts act on.
   const newest = pendingSuggestion(turns);
 
+  // The log — the conversation's turns, scrollable while it outgrows the
+  // panel. The tabIndex keeps the scrollable region on the keyboard (the
+  // scrollable-region rule the axe floor runs).
   return (
     <div
       data-testid="entity-interview-transcript"

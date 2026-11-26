@@ -78,6 +78,9 @@ export function ProposalCard({
           </span>
         </span>
       </button>
+      {/* The body — the proposal's rows, scrollable while they outgrow the
+          card. The tabIndex keeps the scrollable region on the keyboard (the
+          scrollable-region rule the axe floor runs). */}
       {expanded && (
         <div
           id={bodyId}
