@@ -37,20 +37,73 @@ _NAME = re.compile(r"\d{2}-[a-z0-9-]+")
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 _MARKDOWN = re.compile(r"([\\`*_\[\]<>#])")
 _LINK_ROOT = "../../assets/screenshots"
-STAND_IN_DISCLOSURE = (
-    "Some frames use deterministic stand-ins at the model boundary: the dossiers frame "
-    "shows extraction output from the fake extraction provider, the knowledge-dock frame "
-    "shows a finding from the fake consistency provider, the AI-rules frame (29) shows "
-    "the fake provider card, both interview frames (33 and 34) show stand-in replies, and "
-    "the continuation frame uses the chat stand-in."
+
+
+@dataclass(frozen=True)
+class StandIn:
+    """One surface whose frame shows a deterministic model stand-in.
+
+    One list feeds both disclosures: the collection index cites frame numbers,
+    the README cannot show them. A surface added here reaches both pages, so a
+    new stand-in cannot be disclosed in one place and omitted from the other.
+    """
+
+    surface: str
+    """The frame's name inside the sentence, e.g. ``dossiers``."""
+    clause: str
+    """What the frame shows, verb included."""
+    frames: tuple[str, ...] = ()
+    """The collection's frame numbers, cited in the index only."""
+    both: bool = False
+    """The surface appears in two frames, so the sentence says ``both``."""
+
+
+STAND_INS: tuple[StandIn, ...] = (
+    StandIn(
+        "dossiers",
+        "shows extraction output from the fake extraction provider",
+    ),
+    StandIn(
+        "knowledge-dock",
+        "shows a finding from the fake consistency provider",
+    ),
+    StandIn(
+        "AI-rules",
+        "shows the fake provider card",
+        frames=("29",),
+    ),
+    StandIn(
+        "interview",
+        "show stand-in replies",
+        frames=("33", "34"),
+        both=True,
+    ),
+    StandIn(
+        "continuation",
+        "uses the chat stand-in",
+    ),
 )
-README_STAND_IN_DISCLOSURE = (
-    "Some frames use deterministic stand-ins at the model boundary: the dossiers frame "
-    "shows extraction output from the fake extraction provider, the knowledge-dock frame "
-    "shows a finding from the fake consistency provider, the AI-rules frame shows the "
-    "fake provider card, both interview frames show stand-in replies, and the continuation "
-    "frame uses the chat stand-in."
-)
+"""Every surface whose frame reaches a model through the deterministic stand-in."""
+
+_STAND_IN_LEAD = "Some frames use deterministic stand-ins at the model boundary: "
+
+
+def render_stand_in_disclosure(stand_ins: Sequence[StandIn], *, frames: bool) -> str:
+    """One sentence naming every stand-in surface, numbered for the index only."""
+    clauses: list[str] = []
+    for entry in stand_ins:
+        subject = f"both {entry.surface} frames" if entry.both else f"the {entry.surface} frame"
+        if frames and entry.frames:
+            subject = f"{subject} ({' and '.join(entry.frames)})"
+        clauses.append(f"{subject} {entry.clause}")
+    if not clauses:
+        raise ValueError("a stand-in disclosure needs at least one surface")
+    body = ", ".join(clauses[:-1]) + f", and {clauses[-1]}"
+    return f"{_STAND_IN_LEAD}{body}."
+
+
+STAND_IN_DISCLOSURE = render_stand_in_disclosure(STAND_INS, frames=True)
+README_STAND_IN_DISCLOSURE = render_stand_in_disclosure(STAND_INS, frames=False)
 
 
 def _escape_markdown(text: str) -> str:

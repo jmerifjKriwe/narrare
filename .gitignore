@@ -54,8 +54,9 @@ web/.turbo/
 # pnpm
 .pnpm-store/
 
-# Screenshot publication recovery data (kept after a failed restore)
-assets/.screenshots-backup-*
+# Screenshot capture staging (.screenshots-<random>) and publication recovery
+# data (.screenshots-backup-*), kept after a failed restore
+assets/.screenshots-*
 
 # Browser test artifacts
 web/playwright-report/

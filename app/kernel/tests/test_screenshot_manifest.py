@@ -7,10 +7,13 @@ import pytest
 
 from scripts.screenshot_manifest import (
     README_SHOTS,
+    README_STAND_IN_DISCLOSURE,
     SHOTS,
     STAND_IN_DISCLOSURE,
+    STAND_INS,
     Shot,
     render_index,
+    render_stand_in_disclosure,
     validate_shots,
 )
 
@@ -69,12 +72,24 @@ def test_required_surfaces_and_readme_selection_exist() -> None:
 def test_index_discloses_the_model_stand_ins() -> None:
     rendered = render_index(SHOTS)
     assert STAND_IN_DISCLOSURE in rendered
-    assert "dossiers frame" in STAND_IN_DISCLOSURE
-    assert "fake extraction provider" in STAND_IN_DISCLOSURE
-    assert "fake provider card" in STAND_IN_DISCLOSURE
-    assert "both interview frames (33 and 34)" in STAND_IN_DISCLOSURE
-    assert "continuation frame" in STAND_IN_DISCLOSURE
-    assert "fake consistency provider" in STAND_IN_DISCLOSURE
+    for entry in STAND_INS:
+        subject = f"both {entry.surface} frames" if entry.both else f"the {entry.surface} frame"
+        assert subject in rendered, entry.surface
+        if entry.frames:
+            assert f"{subject} ({' and '.join(entry.frames)})" in rendered, entry.surface
+
+
+def test_disclosures_derive_from_one_structured_stand_in_list() -> None:
+    assert render_stand_in_disclosure(STAND_INS, frames=True) == STAND_IN_DISCLOSURE
+    assert render_stand_in_disclosure(STAND_INS, frames=False) == README_STAND_IN_DISCLOSURE
+    for entry in STAND_INS:
+        subject = f"both {entry.surface} frames" if entry.both else f"the {entry.surface} frame"
+        assert subject in README_STAND_IN_DISCLOSURE, entry.surface
+        assert subject in STAND_IN_DISCLOSURE, entry.surface
+        if entry.frames:
+            cited = f"({' and '.join(entry.frames)})"
+            assert cited in STAND_IN_DISCLOSURE, entry.surface
+            assert cited not in README_STAND_IN_DISCLOSURE, entry.surface
 
 
 def test_index_links_every_master_once() -> None:

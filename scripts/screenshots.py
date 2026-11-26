@@ -9,7 +9,9 @@ the names here are the manifest's, so the PNG directory and
 
 The call captures into a temporary sibling directory and replaces the target
 set — removals included — only after every frame landed. A failed capture
-leaves the previous masters and the previous index untouched.
+leaves the previous masters and the previous index untouched;
+``scripts.screenshots_publish`` owns that replacement, backing up each output
+on its own filesystem and restoring both on failure.
 
 Nothing here is mocked except the model at its boundary, the seam every E2E
 suite uses: the chat stand-in answers the continuation and the interview's JSON
@@ -39,7 +41,6 @@ falls back to a system face, so another machine may render it differently.
 
 import argparse
 import json
-import os
 import shutil
 import tempfile
 import time
@@ -55,9 +56,9 @@ from app.kernel.testing.jobs import wait_for_job
 from app.kernel.testing.stack import API_PORT, WEB_PORT, run_stack, stop_shared_web
 from app.kernel.testing.vendor import chat_vendor
 from scripts.screenshot_manifest import SHOTS, render_index, validate_shots
+from scripts.screenshots_publish import publish
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
     from typing import Literal
 
     from playwright.sync_api import Page
@@ -886,149 +887,6 @@ def capture(out: Path) -> list[Path]:
     return written
 
 
-def _write_index_temp(index: Path, text: str) -> Path:
-    """Write the overview beside its target; the caller replaces atomically."""
-    index.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, name = tempfile.mkstemp(prefix=f".{index.name}-", dir=index.parent)
-    path = Path(name)
-    try:
-        handle = os.fdopen(descriptor, "w", encoding="utf-8", newline="\n")
-    except BaseException:
-        os.close(descriptor)
-        path.unlink(missing_ok=True)
-        raise
-    try:
-        with handle:
-            handle.write(text)
-    except BaseException:
-        path.unlink(missing_ok=True)
-        raise
-    return path
-
-
-def _move(source: Path, target: Path) -> None:
-    """Move one output aside; rename is atomic within the worktree."""
-    source.rename(target)
-
-
-def _remove(path: Path) -> None:
-    """Remove a file or directory if it exists."""
-    if path.is_dir():
-        shutil.rmtree(path)
-    elif path.exists():
-        path.unlink()
-
-
-def _publish(
-    staged: Path,
-    out: Path,
-    index: Path,
-    written: Iterable[Path],
-    *,
-    swap: Callable[[Path, Path], None] = _move,
-) -> None:
-    """Replace both outputs only after a full capture, with a joint rollback.
-
-    The previous masters and index are moved aside first; both stay in the
-    backup directory until the new masters and the new index have both landed.
-    Any failure removes whatever new output was written and restores both
-    previous outputs. The backup is discarded only after a successful publish
-    or a complete restore; a failed restore keeps it, and the raised error
-    names its path. ``swap`` is the publish move seam; tests inject ``swap``,
-    ``_move`` and ``_remove`` separately to fail the index swap, a restore, or
-    a rollback without filesystem timing tricks.
-    """
-    expected = {shot.filename for shot in SHOTS}
-    actual = {path.name for path in written}
-    if actual != expected:
-        missing = sorted(expected - actual)
-        extra = sorted(actual - expected)
-        raise SystemExit(
-            f"the capture set does not match the manifest: missing={missing} extra={extra}"
-        )
-    # The backup root exists before the index is staged, so a failed mkdtemp
-    # cannot leave an index temp behind.
-    backup_root = Path(tempfile.mkdtemp(prefix=f".{out.name}-backup-", dir=out.parent))
-    staged_index: Path | None = None
-    previous_out = backup_root / "masters"
-    previous_index = backup_root / "index"
-    had_out = out.exists()
-    had_index = index.exists()
-    moved_out = False
-    moved_index = False
-    safe_to_discard = False
-    try:
-        try:
-            temp_index = _write_index_temp(index, render_index(SHOTS))
-        except BaseException:
-            # Nothing was moved aside, so the backup holds no previous output
-            # and the empty directory can go.
-            safe_to_discard = True
-            raise
-        staged_index = temp_index
-
-        def rollback() -> bool:
-            """Remove new outputs and restore both previous outputs."""
-            failures = False
-            if moved_out or not had_out:
-                try:
-                    _remove(out)
-                except BaseException:
-                    failures = True
-            if moved_index or not had_index:
-                try:
-                    _remove(index)
-                except BaseException:
-                    failures = True
-            restored_out = not moved_out
-            restored_index = not moved_index
-            if moved_out and previous_out.exists():
-                try:
-                    _move(previous_out, out)
-                except BaseException:
-                    failures = True
-                else:
-                    restored_out = True
-            if moved_index and previous_index.exists():
-                try:
-                    _move(previous_index, index)
-                except BaseException:
-                    failures = True
-                else:
-                    restored_index = True
-            return not failures and restored_out and restored_index
-
-        try:
-            if had_out:
-                swap(out, previous_out)
-                moved_out = True
-            if had_index:
-                swap(index, previous_index)
-                moved_index = True
-            swap(staged, out)
-            swap(temp_index, index)
-            safe_to_discard = True
-        except BaseException as error:
-            try:
-                rollback_complete = rollback()
-            except BaseException as rollback_error:
-                raise RuntimeError(
-                    f"publish failed ({error}); rollback aborted ({rollback_error}); "
-                    f"previous outputs kept in {backup_root}"
-                ) from rollback_error
-            if not rollback_complete:
-                raise RuntimeError(
-                    f"publish failed ({error}); previous outputs kept in {backup_root}"
-                ) from error
-            safe_to_discard = True
-            raise
-    finally:
-        if staged_index is not None:
-            staged_index.unlink(missing_ok=True)
-        if safe_to_discard:
-            shutil.rmtree(backup_root, ignore_errors=True)
-
-
 def main(argv: list[str] | None = None) -> int:
     """Write the README's images; exit non-zero when the capture is incomplete."""
     validate_shots(SHOTS)
@@ -1051,8 +909,10 @@ def main(argv: list[str] | None = None) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=f".{out.name}-", dir=out.parent))
     try:
-        written = capture(staging)
-        _publish(staging, out, args.index, written)
+        capture(staging / "masters")
+        staged_index = staging / args.index.name
+        staged_index.write_text(render_index(SHOTS), encoding="utf-8", newline="\n")
+        publish(out, args.index, staging / "masters", staged_index)
     finally:
         shutil.rmtree(staging, ignore_errors=True)
     return 0
