@@ -168,26 +168,137 @@ def test_stitch_readme_links_the_collection_instead_of_the_masters() -> None:
     assert "Reference screenshots uploaded into the same Stitch project" not in paragraph
 
 
+_INLINE_MARKDOWN_LINK = re.compile(
+    r"!?\[[^\]]*\]\(\s*"
+    r"(?:<(?P<angle>[^>]*)>|(?P<bare>[^\s)]+))"
+    r'(?:\s+(?:"[^"]*"|\'[^\']*\'|\([^)]*\)))?'
+    r"\s*\)"
+)
+_REFERENCE_DEFINITION = re.compile(r"^ {0,3}\[[^\]]+\]:\s*(?:<(?P<angle>[^>]*)>|(?P<bare>\S+))")
+_ABSOLUTE_TARGET = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+
+
+def _link_target(match: re.Match[str]) -> str | None:
+    return match.group("angle") if match.group("angle") is not None else match.group("bare")
+
+
+def _markdown_link_targets(text: str) -> list[str]:
+    """Every inline link and reference definition target in a Markdown text.
+
+    An inline target may be ``<...>``-wrapped and followed by a title. A
+    reference-style usage resolves through its definition, so only the
+    definition line carries the target. Fragments stay attached here; the
+    resolver strips them.
+    """
+    targets: list[str] = []
+    for match in _INLINE_MARKDOWN_LINK.finditer(text):
+        target = _link_target(match)
+        if target is not None:
+            targets.append(target)
+    for line in text.splitlines():
+        match = _REFERENCE_DEFINITION.match(line)
+        if match is not None:
+            target = _link_target(match)
+            if target is not None:
+                targets.append(target)
+    return targets
+
+
 def _relative_markdown_targets(readme: Path) -> list[str]:
-    """Every repository-relative link target in a Markdown file."""
-    text = readme.read_text(encoding="utf-8")
+    """Every repository-relative link target in a Markdown file.
+
+    Pure fragments and absolute URLs name no file in the repository and are
+    dropped.
+    """
+    targets = _markdown_link_targets(readme.read_text(encoding="utf-8"))
     return [
         target
-        for target in _markdown_targets(text)
-        if not target.startswith(("#", "http://", "https://", "mailto:"))
+        for target in targets
+        if target and not target.startswith("#") and not _ABSOLUTE_TARGET.match(target)
     ]
+
+
+def _resolve_markdown_target(readme: Path, target: str, *, root: Path = ROOT) -> Path:
+    """Resolve a local Markdown target, repository-rooted or file-relative."""
+    path = target.split("#", 1)[0]
+    if path.startswith("/"):
+        return (root / path.lstrip("/")).resolve()
+    return (readme.parent / path).resolve()
+
+
+def test_relative_markdown_targets_read_every_link_form(tmp_path: Path) -> None:
+    document = tmp_path / "README.md"
+    document.write_text(
+        "\n".join(
+            [
+                "[plain](docs/plain.md)",
+                '[titled](docs/titled.md "A title")',
+                "[wrapped](<docs/a path.md>)",
+                "[fragment](docs/plain.md#a-section)",
+                "[rooted](/docs/rooted.md)",
+                "[reference][ref]",
+                "[ref]: docs/reference.md",
+                '[angled]: <docs/angled path.md> "Reference title"',
+                "[remote](https://example.com/remote.md)",
+                "[anchor](#top)",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert _relative_markdown_targets(document) == [
+        "docs/plain.md",
+        "docs/titled.md",
+        "docs/a path.md",
+        "docs/plain.md#a-section",
+        "/docs/rooted.md",
+        "docs/reference.md",
+        "docs/angled path.md",
+    ]
+
+
+def test_markdown_targets_resolve_as_written(tmp_path: Path) -> None:
+    source = tmp_path / "docs" / "design" / "stitch"
+    source.mkdir(parents=True)
+    document = source / "README.md"
+    document.write_text(
+        "\n".join(
+            [
+                "[plain](docs/plain.md)",
+                '[titled](docs/titled.md "A title")',
+                "[wrapped](<docs/a path.md>)",
+                "[fragment](docs/plain.md#a-section)",
+                "[rooted](/docs/rooted.md)",
+                "[reference][ref]",
+                "[ref]: docs/reference.md",
+                '[angled]: <docs/angled path.md> "Reference title"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    for relative in ("docs/plain.md", "docs/titled.md", "docs/a path.md", "docs/reference.md"):
+        path = source / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# here\n", encoding="utf-8")
+    rooted = tmp_path / "docs" / "rooted.md"
+    rooted.parent.mkdir(parents=True, exist_ok=True)
+    rooted.write_text("# here\n", encoding="utf-8")
+    angled = source / "docs" / "angled path.md"
+    angled.write_text("# here\n", encoding="utf-8")
+
+    for target in _relative_markdown_targets(document):
+        assert _resolve_markdown_target(document, target, root=tmp_path).is_file(), target
 
 
 def test_all_relative_stitch_markdown_links_resolve() -> None:
     targets = _relative_markdown_targets(STITCH_README)
-    assert targets, "the Stitch overview links no local file"
-    assert any("superpowers/specs/" in target for target in targets), (
-        "the spec links are gone or the link parser missed them"
-    )
+    parsed = {Path(target.split("#", 1)[0]).name for target in targets}
+    assert {
+        "2026-10-22-frontend-design.md",
+        "2026-10-21-narrare-v2-architecture-design.md",
+    } <= parsed, "the Stitch overview's spec links were not parsed"
     missing = [
-        target
-        for target in targets
-        if not (STITCH_README.parent / target.split("#", 1)[0]).resolve().exists()
+        target for target in targets if not _resolve_markdown_target(STITCH_README, target).exists()
     ]
     assert not missing, f"unresolved Stitch overview links: {missing}"
 
