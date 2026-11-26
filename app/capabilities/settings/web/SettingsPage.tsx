@@ -31,7 +31,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { SettingsHub } from "@shell/components/SettingsHub";
-import { catalogs, type Locale } from "@shell/lib/generated/catalogs";
+import { catalogs, localeOrder } from "@shell/lib/generated/catalogs";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
 import { useLanguageChoice } from "@shell/lib/language";
@@ -42,9 +42,6 @@ import { ProfileForm } from "./profileForm";
 import { UpdatesSection } from "./UpdatesSection";
 
 const SERIF = "[font-family:var(--font-serif)]";
-
-/** The switcher's drafted order — DE|EN|FR, the one contract's order. */
-const LANGUAGE_CARDS: readonly Locale[] = ["de", "en", "fr"];
 
 /** The hash address table (the user block's doors and deep links): a
  *  section address names the field that answers it. A hash outside the
@@ -143,7 +140,7 @@ export function SettingsPage() {
                     {t("settings.language.label")}
                   </span>
                   <div role="radiogroup" aria-label={t("settings.language.label")} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    {LANGUAGE_CARDS.map((code) => {
+                    {localeOrder.map((code) => {
                       const active = locale === code;
                       return (
                         <label

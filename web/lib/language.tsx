@@ -23,15 +23,16 @@
  * written choice.
  *
  * The radio face keeps the doors' drafted geometry (the welcome's
- * separators, the wizard's compact pill) and the draft's DE|EN|FR order —
- * the generated catalog order is the compiler's, not the design's. Its
- * keyboard contract: arrows cycle and wrap, Home/End jump to the ends,
- * Space/Enter select; the move selects and focuses, and the roving
- * tabindex keeps the group one tab stop. The chip face is a menu button
- * (aria-haspopup="menu"): arrows walk the open menu without choosing,
- * Enter/Space/click choose and return focus to the trigger, Escape closes
- * innermost-first, an outside press closes without stealing focus — the
- * quick menu's popover discipline, on the draft's tile-5 geometry.
+ * separators, the wizard's compact pill) and the registry's order — the one
+ * list the switcher, the settings cards and the manuscript segment read, so
+ * no face keeps a code of its own. Its keyboard contract: arrows cycle and
+ * wrap, Home/End jump to the ends, Space/Enter select; the move selects and
+ * focuses, and the roving tabindex keeps the group one tab stop. The chip
+ * face is a menu button (aria-haspopup="menu"): arrows walk the open menu
+ * without choosing, Enter/Space/click choose and return focus to the
+ * trigger, Escape closes innermost-first, an outside press closes without
+ * stealing focus — the quick menu's popover discipline, on the draft's
+ * tile-5 geometry.
  */
 import {
   Fragment,
@@ -46,15 +47,12 @@ import {
 } from "react";
 
 import { client } from "./api/client";
-import { catalogs } from "./generated/catalogs";
+import { catalogs, localeOrder } from "./generated/catalogs";
 import { useTranslation } from "./i18n";
 import { activeLocale, applyLocale, chosenLocale, subscribeLocale, type Locale } from "./locale";
 import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
 import { queryClient } from "./query";
 import { Icon } from "../ui/icons";
-
-/** The draft draws DE|EN|FR with DE leading; every face keeps that order. */
-const SWITCHER_ORDER: readonly Locale[] = ["de", "en", "fr"];
 
 /** The shell's focus ring on every control the contract offers. */
 const FOCUS =
@@ -221,7 +219,7 @@ export function LanguageSwitcher({
   /** The radio group's keyboard contract: arrows cycle and wrap, Home/End
    *  jump to the ends, Space/Enter select; the move selects and focuses. */
   function radioKey(event: KeyboardEvent<HTMLButtonElement>, at: number) {
-    const span = SWITCHER_ORDER.length;
+    const span = localeOrder.length;
     let next: number;
     if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (at + 1) % span;
     else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (at - 1 + span) % span;
@@ -230,14 +228,14 @@ export function LanguageSwitcher({
     else if (event.key === " " || event.key === "Enter") next = at;
     else return;
     event.preventDefault();
-    const code = SWITCHER_ORDER[next];
+    const code = localeOrder[next];
     void choose(code);
     radioRefs.current[code]?.focus();
   }
 
   return (
     <div role="radiogroup" aria-label={t("shell.language")} className={face.group}>
-      {SWITCHER_ORDER.map((code, at) => (
+      {localeOrder.map((code, at) => (
         <Fragment key={code}>
           {face.separators && at > 0 ? (
             <span aria-hidden="true" className="text-outline-variant opacity-40">
@@ -283,7 +281,7 @@ export function LanguageChip() {
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const itemRefs = useRef<Partial<Record<Locale, HTMLButtonElement | null>>>({});
 
-  const activeAt = SWITCHER_ORDER.indexOf(locale);
+  const activeAt = localeOrder.indexOf(locale);
 
   const close = useCallback((returnFocus: boolean) => {
     setOpen(false);
@@ -323,7 +321,7 @@ export function LanguageChip() {
   // choice closes the menu, so the active row only moves while it stands
   // if another face switched the language — the focus follows the check.
   useEffect(() => {
-    if (open) itemRefs.current[SWITCHER_ORDER[activeAt]]?.focus();
+    if (open) itemRefs.current[localeOrder[activeAt]]?.focus();
   }, [open, activeAt]);
 
   /** The trigger's keyboard: ArrowDown/ArrowUp open the menu; Enter/Space
@@ -337,7 +335,7 @@ export function LanguageChip() {
   /** The menu's keyboard: arrows walk with wrap without choosing, Home/End
    *  jump, Enter/Space choose, Tab closes and advances past the trigger. */
   function itemKey(event: KeyboardEvent<HTMLButtonElement>, at: number) {
-    const span = SWITCHER_ORDER.length;
+    const span = localeOrder.length;
     let next: number;
     if (event.key === "ArrowDown") next = (at + 1) % span;
     else if (event.key === "ArrowUp") next = (at - 1 + span) % span;
@@ -345,7 +343,7 @@ export function LanguageChip() {
     else if (event.key === "End") next = span - 1;
     else if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      pick(SWITCHER_ORDER[at]);
+      pick(localeOrder[at]);
       return;
     } else if (event.key === "Tab") {
       // Close and hand focus back to the trigger; the default Tab action
@@ -354,7 +352,7 @@ export function LanguageChip() {
       return;
     } else return;
     event.preventDefault();
-    itemRefs.current[SWITCHER_ORDER[next]]?.focus();
+    itemRefs.current[localeOrder[next]]?.focus();
   }
 
   return (
@@ -388,7 +386,7 @@ export function LanguageChip() {
           aria-label={t("shell.language")}
           className="absolute right-0 top-full z-50 mt-1 w-[190px] space-y-1 rounded-lg border border-border bg-surface-container-lowest p-1.5 shadow-overlay"
         >
-          {SWITCHER_ORDER.map((code, at) => (
+          {localeOrder.map((code, at) => (
             <button
               key={code}
               type="button"

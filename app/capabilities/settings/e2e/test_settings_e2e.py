@@ -61,6 +61,7 @@ BASE = WEB_URL
 # The catalog's own words, pinned where a leg leans on them (de-DE context).
 HEADING_DE = "Atelier-Einstellungen"
 HEADING_EN = "Atelier settings"
+LANGUAGE_LABEL_DE = "Oberflächensprache"
 NAME_LABEL = "Autorenname"
 GOAL_LABEL = "Tagesziel (Wörter)"
 SAVE = "Änderungen speichern"
@@ -203,6 +204,19 @@ def test_the_language_cards_flip_at_once_and_carry_the_wire(page: Page, installe
     follow = page.get_by_role("checkbox", name=FOLLOW_DE)
     expect(follow).to_be_checked()
     expect(page.get_by_role("radio", name="Deutsch")).to_be_checked()
+
+
+def test_the_language_cards_follow_the_registry_order(page: Page, installed: Stack) -> None:
+    goto_settings(page)
+    expect(page.get_by_role("heading", name=HEADING_DE)).to_be_visible()
+
+    cards = page.get_by_role("radiogroup", name=LANGUAGE_LABEL_DE).get_by_role("radio")
+    expect(cards).to_have_count(3)
+    assert [card.get_attribute("aria-label") for card in cards.all()] == [
+        "Deutsch",
+        "English",
+        "Français",
+    ]
 
 
 def test_the_theme_flips_persists_and_shares_the_one_seam(page: Page, installed: Stack) -> None:
