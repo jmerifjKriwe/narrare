@@ -117,6 +117,11 @@ export function LoreGraphPage() {
    *  — during the end request's flight, through a failed end, and through
    *  hiding and re-selecting. The ended face clears the mark. */
   const [handedOver, setHandedOver] = useState<string | null>(null);
+  /** The interviews whose face the panel reported ended. The ended face
+   *  renders «Neues Interview» instead of «Interview beenden» and keeps the
+   *  save door live, so it is the one place the prefilled dialog's opener must
+   *  not name the end action — even if another handover re-marks the id. */
+  const [endedInterviews, setEndedInterviews] = useState<ReadonlySet<string>>(() => new Set());
   const closeInterview = useCloseAssistantSession();
 
   const entityList = useMemo(() => entities.data ?? [], [entities.data]);
@@ -308,9 +313,15 @@ export function LoreGraphPage() {
 
   // The panel says when its shown interview is ended: the handover's mark for
   // that id is spent, and the ended face — the design's residue — is where the
-  // proposal stays savable.
+  // proposal stays savable. The ended set outlives the mark: an ended
+  // interview never renders the end action again, so the dialog's opener must
+  // know even when the ended face's live save door hands the proposal over
+  // once more.
   const interviewEnded = useCallback((sessionId: string) => {
     setHandedOver((saved) => (saved === sessionId ? null : saved));
+    setEndedInterviews((ended) =>
+      ended.has(sessionId) ? ended : new Set(ended).add(sessionId),
+    );
   }, []);
 
   // --- The edge popover's focus contract ---------------------------------
@@ -462,6 +473,20 @@ export function LoreGraphPage() {
           return { x: geometry.midX * effective.k + effective.x, y: geometry.midY * effective.k + effective.y };
         })()
       : null;
+
+  // The prefilled dialog hands focus back to the control the writer acts on
+  // next. It closes in the same commit that clears its prefill and marks the
+  // handover, so that mark is not yet visible to its unmount; the ended set
+  // is. An ended interview renders «Neues Interview» instead of the end
+  // action and keeps its save door live, so there the save door is the one to
+  // name. Everywhere else the end action is rendered, and enabled once the
+  // request settles.
+  const createOpenerId =
+    prefill === null
+      ? "entity-interview-manual"
+      : interview !== undefined && endedInterviews.has(interview)
+        ? "entity-interview-save"
+        : "entity-interview-end";
 
   return (
     <div id="graph-page" data-testid="graph-page" tabIndex={-1} className="flex h-full flex-col overflow-hidden focus:outline-none">
@@ -982,7 +1007,7 @@ export function LoreGraphPage() {
           novelId={novelId}
           entities={entityList}
           rosterSettled={!entities.isPending}
-          openerId={prefill === null ? "entity-interview-manual" : "entity-interview-end"}
+          openerId={createOpenerId}
           source={prefill === null ? "manual" : "interview"}
           prefill={prefill ?? undefined}
           onClose={() => {

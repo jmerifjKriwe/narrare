@@ -1142,6 +1142,63 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     );
   });
 
+  it("the ended interview's handover dialog returns focus to the live save door", async () => {
+    let session = sessionWithProposal("s1", "Nebelhaus");
+    let closeCalls = 0;
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/chat/sessions/{session_id}") {
+        return Promise.resolve({ data: session, response: ok() });
+      }
+      return baseGet(path);
+    });
+    api.POST.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/entities") {
+        return Promise.resolve({
+          data: entityRow({ id: "e9", name: "Nebelhaus", type: "object" }),
+          response: new Response(null, { status: 201 }),
+        });
+      }
+      if (path === "/api/chat/sessions/{session_id}/close") {
+        closeCalls += 1;
+        if (closeCalls === 1) {
+          session = { ...session, closed_at: "2026-11-24T14:30:00Z" };
+          return Promise.resolve({ data: session, response: ok() });
+        }
+        return Promise.resolve({
+          data: undefined,
+          error: { detail: { code: "provider-error", detail: "offline" } },
+          response: new Response(null, { status: 500 }),
+        });
+      }
+      throw new Error(`unexpected POST: ${path}`);
+    });
+
+    await renderGraph(`/novels/${NOVEL_ID}/knowledge/graph?interview=s1`);
+    const panel = await screen.findByTestId("entity-interview");
+    const saveDoor = (await within(panel).findByTestId("entity-interview-save")) as HTMLButtonElement;
+    await waitFor(() => expect(saveDoor.disabled).toBe(false));
+
+    // The interview ends first; the ended face keeps the proposal savable.
+    fireEvent.click(within(panel).getByTestId("entity-interview-end"));
+    await within(panel).findByText(de["knowledge.interview.endedBanner"]);
+    await waitFor(() => expect(saveDoor.disabled).toBe(false));
+
+    // The ended interview hands its proposal over: the row lands, the close
+    // fails, and the panel stays on the ended face — the end action is gone.
+    fireEvent.click(saveDoor);
+    const dialog = await screen.findByTestId("entity-create-dialog");
+    fireEvent.click(within(dialog).getByTestId("entity-create-save"));
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+
+    const stayed = screen.getByTestId("entity-interview");
+    expect(within(stayed).queryByTestId("entity-interview-end")).toBeNull();
+    // The save door is the one live control the writer acts on next, so the
+    // dialog names it, not the end door the ended face does not render.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(document.getElementById("entity-interview-save")),
+    );
+  });
+
   it("a closed interview dialog leaves no prefill for the next manual door", async () => {
     api.GET.mockImplementation((path: string) => {
       if (path === "/api/chat/sessions/{session_id}") {
