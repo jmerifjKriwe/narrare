@@ -112,6 +112,12 @@ novel/
   so a German archive reads naturally in the English face. It is never imported or
   persisted as a novel fact; the archive's identity stays `title` and `language`,
   and an absent or empty `title_en` falls back to `title`.
+- **Unusable display-only metadata is ignored, never fatal.** The parser preserves
+  any `title_en` string verbatim — empty and overlong included — and treats every
+  other JSON type as absent, so a malformed display title cannot block an otherwise
+  valid novel import. Persisted metadata (`title`, `author`, `genre`, `blurb`,
+  `language` and the contents' own fields) keeps its strict type and length checks.
+  Bundled demo discovery may remain strict.
 
 ## Merge rules (import into an existing novel)
 
