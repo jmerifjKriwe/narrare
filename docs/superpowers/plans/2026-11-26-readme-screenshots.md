@@ -101,7 +101,7 @@ Use the `using-git-worktrees` skill. Branch from the freshly fetched `narrare/ma
 - Produces `SHOTS: tuple[Shot, ...]`, `README_SHOTS: tuple[Shot, ...]`, `validate_shots(shots: Sequence[Shot]) -> None`, `render_index(shots: Sequence[Shot]) -> str`.
 - Shot filename is always `{name}.png`; overview links are always `../../assets/screenshots/{name}.png`.
 
-- [ ] **Step 1: Write failing manifest tests**
+- [x] **Step 1: Write failing manifest tests**
 
 Pin these assertions in `test_screenshot_manifest.py`:
 
@@ -138,21 +138,21 @@ def test_index_links_every_master_once() -> None:
     assert "assets/screenshots/" in rendered
 ```
 
-- [ ] **Step 2: Run the tests and verify failure**
+- [x] **Step 2: Run the tests and verify failure**
 
 Run: `just test-file app/kernel/tests/test_screenshot_manifest.py`
 Expected: FAIL because `scripts.screenshot_manifest` does not exist.
 
-- [ ] **Step 3: Implement the manifest**
+- [x] **Step 3: Implement the manifest**
 
 Seed the manifest with the existing 01–19 names as provisional entries; Task 2 owns the keep/rename/remove audit. Add the required 20–34 faces with concise English titles/captions and groups `Writing`, `Knowledge`, `Planning`, `Settings`, `Assistant`. Mark exactly the eight README shots above. `render_index` emits a short introduction, grouped headings and one relative image link per shot. It must not embed binary data or absolute paths.
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `just test-file app/kernel/tests/test_screenshot_manifest.py`
 Expected: PASS.
 
-- [ ] **Step 5: Review, then commit**
+- [x] **Step 5: Review, then commit**
 
 Reviewer checks names, grouping, captions and the curated selection. Then commit `chore(tooling): add the screenshot manifest and overview contract` with the required trailer.
 
