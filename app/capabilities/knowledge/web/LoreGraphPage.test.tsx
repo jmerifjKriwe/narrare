@@ -1081,6 +1081,154 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     );
   });
 
+  it("two handed-over interviews are both shut, each until its own end", async () => {
+    let first = { ...sessionWithProposal("s1", "Nebelhaus"), name: "Nebelhaus" };
+    const second = { ...sessionWithProposal("s2", "Leuchtturm"), name: "Leuchtturm" };
+    const closeCalls: Record<string, number> = {};
+    api.GET.mockImplementation(
+      (path: string, init?: { params?: { path?: { session_id?: string } } }) => {
+        if (path === "/api/chat/sessions/{session_id}") {
+          return Promise.resolve({
+            data: init?.params?.path?.session_id === "s2" ? second : first,
+            response: ok(),
+          });
+        }
+        if (path === "/api/chat/sessions") {
+          return Promise.resolve({ data: { items: [first, second] }, response: ok() });
+        }
+        return baseGet(path);
+      },
+    );
+    api.POST.mockImplementation(
+      (
+        path: string,
+        init?: {
+          body?: { name?: string };
+          params?: { path?: { session_id?: string } };
+        },
+      ) => {
+        if (path === "/api/knowledge/entities") {
+          const name = init?.body?.name ?? "Nebelhaus";
+          return Promise.resolve({
+            data: entityRow({ id: name === "Leuchtturm" ? "e10" : "e9", name }),
+            response: new Response(null, { status: 201 }),
+          });
+        }
+        if (path === "/api/chat/sessions/{session_id}/close") {
+          const id = init?.params?.path?.session_id ?? "";
+          closeCalls[id] = (closeCalls[id] ?? 0) + 1;
+          // Each handover's close fails; only s1's later end succeeds.
+          if (id === "s1" && closeCalls[id] === 2) {
+            first = { ...first, closed_at: "2026-11-24T14:30:00Z" };
+            return Promise.resolve({ data: first, response: ok() });
+          }
+          return Promise.resolve({
+            data: undefined,
+            error: { detail: { code: "provider-error", detail: "offline" } },
+            response: new Response(null, { status: 500 }),
+          });
+        }
+        throw new Error(`unexpected POST: ${path}`);
+      },
+    );
+
+    const saveProposal = async (): Promise<HTMLElement> => {
+      const panel = screen.getByTestId("entity-interview");
+      const door = (await within(panel).findByTestId("entity-interview-save")) as HTMLButtonElement;
+      await waitFor(() => expect(door.disabled).toBe(false));
+      fireEvent.click(door);
+      const dialog = await screen.findByTestId("entity-create-dialog");
+      fireEvent.click(within(dialog).getByTestId("entity-create-save"));
+      await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+      const stayed = await screen.findByTestId("entity-interview");
+      await within(stayed).findByText(de["knowledge.interview.endFailed"]);
+      // The row landed; only the end failed, so this interview's door is shut.
+      expect((within(stayed).getByTestId("entity-interview-save") as HTMLButtonElement).disabled).toBe(
+        true,
+      );
+      return stayed;
+    };
+    const selectFromList = async (index: number): Promise<HTMLElement> => {
+      const panel = screen.getByTestId("entity-interview");
+      fireEvent.click(within(panel).getByTestId("entity-interview-sessions"));
+      const list = await within(panel).findByTestId("entity-interview-list");
+      const open = within(list).getAllByRole("button", {
+        name: de["knowledge.interview.resume"],
+      });
+      fireEvent.click(open[index]);
+      return screen.getByTestId("entity-interview");
+    };
+
+    await renderGraph(`/novels/${NOVEL_ID}/knowledge/graph?interview=s1`);
+    await screen.findByTestId("entity-interview");
+    await saveProposal();
+
+    // The second interview hands over too and its close fails likewise. Its
+    // mark must not replace the first one's: two saved proposals, two shut
+    // doors.
+    let panel = await selectFromList(1);
+    await within(panel).findByText("Leuchtturm");
+    await saveProposal();
+
+    // Hiding and reopening the panel opens the list's newest open interview
+    // (s1): its door is still shut.
+    fireEvent.click(within(panel).getByTestId("entity-interview-close"));
+    await waitFor(() => expect(screen.queryByTestId("entity-interview")).toBeNull());
+    fireEvent.click(screen.getByTestId("graph-new-entity"));
+    panel = await screen.findByTestId("entity-interview");
+    await within(panel).findByText("Nebelhaus");
+    expect(
+      (within(panel).getByTestId("entity-interview-save") as HTMLButtonElement).disabled,
+    ).toBe(true);
+
+    // Re-selecting either row finds its own door still shut.
+    panel = await selectFromList(1);
+    await within(panel).findByText("Leuchtturm");
+    await waitFor(() =>
+      expect(
+        (within(panel).getByTestId("entity-interview-save") as HTMLButtonElement).disabled,
+      ).toBe(true),
+    );
+    panel = await selectFromList(0);
+    await within(panel).findByText("Nebelhaus");
+    await waitFor(() =>
+      expect(
+        (within(panel).getByTestId("entity-interview-save") as HTMLButtonElement).disabled,
+      ).toBe(true),
+    );
+
+    // Ending s1 succeeds: its ended face re-livens its own door and spends its
+    // own mark, while s2's door stays shut.
+    fireEvent.click(within(panel).getByTestId("entity-interview-end"));
+    await within(panel).findByText(de["knowledge.interview.endedBanner"]);
+    await waitFor(() =>
+      expect(
+        (within(panel).getByTestId("entity-interview-save") as HTMLButtonElement).disabled,
+      ).toBe(false),
+    );
+    // The list's refresh has landed: s1 is closed, s2 is the one open row.
+    await waitFor(() =>
+      expect(
+        queryClient
+          .getQueryData<{ id: string; closed_at: string | null }[]>(["chat", "sessions", NOVEL_ID])
+          ?.find((row) => row.id === "s1")?.closed_at,
+      ).not.toBeNull(),
+    );
+    fireEvent.click(within(panel).getByTestId("entity-interview-sessions"));
+    const list = await within(panel).findByTestId("entity-interview-list");
+    fireEvent.click(
+      within(list).getByRole("button", { name: de["knowledge.interview.resume"] }),
+    );
+    const reopenedSecond = screen.getByTestId("entity-interview");
+    await within(reopenedSecond).findByText("Leuchtturm");
+    await waitFor(() =>
+      expect(
+        (within(reopenedSecond).getByTestId("entity-interview-save") as HTMLButtonElement)
+          .disabled,
+      ).toBe(true),
+    );
+  });
+
   it("the manual create returns focus to the chooser's own button", async () => {
     await renderGraph();
     await screen.findAllByTestId("graph-node");

@@ -112,11 +112,13 @@ export function LoreGraphPage() {
   /** The interview's draft while the create dialog is open through the
    *  handover; null is the hand-made door, which starts empty. */
   const [prefill, setPrefill] = useState<EntityPrefill | null>(null);
-  /** The interview the handover saved, until that interview is ended. Its
-   *  proposal already became a row, so the panel's save door stays shut for it
-   *  — during the end request's flight, through a failed end, and through
-   *  hiding and re-selecting. The ended face clears the mark. */
-  const [handedOver, setHandedOver] = useState<string | null>(null);
+  /** The interviews the handover saved, each until that interview is ended.
+   *  Their proposals already became rows, so each panel's save door stays shut
+   *  for its own id — during the end request's flight, through a failed end,
+   *  and through hiding and re-selecting. A later handover joins the set
+   *  instead of replacing the earlier one's mark; the ended face spends only
+   *  its own id. */
+  const [handedOver, setHandedOver] = useState<ReadonlySet<string>>(() => new Set());
   /** The interviews whose face the panel reported ended. The ended face
    *  renders «Neues Interview» instead of «Interview beenden» and keeps the
    *  save door live, so it is the one place the prefilled dialog's opener must
@@ -318,7 +320,12 @@ export function LoreGraphPage() {
   // know even when the ended face's live save door hands the proposal over
   // once more.
   const interviewEnded = useCallback((sessionId: string) => {
-    setHandedOver((saved) => (saved === sessionId ? null : saved));
+    setHandedOver((saved) => {
+      if (!saved.has(sessionId)) return saved;
+      const next = new Set(saved);
+      next.delete(sessionId);
+      return next;
+    });
     setEndedInterviews((ended) =>
       ended.has(sessionId) ? ended : new Set(ended).add(sessionId),
     );
@@ -975,7 +982,7 @@ export function LoreGraphPage() {
           }}
           onEnded={interviewEnded}
           returnFocusId="graph-new-entity"
-          handedOver={handedOver !== null && handedOver === interview}
+          handedOver={interview !== undefined && handedOver.has(interview)}
           closeFailed={closeInterview.isError && closeInterview.variables === interview}
         />
       </div>
@@ -1028,7 +1035,9 @@ export function LoreGraphPage() {
             // second press can save the same proposal again — whatever
             // happens to the end request.
             if (closesInterview && sessionId !== undefined) {
-              setHandedOver(sessionId);
+              setHandedOver((saved) =>
+                saved.has(sessionId) ? saved : new Set(saved).add(sessionId),
+              );
               closeInterview.mutate(sessionId, {
                 onSuccess: () => {
                   void navigate({
