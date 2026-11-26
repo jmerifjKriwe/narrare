@@ -6,7 +6,8 @@
  * - Nodes are EntityRead rows (name, type, the body's first line), edges are
  *   RelationRead rows (the type's wording on the line, the note in the
  *   popover). The layout is the pure deterministic pass (graphLayout.ts):
- *   the same entities and relations always draw the same picture.
+ *   nodes take the canon's own name order, so the same cast always draws the
+ *   same picture across fresh UUIDs and arrival orders.
  * - Zoom (wheel + the HUD buttons) and pan (drag the canvas), with an honest
  *   reset that returns to the fit framing — a pure function of the bounds.
  * - A node click opens the entity's dossier (the shared EntityDossier); the
@@ -86,6 +87,30 @@ function snippet(content: string): string {
   return line;
 }
 
+/** The content a parallel arc is ordered by: its ends, type and note — what
+ *  a reader can tell apart — before the server's fresh UUID. */
+function parallelContentKey(relation: Relation): string {
+  return [
+    relation.from_entity_id,
+    relation.to_entity_id,
+    relation.relation_type,
+    relation.note ?? "",
+  ].join("\u0000");
+}
+
+/** Parallel arcs take their bows in content order, then id only when two
+ *  rows are identical in every visible field. Code-unit compares keep the
+ *  order independent of the browser's collation. */
+function compareParallelArcs(a: Relation, b: Relation): number {
+  const keyA = parallelContentKey(a);
+  const keyB = parallelContentKey(b);
+  if (keyA < keyB) return -1;
+  if (keyA > keyB) return 1;
+  if (a.id < b.id) return -1;
+  if (a.id > b.id) return 1;
+  return 0;
+}
+
 export function LoreGraphPage() {
   const t = useTranslation();
   const toast = useToast();
@@ -141,22 +166,23 @@ export function LoreGraphPage() {
   // Parallel edges: relations that share an unordered pair of ends would
   // otherwise draw the identical centre line — the earlier edge and its
   // note unreachable under the later. Each takes a bow of its own, indexed
-  // in the canonical id order (the layout's own edge-sort convention), so
-  // the same set always draws the same picture whatever the rows' arrival
-  // order. A self-loop keys on its node alone: its slot fans successive
-  // loops off the same node apart.
+  // by its content (its ends, type and note) with the id only as the last
+  // tiebreaker for rows that are visible twins, so the same canon always
+  // draws the same picture whatever the rows' arrival order or fresh UUIDs.
+  // A self-loop keys on its node alone: its slot fans successive loops off
+  // the same node apart.
   const parallelSlot = useMemo(() => {
-    const groups = new Map<string, string[]>();
+    const groups = new Map<string, Relation[]>();
     for (const relation of relationList) {
       const key = [relation.from_entity_id, relation.to_entity_id].sort((a, b) => a.localeCompare(b)).join("\u0000");
       const group = groups.get(key);
-      if (group === undefined) groups.set(key, [relation.id]);
-      else group.push(relation.id);
+      if (group === undefined) groups.set(key, [relation]);
+      else group.push(relation);
     }
     const slots = new Map<string, { index: number; count: number }>();
     for (const group of groups.values()) {
-      group.sort((a, b) => a.localeCompare(b));
-      group.forEach((id, index) => slots.set(id, { index, count: group.length }));
+      group.sort(compareParallelArcs);
+      group.forEach((relation, index) => slots.set(relation.id, { index, count: group.length }));
     }
     return slots;
   }, [relationList]);

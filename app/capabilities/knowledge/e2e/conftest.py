@@ -180,6 +180,34 @@ def patch_relation(relation_id: str, **fields: Any) -> dict[str, Any]:
     return relation
 
 
+def create_entity(
+    novel_id: str, *, name: str, entity_type: str, content: str = ""
+) -> dict[str, Any]:
+    """Create one entity by hand through the product's own create door."""
+    with _client() as client:
+        response = client.post(
+            "/api/knowledge/entities",
+            json={"novel_id": novel_id, "name": name, "type": entity_type, "content": content},
+        )
+    response.raise_for_status()
+    entity: dict[str, Any] = response.json()
+    return entity
+
+
+def add_relation(
+    entity_id: str, to_entity_id: str, relation_type: str, note: str | None = None
+) -> dict[str, Any]:
+    """Create one directed edge through the entity's own relation door."""
+    with _client() as client:
+        response = client.post(
+            f"/api/knowledge/entities/{entity_id}/relations",
+            json={"to_entity_id": to_entity_id, "relation_type": relation_type, "note": note},
+        )
+    response.raise_for_status()
+    relation: dict[str, Any] = response.json()
+    return relation
+
+
 def seed_canon(
     novel_id: str, chapter_id: str, *, accept_order: list[str] | None = None
 ) -> list[dict[str, Any]]:

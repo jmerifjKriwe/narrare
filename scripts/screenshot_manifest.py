@@ -221,14 +221,15 @@ SHOTS: tuple[Shot, ...] = (
     Shot(
         "39-graph",
         "The lore graph",
-        "The novel's canon as a named node with the selected node's dossier",
+        "The novel's canon as three named entities and two relations, with the "
+        "selected node's dossier",
         "Knowledge",
         "light",
     ),
     Shot(
         "40-graph-dark",
         "The lore graph in dark",
-        "The same canvas and dossier in the reader's stored dark theme",
+        "The same canon, canvas and dossier in the reader's stored dark theme",
         "Knowledge",
         "dark",
     ),

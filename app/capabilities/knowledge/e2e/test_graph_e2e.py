@@ -19,7 +19,9 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from app.capabilities.knowledge.e2e.conftest import (
+    add_relation,
     create_chapter,
+    create_entity,
     create_novel,
     list_entities,
     list_relations,
@@ -68,6 +70,30 @@ def _goto_graph(page: Page, novel_id: str) -> None:
     expect(page.get_by_test_id("graph-page")).to_be_visible()
 
 
+HANDMADE_CAST: dict[str, tuple[str, str]] = {
+    "Mira": ("character", "Mira appears in the chapter."),
+    "Kavic": ("location", "Kavic appears in the chapter."),
+    "Vulkan": ("faction", "Vulkan appears in the chapter."),
+}
+"""The same three rows the extraction seeds, created by hand instead so two
+novels can carry identical names, types and prose in opposite creation
+orders. Mira and Kavic are linked, Kavic and Vulkan."""
+
+
+def _seed_handmade_canon(title: str, order: list[str]) -> str:
+    """One novel whose three entities enter in ``order``, with a two-edge
+    chain. Every seed mints fresh UUIDs, so only a name-keyed layout can put
+    the cards in the same seats."""
+    novel_id = str(create_novel(title)["id"])
+    by_name: dict[str, dict[str, object]] = {}
+    for name in order:
+        entity_type, content = HANDMADE_CAST[name]
+        by_name[name] = create_entity(novel_id, name=name, entity_type=entity_type, content=content)
+    add_relation(str(by_name["Mira"]["id"]), str(by_name["Kavic"]["id"]), "related_to")
+    add_relation(str(by_name["Kavic"]["id"]), str(by_name["Vulkan"]["id"]), "related_to")
+    return novel_id
+
+
 def _node_positions(page: Page) -> dict[str, str]:
     """Each node card's laid-out seat, named by the card's own text."""
     positions: dict[str, str] = page.get_by_test_id("graph-node").evaluate_all(
@@ -113,6 +139,26 @@ def test_the_graph_draws_the_deterministic_web(page: Page, installed: Stack) -> 
     page.get_by_test_id("reset-view").click()
     assert world.evaluate("el => el.style.transform") == fit
     assert_accessible(page)
+
+
+def test_the_layout_ignores_fresh_uuids_and_creation_order(page: Page, installed: Stack) -> None:
+    """Two seeds of the same cast — identical names, types, prose and edges —
+    with the entity rows created in opposite orders. The cards keep their
+    seats because the layout keys on the name, never the fresh UUID (#978)."""
+    forward = _seed_handmade_canon("Das Signal", ["Mira", "Kavic", "Vulkan"])
+    _goto_graph(page, forward)
+    expect(page.get_by_test_id("graph-node")).to_have_count(3)
+    expect(page.get_by_test_id("graph-edge")).to_have_count(2)
+    forward_seats = _node_positions(page)
+    assert len(forward_seats) == 3
+
+    reverse = _seed_handmade_canon("Das Echo", ["Vulkan", "Kavic", "Mira"])
+    _goto_graph(page, reverse)
+    expect(page.get_by_test_id("graph-node")).to_have_count(3)
+    expect(page.get_by_test_id("graph-edge")).to_have_count(2)
+    # Keyed by each card's own text, so the comparison is the reader's view:
+    # same names, same snippets, same seats — fresh ids notwithstanding.
+    assert _node_positions(page) == forward_seats
 
 
 def test_the_type_filter_and_name_search_narrow_the_web(page: Page, installed: Stack) -> None:

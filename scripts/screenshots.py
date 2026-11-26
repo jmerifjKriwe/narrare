@@ -28,9 +28,9 @@ the server-generated upload date cannot reach a frame.
 Determinism is part of the recipe: the viewport, locale, timezone, reduced
 motion, a fixed browser clock, the reader's stored theme and animation-free
 screenshots are pinned here, and every seed is API-driven with stable order.
-The graph's force layout sorts by entity id, so its frame runs on a novel with
-exactly one entity; the multi-entity faces live on the dossiers page and the
-interview, where creation order — not the id sort — is the truth.
+The graph's force layout orders nodes by the canon's own names, so its frame
+runs on the same three-entity canon every capture and a fresh set of UUIDs
+cannot move a card.
 
 Two captures on this machine are byte-identical. That identity is proven here,
 not across runners: the ⌘ glyph sits outside the bundled Latin font range and
@@ -716,20 +716,26 @@ def _capture(
     expect(page.get_by_test_id("storyboard-card")).to_have_count(3)
     written.append(_shot(page, out, "44-storyboard-dark"))
 
-    # 39/40. The lore graph. One entity: the force layout sorts by id, so a
-    #     one-node web is the only shape whose pixels do not depend on UUIDs.
+    # 39/40. The lore graph. The canonical three-node/two-edge cast: the
+    #     layout orders by name, so the frame is the same picture every
+    #     capture even though the API mints fresh UUIDs.
     _set_theme(page, "light")
-    canon_novel = _seed_canon(api, "The Still Bay", "Mira.", ["Mira"])
+    canon_novel = _seed_canon(
+        api,
+        "The Still Bay",
+        "Mira meets Kavic at Vulcan.",
+        ["Vulcan", "Kavic", "Mira"],
+    )
     _goto_graph(page, canon_novel)
-    node = page.get_by_test_id("graph-node").get_by_role("button")
-    expect(page.get_by_test_id("graph-node")).to_have_count(1)
-    node.click()
+    expect(page.get_by_test_id("graph-node")).to_have_count(3)
+    expect(page.get_by_test_id("graph-edge")).to_have_count(2)
+    page.get_by_test_id("graph-node").filter(has_text="Mira").get_by_role("button").click()
     expect(page.get_by_test_id("entity-dossier")).to_be_visible()
     written.append(_shot(page, out, "39-graph"))
     _set_theme(page, "dark")
     _goto_graph(page, canon_novel)
     expect(page.locator("html")).to_have_attribute("data-theme", "dark")
-    page.get_by_test_id("graph-node").get_by_role("button").click()
+    page.get_by_test_id("graph-node").filter(has_text="Mira").get_by_role("button").click()
     expect(page.get_by_test_id("entity-dossier")).to_be_visible()
     written.append(_shot(page, out, "40-graph-dark"))
 

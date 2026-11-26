@@ -70,15 +70,15 @@ A consistency finding and the novel's entities beside the prose
 
 ### The lore graph
 
-![The novel's canon as a named node with the selected node's dossier](../../assets/screenshots/39-graph.png)
+![The novel's canon as three named entities and two relations, with the selected node's dossier](../../assets/screenshots/39-graph.png)
 
-The novel's canon as a named node with the selected node's dossier
+The novel's canon as three named entities and two relations, with the selected node's dossier
 
 ### The lore graph in dark
 
-![The same canvas and dossier in the reader's stored dark theme](../../assets/screenshots/40-graph-dark.png)
+![The same canon, canvas and dossier in the reader's stored dark theme](../../assets/screenshots/40-graph-dark.png)
 
-The same canvas and dossier in the reader's stored dark theme
+The same canon, canvas and dossier in the reader's stored dark theme
 
 ## Planning
 

@@ -193,6 +193,26 @@ function edgeLabel(edge: Element): string {
   return edge.querySelector("g[transform]")?.getAttribute("transform") ?? "";
 }
 
+/** Each card's seat, keyed by the text the reader sees on it — the graph's
+ *  own visible identity, never the row's UUID. */
+function nodeSeatsByText(): Record<string, string> {
+  return Object.fromEntries(
+    screen.getAllByTestId("graph-node").map((node) => [
+      (node.textContent ?? "").trim(),
+      `${(node as HTMLElement).style.left}/${(node as HTMLElement).style.top}`,
+    ]),
+  );
+}
+
+/** Each edge's drawn curve, keyed by its accessible label. */
+function curvesByLabel(): Record<string, string> {
+  return Object.fromEntries(
+    screen
+      .getAllByTestId("graph-edge")
+      .map((edge) => [edge.getAttribute("aria-label") ?? "", edgePath(edge)]),
+  );
+}
+
 /** Every x coordinate a geometry attribute carries (paths alternate x, y). */
 function xValues(geometry: string): number[] {
   const numbers = (geometry.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
@@ -1582,6 +1602,81 @@ describe("parallel edges between the same pair separate (Codacy fix — PR #912)
     expect(edges).toHaveLength(2);
     const arrows = edges.map((edge) => edge.querySelector("polygon")?.getAttribute("points") ?? "");
     expect(arrows[0]).not.toBe(arrows[1]);
+  });
+});
+
+describe("the canon's names seat the web, never the server's fresh UUIDs (#978)", () => {
+  const FRESH_MAYA = entityRow({
+    id: "f0e1d2c3-b4a5-4968-8778-99aabbccddee",
+    name: "Dr. Maya Chen",
+    content: "Leitende Bio-Physikerin.",
+  });
+  const FRESH_ARIA = entityRow({
+    id: "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+    name: "ARIA",
+    content: "Autonome Schiffs-KI.",
+  });
+  const FRESH_STATION = entityRow({
+    id: "9f8e7d6c-5b4a-4392-8170-6f5e4d3c2b1a",
+    name: "Station 7",
+    type: "location",
+    content: "Nevada Deep-Array.",
+  });
+  const FRESH_RELIKT = entityRow({
+    id: "4a5b6c7d-8e9f-4a0b-8c1d-2e3f4a5b6c7d",
+    name: "Relikt",
+    type: "object",
+    content: "",
+  });
+
+  it("draws every card in the same seat when the rows carry fresh ids", async () => {
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const before = nodeSeatsByText();
+    expect(Object.keys(before)).toHaveLength(4);
+
+    cleanup();
+    queryClient.clear();
+    entities = [FRESH_MAYA, FRESH_ARIA, FRESH_STATION, FRESH_RELIKT];
+    relations = [
+      relationRow({ id: "aaaaaaaa-1111-4111-8111-111111111111", from_entity_id: FRESH_MAYA.id, to_entity_id: FRESH_ARIA.id, relation_type: "ally_of", note: "Symbiotische Co-Pilotin." }),
+      relationRow({ id: "bbbbbbbb-2222-4222-8222-222222222222", from_entity_id: FRESH_MAYA.id, to_entity_id: FRESH_STATION.id, relation_type: "located_in", note: "Suchziel." }),
+      relationRow({ id: "cccccccc-3333-4333-8333-333333333333", from_entity_id: FRESH_ARIA.id, to_entity_id: FRESH_STATION.id, relation_type: "related_to", note: null }),
+    ];
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    expect(nodeSeatsByText()).toEqual(before);
+  });
+
+  it("seats distinguishable parallel arcs by content when their ids swap", async () => {
+    const ally = relationRow({
+      id: "aaaaaaaa-1111-4111-8111-111111111111",
+      from_entity_id: "e1",
+      to_entity_id: "e2",
+      relation_type: "ally_of",
+      note: "Erste Sicht.",
+    });
+    const related = relationRow({
+      id: "bbbbbbbb-2222-4222-8222-222222222222",
+      from_entity_id: "e1",
+      to_entity_id: "e2",
+      relation_type: "related_to",
+      note: "Zweite Sicht.",
+    });
+    relations = [ally, related];
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const before = curvesByLabel();
+
+    cleanup();
+    queryClient.clear();
+    relations = [
+      { ...ally, id: related.id },
+      { ...related, id: ally.id },
+    ];
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    expect(curvesByLabel()).toEqual(before);
   });
 });
 
