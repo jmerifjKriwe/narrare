@@ -161,31 +161,11 @@ Documents from the same project are under [`documents/`](documents/):
 |  | [`chrome-rail-topbar-dark`](screens/shell/chrome-rail-topbar-dark.webp) | App-weite Chrome: Rail + Topbar (Midnight Ink; Korrektur 2026-11-16: ehrliche Autosave-Sublabels) | 4590 px |
 | Mobile | [`pocket-quick-capture`](screens/mobile/pocket-quick-capture.webp) | Narrare Pocket — Unterwegs-Studio & Quick Capture | 3238 px |
 
-Reference screenshots uploaded into the same Stitch project are the files already
-tracked in [`assets/screenshots/`](../../../assets/screenshots/); they are not
-duplicated here:
-
-| File | Shows |
-|---|---|
-| [`01-workspace-continuation.png`](../../../assets/screenshots/01-workspace-continuation.png) | Schreib-Workspace, continuation at the caret |
-| [`02-chat-sources.png`](../../../assets/screenshots/02-chat-sources.png) | Chat dock with the passages its answer came from |
-| [`03-knowledge-dock.png`](../../../assets/screenshots/03-knowledge-dock.png) | Knowledge dock, consistency finding, entities |
-| [`04-knowledge-search.png`](../../../assets/screenshots/04-knowledge-search.png) | Knowledge page and search results |
-| [`05-shelf.png`](../../../assets/screenshots/05-shelf.png) | Shelf, light |
-| [`06-shelf-dark.png`](../../../assets/screenshots/06-shelf-dark.png) | Shelf, dark |
-| [`07-workspace-dark.png`](../../../assets/screenshots/07-workspace-dark.png) | Workspace, dark |
-| [`08-design.png`](../../../assets/screenshots/08-design.png) | Design gallery, light |
-| [`09-design-dark.png`](../../../assets/screenshots/09-design-dark.png) | Design gallery, dark |
-| [`10-graph.png`](../../../assets/screenshots/10-graph.png) | Lore graph, light |
-| [`11-graph-dark.png`](../../../assets/screenshots/11-graph-dark.png) | Lore graph, dark |
-| [`12-timeline.png`](../../../assets/screenshots/12-timeline.png) | Timeline, light |
-| [`13-timeline-dark.png`](../../../assets/screenshots/13-timeline-dark.png) | Timeline, dark |
-| [`14-storyboard.png`](../../../assets/screenshots/14-storyboard.png) | Storyboard, light |
-| [`15-storyboard-dark.png`](../../../assets/screenshots/15-storyboard-dark.png) | Storyboard, dark |
-| [`16-structure.png`](../../../assets/screenshots/16-structure.png) | Structure view, light |
-| [`17-structure-dark.png`](../../../assets/screenshots/17-structure-dark.png) | Structure view, dark |
-| [`18-shortcuts.png`](../../../assets/screenshots/18-shortcuts.png) | Keyboard shortcuts, light |
-| [`19-shortcuts-dark.png`](../../../assets/screenshots/19-shortcuts-dark.png) | Keyboard shortcuts, dark |
+Reference screenshots uploaded into the same Stitch project are the files in the
+[screenshot collection](../../screenshots/README.md); they are not duplicated
+here. Those captures are design evidence, not product captures: the running
+application is the authority for its behaviour, and the Stitch screens above
+record the proposal the shell was drawn from.
 
 ## Refreshing the archive
 
