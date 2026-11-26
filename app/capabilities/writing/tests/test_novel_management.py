@@ -12,6 +12,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from app.api.main import app
+from app.generated.locales import LOCALES
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import (
     ConsistencyFinding,
@@ -113,10 +114,11 @@ async def test_patch_refuses_a_bad_language_code() -> None:
 async def test_patch_refuses_an_over_long_language() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         novel_id = await _novel_id(client)
-        # "de-" + 14 letters matches the pattern and is wider than the column
-        refused = await client.patch(
-            f"/api/writing/novels/{novel_id}", json={"language": f"de-{'x' * 14}"}
-        )
+        # "de" plus seven eight-letter subtags: well-formed, and 65 characters
+        # wide — one past the column.
+        tag = f"de-{'-'.join(['abcdefgh'] * 7)}"
+        assert len(tag) == 65
+        refused = await client.patch(f"/api/writing/novels/{novel_id}", json={"language": tag})
         assert refused.status_code == 422
         assert refused.json()["detail"] == "invalid language"
         # nothing was written
@@ -153,6 +155,30 @@ async def test_patch_accepts_bcp47_like_codes() -> None:
             patched = await client.patch(f"/api/writing/novels/{novel_id}", json={"language": code})
             assert patched.status_code == 200, code
             assert patched.json()["language"] == code
+
+
+@pytest.mark.parametrize("code", ["zh-Hans-CN", "de-CH-1906", "hy-Latn-IT-arevela", "yue"])
+async def test_patch_accepts_every_well_formed_tag(code: str) -> None:
+    """A novel's language is syntax, not registry membership: any well-formed
+    tag the column holds is accepted and read back unchanged."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client)
+        patched = await client.patch(f"/api/writing/novels/{novel_id}", json={"language": code})
+        assert patched.status_code == 200, code
+        assert patched.json()["language"] == code
+        fetched = await client.get(f"/api/writing/novels/{novel_id}")
+        assert fetched.json()["language"] == code
+
+
+@pytest.mark.parametrize("code", LOCALES)
+async def test_every_registered_locale_is_a_valid_novel_language(code: str) -> None:
+    """Every registry code is a valid tag: the novel door accepts the catalog's
+    languages without consulting the catalog."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client)
+        patched = await client.patch(f"/api/writing/novels/{novel_id}", json={"language": code})
+        assert patched.status_code == 200, code
+        assert patched.json()["language"] == code
 
 
 async def test_patch_folds_a_shouted_language_code() -> None:

@@ -22,10 +22,14 @@ class InvalidNovelUpdateError(ValueError):
         self.field = field
 
 
-_LANGUAGE_CODE = re.compile(r"[a-z]{2}(-[A-Za-z]{2,})?")
-"""A BCP-47-ish language tag: two lowercase letters, then optionally a
-region or script after a dash (`de`, `en-GB`). The export writes the tag
-into the archive's front matter; anything looser would not round-trip."""
+LANGUAGE_TAG = re.compile(r"[a-z]{2,3}(-[A-Za-z0-9]{1,8})*")
+"""A BCP-47-ish language tag: two or three lowercase letters, then optional
+subtags of one to eight letters or digits after dashes (`de`, `en-GB`,
+`zh-Hans-CN`, `de-CH-1906`). The export writes the tag into the archive's
+front matter; anything looser would not round-trip."""
+
+LANGUAGE_MAX_LENGTH = 64
+"""A tag's ceiling: the language column's own width and the registry's."""
 
 NOVEL_STATUSES = ("draft", "revision", "final")
 """The writing states the shelf's pill names (W3): a draft being written,
@@ -66,10 +70,10 @@ def _normalize_language(value: str | None) -> str | None:
         # the case it was typed in (spec §2: DE is de, en-GB stays).
         primary, separator, remainder = language.partition("-")
         language = f"{primary.lower()}{separator}{remainder}"
-        # The widths are the columns' own (String(16) here,
+        # The widths are the columns' own (String(64) here,
         # String(200) above) — the interchange path guards the same
         # widths on the way in from an archive.
-        if len(language) > 16 or not _LANGUAGE_CODE.fullmatch(language):
+        if len(language) > LANGUAGE_MAX_LENGTH or not LANGUAGE_TAG.fullmatch(language):
             raise InvalidNovelUpdateError("language")
     return language
 

@@ -294,6 +294,38 @@ def test_over_long_metadata_title_is_refused_by_name() -> None:
     assert "200" in raised.value.reason
 
 
+def test_a_language_tag_wider_than_the_column_is_refused_by_name() -> None:
+    """A language tag past the column width refuses at parse, naming the limit.
+
+    The tag is well-formed — a primary subtag and seven eight-letter subtags —
+    so only its width can refuse it, one character past the widened column.
+    """
+    tag = f"de-{'-'.join(['abcdefgh'] * 7)}"
+    assert len(tag) == 65
+    files = {
+        "metadata.json": json.dumps({"title": "X", "language": tag}).encode(),
+        "chapters/a.md": b"Text.\n",
+    }
+
+    with pytest.raises(ArchiveError) as raised:
+        parse_archive(open_zip(zip_bytes(files)))
+
+    assert raised.value.path == "metadata.json"
+    assert "language" in raised.value.reason
+    assert "64" in raised.value.reason
+
+
+def test_a_long_language_tag_round_trips() -> None:
+    """A registry code wider than the old column survives parse and serialize."""
+    archive = NovelArchive(title="X", language="hy-Latn-IT-arevela")
+    files = serialize_archive(archive)
+
+    parsed = parse_archive(open_zip(zip_bytes(files)))
+
+    assert parsed.language == "hy-Latn-IT-arevela"
+    assert serialize_archive(parsed) == files
+
+
 def test_over_long_chapter_title_is_refused_by_name() -> None:
     """A chapter title past the column width is the same named refusal, and it
     names the chapter file that carries it."""

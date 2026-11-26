@@ -50,8 +50,9 @@ class SettingsRead(BaseModel):
 class SettingsUpdate(BaseModel):
     # Present and nullable, deliberately: ``{"locale": null}`` hands the choice
     # back to the browser, while ``{}`` is a client bug and must not mean the
-    # same thing. A field with a default could not tell the two apart.
-    locale: str | None
+    # same thing. A field with a default could not tell the two apart. The
+    # width is the column's own (String(64)) — the registry's longest code.
+    locale: str | None = Field(max_length=64)
     # The profile fields (W4) are present-and-nullable through
     # ``model_fields_set``, the novel update's rule: an absent field keeps the
     # stored answer — the language switchers carry the locale alone — while a

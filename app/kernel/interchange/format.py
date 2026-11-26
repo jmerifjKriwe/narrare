@@ -60,7 +60,7 @@ _MAX_LENGTHS: dict[str, int] = {
     "title": 200,  # novels.title, chapters.title
     "author": 200,  # novels.author
     "genre": 80,  # novels.genre
-    "language": 16,  # novels.language
+    "language": 64,  # novels.language
     "name": 200,  # entities.name
     "relation_type": 80,  # entity_relations.relation_type
 }

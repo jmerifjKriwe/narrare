@@ -41,9 +41,10 @@ class Novel(UserOwned):
     genre: Mapped[str | None] = mapped_column(String(80))
     blurb: Mapped[str | None] = mapped_column(Text)
     # The export's front matter. The language is a BCP-47-ish code (`de`,
-    # `en`); both are nullable — a novel without an answer does not lie.
+    # `en`), any well-formed tag the registry's width allows; both are
+    # nullable — a novel without an answer does not lie.
     author: Mapped[str | None] = mapped_column(String(200))
-    language: Mapped[str | None] = mapped_column(String(16))
+    language: Mapped[str | None] = mapped_column(String(64))
     # The setup wizard's per-novel answers. All nullable: a novel without an
     # answer does not lie. The vocabularies and bounds above are the one home
     # setup's request and writing's novel update validate against; the
