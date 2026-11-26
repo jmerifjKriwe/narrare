@@ -193,6 +193,22 @@ def _require_inside(
         )
 
 
+def _require_small_gap(first: Locator, second: Locator, *, name: str, maximum: float = 48) -> None:
+    """Fail when two stacked blocks sit farther apart than a normal group gap.
+
+    The causality page's groups keep their own ``gap-4`` rhythm; only the
+    flexible middle group absorbs the spare height. A stretched layout that
+    spreads every block fails here instead of shipping four wide voids.
+    """
+    first_box = first.bounding_box()
+    second_box = second.bounding_box()
+    if first_box is None or second_box is None:
+        raise SystemExit(f"{name}: nothing to measure")
+    gap = second_box["y"] - (first_box["y"] + first_box["height"])
+    if gap > maximum:
+        raise SystemExit(f"{name}: {gap:.1f}px gap exceeds {maximum:.1f}px")
+
+
 def _scroll_to_show_bottom(container: Locator, target: Locator, *, margin: float = 8) -> None:
     """Scroll a real container just enough that the target's bottom is inside."""
     box = target.bounding_box()
@@ -925,10 +941,20 @@ def _capture(
     # The content column distributes its five real blocks over the page height:
     # the top counts stay reachable and the footnote lands near the foot, so
     # the frame does not leave the lower half as accidental whitespace.
+    # The content column groups its blocks instead of stretching every one:
+    # the subline, header+track and methodology+footnote keep their normal
+    # 16px rhythm, and only the middle group's flex-1 share is a large gap.
+    subline = page.get_by_test_id("causality-subline")
+    header = page.get_by_test_id("causality-track-header")
+    bento = page.get_by_test_id("causality-bento")
     counts = page.get_by_test_id("causality-counts")
     note = page.get_by_test_id("causality-note")
+    _require_inside(subline, name="causality subline", top=TOP_BAR_HEIGHT)
     _require_inside(counts, name="causality counts", top=TOP_BAR_HEIGHT)
     _require_inside(note, name="causality footnote", top=TOP_BAR_HEIGHT)
+    _require_small_gap(subline, header, name="subline to track header")
+    _require_small_gap(header, track, name="track header to track")
+    _require_small_gap(bento, note, name="methodology to footnote")
     note_box = note.bounding_box()
     if note_box is None:
         raise SystemExit("the causality footnote has no box")
