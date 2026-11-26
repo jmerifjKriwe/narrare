@@ -28,12 +28,19 @@ function positionsOf(layout: Map<string, Point>): [string, Point][] {
 }
 
 /** The same rows keyed by their names — the seat a reader sees on the card,
- *  never the server's fresh UUID. */
+ *  never the server's fresh UUID. Every row must have a seat: an absent one
+ *  fails here instead of letting an empty record compare equal. */
 function byName(
   layout: Map<string, Point>,
   rows: readonly { id: string; name: string }[],
-): Record<string, Point | undefined> {
-  return Object.fromEntries(rows.map((row) => [row.name, layout.get(row.id)]));
+): Record<string, Point> {
+  const seats: Record<string, Point> = {};
+  for (const row of rows) {
+    const point = layout.get(row.id);
+    expect(point, `seat for ${row.name}`).toBeDefined();
+    if (point !== undefined) seats[row.name] = point;
+  }
+  return seats;
 }
 
 /** Edges named by their ends, resolved to whichever ids this canon carries. */

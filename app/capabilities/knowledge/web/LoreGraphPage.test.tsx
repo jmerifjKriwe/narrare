@@ -1678,6 +1678,75 @@ describe("the canon's names seat the web, never the server's fresh UUIDs (#978)"
     await screen.findAllByTestId("graph-node");
     expect(curvesByLabel()).toEqual(before);
   });
+
+  it("keeps each direction's bow when the pair's UUID order reverses", async () => {
+    // ARIA sorts before Dr. Maya Chen by name; the two UUID sets put the
+    // pair in opposite raw orders, which is exactly what used to mirror
+    // the arcs. Two edges run each way, so the slot order and the side
+    // cannot cancel out as they would for a lone pair.
+    const mayaFirst = entityRow({
+      id: "11111111-1111-4111-8111-111111111111",
+      name: "Dr. Maya Chen",
+      content: "Leitende Bio-Physikerin.",
+    });
+    const ariaFirst = entityRow({
+      id: "22222222-2222-4222-8222-222222222222",
+      name: "ARIA",
+      content: "Autonome Schiffs-KI.",
+    });
+    const forthAlly = relationRow({
+      id: "aaaaaaaa-1111-4111-8111-111111111111",
+      from_entity_id: mayaFirst.id,
+      to_entity_id: ariaFirst.id,
+      relation_type: "ally_of",
+      note: "Hin, verbündet.",
+    });
+    const forthPlace = relationRow({
+      id: "bbbbbbbb-2222-4222-8222-222222222222",
+      from_entity_id: mayaFirst.id,
+      to_entity_id: ariaFirst.id,
+      relation_type: "located_in",
+      note: "Hin, verortet.",
+    });
+    const backRelated = relationRow({
+      id: "cccccccc-3333-4333-8333-333333333333",
+      from_entity_id: ariaFirst.id,
+      to_entity_id: mayaFirst.id,
+      relation_type: "related_to",
+      note: "Zurück, verwandt.",
+    });
+    const backEnemy = relationRow({
+      id: "dddddddd-4444-4444-8444-444444444444",
+      from_entity_id: ariaFirst.id,
+      to_entity_id: mayaFirst.id,
+      relation_type: "enemy_of",
+      note: "Zurück, feindlich.",
+    });
+    entities = [mayaFirst, ariaFirst];
+    relations = [forthAlly, forthPlace, backRelated, backEnemy];
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    const before = curvesByLabel();
+    expect(Object.keys(before)).toHaveLength(4);
+    expect(new Set(Object.values(before)).size).toBe(4);
+
+    cleanup();
+    queryClient.clear();
+    const mayaLast = { ...mayaFirst, id: "99999999-9999-4999-8999-999999999999" };
+    const ariaLast = { ...ariaFirst, id: "00000000-0000-4000-8000-000000000000" };
+    entities = [mayaLast, ariaLast];
+    relations = [
+      { ...forthAlly, id: "eeeeeeee-5555-4555-8555-555555555555", from_entity_id: mayaLast.id, to_entity_id: ariaLast.id },
+      { ...forthPlace, id: "ffffffff-6666-4666-8666-666666666666", from_entity_id: mayaLast.id, to_entity_id: ariaLast.id },
+      { ...backRelated, id: "77777777-7777-4777-8777-777777777777", from_entity_id: ariaLast.id, to_entity_id: mayaLast.id },
+      { ...backEnemy, id: "88888888-8888-4888-8888-888888888888", from_entity_id: ariaLast.id, to_entity_id: mayaLast.id },
+    ];
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    // Same labeled arcs, same sides: the canonical pair order and the
+    // canonical direction decide the bow, never the raw UUIDs.
+    expect(curvesByLabel()).toEqual(before);
+  });
 });
 
 describe("a self-loop clears its node card (Codacy fix — PR #912)", () => {

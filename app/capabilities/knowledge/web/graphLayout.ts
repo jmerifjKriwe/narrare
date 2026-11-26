@@ -58,7 +58,10 @@ function canonicalKey(entity: LayoutEntity): [string, string] {
   return [entity.name.toLowerCase(), entity.id];
 }
 
-function compareCanonical(a: LayoutEntity, b: LayoutEntity): number {
+/** The canonical node order: case-folded name, then id. Exported so a reader
+ *  that must mirror the layout's own pair order — the parallel arcs — reads
+ *  the identical key instead of the raw UUIDs. */
+export function compareCanonical(a: LayoutEntity, b: LayoutEntity): number {
   const [nameA, idA] = canonicalKey(a);
   const [nameB, idB] = canonicalKey(b);
   if (nameA < nameB) return -1;
