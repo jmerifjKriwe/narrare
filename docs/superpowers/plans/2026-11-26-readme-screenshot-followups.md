@@ -61,7 +61,7 @@ Expected: PASS.
 
 Reviewer verifies the route/API evidence and link targets. Commit `docs(readme): correct the feature inventory and Stitch spec links` with `Closes #977`, `Closes #980`, a real `User-visible:` line and the Assisted-by trailer.
 
-- [ ] **Step 5: Close the Structure-phase review finding**
+- [x] **Step 5: Close the Structure-phase review finding**
 
 Add a failing structured inventory test for the Structure view's `backend | 1` row and its placement in the Roadmap's Phase 1 section. Change the row's phase to `1`; change the Roadmap's “two loose doors” to “three loose doors”, describe the Structure view as an existing API with no surface/E2E leg, and update the exit sentence to “three loose doors”. Run `just test-file app/kernel/tests/test_feature_inventory.py` and `just check`. Reviewer verifies the Inventory legend, Roadmap phase boundaries and no new surface claim. Commit `chore(docs): assign the missing structure view to phase one` with the Assisted-by trailer. No E2E leg is required for this documentation-only correction.
 
@@ -119,6 +119,8 @@ Reviewer checks the ordering contract, duplicate/parallel-edge behavior and real
 - Modify: `app/kernel/interchange/demos/im-stillen-wald/metadata.json`
 - Modify: `app/kernel/interchange/demos.py`, `scripts/generate_capabilities.py`
 - Modify: `app/capabilities/setup/web/WelcomePage.tsx`, `steps/BasisStep.tsx`
+- Modify: `app/capabilities/setup/web/steps/StructureStep.tsx`, `steps/ProvisioningStep.tsx`, `web/wizardState.ts` for complete English display coverage
+- Modify: `app/kernel/interchange/format.py` docstring and `docs/superpowers/specs/2026-10-28-wp3-markdown-demo-export-design.md` for the display-only metadata contract
 - Test: `app/capabilities/setup/tests/test_demo_manifest.py`, `app/kernel/tests/test_interchange_demos.py`, setup E2E
 - Regenerate: `web/lib/generated/demos.ts`, affected welcome/prompt masters and index
 
@@ -127,26 +129,30 @@ Reviewer checks the ordering contract, duplicate/parallel-edge behavior and real
 - `sample_variables()` returns English/language-neutral values for all eight writing variables; marker structure and variable names stay unchanged.
 - `DemoInfo` and generated demo metadata gain `title_en`/`titleEn`; English UI uses it for display only, while archive POST keeps the original archive title and language.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Pin the English welcome year with `vi.setSystemTime(new Date("2026-06-01T00:00:00Z"))` and assert `Writing year 2026`; assert the wizard header uses the same key. Add a regression that writing sample values contain no German markers (`äöüß`, `Nebel`, `Wanderin`, `zögern`). Add an English welcome test expecting the localized `titleEn`, while the German face keeps the archive title and the POST still binds the original title.
 
-- [ ] **Step 2: Implement the content fixes**
+- [x] **Step 2: Implement the content fixes**
 
 Use the existing localization/generation patterns. Do not hand-edit generated files without regenerating their source.
 
-- [ ] **Step 3: Regenerate affected captures**
+- [x] **Step 3: Regenerate affected captures**
 
 Run two independent captures and compare hashes. Regenerate `24-welcome-setup.png` and `30-prompts.png` if their pixels changed; regenerate the index.
 
-- [ ] **Step 4: Run focused gates**
+- [x] **Step 4: Run focused gates**
 
 Run the setup, prompt and web test files touched, both screenshot test files and `just check`.
 Expected: PASS.
 
-- [ ] **Step 5: Review and commit**
+- [x] **Step 5: Review and commit**
 
 Reviewer checks all three locales and generated-source consistency. Commit `fix(web): remove stale and mixed-language showcase content` with `Closes #984`, `Closes #986`, `Closes #989`, a real `User-visible:` line and the Assisted-by trailer.
+
+- [ ] **Step 6: Close the setup-title review findings**
+
+Add failing English-face assertions for the Structure and Provisioning display sites and a Python test for present-but-empty `title_en` fallback. Use `demoDisplayTitle(demo, locale)` at every display site while keeping the provisioning POST on `archive.title`; type the helper locale as `Locale`; use `metadata.get("title_en") or title`; document `title_en` as optional display-only metadata that is not imported into the novel. Run the setup/interchange tests, existing setup E2E, screenshot suites and `just check`. Run one fresh full capture and prove the committed masters/index remain identical. Commit `fix(setup): keep the localized demo title through provisioning` with the Assisted-by trailer and no duplicate `Closes` keywords.
 
 ## Task 4: Give settings subpages a route-aware breadcrumb (#981)
 

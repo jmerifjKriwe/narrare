@@ -89,8 +89,11 @@ task.
 - Setup's writing year is derived at render time or supplied through a tested
   language-neutral value; it is not hardcoded to 2025.
 - Prompt sample values are English or language-neutral on the English UI.
-- The English welcome face uses English demo metadata; the German demo title is
-  not presented as an English-UI defect.
+- Every English setup display site uses the demo's English display title; later
+  wizard steps do not switch back to the German archive title. The provisioning
+  POST and imported novel keep the archive's original title and language.
+  `title_en` is optional display-only interchange metadata, not an imported novel
+  fact; absent or empty values fall back to the archive title.
 - Settings subpages derive their breadcrumb from the settings route, not the
   bookshelf shell.
 
