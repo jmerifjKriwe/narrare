@@ -16,31 +16,33 @@
 
 Narrare is a writing environment for novels that runs on your machine. A shelf of
 books, a scene-centric editor, your own notes as a knowledge base, planning that keeps
-the plot honest, and a model you choose to continue a scene or interview a character.
+the plot honest, and a model you choose to continue a scene or build an entity through a
+guided interview.
 
 **Contents:** [What it looks like](#what-it-looks-like) · [Writing & Zen](#writing--zen) · [Knowledge](#knowledge) · [Planning](#planning) · [Settings & prompts](#settings--prompts) · [AI assistant](#ai-assistant) · [Why local](#why-local) · [Getting started](#getting-started) · [Status](#status) · [Documentation](#documentation) · [Development](#development) · [Contributing](#contributing) · [License](#license)
 
 ## What it looks like
 
 Eight frames from the running application, in the order the work happens: write and
-focus, build the knowledge base, plan the structure, configure the model, and interview
-a character into a dossier.
+focus, build the knowledge base, plan the structure, configure the model, and build an
+entity through a guided interview.
+
+<img src="assets/screenshots/20-workspace-rebuilt.png" alt="The scene-centric workspace with the explorer, editor and docks together" width="800">
 
 <table>
 <tr>
-<td><img src="assets/screenshots/20-workspace-rebuilt.png" alt="The scene-centric workspace with the explorer, editor and docks together" width="400"></td>
 <td><img src="assets/screenshots/21-workspace-rebuilt-dark.png" alt="The same workspace in the reader's stored dark theme" width="400"></td>
-</tr>
-<tr>
 <td><img src="assets/screenshots/22-zen.png" alt="The prose alone, with the explorer and docks out of the way" width="400"></td>
+</tr>
+<tr>
 <td><img src="assets/screenshots/25-dossiers.png" alt="The novel's knowledge organized as dossiers with a character's dossier open" width="400"></td>
-</tr>
-<tr>
 <td><img src="assets/screenshots/27-causality.png" alt="The planned chain of cause and effect behind the story" width="400"></td>
-<td><img src="assets/screenshots/28-settings-hub.png" alt="Language, appearance and the author profile" width="400"></td>
 </tr>
 <tr>
+<td><img src="assets/screenshots/28-settings-hub.png" alt="Language, appearance and the author profile" width="400"></td>
 <td><img src="assets/screenshots/30-prompts.png" alt="The prompt catalog beside the selected prompt's editor and template" width="400"></td>
+</tr>
+<tr>
 <td><img src="assets/screenshots/33-entity-interview.png" alt="An answered interview and the proposal it built" width="400"></td>
 </tr>
 </table>
@@ -112,9 +114,9 @@ live wire before it is saved.
 ## AI assistant
 
 The assistant surface that exists today is the **entity interview**: a guided
-conversation that asks about a character or place and proposes an entity from the
-answers. Nothing is written to the knowledge base until you review the proposal and save
-it.
+conversation that asks about an entity, such as a character, place or object, and
+proposes an entity from the answers. Nothing is written to the knowledge base until you
+review the proposal and save it.
 
 ## Why local
 
