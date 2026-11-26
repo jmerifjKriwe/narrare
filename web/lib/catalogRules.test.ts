@@ -49,7 +49,11 @@ function missingCategories(locale: string, key: string, message: string): string
   }
 
   walk(new IntlMessageFormat(message, locale).getAst());
-  return missing;
+  // The engine's category order differs between Node versions — Node 22 lists
+  // the English ordinals as one, few, two, other; Node 24 as one, two, few,
+  // other. The rule names a set, not an order, so the report is sorted and the
+  // fixtures state sorted arrays.
+  return missing.sort();
 }
 
 describe("catalog plural rules", () => {
@@ -71,8 +75,8 @@ describe("catalog plural rules", () => {
 
   it("applies the rule to ordinal messages with the ordinal categories", () => {
     expect(missingCategories("en", "rank", "{n, selectordinal, one {st} other {th}}")).toEqual([
-      "en:rank:two",
       "en:rank:few",
+      "en:rank:two",
     ]);
   });
 
