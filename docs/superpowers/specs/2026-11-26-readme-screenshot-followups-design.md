@@ -93,7 +93,10 @@ task.
   wizard steps do not switch back to the German archive title. The provisioning
   POST and imported novel keep the archive's original title and language.
   `title_en` is optional display-only interchange metadata, not an imported novel
-  fact; absent or empty values fall back to the archive title.
+  fact; absent or empty values fall back to the archive title. General archive
+  parsing preserves any string value without a display-title length limit and
+  treats non-string values as absent, so unusable display metadata can never
+  reject otherwise valid novel content. Persisted metadata stays strict.
 - Settings subpages derive their breadcrumb from the settings route, not the
   bookshelf shell.
 

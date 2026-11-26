@@ -121,7 +121,7 @@ Reviewer checks the ordering contract, duplicate/parallel-edge behavior and real
 - Modify: `app/capabilities/setup/web/WelcomePage.tsx`, `steps/BasisStep.tsx`
 - Modify: `app/capabilities/setup/web/steps/StructureStep.tsx`, `steps/ProvisioningStep.tsx`, `web/wizardState.ts` for complete English display coverage
 - Modify: `app/kernel/interchange/format.py` docstring and `docs/superpowers/specs/2026-10-28-wp3-markdown-demo-export-design.md` for the display-only metadata contract
-- Test: `app/capabilities/setup/tests/test_demo_manifest.py`, `app/kernel/tests/test_interchange_demos.py`, setup E2E
+- Test: `app/capabilities/setup/tests/test_demo_manifest.py`, `app/kernel/tests/test_interchange_demos.py`, `app/kernel/tests/test_interchange_format.py`, setup E2E
 - Regenerate: `web/lib/generated/demos.ts`, affected welcome/prompt masters and index
 
 **Interfaces:**
@@ -153,6 +153,10 @@ Reviewer checks all three locales and generated-source consistency. Commit `fix(
 - [x] **Step 6: Close the setup-title review findings**
 
 Add failing English-face assertions for the Structure and Provisioning display sites and a Python test for present-but-empty `title_en` fallback. Use `demoDisplayTitle(demo, locale)` at every display site while keeping the provisioning POST on `archive.title`; type the helper locale as `Locale`; use `metadata.get("title_en") or title`; document `title_en` as optional display-only metadata that is not imported into the novel. Run the setup/interchange tests, existing setup E2E, screenshot suites and `just check`. Run one fresh full capture and prove the committed masters/index remain identical. Commit `fix(setup): keep the localized demo title through provisioning` with the Assisted-by trailer and no duplicate `Closes` keywords.
+
+- [ ] **Step 7: Keep malformed display metadata from blocking archive imports**
+
+Add a failing parametrized format test for `title_en` values `42`, `true`, `[1, 2]`, `{"x": 1}` and `"x" * 201`: parsing must succeed, novel title/chapters/entities remain intact, non-string values read as `None`, and the overlong string is preserved rather than refused. Replace the strict `title_en` parse with a lenient string-or-`None` read and remove its `_MAX_LENGTHS` cap; keep all persisted metadata strict. Document the compatibility rule in `format.py` and the WP3 demo/export spec. Run the interchange format/engine/demo tests, setup tests and `just check`. Commit `fix(interchange): ignore unusable display titles during import` with a real `User-visible:` line, the Assisted-by trailer and no duplicate `Closes` keywords.
 
 ## Task 4: Give settings subpages a route-aware breadcrumb (#981)
 
