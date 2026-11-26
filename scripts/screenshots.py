@@ -938,12 +938,10 @@ def _capture(
         raise SystemExit("the causality track or its last chapter has no box")
     if last_chapter_box["x"] + last_chapter_box["width"] > track_box["x"] + track_box["width"] + 1:
         raise SystemExit("the last causality chapter is cropped by the track")
-    # The content column distributes its five real blocks over the page height:
-    # the top counts stay reachable and the footnote lands near the foot, so
-    # the frame does not leave the lower half as accidental whitespace.
-    # The content column groups its blocks instead of stretching every one:
+    # The content column groups its five real blocks into three visual groups:
     # the subline, header+track and methodology+footnote keep their normal
-    # 16px rhythm, and only the middle group's flex-1 share is a large gap.
+    # 16px rhythm, and only the middle group's flex-1 share is the one large
+    # gap; the footnote lands near the foot and the counts stay reachable.
     subline = page.get_by_test_id("causality-subline")
     header = page.get_by_test_id("causality-track-header")
     bento = page.get_by_test_id("causality-bento")
