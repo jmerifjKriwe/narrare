@@ -138,7 +138,9 @@ task.
   `aria-disabled` feature gaps use status-only copy (“Not available yet.” and its
   localized equivalents) in visible text, badges, tooltips and `aria-label`s,
   never a promise that implies a live feature is arriving. `writing.shelf.comingSoon`
-  is the sole exception because it is shared with a live primary CTA.
+  remains future-facing only on the shelf page, empty state and hero, where it is
+  shared with a live primary CTA. The disabled-only activity banner uses the
+  separate status-only `writing.shelf.banner.statsNote` key.
 
 ## Acceptance
 

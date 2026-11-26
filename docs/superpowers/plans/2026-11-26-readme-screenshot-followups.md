@@ -174,15 +174,15 @@ Write a registry-wide regression that flattens every registered factory's sample
 **Interfaces:**
 - `settingsFace = !bookFace && pathname.startsWith("/settings")`; all three settings routes show `Atelier / Einstellungen` (or the active locale's Settings label), never the bookshelf crumb.
 
-- [ ] **Step 1: Write failing component tests**
+- [x] **Step 1: Write failing component tests**
 
 Assert the settings breadcrumb for hub, AI rules and prompts routes. Run the focused settings tests and confirm the two subpages fail.
 
-- [ ] **Step 2: Implement route-aware crumbs**
+- [x] **Step 2: Implement route-aware crumbs**
 
 Reuse the existing shell/breadcrumb abstraction; do not add a second navigation system.
 
-- [ ] **Step 3: Regenerate captures and run gates**
+- [x] **Step 3: Regenerate captures and run gates**
 
 Run two independent captures, regenerate `29`/`30` if changed, then run focused settings tests, both screenshot test files and `just check`.
 
@@ -336,6 +336,10 @@ Replace the six remaining future-promise keys with status-only copy in en/de/fr:
 - [x] **Step 8: Finish the disabled-only copy policy**
 
 Convert the nine remaining disabled-only future-promise keys to the same canonical status copy in en/de/fr: `planning.timeline.chapterSequenceNote`, `knowledge.dossier.bookmarkNote`, `knowledge.dossier.exportNote`, `writing.workspace.promptBar.styleNote`, `writing.workspace.zen.soundscapeNote`, `writing.workspace.ribbon.historyNote`, `writing.workspace.ribbon.exportNote`, `writing.workspace.dock.layoutNote`, and `writing.workspace.dock.soon`. Keep `writing.shelf.comingSoon` as the documented shared-live-CTA exception. Update Timeline, ZenMode, EditorColumn, PromptBar, InspectorDock and EntityDossier contracts; update writing Zen/workspace E2E; scope the dossier and graph E2E excerpts assertions to the excerpts heading block; add capture assertions for the painted timeline note and dock badge. Run all touched unit/E2E suites, both screenshot test files, `just check` and `just check-generated`. Run two independent full captures, regenerate and inspect 20/21/35/41/42, prove the full set remains deterministic and publication leaves no debris. Commit `fix(web): finish disabled feature status copy` with a real `User-visible:` line and the Assisted-by trailer; do not repeat `Closes #979`/`Closes #985`.
+
+- [ ] **Step 9: Close the shelf-banner copy exception**
+
+Add `writing.shelf.banner.statsNote` with the canonical status copy in en/de/fr and use it for the disabled-only statistics button in `ShelfBanner.tsx`; keep `writing.shelf.comingSoon` only where it is shared with a live CTA. Add exact-locale and forbidden-future-promise contracts in `ShelfBanner.test.tsx`. Run shelf tests, both screenshot suites, `just check` and `just check-generated`; run two independent captures and regenerate 37/38 only if the banner note is in-frame. Commit `fix(writing): give the shelf banner status-only copy` with a real `User-visible:` line and the Assisted-by trailer; do not repeat `Closes #979`/`Closes #985`.
 
 ## Task 8: Final verification and close-out
 
