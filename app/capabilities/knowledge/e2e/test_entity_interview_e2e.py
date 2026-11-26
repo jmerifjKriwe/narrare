@@ -313,6 +313,8 @@ def test_hiding_the_panel_while_the_model_answers_keeps_the_turn(
         expect(panel).to_contain_text("Der Assistent überlegt ...")
         expect(_composer(page)).to_be_disabled()
         expect(page.get_by_test_id("entity-interview-save")).to_be_disabled()
+        # The thinking face gets the same axe pass as every other face.
+        assert_accessible(page)
 
         assert ready[1].wait(timeout=10), "the second turn never reached the route handler"
         assert len(held) == 1
