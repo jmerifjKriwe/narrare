@@ -77,28 +77,28 @@ Reviewer verifies the route/API evidence and link targets. Commit `docs(readme):
 - `graphSignature(...)` uses the same canonical name/id key.
 - Parallel relation arcs use a content key (`from`, `to`, `type`, `note`) before falling back to `id`.
 
-- [ ] **Step 1: Write failing unit tests**
+- [x] **Step 1: Write failing unit tests**
 
 Add tests proving identical positions for the same names under different UUID-shaped IDs, reversed input order, case-folded name ordering, duplicate-name ID tiebreaking, and signature changes on rename. Run the focused Vitest file and confirm the current UUID ordering fails.
 
-- [ ] **Step 2: Implement canonical ordering**
+- [x] **Step 2: Implement canonical ordering**
 
 Change `layoutGraph` and `graphSignature` to the name-first key. Update `LoreGraphPage` parallel-arc ordering to the content key. Keep the fixed physics iterations unchanged.
 
-- [ ] **Step 3: Add component/E2E proof**
+- [x] **Step 3: Add component/E2E proof**
 
 Add a component test comparing node positions by visible name under different IDs. Add an E2E case that seeds two novels with identical names/prose in different creation order and compares node positions keyed by card text.
 
-- [ ] **Step 4: Restore the multi-node graph master**
+- [x] **Step 4: Restore the multi-node graph master**
 
 Replace the one-node graph seed with the existing three-node/two-edge canon (`Mira`, `Kavic`, `Vulcan`). Update comments/captions. Run two independent captures and compare hashes; regenerate canonical `39`/`40` and the index.
 
-- [ ] **Step 5: Run focused gates**
+- [x] **Step 5: Run focused gates**
 
 Run: `pnpm --dir web test -- graphLayout` (or the repository's exact focused Vitest command), `just test-e2e-file app/capabilities/knowledge/e2e/test_graph_e2e.py`, both screenshot test files and `just check`.
 Expected: PASS.
 
-- [ ] **Step 6: Review and commit**
+- [x] **Step 6: Review and commit**
 
 Reviewer checks the ordering contract, duplicate/parallel-edge behavior and real multi-node frames. Commit `fix(knowledge): order graph layout by stable entity names` with `Closes #978`, a real `User-visible:` line and the Assisted-by trailer. Include regenerated masters in the same commit.
 
