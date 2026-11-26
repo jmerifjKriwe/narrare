@@ -272,6 +272,9 @@ export function useInterview({
     session: session.data ?? null,
     sessions: sessions.data ?? [],
     sessionsPending: sessions.isPending,
+    sessionsFailed: sessions.isError,
+    /** The list's own read again; its answer restores counts and rows. */
+    retrySessions: () => void sessions.refetch(),
     text: shown.text,
     setText,
     failure: shown.failure,

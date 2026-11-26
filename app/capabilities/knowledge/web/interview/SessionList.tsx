@@ -4,8 +4,9 @@
  * (newest first). A row names the draft or says «noch ohne Name», shows its
  * type and state, and opens that interview — «Fortsetzen» while it is open,
  * «Ansehen» once it has ended. «Neues Interview» starts a fresh type choice.
- * While the read is still out the list draws its loading line alone: a count
- * of zero would state a fact the wire has not answered yet.
+ * While the read is still out the list draws its loading line alone, and a
+ * read that failed draws its own sentence with «Erneut versuchen» — neither a
+ * count nor a row claims a fact the wire has not answered.
  */
 import type { AssistantSessionSummary } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
@@ -53,17 +54,24 @@ function SessionRow({
 export function SessionList({
   sessions,
   pending,
+  failed,
   onOpen,
   onNew,
   onClose,
+  onRetry,
 }: {
   sessions: readonly AssistantSessionSummary[];
   /** The list's read is still out: the list says so instead of counting a
    *  zero and drawing no row, which would state a fact the wire has not. */
   pending: boolean;
+  /** The list's read failed: its own sentence and the retry stand instead of
+   *  the zero and the rows the wire never answered. */
+  failed: boolean;
   onOpen: (id: string) => void;
   onNew: () => void;
   onClose: () => void;
+  /** Asks the list's read again. */
+  onRetry: () => void;
 }) {
   const t = useTranslation();
   const open = sessions.filter((session) => session.closed_at === null);
@@ -100,8 +108,24 @@ export function SessionList({
           data-testid="entity-interview-list-loading"
           className="px-1 text-meta text-muted"
         >
-          {t("knowledge.interview.loading")}
+          {t("knowledge.interview.listLoading")}
         </p>
+      ) : failed ? (
+        <div
+          data-testid="entity-interview-list-failed"
+          className="rounded border border-danger/40 bg-panel p-3 text-center"
+        >
+          <p role="alert" className="text-meta text-danger">
+            {t("knowledge.interview.listFailed")}
+          </p>
+          <button
+            type="button"
+            onClick={onRetry}
+            className={`mt-2 rounded border border-border bg-surface-container-low px-3 py-1.5 text-meta font-medium text-foreground transition-colors hover:bg-surface-container ${FOCUS}`}
+          >
+            {t("knowledge.interview.retry")}
+          </button>
+        </div>
       ) : (
         <>
           <div className="flex flex-col gap-1.5">

@@ -323,8 +323,10 @@ describe("the list counts its interviews", () => {
     const list = await screen.findByTestId("entity-interview-list");
 
     // The wire has said nothing yet: no count and no row may stand, and the
-    // list says that it is loading instead.
-    expect(list.textContent).toContain(de["knowledge.interview.loading"]);
+    // list says that it is loading instead — its own sentence, since it reads
+    // a list of interviews and not one interview.
+    expect(list.textContent).toContain(de["knowledge.interview.listLoading"]);
+    expect(list.textContent).not.toContain(de["knowledge.interview.loading"]);
     expect(list.textContent).not.toContain(de["knowledge.interview.openTitle"]);
     expect(list.textContent).not.toContain(de["knowledge.interview.noName"]);
     expect(within(list).queryAllByRole("button")).toHaveLength(2);
@@ -332,7 +334,38 @@ describe("the list counts its interviews", () => {
     release({ data: { items: sessions }, response: ok() });
     await waitFor(() => expect(list.textContent).toContain("1 Interview"));
     expect(list.textContent).toContain(de["knowledge.interview.noName"]);
-    expect(list.textContent).not.toContain(de["knowledge.interview.loading"]);
+    expect(list.textContent).not.toContain(de["knowledge.interview.listLoading"]);
+  });
+
+  it("a failed list read names its failure with a retry, never a zero", async () => {
+    let fail = true;
+    api.GET.mockImplementation((path: string) =>
+      path === "/api/chat/sessions"
+        ? fail
+          ? Promise.reject(new Error("list read failed"))
+          : Promise.resolve({ data: { items: sessions }, response: ok() })
+        : detailGet(path),
+    );
+    renderPanel();
+    await readySession();
+    fireEvent.click(screen.getByTestId("entity-interview-sessions"));
+    const list = await screen.findByTestId("entity-interview-list");
+
+    // The wire refused the read: its own sentence and the retry stand, and
+    // neither a count nor a row may claim what the read never answered.
+    const alert = await within(list).findByRole("alert");
+    expect(alert.textContent).toBe(de["knowledge.interview.listFailed"]);
+    expect(list.textContent).not.toContain(de["knowledge.interview.openTitle"]);
+    expect(list.textContent).not.toContain(de["knowledge.interview.noName"]);
+    expect(list.textContent).not.toContain("1 Interview");
+    expect(within(list).queryByRole("button", { name: de["knowledge.interview.resume"] })).toBeNull();
+
+    // The retry asks the list again, and its answer restores counts and rows.
+    fail = false;
+    fireEvent.click(within(list).getByRole("button", { name: de["knowledge.interview.retry"] }));
+    await waitFor(() => expect(list.textContent).toContain("1 Interview"));
+    expect(list.textContent).toContain(de["knowledge.interview.noName"]);
+    expect(list.textContent).not.toContain(de["knowledge.interview.listFailed"]);
   });
 });
 

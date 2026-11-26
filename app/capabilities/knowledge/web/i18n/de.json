@@ -210,6 +210,8 @@
   "knowledge.interview.fillAll": "Alles vorschlagen lassen",
   "knowledge.interview.hint": "Enter sendet, Shift + Enter für eine neue Zeile",
   "knowledge.interview.listAria": "Liste aller Interviews",
+  "knowledge.interview.listFailed": "Die Interviews konnten nicht geladen werden.",
+  "knowledge.interview.listLoading": "Interviews werden geladen…",
   "knowledge.interview.listTitle": "Interviews",
   "knowledge.interview.loading": "Interview wird geladen…",
   "knowledge.interview.manual": "Von Hand anlegen",

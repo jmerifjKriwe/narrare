@@ -210,6 +210,8 @@
   "knowledge.interview.fillAll": "Tout suggérer",
   "knowledge.interview.hint": "Entrée envoie, Maj + Entrée ajoute une ligne",
   "knowledge.interview.listAria": "Liste de tous les entretiens",
+  "knowledge.interview.listFailed": "Les entretiens n'ont pas pu être chargés.",
+  "knowledge.interview.listLoading": "Chargement des entretiens…",
   "knowledge.interview.listTitle": "Entretiens",
   "knowledge.interview.loading": "Chargement de l'entretien…",
   "knowledge.interview.manual": "Créer à la main",

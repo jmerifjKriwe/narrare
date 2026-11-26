@@ -210,6 +210,8 @@
   "knowledge.interview.fillAll": "Suggest everything",
   "knowledge.interview.hint": "Enter sends, Shift + Enter adds a new line",
   "knowledge.interview.listAria": "List of all interviews",
+  "knowledge.interview.listFailed": "The interviews could not be loaded.",
+  "knowledge.interview.listLoading": "The interviews are loading.",
   "knowledge.interview.listTitle": "Interviews",
   "knowledge.interview.loading": "Loading interview…",
   "knowledge.interview.manual": "Create by hand",
