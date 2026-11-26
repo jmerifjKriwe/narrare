@@ -12,15 +12,18 @@ set — removals included — only after every frame landed. A failed capture
 leaves the previous masters and the previous index untouched.
 
 Nothing here is mocked except the model at its boundary, the seam every E2E
-suite uses: the chat stand-in answers with the prose this file chooses, because
-the kernel's fake answers every prompt with one German sentence. The README
-says so, in one line under the gallery.
+suite uses: the chat stand-in answers the continuation and the interview's JSON
+turn with the text this file chooses, because the kernel's fake answers every
+prompt with one fixed German sentence. The README says so, in one line under the
+gallery.
 
 The demo novel is the bundled *Dead Signal* archive, loaded through the setup
-door a first run takes. The notes are this file's own text, uploaded the way a
-writer uploads research. The one planted continuity error (a facility
-renumbered between chapters) is an edit a writer could make, and the check that
-finds it is the real one.
+door a first run takes; it is the shelf's book. The writing frames come from a
+clean, API-seeded project (*The Glass Harbor*), so no archive scene heading
+reaches the prose. The planted continuity error (a facility renumbered in one
+chapter) lives in that project, and the check that finds it is the real one. The
+sources frame is the same project's real empty archive: no notes are uploaded, so
+the server-generated upload date cannot reach a frame.
 
 Determinism is part of the recipe: the viewport, locale, timezone, reduced
 motion, a fixed browser clock, the reader's stored theme and animation-free
@@ -31,6 +34,7 @@ interview, where creation order — not the id sort — is the truth.
 """
 
 import argparse
+import json
 import os
 import shutil
 import tempfile
@@ -49,7 +53,7 @@ from app.kernel.testing.vendor import chat_vendor
 from scripts.screenshot_manifest import SHOTS, render_index, validate_shots
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
     from typing import Literal
 
     from playwright.sync_api import Page
@@ -74,20 +78,17 @@ reads the same on every capture."""
 CONTINUATION = " Somewhere behind the console a relay clicked, once."
 """The ghost the editor offers at the caret: the image's whole claim."""
 
-NOTES: dict[str, str] = {
-    "Horizon Station — cast and places": (
-        "Dr. Maya Chen is the station's chief engineer, twelve light-years from Earth. "
-        "ARIA is the station's intelligence: Maya treats her as a colleague, not a tool. "
-        "Director Kavic arrives from the corporation with an answer he does not give. "
-        "Research Facility 7 is the Nevada site where the first device was built.\n"
-    ),
-    "Timeline — before the signal": (
-        "Three years before the signal, Maya's sister died at Research Facility 7; the "
-        "corporation called it an accident. Six months before the signal, the device was "
-        "moved off the site and studied in secret. The signal arrives on Day 1.\n"
-    ),
-}
-"""The writer's notes: plain text, chunked and embedded by the real ingestion path."""
+WRITING_TITLE = "The Glass Harbor"
+WRITING_SIGNAL = (
+    "The console woke before the station did. A thin tone moved through the deck, "
+    "steady as a pulse, and Maya counted it until the count became a question.\n\n"
+    "Research Facility 7 had been sealed for six years. The file in front of her "
+    "still said Research Facility 7, and the tone said otherwise.\n\n"
+    'She opened the channel. "ARIA, tell me where that signal comes from."\n\n'
+    'The answer arrived without a pause. "The signal comes from the place we buried."'
+)
+WRITING_CAST = "Mira meets Kavic at Vulcan."
+"""The clean writing project the workspace, Zen and knowledge-dock frames share."""
 
 SHELF: tuple[tuple[str, str, str], ...] = (
     (
@@ -96,14 +97,15 @@ SHELF: tuple[tuple[str, str, str], ...] = (
         "A lighthouse keeper keeps a ledger of every ship that never came back.",
     ),
     (
-        "Winterhaus",
+        "Winter House",
         "Mystery",
         "Six guests, one valley, and a snowed-in road that keeps them there.",
     ),
 )
 """Two more books on the shelf, so the shelf reads as a shelf and not a test row."""
 
-INTERVIEW_NAME = "Resonanz-Transponder LC-89"
+INTERVIEW_NAME = "Resonance Transponder LC-89"
+INTERVIEW_DESCRIPTION = "A relay that answers to the pressure curve."
 """The proposal the interview builds: the frame's real, non-mocked subject."""
 
 CONTINUATION_BODY = (
@@ -176,9 +178,11 @@ def _resume_clock(page: Page) -> None:
 
 
 def _seed(api: httpx.Client) -> tuple[str, list[dict[str, object]]]:
-    """Set the language, load the demo, upload the notes, return ids.
+    """Set the language, load the demo and the two shelf books, return ids.
 
-    Returns the novel id and its chapters in position order.
+    The demo is the shelf's hero; no notes are uploaded, so the sources archive
+    stays genuinely empty. Returns the novel id and its chapters in position
+    order.
     """
     # A demo carries its own title: the archive's metadata wins over the field.
     setup = api.post("/api/setup", json={"novel_title": "Dead Signal", "demo": DEMO})
@@ -186,14 +190,6 @@ def _seed(api: httpx.Client) -> tuple[str, list[dict[str, object]]]:
     novel_id = str(setup.json()["novel_id"])
     # After setup: the settings row needs the user that setup creates.
     api.patch("/api/settings", json={"locale": "en"}).raise_for_status()
-
-    for title, body in NOTES.items():
-        uploaded = api.post(
-            "/api/knowledge/documents",
-            files={"file": (f"{title}.txt", body.encode())},
-            data={"title": title},
-        )
-        uploaded.raise_for_status()
 
     for title, genre, blurb in SHELF:
         created = api.post(
@@ -210,7 +206,7 @@ def _seed(api: httpx.Client) -> tuple[str, list[dict[str, object]]]:
 def _plant_contradiction(api: httpx.Client, chapter: dict[str, object]) -> None:
     """Renumber one facility mention, so the check has a real contradiction.
 
-    The demo names Research Facility 7 twice in the same chapter; one mention
+    The seed names Research Facility 7 twice in the same chapter; one mention
     becomes 9. A name carrying two numbers in one checked passage is what the
     consistency contract reports, and the same-chapter edit keeps both
     readings in the group the map-reduce sends to the provider. The prose
@@ -228,7 +224,7 @@ def _plant_contradiction(api: httpx.Client, chapter: dict[str, object]) -> None:
         updated = api.put(f"/api/writing/scenes/{scene['id']}", json={"body": body})
         updated.raise_for_status()
         return
-    raise SystemExit("the demo no longer names Research Facility 7 twice in one chapter")
+    raise SystemExit("the seed no longer names Research Facility 7 twice in one chapter")
 
 
 def _run_check(api: httpx.Client, novel_id: str) -> None:
@@ -252,17 +248,17 @@ def _run_check(api: httpx.Client, novel_id: str) -> None:
 def _route_model(api: httpx.Client, vendor: ChatVendor) -> tuple[str, str]:
     """Two providers with one model each, as a user would: the stand-in, and a local endpoint.
 
-    The knowledge jobs stay on the deterministic fake — they answer JSON, which a
-    prose stand-in cannot. The continuation goes to the local endpoint, so its
-    text is the demo prose instead of one canned German sentence. ``chat.ask``
-    stays on the fake as well: the entity interview rides that key and needs
-    the fake's structured interview answer, not prose. The provider row is the
-    endpoint, so the pair is created first and the models hang off it — the way
-    the settings surface stores a configuration.
+    The knowledge jobs stay on the deterministic fake — they answer the
+    JSON extraction and consistency shapes. The continuation and ``chat.ask``
+    go to the local endpoint, so their text is this file's own prose and the
+    interview gets a canned English JSON turn instead of the kernel fake's
+    German sentence. The provider row is the endpoint, so the pair is created
+    first and the models hang off it — the way the settings surface stores a
+    configuration.
 
     Returns the local provider and model ids: the capture removes that pair
-    once the continuation frame is shot, because its endpoint URL is a
-    per-run free port and a screenshot must not carry a random address.
+    after the interview, because its endpoint URL is a per-run free port and a
+    screenshot must not carry a random address.
     """
     fake = api.post(
         "/api/settings/providers", json={"name": "Deterministic stand-in", "kind": "fake"}
@@ -295,6 +291,7 @@ def _route_model(api: httpx.Client, vendor: ChatVendor) -> tuple[str, str]:
         ("knowledge.extract-entities", fake_model_id),
         ("knowledge.check-consistency", fake_model_id),
         ("writing.continuation", local_model_id),
+        ("chat.ask", local_model_id),
     ):
         assigned = api.put(f"/api/settings/assignments/{task}", json={"profile_id": profile_id})
         assigned.raise_for_status()
@@ -302,11 +299,11 @@ def _route_model(api: httpx.Client, vendor: ChatVendor) -> tuple[str, str]:
 
 
 def _drop_local_endpoint(api: httpx.Client, provider_id: str, model_id: str) -> None:
-    """Remove the continuation endpoint once its frame is taken.
+    """Remove the local endpoint once its frames are taken.
 
     The vendor's port is random per capture; leaving the provider row in place
     would print that address into the AI-rules frame. Deleting the model also
-    clears its assignment (the cascade the settings surface documents).
+    clears its assignments (the cascade the settings surface documents).
     """
     api.delete(f"/api/settings/models/{model_id}").raise_for_status()
     api.delete(f"/api/settings/providers/{provider_id}").raise_for_status()
@@ -324,8 +321,13 @@ def _create_chapter(api: httpx.Client, novel_id: str, title: str) -> str:
     return str(chapter.json()["id"])
 
 
-def _write_scene(api: httpx.Client, chapter_id: str, body: str) -> None:
-    saved = api.post(f"/api/writing/chapters/{chapter_id}/scenes", json={"body": body})
+def _write_scene(
+    api: httpx.Client, chapter_id: str, body: str, *, title: str | None = None
+) -> None:
+    payload: dict[str, object] = {"body": body}
+    if title is not None:
+        payload["title"] = title
+    saved = api.post(f"/api/writing/chapters/{chapter_id}/scenes", json=payload)
     saved.raise_for_status()
 
 
@@ -337,7 +339,7 @@ def _seed_canon(api: httpx.Client, title: str, prose: str, accept_order: list[st
     queue's ties. Returns the novel id.
     """
     novel_id = _create_novel(api, title)
-    chapter_id = _create_chapter(api, novel_id, "Ankunft")
+    chapter_id = _create_chapter(api, novel_id, "Arrival")
     _write_scene(api, chapter_id, prose)
     enqueued = api.post(f"/api/knowledge/extraction/{novel_id}", json={"chapter_id": chapter_id})
     enqueued.raise_for_status()
@@ -385,21 +387,21 @@ def _seed_causality(api: httpx.Client) -> str:
     strip shows when no scene was planned there. Two chapters and two scenes
     fit the 1600px viewport without a horizontal crop.
     """
-    novel_id = _create_novel(api, "Die verkettete Bucht")
-    first = _create_chapter(api, novel_id, "Ankunft")
-    _create_chapter(api, novel_id, "Der Nebel")
+    novel_id = _create_novel(api, "The Chained Bay")
+    first = _create_chapter(api, novel_id, "Arrival")
+    _create_chapter(api, novel_id, "The Fog")
     _save_scenes(
         api,
         novel_id,
         first,
         [
             _scene(
-                "Kalibrierung der Messsonde",
-                conflict="Die Sonde schlägt bei 14.2 Hz aus.",
-                resolution="Der Außenposten wird evakuiert.",
+                "Calibration of the probe",
+                conflict="The probe spikes at 14.2 Hz.",
+                resolution="The outpost is evacuated.",
                 status="complete",
             ),
-            _scene("Der Ausfall", conflict="Der Strom fällt aus."),
+            _scene("The outage", conflict="The power fails."),
         ],
     )
     return novel_id
@@ -412,24 +414,24 @@ def _seed_timeline(api: httpx.Client) -> str:
     the real create — one dated with characters and a chapter, one ordered
     but undated, one unordered and chapterless. Returns the novel's id.
     """
-    novel_id = _create_novel(api, "Die geplante Bucht")
-    chapter_ids = [_create_chapter(api, novel_id, title) for title in ("Ankunft", "Abreise")]
+    novel_id = _create_novel(api, "The Planned Bay")
+    chapter_ids = [_create_chapter(api, novel_id, title) for title in ("Arrival", "Departure")]
     events: tuple[dict[str, object], ...] = (
         {
-            "title": "Anfang",
-            "description": "Maya erreicht die Station; das Signal ist noch ein Gerücht.",
-            "date_label": "Im Frühling",
+            "title": "Beginning",
+            "description": "Maya reaches the station; the signal is still a rumour.",
+            "date_label": "In spring",
             "character_names": ["Maya Chen", "ARIA"],
             "chapter_id": chapter_ids[0],
             "position": 1,
         },
         {
-            "title": "Mitte",
-            "description": "Der Konzern nennt es einen Unfall.",
+            "title": "Middle",
+            "description": "The corporation calls it an accident.",
             "chapter_id": chapter_ids[1],
             "position": 2,
         },
-        {"title": "Ausklang", "description": "Drei Jahre fehlen."},
+        {"title": "Coda", "description": "Three years are missing."},
     )
     for payload in events:
         created = api.post(f"/api/planning/novels/{novel_id}/timeline-events", json=payload)
@@ -439,27 +441,56 @@ def _seed_timeline(api: httpx.Client) -> str:
 
 def _seed_storyboard(api: httpx.Client) -> str:
     """A novel with chapters wearing three different sync badges, through the API."""
-    novel_id = _create_novel(api, "Die aufgestellte Bucht")
+    novel_id = _create_novel(api, "The Staged Bay")
     chapter_ids = [
-        _create_chapter(api, novel_id, title) for title in ("Ankunft", "Abreise", "Heimkehr")
+        _create_chapter(api, novel_id, title) for title in ("Arrival", "Departure", "Homecoming")
     ]
-    ankunft, _, heimkehr = chapter_ids
+    arrival, _, homecoming = chapter_ids
     seeded: tuple[tuple[str, list[dict[str, object]]], ...] = (
-        (ankunft, [{"id": str(uuid4()), "title": "Sturm", "status": "planned"}]),
-        (heimkehr, [{"id": str(uuid4()), "title": "Rückblick", "status": "complete"}]),
+        (arrival, [{"id": str(uuid4()), "title": "Storm", "status": "planned"}]),
+        (homecoming, [{"id": str(uuid4()), "title": "Flashback", "status": "complete"}]),
     )
     for chapter_id, scenes in seeded:
         _save_scenes(api, novel_id, chapter_id, scenes)
-    _write_scene(api, heimkehr, "Erste Worte im Manuskript.")
+    _write_scene(api, homecoming, "First words in manuscript.")
     return novel_id
 
 
-def _seed_continuation(api: httpx.Client) -> tuple[str, str]:
-    """A short book for the continuation frame: one chapter, one scene."""
-    novel_id = _create_novel(api, "The Quiet Channel")
-    chapter_id = _create_chapter(api, novel_id, "Arrival")
-    _write_scene(api, chapter_id, CONTINUATION_BODY)
-    return novel_id, chapter_id
+def _seed_writing(api: httpx.Client) -> tuple[str, str, str]:
+    """The clean project the workspace, Zen, continuation and dock share.
+
+    Three chapters: a short arrival scene for the continuation, a longer
+    signal scene with the planted facility pair, and a cast sentence the
+    extraction turns into the dock's three entities. The prose carries no
+    archive scene headings. Returns the novel id, the arrival chapter and the
+    signal chapter.
+    """
+    novel_id = _create_novel(api, WRITING_TITLE)
+    arrival = _create_chapter(api, novel_id, "Arrival")
+    _write_scene(api, arrival, CONTINUATION_BODY, title="Arrival")
+    signal = _create_chapter(api, novel_id, "The Signal")
+    _write_scene(api, signal, WRITING_SIGNAL, title="The Signal")
+    cast = _create_chapter(api, novel_id, "The Cast")
+    _write_scene(api, cast, WRITING_CAST, title="The Cast")
+    enqueued = api.post(f"/api/knowledge/extraction/{novel_id}", json={"chapter_id": cast})
+    enqueued.raise_for_status()
+    job = wait_for_job(api, enqueued.json()["job_id"])
+    assert job["status"] == "done", f"the extraction job ended {job['status']}"
+    suggestions = api.get(f"/api/knowledge/novels/{novel_id}/suggestions")
+    suggestions.raise_for_status()
+    rank = {name: index for index, name in enumerate(["Mira", "Kavic", "Vulcan"])}
+    for suggestion in sorted(suggestions.json(), key=lambda row: rank[str(row["name"])]):
+        accepted = api.post(f"/api/knowledge/suggestions/{suggestion['id']}/accept")
+        accepted.raise_for_status()
+    return novel_id, arrival, signal
+
+
+def _interview_answer(name: str, content: str | None = None) -> str:
+    """The English JSON turn the interview vendor returns for one writer turn."""
+    slots: dict[str, object] = {"name": name}
+    if content is not None:
+        slots["content"] = content
+    return json.dumps({"reply": "Noted.", "slots": slots, "relations": []})
 
 
 def _goto_graph(page: Page, novel_id: str) -> None:
@@ -504,18 +535,25 @@ def _caret_at_first_paragraph_end(page: Page) -> None:
     )
 
 
+def _settle_interview(page: Page) -> None:
+    """Show the proposal's last row and the newest answer, not a cut edge."""
+    page.get_by_test_id("entity-interview-proposal-body").evaluate(
+        "element => { element.scrollTop = element.scrollHeight; }"
+    )
+    page.get_by_test_id("entity-interview-transcript").evaluate(
+        "element => { element.scrollTop = element.scrollHeight; }"
+    )
+
+
 def _capture(
     page: Page,
     out: Path,
-    novel_id: str,
-    chapters: list[dict[str, object]],
     vendor: ChatVendor,
     api: httpx.Client,
     local_endpoint: tuple[str, str],
 ) -> list[Path]:
     """Shoot the frames in the order the page tells them."""
     written: list[Path] = []
-    first_chapter = str(chapters[0]["id"])
 
     def open_chapter(book: str, chapter: str) -> None:
         _open_workspace(page, book)
@@ -524,17 +562,8 @@ def _capture(
         page.get_by_test_id(f"tree-chapter-{chapter}").get_by_role("button").nth(1).click()
         expect(page.locator(".ProseMirror")).to_be_visible()
 
-    # 20/21. The rebuilt workspace in the default light and the reader's
-    #     stored dark: the same demo scene, so the pair is the same desk.
-    _set_theme(page, "light")
-    open_chapter(novel_id, first_chapter)
-    written.append(_shot(page, out, "20-workspace-rebuilt"))
-    _set_theme(page, "dark")
-    open_chapter(novel_id, first_chapter)
-    written.append(_shot(page, out, "21-workspace-rebuilt-dark"))
-
-    # 37/38. The shelf, before the planning and interview books exist, so it
-    #     really is the writer's three books.
+    # 37/38. The shelf, before the clean writing project exists, so it really
+    #     is the writer's three books.
     _set_theme(page, "light")
     page.goto(f"{WEB}/")
     expect(page.get_by_role("heading", name="The Bookshelf", exact=True)).to_be_visible()
@@ -544,11 +573,24 @@ def _capture(
     expect(page.get_by_role("heading", name="The Bookshelf", exact=True)).to_be_visible()
     written.append(_shot(page, out, "38-shelf-dark"))
 
-    # 35. A short scene with the continuation waiting at the caret; the short
-    #     book leaves the accept pill above the prompt bar.
+    # The clean writing project: no archive headings, English prose, and the
+    # planted facility pair the real consistency check reports.
     _set_theme(page, "light")
-    continuation_novel, continuation_chapter = _seed_continuation(api)
-    open_chapter(continuation_novel, continuation_chapter)
+    writing_novel, arrival_chapter, signal_chapter = _seed_writing(api)
+    _plant_contradiction(api, {"id": signal_chapter})
+    _run_check(api, writing_novel)
+
+    # 20/21. The rebuilt workspace in the default light and the reader's
+    #     stored dark: the same signal scene, so the pair is the same desk.
+    open_chapter(writing_novel, signal_chapter)
+    written.append(_shot(page, out, "20-workspace-rebuilt"))
+    _set_theme(page, "dark")
+    open_chapter(writing_novel, signal_chapter)
+    written.append(_shot(page, out, "21-workspace-rebuilt-dark"))
+
+    # 35. The short arrival scene with the continuation waiting at the caret.
+    _set_theme(page, "light")
+    open_chapter(writing_novel, arrival_chapter)
     _caret_at_first_paragraph_end(page)
     vendor.set_answer(CONTINUATION)
     page.get_by_role("button", name="Continue writing").click()
@@ -559,7 +601,7 @@ def _capture(
 
     # 22. Zen: the prose alone. The clock pauses before the room mounts, so
     #     the pomodoro's digits never tick between the two captures.
-    open_chapter(novel_id, first_chapter)
+    open_chapter(writing_novel, signal_chapter)
     _pause_clock(page)
     page.keyboard.press("F9")
     expect(page.get_by_test_id("zen-mode")).to_be_visible()
@@ -568,25 +610,19 @@ def _capture(
 
     # 23. Zen in the reader's stored dark.
     _set_theme(page, "dark")
-    open_chapter(novel_id, first_chapter)
+    open_chapter(writing_novel, signal_chapter)
     _pause_clock(page)
     page.keyboard.press("F9")
     expect(page.get_by_test_id("zen-mode")).to_be_visible()
     written.append(_shot(page, out, "23-zen-dark"))
     _resume_clock(page)
 
-    # The continuation frame is shot; the per-run vendor address must not
-    # reach the AI-rules frame, so its provider and model go now.
-    _drop_local_endpoint(api, *local_endpoint)
-
-    # 36. The knowledge dock beside the prose: the check, its finding, the cast.
+    # 36. The knowledge dock: the finding and the extracted cast beside the
+    #     clean prose. The finding is scrolled into the dock's own area.
     _set_theme(page, "light")
-    open_chapter(novel_id, first_chapter)
+    open_chapter(writing_novel, signal_chapter)
     page.get_by_role("button", name="Knowledge", exact=True).click()
     expect(page.get_by_test_id("knowledge-dock")).to_be_visible()
-    # The demo's own scene headings carry numbers too; this frame claims the
-    # planted Facility contradiction, so wait for that finding and bring it
-    # into the dock's own scroll area.
     finding = page.get_by_test_id("knowledge-finding").filter(has_text="Facility")
     expect(finding).to_be_visible(timeout=15000)
     finding.evaluate(
@@ -600,12 +636,11 @@ def _capture(
     written.append(_shot(page, out, "36-knowledge-dock"))
 
     # 25. The dossiers on a three-entity canon, accepted in a fixed order.
-    _set_theme(page, "light")
     dossiers_novel = _seed_canon(
         api,
-        "Das Signal",
-        "Mira trifft Kavic auf Vulkan.",
-        ["Mira", "Kavic", "Vulkan"],
+        "The Signal",
+        "Mira meets Kavic at Vulcan.",
+        ["Mira", "Kavic", "Vulcan"],
     )
     page.goto(f"{WEB}/novels/{dossiers_novel}/knowledge/dossiers")
     expect(page.get_by_test_id("dossiers-page")).to_be_visible()
@@ -615,13 +650,13 @@ def _capture(
     expect(page.get_by_test_id("dossier-overview")).to_be_visible()
     written.append(_shot(page, out, "25-dossiers"))
 
-    # 26. The sources archive: the uploaded notes and a semantic search.
-    page.goto(f"{WEB}/novels/{novel_id}/knowledge/sources")
+    # 26. The real empty sources archive: no documents, so no upload date.
+    page.goto(f"{WEB}/novels/{writing_novel}/knowledge/sources")
     expect(page.get_by_test_id("sources-page")).to_be_visible()
-    expect(page.get_by_test_id("sources-document")).to_have_count(len(NOTES))
-    page.get_by_test_id("sources-search").fill("facility built the device")
-    page.get_by_test_id("sources-search-button").click()
-    expect(page.get_by_test_id("sources-hit").first).to_be_visible()
+    expect(page.get_by_test_id("sources-empty")).to_be_visible()
+    expect(page.get_by_test_id("sources-empty-upload")).to_be_visible()
+    expect(page.get_by_test_id("sources-upload")).to_be_visible()
+    expect(page.get_by_test_id("sources-document")).to_have_count(0)
     written.append(_shot(page, out, "26-sources"))
 
     # 28. The settings hub.
@@ -630,14 +665,7 @@ def _capture(
     expect(page.locator("#settings-author-name")).to_be_visible()
     written.append(_shot(page, out, "28-settings-hub"))
 
-    # 29. AI rules: providers, models and the task assignments.
-    page.goto(f"{WEB}/settings/ai-regeln")
-    expect(page.get_by_test_id("ai-rules-page")).to_be_visible()
-    expect(page.get_by_role("heading", name="AI rules & model architecture")).to_be_visible()
-    expect(page.get_by_role("heading", name="1. Providers & interfaces")).to_be_visible()
-    written.append(_shot(page, out, "29-ai-rules"))
-
-    # 30. Prompts: the five bundled cards and the live editor.
+    # 30. Prompts: the catalog and the selected prompt's editor.
     page.goto(f"{WEB}/settings/prompts")
     expect(page.get_by_test_id("prompts-page")).to_be_visible()
     expect(page.get_by_test_id("prompt-card")).to_have_count(5)
@@ -655,12 +683,12 @@ def _capture(
     timeline_novel = _seed_timeline(api)
     page.goto(f"{WEB}/novels/{timeline_novel}/planning/timeline")
     expect(page.get_by_test_id("timeline-page")).to_be_visible()
-    expect(page.get_by_text("Im Frühling")).to_be_visible()
+    expect(page.get_by_text("In spring")).to_be_visible()
     written.append(_shot(page, out, "41-timeline"))
     _set_theme(page, "dark")
     page.goto(f"{WEB}/novels/{timeline_novel}/planning/timeline")
     expect(page.locator("html")).to_have_attribute("data-theme", "dark")
-    expect(page.get_by_text("Im Frühling")).to_be_visible()
+    expect(page.get_by_text("In spring")).to_be_visible()
     written.append(_shot(page, out, "42-timeline-dark"))
 
     # 43/44. The storyboard, reading the storyboard seed's aggregate.
@@ -682,7 +710,7 @@ def _capture(
     # 39/40. The lore graph. One entity: the force layout sorts by id, so a
     #     one-node web is the only shape whose pixels do not depend on UUIDs.
     _set_theme(page, "light")
-    canon_novel = _seed_canon(api, "Die stille Bucht", "Mira.", ["Mira"])
+    canon_novel = _seed_canon(api, "The Still Bay", "Mira.", ["Mira"])
     _goto_graph(page, canon_novel)
     node = page.get_by_test_id("graph-node").get_by_role("button")
     expect(page.get_by_test_id("graph-node")).to_have_count(1)
@@ -708,24 +736,59 @@ def _capture(
     expect(page.get_by_test_id("entity-create-dialog")).to_be_visible()
     written.append(_shot(page, out, "32-entity-create-dark"))
 
-    # 33/34. The interview: a chosen type, two real answers and the proposal
-    #     the fake provider builds from them.
+    # 33. The interview in light: a chosen type, two English answers and the
+    #     proposal the local vendor builds from them. The transcript and the
+    #     proposal's last row are scrolled into view before the frame.
     _set_theme(page, "light")
     _open_interview(page, canon_novel)
     _start(page, "object")
+    vendor.set_answer(_interview_answer(INTERVIEW_NAME))
     _say(page, f"Name: {INTERVIEW_NAME}")
     proposal = page.get_by_test_id("entity-interview-proposal")
     expect(proposal).to_contain_text(INTERVIEW_NAME)
-    _say(
-        page,
-        "Beschreibung: Ein Relais, das auf die Druckkurve seiner Fingerkuppen reagiert.",
+    vendor.set_answer(_interview_answer(INTERVIEW_NAME, INTERVIEW_DESCRIPTION))
+    _say(page, f"Description: {INTERVIEW_DESCRIPTION}")
+    expect(proposal).to_contain_text(INTERVIEW_DESCRIPTION)
+    expect(page.get_by_test_id("entity-interview-transcript").get_by_text("Noted.")).to_have_count(
+        2
     )
-    expect(proposal).to_contain_text("Druckkurve")
+    _settle_interview(page)
     written.append(_shot(page, out, "33-entity-interview"))
+
+    # End that session so the dark frame opens a fresh one through the same
+    # sequence, with the same graph badge, proposal, transcript and composer.
+    page.get_by_test_id("entity-interview-end").click()
+    expect(page.get_by_test_id("entity-interview-new")).to_be_visible()
+
+    # 34. The same interview in the reader's stored dark.
     _set_theme(page, "dark")
-    expect(page.get_by_test_id("entity-interview")).to_be_visible()
-    expect(page.get_by_test_id("entity-interview-proposal")).to_contain_text(INTERVIEW_NAME)
+    _open_interview(page, canon_novel)
+    _start(page, "object")
+    vendor.set_answer(_interview_answer(INTERVIEW_NAME))
+    _say(page, f"Name: {INTERVIEW_NAME}")
+    proposal = page.get_by_test_id("entity-interview-proposal")
+    expect(proposal).to_contain_text(INTERVIEW_NAME)
+    vendor.set_answer(_interview_answer(INTERVIEW_NAME, INTERVIEW_DESCRIPTION))
+    _say(page, f"Description: {INTERVIEW_DESCRIPTION}")
+    expect(proposal).to_contain_text(INTERVIEW_DESCRIPTION)
+    expect(page.get_by_test_id("entity-interview-transcript").get_by_text("Noted.")).to_have_count(
+        2
+    )
+    _settle_interview(page)
     written.append(_shot(page, out, "34-entity-interview-dark"))
+
+    # The local vendor is no longer needed; its random port must not reach
+    # the AI-rules frame.
+    _drop_local_endpoint(api, *local_endpoint)
+
+    # 29. AI rules after the local endpoint is gone: the configured provider
+    #     card and the create-provider form.
+    _set_theme(page, "light")
+    page.goto(f"{WEB}/settings/ai-regeln")
+    expect(page.get_by_test_id("ai-rules-page")).to_be_visible()
+    expect(page.get_by_role("heading", name="AI rules & model architecture")).to_be_visible()
+    expect(page.get_by_role("heading", name="1. Providers & interfaces")).to_be_visible()
+    written.append(_shot(page, out, "29-ai-rules"))
 
     return written
 
@@ -794,12 +857,13 @@ def capture(out: Path) -> list[Path]:
             ).to_be_visible()
             written.append(_shot(page, out, "24-welcome-setup"))
 
-            novel_id, chapters = _seed(api)
+            _, chapters = _seed(api)
+            # Bump the demo so it stays the shelf hero; the clean writing
+            # project is created after the shelf frame.
             _plant_contradiction(api, chapters[2])
             local_endpoint = _route_model(api, vendor)
-            _run_check(api, novel_id)
 
-            written.extend(_capture(page, out, novel_id, chapters, vendor, api, local_endpoint))
+            written.extend(_capture(page, out, vendor, api, local_endpoint))
     finally:
         # The shared Vite server outlives a pytest module by design; this
         # one-shot recipe must not leave it behind when a frame fails.
@@ -817,27 +881,35 @@ def _write_index_temp(index: Path, text: str) -> Path:
     return path
 
 
-def _replace_directory(staged: Path, target: Path) -> None:
-    """Swap the staged masters in, removals included, and keep a rollback."""
-    backup_dir: Path | None = None
-    previous: Path | None = None
-    if target.exists():
-        backup_dir = Path(tempfile.mkdtemp(prefix=f".{target.name}-old-", dir=target.parent))
-        previous = backup_dir / "previous"
-        target.rename(previous)
-    try:
-        staged.rename(target)
-    except BaseException:
-        if previous is not None and previous.exists():
-            previous.rename(target)
-        raise
-    finally:
-        if backup_dir is not None:
-            shutil.rmtree(backup_dir, ignore_errors=True)
+def _move(source: Path, target: Path) -> None:
+    """Move one output aside; rename is atomic within the worktree."""
+    source.rename(target)
 
 
-def _publish(staged: Path, out: Path, index: Path, written: Iterable[Path]) -> None:
-    """Replace the canonical set and the overview only after a full capture."""
+def _remove(path: Path) -> None:
+    """Remove a file or directory if it exists."""
+    if path.is_dir():
+        shutil.rmtree(path)
+    elif path.exists():
+        path.unlink()
+
+
+def _publish(
+    staged: Path,
+    out: Path,
+    index: Path,
+    written: Iterable[Path],
+    *,
+    swap: Callable[[Path, Path], None] = _move,
+) -> None:
+    """Replace both outputs only after a full capture, with a joint rollback.
+
+    The previous masters and index are moved aside first; both stay in the
+    backup directory until the new masters and the new index have both landed.
+    Any failure removes whatever new output was written and restores both
+    previous outputs. ``swap`` is the one move seam, so a test can fail the
+    index swap deterministically without filesystem timing tricks.
+    """
     expected = {shot.filename for shot in SHOTS}
     actual = {path.name for path in written}
     if actual != expected:
@@ -847,10 +919,36 @@ def _publish(staged: Path, out: Path, index: Path, written: Iterable[Path]) -> N
             f"the capture set does not match the manifest: missing={missing} extra={extra}"
         )
     staged_index = _write_index_temp(index, render_index(SHOTS))
+    backup_root = Path(tempfile.mkdtemp(prefix=f".{out.name}-backup-", dir=out.parent))
+    previous_out = backup_root / "masters"
+    previous_index = backup_root / "index"
+    had_out = out.exists()
+    had_index = index.exists()
+    moved_out = False
+    moved_index = False
     try:
-        _replace_directory(staged, out)
-        staged_index.replace(index)
+        if had_out:
+            swap(out, previous_out)
+            moved_out = True
+        if had_index:
+            swap(index, previous_index)
+            moved_index = True
+        swap(staged, out)
+        swap(staged_index, index)
+    except BaseException:
+        # Remove only outputs this call may have written; a target still in
+        # its original place was never moved aside and must stay.
+        if moved_out or not had_out:
+            _remove(out)
+        if moved_index or not had_index:
+            _remove(index)
+        if moved_out and previous_out.exists():
+            _move(previous_out, out)
+        if moved_index and previous_index.exists():
+            _move(previous_index, index)
+        raise
     finally:
+        shutil.rmtree(backup_root, ignore_errors=True)
         staged_index.unlink(missing_ok=True)
 
 

@@ -27,16 +27,16 @@ the contradictions you left behind.
 
 <table>
 <tr>
-<td><img src="assets/screenshots/36-knowledge-dock.png" alt="The knowledge dock: the whole-book check button, a consistency finding quoting both readings, and the novel's entities" width="400"></td>
-<td><img src="assets/screenshots/37-shelf.png" alt="The shelf: three novels with the last one offered for resuming, and export on every card" width="400"></td>
+<td><img src="assets/screenshots/36-knowledge-dock.png" alt="The knowledge dock: a consistency finding quoting both readings, with the novel's entities below" width="400"></td>
+<td><img src="assets/screenshots/37-shelf.png" alt="The shelf: three novels with the latest-edited one offered for resuming" width="400"></td>
 </tr>
 <tr>
-<td>The whole-book check reports contradictions to acknowledge or dismiss, with the cast beside them.</td>
-<td>A shelf of books, not a folder of files — with export and import on the door.</td>
+<td>A consistency finding quotes both readings, with the cast beside it.</td>
+<td>A shelf of books, not a folder of files.</td>
 </tr>
 </table>
 
-<img src="assets/screenshots/38-shelf-dark.png" alt="The same shelf in the reader's chosen dark theme: the covers keep their own inks, and the sepia tile stays quieter than the primary action" width="800">
+<img src="assets/screenshots/38-shelf-dark.png" alt="The same shelf in the reader's stored dark theme: the covers keep their own inks" width="800">
 
 Light and dark are the reader's choice, stored with the account — the system
 decides only until they pick.

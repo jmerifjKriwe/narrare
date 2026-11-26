@@ -36,9 +36,9 @@ A chapter open in the scene editor and a grey continuation waiting at the caret
 
 ### The bookshelf
 
-![Three novels with the last one offered for resuming](../../assets/screenshots/37-shelf.png)
+![Three novels with the latest-edited one offered for resuming](../../assets/screenshots/37-shelf.png)
 
-Three novels with the last one offered for resuming
+Three novels with the latest-edited one offered for resuming
 
 ### The bookshelf in dark
 
@@ -56,15 +56,15 @@ The novel's knowledge organized as dossiers with the shared dossier open
 
 ### Sources
 
-![The documents the novel's knowledge was drawn from, and a semantic search](../../assets/screenshots/26-sources.png)
+![The empty sources archive and its upload door](../../assets/screenshots/26-sources.png)
 
-The documents the novel's knowledge was drawn from, and a semantic search
+The empty sources archive and its upload door
 
 ### The knowledge dock
 
-![The whole-book check, a consistency finding and the novel's entities beside the prose](../../assets/screenshots/36-knowledge-dock.png)
+![A consistency finding and the novel's entities beside the prose](../../assets/screenshots/36-knowledge-dock.png)
 
-The whole-book check, a consistency finding and the novel's entities beside the prose
+A consistency finding and the novel's entities beside the prose
 
 ### The lore graph
 
@@ -88,53 +88,53 @@ The planned chain of cause and effect behind the story
 
 ### The timeline
 
-![The novel's events in the writer's order, dated and unordered alike](../../assets/screenshots/41-timeline.png)
+![The placed events in chronological order, with unordered drafts at the end](../../assets/screenshots/41-timeline.png)
 
-The novel's events in the writer's order, dated and unordered alike
+The placed events in chronological order, with unordered drafts at the end
 
 ### The timeline in dark
 
-![The same rows and garnish in the reader's stored dark theme](../../assets/screenshots/42-timeline-dark.png)
+![The same events and labels in the reader's stored dark theme](../../assets/screenshots/42-timeline-dark.png)
 
-The same rows and garnish in the reader's stored dark theme
+The same events and labels in the reader's stored dark theme
 
 ### The storyboard
 
-![Chapters as cards in their structure's columns, each with its sync badge](../../assets/screenshots/43-storyboard.png)
+![Chapters as cards in their structure's columns with their scene counts and statuses](../../assets/screenshots/43-storyboard.png)
 
-Chapters as cards in their structure's columns, each with its sync badge
+Chapters as cards in their structure's columns with their scene counts and statuses
 
 ### The storyboard in dark
 
-![The same columns, cards and badges in the reader's stored dark theme](../../assets/screenshots/44-storyboard-dark.png)
+![The same columns, cards and statuses in the reader's stored dark theme](../../assets/screenshots/44-storyboard-dark.png)
 
-The same columns, cards and badges in the reader's stored dark theme
+The same columns, cards and statuses in the reader's stored dark theme
 
 ## Settings
 
 ### The welcome and setup screen
 
-![The first-run door: name the novel, choose a demo or start empty](../../assets/screenshots/24-welcome-setup.png)
+![The first-run welcome: start a new work or choose a demo](../../assets/screenshots/24-welcome-setup.png)
 
-The first-run door: name the novel, choose a demo or start empty
+The first-run welcome: start a new work or choose a demo
 
 ### The settings hub
 
-![Language, appearance and the rest of the atelier's configuration in one place](../../assets/screenshots/28-settings-hub.png)
+![Language, appearance and the author profile](../../assets/screenshots/28-settings-hub.png)
 
-Language, appearance and the rest of the atelier's configuration in one place
+Language, appearance and the author profile
 
 ### AI rules
 
-![The configured provider, its model and the task assignments every AI task follows](../../assets/screenshots/29-ai-rules.png)
+![The configured provider card and the create-provider form](../../assets/screenshots/29-ai-rules.png)
 
-The configured provider, its model and the task assignments every AI task follows
+The configured provider card and the create-provider form
 
 ### Prompts
 
-![The prompt library's cards with preview and live test](../../assets/screenshots/30-prompts.png)
+![The prompt catalog beside the selected prompt's editor and template](../../assets/screenshots/30-prompts.png)
 
-The prompt library's cards with preview and live test
+The prompt catalog beside the selected prompt's editor and template
 
 ## Assistant
 

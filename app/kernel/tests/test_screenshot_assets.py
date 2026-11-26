@@ -12,9 +12,11 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
 from PIL import Image
 
 from scripts.screenshot_manifest import SHOTS, render_index
+from scripts.screenshots import _publish  # pyright: ignore[reportPrivateUsage]
 
 ROOT = Path(__file__).resolve().parents[3]
 ASSETS = ROOT / "assets" / "screenshots"
@@ -73,3 +75,34 @@ def test_every_readme_screenshot_path_resolves_to_a_master() -> None:
         committed = ROOT / source
         assert committed.is_file(), source
         assert committed.name in _manifest_names(), source
+
+
+def test_index_swap_failure_restores_previous_masters_and_index(
+    tmp_path: Path,
+) -> None:
+    """A failed index swap must leave both previous outputs in place."""
+    masters = tmp_path / "masters"
+    masters.mkdir()
+    (masters / "old.png").write_bytes(b"old master")
+    index = tmp_path / "index.md"
+    index.write_text("old index\n", encoding="utf-8")
+    staged = tmp_path / "staged"
+    staged.mkdir()
+    written: list[Path] = []
+    for shot in SHOTS:
+        path = staged / shot.filename
+        path.write_bytes(b"new master")
+        written.append(path)
+
+    def failing_swap(source: Path, target: Path) -> None:
+        if source.name.startswith(f".{index.name}-"):
+            raise RuntimeError("index swap failed")
+        source.rename(target)
+
+    with pytest.raises(RuntimeError, match="index swap failed"):
+        _publish(staged, masters, index, written, swap=failing_swap)
+
+    assert (masters / "old.png").read_bytes() == b"old master"
+    assert not (masters / SHOTS[0].filename).exists()
+    assert index.read_text(encoding="utf-8") == "old index\n"
+    assert list(tmp_path.glob(f".{index.name}-*")) == []

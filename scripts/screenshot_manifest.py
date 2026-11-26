@@ -5,8 +5,9 @@ stable name, title, caption, group and theme. The capture script writes the
 PNGs from this list, and ``docs/screenshots/README.md`` is ``render_index``'s
 output, so the collection and its index cannot drift apart.
 
-``README_SHOTS`` is the curated subset the README embeds, in display order. It
-is derived from the ``readme`` flag rather than maintained as a second list.
+``README_SHOTS`` is the curated subset the README is intended to embed, in
+display order. It is derived from the ``readme`` flag rather than maintained as
+a second list; Task 4 wires the selection into the page.
 
 The ``01``-``19`` generation was audited against the live product before this
 manifest became authoritative. Names whose surface and pixels survived kept
@@ -95,7 +96,7 @@ SHOTS: tuple[Shot, ...] = (
     Shot(
         "24-welcome-setup",
         "The welcome and setup screen",
-        "The first-run door: name the novel, choose a demo or start empty",
+        "The first-run welcome: start a new work or choose a demo",
         "Settings",
         "light",
     ),
@@ -110,7 +111,7 @@ SHOTS: tuple[Shot, ...] = (
     Shot(
         "26-sources",
         "Sources",
-        "The documents the novel's knowledge was drawn from, and a semantic search",
+        "The empty sources archive and its upload door",
         "Knowledge",
         "light",
     ),
@@ -125,7 +126,7 @@ SHOTS: tuple[Shot, ...] = (
     Shot(
         "28-settings-hub",
         "The settings hub",
-        "Language, appearance and the rest of the atelier's configuration in one place",
+        "Language, appearance and the author profile",
         "Settings",
         "light",
         readme=True,
@@ -133,14 +134,14 @@ SHOTS: tuple[Shot, ...] = (
     Shot(
         "29-ai-rules",
         "AI rules",
-        "The configured provider, its model and the task assignments every AI task follows",
+        "The configured provider card and the create-provider form",
         "Settings",
         "light",
     ),
     Shot(
         "30-prompts",
         "Prompts",
-        "The prompt library's cards with preview and live test",
+        "The prompt catalog beside the selected prompt's editor and template",
         "Settings",
         "light",
         readme=True,
@@ -184,14 +185,14 @@ SHOTS: tuple[Shot, ...] = (
     Shot(
         "36-knowledge-dock",
         "The knowledge dock",
-        "The whole-book check, a consistency finding and the novel's entities beside the prose",
+        "A consistency finding and the novel's entities beside the prose",
         "Knowledge",
         "light",
     ),
     Shot(
         "37-shelf",
         "The bookshelf",
-        "Three novels with the last one offered for resuming",
+        "Three novels with the latest-edited one offered for resuming",
         "Writing",
         "light",
     ),
@@ -219,28 +220,28 @@ SHOTS: tuple[Shot, ...] = (
     Shot(
         "41-timeline",
         "The timeline",
-        "The novel's events in the writer's order, dated and unordered alike",
+        "The placed events in chronological order, with unordered drafts at the end",
         "Planning",
         "light",
     ),
     Shot(
         "42-timeline-dark",
         "The timeline in dark",
-        "The same rows and garnish in the reader's stored dark theme",
+        "The same events and labels in the reader's stored dark theme",
         "Planning",
         "dark",
     ),
     Shot(
         "43-storyboard",
         "The storyboard",
-        "Chapters as cards in their structure's columns, each with its sync badge",
+        "Chapters as cards in their structure's columns with their scene counts and statuses",
         "Planning",
         "light",
     ),
     Shot(
         "44-storyboard-dark",
         "The storyboard in dark",
-        "The same columns, cards and badges in the reader's stored dark theme",
+        "The same columns, cards and statuses in the reader's stored dark theme",
         "Planning",
         "dark",
     ),
