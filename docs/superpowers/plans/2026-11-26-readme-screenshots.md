@@ -248,25 +248,25 @@ Reviewer reads the legacy-name audit, selector/route changes, update-check pin a
 - Modify: `docs/design/stitch/README.md:152-176`
 - Test: `app/kernel/tests/test_screenshot_assets.py`
 
-- [ ] **Step 1: Add failing documentation-link assertions**
+- [x] **Step 1: Add failing documentation-link assertions**
 
 Extend `test_screenshot_assets.py` to assert `docs/README.md` links to `screenshots/README.md` and `docs/design/stitch/README.md` links to `../../screenshots/README.md` instead of duplicating the master-file list.
 
-- [ ] **Step 2: Run tests and verify failure**
+- [x] **Step 2: Run tests and verify failure**
 
 Run: `just test-file app/kernel/tests/test_screenshot_assets.py`
 Expected: FAIL on the missing links.
 
-- [ ] **Step 3: Add the documentation links**
+- [x] **Step 3: Add the documentation links**
 
 Add the screenshot collection under "Using the application" in `docs/README.md`. In `docs/design/stitch/README.md`, replace the duplicated 19-file list with a link to `../../screenshots/README.md` and a short note that Stitch reference screens remain design evidence, not product captures.
 
-- [ ] **Step 4: Run the asset tests**
+- [x] **Step 4: Run the asset tests**
 
 Run: `just test-file app/kernel/tests/test_screenshot_assets.py`
 Expected: PASS.
 
-- [ ] **Step 5: Review, then commit**
+- [x] **Step 5: Review, then commit**
 
 Reviewer checks the full collection link and the design-record wording. Then commit `docs(screenshots): link the complete capture collection` with a real `User-visible:` line and the required trailer.
 
