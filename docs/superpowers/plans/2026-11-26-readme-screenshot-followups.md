@@ -34,7 +34,7 @@
 ## Task 1: Correct documentation truth and relative links (#977, #980)
 
 **Files:**
-- Modify: `docs/features/INDEX.md:112`
+- Modify: `docs/features/INDEX.md:64,112`
 - Modify: `docs/design/stitch/README.md:7,9`
 - Test: `app/kernel/tests/test_screenshot_assets.py`
 
@@ -48,7 +48,7 @@ Parse every relative Markdown link in `docs/design/stitch/README.md`; resolve it
 
 - [ ] **Step 2: Correct the links and inventory state**
 
-Change the two links to `../../superpowers/specs/...`. Change `Structure view (PLAN-003)` from `live` to `backend`; leave its phase and description unchanged.
+Change the two links to `../../superpowers/specs/...`. Change `Structure view (PLAN-003)` from `live` to `backend`; leave its phase and description unchanged. Correct the AI-continuation inventory wording at line 64 from "at the caret" to "below the prose", matching the product and README.
 
 - [ ] **Step 3: Run the focused tests**
 
@@ -176,6 +176,7 @@ Reviewer checks all settings routes and mobile/narrow behavior. Commit `fix(sett
 - Modify: `scripts/screenshots.py`
 - Modify: `app/kernel/tests/test_screenshot_assets.py`
 - Modify: `app/kernel/tests/test_screenshot_manifest.py` if wording constants move
+- Modify: `.gitignore` for `assets/.screenshots-*` staging and backup directories
 
 **Interfaces:**
 - `publish(masters: Path, index: Path, staged_masters: Path, staged_index: Path) -> None` lives in `scripts/screenshots_publish.py`.
@@ -184,6 +185,7 @@ Reviewer checks all settings routes and mobile/narrow behavior. Commit `fix(sett
 - Each output gets a backup root in its own parent before any index temp is staged. Same-filesystem swaps use `os.replace`; source and destination therefore stay on one device.
 - Backups default to kept until a successful publish or confirmed complete restore. Errors name preserved backup paths; successful rollback removes backups only after both outputs are restored.
 - Documentation tests use marker sets/structured assertions or centralized accepted-wording constants with rationale.
+- README and collection disclosures derive from one structured source so a newly added stand-in surface cannot be omitted from one page.
 
 - [ ] **Step 1: Write failing filesystem tests**
 
@@ -195,11 +197,11 @@ Move staging, backup, swap, rollback and cleanup into `scripts/screenshots_publi
 
 - [ ] **Step 3: Implement cross-filesystem publication**
 
-Create one backup root beside each output before staging the index. Use `os.replace` only between paths on the same filesystem. Preserve backups until publication or restore is fully successful; never delete the last good copy on an aborted rollback.
+Create one backup root beside each output before staging the index. Use `os.replace` only between paths on the same filesystem. Preserve backups until publication or restore is fully successful; never delete the last good copy on an aborted rollback. Ignore both `assets/.screenshots-backup-*` and `assets/.screenshots-<random>` staging directories.
 
 - [ ] **Step 4: Replace literal-wording guards**
 
-Replace the stale-settings literal with a scoped semantic check for settings text containing phase/roadmap/planned/not-yet language. Replace the Stitch paragraph's exact sentence with required marker sets (`design evidence`, `product captures`, `running application`) plus forbidden provenance/inversion markers. Centralize only markers that genuinely carry meaning, with comments. Keep resolve-based link tests and image/caption equality strong.
+Replace the stale-settings literal with a scoped semantic check for settings text containing phase/roadmap/planned/not-yet language. Replace the Stitch paragraph's exact sentence with required marker sets (`design evidence`, `product captures`, `running application`) plus forbidden provenance/inversion markers. Derive the README disclosure from the same structured stand-in list as the collection index, and test that both contain every surface. Centralize only markers that genuinely carry meaning, with comments. Keep resolve-based link tests and image/caption equality strong.
 
 - [ ] **Step 5: Run focused gates**
 
