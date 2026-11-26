@@ -287,11 +287,15 @@ Expected: FAIL on the old six-image selection and stale settings copy.
 
 - [ ] **Step 3: Rewrite the product narrative**
 
-Keep the local-first promise, setup path and contributor section. Replace the gallery with the eight curated frames. Add concise sections for writing/Zen, knowledge, planning, settings/prompts and the W9 entity interview. Correct `README.md:109-123`: provider/model configuration, per-task assignment and prompt preview/live test are live; `.env` is no longer the primary configuration story. Align export/import and series status with `docs/features/INDEX.md` rather than repeating the old claims. Do not mention the update check until its inventory row exists.
+Keep badges, logo, tagline, the local-first promise, setup path, documentation, development, contributing, security and license sections. Replace the gallery with exactly the eight `README_SHOTS` in manifest order and use their manifest captions as alt text.
+
+Use concise sections for **Writing & Zen**, **Knowledge**, **Planning**, **Settings & prompts**, and **AI assistant**. Name only features marked `live` in `docs/features/INDEX.md`: scene-centric writing/autosave/Tab/Esc/F9, dossiers/entities/relations/extraction review/consistency findings, causality plus chronology/storyboard/scene planning, settings/provider profiles/per-task output profiles/prompt diff-preview-live-test, and the W9 entity interview with review-before-save.
+
+Correct the current README's stale claims: settings and prompts are live, so `.env` is not the primary configuration story; re-embed and import/export are backend-only and must not be described as page features; the series link and volume number are live in Book Settings, while shared-canon/series architecture remains designed; free chat, chat history, sparring and dialogue coaching must not be implied. Say the model is the only feature that sends story content out. Do not mention the update check until its inventory row exists.
 
 - [ ] **Step 4: Make the full collection discoverable**
 
-Link to `docs/screenshots/README.md` directly below the curated gallery. Move the fake-provider/stand-in disclosure next to the images. State that the action runs manually, weekly and on relevant `main` pushes, but is advisory and never a required check.
+Link to `docs/screenshots/README.md` directly below the curated gallery. Place the stand-in disclosure next to the images and scope it truthfully: the interview frame uses a stand-in model at the test boundary; do not imply every frame contains model output. In Development, state that the action runs manually, weekly and on relevant `main` pushes after Task 5, but is advisory and never a required check.
 
 - [ ] **Step 5: Run tests and inspect the rendered result**
 
