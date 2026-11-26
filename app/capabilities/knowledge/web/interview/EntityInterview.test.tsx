@@ -281,6 +281,32 @@ describe("the list counts its interviews", () => {
 
     expect(list.textContent).toContain("1 Interview");
   });
+
+  it("shows the loading line, not a zero, while the list is still unread", async () => {
+    let release: (value: unknown) => void = () => {};
+    const held = new Promise((resolve) => {
+      release = resolve;
+    });
+    api.GET.mockImplementation((path: string, init?: { params?: unknown }) =>
+      path === "/api/chat/sessions" ? held : detailGet(path),
+    );
+    renderPanel();
+    await readySession();
+    fireEvent.click(screen.getByTestId("entity-interview-sessions"));
+    const list = await screen.findByTestId("entity-interview-list");
+
+    // The wire has said nothing yet: no count and no row may stand, and the
+    // list says that it is loading instead.
+    expect(list.textContent).toContain(de["knowledge.interview.loading"]);
+    expect(list.textContent).not.toContain(de["knowledge.interview.openTitle"]);
+    expect(list.textContent).not.toContain(de["knowledge.interview.noName"]);
+    expect(within(list).queryAllByRole("button")).toHaveLength(2);
+
+    release({ data: { items: sessions }, response: ok() });
+    await waitFor(() => expect(list.textContent).toContain("1 Interview"));
+    expect(list.textContent).toContain(de["knowledge.interview.noName"]);
+    expect(list.textContent).not.toContain(de["knowledge.interview.loading"]);
+  });
 });
 
 describe("each chip sends its act", () => {

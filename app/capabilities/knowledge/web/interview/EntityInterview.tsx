@@ -211,6 +211,7 @@ function EntityInterviewView({
       {listOpen ? (
         <SessionList
           sessions={controller.sessions}
+          pending={controller.sessionsPending}
           onOpen={(id) => {
             // The list closes in the act itself: opening the session that
             // already stands writes the same parameter, so the session-change

@@ -4,6 +4,8 @@
  * (newest first). A row names the draft or says «noch ohne Name», shows its
  * type and state, and opens that interview — «Fortsetzen» while it is open,
  * «Ansehen» once it has ended. «Neues Interview» starts a fresh type choice.
+ * While the read is still out the list draws its loading line alone: a count
+ * of zero would state a fact the wire has not answered yet.
  */
 import type { AssistantSessionSummary } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
@@ -50,11 +52,15 @@ function SessionRow({
 
 export function SessionList({
   sessions,
+  pending,
   onOpen,
   onNew,
   onClose,
 }: {
   sessions: readonly AssistantSessionSummary[];
+  /** The list's read is still out: the list says so instead of counting a
+   *  zero and drawing no row, which would state a fact the wire has not. */
+  pending: boolean;
   onOpen: (id: string) => void;
   onNew: () => void;
   onClose: () => void;
@@ -88,34 +94,46 @@ export function SessionList({
         {t("knowledge.interview.newInterview")}
       </button>
 
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between px-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-            {t("knowledge.interview.openTitle")}
-          </span>
-          <span className="font-mono text-[10px] text-primary">
-            {t("knowledge.interview.sessionsCount", { count: open.length })}
-          </span>
-        </div>
-        {open.map((session) => (
-          <SessionRow key={session.id} session={session} onOpen={onOpen} />
-        ))}
-      </div>
-
-      {closed.length > 0 && (
-        <div className="mt-4 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-              {t("knowledge.interview.closedTitle")}
-            </span>
-            <span className="font-mono text-[10px] text-muted">
-              {t("knowledge.interview.closedCount", { count: closed.length })}
-            </span>
+      {pending ? (
+        <p
+          role="status"
+          data-testid="entity-interview-list-loading"
+          className="px-1 text-meta text-muted"
+        >
+          {t("knowledge.interview.loading")}
+        </p>
+      ) : (
+        <>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                {t("knowledge.interview.openTitle")}
+              </span>
+              <span className="font-mono text-[10px] text-primary">
+                {t("knowledge.interview.sessionsCount", { count: open.length })}
+              </span>
+            </div>
+            {open.map((session) => (
+              <SessionRow key={session.id} session={session} onOpen={onOpen} />
+            ))}
           </div>
-          {closed.map((session) => (
-            <SessionRow key={session.id} session={session} onOpen={onOpen} />
-          ))}
-        </div>
+
+          {closed.length > 0 && (
+            <div className="mt-4 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                  {t("knowledge.interview.closedTitle")}
+                </span>
+                <span className="font-mono text-[10px] text-muted">
+                  {t("knowledge.interview.closedCount", { count: closed.length })}
+                </span>
+              </div>
+              {closed.map((session) => (
+                <SessionRow key={session.id} session={session} onOpen={onOpen} />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
