@@ -24,6 +24,7 @@ from scripts.generate_capabilities import (
     catalogs,
     docs_index,
     facts,
+    lazy_catalog_outputs,
     locales,
     overlay_sources,
     python_locales,
@@ -89,6 +90,12 @@ def test_committed_typescript_catalogs_match_the_catalog_files() -> None:
         "web/lib/generated/catalogs.ts is stale: run `just generate` and commit the result"
     )
     assert "export const localeOrder = [" in committed
+    # Every non-source language is its own lazy module: a language added
+    # without `just generate` would exist on disk and not in the loader map.
+    for target, content in lazy_catalog_outputs(ROOT, known).items():
+        assert (ROOT / target).read_text(encoding="utf-8") == content, (
+            f"{target} is stale: run `just generate` and commit the result"
+        )
 
 
 def test_committed_typescript_overlays_match_the_overlay_files() -> None:

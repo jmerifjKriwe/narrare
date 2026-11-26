@@ -17,6 +17,7 @@ import pytest
 from scripts.generate_capabilities import (
     catalog_sources,
     catalogs,
+    lazy_catalog_outputs,
     locales,
     overlay_sources,
     registry_locales,
@@ -212,6 +213,28 @@ def test_a_hyphenated_locale_becomes_a_valid_identifier(tmp_path: Path) -> None:
     assert 'import pt_BR_central from "../../../i18n/pt-BR.json";' in generated
     assert "const pt_BR_merged = {\n  ...pt_BR_central,\n  ...pt_BR_demo,\n};" in generated
     assert '  "pt-BR": pt_BR_merged,' in generated
+
+
+def test_every_other_language_is_one_lazy_module(tmp_path: Path) -> None:
+    for code in ("en", "de", "pt-BR"):
+        write_catalog(tmp_path / f"i18n/{code}.json", {"locale.name": code, "app.title": code})
+    outputs = lazy_catalog_outputs(tmp_path, ("en", "de", "pt-BR"))
+    assert set(outputs) == {
+        "web/lib/generated/catalogs/de.ts",
+        "web/lib/generated/catalogs/pt_BR.ts",
+    }
+    module = outputs["web/lib/generated/catalogs/pt_BR.ts"]
+    assert 'export const locale = "pt-BR" as const;' in module
+    assert "export default pt_BR_merged satisfies Catalog;" in module
+
+
+def test_the_loader_map_names_every_other_language_once(tmp_path: Path) -> None:
+    for code in ("en", "de", "pt-BR"):
+        write_catalog(tmp_path / f"i18n/{code}.json", {"app.title": code})
+    typescript = typescript_catalogs(tmp_path, ("en", "de", "pt-BR"), ("de", "en", "pt-BR"))
+    assert 'de: () => import("./catalogs/de"),' in typescript
+    assert '"pt-BR": () => import("./catalogs/pt_BR"),' in typescript
+    assert 'import("./catalogs/en")' not in typescript
 
 
 def test_an_overlay_key_whose_base_is_gone_stops_generation(tmp_path: Path) -> None:

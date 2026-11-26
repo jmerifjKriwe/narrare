@@ -63,3 +63,21 @@ export const catalogs: Record<Locale, typeof en_merged> = {
   "de": de_merged,
   "fr": fr_merged,
 };
+
+export type Catalog = typeof en_merged;
+export type CatalogModule = { locale: Locale; default: Catalog };
+
+// Each language in its own words, read from its catalog's locale.name.
+export const endonyms: Record<Locale, string> = {
+  en: "English",
+  de: "Deutsch",
+  fr: "Français",
+};
+
+// One lazy loader per language other than the source: the module is
+// fetched the first time the shell reads that language. The eager map
+// above still carries every language for the runtime that reads it.
+export const catalogLoaders: { [L in Exclude<Locale, "en">]: () => Promise<CatalogModule> } = {
+  de: () => import("./catalogs/de"),
+  fr: () => import("./catalogs/fr"),
+};
