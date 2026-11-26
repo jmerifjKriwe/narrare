@@ -28,12 +28,15 @@ class HelpRootTestCase(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         root = Path(tmp.name)
-        # locales(root) resolves from the central files' names; the scan
-        # never reads their contents.
+        # locales(root) reads the registry and checks it against the central
+        # files' names; the scan never reads their contents.
         i18n = root / "i18n"
         i18n.mkdir()
         for locale in ("en", "de", "fr"):
             (i18n / f"{locale}.json").write_text("{}", encoding="utf-8")
+        registry = i18n / "registry" / "locales.json"
+        registry.parent.mkdir()
+        registry.write_text('{"locales": ["de", "en", "fr"]}\n', encoding="utf-8")
         base = root / "app" / "capabilities" / "writing" / "web" / "help"
         for rel, body in files.items():
             path = base / rel
@@ -249,10 +252,12 @@ class HelpCoverageTests(HelpRootTestCase):
     """The coverage report: what help_coverage emits for a capability tree."""
 
     def _capability(self, root: Path, name: str) -> None:
-        """One capability folder with just the capability.yaml that names it."""
+        """One capability folder with the capability.yaml that names it and a
+        web/ directory: the coverage report counts capabilities that own a UI."""
         folder = root / "app" / "capabilities" / name
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "capability.yaml").write_text(f"id: {name}\n", encoding="utf-8")
+        (folder / "web").mkdir(exist_ok=True)
 
     def _topic(self, root: Path, capability: str, locale: str, slug: str) -> None:
         """One valid help topic file under a capability's help tree."""

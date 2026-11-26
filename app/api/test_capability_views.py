@@ -28,6 +28,7 @@ from scripts.generate_capabilities import (
     overlay_sources,
     python_locales,
     python_registry,
+    registry_locales,
     scan_commands,
     scan_docks,
     scan_settings,
@@ -82,9 +83,11 @@ def test_committed_typescript_catalogs_match_the_catalog_files() -> None:
     # The map and the Locale union are generated from i18n/*.json: a language
     # added without `just generate` would exist on disk and not in the build.
     known, _, _ = _views()
-    assert _committed("web", "lib", "generated", "catalogs.ts") == typescript_catalogs(
-        ROOT, known
-    ), "web/lib/generated/catalogs.ts is stale: run `just generate` and commit the result"
+    committed = _committed("web", "lib", "generated", "catalogs.ts")
+    assert committed == typescript_catalogs(ROOT, known, registry_locales(ROOT)), (
+        "web/lib/generated/catalogs.ts is stale: run `just generate` and commit the result"
+    )
+    assert "export const localeOrder = [" in committed
 
 
 def test_committed_typescript_overlays_match_the_overlay_files() -> None:
@@ -170,6 +173,9 @@ def _facts_tree(
     (tmp_path / "i18n" / "en.json").write_text(
         json.dumps(dict(sorted(catalog.items()))), encoding="utf-8"
     )
+    registry = tmp_path / "i18n" / "registry" / "locales.json"
+    registry.parent.mkdir()
+    registry.write_text(json.dumps({"locales": ["en"]}) + "\n", encoding="utf-8")
     folder = tmp_path / "app" / "capabilities" / "demo"
     folder.mkdir(parents=True)
     lines = ["id: demo"]

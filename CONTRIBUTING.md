@@ -113,9 +113,10 @@ renders it.
   the braces, not the value. Use typographic quotes in prose or escape them.
 - **Name languages in their own words** via `locale.name` (Deutsch, Français,
   English); the switcher shows the endonym whatever the app currently speaks.
-- **Never hardcode a locale list.** The set of languages is discovered from
-  `i18n/*.json`; a new catalog appears in the union and the switcher on the
-  next `just generate`.
+- **Never hardcode a locale list.** The languages and their display order come
+  from `i18n/registry/locales.json`. The generator refuses a registry entry
+  without a catalog and a catalog without an entry, and writes the list into
+  the generated views on the next `just generate`.
 - **Format through `web/lib/format.ts`.** `formatDate`, `formatNumber` and
   `formattingLocale` keep the chosen language and take the browser's regional
   variant when it agrees (`de` + `de-AT` → `de-AT`). Do not call
@@ -125,9 +126,9 @@ renders it.
   to the base catalog. English has no overlay, and there is no de/fr key
   parity: French already speaks the neutral register in its base.
 
-Adding a language means one central catalog plus one file per capability that
-owns keys, then `just generate`. Translating all keys is the work; registering
-the language is not.
+Adding a language means one line in `i18n/registry/locales.json`, one central
+catalog plus one file per capability that owns keys, then `just generate`.
+Translating all keys is the work; registering the language is not.
 
 ## Changing the Schema
 

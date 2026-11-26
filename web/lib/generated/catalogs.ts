@@ -25,6 +25,7 @@ import fr_setup from "../../../app/capabilities/setup/web/i18n/fr.json";
 import fr_writing from "../../../app/capabilities/writing/web/i18n/fr.json";
 
 export const locales = ["en", "de", "fr"] as const;
+export const localeOrder = ["de", "en", "fr"] as const satisfies readonly Locale[];
 export type Locale = (typeof locales)[number];
 
 const en_merged = {

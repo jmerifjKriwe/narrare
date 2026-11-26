@@ -2,10 +2,13 @@
 """Write every generated view of the capability facts and the language list.
 
 Sources of truth: ``app/capabilities/*/capability.yaml`` — facts only (spec §4) —
-``i18n/*.json`` for the shared text, whose *filenames* are the set of languages,
-and ``app/capabilities/*/web/i18n/*.json`` for each capability's own text, with
-``i18n/overlays/formality/*.json`` carrying sparse formal variants. Nothing
-declares a language twice. Fifteen views, none hand-edited, all committed:
+``i18n/registry/locales.json`` for the set and the display order of the
+languages, ``i18n/*.json`` for the shared text, and
+``app/capabilities/*/web/i18n/*.json`` for each capability's own text, with
+``i18n/overlays/formality/*.json`` carrying sparse formal variants. The
+registry and the central catalogs list the same languages, one entry each, so
+nothing declares a language twice. Fifteen views, none hand-edited, all
+committed:
 
 * ``app/generated/capabilities.py`` — the registry ``app/api/main.py``
   cross-checks against the mounted routers at startup;
@@ -58,10 +61,10 @@ still mount it. A capability that owns ``web/`` must carry a title key every
 merged catalog resolves; a typo stops generation with the file and the key
 named.
 
-Adding a language is therefore one central file plus one file per capability
-that owns text, then ``just generate``. A field no view reads is deleted from
-the Facts schema; a view no consumer reads is deleted with it. ``just generate``
-runs this after the facts change.
+Adding a language is therefore one line in the registry, one central file plus
+one file per capability that owns text, then ``just generate``. A field no view
+reads is deleted from the Facts schema; a view no consumer reads is deleted
+with it. ``just generate`` runs this after the facts change.
 """
 
 import json
@@ -82,9 +85,14 @@ from app.kernel.interchange.demos import demo_tree
 # rows only while the capability owns a web/ directory too.
 STRUCTURES_OWNER = "planning"
 
-# The source language leads the docs and the switcher; the rest follow in a
-# stable order so the generated diff does not shuffle when a file appears.
+# The source language leads the views; the registry orders the switcher.
 SOURCE_LOCALE = "en"
+
+# The registry: the languages and their display order, one entry each. It and
+# the central catalogs must list the same set.
+REGISTRY = "i18n/registry/locales.json"
+_LOCALE_TAG = re.compile(r"[a-z]{2,3}(-[A-Za-z0-9]{1,8})*")
+LOCALE_MAX_LENGTH = 64
 
 # Keys the generated views read by name. A catalog missing one stops generation
 # instead of rendering an empty table header.
@@ -137,19 +145,67 @@ class SettingsPage:
     title_key: str
 
 
+def registry_locales(root: Path) -> tuple[str, ...]:
+    """The languages in the registry's display order.
+
+    The registry is the one list: a code it carries without a central catalog,
+    or a central catalog it does not carry, stops generation naming the file
+    and the offender. A malformed or duplicate code, or a registry without the
+    source language, stops it the same way.
+    """
+    source = root / REGISTRY
+    if not source.is_file():
+        raise SystemExit(f"{source} is missing: it lists the languages and their display order")
+    try:
+        loaded = json.loads(source.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise SystemExit(f"{source}: not valid JSON: {error}") from error
+    if not isinstance(loaded, dict) or set(cast("dict[str, object]", loaded)) != {"locales"}:
+        raise SystemExit(f"{source}: the registry is one object with one `locales` list")
+    raw = cast("dict[str, object]", loaded)["locales"]
+    not_codes = f"{source}: `locales` is a list of language codes"
+    if not isinstance(raw, list):
+        raise SystemExit(not_codes)
+    entries = cast("list[object]", raw)
+    if not all(isinstance(code, str) for code in entries):
+        raise SystemExit(not_codes)
+    codes = tuple(cast("list[str]", entries))
+    seen: set[str] = set()
+    for code in codes:
+        if len(code) > LOCALE_MAX_LENGTH or _LOCALE_TAG.fullmatch(code) is None:
+            raise SystemExit(
+                f"{source}: {code!r} is not a language tag — two or three lowercase"
+                f" letters, then subtags of one to eight letters or digits, at most"
+                f" {LOCALE_MAX_LENGTH} characters"
+            )
+        if code in seen:
+            raise SystemExit(f"{source}: {code!r} is listed twice; a language appears once")
+        seen.add(code)
+    if SOURCE_LOCALE not in seen:
+        raise SystemExit(f"{source}: the source locale {SOURCE_LOCALE!r} is not a member")
+    missing = [
+        f"i18n/{code}.json" for code in codes if not (root / "i18n" / f"{code}.json").is_file()
+    ]
+    if missing:
+        raise SystemExit(f"{source}: entries without a central catalog: {missing}")
+    strangers = sorted(
+        f"i18n/{path.stem}.json" for path in (root / "i18n").glob("*.json") if path.stem not in seen
+    )
+    if strangers:
+        raise SystemExit(f"{source}: central catalogs the registry does not list: {strangers}")
+    return codes
+
+
 def locales(root: Path) -> tuple[str, ...]:
-    """Every language the catalog carries, discovered from the files."""
-    found = sorted(path.stem for path in (root / "i18n").glob("*.json"))
-    if SOURCE_LOCALE not in found:
-        raise SystemExit(f"i18n/{SOURCE_LOCALE}.json is missing: it is the type source")
-    return tuple([SOURCE_LOCALE] + [locale for locale in found if locale != SOURCE_LOCALE])
+    """Every language the catalog carries: the source first, then registry order."""
+    return (SOURCE_LOCALE, *(code for code in registry_locales(root) if code != SOURCE_LOCALE))
 
 
 def catalog_sources(root: Path, known: tuple[str, ...]) -> dict[str, tuple[Path, ...]]:
     """Every file one locale's catalog is merged from.
 
-    The central ``i18n/<locale>.json`` leads — it is the language registry and
-    the shared text — and each capability's ``web/i18n/<locale>.json`` follows,
+    The central ``i18n/<locale>.json`` leads — it carries the shared text — and
+    each capability's ``web/i18n/<locale>.json`` follows,
     sorted by capability id. A capability that carries an ``i18n`` directory
     must carry every locale: a half-translated capability would render one
     language from its file and another from nowhere.
@@ -329,10 +385,11 @@ def python_locales(known: tuple[str, ...]) -> str:
     literal = ", ".join(f'"{locale}"' for locale in known)
     trailing = "," if len(known) == 1 else ""
     return (
-        '"""Generated by scripts/generate_capabilities.py from i18n/*.json — DO NOT EDIT.\n'
+        '"""Generated by scripts/generate_capabilities.py from the locale registry — DO NOT EDIT.\n'
         "\n"
-        "The languages the catalog carries, discovered from its files. A new\n"
-        "i18n/<code>.json appears here on the next `just generate`.\n"
+        "The languages the catalog carries, in the registry's display order with\n"
+        "the source language first. A new registry entry appears here on the next\n"
+        "`just generate`.\n"
         '"""\n'
         "\n"
         f"LOCALES: tuple[str, ...] = ({literal}{trailing})\n"
@@ -345,8 +402,14 @@ def _identifier(value: str) -> str:
     return re.sub(r"[^0-9A-Za-z_]", "_", value)
 
 
-def typescript_catalogs(root: Path, known: tuple[str, ...]) -> str:
-    """The web-side view: one merged object per locale, typed from the source."""
+def typescript_catalogs(
+    root: Path, known: tuple[str, ...], order: tuple[str, ...] | None = None
+) -> str:
+    """The web-side view: one merged object per locale, typed from the source.
+
+    ``known`` is the catalog's language set in ``locales`` order; ``order`` is
+    the registry's display order, which the switcher reads from ``localeOrder``.
+    """
     sources = catalog_sources(root, known)
     imports: list[str] = []
     merged: list[str] = []
@@ -369,6 +432,7 @@ def typescript_catalogs(root: Path, known: tuple[str, ...]) -> str:
         )
         mapping.append(f'  "{locale}": {loc}_merged,\n')
     union = ", ".join(f'"{locale}"' for locale in known)
+    ordered = ", ".join(f'"{locale}"' for locale in (known if order is None else order))
     source_merged = f"{_identifier(SOURCE_LOCALE)}_merged"
     return (
         "// Generated by scripts/generate_capabilities.py from i18n/*.json and\n"
@@ -378,6 +442,7 @@ def typescript_catalogs(root: Path, known: tuple[str, ...]) -> str:
         f"{''.join(imports)}"
         "\n"
         f"export const locales = [{union}] as const;\n"
+        f"export const localeOrder = [{ordered}] as const satisfies readonly Locale[];\n"
         "export type Locale = (typeof locales)[number];\n"
         "\n"
         f"{''.join(merged)}"
@@ -1547,6 +1612,7 @@ def main() -> None:
     """
     root = Path(".")
     known = locales(root)
+    order = registry_locales(root)
     loaded = catalogs(root, known)
     overlays = overlay_sources(root, known, loaded)
     loaded_facts: tuple[Facts, ...] = facts(root, known, loaded)
@@ -1554,7 +1620,7 @@ def main() -> None:
         "app/generated/capabilities.py": python_registry(loaded_facts),
         "app/generated/locales.py": python_locales(known),
         "web/lib/generated/capabilities.ts": typescript_nav(ui_facts(loaded_facts, root)),
-        "web/lib/generated/catalogs.ts": typescript_catalogs(root, known),
+        "web/lib/generated/catalogs.ts": typescript_catalogs(root, known, order),
         "web/lib/generated/overlays.ts": typescript_overlays(known, overlays),
         "web/lib/generated/routes.ts": typescript_routes(root),
         "web/lib/generated/workspace.ts": typescript_workspace(root),

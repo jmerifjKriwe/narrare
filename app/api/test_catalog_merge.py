@@ -1,6 +1,6 @@
 """The catalog merge: central shared text plus each capability's own file.
 
-The language set is still discovered from `i18n/*.json`; a capability that
+The language set comes from `i18n/registry/locales.json`; a capability that
 carries an `i18n` directory must carry every one of those languages. The
 merge refuses an unsorted file and a key defined twice, naming the files, so
 the failure points at the edit rather than at a blank label later.
@@ -17,7 +17,9 @@ import pytest
 from scripts.generate_capabilities import (
     catalog_sources,
     catalogs,
+    locales,
     overlay_sources,
+    registry_locales,
     typescript_catalogs,
     typescript_overlays,
 )
@@ -41,6 +43,71 @@ def write_catalog(path: Path, extra: dict[str, str], *, required: bool = True) -
     path.parent.mkdir(parents=True, exist_ok=True)
     data = {**(REQUIRED if required else {}), **extra}
     path.write_text(json.dumps(dict(sorted(data.items())), indent=2) + "\n", encoding="utf-8")
+
+
+def write_registry(path: Path, languages: list[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"locales": languages}) + "\n", encoding="utf-8")
+
+
+def test_the_registry_orders_the_languages_and_the_source_leads_the_views(tmp_path: Path) -> None:
+    write_registry(tmp_path / "i18n/registry/locales.json", ["de", "en", "fr"])
+    for code in ("de", "en", "fr"):
+        write_catalog(tmp_path / f"i18n/{code}.json", {"app.title": code})
+
+    assert registry_locales(tmp_path) == ("de", "en", "fr")
+    assert locales(tmp_path) == ("en", "de", "fr")
+    typescript = typescript_catalogs(tmp_path, ("en", "de", "fr"), ("de", "en", "fr"))
+    assert 'export const locales = ["en", "de", "fr"] as const;' in typescript
+    assert 'export const localeOrder = ["de", "en", "fr"] as const' in typescript
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "en_US",
+        "x",
+        "de-",
+        "zh hans",
+        f"de-{'a' * 9}",
+        "de-" + "-".join(["abcdefgh"] * 8),
+    ],
+)
+def test_a_malformed_registry_code_stops_generation(tmp_path: Path, code: str) -> None:
+    write_registry(tmp_path / "i18n/registry/locales.json", ["en", code])
+    # Both catalogs exist so parity cannot raise: only the tag check can.
+    write_catalog(tmp_path / "i18n/en.json", {"app.title": "en"})
+    write_catalog(tmp_path / f"i18n/{code}.json", {"app.title": code})
+    with pytest.raises(SystemExit, match=re.escape(code[:10])):
+        locales(tmp_path)
+
+
+def test_a_registry_without_the_source_locale_stops_generation(tmp_path: Path) -> None:
+    write_registry(tmp_path / "i18n/registry/locales.json", ["de", "fr"])
+    with pytest.raises(SystemExit, match="source locale"):
+        locales(tmp_path)
+
+
+def test_a_duplicate_registry_entry_stops_generation(tmp_path: Path) -> None:
+    write_registry(tmp_path / "i18n/registry/locales.json", ["de", "en", "de"])
+    with pytest.raises(SystemExit, match="twice"):
+        locales(tmp_path)
+
+
+def test_a_registry_entry_without_a_catalog_stops_generation(tmp_path: Path) -> None:
+    write_registry(tmp_path / "i18n/registry/locales.json", ["de", "en", "fr"])
+    for code in ("de", "en"):
+        write_catalog(tmp_path / f"i18n/{code}.json", {"app.title": code})
+    with pytest.raises(SystemExit, match=re.escape("i18n/fr.json")):
+        locales(tmp_path)
+
+
+def test_a_catalog_outside_the_registry_stops_generation(tmp_path: Path) -> None:
+    write_registry(tmp_path / "i18n/registry/locales.json", ["de", "en"])
+    for code in ("de", "en", "fr"):
+        write_catalog(tmp_path / f"i18n/{code}.json", {"app.title": code})
+    with pytest.raises(SystemExit, match=re.escape("i18n/fr.json")):
+        locales(tmp_path)
 
 
 def test_catalogs_merge_the_central_and_capability_files(tmp_path: Path) -> None:
