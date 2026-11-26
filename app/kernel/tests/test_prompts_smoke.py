@@ -24,12 +24,13 @@ def _bundled(name: str) -> str:
 
 
 # Today's sample renders — the bundled template against its sample factory —
-# captured when the prompts docked. Provenance: writing's literal is the
-# capability suite's own GOLDEN string plus the instruction sample block
-# (W4 D5 — the legend shows the writer instruction the override may place);
-# chat's sample rides that suite's QUESTION and first passage; the knowledge
-# extract sample's body is the writing suite's BODY (not a shortened knowledge
-# CHAPTER_BODY). A drift in either tier — template or factory — rots here first.
+# captured when the prompts docked. Provenance: each literal mirrors its own
+# capability suite's sample values — writing's sample (plus the instruction
+# block W4 D5 shows in the legend), chat's QUESTION and first passage, the
+# interview sample's transcript and roster, and the knowledge samples' canon
+# and chapters. The knowledge suite's CHAPTER_BODY and golden inputs are
+# separate fixtures, not the registry sample. A drift in either tier — template
+# or factory — rots here first.
 GOLDENS: dict[str, str] = {
     "chat.ask": (
         "Answer the question using only the sources below. Quote the passage that "
@@ -209,8 +210,10 @@ def test_every_bundled_sample_speaks_english_not_german() -> None:
     """Every registered factory is the editor's legend in every catalog, so no
     sample may carry German prose: the English UI must not teach a German
     example."""
+    keys = set(get_registry().keys())
+    assert keys, "the registry has no bundled samples to guard"
     offenders: dict[str, list[str]] = {}
-    for key in get_registry().keys():  # noqa: SIM118 — the registry is not iterable
+    for key in keys:
         sample = get_registry().spec(key).sample_variables()
         text = "\n".join(str(value) for value in sample.values())
         found = [marker for marker in GERMAN_SAMPLE_MARKERS if marker in text]
