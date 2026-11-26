@@ -196,7 +196,7 @@ Capture `31-entity-create`, `32-entity-create-dark`, `33-entity-interview` and `
 
 Pin `NARRE_UPDATE_CHECK_URL=off` in the `run_stack` call at `scripts/screenshots.py:643`, beside the fake-provider settings. `app/kernel/testing/stack.py:448` already defaults it for spawned stacks; the explicit value documents the capture contract. Do not use `NARRE_E2E_ATTACH` for these captures, because an attached process cannot be reconfigured by the caller's environment.
 
-After `capture` succeeds, write `render_index(SHOTS)` to the `--index` path. The workflow and `just screenshots` pass the repository default explicitly. Capture into a temporary sibling directory first and replace the target PNG set—including removals—and index only after the full set succeeds; a failed capture must leave the previous masters untouched.
+After `capture` succeeds, write `render_index(SHOTS)` to the `--index` path. `just screenshots` uses the repository defaults; Task 5 owns the workflow's explicit `--index` invocation, index staging and manifest-path trigger. Capture into a temporary sibling directory first and replace the target PNG set—including removals—and index only after the full set succeeds; a failed capture must leave the previous masters untouched.
 
 - [ ] **Step 7: Write failing asset tests**
 
