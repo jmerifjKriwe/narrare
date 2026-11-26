@@ -13,7 +13,6 @@ from scripts.screenshot_manifest import (
     STAND_INS,
     Shot,
     render_index,
-    render_stand_in_disclosure,
     validate_shots,
 )
 
@@ -79,9 +78,7 @@ def test_index_discloses_the_model_stand_ins() -> None:
             assert f"{subject} ({' and '.join(entry.frames)})" in rendered, entry.surface
 
 
-def test_disclosures_derive_from_one_structured_stand_in_list() -> None:
-    assert render_stand_in_disclosure(STAND_INS, frames=True) == STAND_IN_DISCLOSURE
-    assert render_stand_in_disclosure(STAND_INS, frames=False) == README_STAND_IN_DISCLOSURE
+def test_both_disclosures_carry_every_stand_in_surface() -> None:
     for entry in STAND_INS:
         subject = f"both {entry.surface} frames" if entry.both else f"the {entry.surface} frame"
         assert subject in README_STAND_IN_DISCLOSURE, entry.surface

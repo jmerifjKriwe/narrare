@@ -526,6 +526,31 @@ def test_publish_refuses_an_incomplete_capture(tmp_path: Path) -> None:
     assert _backups(masters.parent, index.parent) == []
 
 
+def test_publish_refuses_an_output_that_is_its_own_mount(tmp_path: Path) -> None:
+    """An output on another device than its parent cannot get a sibling backup."""
+    masters = tmp_path / "assets" / "screenshots"
+    index = tmp_path / "docs" / "screenshots" / "README.md"
+    _previous_outputs(masters, index)
+    staged_masters, staged_index = _staged_capture(tmp_path / "capture")
+    devices = _devices(
+        (masters, 9),
+        (masters.parent, 2),
+        (index.parent, 3),
+        (staged_masters.parent, 1),
+    )
+
+    with pytest.raises(RuntimeError, match="different filesystem than its parent"):
+        publish(masters, index, staged_masters, staged_index, device=devices)
+
+    # The refusal happens before a backup root, a staged copy or a temp exists.
+    assert (masters / "old.png").read_bytes() == b"old master"
+    assert index.read_text(encoding="utf-8") == "old index\n"
+    assert _backups(masters.parent, index.parent) == []
+    assert _index_temps(index) == []
+    assert list(masters.parent.glob(".screenshots-stage-*")) == []
+    assert (staged_masters / SHOTS[0].filename).read_bytes() == b"new master"
+
+
 def test_failed_staging_copy_leaves_no_stage_directory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -548,6 +573,42 @@ def test_failed_staging_copy_leaves_no_stage_directory(
     assert _backups(masters.parent, index.parent) == []
     assert (masters / "old.png").read_bytes() == b"old master"
     assert index.read_text(encoding="utf-8") == "old index\n"
+
+
+def test_cross_device_copy_is_cleaned_up_when_the_index_swap_fails(
+    tmp_path: Path,
+) -> None:
+    """A copied masters stage is removed on rollback; both old outputs return."""
+    masters = tmp_path / "assets" / "screenshots"
+    index = tmp_path / "docs" / "screenshots" / "README.md"
+    _previous_outputs(masters, index)
+    staged_masters, staged_index = _staged_capture(tmp_path / "capture")
+    devices = _devices((staged_masters.parent, 1), (masters.parent, 2), (index.parent, 3))
+
+    def failing_swap(source: Path, target: Path) -> None:
+        if source.name.startswith(f".{index.name}-"):
+            raise RuntimeError("index swap failed")
+        os.replace(source, target)
+
+    with pytest.raises(RuntimeError, match="index swap failed"):
+        publish(
+            masters,
+            index,
+            staged_masters,
+            staged_index,
+            swap=failing_swap,
+            device=devices,
+        )
+
+    assert (masters / "old.png").read_bytes() == b"old master"
+    assert not (masters / SHOTS[0].filename).exists()
+    assert index.read_text(encoding="utf-8") == "old index\n"
+    # The non-empty copy staged beside the masters is gone; the caller's own
+    # capture directory is not publication debris.
+    assert list(masters.parent.glob(".screenshots-stage-*")) == []
+    assert _index_temps(index) == []
+    assert _backups(masters.parent, index.parent) == []
+    assert (staged_masters / SHOTS[0].filename).read_bytes() == b"new master"
 
 
 def test_index_swap_failure_restores_previous_masters_and_index(tmp_path: Path) -> None:
@@ -633,6 +694,7 @@ def test_failed_restore_keeps_both_backups(tmp_path: Path, monkeypatch: pytest.M
     assert len(index_backups) == 1
     for root in (*masters_backups, *index_backups):
         assert str(root) in str(raised.value)
+    assert "empty when that output was already restored" in str(raised.value)
     assert (masters_backups[0] / "masters" / "old.png").read_bytes() == b"old master"
     # The index restore still ran, so its kept backup holds nothing.
     assert not (index_backups[0] / "index").exists()
@@ -674,6 +736,37 @@ def test_aborted_rollback_keeps_both_backups(
     assert len(index_backups) == 1
     for root in (*masters_backups, *index_backups):
         assert str(root) in str(raised.value)
+    assert "empty when that output was already restored" in str(raised.value)
+    assert (masters_backups[0] / "masters" / "old.png").read_bytes() == b"old master"
+    assert (index_backups[0] / "index").read_text(encoding="utf-8") == "old index\n"
+
+
+def test_interrupt_during_rollback_propagates_and_keeps_both_backups(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An interrupt outranks the best-effort rollback; recovery roots stay."""
+    masters = tmp_path / "assets" / "screenshots"
+    index = tmp_path / "docs" / "screenshots" / "README.md"
+    _previous_outputs(masters, index)
+    staged_masters, staged_index = _staged_capture(tmp_path / "capture")
+
+    def failing_swap(source: Path, target: Path) -> None:
+        if source.name.startswith(f".{index.name}-"):
+            raise RuntimeError("index swap failed")
+        os.replace(source, target)
+
+    def interrupting_remove(path: Path) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr("scripts.screenshots_publish._remove", interrupting_remove)
+
+    with pytest.raises(KeyboardInterrupt):
+        publish(masters, index, staged_masters, staged_index, swap=failing_swap)
+
+    masters_backups = list(masters.parent.glob(".screenshots-backup-*"))
+    index_backups = list(index.parent.glob(".README.md-backup-*"))
+    assert len(masters_backups) == 1
+    assert len(index_backups) == 1
     assert (masters_backups[0] / "masters" / "old.png").read_bytes() == b"old master"
     assert (index_backups[0] / "index").read_text(encoding="utf-8") == "old index\n"
 
@@ -726,6 +819,38 @@ def test_index_write_failure_leaves_outputs_and_backups_clean(
     assert index.read_text(encoding="utf-8") == "old index\n"
     assert _index_temps(index) == []
     assert _backups(masters.parent, index.parent) == []
+
+
+def test_index_temp_unlink_failure_keeps_the_publication_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failing cleanup unlink must not override the error or skip cleanup."""
+    masters = tmp_path / "assets" / "screenshots"
+    index = tmp_path / "docs" / "screenshots" / "README.md"
+    _previous_outputs(masters, index)
+    staged_masters, staged_index = _staged_capture(tmp_path / "capture")
+    real_unlink = Path.unlink
+
+    def failing_swap(source: Path, target: Path) -> None:
+        if source.name.startswith(f".{index.name}-"):
+            raise RuntimeError("index swap failed")
+        os.replace(source, target)
+
+    def failing_unlink(self: Path, missing_ok: bool = False) -> None:
+        if self.name.startswith(f".{index.name}-"):
+            raise OSError("unlink failed")
+        real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", failing_unlink)
+
+    with pytest.raises(RuntimeError, match="index swap failed"):
+        publish(masters, index, staged_masters, staged_index, swap=failing_swap)
+
+    # The primary error and the complete restore win; only the hidden temp stays.
+    assert (masters / "old.png").read_bytes() == b"old master"
+    assert index.read_text(encoding="utf-8") == "old index\n"
+    assert _backups(masters.parent, index.parent) == []
+    assert len(_index_temps(index)) == 1
 
 
 def test_backup_root_failure_stages_no_index_temp(

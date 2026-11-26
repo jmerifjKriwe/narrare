@@ -55,8 +55,11 @@ web/.turbo/
 .pnpm-store/
 
 # Screenshot capture staging (.screenshots-<random>) and publication recovery
-# data (.screenshots-backup-*), kept after a failed restore
+# data beside each output (.screenshots-backup-* for the masters,
+# .README.md-backup-* for the collection index), kept after a failed restore.
+# A custom --out or --index parent outside the repository is not covered here.
 assets/.screenshots-*
+docs/screenshots/.README.md-backup-*
 
 # Browser test artifacts
 web/playwright-report/

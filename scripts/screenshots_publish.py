@@ -13,11 +13,14 @@ so the publication itself only ever renames within one device.
 
 Backups outlive a failed publication until a complete restore has put both
 previous outputs back. A rollback that cannot finish keeps the last good copy,
-and the error names the preserved backup directories.
+and the error names the preserved backup directories. An output that is itself
+a mount point cannot be replaced by a sibling rename, so publication refuses
+that layout before it creates a backup or moves data.
 """
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import tempfile
@@ -93,6 +96,26 @@ def _backup_root(target: Path) -> Path:
     return Path(tempfile.mkdtemp(prefix=f".{target.name}-backup-", dir=target.parent))
 
 
+def _require_sibling_device(target: Path, *, device: Device) -> None:
+    """Refuse an output that is its own mount, where a sibling backup cannot live.
+
+    Publication moves the previous output into a backup beside the target, so
+    the target and its parent must be one filesystem. A mount point at the
+    target itself would make that rename an ``EXDEV`` copy after data has
+    already moved; refuse it while both outputs are still untouched.
+    """
+    if not target.exists():
+        return
+    if device(target) == device(target.parent):
+        return
+    raise RuntimeError(
+        f"{target} is on a different filesystem than its parent {target.parent}: "
+        "publication keeps each backup beside its output, so an output that is "
+        "itself a mount point cannot be replaced by a sibling rename. Move the "
+        "output onto its parent's filesystem."
+    )
+
+
 def _stage_beside(source: Path, target: Path, *, device: Device) -> Path:
     """A staged payload on ``target``'s filesystem, copied when it is elsewhere."""
     if device(source) == device(target.parent):
@@ -113,10 +136,15 @@ def _stage_beside(source: Path, target: Path, *, device: Device) -> Path:
 
 
 def _attempt(action: str, operation: Callable[..., None], *paths: Path) -> list[str]:
-    """Run one rollback step; a failure is recorded, and the next step still runs."""
+    """Run one rollback step; a failure is recorded, and the next step still runs.
+
+    Only ordinary exceptions are recorded. ``KeyboardInterrupt`` (and any other
+    ``BaseException``) propagates: an operator stopping the process outranks a
+    best-effort rollback, and the backup roots stay untouched.
+    """
     try:
         operation(*paths)
-    except BaseException as error:
+    except Exception as error:
         return [f"{action} failed ({error})"]
     return []
 
@@ -155,6 +183,9 @@ def publish(
     _require_complete(staged_masters)
     masters.parent.mkdir(parents=True, exist_ok=True)
     index.parent.mkdir(parents=True, exist_ok=True)
+    # Check the sibling-backup assumption while both outputs are untouched.
+    _require_sibling_device(masters, device=device)
+    _require_sibling_device(index, device=device)
 
     # Both backup roots exist before the index is staged: a root that cannot be
     # created leaves no temporary index behind. A root that was created but is
@@ -218,14 +249,21 @@ def publish(
             if failures:
                 raise RuntimeError(
                     f"publish failed ({error}); previous outputs kept in "
-                    f"{masters_backup} and {index_backup}: {'; '.join(failures)}"
+                    f"{masters_backup} and {index_backup} "
+                    f"(a root is empty when that output was already restored): "
+                    f"{'; '.join(failures)}"
                 ) from error
             safe_to_discard = True
             raise
         safe_to_discard = True
     finally:
         if staged_index_temp is not None:
-            staged_index_temp.unlink(missing_ok=True)
+            # Best-effort by design: a leftover hidden temp is recoverable and
+            # must never replace the publication or rollback error, nor skip
+            # the staged-directory and backup cleanup below. Interrupts still
+            # propagate because only ordinary exceptions are suppressed.
+            with contextlib.suppress(Exception):
+                staged_index_temp.unlink(missing_ok=True)
         for staging in staged_dirs:
             shutil.rmtree(staging, ignore_errors=True)
         if safe_to_discard:
