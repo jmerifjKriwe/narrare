@@ -168,6 +168,30 @@ def test_stitch_readme_links_the_collection_instead_of_the_masters() -> None:
     assert "Reference screenshots uploaded into the same Stitch project" not in paragraph
 
 
+def _relative_markdown_targets(readme: Path) -> list[str]:
+    """Every repository-relative link target in a Markdown file."""
+    text = readme.read_text(encoding="utf-8")
+    return [
+        target
+        for target in _markdown_targets(text)
+        if not target.startswith(("#", "http://", "https://", "mailto:"))
+    ]
+
+
+def test_all_relative_stitch_markdown_links_resolve() -> None:
+    targets = _relative_markdown_targets(STITCH_README)
+    assert targets, "the Stitch overview links no local file"
+    assert any("superpowers/specs/" in target for target in targets), (
+        "the spec links are gone or the link parser missed them"
+    )
+    missing = [
+        target
+        for target in targets
+        if not (STITCH_README.parent / target.split("#", 1)[0]).resolve().exists()
+    ]
+    assert not missing, f"unresolved Stitch overview links: {missing}"
+
+
 def test_index_swap_failure_restores_previous_masters_and_index(
     tmp_path: Path,
 ) -> None:

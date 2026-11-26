@@ -4,9 +4,9 @@ The design exploration for the Narrare shell, exported from the Stitch project
 `narrare` (`projects/15314899202287259920`) on 2026-11-11. It is the design
 record of a proposal, not a decision and not a specification: the implemented UI
 lives in `app/` and `web/`, and where this folder and the
-[frontend design](../superpowers/specs/2026-10-22-frontend-design.md) disagree,
+[frontend design](../../superpowers/specs/2026-10-22-frontend-design.md) disagree,
 the specification and the
-[architecture design](../superpowers/specs/2026-10-21-narrare-v2-architecture-design.md)
+[architecture design](../../superpowers/specs/2026-10-21-narrare-v2-architecture-design.md)
 decide.
 
 ## How to read it

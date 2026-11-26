@@ -61,7 +61,7 @@ roadmap's design-debt section.
 |---|---|---|---|
 | Editor with autosave | Scene-centric prose editor; nothing is lost, nothing is asked | `live` | `0` |
 | Chapter and scene tree | Reorder, split and navigate the manuscript | `live` | `0` |
-| AI continuation (WRITE-003) | A draft continues at the caret, streamed into the text | `live` | `0` |
+| AI continuation (WRITE-003) | A draft continues below the prose, streamed into the text | `live` | `0` |
 | Instruction on continuation | A short directive on the next continuation (tension, dialogue, detail) | `live` | `0` |
 | Zen focus | The draft alone, chrome and dock gone | `live` | `0` |
 | Book settings | Genre, target length, series link, per-book AI rules | `live` | `0` |
@@ -109,7 +109,7 @@ roadmap's design-debt section.
 | Storyboard (PLAN-005) | Chapters in stages, five structures, remap, scene drill-in | `live` | `0` |
 | Causality strip | Each scene's conflict and resolution as a chain | `live` | `0` |
 | Scene planning (PLAN-001) | Goal, conflict, resolution and beats per scene, before writing | `live` | `0` |
-| Structure view (PLAN-003) | Acts and their share of the book, read from the storyboard | `live` | `0` |
+| Structure view (PLAN-003) | Acts and their share of the book, read from the storyboard | `backend` | `0` |
 | Narrative gap analysis (PLAN-002) | Missing transitions, dropped threads, unused entities | `idea` | `3` |
 | Character arc (PLAN-006) | A character's development in phases, against the plan | `idea` | `3` |
 | AI scene drafts | A scene breakdown proposed from chapter and canon | `idea` | `3` |
