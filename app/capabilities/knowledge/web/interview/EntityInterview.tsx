@@ -153,7 +153,8 @@ function EntityInterviewView({
   // The ended face is read-only where the transcript writes: a suggestion's
   // three actions and the proposal's discard would get a silent
   // `session-closed` refusal or edit a composer that is not rendered. The
-  // save door and «Neues Interview» stay live, so they read `busy` alone.
+  // save door and «Neues Interview» stay live, so they read `busy` alone; the
+  // save door also reads the handover's close-failure flag below.
   const readOnly = controller.face === "ended";
   const canSave = session !== null && readyToSave(session.proposal);
   // A handover that created the entity but could not end the interview has
