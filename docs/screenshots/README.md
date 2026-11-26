@@ -2,6 +2,8 @@
 
 These frames are captured from the running Narrare application. Dark frames show the reader's stored theme, not the operating system's.
 
+Some frames use deterministic stand-ins at the model boundary: the dossiers frame shows extraction output from the fake extraction provider, the knowledge-dock frame shows a finding from the fake consistency provider, the AI-rules frame (29) shows the fake provider card, both interview frames (33 and 34) show stand-in replies, and the continuation frame uses the chat stand-in.
+
 ## Writing
 
 ### The rebuilt writing workspace
@@ -30,9 +32,9 @@ The same uninterrupted prose in the reader's stored dark theme
 
 ### The workspace with a continuation
 
-![A chapter open in the scene editor and a grey continuation waiting at the caret](../../assets/screenshots/35-workspace-continuation.png)
+![A chapter open in the scene editor and a grey continuation offered below the prose, with its Tab accept pill](../../assets/screenshots/35-workspace-continuation.png)
 
-A chapter open in the scene editor and a grey continuation waiting at the caret
+A chapter open in the scene editor and a grey continuation offered below the prose, with its Tab accept pill
 
 ### The bookshelf
 
@@ -50,9 +52,9 @@ The same shelf in the reader's stored dark theme
 
 ### Dossiers
 
-![The novel's knowledge organized as dossiers with the shared dossier open](../../assets/screenshots/25-dossiers.png)
+![The novel's knowledge organized as dossiers with a character's dossier open](../../assets/screenshots/25-dossiers.png)
 
-The novel's knowledge organized as dossiers with the shared dossier open
+The novel's knowledge organized as dossiers with a character's dossier open
 
 ### Sources
 

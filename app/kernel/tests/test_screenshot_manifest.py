@@ -8,6 +8,7 @@ import pytest
 from scripts.screenshot_manifest import (
     README_SHOTS,
     SHOTS,
+    STAND_IN_DISCLOSURE,
     Shot,
     render_index,
     validate_shots,
@@ -63,6 +64,17 @@ def test_required_surfaces_and_readme_selection_exist() -> None:
         "33-entity-interview",
     )
     assert not any(shot.name.startswith("update-") for shot in SHOTS)
+
+
+def test_index_discloses_the_model_stand_ins() -> None:
+    rendered = render_index(SHOTS)
+    assert STAND_IN_DISCLOSURE in rendered
+    assert "dossiers frame" in STAND_IN_DISCLOSURE
+    assert "fake extraction provider" in STAND_IN_DISCLOSURE
+    assert "fake provider card" in STAND_IN_DISCLOSURE
+    assert "both interview frames (33 and 34)" in STAND_IN_DISCLOSURE
+    assert "continuation frame" in STAND_IN_DISCLOSURE
+    assert "fake consistency provider" in STAND_IN_DISCLOSURE
 
 
 def test_index_links_every_master_once() -> None:

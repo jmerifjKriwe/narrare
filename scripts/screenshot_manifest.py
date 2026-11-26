@@ -5,9 +5,9 @@ stable name, title, caption, group and theme. The capture script writes the
 PNGs from this list, and ``docs/screenshots/README.md`` is ``render_index``'s
 output, so the collection and its index cannot drift apart.
 
-``README_SHOTS`` is the curated subset the README is intended to embed, in
-display order. It is derived from the ``readme`` flag rather than maintained as
-a second list; Task 4 wires the selection into the page.
+``README_SHOTS`` is the curated subset the README embeds, in display order. It
+is derived from the ``readme`` flag rather than maintained as a second list, so
+the page and the collection cannot disagree about which frames it shows.
 
 The ``01``-``19`` generation was audited against the live product before this
 manifest became authoritative. Names whose surface and pixels survived kept
@@ -37,6 +37,13 @@ _NAME = re.compile(r"\d{2}-[a-z0-9-]+")
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 _MARKDOWN = re.compile(r"([\\`*_\[\]<>#])")
 _LINK_ROOT = "../../assets/screenshots"
+STAND_IN_DISCLOSURE = (
+    "Some frames use deterministic stand-ins at the model boundary: the dossiers frame "
+    "shows extraction output from the fake extraction provider, the knowledge-dock frame "
+    "shows a finding from the fake consistency provider, the AI-rules frame (29) shows "
+    "the fake provider card, both interview frames (33 and 34) show stand-in replies, and "
+    "the continuation frame uses the chat stand-in."
+)
 
 
 def _escape_markdown(text: str) -> str:
@@ -103,7 +110,7 @@ SHOTS: tuple[Shot, ...] = (
     Shot(
         "25-dossiers",
         "Dossiers",
-        "The novel's knowledge organized as dossiers with the shared dossier open",
+        "The novel's knowledge organized as dossiers with a character's dossier open",
         "Knowledge",
         "light",
         readme=True,
@@ -178,7 +185,8 @@ SHOTS: tuple[Shot, ...] = (
     Shot(
         "35-workspace-continuation",
         "The workspace with a continuation",
-        "A chapter open in the scene editor and a grey continuation waiting at the caret",
+        "A chapter open in the scene editor and a grey continuation offered below the "
+        "prose, with its Tab accept pill",
         "Writing",
         "light",
     ),
@@ -279,6 +287,8 @@ def render_index(shots: Sequence[Shot]) -> str:
         "",
         "These frames are captured from the running Narrare application. Dark frames "
         "show the reader's stored theme, not the operating system's.",
+        "",
+        STAND_IN_DISCLOSURE,
         "",
     ]
     for group in _GROUP_ORDER:

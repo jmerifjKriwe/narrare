@@ -33,7 +33,7 @@ a character into a dossier.
 </tr>
 <tr>
 <td><img src="assets/screenshots/22-zen.png" alt="The prose alone, with the explorer and docks out of the way" width="400"></td>
-<td><img src="assets/screenshots/25-dossiers.png" alt="The novel's knowledge organized as dossiers with the shared dossier open" width="400"></td>
+<td><img src="assets/screenshots/25-dossiers.png" alt="The novel's knowledge organized as dossiers with a character's dossier open" width="400"></td>
 </tr>
 <tr>
 <td><img src="assets/screenshots/27-causality.png" alt="The planned chain of cause and effect behind the story" width="400"></td>
@@ -45,12 +45,13 @@ a character into a dossier.
 </tr>
 </table>
 
-These are captures of the running application, not mock-ups. The entity interview is the
-one frame that shows a model's reply on screen: the deterministic stand-in used at the
-tests' model boundary supplies that reply. The other frames show seeded product data and
-interface copy, not generated prose. The full collection, including the dark variants and
-the remaining settings and entity frames, is in
-[docs/screenshots/README.md](docs/screenshots/README.md).
+These are captures of the running application, not mock-ups. Some frames use
+deterministic stand-ins at the model boundary: the dossiers frame shows extraction output
+from the fake extraction provider, the knowledge-dock frame shows a finding from the fake
+consistency provider, the AI-rules frame (29) shows the fake provider card, both interview
+frames (33 and 34) show stand-in replies, and the continuation frame uses the chat
+stand-in. The full collection, including the dark variants and the remaining settings and
+entity frames, is in [docs/screenshots/README.md](docs/screenshots/README.md).
 
 ## Writing & Zen
 

@@ -15,7 +15,12 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from scripts.screenshot_manifest import README_SHOTS, SHOTS, render_index
+from scripts.screenshot_manifest import (
+    README_SHOTS,
+    SHOTS,
+    STAND_IN_DISCLOSURE,
+    render_index,
+)
 from scripts.screenshots import _publish  # pyright: ignore[reportPrivateUsage]
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -101,6 +106,11 @@ def test_readme_gallery_is_the_curated_manifest_in_order() -> None:
     for (source, alt), shot in zip(images, README_SHOTS, strict=True):
         assert (ROOT / source).is_file(), source
         assert alt == shot.caption, source
+
+
+def test_readme_discloses_the_model_stand_ins() -> None:
+    text = " ".join(README.read_text(encoding="utf-8").split())
+    assert " ".join(STAND_IN_DISCLOSURE.split()) in text
 
 
 def test_readme_does_not_call_live_settings_a_roadmap_phase() -> None:
