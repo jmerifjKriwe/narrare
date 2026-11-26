@@ -216,7 +216,6 @@
   "knowledge.interview.newInterview": "Nouvel entretien",
   "knowledge.interview.noIdea": "Aucune idée",
   "knowledge.interview.noName": "encore sans nom",
-  "knowledge.interview.openInterviews": "{count, plural, one {# entretien ouvert} other {# entretiens ouverts}}",
   "knowledge.interview.openState": "ouvert",
   "knowledge.interview.openTitle": "Ouverts",
   "knowledge.interview.openValue": "encore ouvert",

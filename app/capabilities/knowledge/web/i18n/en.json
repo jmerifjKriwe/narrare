@@ -216,7 +216,6 @@
   "knowledge.interview.newInterview": "New interview",
   "knowledge.interview.noIdea": "No idea",
   "knowledge.interview.noName": "no name yet",
-  "knowledge.interview.openInterviews": "{count, plural, one {# open interview} other {# open interviews}}",
   "knowledge.interview.openState": "open",
   "knowledge.interview.openTitle": "Open",
   "knowledge.interview.openValue": "still open",
