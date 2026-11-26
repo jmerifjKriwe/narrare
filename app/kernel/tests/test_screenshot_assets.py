@@ -9,8 +9,10 @@ These tests read the committed files, never the running stack.
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from PIL import Image
@@ -21,7 +23,7 @@ from scripts.screenshot_manifest import (
     STAND_IN_DISCLOSURE,
     render_index,
 )
-from scripts.screenshots import _publish  # pyright: ignore[reportPrivateUsage]
+from scripts.screenshots import _publish, _write_index_temp  # pyright: ignore[reportPrivateUsage]
 
 ROOT = Path(__file__).resolve().parents[3]
 ASSETS = ROOT / "assets" / "screenshots"
@@ -188,4 +190,124 @@ def test_index_swap_failure_restores_previous_masters_and_index(
     assert (masters / "old.png").read_bytes() == b"old master"
     assert not (masters / SHOTS[0].filename).exists()
     assert index.read_text(encoding="utf-8") == "old index\n"
+    assert list(tmp_path.glob(f".{index.name}-*")) == []
+    assert list(tmp_path.glob(".masters-backup-*")) == []
+
+
+def _staged_capture(staged: Path) -> list[Path]:
+    """One staged payload per manifest frame, as a successful capture writes."""
+    staged.mkdir()
+    written: list[Path] = []
+    for shot in SHOTS:
+        path = staged / shot.filename
+        path.write_bytes(b"new master")
+        written.append(path)
+    return written
+
+
+def test_failed_restore_keeps_the_backup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A restore that fails must leave the backup for manual recovery."""
+    masters = tmp_path / "masters"
+    masters.mkdir()
+    (masters / "old.png").write_bytes(b"old master")
+    index = tmp_path / "index.md"
+    index.write_text("old index\n", encoding="utf-8")
+    written = _staged_capture(tmp_path / "staged")
+
+    def failing_swap(source: Path, target: Path) -> None:
+        if source.name.startswith(f".{index.name}-"):
+            raise RuntimeError("index swap failed")
+        source.rename(target)
+
+    def failing_restore(source: Path, target: Path) -> None:
+        if source.name == "masters":
+            raise OSError("restore failed")
+        source.rename(target)
+
+    monkeypatch.setattr("scripts.screenshots._move", failing_restore)
+
+    with pytest.raises(RuntimeError, match="previous outputs kept in") as raised:
+        _publish(tmp_path / "staged", masters, index, written, swap=failing_swap)
+
+    backups = list(tmp_path.glob(".masters-backup-*"))
+    assert len(backups) == 1
+    assert str(backups[0]) in str(raised.value)
+    assert (backups[0] / "masters" / "old.png").read_bytes() == b"old master"
+    # The second restore still runs, so the backup holds only what failed.
+    assert not (backups[0] / "index").exists()
+    assert index.read_text(encoding="utf-8") == "old index\n"
+    assert list(tmp_path.glob(f".{index.name}-*")) == []
+
+
+def test_aborted_rollback_keeps_the_backup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A rollback that cannot restore must keep the last good copies."""
+    masters = tmp_path / "masters"
+    masters.mkdir()
+    (masters / "old.png").write_bytes(b"old master")
+    index = tmp_path / "index.md"
+    index.write_text("old index\n", encoding="utf-8")
+    written = _staged_capture(tmp_path / "staged")
+
+    def failing_swap(source: Path, target: Path) -> None:
+        if source.name.startswith(f".{index.name}-"):
+            raise RuntimeError("index swap failed")
+        source.rename(target)
+
+    def failing_remove(path: Path) -> None:
+        raise OSError("remove failed")
+
+    def failing_move(source: Path, target: Path) -> None:
+        raise OSError("restore blocked")
+
+    monkeypatch.setattr("scripts.screenshots._remove", failing_remove)
+    monkeypatch.setattr("scripts.screenshots._move", failing_move)
+
+    with pytest.raises(RuntimeError, match="previous outputs kept in") as raised:
+        _publish(tmp_path / "staged", masters, index, written, swap=failing_swap)
+
+    backups = list(tmp_path.glob(".masters-backup-*"))
+    assert len(backups) == 1
+    assert str(backups[0]) in str(raised.value)
+    assert (backups[0] / "masters" / "old.png").read_bytes() == b"old master"
+    assert (backups[0] / "index").read_text(encoding="utf-8") == "old index\n"
+
+
+def test_index_temp_is_removed_when_its_write_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failed index write must not leave its temporary file behind."""
+    index = tmp_path / "index.md"
+    handle = Mock()
+    handle.__enter__ = Mock(return_value=handle)
+    handle.__exit__ = Mock(return_value=False)
+    handle.write.side_effect = OSError("write failed")
+
+    def failing_fdopen(descriptor: int, *args: object, **kwargs: object) -> Mock:
+        os.close(descriptor)
+        return handle
+
+    monkeypatch.setattr("scripts.screenshots.os.fdopen", failing_fdopen)
+
+    with pytest.raises(OSError, match="write failed"):
+        _write_index_temp(index, "new index\n")
+
+    assert list(tmp_path.glob(f".{index.name}-*")) == []
+
+
+def test_backup_root_failure_stages_no_index_temp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failed backup-root creation must not leave a staged-index temp."""
+    index = tmp_path / "index.md"
+    index.write_text("old index\n", encoding="utf-8")
+    written = _staged_capture(tmp_path / "staged")
+
+    def failing_mkdtemp(*args: object, **kwargs: object) -> str:
+        raise OSError("backup root failed")
+
+    monkeypatch.setattr("scripts.screenshots.tempfile.mkdtemp", failing_mkdtemp)
+
+    with pytest.raises(OSError, match="backup root failed"):
+        _publish(tmp_path / "staged", tmp_path / "masters", index, written)
+
     assert list(tmp_path.glob(f".{index.name}-*")) == []

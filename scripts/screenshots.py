@@ -31,6 +31,10 @@ screenshots are pinned here, and every seed is API-driven with stable order.
 The graph's force layout sorts by entity id, so its frame runs on a novel with
 exactly one entity; the multi-entity faces live on the dossiers page and the
 interview, where creation order — not the id sort — is the truth.
+
+Two captures on this machine are byte-identical. That identity is proven here,
+not across runners: the ⌘ glyph sits outside the bundled Latin font range and
+falls back to a system face, so another machine may render it differently.
 """
 
 import argparse
@@ -555,12 +559,17 @@ def _capture(
     """Shoot the frames in the order the page tells them."""
     written: list[Path] = []
 
-    def open_chapter(book: str, chapter: str) -> None:
+    def open_chapter(book: str, chapter: str, expected_chapter: int) -> None:
         _open_workspace(page, book)
         # The chapter title button, not the chevron beside it: selecting the
         # chapter opens its first scene, the deterministic entry point.
         page.get_by_test_id(f"tree-chapter-{chapter}").get_by_role("button").nth(1).click()
         expect(page.locator(".ProseMirror")).to_be_visible()
+        # The ribbon names the selected chapter, so a reordered explorer fails
+        # here instead of silently capturing a different chapter.
+        expect(page.get_by_test_id("workspace-ribbon")).to_contain_text(
+            f"Chapter {expected_chapter}"
+        )
 
     # 37/38. The shelf, before the clean writing project exists, so it really
     #     is the writer's three books.
@@ -582,15 +591,15 @@ def _capture(
 
     # 20/21. The rebuilt workspace in the default light and the reader's
     #     stored dark: the same signal scene, so the pair is the same desk.
-    open_chapter(writing_novel, signal_chapter)
+    open_chapter(writing_novel, signal_chapter, 2)
     written.append(_shot(page, out, "20-workspace-rebuilt"))
     _set_theme(page, "dark")
-    open_chapter(writing_novel, signal_chapter)
+    open_chapter(writing_novel, signal_chapter, 2)
     written.append(_shot(page, out, "21-workspace-rebuilt-dark"))
 
-    # 35. The short arrival scene with the continuation waiting at the caret.
+    # 35. The short arrival scene with the continuation offered below the prose.
     _set_theme(page, "light")
-    open_chapter(writing_novel, arrival_chapter)
+    open_chapter(writing_novel, arrival_chapter, 1)
     _caret_at_first_paragraph_end(page)
     vendor.set_answer(CONTINUATION)
     page.get_by_role("button", name="Continue writing").click()
@@ -601,7 +610,7 @@ def _capture(
 
     # 22. Zen: the prose alone. The clock pauses before the room mounts, so
     #     the pomodoro's digits never tick between the two captures.
-    open_chapter(writing_novel, signal_chapter)
+    open_chapter(writing_novel, signal_chapter, 2)
     _pause_clock(page)
     page.keyboard.press("F9")
     expect(page.get_by_test_id("zen-mode")).to_be_visible()
@@ -610,7 +619,7 @@ def _capture(
 
     # 23. Zen in the reader's stored dark.
     _set_theme(page, "dark")
-    open_chapter(writing_novel, signal_chapter)
+    open_chapter(writing_novel, signal_chapter, 2)
     _pause_clock(page)
     page.keyboard.press("F9")
     expect(page.get_by_test_id("zen-mode")).to_be_visible()
@@ -620,7 +629,7 @@ def _capture(
     # 36. The knowledge dock: the finding and the extracted cast beside the
     #     clean prose. The finding is scrolled into the dock's own area.
     _set_theme(page, "light")
-    open_chapter(writing_novel, signal_chapter)
+    open_chapter(writing_novel, signal_chapter, 2)
     page.get_by_role("button", name="Knowledge", exact=True).click()
     expect(page.get_by_test_id("knowledge-dock")).to_be_visible()
     finding = page.get_by_test_id("knowledge-finding").filter(has_text="Facility")
@@ -876,8 +885,18 @@ def _write_index_temp(index: Path, text: str) -> Path:
     index.parent.mkdir(parents=True, exist_ok=True)
     descriptor, name = tempfile.mkstemp(prefix=f".{index.name}-", dir=index.parent)
     path = Path(name)
-    with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write(text)
+    try:
+        handle = os.fdopen(descriptor, "w", encoding="utf-8", newline="\n")
+    except BaseException:
+        os.close(descriptor)
+        path.unlink(missing_ok=True)
+        raise
+    try:
+        with handle:
+            handle.write(text)
+    except BaseException:
+        path.unlink(missing_ok=True)
+        raise
     return path
 
 
@@ -907,8 +926,10 @@ def _publish(
     The previous masters and index are moved aside first; both stay in the
     backup directory until the new masters and the new index have both landed.
     Any failure removes whatever new output was written and restores both
-    previous outputs. ``swap`` is the one move seam, so a test can fail the
-    index swap deterministically without filesystem timing tricks.
+    previous outputs. The backup is discarded only after a successful publish
+    or a complete restore; a failed restore keeps it, and the raised error
+    names its path. ``swap`` is the one move seam, so a test can fail the index
+    swap deterministically without filesystem timing tricks.
     """
     expected = {shot.filename for shot in SHOTS}
     actual = {path.name for path in written}
@@ -918,38 +939,87 @@ def _publish(
         raise SystemExit(
             f"the capture set does not match the manifest: missing={missing} extra={extra}"
         )
-    staged_index = _write_index_temp(index, render_index(SHOTS))
+    # The backup root exists before the index is staged, so a failed mkdtemp
+    # cannot leave an index temp behind.
     backup_root = Path(tempfile.mkdtemp(prefix=f".{out.name}-backup-", dir=out.parent))
+    staged_index: Path | None = None
     previous_out = backup_root / "masters"
     previous_index = backup_root / "index"
     had_out = out.exists()
     had_index = index.exists()
     moved_out = False
     moved_index = False
+    safe_to_discard = False
     try:
-        if had_out:
-            swap(out, previous_out)
-            moved_out = True
-        if had_index:
-            swap(index, previous_index)
-            moved_index = True
-        swap(staged, out)
-        swap(staged_index, index)
-    except BaseException:
-        # Remove only outputs this call may have written; a target still in
-        # its original place was never moved aside and must stay.
-        if moved_out or not had_out:
-            _remove(out)
-        if moved_index or not had_index:
-            _remove(index)
-        if moved_out and previous_out.exists():
-            _move(previous_out, out)
-        if moved_index and previous_index.exists():
-            _move(previous_index, index)
-        raise
+        try:
+            temp_index = _write_index_temp(index, render_index(SHOTS))
+        except BaseException:
+            # Nothing was moved aside, so the backup holds no previous output
+            # and the empty directory can go.
+            safe_to_discard = True
+            raise
+        staged_index = temp_index
+
+        def rollback() -> bool:
+            """Remove new outputs and restore both previous outputs."""
+            failures = False
+            if moved_out or not had_out:
+                try:
+                    _remove(out)
+                except BaseException:
+                    failures = True
+            if moved_index or not had_index:
+                try:
+                    _remove(index)
+                except BaseException:
+                    failures = True
+            restored_out = not moved_out
+            restored_index = not moved_index
+            if moved_out and previous_out.exists():
+                try:
+                    _move(previous_out, out)
+                except BaseException:
+                    failures = True
+                else:
+                    restored_out = True
+            if moved_index and previous_index.exists():
+                try:
+                    _move(previous_index, index)
+                except BaseException:
+                    failures = True
+                else:
+                    restored_index = True
+            return not failures and restored_out and restored_index
+
+        try:
+            if had_out:
+                swap(out, previous_out)
+                moved_out = True
+            if had_index:
+                swap(index, previous_index)
+                moved_index = True
+            swap(staged, out)
+            swap(temp_index, index)
+            safe_to_discard = True
+        except BaseException as error:
+            try:
+                rollback_complete = rollback()
+            except BaseException as rollback_error:
+                raise RuntimeError(
+                    f"publish failed ({error}); rollback aborted ({rollback_error}); "
+                    f"previous outputs kept in {backup_root}"
+                ) from rollback_error
+            if not rollback_complete:
+                raise RuntimeError(
+                    f"publish failed ({error}); previous outputs kept in {backup_root}"
+                ) from error
+            safe_to_discard = True
+            raise
     finally:
-        shutil.rmtree(backup_root, ignore_errors=True)
-        staged_index.unlink(missing_ok=True)
+        if staged_index is not None:
+            staged_index.unlink(missing_ok=True)
+        if safe_to_discard:
+            shutil.rmtree(backup_root, ignore_errors=True)
 
 
 def main(argv: list[str] | None = None) -> int:

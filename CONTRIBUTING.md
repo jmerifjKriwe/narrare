@@ -213,6 +213,9 @@ demo novel, captures every master frame listed in
 collection index at [docs/screenshots/README.md](docs/screenshots/README.md). Run
 it when a surface a frame shows has changed: the asset tests pin the image paths,
 captions and dimensions, but they cannot prove the pixels still show the current UI.
+Two captures produce identical bytes on the machine that made them; that identity is
+not a cross-machine promise, because the ⌘ glyph sits outside the bundled Latin font
+range and may render differently on another runner.
 
 The same recipe runs as the `Screenshots` workflow. Every push to `main` starts
 its short `decide` job, which skips capture unless a UI-relevant path changed
