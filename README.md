@@ -48,12 +48,13 @@ entity through a guided interview.
 </table>
 
 These are captures of the running application, not mock-ups. Some frames use
-deterministic stand-ins at the model boundary: the dossiers frame shows extraction output
-from the fake extraction provider, the knowledge-dock frame shows a finding from the fake
-consistency provider, the AI-rules frame shows the fake provider card, both interview
-frames show stand-in replies, and the continuation frame uses the chat stand-in. The full
-collection, including the dark variants and the remaining settings and entity frames, is
-in [docs/screenshots/README.md](docs/screenshots/README.md).
+deterministic stand-ins at the model boundary: the dossiers frame shows extraction
+output from the fake extraction provider, the knowledge-dock frame shows a finding from
+the fake consistency provider and the extracted cast, the AI-rules frame shows the fake
+provider card, both interview frames show stand-in replies, both graph frames show the
+extracted cast, and the continuation frame uses the chat stand-in. The full collection,
+including the dark variants and the remaining settings and entity frames, is in
+[docs/screenshots/README.md](docs/screenshots/README.md).
 
 ## Writing & Zen
 

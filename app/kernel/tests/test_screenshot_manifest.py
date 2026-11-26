@@ -89,6 +89,16 @@ def test_both_disclosures_carry_every_stand_in_surface() -> None:
             assert cited not in README_STAND_IN_DISCLOSURE, entry.surface
 
 
+def test_every_extraction_frame_names_extraction() -> None:
+    """Frames 25, 36, 39 and 40 carry extraction or the cast it produced."""
+    entries = {entry.surface: entry for entry in STAND_INS}
+    frames = {"25": "dossiers", "36": "knowledge-dock", "39": "graph", "40": "graph"}
+    for frame, surface in frames.items():
+        assert "extract" in entries[surface].clause, f"frame {frame} hides its extraction"
+        if frame != "25":
+            assert frame in entries[surface].frames, f"{surface} does not cite frame {frame}"
+
+
 def test_index_links_every_master_once() -> None:
     rendered = render_index(SHOTS)
     for shot in SHOTS:

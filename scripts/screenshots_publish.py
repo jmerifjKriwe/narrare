@@ -217,31 +217,36 @@ def publish(
         previous_index = index_backup / "index"
         had_masters = masters.exists()
         had_index = index.exists()
-        moved_masters = False
-        moved_index = False
 
         def rollback() -> list[str]:
-            """Remove new outputs and restore both previous outputs."""
+            """Restore from the backups that exist on disk; flags cannot be trusted.
+
+            A rename can complete and then fail (an interrupt lands between the
+            syscall and its return), so the backup's presence is the evidence
+            that the previous output must come back. A missing backup with no
+            previous output means the new one must go; a missing backup beside
+            a previous output means that output never left.
+            """
             failures: list[str] = []
-            if moved_masters or not had_masters:
+            if previous_masters.exists():
                 failures += _attempt("removing the new masters", remove, masters)
-            if moved_index or not had_index:
-                failures += _attempt("removing the new index", remove, index)
-            if moved_masters:
                 failures += _attempt(
                     "restoring the previous masters", move, previous_masters, masters
                 )
-            if moved_index:
+            elif not had_masters:
+                failures += _attempt("removing the new masters", remove, masters)
+            if previous_index.exists():
+                failures += _attempt("removing the new index", remove, index)
                 failures += _attempt("restoring the previous index", move, previous_index, index)
+            elif not had_index:
+                failures += _attempt("removing the new index", remove, index)
             return failures
 
         try:
             if had_masters:
                 move(masters, previous_masters)
-                moved_masters = True
             if had_index:
                 move(index, previous_index)
-                moved_index = True
             swap(staged, masters)
             swap(staged_index_temp, index)
         except BaseException as error:

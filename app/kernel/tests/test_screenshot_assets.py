@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -158,20 +159,59 @@ _FUTURE_WORK = re.compile(
 )
 
 
-def _readme_section(text: str, heading: str) -> str:
-    """One README section, from its level-two heading to the next one."""
-    match = re.search(rf"^## {re.escape(heading)}$", text, re.MULTILINE)
-    assert match is not None, f"the README has no {heading!r} section"
-    body = text[match.end() :]
-    following = re.search(r"^## ", body, re.MULTILINE)
-    return body[: following.start()] if following else body
+def _readme_sections(text: str) -> dict[str, str]:
+    """Every level-two section body, keyed by heading, in document order."""
+    headings = list(re.finditer(r"^## (.+)$", text, re.MULTILINE))
+    sections: dict[str, str] = {}
+    for index, match in enumerate(headings):
+        end = headings[index + 1].start() if index + 1 < len(headings) else len(text)
+        sections[match.group(1).strip()] = text[match.end() : end]
+    return sections
 
 
-def test_readme_does_not_describe_live_settings_as_future_work() -> None:
-    section = _readme_section(README.read_text(encoding="utf-8"), "Settings & prompts")
-    assert section.strip(), "the settings section is empty"
-    stale = _FUTURE_WORK.search(section)
-    assert stale is None, f"the settings section calls live work future: {stale.group(0)}"
+def _prose_only(section: str) -> str:
+    """Drop image tags and inline links: alt text and labels are not claims."""
+    without_images = re.sub(r"<img\b[^>]*>", " ", section, flags=re.IGNORECASE)
+    return re.sub(r"!?\[[^\]]*\]\([^)]*\)", " ", without_images)
+
+
+_DOCUMENTATION_SECTION = "Documentation"
+
+
+def test_readme_prose_never_describes_live_work_as_future() -> None:
+    sections = _readme_sections(README.read_text(encoding="utf-8"))
+    prose = {
+        heading: _prose_only(body)
+        for heading, body in sections.items()
+        if heading != _DOCUMENTATION_SECTION
+    }
+    assert prose, "the README has no prose section"
+    for heading, section in prose.items():
+        stale = _FUTURE_WORK.search(section)
+        assert stale is None, f"{heading} calls live work future: {stale.group(0)}"
+
+
+def test_future_work_guard_catches_stale_claims_in_every_prose_section() -> None:
+    for heading in ("Getting started", "Status"):
+        sections = _readme_sections(f"## {heading}\n\nThe screen is planned for a later phase.\n")
+        section = _prose_only(sections[heading])
+        assert _FUTURE_WORK.search(section), heading
+
+
+def test_future_work_guard_ignores_alt_text_and_link_labels() -> None:
+    document = "\n".join(
+        [
+            "## What it looks like",
+            '<img src="assets/roadmap.png" alt="The planned roadmap screen">',
+            "",
+            "The [ROADMAP](ROADMAP.md) lists what comes next.",
+            "",
+        ]
+    )
+    section = _prose_only(_readme_sections(document)["What it looks like"])
+    assert _FUTURE_WORK.search(section) is None
+    # The same sentence outside a tag or a label is still a live claim.
+    assert _FUTURE_WORK.search("The screen is planned.") is not None
 
 
 def test_future_work_guard_catches_rewording_not_one_phrase() -> None:
@@ -779,6 +819,70 @@ def test_interrupt_during_rollback_propagates_and_keeps_both_backups(
     assert len(index_backups) == 1
     assert (masters_backups[0] / "masters" / "old.png").read_bytes() == b"old master"
     assert (index_backups[0] / "index").read_text(encoding="utf-8") == "old index\n"
+
+
+@pytest.mark.parametrize("interrupted", ["masters", "index"])
+def test_interrupt_after_a_backup_rename_restores_both_outputs(
+    tmp_path: Path, interrupted: str
+) -> None:
+    """A rename that completed before the interrupt still has to be rolled back."""
+    masters = tmp_path / "assets" / "screenshots"
+    index = tmp_path / "docs" / "screenshots" / "README.md"
+    _previous_outputs(masters, index)
+    staged_masters, staged_index = _staged_capture(tmp_path / "capture")
+
+    def interrupting_move(source: Path, target: Path) -> None:
+        os.replace(source, target)
+        if target.name == interrupted and "-backup-" in target.parent.name:
+            raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        publish(masters, index, staged_masters, staged_index, move=interrupting_move)
+
+    assert (masters / "old.png").read_bytes() == b"old master"
+    assert not (masters / SHOTS[0].filename).exists()
+    assert index.read_text(encoding="utf-8") == "old index\n"
+    assert _backups(masters.parent, index.parent) == []
+    assert _index_temps(index) == []
+    assert list(masters.parent.glob(".screenshots-stage-*")) == []
+
+
+def test_move_failure_before_renaming_never_removes_the_old_masters(tmp_path: Path) -> None:
+    """An OSError before the rename leaves both previous outputs in place."""
+    masters = tmp_path / "assets" / "screenshots"
+    index = tmp_path / "docs" / "screenshots" / "README.md"
+    _previous_outputs(masters, index)
+    staged_masters, staged_index = _staged_capture(tmp_path / "capture")
+    removed: list[Path] = []
+
+    def failing_move(source: Path, target: Path) -> None:
+        if target.name == "masters" and "-backup-" in target.parent.name:
+            raise OSError("move failed")
+        os.replace(source, target)
+
+    def tracking_remove(path: Path) -> None:
+        removed.append(path)
+        if path.is_dir():
+            shutil.rmtree(path)
+        elif path.exists():
+            path.unlink()
+
+    with pytest.raises(OSError, match="move failed"):
+        publish(
+            masters,
+            index,
+            staged_masters,
+            staged_index,
+            move=failing_move,
+            remove=tracking_remove,
+        )
+
+    assert removed == [], "a previous output was removed although it never moved"
+    assert (masters / "old.png").read_bytes() == b"old master"
+    assert index.read_text(encoding="utf-8") == "old index\n"
+    assert _backups(masters.parent, index.parent) == []
+    assert _index_temps(index) == []
+    assert list(masters.parent.glob(".screenshots-stage-*")) == []
 
 
 def test_index_temp_is_removed_when_its_write_fails(

@@ -65,7 +65,8 @@ STAND_INS: tuple[StandIn, ...] = (
     ),
     StandIn(
         "knowledge-dock",
-        "shows a finding from the fake consistency provider",
+        "shows a finding from the fake consistency provider and the extracted cast",
+        frames=("36",),
     ),
     StandIn(
         "AI-rules",
@@ -76,6 +77,12 @@ STAND_INS: tuple[StandIn, ...] = (
         "interview",
         "show stand-in replies",
         frames=("33", "34"),
+        both=True,
+    ),
+    StandIn(
+        "graph",
+        "show the extracted cast",
+        frames=("39", "40"),
         both=True,
     ),
     StandIn(

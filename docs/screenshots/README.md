@@ -2,7 +2,7 @@
 
 These frames are captured from the running Narrare application. Dark frames show the reader's stored theme, not the operating system's.
 
-Some frames use deterministic stand-ins at the model boundary: the dossiers frame shows extraction output from the fake extraction provider, the knowledge-dock frame shows a finding from the fake consistency provider, the AI-rules frame (29) shows the fake provider card, both interview frames (33 and 34) show stand-in replies, and the continuation frame uses the chat stand-in.
+Some frames use deterministic stand-ins at the model boundary: the dossiers frame shows extraction output from the fake extraction provider, the knowledge-dock frame (36) shows a finding from the fake consistency provider and the extracted cast, the AI-rules frame (29) shows the fake provider card, both interview frames (33 and 34) show stand-in replies, both graph frames (39 and 40) show the extracted cast, and the continuation frame uses the chat stand-in.
 
 ## Writing
 
