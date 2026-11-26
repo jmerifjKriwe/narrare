@@ -1280,14 +1280,46 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
     const stayed = screen.getByTestId("entity-interview");
     await within(stayed).findByText(de["knowledge.interview.endFailed"]);
-    // The proposal became a row: the door that opened the dialog is shut, so
-    // focus lands on the live action beside the failed end instead.
+    // The proposal became a row: the dialog puts focus on the live end action
+    // before it closes, and the modal's return to the now-shut save door
+    // no-ops, so the keyboard stands beside the failed end.
     expect((within(stayed).getByTestId("entity-interview-save") as HTMLButtonElement).disabled).toBe(
       true,
     );
     await waitFor(() =>
       expect(document.activeElement).toBe(document.getElementById("entity-interview-end")),
     );
+  });
+
+  it("a cancelled handover returns focus to the save door that opened it", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/chat/sessions/{session_id}") {
+        return Promise.resolve({ data: sessionWithProposal("s1", "Nebelhaus"), response: ok() });
+      }
+      return baseGet(path);
+    });
+    await renderGraph(`/novels/${NOVEL_ID}/knowledge/graph?interview=s1`);
+    const panel = await screen.findByTestId("entity-interview");
+    const saveDoor = (await within(panel).findByTestId("entity-interview-save")) as HTMLButtonElement;
+    await waitFor(() => expect(saveDoor.disabled).toBe(false));
+
+    // No create happened, so the door is still live: cancelling the prefilled
+    // dialog must return the keyboard to the control that opened it, not to
+    // «Interview beenden» beside it (Enter there would end the interview).
+    fireEvent.click(saveDoor);
+    let dialog = await screen.findByTestId("entity-create-dialog");
+    fireEvent.click(within(dialog).getByTestId("entity-create-cancel"));
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+    expect(screen.getByTestId("entity-interview")).toBeTruthy();
+    expect((saveDoor as HTMLButtonElement).disabled).toBe(false);
+    expect(document.activeElement).toBe(document.getElementById("entity-interview-save"));
+
+    // A second cancel lands there again: the opener's contract is per opening.
+    fireEvent.click(saveDoor);
+    dialog = await screen.findByTestId("entity-create-dialog");
+    fireEvent.click(within(dialog).getByTestId("entity-create-cancel"));
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+    expect(document.activeElement).toBe(document.getElementById("entity-interview-save"));
   });
 
   it("the ended interview's handover dialog returns focus to the live save door", async () => {

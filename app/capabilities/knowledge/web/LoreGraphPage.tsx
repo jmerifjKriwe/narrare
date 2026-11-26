@@ -481,19 +481,23 @@ export function LoreGraphPage() {
         })()
       : null;
 
-  // The prefilled dialog hands focus back to the control the writer acts on
-  // next. It closes in the same commit that clears its prefill and marks the
-  // handover, so that mark is not yet visible to its unmount; the ended set
-  // is. An ended interview renders «Neues Interview» instead of the end
-  // action and keeps its save door live, so there the save door is the one to
-  // name. Everywhere else the end action is rendered, and enabled once the
-  // request settles.
+  // The dialog's opener is the control that opened it: the hand-made door, or
+  // the save door a handover came from. That door is still live while the
+  // dialog is up, so a cancelled dialog returns the keyboard there — never to
+  // «Interview beenden», whose Enter would end the interview.
   const createOpenerId =
-    prefill === null
-      ? "entity-interview-manual"
-      : interview !== undefined && endedInterviews.has(interview)
-        ? "entity-interview-save"
-        : "entity-interview-end";
+    prefill === null ? "entity-interview-manual" : "entity-interview-save";
+  // Once a handover's create lands, the dialog puts the keyboard on the next
+  // action itself, before it closes: «Interview beenden», which is rendered
+  // and enabled at that moment (the page's own close request does not drive
+  // the panel's busy state). The modal's cleanup then targets the save door,
+  // now shut by the handover, and no-ops on it. An ended interview renders
+  // «Neues Interview» instead of the end action and keeps its save door live,
+  // so there the dialog names nothing and the cleanup's opener stands.
+  const createdFocusId =
+    prefill !== null && interview !== undefined && !endedInterviews.has(interview)
+      ? "entity-interview-end"
+      : undefined;
 
   return (
     <div id="graph-page" data-testid="graph-page" tabIndex={-1} className="flex h-full flex-col overflow-hidden focus:outline-none">
@@ -1015,6 +1019,7 @@ export function LoreGraphPage() {
           entities={entityList}
           rosterSettled={!entities.isPending}
           openerId={createOpenerId}
+          createdFocusId={createdFocusId}
           source={prefill === null ? "manual" : "interview"}
           prefill={prefill ?? undefined}
           onClose={() => {

@@ -71,6 +71,7 @@ export function EntityCreateDialog({
   novelId,
   entities,
   openerId,
+  createdFocusId,
   onClose,
   onCreated,
   source = "manual",
@@ -80,6 +81,10 @@ export function EntityCreateDialog({
   novelId: string;
   entities: readonly Entity[];
   openerId: string;
+  /** A create landed: focus this control before closing. The opener is the
+   *  dialog's own door, which a handover has just shut; the next action is
+   *  named here instead. The modal's cleanup then no-ops on the shut opener. */
+  createdFocusId?: string;
   onClose: () => void;
   /** The write landed: the home selects the new row and counts its edges. */
   onCreated?: (entity: Entity, relations: number) => void;
@@ -227,6 +232,11 @@ export function EntityCreateDialog({
     create.mutate(body, {
       onSuccess: (entity) => {
         onCreated?.(entity, body.relations?.length ?? 0);
+        // The next action, placed before the dialog unmounts: the modal's own
+        // return lands on the opener, which a handover has just shut.
+        if (createdFocusId !== undefined) {
+          document.getElementById(createdFocusId)?.focus();
+        }
         onClose();
       },
       onError: (error) => {
