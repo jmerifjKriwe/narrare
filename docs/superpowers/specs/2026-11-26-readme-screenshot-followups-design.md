@@ -136,7 +136,9 @@ task.
 - Unbuilt-product copy is removed from the visual focus by choosing honest live
   states or correcting product copy in its owning capability. Disabled or
   `aria-disabled` feature gaps use status-only copy (“Not available yet.” and its
-  localized equivalents), never a promise that implies a live feature is arriving.
+  localized equivalents) in visible text, badges, tooltips and `aria-label`s,
+  never a promise that implies a live feature is arriving. `writing.shelf.comingSoon`
+  is the sole exception because it is shared with a live primary CTA.
 
 ## Acceptance
 
