@@ -154,7 +154,7 @@ Reviewer checks all three locales and generated-source consistency. Commit `fix(
 
 Add failing English-face assertions for the Structure and Provisioning display sites and a Python test for present-but-empty `title_en` fallback. Use `demoDisplayTitle(demo, locale)` at every display site while keeping the provisioning POST on `archive.title`; type the helper locale as `Locale`; use `metadata.get("title_en") or title`; document `title_en` as optional display-only metadata that is not imported into the novel. Run the setup/interchange tests, existing setup E2E, screenshot suites and `just check`. Run one fresh full capture and prove the committed masters/index remain identical. Commit `fix(setup): keep the localized demo title through provisioning` with the Assisted-by trailer and no duplicate `Closes` keywords.
 
-- [ ] **Step 7: Keep malformed display metadata from blocking archive imports**
+- [x] **Step 7: Keep malformed display metadata from blocking archive imports**
 
 Add a failing parametrized format test for `title_en` values `42`, `true`, `[1, 2]`, `{"x": 1}` and `"x" * 201`: parsing must succeed, novel title/chapters/entities remain intact, non-string values read as `None`, and the overlong string is preserved rather than refused. Replace the strict `title_en` parse with a lenient string-or-`None` read and remove its `_MAX_LENGTHS` cap; keep all persisted metadata strict. Document the compatibility rule in `format.py` and the WP3 demo/export spec. Run the interchange format/engine/demo tests, setup tests and `just check`. Commit `fix(interchange): ignore unusable display titles during import` with a real `User-visible:` line, the Assisted-by trailer and no duplicate `Closes` keywords.
 
@@ -233,7 +233,7 @@ Expected: PASS.
 
 Reviewer traces each failure path and confirms no Playwright import remains in the asset test. Commit `refactor(tooling): make screenshot publication filesystem-safe` with `Closes #983`, `Closes #987`, `Closes #988` and the Assisted-by trailer.
 
-- [ ] **Step 7: Close the publication recovery review findings**
+- [x] **Step 7: Close the publication recovery review findings**
 
 Ignore `docs/screenshots/.README.md-backup-*` beside the existing assets recovery ignore, and document that custom output parents are outside repository ignore coverage. Preflight that an existing output shares its parent's device; fail with a clear error before creating backups or moving data when a mount point breaks that assumption. Make index-temp unlink best-effort so cleanup failure cannot replace the publication/rollback error or skip the remaining recovery cleanup. Let `KeyboardInterrupt` propagate instead of recording it as an ordinary step failure, while preserving recovery roots. Remove the tautological derived-disclosure equality assertion and retain the meaningful surface/frame tests. Add deterministic tests for a successful cross-device copy followed by index-swap failure, target/parent device mismatch before mutation, temp-unlink failure preserving the primary error, and interrupt propagation. Clarify that a named recovery root may be empty after a successful restore. Run both screenshot test files and `just check`. Commit `fix(tooling): harden screenshot publication recovery` with the Assisted-by trailer and no duplicate `Closes` keywords.
 
