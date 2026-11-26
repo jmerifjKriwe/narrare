@@ -313,21 +313,21 @@ Reviewer checks every claim against `docs/features/INDEX.md` and the eight selec
 - Modify: `CONTRIBUTING.md:208-220`
 - Modify: `README.md` development/screenshot paragraph if needed
 
-- [ ] **Step 1: Make header, triggers and decide path tell one story**
+- [x] **Step 1: Make header, triggers and decide path tell one story**
 
 Rewrite the header for active manual, weekly and push regeneration. Uncomment `schedule` with `cron: "0 6 * * 0"` and `push` with `branches: [main]`. Keep trigger-level path filters absent; the `decide` job remains the single filter.
 
-- [ ] **Step 2: Extend the UI-change regex and stage the generated index**
+- [x] **Step 2: Extend the UI-change regex and stage the generated index**
 
 The `decide` regex at `.github/workflows/screenshots.yml:70` must include `scripts/screenshots.py` and the new `scripts/screenshot_manifest.py`, plus the existing `web/`, `app/capabilities/*/web/` and `i18n/` trees. It must not include `README.md`, `docs/**` or `assets/screenshots/**`.
 
 The screenshot job's no-diff check and staging must cover both `assets/screenshots` and `docs/screenshots/README.md`. Keep the bot branch `chore/screenshots-${RUN_ID}` and keep `Screenshots: regenerate` out of the bot commit body.
 
-- [ ] **Step 3: Update contributor documentation**
+- [x] **Step 3: Update contributor documentation**
 
 Replace the "five frames" and already-active-push description at `CONTRIBUTING.md:208-220` with the current manifest-driven collection, `just screenshots`, manual dispatch, Sunday schedule and relevant `main` push behavior. Link `docs/screenshots/README.md`.
 
-- [ ] **Step 4: Run workflow security and syntax checks**
+- [x] **Step 4: Run workflow security and syntax checks**
 
 ```bash
 docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
@@ -336,12 +336,12 @@ uvx zizmor==1.32.0 .github/workflows .github/actions
 
 Expected: exit 0; no new findings.
 
-- [ ] **Step 5: Run repository checks**
+- [x] **Step 5: Run repository checks**
 
 Run: `just check`
 Expected: PASS. Also re-run both screenshot test files.
 
-- [ ] **Step 6: Review the loop guards, then commit**
+- [x] **Step 6: Review the loop guards, then commit**
 
 Reviewer traces four cases: docs-only push skips; UI push regenerates; bot PR merge does not retrigger; scheduled no-diff run opens no PR. Then commit:
 
