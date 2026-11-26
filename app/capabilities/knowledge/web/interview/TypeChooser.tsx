@@ -84,6 +84,7 @@ export function TypeChooser({
         </button>
         <button
           type="button"
+          id="entity-interview-manual"
           data-testid="entity-interview-manual"
           onClick={onManual}
           className={`py-1 text-center text-meta text-muted transition-colors hover:text-primary ${FOCUS}`}

@@ -156,6 +156,11 @@ function EntityInterviewView({
   // save door and «Neues Interview» stay live, so they read `busy` alone.
   const readOnly = controller.face === "ended";
   const canSave = session !== null && readyToSave(session.proposal);
+  // A handover that created the entity but could not end the interview has
+  // already spent this proposal: while that failure stands the save door is
+  // shut, so a second press cannot create the same row again. Ending the
+  // interview reaches the ended face, where the design lets it stay savable.
+  const saveDoorShut = closeFailed && controller.face !== "ended";
 
   function accept(turn: AssistantTurnRead) {
     if (turn.suggestion === null) return;
@@ -309,7 +314,7 @@ function EntityInterviewView({
                 type="button"
                 id="entity-interview-save"
                 data-testid="entity-interview-save"
-                disabled={!canSave || busy}
+                disabled={!canSave || busy || saveDoorShut}
                 onClick={() =>
                   onSave(entityPrefillFromProposal(session.proposal, session.entity_type))
                 }

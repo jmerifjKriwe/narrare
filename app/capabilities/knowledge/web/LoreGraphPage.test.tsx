@@ -938,12 +938,60 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     expect(await within(stayed).findByText(de["knowledge.interview.endFailed"])).toBeTruthy();
     expect(router.state.location.search).toMatchObject({ entity: "e9", interview: "s1" });
 
-    // The end action is the retry; its success reaches the ended face.
-    fireEvent.click(within(stayed).getByTestId("entity-interview-end"));
+    // The proposal is already an entity: while the failed end stands, the save
+    // door is shut so a second press cannot create the same row again.
+    expect((within(stayed).getByTestId("entity-interview-save") as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+
+    // The end action is the retry; its success reaches the ended face, where
+    // the design lets an ended interview's proposal stay savable.
+    const end = within(stayed).getByTestId("entity-interview-end");
+    fireEvent.click(end);
     await screen.findByText(de["knowledge.interview.endedBanner"]);
     await waitFor(() =>
       expect(screen.queryByText(de["knowledge.interview.endFailed"])).toBeNull(),
     );
+    expect((within(stayed).getByTestId("entity-interview-save") as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
+
+  it("the manual create returns focus to the chooser's own button", async () => {
+    await renderGraph();
+    await screen.findAllByTestId("graph-node");
+    fireEvent.click(screen.getByTestId("graph-new-entity"));
+    const panel = await screen.findByTestId("entity-interview");
+    const manual = within(panel).getByTestId("entity-interview-manual");
+    fireEvent.click(manual);
+    const dialog = await screen.findByTestId("entity-create-dialog");
+    fireEvent.click(within(dialog).getByTestId("entity-create-cancel"));
+
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+    // The panel the writer was in stays open, and focus lands on the control
+    // that opened the dialog — not on the door that opened the panel.
+    expect(screen.getByTestId("entity-interview")).toBeTruthy();
+    expect(document.activeElement).toBe(document.getElementById("entity-interview-manual"));
+  });
+
+  it("the handover create returns focus to the save door", async () => {
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/chat/sessions/{session_id}") {
+        return Promise.resolve({ data: sessionWithProposal("s1", "Nebelhaus"), response: ok() });
+      }
+      return baseGet(path);
+    });
+    await renderGraph(`/novels/${NOVEL_ID}/knowledge/graph?interview=s1`);
+    const panel = await screen.findByTestId("entity-interview");
+    const saveDoor = (await within(panel).findByTestId("entity-interview-save")) as HTMLButtonElement;
+    await waitFor(() => expect(saveDoor.disabled).toBe(false));
+    fireEvent.click(saveDoor);
+    const dialog = await screen.findByTestId("entity-create-dialog");
+    fireEvent.click(within(dialog).getByTestId("entity-create-cancel"));
+
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+    expect(screen.getByTestId("entity-interview")).toBeTruthy();
+    expect(document.activeElement).toBe(document.getElementById("entity-interview-save"));
   });
 
   it("a closed interview dialog leaves no prefill for the next manual door", async () => {
