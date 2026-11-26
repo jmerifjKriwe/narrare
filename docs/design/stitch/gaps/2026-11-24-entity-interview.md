@@ -153,6 +153,14 @@ names the owner of the trigger and the row's child under the wave's index.
 
 ## Known-pattern notes (no row owed — the pattern is the record)
 
+- **The panel's reading and read-failed faces have no browser assertion**
+  (`interview/EntityInterview.tsx`). The reading face lasts one response's
+  flight against the real API, and the read-failed face needs a session read
+  the real stack does not refuse; the only permitted fake is the provider at
+  its boundary, so a browser leg would have to fabricate the panel's own
+  response (rule 2). Both faces stay reachable through the unit suite's client
+  seam — no browser leg asserts them.
+
 - **The visibility refs of the interview controller are written in a layout
   effect** (`useInterview.ts`): a settle must never land between a hide's
   commit and a passive effect still reading `true`, so `visible` and
