@@ -114,7 +114,10 @@ task.
   wording is centralized and explained where semantics cannot be inferred.
 - The workflow's UI-path check consumes the full diff without `grep -q` under
   `pipefail`, the bot merge guard does not depend on editable PR-title text, and
-  repeated runs defer when a screenshot update PR is already open.
+  repeated runs defer when a screenshot update PR is already open. The lookup
+  sentinel is validated exactly; malformed output fails visibly. Deferral never
+  updates the existing PR, so a human must close or replace it when newer UI
+  changes make its captured diff stale.
 - README and collection disclosures name every stand-in source, including
   dossier extraction, and never claim other frames contain no generated content.
 - Framing fixes adjust real seed counts, scroll positions or capture regions;

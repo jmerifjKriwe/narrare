@@ -250,29 +250,33 @@ Ignore `docs/screenshots/.README.md-backup-*` beside the existing assets recover
 **Interfaces:**
 - `decide(event: str, before: str, sha: str, root: Path) -> tuple[bool, str]` runs git reads, consumes complete output without `grep -q`, and ignores merge-commit bodies for footer scanning.
 - `pending_screenshot_pr(repository: str, token: str) -> int | None` queries open `chore/screenshots-*` PRs against `main`.
-- The workflow writes `run=true|false` and the reason through the decide CLI, then defers when a screenshot update PR is already open.
+- The workflow writes `run=true|false` and the reason through the decide CLI, validates the pending lookup's exact `pending=none|pending=<number>` sentinel, then defers when a screenshot update PR is already open. A malformed lookup fails visibly instead of silently skipping publication.
 - Existing manual/schedule/override behavior remains intact.
 
-- [ ] **Step 1: Write failing decide and pending-PR tests**
+- [x] **Step 1: Write failing decide and pending-PR tests**
 
 Test `decide` against throwaway git repositories: docs-only push, UI push, manifest push, regenerate/skip footers on normal commits, hostile footer only in a merge commit/PR title, first push, schedule/manual, and a path list larger than 64 KiB. Test `pending_screenshot_pr` with a fake `gh` executable for no PR, one pending PR and multiple pending PRs.
 
-- [ ] **Step 2: Implement robust decision logic**
+- [x] **Step 2: Implement robust decision logic**
 
 Move the shell decision into `scripts/screenshots_decide.py`. Use full-consumption checks (no `grep -q` producer pipeline) and `git log --no-merges` so editable merge-commit/PR-title text cannot create a footer. Keep the workflow CLI/output contract.
 
-- [ ] **Step 3: Defer duplicate pending updates**
+- [x] **Step 3: Defer duplicate pending updates**
 
 Implement `scripts/screenshots_pr.py` and call it after a real staged diff is found but before branch creation. If a screenshot update PR is already open, log its number and exit successfully without creating another branch or PR. Do not force-update the existing branch.
 
-- [ ] **Step 4: Run workflow and repository gates**
+- [x] **Step 4: Run workflow and repository gates**
 
 Run the focused decide and pending-PR tests, actionlint, zizmor, both screenshot test files and `just check`.
 Expected: PASS.
 
-- [ ] **Step 5: Review and commit**
+- [x] **Step 5: Review and commit**
 
 Reviewer traces all cases against the real YAML and fake `gh` responses. Commit `ci(screenshots): make regeneration decisions robust` with `Closes #982`, `Closes #990` and the Assisted-by trailer.
+
+- [ ] **Step 6: Close the workflow review findings**
+
+Add a real publish-step test for `pending=none` that proves publication proceeds. Validate the lookup output in YAML with an exact `pending=none` or `pending=<digits>` case; empty, warning or malformed output must fail before branch creation. Correct the module docstring and contributor/report wording: deferral deliberately leaves an existing PR untouched, but that PR may be stale after newer UI changes and a human must close or replace it when the new diff matters. Correct the report's test counts to 20 decide + 4 PR and describe the fake-gh argv assertion precisely. Run focused tests, actionlint, zizmor, both screenshot suites and `just check`. Commit `ci(screenshots): validate pending update lookup output` with the Assisted-by trailer and no duplicate `Closes` keywords.
 
 ## Task 7: Improve framing and remove unbuilt-copy focus (#979, #985)
 
