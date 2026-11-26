@@ -34,8 +34,9 @@ class DemoInfo:
     English display title and the language the archive's metadata carries.
 
     ``title_en`` is display metadata only: the English picker reads it while
-    the archive keeps ``title`` and ``language`` as its identity. An archive
-    without one falls back to its own title, so every demo has an English face.
+    the archive keeps ``title`` and ``language`` as its identity. A missing or
+    empty ``title_en`` falls back to ``title``, so every demo has an English
+    face.
     """
 
     slug: str

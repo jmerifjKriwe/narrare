@@ -9,10 +9,11 @@ One novel is one directory (or one ZIP of the same bytes):
       chapters/<nn>-<slug>.md   frontmatter: title, position, id?, updated?
       kb/<slug>.md              frontmatter: type, name, aliases[], tags[], id?, updated?
 
-``title_en`` is optional display-only demo metadata: the picker's English face
-reads it, but no import applies it to the novel. The archive's identity stays
-``title`` and ``language``, and an absent or empty ``title_en`` falls back to
-``title``.
+``title_en`` is optional display-only demo metadata: the raw archive preserves
+it as written (including an empty string), but no import applies it to the
+novel. The archive's identity stays ``title`` and ``language``. The demo
+picker's reader in ``demos.py`` supplies the fallback: a missing or empty
+``title_en`` reads there as ``title``.
 
 This module is pure parsing and serialization — no database, no merge rules
 (those live in the engine). Everything is deterministic so that exporting an
