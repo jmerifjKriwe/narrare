@@ -186,7 +186,7 @@ Capture `20-workspace-rebuilt` and `21-workspace-rebuilt-dark` from the rebuilt 
 
 - [ ] **Step 4: Add the missing live knowledge/planning/settings faces**
 
-Capture `24-welcome-setup` at `/setup`; `25-dossiers` at `/novels/{id}/knowledge/dossiers` (`dossiers-page`); `26-sources` at `/novels/{id}/knowledge/sources` (`sources-page`); `27-causality` at `/novels/{id}/planning/causality` (`causality-page`); `28-settings-hub` at `/settings` (`settings-page`); `29-ai-rules` at `/settings/ai-regeln` (`ai-rules-page`); and `30-prompts` at `/settings/prompts` (`prompts-page`, five prompt cards). Reuse the route/test-id contracts in the setup, knowledge, planning, settings and prompts E2E suites. Do not capture Stitch drafts, designed-only surfaces or update-check UI.
+Capture `24-welcome-setup` at `/setup`; `25-dossiers` at `/novels/{id}/knowledge/dossiers` (`dossiers-page`); `26-sources` in the real empty state at `/novels/{id}/knowledge/sources` (`sources-empty`, upload door); `27-causality` at `/novels/{id}/planning/causality` (`causality-page`); `28-settings-hub` at `/settings` (`settings-page`); `29-ai-rules` at `/settings/ai-regeln` (`ai-rules-page`); and `30-prompts` at `/settings/prompts` (`prompts-page`, catalog and editor). The empty Sources frame avoids the server-generated upload date, which cannot be pinned without a product clock seam or a forbidden DB shortcut. Reuse the route/test-id contracts in the setup, knowledge, planning, settings and prompts E2E suites. Do not capture Stitch drafts, designed-only surfaces or update-check UI.
 
 - [ ] **Step 5: Add the W9 create/interview faces**
 
