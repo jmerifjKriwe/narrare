@@ -16,8 +16,10 @@ wire and the answers kept. ``settings.test`` renders as the audit row it is:
 never a dropdown. The pointer door walks to the book's workspace with the
 dialog's deep link and the Buch-Einstellungen dialog stands open — the
 ruling-1 record, no second editor. The hub chrome carries the settings
-area's three routes on BOTH settings pages, the active face exact. Every
-rendered face also clears the axe WCAG A/AA floor, light and dark.
+area's three routes on BOTH settings pages, the active face exact, and the
+direct AI-Regeln load names Atelier / Einstellungen in the topbar, never the
+shelf crumb. Every rendered face also clears the axe WCAG A/AA floor, light
+and dark.
 """
 
 import re
@@ -53,6 +55,9 @@ BASE = WEB_URL
 HUB_LABEL = "Einstellungen Navigation"
 GENERAL = "Allgemein"
 AI_RULES = "KI-Regeln"
+ATELIER = "Atelier"
+SETTINGS_LABEL = "Einstellungen"
+SHELF_LABEL = "Das Bücherregal"
 PROVIDERS_HEADING = "1. Provider & Schnittstellen"
 CREATE_SUBMIT = "+ Provider anlegen"
 KEY_ONCE_NOTE = re.compile(r"nur jetzt sichtbar")
@@ -101,6 +106,15 @@ def test_the_hub_chrome_carries_the_area_routes_on_both_pages(page: Page, instal
     nav = page.get_by_role("navigation", name=HUB_LABEL)
     expect(nav.get_by_role("link", name=AI_RULES)).to_have_attribute("aria-current", "page")
     expect(nav.get_by_role("link", name=GENERAL)).not_to_have_attribute("aria-current", "page")
+
+    # A direct load of the subroute carries the same topbar — the browser's
+    # own entry, not only the hub's client-side door. The crumb names the
+    # settings location; the shelf is never the place here (#981).
+    goto_ai_rules(page)
+    topbar = page.get_by_role("banner")
+    expect(topbar.get_by_role("link", name=ATELIER)).to_have_attribute("href", "/")
+    expect(topbar.get_by_text(SETTINGS_LABEL)).to_be_visible()
+    expect(topbar).not_to_contain_text(SHELF_LABEL)
     assert_accessible(page)
 
 
