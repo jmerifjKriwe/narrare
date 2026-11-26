@@ -1,8 +1,9 @@
 """A repeated screenshot run defers to an update PR that is already open.
 
 A pending screenshot PR may already carry a later run's result, so opening a
-second PR adds review work; it may also be stale after newer UI changes. The
-lookup asks GitHub for open ``chore/screenshots-*`` PRs against ``main`` and
+second PR adds review work; it may also be stale after newer UI changes, and a
+human must close or replace it when the newer captured diff matters. The lookup
+asks GitHub for open ``chore/screenshots-*`` PRs against ``main`` and
 returns the oldest one, and the workflow checks it after a real staged diff
 exists but before it creates a branch. The fake ``gh`` records its latest
 arguments and token, so the final query/creation call is asserted.
@@ -287,8 +288,16 @@ def test_the_workflow_publishes_when_no_screenshot_pr_is_open(
         "pending=abc\n",
         "pending=\n",
         "pending=12abc\n",
+        "pending=0\n",
     ],
-    ids=["empty-stdout", "warning-text", "non-numeric-value", "empty-value", "trailing-text"],
+    ids=[
+        "empty-stdout",
+        "warning-text",
+        "non-numeric-value",
+        "empty-value",
+        "trailing-text",
+        "zero-number",
+    ],
 )
 def test_the_workflow_fails_before_branching_on_malformed_lookup_output(
     tmp_path: Path,
@@ -325,7 +334,7 @@ def test_the_workflow_fails_before_branching_on_malformed_lookup_output(
     assert "::error::" in output
     assert "unexpected value" in output
     assert "pending=none" in output
-    assert "pending=<number>" in output
+    assert "pending=<positive number>" in output
     if lookup_output:
         assert lookup_output.strip() in output
     _assert_no_branch(repo, remote)

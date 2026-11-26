@@ -8,9 +8,10 @@ name: Screenshots
 # a UI path changed too. The decision itself lives in
 # `scripts/screenshots_decide.py`: it reads complete git output and ignores
 # merge-commit bodies, where GitHub writes an editable pull request title. An
-# open screenshot update PR is left in place instead of being duplicated. This
-# workflow is deliberately not a required check: a flaky screenshot run must
-# never block a merge.
+# open screenshot update PR is left untouched instead of being duplicated; it
+# may be stale after newer UI changes, and a human closes or replaces it when
+# the newer captures matter. This workflow is deliberately not a required
+# check: a flaky screenshot run must never block a merge.
 
 on:
   workflow_dispatch:
@@ -114,12 +115,13 @@ jobs:
           # changes. The exported GH_TOKEN authenticates the query without
           # putting it in argv.
           pending=$(python3 -m scripts.screenshots_pr --repository "$REPOSITORY")
-          # The lookup has exactly two valid shapes: pending=none, or
-          # pending=<digits>. Anything else means the lookup broke; fail
-          # loudly instead of mistaking it for "no PR" and publishing again.
+          # The lookup has exactly two valid shapes: pending=none, or a
+          # positive PR number (GitHub starts at 1). Anything else means the
+          # lookup broke; fail loudly instead of mistaking it for "no PR" and
+          # publishing again.
           fail_lookup() {
             local detail=${pending//$'\n'/ }
-            echo "::error::Screenshot PR lookup returned an unexpected value: '$detail' (expected pending=none or pending=<number>)"
+            echo "::error::Screenshot PR lookup returned an unexpected value: '$detail' (expected pending=none or pending=<positive number>)"
             exit 1
           }
           case "$pending" in
@@ -128,7 +130,7 @@ jobs:
             pending=*[!0-9]*|pending=)
               fail_lookup
               ;;
-            pending=[0-9]*)
+            pending=[1-9][0-9]*)
               echo "screenshot update PR #${pending#pending=} is already open; leaving it in place"
               exit 0
               ;;

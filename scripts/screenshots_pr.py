@@ -10,9 +10,9 @@ the newer captured diff matters.
 Only a same-repository PR counts: a fork may use the same branch name without
 being the workflow's branch. ``gh`` is invoked with a fixed argv and no shell,
 and the token is passed through its environment. The CLI prints
-``pending=<number>`` or ``pending=none`` for the workflow; finding a PR is a
-successful outcome, not a failure. The workflow treats any other output as a
-broken lookup and fails before creating a branch.
+``pending=<positive number>`` or ``pending=none`` for the workflow; finding a PR
+is a successful outcome, not a failure. The workflow treats any other output,
+including ``pending=0``, as a broken lookup and fails before creating a branch.
 """
 
 from __future__ import annotations
