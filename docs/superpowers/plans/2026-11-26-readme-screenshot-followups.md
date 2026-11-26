@@ -42,20 +42,20 @@
 - Produces no runtime interface.
 - Adds `test_all_relative_stitch_markdown_links_resolve` or equivalent in the existing screenshot asset test module.
 
-- [ ] **Step 1: Add a failing link-resolution test**
+- [x] **Step 1: Add a failing link-resolution test**
 
 Parse every relative Markdown link in `docs/design/stitch/README.md`; resolve it against the file's parent and assert the target exists. Exclude anchors and absolute URLs. Run `just test-file app/kernel/tests/test_screenshot_assets.py` and confirm the two `../superpowers/specs/...` links fail.
 
-- [ ] **Step 2: Correct the links and inventory state**
+- [x] **Step 2: Correct the links and inventory state**
 
 Change the two links to `../../superpowers/specs/...`. Change `Structure view (PLAN-003)` from `live` to `backend`; leave its phase and description unchanged. Correct the AI-continuation inventory wording at line 64 from "at the caret" to "below the prose", matching the product and README.
 
-- [ ] **Step 3: Run the focused tests**
+- [x] **Step 3: Run the focused tests**
 
 Run: `just test-file app/kernel/tests/test_screenshot_assets.py`
 Expected: PASS.
 
-- [ ] **Step 4: Review and commit**
+- [x] **Step 4: Review and commit**
 
 Reviewer verifies the route/API evidence and link targets. Commit `docs(readme): correct the feature inventory and Stitch spec links` with `Closes #977`, `Closes #980`, a real `User-visible:` line and the Assisted-by trailer.
 
