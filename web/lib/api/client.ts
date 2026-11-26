@@ -95,7 +95,6 @@ export type AssistantTurnRead = components["schemas"]["TurnRead"];
 export type AssistantTurnCreate = components["schemas"]["TurnCreate"];
 export type AssistantTurnReadback = components["schemas"]["TurnReadback"];
 export type Proposal = components["schemas"]["Proposal"];
-export type ProposedRelation = components["schemas"]["ProposedRelation"];
 /** The prompts surface's reads (W8 Task 12): the catalog row with its two
  *  override tiers' facts, the editor's detail, the provider-free preview
  *  and the saved diff. */
