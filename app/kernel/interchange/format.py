@@ -9,6 +9,11 @@ One novel is one directory (or one ZIP of the same bytes):
       chapters/<nn>-<slug>.md   frontmatter: title, position, id?, updated?
       kb/<slug>.md              frontmatter: type, name, aliases[], tags[], id?, updated?
 
+``title_en`` is optional display-only demo metadata: the picker's English face
+reads it, but no import applies it to the novel. The archive's identity stays
+``title`` and ``language``, and an absent or empty ``title_en`` falls back to
+``title``.
+
 This module is pure parsing and serialization — no database, no merge rules
 (those live in the engine). Everything is deterministic so that exporting an
 archive twice, or exporting what was just parsed, yields byte-identical files:
@@ -133,7 +138,9 @@ class NovelArchive:
 
     `title` is empty when `metadata.json` is absent or carries none — the
     new-novel import path refuses an empty title, the merge path never
-    applies novel metadata.
+    applies novel metadata. `title_en` is display-only demo metadata: it
+    round-trips through the format but is never imported into the novel,
+    whose identity stays `title` and `language`.
     """
 
     title: str

@@ -2,12 +2,14 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useRef, type KeyboardEvent } from "react";
 
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
+import { activeLocale } from "@shell/lib/locale";
 import { usePageTitle } from "@shell/lib/pageTitle";
 import { Icon, type IconName } from "@shell/ui/icons";
 
 import { WizardHeader } from "../WizardHeader";
 import {
   DRAMATIC_FORMS,
+  demoDisplayTitle,
   findDemo,
   useWizardState,
   type DramaticForm,
@@ -176,6 +178,9 @@ export function StructureStep() {
   const navigate = useNavigate();
   const { state, update } = useWizardState("/setup/structure");
   const demo = findDemo(state.demo);
+  // `useTranslation` subscribes to the locale store, so this render-time
+  // read follows a language switch; only the display title is localized.
+  const locale = activeLocale();
   const deadSignal = demo?.slug === "dead-signal";
   const complete = state.typology !== null && state.form !== null;
   const typologyRefs = useRef<Partial<Record<Typology, HTMLElement | null>>>({});
@@ -212,7 +217,9 @@ export function StructureStep() {
                   <>
                     {t("setup.structure.banner.demoLead")}{" "}
                     <span className={`${SERIF} text-body font-semibold italic text-primary`}>
-                      {t("setup.structure.banner.demoTitle", { title: demo.title })}
+                      {t("setup.structure.banner.demoTitle", {
+                        title: demoDisplayTitle(demo, locale),
+                      })}
                     </span>{" "}
                     <span>
                       {t("setup.structure.banner.demoMeta", { genre: demo.genre, count: demo.chapters })}
@@ -465,7 +472,9 @@ export function StructureStep() {
                       <>
                         {t("setup.structure.banner.demoLead")}{" "}
                         <span className="italic">
-                          {t("setup.structure.banner.demoTitle", { title: demo.title })}
+                          {t("setup.structure.banner.demoTitle", {
+                            title: demoDisplayTitle(demo, locale),
+                          })}
                         </span>
                       </>
                     ) : (

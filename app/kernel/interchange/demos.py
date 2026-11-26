@@ -48,7 +48,7 @@ def _read_demo_info(directory: Path) -> DemoInfo:
     metadata = json.loads((directory / "metadata.json").read_text(encoding="utf-8"))
     title = metadata["title"]
     language = metadata["language"]
-    title_en = metadata.get("title_en", title)
+    title_en = metadata.get("title_en") or title
     if not isinstance(title, str) or not isinstance(language, str) or not isinstance(title_en, str):
         raise ValueError(f"demo {directory.name!r}: title, title_en and language must be strings")
     return DemoInfo(slug=directory.name, title=title, title_en=title_en, language=language)

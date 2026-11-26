@@ -2,6 +2,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
 import { demos } from "@shell/lib/generated/demos";
+import type { Locale } from "@shell/lib/locale";
 
 /**
  * The wizard's accumulated answers, held in the address — not in a store and
@@ -93,7 +94,7 @@ export function findDemo(slug: string | null) {
  *  imports the archive's identity (title, language) from its metadata. */
 export function demoDisplayTitle(
   demo: { title: string; titleEn: string },
-  locale: string,
+  locale: Locale,
 ): string {
   return locale === "en" ? demo.titleEn : demo.title;
 }
