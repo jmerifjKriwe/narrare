@@ -121,7 +121,10 @@ task.
 - README and collection disclosures name every stand-in source, including
   dossier extraction, and never claim other frames contain no generated content.
 - Framing fixes adjust real seed counts, scroll positions or capture regions;
-  they do not mask UI copy.
+  they do not mask UI copy. The causality page distributes its existing content
+  over the available height instead of adding scenes or a new surface.
+- Shelf frames prioritize the complete last card and subtitle; the page H1 may
+  sit above the fixed top bar because it is not an acceptance element.
 - Unbuilt-product copy is removed from the visual focus by choosing honest live
   states or correcting product copy in its owning capability.
 

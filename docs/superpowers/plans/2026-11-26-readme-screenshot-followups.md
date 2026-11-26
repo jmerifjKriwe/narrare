@@ -281,10 +281,11 @@ Add a real publish-step test for `pending=none` that proves publication proceeds
 ## Task 7: Improve framing and remove unbuilt-copy focus (#979, #985)
 
 **Files:**
-- Modify: `app/capabilities/knowledge/web/i18n/{en,de,fr}.json:148` (`knowledge.dossiers.laterWaveNote`)
+- Modify: `app/capabilities/knowledge/web/i18n/{en,de,fr}.json` (`knowledge.dossiers.laterWaveNote`, `knowledge.dossier.jumpNote`)
 - Modify: `app/capabilities/writing/web/i18n/{en,de,fr}.json:138` (`writing.shelf.comingSoon`)
-- Modify: `app/capabilities/planning/web/i18n/{en,de,fr}.json:143` (`planning.timeline.chapterSequenceNote`)
-- Test: `DossiersPage.test.tsx`, `ShelfPage.test.tsx`, `ShelfBanner.test.tsx`, `TimelinePage.test.tsx`
+- Modify: `app/capabilities/planning/web/i18n/{en,de,fr}.json` (`planning.timeline.chapterSequenceNote`, `planning.causality.laterNote`)
+- Modify: `app/capabilities/planning/web/CausalityPage.tsx:415` to distribute existing content over the available page height
+- Test: `DossiersPage.test.tsx`, `ShelfPage.test.tsx`, `ShelfBanner.test.tsx`, `TimelinePage.test.tsx`, `CausalityPage.test.tsx`
 - Modify: `scripts/screenshots.py` framing/scroll for `27`, `28`, `30`, `37`, `38`, `41`, `43`
 - Regenerate affected masters and `docs/screenshots/README.md`
 
@@ -292,28 +293,33 @@ Add a real publish-step test for `pending=none` that proves publication proceeds
 - Placeholder copy becomes value-neutral, future-facing text in all three locales; no capture-state masking is allowed because these notes are data-independent.
 - `30` shows the fifth prompt card without a sliver or intentionally captures the editor region.
 - `28`/`37`/`38` do not crop meaningful content at the fold.
-- `27`/`41`/`43` use the frame area intentionally rather than leaving a large empty lower half.
+- `27`/`41`/`43` use the frame area intentionally rather than leaving a large empty lower half. Causality distributes its existing blocks over the available page height; it does not invent scenes or add a surface.
+- `37`/`38` prioritize the complete last shelf card and subtitle. The page H1 may scroll above the fixed top bar because the plan does not require it in-frame; this is an explicit framing trade-off, not cropped card content.
 - The existing expanded stand-in disclosure remains unchanged and covered by its screenshot tests.
 
-- [ ] **Step 1: Capture and inspect the affected frames**
+- [x] **Step 1: Capture and inspect the affected frames**
 
 Run a temporary capture and inspect `25`, `27`, `28`, `30`, `37`, `38`, `41`, `43`. Use the known seams: scroll `settings-page` until `#settings-daily-goal` is fully visible; scroll `main#main` until the last shelf card and subtitle are visible in both themes; scroll `prompts-page` until the fifth `prompt-card` is fully visible or intentionally show four complete cards plus the editor; extend causality to three chapters with one open gap; seed six placed timeline events plus three unordered notes; seed 6–9 storyboard chapters and open the first card so the drill-in shows real scenes.
 
-- [ ] **Step 2: Write failing assertions where practical**
+- [x] **Step 2: Write failing assertions where practical**
 
 Pin source document/event/chapter counts, last-card and fifth-card bounding boxes inside the viewport, exactly one open causality gap, and the new copy in en/de/fr. For purely visual balance, require two-run hash equality plus reviewer visual inspection.
 
-- [ ] **Step 3: Implement the smallest honest fix**
+- [x] **Step 3: Implement the smallest honest fix**
 
 Adjust real seed counts/scroll/framing first. Change product copy only when no honest live capture state avoids the placeholder. No CSS masking, mocks or DB shortcuts.
 
-- [ ] **Step 4: Regenerate and prove determinism**
+- [x] **Step 4: Regenerate and prove determinism**
 
 Run two independent captures, compare hashes/index, regenerate canonical masters and index. Run both screenshot test files, any touched product tests and `just check`.
 
-- [ ] **Step 5: Review and commit**
+- [x] **Step 5: Review and commit**
 
 Reviewer inspects every affected PNG and the product copy. Commit `fix(web): remove placeholder focus from product captures` with `Closes #979`, `Closes #985`, a real `User-visible:` line and the Assisted-by trailer.
+
+- [ ] **Step 6: Close the visual-review findings**
+
+Make the existing causality content column `min-h-full` with `justify-between` so frame 27 uses the available height without new scenes or surfaces; keep overflow safe. Correct the French causality term from “bande” to the catalog's established “barre” and update its test. Replace the remaining dossier manuscript-excerpts note (`knowledge.dossier.jumpNote`) with value-neutral future-facing copy in en/de/fr and extend the dossier copy test; correct the report from four gap areas to three plus the separate excerpt note. Make `_require_inside` assert both horizontal and vertical bounds and derive the viewport height from the single viewport definition. Keep the shelf's H1 trade-off explicit; do not tighten product spacing merely to add a heading the plan does not require. Run the touched product tests, causality and dossier E2E, both screenshot suites, `just check` and `just check-generated`; run two independent full captures, inspect 25/27/37/38 and prove the new publication path leaves no debris. Commit `fix(planning): use the causality page height` with a real `User-visible:` line and the Assisted-by trailer; do not repeat `Closes #979`/`Closes #985`, which already belong to `9596c2e89`.
 
 ## Task 8: Final verification and close-out
 
