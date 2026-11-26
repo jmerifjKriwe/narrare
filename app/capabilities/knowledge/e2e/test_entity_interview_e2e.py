@@ -17,9 +17,10 @@ for timing and then continue it; it never answers in the server's place.
 
 Four legs hold a turn at the route, so a running answer is deterministic rather
 than a race: the handler keeps the `Route` and returns (the request stays
-pending), and the test thread releases it once. The first reopens the panel
-before that release — still thinking, composer closed — and then lets the reply
-land. The second hides the panel, continues the held request so the server's
+pending), and the test thread releases it once. The first releases one turn while
+the panel is hidden and reopens to its reply, then reopens a second turn before
+its release — still thinking, composer closed — and lets the reply land. The
+second hides the panel, continues the held request so the server's
 own 502 `extraction-failed` lands, and reopens to the named failure with the
 sent text: the hidden panel never opened itself. The third holds one turn each
 in two interviews: returning to the first before either answer lands still shows
@@ -247,11 +248,12 @@ def test_a_stale_suggestion_has_its_own_face(page: Page, installed: Stack) -> No
 def test_hiding_the_panel_while_the_model_answers_keeps_the_turn(
     page: Page, installed: Stack
 ) -> None:
-    """Review Focus 4: the panel may be hidden mid-turn. Reopening before the
-    answer lands still shows it thinking with the composer closed; releasing
-    the held request lets the reply land in the open panel.
+    """Review Focus 4: the panel may be hidden mid-turn. A turn released while
+    the panel is away lands unseen: reopening shows the reply and a free
+    composer. A second turn, reopened before its release, still shows it
+    thinking with the composer closed, and its reply lands in the open panel.
 
-    The turn's request is held at the route (the handler keeps it and returns,
+    Each turn's request is held at the route (the handler keeps it and returns,
     which leaves it pending) and released from the test thread, so the in-flight
     state is deterministic — no dispatcher sleep, no handler that blocks."""
     novel_id = _seed_canon()
@@ -259,20 +261,51 @@ def test_hiding_the_panel_while_the_model_answers_keeps_the_turn(
     _start(page)
 
     held: list[Route] = []
-    held_ready = threading.Event()
+    ready = [threading.Event(), threading.Event()]
+    arrivals = 0
 
     def _hold(route: Route) -> None:
+        nonlocal arrivals
+        ready[arrivals].set()
+        arrivals += 1
         held.append(route)
-        held_ready.set()
 
     page.route("**/api/chat/sessions/*/turns", _hold)
     try:
+        # First half: the answer lands while the panel is hidden.
         _say(page, f"Name: {NAME}")
         expect(page.get_by_test_id("entity-interview-transcript")).to_contain_text(
             "Der Assistent überlegt ..."
         )
         page.get_by_test_id("entity-interview-close").click()
         expect(page.get_by_test_id("entity-interview")).not_to_be_visible()
+
+        # The thinking row is drawn when the mutation starts, before the
+        # handler is guaranteed to have run: wait for the handler itself.
+        assert ready[0].wait(timeout=10), "the turn never reached the route handler"
+        assert len(held) == 1
+        with page.expect_response(
+            lambda answer: answer.request.method == "POST" and "/turns" in answer.url
+        ) as answered:
+            held.pop(0).continue_()
+        assert answered.value.status == 200
+
+        # The reply landed while the panel was away, and it must not have
+        # opened itself.
+        expect(page.get_by_test_id("entity-interview")).not_to_be_visible()
+        page.get_by_test_id("graph-new-entity").click()
+        panel = page.get_by_test_id("entity-interview")
+        expect(panel).to_be_visible()
+        expect(panel).to_contain_text("Notiert.")
+        expect(page.get_by_test_id("entity-interview-proposal")).to_contain_text(NAME)
+        expect(_composer(page)).to_be_enabled()
+
+        # Second half: reopening during the turn still shows it thinking.
+        second = "Zweites Relais"
+        _say(page, f"Name: {second}")
+        expect(panel).to_contain_text("Der Assistent überlegt ...")
+        page.get_by_test_id("entity-interview-close").click()
+        expect(panel).not_to_be_visible()
 
         page.get_by_test_id("graph-new-entity").click()
         panel = page.get_by_test_id("entity-interview")
@@ -281,13 +314,11 @@ def test_hiding_the_panel_while_the_model_answers_keeps_the_turn(
         expect(_composer(page)).to_be_disabled()
         expect(page.get_by_test_id("entity-interview-save")).to_be_disabled()
 
-        # The thinking row is drawn when the mutation starts, before the
-        # handler is guaranteed to have run: wait for the handler itself.
-        assert held_ready.wait(timeout=10), "the turn never reached the route handler"
+        assert ready[1].wait(timeout=10), "the second turn never reached the route handler"
         assert len(held) == 1
-        held.pop().continue_()
+        held.pop(0).continue_()
         expect(panel).to_contain_text("Notiert.")
-        expect(page.get_by_test_id("entity-interview-proposal")).to_contain_text(NAME)
+        expect(page.get_by_test_id("entity-interview-proposal")).to_contain_text(second)
         expect(_composer(page)).to_be_enabled()
     finally:
         while held:

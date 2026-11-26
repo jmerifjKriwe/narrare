@@ -142,6 +142,16 @@ function readback(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/** A response the test settles exactly once, so a turn's flight is decided
+ *  by the test and never by timing. */
+function deferred(): { promise: Promise<unknown>; settle: (value: unknown) => void } {
+  let settle: (value: unknown) => void = () => {};
+  const promise = new Promise<unknown>((resolve) => {
+    settle = resolve;
+  });
+  return { promise, settle };
+}
+
 function renderPanel(sessionId: string | null | undefined = SESSION_ID) {
   const onSelectSession = vi.fn();
   const onClose = vi.fn();
@@ -551,25 +561,53 @@ describe("hiding is not ending", () => {
 });
 
 describe("the conversation outlives the panel's hide", () => {
-  it("reopening mid-turn still shows it thinking and keeps the composer closed", async () => {
+  it("a reply landing while hidden is there on reopen, and a reopened turn still thinks", async () => {
     detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
-    let release: (value: unknown) => void = () => {};
-    const held = new Promise((resolve) => {
-      release = resolve;
-    });
-    api.POST.mockImplementation(() => held);
+    const first = deferred();
+    api.POST.mockImplementationOnce(() => first.promise);
     const { show } = renderPanel();
     await readySession();
 
+    // Half one: the turn is released while the panel is hidden. Reopening
+    // shows the answer and a free composer — not a turn that looks running.
     fireEvent.change(composer(), { target: { value: "Es stammt aus dem Labor von Lin." } });
+    fireEvent.click(screen.getByTestId("entity-interview-send"));
+    await screen.findByText(de["knowledge.interview.thinking"]);
+    show(undefined);
+    expect(screen.queryByTestId("entity-interview")).toBeNull();
+
+    detail = sessionDetail({
+      proposal: proposal({ name: "Resonanz-Transponder LC-89" }),
+      turns: [
+        turn({ seq: 1, role: "user", text: "Es stammt aus dem Labor von Lin." }),
+        turn({ seq: 2, text: "Notiert." }),
+      ],
+    });
+    const reads = sessionReads();
+    first.settle({ data: readback(), response: ok() });
+    // The settle's own refetch is the marker that the reply landed — and the
+    // panel is still hidden while it does.
+    await waitFor(() => expect(sessionReads()).toBeGreaterThan(reads));
+    expect(screen.queryByTestId("entity-interview")).toBeNull();
+
+    show(SESSION_ID);
+    await waitFor(() => expect(composerField().disabled).toBe(false));
+    expect(screen.queryByText(de["knowledge.interview.thinking"])).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByTestId("entity-interview-transcript").textContent).toContain("Notiert."),
+    );
+
+    // Half two: reopened before its release, the turn still runs and the
+    // panel must not look idle. The save waits for the same answer.
+    const second = deferred();
+    api.POST.mockImplementationOnce(() => second.promise);
+    fireEvent.change(composer(), { target: { value: "Noch ein Detail." } });
     fireEvent.click(screen.getByTestId("entity-interview-send"));
     await screen.findByText(de["knowledge.interview.thinking"]);
 
     show(undefined);
     expect(screen.queryByTestId("entity-interview")).toBeNull();
 
-    // The turn still runs: the reopened panel must not look idle. The save
-    // waits for the same answer the composer does.
     show(SESSION_ID);
     expect(screen.getByText(de["knowledge.interview.thinking"])).toBeTruthy();
     expect(composerField().disabled).toBe(true);
@@ -582,13 +620,17 @@ describe("the conversation outlives the panel's hide", () => {
       turns: [
         turn({ seq: 1, role: "user", text: "Es stammt aus dem Labor von Lin." }),
         turn({ seq: 2, text: "Notiert." }),
+        turn({ seq: 3, role: "user", text: "Noch ein Detail." }),
+        turn({ seq: 4, text: "Notiert, noch ein Detail." }),
       ],
     });
-    release({ data: readback(), response: ok() });
+    second.settle({ data: readback({ seq: 4 }), response: ok() });
     await waitFor(() => expect(composerField().disabled).toBe(false));
     expect(screen.queryByText(de["knowledge.interview.thinking"])).toBeNull();
     await waitFor(() =>
-      expect(screen.getByTestId("entity-interview-transcript").textContent).toContain("Notiert."),
+      expect(screen.getByTestId("entity-interview-transcript").textContent).toContain(
+        "Notiert, noch ein Detail.",
+      ),
     );
   });
 
