@@ -42,6 +42,18 @@ from app.capabilities.prompts.schemas import (
 from app.kernel.context import BudgetImpossibleError
 from app.kernel.contracts.models import Novel
 from app.kernel.embeddings.contract import EmbeddingProvider  # noqa: TC001  the live test's param
+from app.kernel.llm import (
+    ASSISTANT_PREFIX,
+    PURPOSE_PREFIX,
+    RELATIONS_PREFIX,
+    REQUEST_PREFIX,
+    ROSTER_PREFIX,
+    SLOTS_PREFIX,
+    SOURCE_PREFIX,
+    TURNS_PREFIX,
+    TYPE_PREFIX,
+    USER_PREFIX,
+)
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
 from app.kernel.prompts import (
     REASONS,
@@ -377,7 +389,9 @@ class PromptService:
             # names its novel), executing a template the editor never showed.
             source, mode = (row.content if row is not None else spec.template), "effective"
 
-        resolved = await resolve_provider(self.session, self.user_id, key)
+        # The spec may ride another task's assignment: the interview is a key
+        # of its own but a chat task, so the resolution uses `spec.task_key`.
+        resolved = await resolve_provider(self.session, self.user_id, spec.task_key)
         assemble = spec.assemble
         if assemble is None:
             # Every bundled key registers one; a key without its assembly is
@@ -414,6 +428,7 @@ class PromptService:
             raise LiveTestRateLimitedError(retry_after)
         return LiveTestPrepared(
             key=key,
+            task_key=spec.task_key,
             novel_id=novel_id,
             source_mode=mode,
             facts=assembled.facts,
@@ -431,9 +446,13 @@ class LiveTestPrepared:
     call rides and the audit names. ``source_mode`` says which source the
     prompt rendered — ``draft`` when the request carried one, ``effective``
     when the chain's pick served (an override, or the bundled template).
+    ``task_key`` is the assignment key the call rode (the spec's, not
+    necessarily the prompt key); ``key`` stays the prompt key the editor
+    named and the audit records.
     """
 
     key: str
+    task_key: str
     novel_id: UUID | None
     source_mode: str
     facts: dict[str, str]
@@ -474,6 +493,33 @@ def _claim_live_test_slot(user_id: UUID) -> float:
     return 0.0
 
 
+SUMMARY_MARKER_PREFIXES: Final = (
+    PURPOSE_PREFIX,
+    SOURCE_PREFIX,
+    TYPE_PREFIX,
+    SLOTS_PREFIX,
+    RELATIONS_PREFIX,
+    TURNS_PREFIX,
+    ROSTER_PREFIX,
+    REQUEST_PREFIX,
+    USER_PREFIX,
+    ASSISTANT_PREFIX,
+)
+"""The lines a list row's subtitle never shows: the purpose line and the markers.
+
+One rule for every key: a machine token never reaches the card, whatever its
+purpose, so a card whose template opens with ``PURPOSE: <purpose>`` starts at
+its first prose line. The section markers are skipped too, so the prose after
+a ``TURNS:`` or ``ROSTER:`` header is read the same way.
+"""
+
+
 def _bundled_summary(spec: PromptSpec) -> str:
-    """The bundled prompt rendered at sample scope, cut for the list row."""
-    return render_source(spec.template, spec.sample_variables(), include=_bundled_include)[:120]
+    """The bundled prompt rendered at sample scope, cut for the list row.
+
+    Machine marker lines never reach the card's subtitle; the prose after them
+    does, and the cut stays at 120 characters.
+    """
+    rendered = render_source(spec.template, spec.sample_variables(), include=_bundled_include)
+    lines = [line for line in rendered.splitlines() if not line.startswith(SUMMARY_MARKER_PREFIXES)]
+    return "\n".join(lines).strip()[:120]

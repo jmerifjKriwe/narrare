@@ -91,11 +91,10 @@ roadmap's design-debt section.
 | Lore graph (KB-008) | The world as a navigable graph in the browser | `live` | `0` |
 | Dossiers | Character and place pages with their relations and sources | `live` | `0` |
 | Sources archive | Uploaded documents, chunked and searchable | `live` | `0` |
-| Create an entity by hand | The graph's door; needs the create endpoint (Phase 1) | `designed` | `1` |
+| Create an entity by hand | From the lore graph and from the dossiers, with relations resolved to existing entries | `live` | `1` |
 | Psychological profile | Want, need and lie per character, as dossier fields | `designed` | `2` |
 | Linguistic profile | How a character speaks, as dossier fields | `designed` | `2` |
 | Worldbuilding atlas (KB-006) | Geography and cultures as their own surface | `designed` | `3` |
-| Assisted creation (KB-002) | An interview that turns answers into entries | `idea` | `3` |
 | Improve an entry (KB-003) | Fill the gaps in an existing entry | `idea` | `3` |
 | Proactive suggestions (KB-005) | Entries offered while writing, not only on extraction | `idea` | `3` |
 | Journey back to the manuscript | Which scene mentions this entry, and a door to it | `idea` | `3` |
@@ -120,7 +119,7 @@ roadmap's design-debt section.
 | Feature | What it is | State | Phase |
 |---|---|---|---|
 | Sourced answer (CHAT-001) | One question, answered from the manuscript, with its passages | `backend` | `1` |
-| Entity interview (KB-002) | A guided conversation that proposes an entity, reviewed before saving | `designed` | `1` |
+| Entity interview (KB-002) | A guided conversation that proposes an entity, reviewed before saving | `live` | `1` |
 | Conversation with history | A running exchange that survives a reload, with stop and regenerate | `designed` | `1` |
 | Chat in the workspace | The dock next to the prose, with the passages it used, and insert or replace | `designed` | `1` |
 | Entity sparring | Talk to a character, in their voice, about the scene | `designed` | `3` |

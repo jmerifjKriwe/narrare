@@ -10,6 +10,7 @@ from app.capabilities.knowledge.schemas import (
     AcceptRead,
     ConsistencyAccepted,
     DocumentRead,
+    EntityCreate,
     EntityMerge,
     EntityRead,
     EntityUpdate,
@@ -36,11 +37,14 @@ from app.capabilities.knowledge.service import (
     KnowledgeService,
     NotFoundError,
     RelationExistsError,
+    RelationLimitError,
+    RelationTargetInvalidError,
     SelfMergeError,
 )
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
+from app.kernel.errors import coded_detail
 from app.kernel.retrieval import EmbeddingMismatchError
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
@@ -299,6 +303,50 @@ async def dismiss_finding(finding_id: UUID, service: ServiceDep) -> FindingRead:
     return FindingRead.model_validate(finding)
 
 
+@router.post("/entities", response_model=EntityRead, status_code=201)
+async def create_entity(payload: EntityCreate, service: ServiceDep) -> EntityRead:
+    """Create an entity by hand, with its relation lines, in one transaction.
+
+    Return the entity; raise HTTP 404 for an absent or unowned novel, or
+    HTTP 422 for an invalid name, type or label (``entity-invalid``), more
+    than twelve relation lines (``relation-limit``), a relation line outside
+    the novel (``relation-target-invalid``, naming the row), or a duplicate
+    line (``relation-duplicate``).
+    """
+    try:
+        entity = await service.create_entity(payload)
+    except NotFoundError:
+        raise HTTPException(
+            status_code=404, detail=coded_detail("not-found", "novel not found")
+        ) from None
+    except RelationLimitError as error:
+        raise HTTPException(
+            status_code=422,
+            detail=coded_detail("relation-limit", str(error), row=error.row),
+        ) from None
+    except InvalidEntityUpdateError as error:
+        raise HTTPException(
+            status_code=422,
+            detail=coded_detail("entity-invalid", str(error), field=error.field),
+        ) from None
+    except InvalidRelationError as error:
+        raise HTTPException(
+            status_code=422,
+            detail=coded_detail("entity-invalid", f"relation type: {error}", field="relation type"),
+        ) from None
+    except RelationTargetInvalidError as error:
+        raise HTTPException(
+            status_code=422,
+            detail=coded_detail("relation-target-invalid", str(error), row=error.index),
+        ) from None
+    except RelationExistsError as error:
+        raise HTTPException(
+            status_code=422,
+            detail=coded_detail("relation-duplicate", str(error), row=error.row),
+        ) from None
+    return EntityRead.model_validate(entity)
+
+
 @router.patch("/entities/{entity_id}", response_model=EntityRead)
 async def update_entity(entity_id: UUID, payload: EntityUpdate, service: ServiceDep) -> EntityRead:
     """Correct an entity by hand: only the fields the body carries change.
@@ -365,7 +413,8 @@ async def add_relation(
 
     Self-relations are allowed. Raise HTTP 404 when either end is absent
     or unowned or not of this novel, HTTP 422 for a blank or over-long
-    type, or HTTP 409 when this exact edge carries the type already.
+    type (``entity-invalid``, the create endpoint's own shape), or HTTP 409
+    when this exact edge carries the type already.
     """
     try:
         relation = await service.add_relation(
@@ -374,7 +423,10 @@ async def add_relation(
     except NotFoundError:
         raise HTTPException(status_code=404, detail="entity not found") from None
     except InvalidRelationError as error:
-        raise HTTPException(status_code=422, detail=str(error)) from None
+        raise HTTPException(
+            status_code=422,
+            detail=coded_detail("entity-invalid", f"relation type: {error}", field="relation type"),
+        ) from None
     except RelationExistsError:
         raise HTTPException(status_code=409, detail="this relation exists already") from None
     return RelationRead.model_validate(relation)
@@ -387,15 +439,19 @@ async def update_relation(
     """Retype or re-note an edge; the ends are immutable.
 
     Return the edge; raise HTTP 404 for an absent or unowned edge,
-    HTTP 422 for a blank or over-long type, or HTTP 409 when the new type
-    would duplicate the edge's sibling.
+    HTTP 422 for a blank or over-long type (``entity-invalid``, the create
+    endpoint's own shape), or HTTP 409 when the new type would duplicate the
+    edge's sibling.
     """
     try:
         relation = await service.update_relation(relation_id, payload)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="relation not found") from None
     except InvalidRelationError as error:
-        raise HTTPException(status_code=422, detail=str(error)) from None
+        raise HTTPException(
+            status_code=422,
+            detail=coded_detail("entity-invalid", f"relation type: {error}", field="relation type"),
+        ) from None
     except RelationExistsError:
         raise HTTPException(status_code=409, detail="this relation exists already") from None
     return RelationRead.model_validate(relation)

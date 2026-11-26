@@ -13,8 +13,15 @@ import {
   client,
   type Accept,
   type Activity,
+  type AssistantSession,
+  type AssistantSessionCreate,
+  type AssistantSessionRead,
+  type AssistantSessionSummary,
+  type AssistantTurnCreate,
+  type AssistantTurnReadback,
   type Chapter,
   type Entity,
+  type EntityCreate,
   type Finding,
   type Hit,
   type Job,
@@ -1222,6 +1229,64 @@ export function useMergeEntities(
   });
 }
 
+/** The create's failure, enriched for the dialog: the status picks the copy
+ *  family, `code` and `detail` carry the backend's coded refusal, `row` names
+ *  the visible row the dialog marks, and `field` is carried for a field-level
+ *  marking the dialog does not do — the refusal's sentence says what to check
+ *  (the prompt editor's precedent beside the knowledge hooks). */
+export type WireError = Error & {
+  status?: number;
+  code?: string;
+  detail?: string;
+  row?: number;
+  field?: string;
+};
+
+function createEntityFailure(cause: unknown): WireError {
+  const failure = cause as {
+    response?: Response;
+    error?: { detail?: { code?: string; detail?: string; row?: number; field?: string } };
+  };
+  const response = failure?.response;
+  if (response === undefined) {
+    // A transport failure carries no HTTP answer: the browser's own
+    // «Failed to fetch» is English and names no cause a writer can act on,
+    // so the dialog renders the catalog's sentence instead.
+    return Object.assign(new Error("create refused: transport"), { code: "transport" });
+  }
+  const detail = failure?.error?.detail;
+  return Object.assign(new Error(`create refused: ${response.status}`), {
+    status: response.status,
+    code: detail?.code,
+    detail: detail?.detail,
+    row: detail?.row,
+    field: detail?.field,
+  });
+}
+
+/**
+ * Create an entity by hand, with its relation lines, in one transaction.
+ * The settle invalidates the whole entity and relation families — the graph
+ * and the dossiers refetch the server's truth, never an optimistic row — and
+ * the shelf's canon rule follows, because a birth is a write to the book.
+ */
+export function useCreateEntity(): UseMutationResult<Entity, WireError, EntityCreate> {
+  return useMutation({
+    mutationFn: async (body: EntityCreate) => {
+      const result = await client.POST("/api/knowledge/entities", { body }).catch((cause: unknown) => {
+        throw createEntityFailure(cause);
+      });
+      if (!result.response.ok || !result.data) throw createEntityFailure(result);
+      return result.data;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "entities"] });
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+      void invalidateNovelShelf();
+    },
+  });
+}
+
 /** The entity list is the detail view's data too: the selected row is read
  *  out of it, so one invalidation refreshes both. */
 function invalidateEntities(novelId: string): void {
@@ -1654,4 +1719,151 @@ export function useSaveChapterScenes(
 function invalidateNovelShelf(): void {
   void queryClient.invalidateQueries({ queryKey: ["novels"] });
   void queryClient.invalidateQueries({ queryKey: ["activity"] });
+}
+
+// --- The assistant interview (W9 Task 10) ---------------------------------
+//
+// The knowledge graph page hosts the first assistant session; chat owns the
+// wire. The key prefix is `["chat", …]`, so every read and every write of the
+// substrate shares one family: the list (`["chat", "sessions", novelId]`), one
+// session's transcript and draft (`["chat", "session", sessionId]`), and the
+// three mutations, each invalidating both on settle so a panel that was hidden
+// while the model answered reads the reply when it returns.
+
+/** The session read's coded refusal (`{"detail": {"code", "detail"}}`) as the
+ *  panel names it. A transport failure has no HTTP answer and is the one
+ *  provider failure the panel can only describe, never inspect. */
+function assistantFailure(cause: unknown): WireError {
+  const failure = cause as {
+    response?: Response;
+    error?: { detail?: { code?: string; detail?: string } };
+  };
+  const response = failure?.response;
+  if (response === undefined) {
+    return Object.assign(new Error("assistant session failed: transport"), {
+      code: "provider-error",
+    });
+  }
+  const detail = failure?.error?.detail;
+  return Object.assign(new Error(`assistant session failed: ${response.status}`), {
+    status: response.status,
+    code: detail?.code ?? (response.status === 404 ? "not-found" : undefined),
+    detail: detail?.detail,
+  });
+}
+
+function invalidateAssistantSessions(): void {
+  void queryClient.invalidateQueries({ queryKey: ["chat", "sessions"] });
+  void queryClient.invalidateQueries({ queryKey: ["chat", "session"] });
+}
+
+/**
+ * The novel's interviews: open first, then closed, newest first in each state.
+ * A row carries the draft's name, never the proposal — opening a session reads
+ * the transcript and the draft. The graph's door counts the open rows here,
+ * and the panel's list groups them by the same `closed_at`.
+ */
+export function useAssistantSessionsQuery(
+  novelId: string,
+): UseQueryResult<AssistantSessionSummary[]> {
+  return useQuery({
+    queryKey: ["chat", "sessions", novelId],
+    queryFn: async () => {
+      const { data, error, response } = await client.GET("/api/chat/sessions", {
+        params: { query: { novel_id: novelId } },
+      });
+      if (!response.ok || !data) throw assistantFailure({ response, error });
+      return data.items;
+    },
+  });
+}
+
+/**
+ * One session with its transcript (oldest first) and its proposal. `null`
+ * reads nothing — the chooser has no session yet. A 404 is the coded
+ * `not-found` the panel hands back to the door; a closed row still reads, so
+ * an ended interview keeps its transcript and its savable draft.
+ */
+export function useAssistantSessionQuery(
+  sessionId: string | null,
+): UseQueryResult<AssistantSession> {
+  return useQuery({
+    queryKey: ["chat", "session", sessionId],
+    enabled: sessionId !== null,
+    queryFn: async () => {
+      const { data, error, response } = await client.GET("/api/chat/sessions/{session_id}", {
+        params: { path: { session_id: sessionId ?? "" } },
+      });
+      if (!response.ok || !data) throw assistantFailure({ response, error });
+      return data;
+    },
+  });
+}
+
+/** Open one interview: the panel always sends its mode and the chosen type. */
+export function useOpenAssistantSession(): UseMutationResult<
+  AssistantSessionRead,
+  WireError,
+  AssistantSessionCreate
+> {
+  return useMutation({
+    mutationFn: async (body: AssistantSessionCreate) => {
+      const result = await client
+        .POST("/api/chat/sessions", { body })
+        .catch((cause: unknown) => {
+          throw assistantFailure(cause);
+        });
+      if (!result.response.ok || !result.data) throw assistantFailure(result);
+      return result.data;
+    },
+    onSettled: invalidateAssistantSessions,
+  });
+}
+
+/** One writer turn: the answer, the merged proposal and any suggestion. The
+ *  panel's text lives in its own state, so a failed turn has lost nothing. */
+export function useAssistantTurn(): UseMutationResult<
+  AssistantTurnReadback,
+  WireError,
+  { sessionId: string; body: AssistantTurnCreate }
+> {
+  return useMutation({
+    mutationFn: async ({ sessionId, body }) => {
+      const result = await client
+        .POST("/api/chat/sessions/{session_id}/turns", {
+          params: { path: { session_id: sessionId } },
+          body,
+        })
+        .catch((cause: unknown) => {
+          throw assistantFailure(cause);
+        });
+      if (!result.response.ok || !result.data) throw assistantFailure(result);
+      return result.data;
+    },
+    onSettled: invalidateAssistantSessions,
+  });
+}
+
+/** End an interview: idempotent, explicit and irreversible. The transcript
+ *  stays readable and the proposal stays savable; only the door's count loses
+ *  the row from the open group. */
+export function useCloseAssistantSession(): UseMutationResult<
+  AssistantSessionRead,
+  WireError,
+  string
+> {
+  return useMutation({
+    mutationFn: async (sessionId: string) => {
+      const result = await client
+        .POST("/api/chat/sessions/{session_id}/close", {
+          params: { path: { session_id: sessionId } },
+        })
+        .catch((cause: unknown) => {
+          throw assistantFailure(cause);
+        });
+      if (!result.response.ok || !result.data) throw assistantFailure(result);
+      return result.data;
+    },
+    onSettled: invalidateAssistantSessions,
+  });
 }

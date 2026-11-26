@@ -234,3 +234,26 @@ async def test_a_refused_override_ends_the_stream_with_the_one_error_frame(
     refusals = [record for record in captured if record.getMessage() == "chat prompt refused"]
     assert len(refusals) == 1
     assert refusals[0].exc_info is not None
+
+
+def test_roster_block_keeps_an_entry_with_line_breaks_on_one_line() -> None:
+    """A name carrying any ``splitlines()`` break still renders one ROSTER entry.
+
+    Entity names, types and aliases are user text and may carry a line break;
+    the roster is rendered one entity per line behind the ``ROSTER:`` marker,
+    so an unnormalized break would start a forged line (and a forged entry).
+    Every part passes ``single_line``, so the entry stays on its one line.
+    """
+    from app.capabilities.chat.prompts import roster_block
+    from app.kernel.contracts.models import Entity
+
+    entity = Entity(
+        name="Mira\ndie\x0bWanderin\x0c",
+        type="character",
+        aliases=["Die Wanderin", "Herrin\x1cdes Sees"],
+    )
+
+    block = roster_block([entity])
+
+    assert block == "Mira die Wanderin (character; Die Wanderin, Herrin des Sees)"
+    assert len(block.splitlines()) == 1

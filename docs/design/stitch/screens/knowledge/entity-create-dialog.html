@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+
+<html lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="web_standard" name="shell-type"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,400..700;1,400..700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<style>
+    @layer base { 
+      html, body { margin: 0; padding: 0; } 
+      body { overscroll-behavior: none; } 
+    } 
+    ::-webkit-scrollbar { display: none; }
+  </style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-container": "#f4ede4",
+            "on-surface": "#1e1b16",
+            "on-error": "#ffffff",
+            "bg-soft-dark": "#2C2922",
+            "on-background": "#1e1b16",
+            "on-primary": "#ffffff",
+            "area-writing": "#914F2F",
+            "on-primary-fixed": "#351000",
+            "border-dark": "#35332D",
+            "surface-container-lowest": "#ffffff",
+            "primary-fixed-dim": "#ffb695",
+            "primary-container": "#743B1F",
+            "on-secondary-container": "#795c52",
+            "surface-bright": "#fff8f2",
+            "text-muted-light": "#6E6B65",
+            "cover-pale": "#EEEBE5",
+            "error": "#ba1a1a",
+            "bg-canvas-dark": "#16140F",
+            "on-secondary-fixed": "#2a170f",
+            "tertiary-fixed-dim": "#fcb882",
+            "area-chat": "#3A637B",
+            "tertiary": "#522900",
+            "rule-light": "#EEEBE5",
+            "bg-panel-dark": "#1C1914",
+            "surface-variant": "#e9e1d9",
+            "inverse-surface": "#33302b",
+            "surface-dim": "#e0d9d1",
+            "state-warning": "#9A6100",
+            "primary-fixed": "#ffdbcc",
+            "primary": "#743B1F",
+            "on-primary-fixed-variant": "#6f371c",
+            "secondary-fixed": "#ffdbce",
+            "state-danger": "#AC3031",
+            "area-settings": "#5A5549",
+            "border-light": "#E0DEDA",
+            "surface-container-high": "#eee7df",
+            "cover-ink": "#24211C",
+            "on-tertiary-fixed": "#2f1500",
+            "on-tertiary-container": "#eead78",
+            "on-primary-container": "#f8a884",
+            "on-secondary": "#ffffff",
+            "amber-focus": "#8F4622",
+            "secondary-container": "#fed8ca",
+            "rule-dark": "#302D28",
+            "text-foreground-dark": "#DFDEDA",
+            "on-error-container": "#93000a",
+            "on-tertiary-fixed-variant": "#693c10",
+            "on-tertiary": "#ffffff",
+            "outline-variant": "#d8c2b9",
+            "text-muted-dark": "#89867F",
+            "amber-focus-dark": "#F2AD73",
+            "surface-container-highest": "#e9e1d9",
+            "inverse-primary": "#ffb695",
+            "surface-tint": "#8c4e30",
+            "state-success": "#21763C",
+            "secondary-fixed-dim": "#e3bfb2",
+            "secondary": "#74584e",
+            "bg-card-light": "#FFFFFF",
+            "bg-soft-light": "#EFEBE2",
+            "error-container": "#ffdad6",
+            "cover-sepia": "#743B1F",
+            "bg-canvas-light": "#F6F3ED",
+            "area-knowledge": "#606127",
+            "tertiary-container": "#6e3f14",
+            "surface": "#fff8f2",
+            "on-surface-variant": "#53433d",
+            "background": "#fff8f2",
+            "on-secondary-fixed-variant": "#5a4137",
+            "tertiary-fixed": "#ffdcc3",
+            "area-planning": "#834D7E",
+            "inverse-on-surface": "#f7f0e7",
+            "bg-card-dark": "#211F1A",
+            "bg-panel-light": "#FDFBF7",
+            "outline": "#86736c",
+            "surface-container-low": "#FAF2EA"
+          },
+          borderRadius: {
+            DEFAULT: "0.125rem",
+            lg: "0.25rem",
+            xl: "0.5rem",
+            full: "0.75rem"
+          },
+          spacing: {
+            "rail-expanded": "10.5rem",
+            "dock-width": "21rem",
+            "space-xl": "2rem",
+            "space-xs": "0.25rem",
+            "prose-max-width": "34rem",
+            "gutter": "1rem",
+            "space-md": "1rem",
+            "container-max": "80rem",
+            "margin": "1.5rem",
+            "space-sm": "0.5rem",
+            "rail-collapsed": "3rem",
+            "space-lg": "1.5rem"
+          },
+          fontFamily: {
+            "body-default": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-emph": ["Plus Jakarta Sans", "sans-serif"],
+            "prose-heading-2": ["EB Garamond", "serif"],
+            "label-default": ["Plus Jakarta Sans", "sans-serif"],
+            "eyebrow-tracked": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-title": ["Plus Jakarta Sans", "sans-serif"],
+            "prose-heading-1": ["EB Garamond", "serif"],
+            "meta-default": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-hero": ["Plus Jakarta Sans", "sans-serif"],
+            "prose-editorial": ["EB Garamond", "serif"]
+          },
+          fontSize: {
+            "body-default": ["14px", { lineHeight: "22px", fontWeight: "400" }],
+            "headline-emph": ["15px", { lineHeight: "22px", fontWeight: "600" }],
+            "prose-heading-2": ["22px", { lineHeight: "28px", fontWeight: "600" }],
+            "label-default": ["13px", { lineHeight: "18px", fontWeight: "500" }],
+            "eyebrow-tracked": ["11px", { lineHeight: "16px", letterSpacing: "0.08em", fontWeight: "600" }],
+            "headline-title": ["20px", { lineHeight: "26px", letterSpacing: "-0.015em", fontWeight: "600" }],
+            "prose-heading-1": ["30px", { lineHeight: "36px", letterSpacing: "-0.01em", fontWeight: "600" }],
+            "meta-default": ["12px", { lineHeight: "17px", fontWeight: "400" }],
+            "headline-hero": ["28px", { lineHeight: "32px", letterSpacing: "-0.02em", fontWeight: "700" }],
+            "prose-editorial": ["18px", { lineHeight: "31.5px", letterSpacing: "0.01em", fontWeight: "400" }]
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-bg-canvas-light text-on-surface font-body-default text-body-default min-h-screen">
+<main class="w-full bg-bg-canvas-light">
+<div class="flex flex-col w-full">
+<div class="max-w-container-max mx-auto px-margin py-space-xl w-full flex flex-col gap-space-xl">
+<!-- Sheet Header -->
+<header class="flex flex-col gap-1 pb-2">
+<div class="flex items-center gap-space-sm mb-1">
+<span class="font-eyebrow-tracked text-[11px] uppercase tracking-wider text-area-knowledge bg-[#e8e4da] px-2 py-0.5 rounded font-semibold">Dialog-Referenz</span>
+</div>
+<h1 class="font-prose-heading-1 text-prose-heading-1 text-on-surface font-semibold tracking-tight">Neue Entität anlegen</h1>
+<p class="font-body-default text-[14px] text-text-muted-light">Zwei Varianten, vier Zustände</p>
+</header>
+<!-- Section 1: Side-by-Side Dialog Variants -->
+<section class="flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-emph text-headline-emph text-on-surface">1. Zwei Varianten</h2>
+</div>
+<!-- Backdrop Canvas Grid with Dotted Lore-Graph -->
+<div class="relative w-full rounded-xl p-6 overflow-hidden bg-bg-canvas-light border border-[#E0DEDA]/60 shadow-inner">
+<!-- Dimmed Lore-Graph Background Pattern -->
+<div class="absolute inset-0 opacity-40 pointer-events-none select-none" style="background-image: radial-gradient(circle, #86736c 1.25px, transparent 1.25px); background-size: 24px 24px;"></div>
+<!-- Dialog Comparison Grid -->
+<div class="relative z-10 grid grid-cols-1 xl:grid-cols-2 gap-space-xl items-start">
+<!-- ================= VARIANT A: VON HAND ================= -->
+<article class="flex flex-col bg-bg-panel-light rounded-xl shadow-xl border border-[#E0DEDA] overflow-hidden">
+<!-- Dialog Frame Header -->
+<div class="px-space-lg py-3.5 bg-surface-bright border-b border-[#E0DEDA]/60 flex items-center justify-between">
+<div class="flex items-center gap-space-sm min-w-0">
+<h3 class="font-prose-heading-2 text-prose-heading-2 text-on-surface font-semibold truncate">Neue Entität anlegen</h3>
+<span class="px-2 py-0.5 rounded font-meta-default text-[11px] font-medium bg-[#ECE7DE] text-text-muted-light shrink-0">Von Hand</span>
+</div>
+<button aria-label="Schließen" class="w-7 h-7 flex items-center justify-center rounded text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Form Body -->
+<div class="p-space-lg flex flex-col gap-3.5 bg-bg-panel-light">
+<!-- Name Input -->
+<div class="flex flex-col gap-1">
+<label class="font-label-default text-label-default text-on-surface font-medium">Name *</label>
+<div class="h-8 w-full rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center shadow-xs focus-within:border-primary">
+<input class="w-full bg-transparent font-body-default text-[13px] text-on-surface placeholder:text-text-muted-light outline-none" placeholder="z. B. Resonanz-Transponder LC-89" type="text"/>
+</div>
+</div>
+<!-- Typ Select -->
+<div class="flex flex-col gap-1">
+<label class="font-label-default text-label-default text-on-surface font-medium">Typ</label>
+<div class="relative h-8 w-full rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center justify-between shadow-xs cursor-pointer">
+<span class="font-body-default text-[13px] text-text-muted-light">Typ auswählen...</span>
+<span class="material-symbols-outlined text-text-muted-light text-[18px]">expand_more</span>
+</div>
+</div>
+<!-- Aliasse Chip Input -->
+<div class="flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<label class="font-label-default text-label-default text-on-surface font-medium">Aliasse</label>
+<span class="font-meta-default text-[11px] text-text-muted-light">Mit Enter hinzufügen</span>
+</div>
+<div class="min-h-8 py-1.5 w-full rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center flex-wrap gap-1 shadow-xs">
+<input class="bg-transparent font-body-default text-[13px] text-on-surface placeholder:text-text-muted-light outline-none flex-1 min-w-[120px]" placeholder="Neuer Alias ..." type="text"/>
+</div>
+</div>
+<!-- Schlagworte Chip Input -->
+<div class="flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<label class="font-label-default text-label-default text-on-surface font-medium">Schlagworte</label>
+<span class="font-meta-default text-[11px] text-text-muted-light">Mit Enter hinzufügen</span>
+</div>
+<div class="min-h-8 py-1.5 w-full rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center flex-wrap gap-1 shadow-xs">
+<input class="bg-transparent font-body-default text-[13px] text-on-surface placeholder:text-text-muted-light outline-none flex-1 min-w-[120px]" placeholder="Neues Schlagwort ..." type="text"/>
+</div>
+</div>
+<!-- Beschreibung Text Area -->
+<div class="flex flex-col gap-1">
+<label class="font-label-default text-label-default text-on-surface font-medium">Beschreibung</label>
+<textarea class="w-full rounded border border-[#D5D0C6] bg-surface-container-lowest p-2.5 font-body-default text-[13px] text-on-surface placeholder:text-text-muted-light outline-none resize-none shadow-xs leading-relaxed" placeholder="Kontextuelle Skizze, physikalische Erscheinung oder chronologische Verortung eingeben..." rows="3"></textarea>
+</div>
+<!-- Beziehungen Section -->
+<div class="flex flex-col gap-1.5 pt-1">
+<div class="flex items-center justify-between pb-1">
+<span class="font-label-default text-label-default font-semibold text-on-surface">Beziehungen</span>
+<button class="font-label-default text-[12px] text-primary hover:underline flex items-center gap-1 font-medium" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                        Beziehung hinzufügen
+                      </button>
+</div>
+<!-- Empty state for relations -->
+<div class="py-6 px-4 bg-surface-container-low/70 border border-[#E5DFD4] rounded text-center">
+<p class="font-meta-default text-[13px] text-text-muted-light">Noch keine Beziehungen verknüpft</p>
+</div>
+</div>
+</div>
+<!-- Footer Hint & Actions -->
+<div class="px-space-lg py-3.5 bg-surface-bright border-t border-[#E0DEDA]/60 flex items-center justify-between">
+<span class="font-meta-default text-[12px] text-text-muted-light">Name und Typ sind Pflicht</span>
+<div class="flex items-center gap-2">
+<button class="h-8 px-4 rounded border border-[#D5D0C6] bg-bg-panel-light text-on-surface hover:bg-bg-soft-light font-label-default text-[12px] font-medium transition-colors shadow-xs" type="button">
+                      Abbrechen
+                    </button>
+<button class="h-8 px-4 rounded bg-[#E4DFD5] text-[#9D988F] font-label-default text-[12px] font-medium cursor-not-allowed" disabled="" type="button">
+                      Entität speichern
+                    </button>
+</div>
+</div>
+</article>
+<!-- ================= VARIANT B: AUS DEM INTERVIEW ================= -->
+<article class="flex flex-col bg-bg-panel-light rounded-xl shadow-xl border border-[#E0DEDA] overflow-hidden">
+<!-- Dialog Frame Header -->
+<div class="px-space-lg py-3.5 bg-surface-bright border-b border-[#E0DEDA]/60 flex items-center justify-between">
+<div class="flex items-center gap-space-sm min-w-0">
+<h3 class="font-prose-heading-2 text-prose-heading-2 text-on-surface font-semibold truncate">Neue Entität anlegen</h3>
+<span class="px-2 py-0.5 rounded font-meta-default text-[11px] font-medium bg-[#FDEAE2] text-[#8C3F1B] shrink-0 border border-[#F4CEBE]">Aus dem Interview</span>
+</div>
+<button aria-label="Schließen" class="w-7 h-7 flex items-center justify-center rounded text-text-muted-light hover:text-on-surface hover:bg-bg-soft-light transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Form Body -->
+<div class="p-space-lg flex flex-col gap-3.5 bg-bg-panel-light">
+<!-- Name Input (Filled) -->
+<div class="flex flex-col gap-1">
+<label class="font-label-default text-label-default text-on-surface font-medium">Name *</label>
+<div class="h-8 w-full rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center shadow-xs">
+<input class="w-full bg-transparent font-body-default text-[13px] text-on-surface outline-none" type="text" value="Resonanz-Transponder LC-89"/>
+</div>
+</div>
+<!-- Typ Select (Objekt Selected & Fixed) -->
+<div class="flex flex-col gap-1">
+<label class="font-label-default text-label-default text-on-surface font-medium">Typ</label>
+<div class="h-8 w-full rounded border border-[#D5D0C6] bg-surface-container-low px-2.5 flex items-center justify-between shadow-xs">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-text-muted-light">lock</span>
+<span class="font-body-default text-[13px] text-on-surface font-medium">Objekt</span>
+</div>
+<span class="font-eyebrow-tracked text-[10px] uppercase font-bold text-text-muted-light bg-[#E5DFD4] px-1.5 py-0.5 rounded">Fixiert</span>
+</div>
+</div>
+<!-- Aliasse Chip Input (Filled) -->
+<div class="flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<label class="font-label-default text-label-default text-on-surface font-medium">Aliasse</label>
+<span class="font-meta-default text-[11px] text-text-muted-light">Mit Enter hinzufügen</span>
+</div>
+<div class="min-h-8 py-1 w-full rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center flex-wrap gap-1.5 shadow-xs">
+<span class="inline-flex items-center gap-1 bg-[#EBE5DA] px-2 py-0.5 rounded text-[12px] font-medium text-on-surface">
+                        LC-89
+                        <button aria-label="Alias entfernen" class="text-text-muted-light hover:text-on-surface flex items-center" type="button">
+<span class="material-symbols-outlined text-[13px]">close</span>
+</button>
+</span>
+<span class="inline-flex items-center gap-1 bg-[#EBE5DA] px-2 py-0.5 rounded text-[12px] font-medium text-on-surface">
+                        Transponder
+                        <button aria-label="Alias entfernen" class="text-text-muted-light hover:text-on-surface flex items-center" type="button">
+<span class="material-symbols-outlined text-[13px]">close</span>
+</button>
+</span>
+<input class="bg-transparent font-body-default text-[13px] text-on-surface placeholder:text-text-muted-light outline-none flex-1 min-w-[110px]" placeholder="Weiterer Alias ..." type="text"/>
+</div>
+</div>
+<!-- Schlagworte Chip Input (Filled with proposed badge) -->
+<div class="flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<label class="font-label-default text-label-default text-on-surface font-medium">Schlagworte</label>
+<span class="font-meta-default text-[11px] text-text-muted-light">Mit Enter hinzufügen</span>
+</div>
+<div class="min-h-8 py-1 w-full rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center flex-wrap gap-1.5 shadow-xs">
+<span class="inline-flex items-center gap-1.5 bg-[#EBE5DA] px-2 py-0.5 rounded text-[12px] font-medium text-on-surface">
+<span>Technologie</span>
+<span class="font-eyebrow-tracked text-[9px] uppercase tracking-wider text-area-knowledge bg-[#FAF2EA] px-1 py-0.2 rounded font-semibold">vorgeschlagen</span>
+<button aria-label="Schlagwort entfernen" class="text-text-muted-light hover:text-on-surface flex items-center" type="button">
+<span class="material-symbols-outlined text-[13px]">close</span>
+</button>
+</span>
+<span class="inline-flex items-center gap-1 bg-[#EBE5DA] px-2 py-0.5 rounded text-[12px] font-medium text-on-surface">
+                        Relikt
+                        <button aria-label="Schlagwort entfernen" class="text-text-muted-light hover:text-on-surface flex items-center" type="button">
+<span class="material-symbols-outlined text-[13px]">close</span>
+</button>
+</span>
+<input class="bg-transparent font-body-default text-[13px] text-on-surface placeholder:text-text-muted-light outline-none flex-1 min-w-[60px]" type="text"/>
+</div>
+</div>
+<!-- Beschreibung Text Area (Filled with vorgeschlagen header badge) -->
+<div class="flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<label class="font-label-default text-label-default text-on-surface font-medium">Beschreibung</label>
+<span class="font-eyebrow-tracked text-[9px] uppercase tracking-wider text-area-knowledge bg-[#EBE5DA] px-1.5 py-0.5 rounded font-semibold">vorgeschlagen</span>
+</div>
+<textarea class="w-full rounded border border-[#D5D0C6] bg-surface-container-lowest p-2.5 font-body-default text-[13px] text-on-surface outline-none resize-none shadow-xs leading-relaxed" rows="3">Verschlossenes Prototyp-Subraumrelais. Öffnet nur auf Mayas und Lins DNA-Resonanz.</textarea>
+</div>
+<!-- Beziehungen Section: 3 gleich breite Spalten + Trash Icon, OHNE 'vorgeschlagen' Boxen darüber -->
+<div class="flex flex-col gap-2 pt-1">
+<div class="flex items-center justify-between pb-0.5">
+<span class="font-label-default text-label-default font-semibold text-on-surface">Beziehungen</span>
+<button class="font-label-default text-[12px] text-primary hover:underline flex items-center gap-1 font-medium" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                        Beziehung hinzufügen
+                      </button>
+</div>
+<div class="flex flex-col gap-2">
+<!-- Row 1: Sparkle + 3 equal columns + delete -->
+<div class="flex items-center gap-2">
+<div class="grid grid-cols-3 gap-2 flex-1 min-w-0">
+<!-- Spalte 1: Ziel-Entität -->
+<div class="h-8 rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center justify-between shadow-xs min-w-0 cursor-pointer">
+<span class="font-body-default text-[12px] text-on-surface whitespace-nowrap overflow-visible flex items-center gap-1 font-medium">
+<span class="text-amber-700 text-[13px] leading-none">✦</span>
+<span>Forschungsstation 7 (Ort)</span>
+</span>
+<span class="material-symbols-outlined text-text-muted-light text-[16px] shrink-0 ml-1">expand_more</span>
+</div>
+<!-- Spalte 2: Beziehungsart -->
+<div class="h-8 rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center justify-between shadow-xs min-w-0">
+<span class="font-body-default text-[12px] text-on-surface font-medium">Liegt in</span>
+<span class="material-symbols-outlined text-text-muted-light text-[16px] shrink-0">expand_more</span>
+</div>
+<!-- Spalte 3: Notiz -->
+<div class="h-8 rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center shadow-xs min-w-0">
+<input class="w-full bg-transparent font-body-default text-[12px] text-on-surface placeholder:text-text-muted-light outline-none" placeholder="Notiz (optional)" type="text"/>
+</div>
+</div>
+<button aria-label="Beziehung löschen" class="w-8 h-8 flex items-center justify-center text-text-muted-light hover:text-state-danger rounded shrink-0 transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+<!-- Row 2: Sparkle + 3 equal columns + delete -->
+<div class="flex items-center gap-2">
+<div class="grid grid-cols-3 gap-2 flex-1 min-w-0">
+<!-- Spalte 1: Ziel-Entität -->
+<div class="h-8 rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center justify-between shadow-xs min-w-0 cursor-pointer">
+<span class="font-body-default text-[12px] text-on-surface whitespace-nowrap overflow-visible flex items-center gap-1 font-medium">
+<span class="text-amber-700 text-[13px] leading-none">✦</span>
+<span>Dr. Lin Chen (Figur)</span>
+</span>
+<span class="material-symbols-outlined text-text-muted-light text-[16px] shrink-0 ml-1">expand_more</span>
+</div>
+<!-- Spalte 2: Beziehungsart -->
+<div class="h-8 rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center justify-between shadow-xs min-w-0">
+<span class="font-body-default text-[12px] text-on-surface font-medium">Gebaut von</span>
+<span class="material-symbols-outlined text-text-muted-light text-[16px] shrink-0">expand_more</span>
+</div>
+<!-- Spalte 3: Notiz -->
+<div class="h-8 rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center shadow-xs min-w-0">
+<input class="w-full bg-transparent font-body-default text-[12px] text-on-surface placeholder:text-text-muted-light outline-none" placeholder="Notiz (optional)" type="text"/>
+</div>
+</div>
+<button aria-label="Beziehung löschen" class="w-8 h-8 flex items-center justify-center text-text-muted-light hover:text-state-danger rounded shrink-0 transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+<!-- Row 3: 3 equal columns + open dropdown menu + delete -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<div class="grid grid-cols-3 gap-2 flex-1 min-w-0">
+<!-- Spalte 1: Mehrere Treffer / Selektion -->
+<div class="h-8 rounded border-2 border-primary bg-surface-container-lowest px-2.5 flex items-center justify-between shadow-xs min-w-0 cursor-pointer">
+<span class="font-body-default text-[12px] text-primary font-medium whitespace-nowrap">2 Treffer — wählen</span>
+<span class="material-symbols-outlined text-primary text-[18px] shrink-0">expand_less</span>
+</div>
+<!-- Spalte 2: Beziehungsart -->
+<div class="h-8 rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center justify-between shadow-xs min-w-0">
+<span class="font-body-default text-[12px] text-on-surface font-medium">arbeitet mit</span>
+<span class="material-symbols-outlined text-text-muted-light text-[16px] shrink-0">expand_more</span>
+</div>
+<!-- Spalte 3: Notiz -->
+<div class="h-8 rounded border border-[#D5D0C6] bg-surface-container-lowest px-2.5 flex items-center shadow-xs min-w-0">
+<input class="w-full bg-transparent font-body-default text-[12px] text-on-surface placeholder:text-text-muted-light outline-none" placeholder="Notiz (optional)" type="text"/>
+</div>
+</div>
+<button aria-label="Beziehung löschen" class="w-8 h-8 flex items-center justify-center text-text-muted-light hover:text-state-danger rounded shrink-0 transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+<!-- Dropdown-Menü unter Spalte 1 -->
+<div class="grid grid-cols-3 gap-2 pr-10">
+<div class="col-span-1 bg-surface-container-lowest rounded-md border border-[#D5D0C6] shadow-lg overflow-hidden flex flex-col z-20">
+<button class="px-2.5 py-1.5 text-left font-body-default text-[12px] text-on-surface hover:bg-[#F2ECE1] flex items-center justify-between transition-colors" type="button">
+<span class="font-medium">Dr. Maya Chen</span>
+<span class="font-eyebrow-tracked text-[10px] text-text-muted-light">Figur</span>
+</button>
+<button class="px-2.5 py-1.5 text-left font-body-default text-[12px] text-on-surface bg-[#F6F1E8] hover:bg-[#EFE7DC] flex items-center justify-between transition-colors border-t border-[#EAE3D6]" type="button">
+<span class="font-medium">Dr. Lin Chen</span>
+<span class="font-eyebrow-tracked text-[10px] text-text-muted-light">Figur</span>
+</button>
+<div class="px-2.5 py-1 bg-[#FAF6EE] border-t border-[#EAE3D6] flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-state-warning">help_outline</span>
+<span class="font-meta-default text-[11px] text-state-warning font-medium">Mehrere Treffer — wählen</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Explicit Hinweiszeile unter den Beziehungen -->
+<div class="pt-1">
+<p class="font-meta-default text-[12px] text-text-muted-light">Nicht zugeordnete Beziehungen werden nicht angelegt.</p>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="px-space-lg py-3.5 bg-surface-bright border-t border-[#E0DEDA]/60 flex items-center justify-end gap-2">
+<button class="h-8 px-4 rounded border border-[#D5D0C6] bg-bg-panel-light text-on-surface hover:bg-bg-soft-light font-label-default text-[12px] font-medium transition-colors shadow-xs" type="button">
+                    Abbrechen
+                  </button>
+<button class="h-8 px-4 rounded bg-[#743B1F] text-white hover:bg-[#5E2F18] font-label-default text-[12px] font-medium transition-colors shadow-sm" type="button">
+                    Entität speichern
+                  </button>
+</div>
+</article>
+</div>
+</div>
+</section>
+<!-- Section 2: Four States in a Row -->
+<section class="flex flex-col gap-space-md pt-2">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-emph text-headline-emph text-on-surface">2. Vier Zustände</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+<!-- STATE 1: Name schon vergeben -->
+<div class="flex flex-col bg-bg-panel-light rounded-xl border border-[#E0DEDA] shadow-sm overflow-hidden justify-between">
+<div>
+<div class="px-3.5 py-2.5 bg-surface-bright border-b border-[#E0DEDA]/60 flex items-center justify-between">
+<span class="font-eyebrow-tracked text-[11px] uppercase tracking-wider text-text-muted-light font-bold">Zustand 1</span>
+<span class="font-label-default text-[12px] font-semibold text-on-surface">Name schon vergeben</span>
+</div>
+<div class="p-3.5 flex flex-col gap-2.5">
+<div class="flex flex-col gap-1">
+<label class="font-label-default text-[11px] text-on-surface font-medium">Name *</label>
+<div class="h-8 w-full rounded border border-[#D5D0C6] bg-surface-container-lowest px-2 flex items-center shadow-xs">
+<input class="w-full bg-transparent font-body-default text-[12px] text-on-surface outline-none" readonly="" type="text" value="Resonanz-Transponder LC-89"/>
+</div>
+</div>
+<!-- Quiet Info Notice -->
+<div class="flex items-start gap-1.5 p-2.5 rounded bg-[#FAF2EA] border border-[#ECDCCB]">
+<span class="material-symbols-outlined text-[16px] text-area-knowledge shrink-0 mt-0.5">info</span>
+<p class="font-meta-default text-[11px] leading-snug text-on-surface">
+                      Eine Entität mit diesem Namen gibt es schon. Speichern ist trotzdem möglich.
+                    </p>
+</div>
+</div>
+</div>
+<div class="p-3.5 pt-0 flex justify-end">
+<button class="h-7 px-3 rounded bg-[#743B1F] text-white font-label-default text-[11px] font-medium hover:bg-[#5E2F18] transition-colors" type="button">
+                  Speichern
+                </button>
+</div>
+</div>
+<!-- STATE 2: Speichert ... -->
+<div class="flex flex-col bg-bg-panel-light rounded-xl border border-[#E0DEDA] shadow-sm overflow-hidden justify-between">
+<div>
+<div class="px-3.5 py-2.5 bg-surface-bright border-b border-[#E0DEDA]/60 flex items-center justify-between">
+<span class="font-eyebrow-tracked text-[11px] uppercase tracking-wider text-text-muted-light font-bold">Zustand 2</span>
+<span class="font-label-default text-[12px] font-semibold text-on-surface">Speichert ...</span>
+</div>
+<div class="p-3.5 flex flex-col gap-2.5 opacity-60 pointer-events-none select-none">
+<div class="h-4 w-20 bg-[#E6E0D4] rounded"></div>
+<div class="h-8 w-full bg-surface-container-lowest border border-[#D5D0C6] rounded"></div>
+<div class="h-10 w-full bg-[#EAE4D8]/60 rounded"></div>
+</div>
+</div>
+<div class="p-3.5 pt-0 flex items-center justify-end gap-2">
+<button class="h-7 px-2.5 rounded border border-[#D5D0C6] bg-bg-panel-light text-text-muted-light font-label-default text-[11px] cursor-not-allowed" disabled="" type="button">
+                  Abbrechen
+                </button>
+<button class="h-7 px-3 rounded bg-[#743B1F] text-white font-label-default text-[11px] font-medium flex items-center gap-1.5 cursor-wait" disabled="" type="button">
+<svg class="animate-spin h-3 w-3 text-white" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+<path class="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor"></path>
+</svg>
+<span>Speichert...</span>
+</button>
+</div>
+</div>
+<!-- STATE 3: Abgelehnt -->
+<div class="flex flex-col bg-bg-panel-light rounded-xl border border-[#E0DEDA] shadow-sm overflow-hidden justify-between">
+<div>
+<div class="px-3.5 py-2.5 bg-surface-bright border-b border-[#E0DEDA]/60 flex items-center justify-between">
+<span class="font-eyebrow-tracked text-[11px] uppercase tracking-wider text-text-muted-light font-bold">Zustand 3</span>
+<span class="font-label-default text-[12px] font-semibold text-on-surface">Abgelehnt</span>
+</div>
+<div class="p-3.5 flex flex-col gap-2.5">
+<!-- Red Error Box -->
+<div class="flex items-start gap-1.5 p-2.5 rounded bg-[#FDEAE8] border border-[#F6C6C3] text-state-danger">
+<span class="material-symbols-outlined text-[16px] text-state-danger shrink-0 mt-0.5">warning</span>
+<p class="font-meta-default text-[11px] leading-snug font-medium">
+                      Die Entität wurde nicht angelegt: &lt;Grund&gt;.
+                    </p>
+</div>
+<!-- Name Field retained -->
+<div class="h-7 w-full rounded border border-[#D5D0C6] bg-surface-container-lowest px-2 flex items-center shadow-xs">
+<span class="font-body-default text-[11px] text-on-surface truncate">Resonanz-Transponder LC-89</span>
+</div>
+</div>
+</div>
+<div class="p-3.5 pt-0 flex justify-end">
+<button class="h-7 px-3 rounded bg-[#743B1F] text-white font-label-default text-[11px] font-medium hover:bg-[#5E2F18] transition-colors" type="button">
+                  Entität speichern
+                </button>
+</div>
+</div>
+<!-- STATE 4: Angelegt -->
+<div class="flex flex-col bg-bg-panel-light rounded-xl border border-[#E0DEDA] shadow-sm overflow-hidden justify-between">
+<div class="px-3.5 py-2.5 bg-surface-bright border-b border-[#E0DEDA]/60 flex items-center justify-between">
+<span class="font-eyebrow-tracked text-[11px] uppercase tracking-wider text-text-muted-light font-bold">Zustand 4</span>
+<span class="font-label-default text-[12px] font-semibold text-on-surface">Angelegt</span>
+</div>
+<div class="relative p-4 flex flex-col items-center justify-center min-h-[110px] bg-bg-canvas-light overflow-hidden">
+<div class="absolute inset-0 opacity-30 pointer-events-none" style="background-image: radial-gradient(circle, #86736c 1px, transparent 1px); background-size: 14px 14px;"></div>
+<!-- Toast Notification with Checkmark -->
+<div class="relative z-10 flex items-center gap-2 px-3 py-2 rounded border border-[#DCD6CA] bg-surface-container-lowest shadow-md max-w-full">
+<div class="w-4 h-4 rounded-full bg-state-success flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-white text-[11px] font-bold">check</span>
+</div>
+<span class="font-label-default text-[11px] text-on-surface font-medium leading-snug">
+                    Entität angelegt · 2 Beziehungen verknüpft
+                  </span>
+</div>
+</div>
+<div class="px-3 py-2 bg-surface-bright border-t border-[#E0DEDA]/40 text-center">
+<span class="font-meta-default text-[10px] text-text-muted-light">Toast-Meldung schließt automatisch</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+</body></html>

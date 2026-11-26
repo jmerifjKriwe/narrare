@@ -74,6 +74,7 @@ const baseSummaries = (): Record<string, unknown>[] => [
   summary({ key: "chat.ask", novel_scopable: false, bundled_summary: "Dialogische Befragung der Lore und Manuskript-Zusammenhänge." }),
   summary({ key: "knowledge.extract-entities", bundled_summary: "Erkennt Figuren, Orte, Artefakte und Relationen." }),
   summary({ key: "knowledge.check-consistency", bundled_summary: "Kausalitäts-Audit gegen verankerte Figurenbiografien." }),
+  summary({ key: "knowledge.entity-interview", bundled_summary: "Fragt passend zum Entitätstyp und sammelt Name, Aliasse, Schlagworte, Beschreibung und Beziehungen." }),
 ];
 
 function detail(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -182,7 +183,7 @@ function renderPage() {
 /** Wait for the page's ready face: the catalog answered, the editor stood. */
 async function readyEditor(): Promise<HTMLElement> {
   const cards = await screen.findAllByTestId("prompt-card");
-  expect(cards.length).toBe(4);
+  expect(cards.length).toBe(5);
   return await screen.findByTestId("prompts-editor");
 }
 
@@ -190,7 +191,7 @@ beforeEach(() => {
   applyLocale("de");
   novelList = [NOVEL_A, NOVEL_B];
   summaries = baseSummaries();
-  details = { "writing.continuation": detail(), "chat.ask": detail(), "knowledge.extract-entities": detail(), "knowledge.check-consistency": detail() };
+  details = { "writing.continuation": detail(), "chat.ask": detail(), "knowledge.extract-entities": detail(), "knowledge.check-consistency": detail(), "knowledge.entity-interview": detail() };
   novelOverridePresent = true;
   scriptReads();
 });
@@ -203,10 +204,10 @@ afterEach(() => {
 });
 
 describe("the catalog with its override marks", () => {
-  it("renders the four keys on the global scope, every card on the standard mark", async () => {
+  it("renders the five keys on the global scope, every card on the standard mark", async () => {
     renderPage();
     const cards = await screen.findAllByTestId("prompt-card");
-    expect(cards.length).toBe(4);
+    expect(cards.length).toBe(5);
     const continuation = within(cards[0]!);
     expect(continuation.getByText(de["prompts.key.writing.continuation"])).toBeTruthy();
     expect(continuation.getByText(de["prompts.catalog.globalStandard"])).toBeTruthy();
@@ -989,6 +990,7 @@ describe("the diff", () => {
       "chat.ask": detail(),
       "knowledge.extract-entities": detail(),
       "knowledge.check-consistency": detail(),
+      "knowledge.entity-interview": detail(),
     };
     scriptReads();
     renderPage();

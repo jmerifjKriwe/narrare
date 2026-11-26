@@ -86,9 +86,13 @@ const graphRoute = createRoute({
     const complete = await queryClient.ensureQueryData(setupStatusQueryOptions);
     if (!complete) throw redirect({ to: "/setup" });
   },
-  validateSearch: (search: Record<string, unknown>): { entity?: string } => {
+  validateSearch: (search: Record<string, unknown>): { entity?: string; interview?: string } => {
+    const next: { entity?: string; interview?: string } = {};
     const entity = search.entity;
-    return typeof entity === "string" && entity !== "" ? { entity } : {};
+    if (typeof entity === "string" && entity !== "") next.entity = entity;
+    const interview = search.interview;
+    if (typeof interview === "string" && interview !== "") next.interview = interview;
+    return next;
   },
   component: LoreGraphPage,
 });

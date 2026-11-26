@@ -217,7 +217,7 @@ export function EntityDossier({
             <span className={CARD_EYEBROW}>{t("knowledge.dossier.tags")}</span>
             <div className="flex flex-wrap gap-1.5">
               {entity.tags.map((tag) => (
-                <span key={tag} className="rounded-full bg-surface-container-high px-2 py-0.5 text-meta text-muted">
+                <span key={tag} className="rounded-full bg-surface-container-high px-2 py-0.5 text-meta text-foreground">
                   {tag}
                 </span>
               ))}

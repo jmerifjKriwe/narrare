@@ -11,15 +11,47 @@ prompt composition, streaming and persistence run the same code whichever
 entry a call resolves to.
 
 pydantic-ai is deliberately absent. One streaming completion over a fixed prompt
-needs a single async method; an agent layer would add tools, retries and
-structured output that nothing in v2 asks for. Revisit this module if tool use or
-agent orchestration appears — not before.
+needs a single async method; structured output is the kernel's own (the
+schema-bound ask and its single repair retry in
+:mod:`app.kernel.llm.structured`), while an agent layer would add tools, an agent
+loop and its retries that nothing in v2 asks for. Revisit this module if tool
+use or agent orchestration appears — not before.
 """
 
-from app.kernel.llm.contract import PURPOSE_PREFIX, SOURCE_PREFIX, TextProvider
+from app.kernel.llm.contract import (
+    ASSISTANT_PREFIX,
+    INTERVIEW_MARKERS,
+    PURPOSE_INTERVIEW,
+    PURPOSE_PREFIX,
+    RELATIONS_PREFIX,
+    REQUEST_PREFIX,
+    ROSTER_PREFIX,
+    SLOTS_PREFIX,
+    SOURCE_PREFIX,
+    TURNS_PREFIX,
+    TYPE_PREFIX,
+    USER_PREFIX,
+    TextProvider,
+    single_line,
+)
+from app.kernel.llm.structured import AuditedCall, MalformedAnswerError, ask_structured
 
 __all__ = [
+    "ASSISTANT_PREFIX",
+    "INTERVIEW_MARKERS",
+    "PURPOSE_INTERVIEW",
     "PURPOSE_PREFIX",
+    "RELATIONS_PREFIX",
+    "REQUEST_PREFIX",
+    "ROSTER_PREFIX",
+    "SLOTS_PREFIX",
     "SOURCE_PREFIX",
+    "TURNS_PREFIX",
+    "TYPE_PREFIX",
+    "USER_PREFIX",
+    "AuditedCall",
+    "MalformedAnswerError",
     "TextProvider",
+    "ask_structured",
+    "single_line",
 ]

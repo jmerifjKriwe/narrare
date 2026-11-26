@@ -11,6 +11,7 @@ indistinguishable from no row at all.
 """
 
 import asyncio
+from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -241,9 +242,37 @@ async def test_a_patch_changes_only_the_fields_the_body_carries() -> None:
         assert unmoved.json()["from_entity_id"] == str(mira.id)
         assert unmoved.json()["to_entity_id"] == str(haus.id)
 
+
+async def test_a_blank_or_over_long_type_is_the_coded_422_on_both_routes() -> None:
+    """The sibling relation routes speak the create endpoint's coded shape:
+    the schema carries the type without bounds, the service's own check
+    raises, and both routes answer ``entity-invalid`` naming the field —
+    never FastAPI's framework field list."""
+    _novel, [mira, haus] = await _seed("Mira", "Haus")
+    async with _client() as client:
+        created = await client.post(
+            f"/api/knowledge/entities/{mira.id}/relations",
+            json={"to_entity_id": str(haus.id), "relation_type": "lebt_in"},
+        )
+        assert created.status_code == 201
+        add_path = f"/api/knowledge/entities/{mira.id}/relations"
+        patch_path = f"/api/knowledge/relations/{created.json()['id']}"
         for relation_type in ("   ", "x" * 81):
-            refused = await client.patch(path, json={"relation_type": relation_type})
-            assert refused.status_code == 422, relation_type
+            added = await client.post(
+                add_path, json={"to_entity_id": str(haus.id), "relation_type": relation_type}
+            )
+            assert added.status_code == 422, relation_type
+            added_detail = cast("dict[str, object]", added.json()["detail"])
+            assert added_detail["code"] == "entity-invalid"
+            assert added_detail["field"] == "relation type"
+            assert "relation type" in str(added_detail["detail"])
+
+            patched = await client.patch(patch_path, json={"relation_type": relation_type})
+            assert patched.status_code == 422, relation_type
+            patched_detail = cast("dict[str, object]", patched.json()["detail"])
+            assert patched_detail["code"] == "entity-invalid"
+            assert patched_detail["field"] == "relation type"
+            assert "relation type" in str(patched_detail["detail"])
 
 
 async def test_a_patched_type_cannot_collide_with_a_sibling_edge() -> None:

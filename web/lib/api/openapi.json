@@ -556,6 +556,57 @@
         "title": "EmbeddingMismatchRead",
         "type": "object"
       },
+      "EntityCreate": {
+        "description": "The POST body of an entity: its fields and the relation lines to place.\n\nThe values are checked by the service against the same contract the\nupdate path reads — the schema only carries them, so a refusal is the\ncoded ``entity-invalid``, never the framework's field list.",
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "relations": {
+            "items": {
+              "$ref": "#/components/schemas/RelationLine"
+            },
+            "title": "Relations",
+            "type": "array"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "novel_id",
+          "name",
+          "type"
+        ],
+        "title": "EntityCreate",
+        "type": "object"
+      },
       "EntityMerge": {
         "description": "The merge's whole ask: which row survives.",
         "properties": {
@@ -2317,6 +2368,87 @@
         "title": "PromptVariableProvenance",
         "type": "object"
       },
+      "Proposal": {
+        "description": "The dialog's draft: the slot set, its marks and the proposed relations.",
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "name_suggested": {
+            "default": false,
+            "title": "Name Suggested",
+            "type": "boolean"
+          },
+          "relations": {
+            "items": {
+              "$ref": "#/components/schemas/ProposedRelation"
+            },
+            "title": "Relations",
+            "type": "array"
+          },
+          "suggested": {
+            "$ref": "#/components/schemas/SuggestedParts"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "title": "Proposal",
+        "type": "object"
+      },
+      "ProposedRelation": {
+        "description": "One proposed relation, with the provenance the server decided.",
+        "properties": {
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "suggested": {
+            "default": false,
+            "title": "Suggested",
+            "type": "boolean"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target",
+          "type"
+        ],
+        "title": "ProposedRelation",
+        "type": "object"
+      },
       "ProposedRelationRead": {
         "description": "One proposed relation as review reads it: the target's name and the type.\n\nThe stored proposals speak the extraction answer's keys (``target``,\n``type``); the read shape names them target_name and relation_type, and\nboth spellings validate.",
         "properties": {
@@ -2648,7 +2780,7 @@
         "type": "object"
       },
       "RelationCreate": {
-        "description": "The POST body of an edge: the other end, a free-text type, a note.\n\nThe type is free text on purpose (D7) — the suggested vocabulary is a\nUI autocomplete, not an API constraint; the service checks blankness\nand length, the ends are taken from the path and this body and are\nimmutable afterwards.",
+        "description": "The POST body of an edge: the other end, a free-text type, a note.\n\nThe type is free text on purpose (D7) — the suggested vocabulary is a\nUI autocomplete, not an API constraint; the service checks blankness\nand length, and the refusal is the coded ``entity-invalid`` the create\nendpoint speaks, never the framework's field list. The ends are taken\nfrom the path and this body and are immutable afterwards.",
         "properties": {
           "note": {
             "anyOf": [
@@ -2662,8 +2794,6 @@
             "title": "Note"
           },
           "relation_type": {
-            "maxLength": 80,
-            "minLength": 1,
             "title": "Relation Type",
             "type": "string"
           },
@@ -2680,8 +2810,39 @@
         "title": "RelationCreate",
         "type": "object"
       },
+      "RelationLine": {
+        "description": "One relation line of a create-by-hand body: the target row, its type,\nan optional note. The client resolved the target to an entity id before\nthe request; the service still checks the row belongs to the novel.\n\nThe type carries no schema bounds: a blank or over-long label is the\nservice's ``entity-invalid`` refusal (coded, naming the field), not the\nframework's field list.",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "relation_type": {
+            "title": "Relation Type",
+            "type": "string"
+          },
+          "to_entity_id": {
+            "format": "uuid",
+            "title": "To Entity Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "to_entity_id",
+          "relation_type"
+        ],
+        "title": "RelationLine",
+        "type": "object"
+      },
       "RelationPatch": {
-        "description": "The PATCH body of an edge: type and note only.\n\nThe ends are immutable — moving an edge is delete plus create — so no\nfield here could carry them. ``model_fields_set`` tells a carried\n``null`` note (cleared) from an absent one (untouched).",
+        "description": "The PATCH body of an edge: type and note only.\n\nThe ends are immutable — moving an edge is delete plus create — so no\nfield here could carry them. ``model_fields_set`` tells a carried\n``null`` note (cleared) from an absent one (untouched). The type carries\nno schema bounds: a blank or over-long label is the service's coded\n``entity-invalid``, the create endpoint's own answer.",
         "properties": {
           "note": {
             "anyOf": [
@@ -2697,8 +2858,6 @@
           "relation_type": {
             "anyOf": [
               {
-                "maxLength": 80,
-                "minLength": 1,
                 "type": "string"
               },
               {
@@ -3194,6 +3353,336 @@
           "created_at"
         ],
         "title": "SeriesRead",
+        "type": "object"
+      },
+      "SessionCreate": {
+        "description": "The door's request: one novel, one mode, and the type the panel fixed.",
+        "properties": {
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          }
+        },
+        "required": [
+          "mode",
+          "novel_id"
+        ],
+        "title": "SessionCreate",
+        "type": "object"
+      },
+      "SessionDetail": {
+        "description": "The session with its transcript, up to the read limit, oldest first.",
+        "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Proposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "turns": {
+            "items": {
+              "$ref": "#/components/schemas/TurnRead"
+            },
+            "title": "Turns",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "novel_id",
+          "mode",
+          "entity_type",
+          "target_id",
+          "proposal",
+          "closed_at",
+          "created_at",
+          "updated_at",
+          "turns"
+        ],
+        "title": "SessionDetail",
+        "type": "object"
+      },
+      "SessionList": {
+        "description": "The novel's interviews: open first, then closed, newest first in each state.\n\nUp to ``SESSION_LIST_LIMIT`` in each state.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SessionSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SessionList",
+        "type": "object"
+      },
+      "SessionRead": {
+        "description": "One interview as every read shows it.",
+        "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Proposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "novel_id",
+          "mode",
+          "entity_type",
+          "target_id",
+          "proposal",
+          "closed_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SessionRead",
+        "type": "object"
+      },
+      "SessionSummary": {
+        "description": "One row of the novel's session list: identity, type and the draft's name.\n\nThe list renders a header and a state per session, so it carries no\nproposal — opening the session reads the transcript and the draft.",
+        "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "novel_id",
+          "mode",
+          "entity_type",
+          "target_id",
+          "name",
+          "closed_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SessionSummary",
         "type": "object"
       },
       "SettingsRead": {
@@ -3725,6 +4214,32 @@
         "title": "StoryboardStageRead",
         "type": "object"
       },
+      "SuggestedParts": {
+        "description": "Which slot values the model proposed rather than the writer.\n\nA list slot carries its provenance per item: the values that are suggested.",
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "content": {
+            "default": false,
+            "title": "Content",
+            "type": "boolean"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "title": "SuggestedParts",
+        "type": "object"
+      },
       "SuggestionRead": {
         "properties": {
           "chapter_id": {
@@ -4061,6 +4576,154 @@
           }
         },
         "title": "TimelineEventUpdate",
+        "type": "object"
+      },
+      "TurnCreate": {
+        "description": "One writer turn: what the panel sent, and the choice it named.\n\n``text`` may be empty only for ``accept-suggestion``: there the server\nstores the settled suggestion's own text, never the client's words.",
+        "properties": {
+          "act": {
+            "anyOf": [
+              {
+                "enum": [
+                  "accept-suggestion",
+                  "no-idea",
+                  "fill-all",
+                  "reject-suggestion",
+                  "drop-suggestions"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Act"
+          },
+          "text": {
+            "maxLength": 4000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "TurnCreate",
+        "type": "object"
+      },
+      "TurnRead": {
+        "description": "One transcript line and its suggestion state.",
+        "properties": {
+          "act": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Act"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          },
+          "suggestion_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion State"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "role",
+          "text",
+          "act",
+          "suggestion",
+          "suggestion_state",
+          "created_at"
+        ],
+        "title": "TurnRead",
+        "type": "object"
+      },
+      "TurnReadback": {
+        "description": "What one turn answered: the reply, the merged proposal, the suggestion.",
+        "properties": {
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Proposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reply": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          }
+        },
+        "required": [
+          "reply",
+          "proposal",
+          "suggestion",
+          "seq"
+        ],
+        "title": "TurnReadback",
         "type": "object"
       },
       "UpdateDismiss": {
@@ -4464,6 +5127,232 @@
         ]
       }
     },
+    "/api/chat/sessions": {
+      "get": {
+        "description": "The novel's interviews for this user, open first then closed, newest first per state.\n\nUp to ``SESSION_LIST_LIMIT`` per state.",
+        "operationId": "list_sessions_api_chat_sessions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Sessions",
+        "tags": [
+          "chat"
+        ]
+      },
+      "post": {
+        "description": "Open an interview: mode, type, novel and any target decide; a coded 404 or 422.",
+        "operationId": "open_session_api_chat_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Open Session",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/chat/sessions/{session_id}": {
+      "get": {
+        "description": "The session with its transcript, up to ``TRANSCRIPT_READ_LIMIT`` turns, oldest first.",
+        "operationId": "read_session_api_chat_sessions__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Session",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/chat/sessions/{session_id}/close": {
+      "post": {
+        "description": "End the interview; closing an already closed session answers it unchanged.",
+        "operationId": "close_session_api_chat_sessions__session_id__close_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Close Session",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/chat/sessions/{session_id}/turns": {
+      "post": {
+        "description": "Take one turn; the refusal names why nothing (or only the marks) moved.",
+        "operationId": "take_turn_api_chat_sessions__session_id__turns_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TurnCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnReadback"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Take Turn",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
     "/api/jobs/{job_id}": {
       "get": {
         "description": "Return an owned job's state; absent and other users' jobs both raise HTTP 404.",
@@ -4649,6 +5538,48 @@
           }
         },
         "summary": "Delete Document",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/entities": {
+      "post": {
+        "description": "Create an entity by hand, with its relation lines, in one transaction.\n\nReturn the entity; raise HTTP 404 for an absent or unowned novel, or\nHTTP 422 for an invalid name, type or label (``entity-invalid``), more\nthan twelve relation lines (``relation-limit``), a relation line outside\nthe novel (``relation-target-invalid``, naming the row), or a duplicate\nline (``relation-duplicate``).",
+        "operationId": "create_entity_api_knowledge_entities_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntityCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Entity",
         "tags": [
           "knowledge"
         ]
@@ -4845,7 +5776,7 @@
         ]
       },
       "post": {
-        "description": "Create a directed edge to another entity of the same novel.\n\nSelf-relations are allowed. Raise HTTP 404 when either end is absent\nor unowned or not of this novel, HTTP 422 for a blank or over-long\ntype, or HTTP 409 when this exact edge carries the type already.",
+        "description": "Create a directed edge to another entity of the same novel.\n\nSelf-relations are allowed. Raise HTTP 404 when either end is absent\nor unowned or not of this novel, HTTP 422 for a blank or over-long\ntype (``entity-invalid``, the create endpoint's own shape), or HTTP 409\nwhen this exact edge carries the type already.",
         "operationId": "add_relation_api_knowledge_entities__entity_id__relations_post",
         "parameters": [
           {
@@ -5368,7 +6299,7 @@
         ]
       },
       "patch": {
-        "description": "Retype or re-note an edge; the ends are immutable.\n\nReturn the edge; raise HTTP 404 for an absent or unowned edge,\nHTTP 422 for a blank or over-long type, or HTTP 409 when the new type\nwould duplicate the edge's sibling.",
+        "description": "Retype or re-note an edge; the ends are immutable.\n\nReturn the edge; raise HTTP 404 for an absent or unowned edge,\nHTTP 422 for a blank or over-long type (``entity-invalid``, the create\nendpoint's own shape), or HTTP 409 when the new type would duplicate the\nedge's sibling.",
         "operationId": "update_relation_api_knowledge_relations__relation_id__patch",
         "parameters": [
           {

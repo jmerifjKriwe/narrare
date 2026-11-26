@@ -24,6 +24,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chat/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Sessions
+         * @description The novel's interviews for this user, open first then closed, newest first per state.
+         *
+         *     Up to ``SESSION_LIST_LIMIT`` per state.
+         */
+        get: operations["list_sessions_api_chat_sessions_get"];
+        put?: never;
+        /**
+         * Open Session
+         * @description Open an interview: mode, type, novel and any target decide; a coded 404 or 422.
+         */
+        post: operations["open_session_api_chat_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Session
+         * @description The session with its transcript, up to ``TRANSCRIPT_READ_LIMIT`` turns, oldest first.
+         */
+        get: operations["read_session_api_chat_sessions__session_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat/sessions/{session_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close Session
+         * @description End the interview; closing an already closed session answers it unchanged.
+         */
+        post: operations["close_session_api_chat_sessions__session_id__close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat/sessions/{session_id}/turns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Take Turn
+         * @description Take one turn; the refusal names why nothing (or only the marks) moved.
+         */
+        post: operations["take_turn_api_chat_sessions__session_id__turns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -111,6 +197,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge/entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Entity
+         * @description Create an entity by hand, with its relation lines, in one transaction.
+         *
+         *     Return the entity; raise HTTP 404 for an absent or unowned novel, or
+         *     HTTP 422 for an invalid name, type or label (``entity-invalid``), more
+         *     than twelve relation lines (``relation-limit``), a relation line outside
+         *     the novel (``relation-target-invalid``, naming the row), or a duplicate
+         *     line (``relation-duplicate``).
+         */
+        post: operations["create_entity_api_knowledge_entities_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge/entities/{entity_id}": {
         parameters: {
             query?: never;
@@ -189,7 +301,8 @@ export interface paths {
          *
          *     Self-relations are allowed. Raise HTTP 404 when either end is absent
          *     or unowned or not of this novel, HTTP 422 for a blank or over-long
-         *     type, or HTTP 409 when this exact edge carries the type already.
+         *     type (``entity-invalid``, the create endpoint's own shape), or HTTP 409
+         *     when this exact edge carries the type already.
          */
         post: operations["add_relation_api_knowledge_entities__entity_id__relations_post"];
         delete?: never;
@@ -401,8 +514,9 @@ export interface paths {
          * @description Retype or re-note an edge; the ends are immutable.
          *
          *     Return the edge; raise HTTP 404 for an absent or unowned edge,
-         *     HTTP 422 for a blank or over-long type, or HTTP 409 when the new type
-         *     would duplicate the edge's sibling.
+         *     HTTP 422 for a blank or over-long type (``entity-invalid``, the create
+         *     endpoint's own shape), or HTTP 409 when the new type would duplicate the
+         *     edge's sibling.
          */
         patch: operations["update_relation_api_knowledge_relations__relation_id__patch"];
         trace?: never;
@@ -1857,6 +1971,36 @@ export interface components {
             detail: components["schemas"]["EmbeddingMismatchDetail"];
         };
         /**
+         * EntityCreate
+         * @description The POST body of an entity: its fields and the relation lines to place.
+         *
+         *     The values are checked by the service against the same contract the
+         *     update path reads — the schema only carries them, so a refusal is the
+         *     coded ``entity-invalid``, never the framework's field list.
+         */
+        EntityCreate: {
+            /** Aliases */
+            aliases?: string[];
+            /**
+             * Content
+             * @default
+             */
+            content: string;
+            /** Name */
+            name: string;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            /** Relations */
+            relations?: components["schemas"]["RelationLine"][];
+            /** Tags */
+            tags?: string[];
+            /** Type */
+            type: string;
+        };
+        /**
          * EntityMerge
          * @description The merge's whole ask: which row survives.
          */
@@ -2576,6 +2720,51 @@ export interface components {
             value: string;
         };
         /**
+         * Proposal
+         * @description The dialog's draft: the slot set, its marks and the proposed relations.
+         */
+        Proposal: {
+            /** Aliases */
+            aliases?: string[];
+            /**
+             * Content
+             * @default
+             */
+            content: string;
+            /** Name */
+            name?: string | null;
+            /**
+             * Name Suggested
+             * @default false
+             */
+            name_suggested: boolean;
+            /** Relations */
+            relations?: components["schemas"]["ProposedRelation"][];
+            suggested?: components["schemas"]["SuggestedParts"];
+            /** Tags */
+            tags?: string[];
+        };
+        /**
+         * ProposedRelation
+         * @description One proposed relation, with the provenance the server decided.
+         */
+        ProposedRelation: {
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /**
+             * Suggested
+             * @default false
+             */
+            suggested: boolean;
+            /** Target */
+            target: string;
+            /** Type */
+            type: string;
+        };
+        /**
          * ProposedRelationRead
          * @description One proposed relation as review reads it: the target's name and the type.
          *
@@ -2696,10 +2885,32 @@ export interface components {
          *
          *     The type is free text on purpose (D7) — the suggested vocabulary is a
          *     UI autocomplete, not an API constraint; the service checks blankness
-         *     and length, the ends are taken from the path and this body and are
-         *     immutable afterwards.
+         *     and length, and the refusal is the coded ``entity-invalid`` the create
+         *     endpoint speaks, never the framework's field list. The ends are taken
+         *     from the path and this body and are immutable afterwards.
          */
         RelationCreate: {
+            /** Note */
+            note?: string | null;
+            /** Relation Type */
+            relation_type: string;
+            /**
+             * To Entity Id
+             * Format: uuid
+             */
+            to_entity_id: string;
+        };
+        /**
+         * RelationLine
+         * @description One relation line of a create-by-hand body: the target row, its type,
+         *     an optional note. The client resolved the target to an entity id before
+         *     the request; the service still checks the row belongs to the novel.
+         *
+         *     The type carries no schema bounds: a blank or over-long label is the
+         *     service's ``entity-invalid`` refusal (coded, naming the field), not the
+         *     framework's field list.
+         */
+        RelationLine: {
             /** Note */
             note?: string | null;
             /** Relation Type */
@@ -2716,7 +2927,9 @@ export interface components {
          *
          *     The ends are immutable — moving an edge is delete plus create — so no
          *     field here could carry them. ``model_fields_set`` tells a carried
-         *     ``null`` note (cleared) from an absent one (untouched).
+         *     ``null`` note (cleared) from an absent one (untouched). The type carries
+         *     no schema bounds: a blank or over-long label is the service's coded
+         *     ``entity-invalid``, the create endpoint's own answer.
          */
         RelationPatch: {
             /** Note */
@@ -3008,6 +3221,144 @@ export interface components {
             /** Title */
             title: string;
         };
+        /**
+         * SessionCreate
+         * @description The door's request: one novel, one mode, and the type the panel fixed.
+         */
+        SessionCreate: {
+            /** Entity Type */
+            entity_type?: string | null;
+            /** Mode */
+            mode: string;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            /** Target Id */
+            target_id?: string | null;
+        };
+        /**
+         * SessionDetail
+         * @description The session with its transcript, up to the read limit, oldest first.
+         */
+        SessionDetail: {
+            /** Closed At */
+            closed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Entity Type */
+            entity_type: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mode */
+            mode: string;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            proposal: components["schemas"]["Proposal"] | null;
+            /** Target Id */
+            target_id: string | null;
+            /** Turns */
+            turns: components["schemas"]["TurnRead"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * SessionList
+         * @description The novel's interviews: open first, then closed, newest first in each state.
+         *
+         *     Up to ``SESSION_LIST_LIMIT`` in each state.
+         */
+        SessionList: {
+            /** Items */
+            items: components["schemas"]["SessionSummary"][];
+        };
+        /**
+         * SessionRead
+         * @description One interview as every read shows it.
+         */
+        SessionRead: {
+            /** Closed At */
+            closed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Entity Type */
+            entity_type: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mode */
+            mode: string;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            proposal: components["schemas"]["Proposal"] | null;
+            /** Target Id */
+            target_id: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * SessionSummary
+         * @description One row of the novel's session list: identity, type and the draft's name.
+         *
+         *     The list renders a header and a state per session, so it carries no
+         *     proposal — opening the session reads the transcript and the draft.
+         */
+        SessionSummary: {
+            /** Closed At */
+            closed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Entity Type */
+            entity_type: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mode */
+            mode: string;
+            /** Name */
+            name: string | null;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            /** Target Id */
+            target_id: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** SettingsRead */
         SettingsRead: {
             /** Author Name */
@@ -3181,6 +3532,23 @@ export interface components {
             /** To */
             to: number;
         };
+        /**
+         * SuggestedParts
+         * @description Which slot values the model proposed rather than the writer.
+         *
+         *     A list slot carries its provenance per item: the values that are suggested.
+         */
+        SuggestedParts: {
+            /** Aliases */
+            aliases?: string[];
+            /**
+             * Content
+             * @default false
+             */
+            content: boolean;
+            /** Tags */
+            tags?: string[];
+        };
         /** SuggestionRead */
         SuggestionRead: {
             /**
@@ -3341,6 +3709,55 @@ export interface components {
             position?: number | null;
             /** Title */
             title?: string | null;
+        };
+        /**
+         * TurnCreate
+         * @description One writer turn: what the panel sent, and the choice it named.
+         *
+         *     ``text`` may be empty only for ``accept-suggestion``: there the server
+         *     stores the settled suggestion's own text, never the client's words.
+         */
+        TurnCreate: {
+            /** Act */
+            act?: ("accept-suggestion" | "no-idea" | "fill-all" | "reject-suggestion" | "drop-suggestions") | null;
+            /** Text */
+            text: string;
+        };
+        /**
+         * TurnRead
+         * @description One transcript line and its suggestion state.
+         */
+        TurnRead: {
+            /** Act */
+            act: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Role */
+            role: string;
+            /** Seq */
+            seq: number;
+            /** Suggestion */
+            suggestion: string | null;
+            /** Suggestion State */
+            suggestion_state: string | null;
+            /** Text */
+            text: string;
+        };
+        /**
+         * TurnReadback
+         * @description What one turn answered: the reply, the merged proposal, the suggestion.
+         */
+        TurnReadback: {
+            proposal: components["schemas"]["Proposal"] | null;
+            /** Reply */
+            reply: string | null;
+            /** Seq */
+            seq: number;
+            /** Suggestion */
+            suggestion: string | null;
         };
         /**
          * UpdateDismiss
@@ -3549,6 +3966,167 @@ export interface operations {
             };
         };
     };
+    list_sessions_api_chat_sessions_get: {
+        parameters: {
+            query: {
+                novel_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    open_session_api_chat_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_session_api_chat_sessions__session_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_session_api_chat_sessions__session_id__close_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    take_turn_api_chat_sessions__session_id__turns_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TurnCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnReadback"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_job_api_jobs__job_id__get: {
         parameters: {
             query?: never;
@@ -3681,6 +4259,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_entity_api_knowledge_entities_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityRead"];
+                };
             };
             /** @description Validation Error */
             422: {

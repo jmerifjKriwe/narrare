@@ -18,7 +18,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from app.api.main import app
-from app.capabilities.prompts.service import PromptService
+from app.capabilities.prompts.service import SUMMARY_MARKER_PREFIXES, PromptService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Novel
 from app.kernel.db.session import Session
@@ -34,6 +34,7 @@ CONTINUATION = "writing.continuation"
 CHAT = "chat.ask"
 EXTRACT = "knowledge.extract-entities"
 CONSISTENCY = "knowledge.check-consistency"
+INTERVIEW = "knowledge.entity-interview"
 
 
 def _client() -> AsyncClient:
@@ -156,22 +157,51 @@ async def test_the_diff_shows_the_bundled_against_the_override() -> None:
         assert changed.json()["override_content"] == content
 
 
-async def test_the_list_shows_all_four_keys_with_their_facts() -> None:
-    """Four bundled keys; ``chat.ask`` alone carries no novel scope."""
+async def test_the_list_shows_all_five_keys_with_their_facts() -> None:
+    """Five bundled keys; ``chat.ask`` alone carries no novel scope."""
     async with _client() as client:
         listed = (await client.get("/api/prompts")).json()
 
     by_key = {row["key"]: row for row in listed}
-    assert set(by_key) == {CONTINUATION, CHAT, EXTRACT, CONSISTENCY}
+    assert set(by_key) == {CONTINUATION, CHAT, EXTRACT, CONSISTENCY, INTERVIEW}
     assert by_key[CONTINUATION]["novel_scopable"] is True
     assert by_key[EXTRACT]["novel_scopable"] is True
     assert by_key[CONSISTENCY]["novel_scopable"] is True
+    assert by_key[INTERVIEW]["novel_scopable"] is True
     assert by_key[CHAT]["novel_scopable"] is False
     for row in listed:
         assert row["override_global"] is False
         assert row["override_novel"] is False
         assert 0 < len(row["bundled_summary"]) <= 120
     assert by_key[CONTINUATION]["bundled_summary"].startswith("Novel:")
+
+
+async def test_every_card_hides_its_purpose_marker() -> None:
+    """One rule for every key: a summary starts at the first prose line, no marker."""
+    async with _client() as client:
+        listed = (await client.get("/api/prompts")).json()
+
+    by_key = {row["key"]: row["bundled_summary"] for row in listed}
+    assert by_key[CONTINUATION] == (
+        "Novel: Der Nebel\nChapter: Ankunft\n\nText so far:\nDer Nebel kam von See.\n\n"
+        "Referenced entities:\n### Mira (character)\nDie Wa"
+    )
+    assert by_key[CHAT] == (
+        "Answer the question using only the sources below. Quote the passage that carries "
+        "the answer verbatim, and do not add kno"
+    )
+    assert by_key[EXTRACT] == (
+        "Extract the entities that appear in the chapter below. For each one judge a type — "
+        "character|location|faction|object|sys"
+    )
+    assert by_key[CONSISTENCY] == (
+        "Read the chapters below as one story and find where the text contradicts itself: "
+        "an age that changes between chapters, a"
+    )
+    assert by_key[INTERVIEW].startswith("You are interviewing the writer")
+    for summary in by_key.values():
+        assert not summary.startswith(SUMMARY_MARKER_PREFIXES)
+        assert "PURPOSE:" not in summary
 
 
 async def test_deleting_the_global_tier_leaves_the_novel_row_in_place() -> None:
@@ -242,6 +272,78 @@ async def test_an_override_that_drops_the_chat_contract_is_refused() -> None:
         assert body["reason"] == "contract"
         assert "contract" in body["detail"]
         assert await _rows() == []
+
+
+async def test_an_override_that_drops_the_interview_request_marker_is_refused() -> None:
+    """A re-voice that loses ``REQUEST:`` fails the interview's contract."""
+    async with _client() as client:
+        saved = await client.put(
+            f"/api/prompts/{INTERVIEW}",
+            json={
+                "content": (
+                    "PURPOSE: entity-interview\n"
+                    "TYPE: {{ entity_type }}\n"
+                    "SLOTS: {{ slots }}\n"
+                    "RELATIONS: {{ relations }}\n"
+                    "TURNS:\n{{ transcript }}\n"
+                    "ROSTER:\n{{ roster }}\n"
+                )
+            },
+        )
+        assert saved.status_code == 422
+        assert saved.json()["detail"]["reason"] == "contract"
+        assert await _rows() == []
+
+
+async def test_an_interview_override_with_the_markers_but_no_payload_is_refused() -> None:
+    """The markers alone are not enough: the sample payload must ride whole."""
+    async with _client() as client:
+        saved = await client.put(
+            f"/api/prompts/{INTERVIEW}",
+            json={
+                "content": (
+                    "PURPOSE: entity-interview\n"
+                    "TYPE: {{ entity_type }}\n"
+                    "SLOTS: n/a\n"
+                    "RELATIONS: {{ relations }}\n"
+                    "TURNS:\n{{ transcript }}\n"
+                    "ROSTER:\n{{ roster }}\n"
+                    "REQUEST: {{ request }}\n"
+                )
+            },
+        )
+        assert saved.status_code == 422
+        assert saved.json()["detail"]["reason"] == "contract"
+        assert await _rows() == []
+
+
+async def test_a_reworded_interview_override_saves() -> None:
+    """The accept path: a re-voice that keeps every marker and variable saves.
+
+    Beside the two refusals above: the author may rewrite the prose, reorder
+    or drop the question tracks, as long as the purpose line, every marker
+    and every variable the fake reads ride the render.
+    """
+    content = (
+        "PURPOSE: entity-interview\n"
+        "Du fragst die Schreibenden nach einer neuen Figur oder einem neuen Ort.\n"
+        "TYPE: {{ entity_type }}\n"
+        "SLOTS: {{ slots }}\n"
+        "RELATIONS: {{ relations }}\n"
+        "TURNS:\n{{ transcript }}\n"
+        "ROSTER:\n{{ roster }}\n"
+        "REQUEST: {{ request }}\n"
+    )
+    async with _client() as client:
+        saved = await client.put(f"/api/prompts/{INTERVIEW}", json={"content": content})
+        assert saved.status_code == 200, saved.text
+        assert saved.json()["override"] == {"scope": "global", "content": content}
+
+    rows = await _rows()
+    assert len(rows) == 1
+    assert rows[0][0] == INTERVIEW
+    assert rows[0][1] is None  # the global tier
+    assert rows[0][2] == content
 
 
 async def test_a_novel_scoped_save_on_a_global_only_key_names_the_key() -> None:

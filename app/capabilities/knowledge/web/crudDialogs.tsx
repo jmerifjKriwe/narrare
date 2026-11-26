@@ -28,14 +28,17 @@
  * outage. Every close returns focus to the opener; a trigger the write itself
  * retired (a deleted row) is simply not focused, the shelf's own rule.
  *
- * New-entity creation has NO endpoint — entities are born through the
- * extraction review (the plan binds „no new backend"). There is no
- * CreateEntityDialog here; the graph's new-entity door stands an honest
- * disabled gap with its note, the wave's gap-ledger pattern.
+ * New-entity creation (W9) moved to `entityCreate/` in Task 11; this module
+ * keeps the shared modal frame it rides (`Modal`, `FormHeader`, `Spinner`,
+ * `INPUT`, the schema's bounds) beside the edit, delete and merge family.
  *
  * The module imports no other capability (rule 1): the busy spinner and the
  * error line are re-owned here on the shell's tokens, the writing family's
  * geometry, speaking the knowledge catalog's own words.
+ *
+ * Test seams: the create dialog's stable hooks are `entity-create-…`
+ * `data-testid`s, the house convention; they live beside the dialog in
+ * `entityCreate/`.
  */
 import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
@@ -62,15 +65,15 @@ const SERIF = "[font-family:var(--font-serif)]";
 
 /** The schema's bounds, mirrored on the inputs so the writer meets them
  *  before the wire does: the name column's width, the relation type's cap. */
-const NAME_MAX = 200;
-const RELATION_TYPE_MAX = 80;
+export const NAME_MAX = 200;
+export const RELATION_TYPE_MAX = 80;
 
-const INPUT =
+export const INPUT =
   "w-full rounded border border-border bg-surface-container-low px-2.5 py-1.5 text-body text-foreground";
 
 /** The shell's busy face (the quick menu's spinner): a ring with one
  *  transparent quarter, turning. No glyph — the motion is the mark. */
-function Spinner({ tone = "primary" }: { tone?: "primary" | "danger" }) {
+export function Spinner({ tone = "primary" }: { tone?: "primary" | "danger" }) {
   const ring = tone === "danger" ? "border-danger" : "border-primary-foreground";
   return (
     <span aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 animate-spin rounded-full border border-t-transparent ${ring}`} />
@@ -110,7 +113,7 @@ function ErrorLine({ message, onRetry }: { message: string; onRetry: () => void 
  *  opener (a deleted row, a folded dossier) sets `retiredRef`; the return then
  *  lands on `survivorFocusId` — the container that survives the write — instead
  *  of an opener that is gone, so focus never falls to the body. */
-function Modal({
+export function Modal({
   openerId,
   role,
   headingId,
@@ -119,6 +122,7 @@ function Modal({
   scrimDismiss,
   focusRef,
   panelClassName,
+  panelTestId,
   survivorFocusId,
   retiredRef,
   children,
@@ -131,6 +135,7 @@ function Modal({
   scrimDismiss: boolean;
   focusRef: RefObject<HTMLElement | null>;
   panelClassName: string;
+  panelTestId?: string;
   survivorFocusId?: string;
   retiredRef?: RefObject<boolean>;
   children: ReactNode;
@@ -158,6 +163,7 @@ function Modal({
         aria-modal="true"
         aria-labelledby={headingId}
         aria-describedby={bodyId}
+        data-testid={panelTestId}
         className={panelClassName}
       >
         {children}
@@ -168,15 +174,17 @@ function Modal({
 
 /** The form panel's header: the serif heading and the cross that closes
  *  (honestly unavailable while busy or dirty). */
-function FormHeader({
+export function FormHeader({
   headingId,
   title,
+  badge,
   busy,
   dirty,
   onClose,
 }: {
   headingId: string;
   title: string;
+  badge?: string;
   busy: boolean;
   dirty: boolean;
   onClose: () => void;
@@ -185,15 +193,22 @@ function FormHeader({
   const held = busy || dirty;
   return (
     <div className="flex items-start justify-between gap-2">
-      <h2 id={headingId} className={`${SERIF} text-body font-semibold text-foreground`}>
-        {title}
-      </h2>
+      <div className="flex min-w-0 items-center gap-2">
+        <h2 id={headingId} className={`${SERIF} text-body font-semibold text-foreground`}>
+          {title}
+        </h2>
+        {badge !== undefined && (
+          <span className="shrink-0 rounded bg-surface-container-high px-2 py-0.5 text-meta font-medium text-foreground">
+            {badge}
+          </span>
+        )}
+      </div>
       <button
         type="button"
         disabled={held}
         aria-label={t("knowledge.crud.close")}
         onClick={onClose}
-        className={`rounded p-0.5 text-muted transition-colors hover:text-foreground ${FOCUS} ${held ? "cursor-not-allowed opacity-50" : ""}`}
+        className={`flex h-6 w-6 items-center justify-center rounded text-muted transition-colors hover:text-foreground ${FOCUS} ${held ? "cursor-not-allowed opacity-50" : ""}`}
       >
         <Icon name="cross" size={14} />
       </button>

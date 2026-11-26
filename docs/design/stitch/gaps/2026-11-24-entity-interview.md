@@ -1,0 +1,199 @@
+# The W9 assistant sessions — the entity interview — what is still a placeholder, and what replaces it
+
+> **Status:** living document, opened with the assistant sessions wave W9's
+> PR 3 (2026-11-25, the gap ledger landing; PR 1 #956 (`38e1e58a4`) and PR 2
+> #973 (`61f715fae`) merged before it, PR 3 is #974 on `feat/entity-interview`).
+> Keep it current: when a row's trigger lands, update the row in the same
+> commit that replaces the interim. This is the single English list of every
+> element of the wave's surfaces — the lore-graph page's interview panel (the
+> type chooser, the transcript, the composer, the proposal card, the failure
+> faces, the interviews list, the door with its count), the create dialog
+> (manual and interview-prefilled, with its relations) and the graph's and
+> dossiers' create doors — that ships as a placeholder, a deliberate omission
+> or a draft drift because the backend, the surface or the corrected draft
+> does not exist yet.
+>
+> **Authority:** the owner-approved Stitch round of 2026-11-24, six screens
+> under [`screens/knowledge/`](../screens/knowledge/):
+> `entity-interview`, `entity-interview-states`, `entity-interview-dark`,
+> `entity-interview-states-dark`, `entity-create-dialog` and
+> `entity-create-dialog-dark` (brief:
+> `docs/superpowers/specs/2026-11-24-entity-interview-stitch-brief.md`). Rows 1–8
+> do not come from these six screens: they record the chrome of the superseded
+> Genesis draft
+> ([`entity-genesis-ai-dialog.html`](../screens/knowledge/entity-genesis-ai-dialog.html),
+> marked «überholt durch `entity-interview`» in the
+> [`README.md`](../README.md)), which the 2026-11-24 round did not draw; their
+> «Drafted» column quotes that draft. Light drafts win; the dark faces ride the
+> shell's token ladder. The gap contract
+> is the W9 design's owner rulings (2026-11-24: relations are rows, the type
+> is fixed once the interview starts) and the Stitch round's owner checkpoint
+> (2026-11-24, passed without a note): the round ported as committed, no
+> invented numbers, no invented metrics, no dead promises. The table's format
+> follows the W8 ledger
+> ([`2026-11-22-settings-ai-rules.md`](2026-11-22-settings-ai-rules.md)).
+>
+> The wave's index issue is **#975** (the
+> [`follow-ups.md`](../../../superpowers/follow-ups.md) row carries its number).
+> The filed children are **#966** and **#969**; every other finding of the
+> wave was fixed in it — #951–#955, #957 and #958 close when PR 3 merges,
+> #967, #968 and #970–#972 closed with PR 2, #914 closed with PR 1. Rows whose
+> trigger is a later wave, a product or an owner decision record their trigger
+> here and carry no issue — the ledger is their home until that trigger fires.
+
+## Why placeholders exist
+
+The owner's condition, carried from W3–W8: fidelity to the drafts without
+lies. A feature the backend cannot serve keeps the draft's geometry with an
+honest neutral — never an invented number, never a fabricated state. The W9
+wave adds five rules of its own. The no-metrics rule: no completion
+percentage, no score, no persona, no model badge — an open field says „noch
+offen" (the catalog's word), and nothing computes a figure the wire does not
+carry. The honest-faces rule: a failure names what the wire answered and
+offers only the action that can help — the settings door for a missing model,
+the prompt editor for a refused prompt, no retry for a stale suggestion — and
+a code the panel does not know keeps its name beside the generic sentence.
+The no-dead-actions rule: every failure action is real and every door opens
+the surface it names; the drafts' chrome (a sheet's head, dimmed cards behind
+a scrim, a mock persona) ships nowhere. The scoped-guard rule: a turn and a
+close belong to the interview they were sent for; a slow answer from the
+interview the writer left never touches the one now shown. The save-door
+disclosure: a window ruled no action (the proposal on screen while a turn's
+settle is still refetching) is recorded here rather than widened into a
+flicker.
+
+## The gap list
+
+„Drafted" is what the round authority draws (or, for the rows the wave
+decided itself, what a complete surface would ask; rows 1–8 quote the
+superseded Genesis draft, which the round did not draw). „Shipped in W9" is the
+interim the wave commits to. „Trigger" is the surface, field or decision that
+must exist before the interim can become the drafted value. „Wave/issue"
+names the owner of the trigger and the row's child under the wave's index.
+
+| Nr | Element | Drafted | Shipped in W9 | Trigger | Wave/issue |
+|---|---|---|---|---|---|
+| 1 | Completion percentage and the canon seal | „Synthese 85 %" beside the proposal and the „100 % Kanonisch" seal on the type chip | not ported — invented numbers, and no read computes a score or a seal; an open field reads „noch offen" (the catalog's word), and the chip names the type alone | a score the product computes and the owner wants shown | owner decision · no issue |
+| 2 | Graph preview in the dossier column | a small graph preview beside the interview | not ported — the real graph is the page behind the panel; the selected entity's dossier yields to the panel and returns when it closes | a corrected draft that draws the preview, or a preview surface the graph can serve | draft gap · no issue |
+| 3 | Manuscript excerpt column and „Lore-Entität extrahieren" | an excerpt column beside the interview and the action that names an entity from it | not ported — the interview creates an entity the manuscript never named; extraction from prose is the existing review path | the interview reading the manuscript | later wave · no issue |
+| 4 | The chat persona and its tabs | „Narrare Muse 4.5", the model badge „Prosa-Architekt", the tabs „Lore-Genesis / Kausalitäts-Graph / Kanon-Zitate" | not ported — no persona and no per-turn model fact exists, and the interview has one mode; the header names the panel and the session's type | a persona and a model fact the wire carries, or a corrected draft that drops them | draft gap · no issue |
+| 5 | „Als Verknüpfung vormerken" as a third action | a third action beside save and end | replaced by owner decision 1 (2026-11-24): a relation is a row in the proposal and in the create dialog — kept, changed or struck; there is no mark-for-linking step | the owner reversing decision 1 | owner decision · no issue |
+| 6 | The attach buttons | „Manuskript-Referenz anhängen" and „Lore-Graph anheften" in the composer | not ported — no attachment contract exists for a session; a turn carries text and one of five acts | an attachment contract for sessions | later wave · no issue |
+| 7 | „Vorgeschlagene Kausal-Aktionen" as quick replies | quick replies that push actions onto the graph | not ported — the interview asks; it does not push actions (owner decision) | the owner asking for action suggestions; the graph's own actions stay the graph's | owner decision · no issue |
+| 8 | „Modus: Dialogische Genesis" and „Muse bereit" | two header facts no read answers | not ported — decorative chrome with no fact behind it | a mode fact and a readiness fact a read answers | draft gap · no issue |
+| 9 | The states sheet's head label | „Narrare — Dokumentation & Referenz" above the app chrome | not copied — sheet chrome, not app chrome; the panel's header reads „Neue Entität" and the session's type | a corrected draft whose head is app chrome | draft gap · no issue |
+| 10 | The states sheet's count word | „Sitzungen" as the list's count word, where the product says „Interviews" | the list is titled „Interviews" and its count says „1 Interview"/„2 Interviews" („1 entretien"/„2 entretiens"); a row's state reads „offen" or „beendet" | — (fixed in-wave: the catalog pass counts interviews) | resolved · no issue |
+| 11 | The dialog sheet's copy | the button „Speichern"; the line „Toast-Meldung schließt automatisch" | „Entität speichern" (the catalog's word); the toast closes itself after six seconds, pauses while the pointer rests on it or a control inside it has focus, and carries a named close button — the surface shows the behaviour instead of promising it | a corrected draft that draws the real button and drops the toast line | draft gap · no issue |
+| 12 | The dialog sheet's variant B | the word „Fixiert" set beside the type as if it were a value, and a type name cut off in row 1's select | the locked type is a chip with the lock glyph and the catalog's type word, the badge beside it the catalog's „Fixiert"; the port never truncates a name | a corrected draft that draws the locked chip and truncates nothing | draft gap · no issue |
+| 13 | The dialog sheet's dark variant | dimmed entity cards behind the dialogs („Subraum-Relaisnetz") | not copied — backdrop decoration, not app chrome; the dark face rides the shell's token ladder with a plain scrim | a corrected dark draft without the backdrop cards | draft gap · no issue |
+| 14 | The type tiles' icons | icon names the app does not carry | the port maps every type through `TYPE_ICONS` (`app/capabilities/knowledge/web/entityTypes.ts`), so a tile's glyph is the app's own | a corrected draft that draws the app's icon set | draft gap · no issue |
+| 15 | The type chooser's first state | the states tile draws „Objekt" selected, and the panel header a type chip in every state | nothing is preselected — no type is the default, so „Interview starten" waits for a pick — and the header chip appears once a session exists | an owner call preselecting a type | owner decision · no issue |
+| 16 | The no-model face's actions | one action („KI-Regeln öffnen") | both „KI-Regeln öffnen" and „Erneut versuchen", each real: the first opens the AI-Regeln page, the second re-sends the turn | a corrected draft or an owner call dropping one | owner decision · no issue |
+| 17 | Failure faces the reference does not draw | none — the states sheet draws the not-evaluable and the no-model faces | three honest faces for codes the wire answers with: `provider-error`, `prompt-refused` (with the door to `/settings/prompts`) and `suggestion-mismatch` (its own face, no retry — retrying would send a stale body); an unknown code shows the generic face with its code | a corrected states reference drawing them | draft gap · no issue |
+| 18 | The create dialog's hardening beyond the approved screen | the approved screen, without the edges PR 1's review found | PR 1's parked findings, fixed in PR 3's first round: the add control stops at twelve relations with a note; every coded refusal has a catalog sentence, and a relation code marks the visible row it names; duplicate rows are flagged before the save; the toast pauses while read and closes on demand; the sibling relation routes answer the create endpoint's coded 422 | — (fixed in-wave) | resolved · no issue |
+| 19 | The panel's hidden state | the spec's „Closing the panel only hides it" | the conversation's state outlives the hide (a host component owns it): reopened during a turn, the panel shows that it is thinking with the composer disabled; a turn that fails keeps its face and the text; an unsent draft survives; a turn acts only on the interview it was sent for; the shown interview is busy while its own turn is in flight, whoever was sent after it; and the draft, a failure and its refused body are kept per interview, so a failure that lands while another is shown is there — with its text and, where the face offers one, its retry — when the writer returns | — (fixed in-wave) | resolved · no issue |
+| 20 | The save door between a turn's settle and the session's refetch | undrafted — no face draws the moment between an answer and its refetch | for one read's duration the save door is open while the cache still holds the previous proposal; the writer saves the proposal on screen. Ruled no action: widening `busy` would flicker the composer after every answer | a report of a save that missed the last answer | no action recorded · no issue |
+| 21 | Two closes in flight on different interviews | undrafted — no face draws two closes at once | the close's busy and failed flags read the latest close sent, so a close of A still in flight after the writer ended B leaves A's end button enabled (the server's close is idempotent — a second click is harmless) and its failure unreported. Ruled no action: the window is one request's flight time; the fix is the turn's per-session count | a report or a browser leg showing it | no action recorded · no issue |
+| 22 | Resolution against a list that failed to load | undrafted — no face draws the roster's failed read | a roster that is still loading withholds the outcome and the save; a roster whose read failed is settled-empty, so proposed rows read „Kein Treffer — zuordnen oder streichen" beside the note that unassigned relations are not created (the manual dialog's long-standing exposure) | an error face for the roster's read | later wave · no issue |
+| 23 | An invalid `act` on a turn | undrafted — the wire's contract, not a face | the framework's own 422, not a coded refusal — the panel's chips send only the five defined acts | chat gaining client-chosen acts beyond the five | chat wave · no issue |
+| 24 | The interviews list's bound | an unbounded list | `SESSION_LIST_LIMIT` (200) per state, open sessions first, newest first in each; the door opens row one | a novel with more than 200 open interviews | later wave · no issue |
+| 25 | A turn in flight cannot be cancelled | none — the reference draws no cancel | a turn runs to its end; the panel may be hidden meanwhile and the answer lands anyway; nothing reaches the novel without the author's save | the streaming cut (the free chat) or an owner call | later wave · no issue |
+| 26 | The expanded proposal's height | a short proposal — the reference draws no bound on one | the card is bounded at 35% of the panel and its body scrolls with keyboard access, so a long description and twelve relations leave the collapse control, the composer, the save door and the end button in view and the transcript with a share | a corrected draft that draws a long proposal and its bound | draft gap · no issue |
+| 27 | The suggested name's mark in the create dialog | the approved dialog screen marks the tag and the description with „vorgeschlagen", a relation row with its ✦ spark — not the name | `entityPrefillFromProposal` drops `proposal.name_suggested`, so the dialog shows the name without the mark the proposal card gives it | an owner call to mark the name too, or a corrected draft that draws it | owner decision · no issue |
+| 28 | `field` on the create's wire refusal | a refusal names the row or field it points at, and the dialog marks it | `row` is consumed — the dialog flags the visible relation row the refusal names; `field` is carried with no field marked by it, and only the refusal's sentence names what to check | a field-level marking of the named field in the create dialog | later wave · no issue |
+| 29 | The expanded proposal's bound at short viewports | a short proposal — the reference draws no bound on one | the bound of row 26 is measured at 1280×720 and 390×844, the two sizes the panel has; at a viewport much shorter than 720 the fixed chrome plus 35 % can squeeze the transcript under its share | a viewport shorter than the ruled ones — then a minimum height for the transcript or a lower share | knowledge polish · no issue |
+| 30 | The saved proposal on an ended interview | nothing — the design lets an ended interview's proposal stay savable | exactly that: an ended interview whose proposal was already saved offers «Als Entität speichern» again, because the wire carries no mark that a proposal became an entity (the close failure the handover can meet is shut until the interview ends) | a saved mark on the session (the next cut) or an owner call | assistant-sessions cut 2 · no issue |
+
+## Resolved this wave (recorded so nobody re-opens them as gaps)
+
+- **The parked findings came back.** The owner's rule of 2026-11-14 — no
+  finding deferred inside a running wave, not a minor — was applied too
+  leniently at the first two gates: PR 1's seven findings were parked as
+  issues and PR 2's five as issues; PR 2's came back in its own branch
+  (#967, #968, #970–#972) and PR 1's in PR 3's first round (#951–#955, #957,
+  #958). Two stay issues with a reason: #966 (a warning seen once, root cause
+  unknown) and #969 (a generator check that needs the owner's approval under
+  the governance budget).
+- **PR 2's review rounds.** The proposal is merged under the session's lock,
+  not replaced (two racing turns keep both answers); a slot has three states
+  in a model answer — omitted is untouched, empty clears, a value sets;
+  „Übernehmen" carries the settled suggestion's own text and a changed
+  suggestion answers 422 `suggestion-mismatch`; a relation's target must be
+  an entity of the same user in the same novel; every user-derived string
+  that enters a rendered prompt line passes `single_line`, so no writer's
+  text can forge a marker line; a render-refused prompt answers 502
+  `prompt-refused`.
+- **A failed button's message.** The failure faces that offer „Erneut
+  versuchen" carry the approved screen's sentence for a typed answer; a
+  button („Keine Ahnung", „Alles vorschlagen lassen") sends its label, never
+  the composer's text, so each such sentence has a second catalog key for a
+  failed button's turn — the same sentence without the clause about the
+  input field.
+- **The composer in the thinking state was never a gap.** The states sheet draws
+  the composer at the foot with every control disabled and the waiting line
+  `Warten auf Antwort ...` (three dots, not a typographic ellipsis — the string in
+  `app/capabilities/knowledge/web/i18n/de.json` and in the sheet's HTML), and the
+  port matches it. The only defect was the spec's lifecycle sentence calling the
+  composer «closed»; it now names what the sheet and the port draw. The waiting
+  line is the disabled field's *placeholder*: a typed answer stays in the field
+  until its turn settles (`interview/useInterview.ts` clears the sent text only on
+  success), so the line is not «in its field» while a text is there.
+- **A release-notes gap, named here because it cannot be fixed.** Commit
+  `bb2e3747` on PR 2 is typed `chore(prompts)` but changes what a user sees:
+  the prompt cards of `knowledge.extract-entities` and
+  `knowledge.check-consistency` used to open their card on the line
+  „PURPOSE: …" and now open on their first prose line (one rule for every
+  key). The commit is pushed and force push is forbidden, so the next
+  release's notes miss that line; this record and PR 3's body name it.
+  `c1ade0439` is the same gap in the other direction — typed `fix` with a
+  `User-visible:` line, it only aligned the two sibling relation routes'
+  refusal with the create endpoint's coded 422, a wire shape no surface shows
+  (the dialog caught a blank label before and after), so under `AGENTS.md` it
+  is a hidden type and the next release's notes carry one line more than the
+  writer sees. And `8b44dbd9b` carries two `User-visible:` lines in one
+  commit — the saved proposal's shut door and the manual dialog's focus
+  return; both true, but the notes' convention is one line per commit, so
+  the release entry may read double.
+
+## Known-pattern notes (no row owed — the pattern is the record)
+
+- **The panel's reading and read-failed faces have no browser assertion**
+  (`interview/EntityInterview.tsx`). The reading face lasts one response's
+  flight against the real API, and the read-failed face needs a session read
+  the real stack does not refuse; the only permitted fake is the provider at
+  its boundary, so a browser leg would have to fabricate the panel's own
+  response (rule 2). Both faces stay reachable through the unit suite's client
+  seam — no browser leg asserts them.
+
+- **The visibility refs of the interview controller are written in a layout
+  effect** (`useInterview.ts`): a settle must never land between a hide's
+  commit and a passive effect still reading `true`, so `visible` and
+  `sessionId` are mirrored in `useLayoutEffect`. The sub-frame window that
+  closed has no unit test because it cannot be hit deterministically in
+  jsdom (three probes in the round's report, SDD ledger
+  `pr3-hidden-panel-fix-report.md`).
+
+## Handovers
+
+- **The W5 ledger's row 1** (the create-entity door, child #914): resolved
+  with W9 — the door is live since #956 (`38e1e58a4`); both subbars lead to the
+  create dialog — the dossiers' directly, the graph's through the interview's
+  door (PR #974); #914 closed with PR 1. The W5 ledger
+  ([`2026-11-19-knowledge.md`](2026-11-19-knowledge.md)) marks the row in the
+  same commit that opens this ledger.
+- **The W8 ledger's rows**: none resolves with W9 — the settings and prompts
+  surfaces were not this wave's subject; their triggers keep standing.
+
+## How a row becomes real
+
+1. Land the trigger the row names (a surface, a field, a corrected draft,
+   an owner decision, or user feedback).
+2. Replace the interim at the element; a placeholder becomes the real
+   thing, an omitted element returns only if its re-open condition is met.
+3. Update the row here (or remove it if nothing is left) in the same
+   commit.
+4. Close the row's child from that commit: `Closes #<n>`. The wave's
+   index closes with its last child.
+
+No placeholder is removed by deleting its slot — the slot is the draft's,
+and it stays. Only the neutral content is replaced.

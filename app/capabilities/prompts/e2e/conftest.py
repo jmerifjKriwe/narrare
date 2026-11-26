@@ -151,9 +151,9 @@ def goto_prompts(page: Page) -> Page:
 
 def expect_prompts(page: Page) -> None:
     """The page's own ready face: the testid stood, the catalog answered
-    (four bundled keys), the editor opened on the first key."""
+    (five bundled keys), the editor opened on the first key."""
     expect(page.get_by_test_id("prompts-page")).to_be_visible()
-    expect(page.get_by_test_id("prompt-card")).to_have_count(4)
+    expect(page.get_by_test_id("prompt-card")).to_have_count(5)
     expect(page.get_by_test_id("prompts-editor")).to_be_visible()
 
 

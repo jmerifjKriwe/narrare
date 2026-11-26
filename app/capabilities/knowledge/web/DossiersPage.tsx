@@ -25,9 +25,8 @@
  *   false gap — the door opens the graph with this entity selected. The
  *   manuscript-evidence gap is not doubled: the shared dossier already
  *   carries it once (excerpts). AI sparring stays an honest disabled area.
- * - The new-dossier door has no endpoint (entities are born through the
- *   extraction review — Task 4's binding ruling) and stands disabled with
- *   the permanent truth as its note.
+ * - The new-dossier door (W9) opens the hand-made create; a saved row is
+ *   selected at once, so its dossier opens without a second click.
  * - The subbar's sibling door connects the graph (and the graph's subbar
  *   answers back) — the honest minimal navigation between the two surfaces,
  *   carrying the selection across.
@@ -46,8 +45,10 @@ import { usePageTitle } from "@shell/lib/pageTitle";
 import { useEntitiesQuery, useNovelRelationsQuery } from "@shell/lib/query";
 import { CARD_EYEBROW, FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
+import { useToast } from "@shell/ui/toast";
 
 import { EntityDossier } from "./EntityDossier";
+import { EntityCreateDialog } from "./entityCreate/EntityCreateDialog";
 import { TYPE_KEYS, entityTypeIcon, entityTypeLabel, typeTheme } from "./entityTypes";
 
 const DOSSIERS_PATH = "/novels/$novelId/knowledge/dossiers";
@@ -64,6 +65,7 @@ function tabClass(active: boolean): string {
 
 export function DossiersPage() {
   const t = useTranslation();
+  const toast = useToast();
   const { novelId } = useParams({ from: DOSSIERS_PATH });
   const { entity: selectedId } = useSearch({ from: DOSSIERS_PATH });
   const navigate = useNavigate();
@@ -74,6 +76,7 @@ export function DossiersPage() {
 
   const [activeType, setActiveType] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const entityList = useMemo(() => entities.data ?? [], [entities.data]);
   const relationList = useMemo(() => relations.data ?? [], [relations.data]);
@@ -161,12 +164,11 @@ export function DossiersPage() {
   return (
     <div id="dossiers-page" data-testid="dossiers-page" tabIndex={-1} className="flex h-full flex-col overflow-hidden focus:outline-none">
       {/* The subbar — the view label, the sibling door to the graph, the
-          contract's type tabs and the draft's new-dossier door (an honest
-          disabled gap: no create endpoint exists). One consistent
-          mechanism with the graph and the sources archive: the bar stands
-          in EVERY state — pending, failed, empty, populated — so the
-          sibling doors never vanish behind an honest face; only the body
-          below it varies. */}
+          contract's type tabs and the draft's new-dossier door (live since
+          W9: it opens the hand-made create). One consistent mechanism with
+          the graph and the sources archive: the bar stands in EVERY state —
+          pending, failed, empty, populated — so the sibling doors never
+          vanish behind an honest face; only the body below it varies. */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-container-low px-4 py-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="flex items-center gap-1.5 rounded-full border border-rule bg-card px-3 py-1 text-meta font-semibold text-foreground shadow-card">
@@ -237,9 +239,10 @@ export function DossiersPage() {
         </div>
         <button
           type="button"
-          disabled
-          title={`${t("knowledge.dossiers.newDossier")} (${t("knowledge.graph.newEntityNote")})`}
-          className="flex cursor-not-allowed items-center gap-1.5 rounded-[var(--radius-control)] bg-primary px-3 py-1 text-meta text-primary-foreground opacity-60"
+          id="dossiers-new-dossier"
+          data-testid="dossiers-new-dossier"
+          onClick={() => setCreating(true)}
+          className={`flex items-center gap-1.5 rounded-[var(--radius-control)] bg-primary px-3 py-1 text-meta text-primary-foreground transition-colors hover:opacity-95 ${FOCUS}`}
         >
           <Icon name="plus" size={14} /> {t("knowledge.dossiers.newDossier")}
         </button>
@@ -460,6 +463,20 @@ export function DossiersPage() {
             )}
           </aside>
         </div>
+      )}
+
+      {creating && (
+        <EntityCreateDialog
+          novelId={novelId}
+          entities={entityList}
+          rosterSettled={!entities.isPending}
+          openerId="dossiers-new-dossier"
+          onClose={() => setCreating(false)}
+          onCreated={(entity, relations) => {
+            select(entity.id);
+            toast.show(t("knowledge.create.created", { count: relations }));
+          }}
+        />
       )}
     </div>
   );

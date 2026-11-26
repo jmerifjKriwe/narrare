@@ -63,6 +63,10 @@ export type Assignment = components["schemas"]["AssignmentRead"];
  *  or named why. */
 export type ModelTestResult = components["schemas"]["ModelTestResult"];
 export type Entity = components["schemas"]["EntityRead"];
+/** The create-by-hand POST body (W9): the entity's fields and the relation
+ *  lines to place in the same transaction. The schema's defaults type
+ *  `content` as required; the dialog always sends it. */
+export type EntityCreate = components["schemas"]["EntityCreate"];
 export type Suggestion = components["schemas"]["SuggestionRead"];
 export type Relation = components["schemas"]["RelationRead"];
 export type Accept = components["schemas"]["AcceptRead"];
@@ -80,6 +84,17 @@ export type TimelineEventUpdate = components["schemas"]["TimelineEventUpdate"];
 /** Planning's scene aggregate (W6): one chapter's scenes in position
  *  order, with the chapter's stamp as the version a drill-in compares. */
 export type SceneAggregate = components["schemas"]["SceneAggregateRead"];
+/** The assistant interview (W9): the session with its transcript and draft,
+ *  a list row (no proposal), the door's create body and one turn's readback.
+ *  The graph page's panel is the only surface in cut 1; chat owns the wire. */
+export type AssistantSession = components["schemas"]["SessionDetail"];
+export type AssistantSessionRead = components["schemas"]["SessionRead"];
+export type AssistantSessionSummary = components["schemas"]["SessionSummary"];
+export type AssistantSessionCreate = components["schemas"]["SessionCreate"];
+export type AssistantTurnRead = components["schemas"]["TurnRead"];
+export type AssistantTurnCreate = components["schemas"]["TurnCreate"];
+export type AssistantTurnReadback = components["schemas"]["TurnReadback"];
+export type Proposal = components["schemas"]["Proposal"];
 /** The prompts surface's reads (W8 Task 12): the catalog row with its two
  *  override tiers' facts, the editor's detail, the provider-free preview
  *  and the saved diff. */

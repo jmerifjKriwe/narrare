@@ -32,6 +32,7 @@ import { client, type Entity, type Relation } from "@shell/lib/api/client";
 import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { ToastProvider } from "@shell/ui/toast";
 
 import { DossiersPage } from "./DossiersPage";
 
@@ -130,7 +131,9 @@ async function renderDossiers(entry = `/novels/${NOVEL_ID}/knowledge/dossiers`) 
   await router.load();
   render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
     </QueryClientProvider>,
   );
   return router;
@@ -340,14 +343,37 @@ describe("a card opens the shared dossier — one component, two homes", () => {
   });
 });
 
-describe("the invented fields stand as honest disabled gaps", () => {
-  it("the new-dossier door is disabled with the permanent truth — no create endpoint exists", async () => {
+describe("the new-dossier door and the honest gaps", () => {
+  it("the new-dossier door opens the hand-made create", async () => {
     await renderDossiers();
     await screen.findAllByTestId("dossier-card");
-    const door = screen.getByRole("button", { name: new RegExp(de["knowledge.dossiers.newDossier"]) });
-    expect((door as HTMLButtonElement).disabled).toBe(true);
-    expect(door.getAttribute("title")).toContain(de["knowledge.graph.newEntityNote"]);
-    expect(de["knowledge.graph.newEntityNote"]).not.toContain("CRUD");
+    const door = screen.getByRole("button", { name: de["knowledge.dossiers.newDossier"] });
+    expect((door as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(door);
+    const dialog = await screen.findByTestId("entity-create-dialog");
+    expect(within(dialog).getByText(de["knowledge.create.title"])).toBeTruthy();
+  });
+
+  it("a saved row confirms in the shell's toast with its landed relation count", async () => {
+    api.POST.mockResolvedValue({
+      data: entityRow({ id: "e9", name: "Nebelhaus", type: "location" }),
+      response: new Response(null, { status: 201 }),
+    });
+    await renderDossiers();
+    await screen.findAllByTestId("dossier-card");
+    fireEvent.click(screen.getByRole("button", { name: de["knowledge.dossiers.newDossier"] }));
+    const dialog = await screen.findByTestId("entity-create-dialog");
+    fireEvent.change(within(dialog).getByTestId("entity-create-name"), {
+      target: { value: "Nebelhaus" },
+    });
+    fireEvent.change(within(dialog).getByTestId("entity-create-type"), {
+      target: { value: "location" },
+    });
+    fireEvent.click(within(dialog).getByTestId("entity-create-save"));
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+    const toast = await screen.findByTestId("toast");
+    expect(toast.textContent).toContain("Entität angelegt · 0 Beziehungen verknüpft");
+    expect(toast.parentElement?.getAttribute("aria-live")).toBe("polite");
   });
 
   it("the draft's profile areas stand disabled inside the dossier, with their gap note", async () => {

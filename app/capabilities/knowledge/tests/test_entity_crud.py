@@ -1,6 +1,6 @@
 """Manual entity CRUD: edit, delete, merge, filter — the correction contract.
 
-Entities are born through review, but a typo must not live forever. The
+Entities are born through review or by hand, but a typo must not live forever. The
 corrections are endpoint contracts first: a PATCH changes only the fields
 its body carries, a delete removes exactly the row, a merge re-points the
 source's edges and folds its fields into the survivor instead of dropping
