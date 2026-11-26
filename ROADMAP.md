@@ -83,10 +83,12 @@ the app is usable without touching an API or a `.env` file.
   handover into the create dialog) landed in W9; the free chat with streaming
   and the prose sink in the workspace dock is next. The design is
   [`2026-11-20-assistant-sessions-design.md`](docs/superpowers/specs/2026-11-20-assistant-sessions-design.md).
-- **The rebuild's two loose doors.** The re-embed action the embedding-mismatch
-  face still owes, and the activity reading — `GET /api/writing/activity` answers
-  words per day, the streak and the goal, and no surface shows it. One small wave
-  each, no new contract.
+- **The rebuild's three loose doors.** The re-embed action the embedding-mismatch
+  face still owes, the activity reading — `GET /api/writing/activity` answers
+  words per day, the streak and the goal, and no surface shows it — and the
+  Structure view (PLAN-003), a read-only view over the storyboard whose structures
+  registry and API remain but which has no surface and no E2E leg. It is not a
+  Phase 0 delivery and not an AI feature. One small wave each, no new contract.
 
 **Not in this phase, though it looked like it:** the command palette and the help
 centre. The palette draft is universal search — scenes, canon and events beside the
@@ -100,7 +102,7 @@ their own. Each round is a task in its wave.
 
 **Exit:** configure a model, run an interview that creates an entity, and edit
 the interview's prompt — all in the UI. That is reachable since W9; the phase's
-two loose doors are still open.
+three loose doors are still open.
 
 ## Phase 2 — Contracts
 

@@ -109,7 +109,7 @@ roadmap's design-debt section.
 | Storyboard (PLAN-005) | Chapters in stages, five structures, remap, scene drill-in | `live` | `0` |
 | Causality strip | Each scene's conflict and resolution as a chain | `live` | `0` |
 | Scene planning (PLAN-001) | Goal, conflict, resolution and beats per scene, before writing | `live` | `0` |
-| Structure view (PLAN-003) | Acts and their share of the book, read from the storyboard | `backend` | `0` |
+| Structure view (PLAN-003) | Acts and their share of the book, read from the storyboard | `backend` | `1` |
 | Narrative gap analysis (PLAN-002) | Missing transitions, dropped threads, unused entities | `idea` | `3` |
 | Character arc (PLAN-006) | A character's development in phases, against the plan | `idea` | `3` |
 | AI scene drafts | A scene breakdown proposed from chapter and canon | `idea` | `3` |
