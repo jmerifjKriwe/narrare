@@ -98,6 +98,11 @@ function refused(status: number, reason: string, message: string): { data: null;
   return { data: null, error: { detail: { reason, detail: message } }, response: new Response(null, { status }) };
 }
 
+/** The refusal face's localized headline for a known reason. */
+function refusalHeadline(reason: string): string {
+  return de["prompts.refusal.headline"].replace("{reason}", de[`prompts.refusal.reason.${reason}` as keyof typeof de]);
+}
+
 let novelList: Record<string, unknown>[];
 let summaries: Record<string, unknown>[];
 let details: Record<string, Record<string, unknown>>;
@@ -368,14 +373,14 @@ describe("the preview", () => {
     expect(within(card).getByText(de["prompts.preview.contractNone"])).toBeTruthy();
   });
 
-  it("a refused draft shows the refusal family", async () => {
+  it("a refused draft shows the refusal family without the wire's sentence", async () => {
     api.POST.mockResolvedValue(refused(422, "syntax", "unexpected 'endif' at line 3"));
     renderPage();
     const editor = await readyEditor();
     fireEvent.click(within(editor).getByTestId("preview-button"));
     const face = await screen.findByTestId("refusal-face");
     expect(face.textContent).toContain(de["prompts.refusal.headline"].replace("{reason}", de["prompts.refusal.reason.syntax"]));
-    expect(face.textContent).toContain("unexpected 'endif' at line 3");
+    expect(face.textContent).not.toContain("unexpected 'endif' at line 3");
   });
 
   it("names its busy face while the render stands", async () => {
@@ -460,7 +465,7 @@ describe("the save gate's refusal family", () => {
     const face = await screen.findByTestId("refusal-face");
     expect(face.textContent).toContain(de["prompts.refusal.headline"].replace("{reason}", de[`prompts.refusal.reason.${reason}` as keyof typeof de]));
     expect(face.textContent).toContain(label);
-    expect(face.textContent).toContain("die ehrliche Detail-Sentence des Backends");
+    expect(face.textContent).not.toContain("die ehrliche Detail-Sentence des Backends");
   });
 
   it("the framework's own 422 and every other failure answer generically, the draft kept", async () => {
@@ -757,7 +762,8 @@ describe("the reset", () => {
     fireEvent.click(within(editor).getByTestId("reset-button"));
     fireEvent.click(within(editor).getByTestId("reset-go"));
     const refusal = await screen.findByTestId("refusal-face");
-    expect(refusal.textContent).toContain(RESET_REFUSAL);
+    expect(refusal.textContent).toContain(refusalHeadline("runtime"));
+    expect(refusal.textContent).not.toContain(RESET_REFUSAL);
 
     api.PUT.mockResolvedValue({
       data: detail({ override: { scope: "global", content: SAVED }, effective_content: SAVED }),
@@ -805,7 +811,8 @@ describe("the reset", () => {
       response: new Response(null, { status: 422 }),
     });
     const refusal = await screen.findByTestId("refusal-face");
-    expect(refusal.textContent).toContain(RESET_REFUSAL);
+    expect(refusal.textContent).toContain(refusalHeadline("runtime"));
+    expect(refusal.textContent).not.toContain(RESET_REFUSAL);
   });
 
   it("a save started with a reset error still leaves a newer reset observed", async () => {
@@ -822,7 +829,7 @@ describe("the reset", () => {
     const editor = await readyEditor();
     fireEvent.click(within(editor).getByTestId("reset-button"));
     fireEvent.click(within(editor).getByTestId("reset-go"));
-    expect((await screen.findByTestId("refusal-face")).textContent).toContain(OLD_REFUSAL);
+    expect((await screen.findByTestId("refusal-face")).textContent).toContain(refusalHeadline("runtime"));
 
     const saved = deferred<{ data: Record<string, unknown>; response: Response }>();
     const deleted = deferred<{ data: null; error: unknown; response: Response }>();
@@ -848,11 +855,12 @@ describe("the reset", () => {
 
     deleted.resolve({
       data: null,
-      error: { detail: { reason: "runtime", detail: NEW_REFUSAL } },
+      error: { detail: { reason: "syntax", detail: NEW_REFUSAL } },
       response: new Response(null, { status: 422 }),
     });
     const refusal = await screen.findByTestId("refusal-face");
-    expect(refusal.textContent).toContain(NEW_REFUSAL);
+    expect(refusal.textContent).toContain(refusalHeadline("syntax"));
+    expect(refusal.textContent).not.toContain(NEW_REFUSAL);
   });
 
   it("a reset that fails before Save finishes keeps its refusal", async () => {
@@ -881,14 +889,15 @@ describe("the reset", () => {
       error: { detail: { reason: "runtime", detail: RESET_REFUSAL } },
       response: new Response(null, { status: 422 }),
     });
-    expect((await screen.findByTestId("refusal-face")).textContent).toContain(RESET_REFUSAL);
+    expect((await screen.findByTestId("refusal-face")).textContent).toContain(refusalHeadline("runtime"));
 
     saved.resolve({
       data: detail({ override: { scope: "global", content: SAVED }, effective_content: SAVED }),
       response: ok(),
     });
     expect(await screen.findByTestId("saved-face")).toBeTruthy();
-    expect(screen.getByTestId("refusal-face").textContent).toContain(RESET_REFUSAL);
+    expect(screen.getByTestId("refusal-face").textContent).toContain(refusalHeadline("runtime"));
+    expect(screen.getByTestId("refusal-face").textContent).not.toContain(RESET_REFUSAL);
   });
 
   it("MutationCache GC cannot roll the reset revision back into an unsaved draft", async () => {
@@ -1178,7 +1187,7 @@ describe("the live test", () => {
     expect(face.textContent).toContain(de["prompts.live.error.interrupted"]);
   });
 
-  it("a draft the gate refuses shows the refusal family in the live card", async () => {
+  it("a draft the gate refuses shows the refusal family in the live card, not the wire's sentence", async () => {
     // The 422 body is the gate's refusal wrapped in FastAPI's `detail` —
     // the same shape the save's answer carries.
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail: { reason: "budget", detail: "the assembled context exceeds the budget" } }), { status: 422 }));
@@ -1188,6 +1197,7 @@ describe("the live test", () => {
     const face = await within(editor).findByTestId("refusal-face");
     expect(face.textContent).toContain(de["prompts.live.error.draftRefused"]);
     expect(face.textContent).toContain(de["prompts.refusal.headline"].replace("{reason}", de["prompts.refusal.reason.budget"]));
+    expect(face.textContent).not.toContain("the assembled context exceeds the budget");
   });
 
   it("the cancel retires the running face back to the trigger", async () => {

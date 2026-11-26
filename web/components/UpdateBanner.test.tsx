@@ -43,6 +43,7 @@ vi.mock("../lib/api/client", async (importOriginal) => {
 });
 
 import { client } from "../lib/api/client";
+import { ApiError } from "../lib/api/errors";
 import { applyLocale } from "../lib/locale";
 import { UPDATE_KEY, type UpdateRead } from "../lib/updates";
 import { resetAnnouncedUpdates, UpdateBanner } from "./UpdateBanner";
@@ -88,8 +89,8 @@ const DISMISSED: UpdateRead = {
  * landmark (`ChromeFrame`), the focus fallback when a dismissed strip takes its
  * opener with it.
  */
-function renderBanner(answer?: UpdateRead) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function renderBanner(answer?: UpdateRead, client?: QueryClient) {
+  const queryClient = client ?? new QueryClient({ defaultOptions: { queries: { retry: false } } });
   if (answer !== undefined) queryClient.setQueryData(UPDATE_KEY, answer);
   const wrapper = ({ children }: { children: ReactNode }) =>
     createElement(
@@ -126,6 +127,26 @@ describe("UpdateBanner — the persistent strip", () => {
     expect(screen.queryByTestId("update-banner")).toBeNull();
     expect(screen.queryByTestId("update-toast")).toBeNull();
     expect(screen.queryByText(/is available/)).toBeNull();
+  });
+
+  it("renders nothing when the check fails — never its sentence or status", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const failure = new ApiError("x", { status: 503 });
+    await expect(
+      queryClient.fetchQuery({
+        queryKey: UPDATE_KEY,
+        queryFn: () => Promise.reject(failure),
+        retry: false,
+      }),
+    ).rejects.toBe(failure);
+    renderBanner(undefined, queryClient);
+
+    // The check is a convenience: offline shows nothing, never an error
+    // face or the failure's own English/status.
+    expect(screen.queryByTestId("update-banner")).toBeNull();
+    expect(screen.queryByTestId("update-toast")).toBeNull();
+    expect(document.body.textContent).not.toContain("update check failed");
+    expect(document.body.textContent).not.toContain("503");
   });
 
   it("stands silent when no newer release is available", () => {

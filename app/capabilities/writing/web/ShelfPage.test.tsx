@@ -21,7 +21,7 @@
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
-import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 // Full-suite load: the shelf renders the app-wide chrome + router; the default
 // 1 s budget is tighter than that under load (see WorkspacePage.test.tsx).
@@ -723,15 +723,16 @@ describe("the shelf — loading, error and empty answer per the drafts", () => {
     let attempts = 0;
     novelsAnswer = async () => {
       attempts += 1;
-      if (attempts === 1) return { data: undefined, response: new Response(null, { status: 503 }) };
+      if (attempts === 1) throw new TypeError("Failed to fetch");
       return { data: SHELF_ROWS, response: ok() };
     };
     renderShelf();
 
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(de["writing.shelf.error.title"]);
-    // The real status rides the message — never an invented gateway story.
-    expect(alert.textContent).toContain("503");
+    // The catalog's network sentence — never the seam's own English.
+    expect(alert.textContent).toContain(de["errors.network"]);
+    expect(alert.textContent).not.toContain("novels unavailable");
     expect(alert.textContent).toContain("Prüfe die Verbindung zum lokalen Dienst");
     expect(screen.queryByRole("heading", { level: 2, name: "Dead Signal" })).toBeNull();
 
@@ -739,6 +740,19 @@ describe("the shelf — loading, error and empty answer per the drafts", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Dead Signal" })).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
     expect(attempts).toBe(2);
+  });
+
+  it("a language switch re-renders a failure that is on screen", async () => {
+    novelsAnswer = async () => {
+      throw new TypeError("Failed to fetch");
+    };
+    renderShelf();
+
+    expect((await screen.findByRole("alert")).textContent).toContain(de["errors.network"]);
+    act(() => applyLocale("en"));
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain(catalogs.en["errors.network"]),
+    );
   });
 
   it("the retry names its busy state while the second ask is outstanding", async () => {
@@ -2334,7 +2348,7 @@ describe("the shelf — the dialog creates for real and closes honestly", () => 
     let attempts = 0;
     createAnswer = async (body) => {
       attempts += 1;
-      if (attempts === 1) return { data: undefined, response: new Response(null, { status: 503 }) };
+      if (attempts === 1) return { data: undefined, response: new Response(null, { status: 422 }) };
       novelsAnswer = async () => ({ data: [CREATED, ...SHELF_ROWS], response: ok() });
       return { data: { ...CREATED, title: body.title ?? CREATED.title }, response: new Response(null, { status: 201 }) };
     };
@@ -2348,8 +2362,10 @@ describe("the shelf — the dialog creates for real and closes honestly", () => 
 
     const alert = await within(dialog).findByRole("alert");
     expect(alert.textContent).toContain(de["writing.shelf.dialog.error"]);
-    // The real refusal rides the line — never an invented gateway story.
-    expect(alert.textContent).toContain("503");
+    // The catalog's refusal sentence rides the line — never the seam's own
+    // English ("create refused").
+    expect(alert.textContent).toContain(de["errors.refused"]);
+    expect(alert.textContent).not.toContain("create refused");
     // The error stands in the pinned foot, outside the scroll region: on a
     // short viewport the reader hears it and sees it at once, no scroll owed.
     const scrollRegion = dialog.querySelector(".overflow-y-auto") as HTMLElement;
@@ -2391,7 +2407,7 @@ describe("the shelf — the dialog creates for real and closes honestly", () => 
     // A standing title arms it again; the error and the answers stand.
     fireEvent.change(titleField(dialog), { target: { value: "Die Winterchronik" } });
     expect(retry.hasAttribute("disabled")).toBe(false);
-    expect(alert.textContent).toContain("503");
+    expect(alert.textContent).toContain(de["errors.server"]);
   });
 
   it("Escape, the scrim, Abbrechen and the cross close — focus returns to the opener", async () => {

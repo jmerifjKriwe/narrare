@@ -388,8 +388,9 @@ describe("the banner — error answers the honest retry family", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(de["writing.shelf.banner.error.title"]);
-    // The real status rides the message — never an invented gateway story.
-    expect(alert.textContent).toContain("503");
+    // The catalog's sentence rides the line — never the seam's own English.
+    expect(alert.textContent).toContain(de["errors.server"]);
+    expect(alert.textContent).not.toContain("activity unavailable");
     expect(alert.textContent).toContain(de["writing.shelf.banner.error.body"]);
     expect(screen.queryByRole("img")).toBeNull();
     expect(screen.getByText("—")).toBeTruthy();

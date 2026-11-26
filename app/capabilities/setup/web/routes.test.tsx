@@ -109,6 +109,17 @@ describe("the /setup door — the inverse gate", () => {
     expect(router.state.location.pathname).toBe("/");
     expect(screen.queryByText("welcome placeholder")).toBeNull();
   });
+
+  it("names a failed status read by its server family", async () => {
+    scriptStatus(async () => ({ data: undefined, response: new Response(null, { status: 503 }) }));
+    renderTree("/setup");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("errors.server"));
+    expect(alert.textContent).not.toContain(t("errors.unexpected"));
+    expect(alert.textContent).not.toContain("setup status unavailable");
+    expect(screen.queryByText("welcome placeholder")).toBeNull();
+  });
 });
 
 describe("the wizard's steps — the inverse gate", () => {

@@ -436,7 +436,7 @@ describe("the provider section — masks, the key-once moment, the guards", () =
     expect((screen.getByLabelText(de["settings.ai.create.name"]) as HTMLInputElement).value).toBe("Neu");
   });
 
-  it("the delete guard's 409 names the models — the family face with the backend's own sentence", async () => {
+  it("the delete guard's 409 wears its family; the backend's English sentence stays out", async () => {
     providers = [provider()];
     api.DELETE.mockImplementation(async (path: string) => {
       if (path === "/api/settings/providers/{provider_id}") {
@@ -451,12 +451,12 @@ describe("the provider section — masks, the key-once moment, the guards", () =
     await screen.findAllByTestId("task-row");
     fireEvent.click(screen.getAllByRole("button", { name: de["settings.ai.provider.remove"] })[0]);
     expect(await screen.findByText(de["settings.ai.errors.guarded"])).toBeTruthy();
-    expect(screen.getByText("the provider still has models pointed at it: Cloud-Schreiber")).toBeTruthy();
+    expect(screen.queryByText("the provider still has models pointed at it: Cloud-Schreiber")).toBeNull();
     // The provider stands — the guard kept it.
     expect(screen.getByText("Cloud")).toBeTruthy();
   });
 
-  it("a key-store refusal (503) wears its own family", async () => {
+  it("a key-store refusal (503) wears its own family, not the wire's sentence", async () => {
     providers = [provider()];
     api.DELETE.mockImplementation(async (path: string) => {
       if (path === "/api/settings/providers/{provider_id}") {
@@ -468,6 +468,7 @@ describe("the provider section — masks, the key-once moment, the guards", () =
     await screen.findAllByTestId("task-row");
     fireEvent.click(screen.getAllByRole("button", { name: de["settings.ai.provider.remove"] })[0]);
     expect(await screen.findByText(de["settings.ai.errors.keystore"])).toBeTruthy();
+    expect(screen.queryByText("the key store refused")).toBeNull();
   });
 
   it("the inline edit patches only what it carries; an empty key field keeps the stored one", async () => {

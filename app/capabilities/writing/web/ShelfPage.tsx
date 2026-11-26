@@ -158,9 +158,9 @@ export function ShelfPage() {
   // so the page's own flag holds the notice until the answer lands — the
   // draft's panel stays the context, never a flash of skeleton mid-retry.
   const [retrying, setRetrying] = useState(false);
-  const lastError = useRef("");
+  const lastError = useRef<unknown>(null);
   if (novels.error) {
-    lastError.current = novels.error instanceof Error ? novels.error.message : String(novels.error);
+    lastError.current = novels.error;
   }
   function retry() {
     setRetrying(true);
@@ -319,7 +319,7 @@ export function ShelfPage() {
         {showLoading ? (
           <ShelfLoading />
         ) : showError ? (
-          <ShelfError message={lastError.current} retrying={retrying} onRetry={retry} />
+          <ShelfError error={lastError.current} retrying={retrying} onRetry={retry} />
         ) : hero === null && gridAll.length === 0 ? (
           <ShelfEmpty
             noteId={emptyNoteId}

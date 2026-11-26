@@ -266,6 +266,9 @@ def test_the_save_gate_refuses_by_name_and_the_honest_save_lands(
     editor.get_by_test_id("save-button").click()
     face = page.get_by_test_id("refusal-face")
     expect(face).to_contain_text(REFUSED_SYNTAX)
+    # The gate's reason is localized; its English line/offset sentence is not
+    # the face's copy.
+    expect(face).not_to_contain_text(re.compile(r"line \d+", re.IGNORECASE))
     expect(textarea).to_have_value(BROKEN_DRAFT)
 
     # The honest save: the fresh detail answers, the face says saved, the
@@ -314,7 +317,9 @@ def test_the_preview_is_providerfree_and_names_the_contract(page: Page, installe
     editor = _editor(page)
     editor.get_by_test_id("draft-textarea").fill(BROKEN_DRAFT)
     editor.get_by_test_id("preview-button").click()
-    expect(page.get_by_test_id("refusal-face")).to_contain_text(REFUSED_SYNTAX)
+    face = page.get_by_test_id("refusal-face")
+    expect(face).to_contain_text(REFUSED_SYNTAX)
+    expect(face).not_to_contain_text(re.compile(r"line \d+", re.IGNORECASE))
 
     # The dark face stays accessible: the shell adopts the stored theme at
     # boot, so the reload lands dark.

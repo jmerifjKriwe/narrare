@@ -462,9 +462,12 @@ describe("loading, error and the 404 degrade", () => {
       screen.getByText("Deine Änderungen bleiben im Editor, bis sie gesichert sind."),
     ).toBeTruthy();
     expect(screen.getByText(de["writing.workspace.error.body"])).toBeTruthy();
+    // The catalog's sentence rides the card — never the seam's own English.
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain(de["errors.server"]);
+    expect(alert.textContent).not.toContain("novel unavailable");
     // The offline door is gone — the retry stands alone.
     expect(screen.queryByText(/Offline/)).toBeNull();
-    const alert = screen.getByRole("alert");
     expect(within(alert).getAllByRole("button")).toHaveLength(1);
     fireEvent.click(within(alert).getByRole("button", { name: "Erneut versuchen" }));
     expect(

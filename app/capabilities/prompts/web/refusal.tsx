@@ -1,11 +1,11 @@
 /**
  * The prompts surface's shared refusal face (W8 Task 12): the save gate's
  * 422 rendered in the states reference's exact copy family — the headline
- * names the refusal by its reason, the backend's own detail sentence rides
- * below it, and everything the wire answers otherwise (the framework's
- * validation body, an outage) stays on the honest generic line. The save,
- * the preview and the live test render the same face: one family, one
- * spelling.
+ * names the refusal by its localized reason, and everything the wire answers
+ * otherwise (the framework's validation body, an outage) stays on the honest
+ * generic line. The backend's own English detail sentence never reaches the
+ * face: the reason is the copy. The save, the preview and the live test
+ * render the same face: one family, one spelling.
  */
 import { useTranslation } from "@shell/lib/i18n";
 
@@ -69,10 +69,7 @@ export function RefusalFace({
     >
       {prefix !== undefined && <p className="mb-1 font-semibold">{prefix}</p>}
       {refusal !== null && known ? (
-        <>
-          <p className="font-semibold">{t("prompts.refusal.headline", { reason: reasonLabel })}</p>
-          <p className="mt-1 text-meta text-foreground">{refusal.detail}</p>
-        </>
+        <p className="font-semibold">{t("prompts.refusal.headline", { reason: reasonLabel })}</p>
       ) : (
         <p>{t("prompts.errors.generic")}</p>
       )}

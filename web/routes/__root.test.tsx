@@ -33,6 +33,7 @@ vi.mock("../lib/api/client", () => ({
 }));
 
 import { client } from "../lib/api/client";
+import { ApiError } from "../lib/api/errors";
 import { catalogs, locales } from "../lib/generated/catalogs";
 import { applyLocale } from "../lib/locale";
 import { queryClient } from "../lib/query";
@@ -123,12 +124,39 @@ describe("the shell's fallbacks", () => {
         name: catalogs[candidate]["shell.error"],
       });
       expect(heading).toBeTruthy();
-      // The thrown message rides along — a local-first app shows its own
-      // errors — and the router's English default stays out.
-      expect(screen.getByRole("alert").textContent).toContain("die Route ist explodiert");
+      // The catalog names the failure — the thrown sentence never reaches
+      // the face, and the router's English default stays out.
+      const alert = screen.getByRole("alert");
+      expect(alert.textContent).toContain(catalogs[candidate]["errors.unexpected"]);
+      expect(alert.textContent).not.toContain("die Route ist explodiert");
       const back = screen.getByRole("link", { name: catalogs[candidate]["nav.back"] });
       expect(back.getAttribute("href")).toBe("/");
       expect(document.body.textContent).not.toContain("Something went wrong");
+      cleanup();
+    }
+  });
+
+  it("names a thrown failure with a status by its family", async () => {
+    const boom = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/boom",
+      component: () => {
+        throw new ApiError("x", { status: 503 });
+      },
+    });
+    for (const candidate of locales) {
+      queryClient.clear();
+      scriptSettings(candidate);
+      applyLocale(candidate);
+      renderTree([home, boom], "/boom");
+
+      const heading = await screen.findByRole("heading", {
+        name: catalogs[candidate]["shell.error"],
+      });
+      expect(heading).toBeTruthy();
+      const alert = screen.getByRole("alert");
+      expect(alert.textContent).toContain(catalogs[candidate]["errors.server"]);
+      expect(alert.textContent).not.toContain("x: 503");
       cleanup();
     }
   });
