@@ -1,12 +1,13 @@
 """The canonical screenshot manifest and its overview renderer.
 
-``SHOTS`` owns every master frame in ``assets/screenshots/``: its stable name,
-title, caption, group and theme. The capture script writes the PNGs from this
-list, and the generated ``docs/screenshots/README.md`` is ``render_index``'s
-output, so the collection and its index cannot drift apart.
+``SHOTS`` is the manifest for every master frame in ``assets/screenshots/``: its
+stable name, title, caption, group and theme. The capture script is intended to
+write the PNGs from this list, and ``docs/screenshots/README.md`` is intended to
+be ``render_index``'s output, so the collection and its index cannot drift apart.
 
-``README_SHOTS`` is the curated subset the README embeds, in display order. It
-is derived from the ``readme`` flag rather than maintained as a second list.
+``README_SHOTS`` is the curated subset the README is intended to embed, in
+display order. It is derived from the ``readme`` flag rather than maintained as
+a second list.
 """
 
 from __future__ import annotations
@@ -26,7 +27,14 @@ _GROUP_ORDER: tuple[str, ...] = (
     "Assistant",
 )
 _NAME = re.compile(r"\d{2}-[a-z0-9-]+")
+_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+_MARKDOWN = re.compile(r"([\\`*_\[\]<>#])")
 _LINK_ROOT = "../../assets/screenshots"
+
+
+def _escape_markdown(text: str) -> str:
+    """Keep authored Markdown punctuation literal in a heading or link label."""
+    return _MARKDOWN.sub(lambda match: f"\\{match.group(0)}", text)
 
 
 @dataclass(frozen=True)
@@ -313,6 +321,8 @@ def validate_shots(shots: Sequence[Shot]) -> None:
             raise ValueError(f"shot {shot.name!r} has unknown theme {shot.theme!r}")
         if shot.group not in _GROUP_ORDER:
             raise ValueError(f"shot {shot.name!r} has unknown group {shot.group!r}")
+        if _CONTROL.search(shot.title) or _CONTROL.search(shot.caption):
+            raise ValueError(f"shot {shot.name!r} text must not contain control characters")
         if not shot.title.strip() or not shot.caption.strip():
             raise ValueError(f"shot {shot.name!r} needs a title and a caption")
 
@@ -333,11 +343,15 @@ def render_index(shots: Sequence[Shot]) -> str:
             continue
         lines.extend((f"## {group}", ""))
         for shot in members:
+            title = _escape_markdown(shot.title)
+            caption = _escape_markdown(shot.caption)
             lines.extend(
                 (
-                    f"### {shot.title}",
+                    f"### {title}",
                     "",
-                    f"![{shot.caption}]({_LINK_ROOT}/{shot.filename})",
+                    f"![{caption}]({_LINK_ROOT}/{shot.filename})",
+                    "",
+                    caption,
                     "",
                 )
             )

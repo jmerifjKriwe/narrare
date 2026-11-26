@@ -1,13 +1,29 @@
 from __future__ import annotations
 
 import re
+from typing import Any
+
+import pytest
 
 from scripts.screenshot_manifest import (
     README_SHOTS,
     SHOTS,
+    Shot,
     render_index,
     validate_shots,
 )
+
+
+def _shot(**overrides: Any) -> Shot:
+    fields: dict[str, Any] = {
+        "name": "99-test",
+        "title": "Title",
+        "caption": "Caption",
+        "group": "Writing",
+        "theme": "light",
+    }
+    fields.update(overrides)
+    return Shot(**fields)
 
 
 def test_shot_names_are_unique_and_safe() -> None:
@@ -55,3 +71,44 @@ def test_index_links_every_master_once() -> None:
         assert rendered.count(f"../../assets/screenshots/{shot.name}.png") == 1
     assert "/home/" not in rendered
     assert "assets/screenshots/" in rendered
+
+
+def test_validate_rejects_duplicate_and_unsafe_names() -> None:
+    with pytest.raises(ValueError, match="duplicate shot name"):
+        validate_shots((_shot(), _shot(title="Another")))
+    with pytest.raises(ValueError, match="must match"):
+        validate_shots((_shot(name="99 Test"),))
+
+
+def test_validate_rejects_unknown_theme() -> None:
+    with pytest.raises(ValueError, match="unknown theme"):
+        validate_shots((_shot(theme="sepia"),))
+
+
+def test_validate_rejects_unknown_group() -> None:
+    with pytest.raises(ValueError, match="unknown group"):
+        validate_shots((_shot(group="Setup"),))
+
+
+def test_validate_rejects_empty_title_and_caption() -> None:
+    for field in ("title", "caption"):
+        with pytest.raises(ValueError, match="title and a caption"):
+            validate_shots((_shot(**{field: "   "}),))
+
+
+def test_validate_rejects_control_characters_in_text() -> None:
+    for field in ("title", "caption"):
+        with pytest.raises(ValueError, match="control characters"):
+            validate_shots((_shot(**{field: "Two\nlines"}),))
+
+
+def test_index_renders_captions_as_visible_prose() -> None:
+    rendered = render_index((_shot(caption="A caption beside the frame"),))
+    assert rendered.count("A caption beside the frame") == 2
+
+
+def test_index_escapes_markdown_in_titles_and_captions() -> None:
+    rendered = render_index((_shot(title="A [title] # here", caption="One ] two # three"),))
+    assert "### A \\[title\\] \\# here" in rendered
+    assert "![One \\] two \\# three](../../assets/screenshots/99-test.png)" in rendered
+    assert "One \\] two \\# three" in rendered.splitlines()[-1]
