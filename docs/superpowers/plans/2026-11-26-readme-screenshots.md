@@ -276,16 +276,16 @@ Reviewer checks the full collection link and the design-record wording. Then com
 - Modify: `README.md`
 - Test: `app/kernel/tests/test_screenshot_assets.py`
 
-- [ ] **Step 1: Add failing README contract assertions**
+- [x] **Step 1: Add failing README contract assertions**
 
 Extend `test_screenshot_assets.py` to parse every `<img src="assets/screenshots/...png" alt="...">` in `README.md`. Assert the sources equal `README_SHOTS` in manifest order, every source exists, each alt text exactly equals its manifest caption, and the stale sentence claiming settings are "Phase 1 of the roadmap" is absent.
 
-- [ ] **Step 2: Run tests and verify failure**
+- [x] **Step 2: Run tests and verify failure**
 
 Run: `just test-file app/kernel/tests/test_screenshot_assets.py`
 Expected: FAIL on the current four-image transitional selection, non-manifest alt text and stale settings copy.
 
-- [ ] **Step 3: Rewrite the product narrative**
+- [x] **Step 3: Rewrite the product narrative**
 
 Keep badges, logo, tagline, the local-first promise, setup path, documentation, development, contributing, security and license sections. Replace the gallery with exactly the eight `README_SHOTS` in manifest order and use their manifest captions as alt text.
 
@@ -293,16 +293,16 @@ Use concise sections for **Writing & Zen**, **Knowledge**, **Planning**, **Setti
 
 Correct the current README's stale claims: settings and prompts are live, so `.env` is not the primary configuration story; re-embed and import/export are backend-only and must not be described as page features; the series link and volume number are live in Book Settings, while shared-canon/series architecture remains designed; free chat, chat history, sparring and dialogue coaching must not be implied. Say the model is the only feature that sends story content out. Do not mention the update check until its inventory row exists.
 
-- [ ] **Step 4: Make the full collection discoverable**
+- [x] **Step 4: Make the full collection discoverable**
 
 Link to `docs/screenshots/README.md` directly below the curated gallery. Place the stand-in disclosure next to the images and scope it truthfully: the interview frame uses a stand-in model at the test boundary; do not imply every frame contains model output. In Development, state that the action runs manually, weekly and on relevant `main` pushes after Task 5, but is advisory and never a required check.
 
-- [ ] **Step 5: Run tests and inspect the rendered result**
+- [x] **Step 5: Run tests and inspect the rendered result**
 
 Run: `just test-file app/kernel/tests/test_screenshot_assets.py`
 Expected: PASS. Read the rendered README on the PR branch and confirm the images dominate neither the page nor the text.
 
-- [ ] **Step 6: Review, then commit**
+- [x] **Step 6: Review, then commit**
 
 Reviewer checks every claim against `docs/features/INDEX.md` and the eight selected images. Then commit `docs(readme): show the current writing, knowledge and AI workflow` with a real `User-visible:` line and the required trailer.
 
