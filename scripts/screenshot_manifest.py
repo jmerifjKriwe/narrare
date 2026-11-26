@@ -1,13 +1,19 @@
 """The canonical screenshot manifest and its overview renderer.
 
 ``SHOTS`` is the manifest for every master frame in ``assets/screenshots/``: its
-stable name, title, caption, group and theme. The capture script is intended to
-write the PNGs from this list, and ``docs/screenshots/README.md`` is intended to
-be ``render_index``'s output, so the collection and its index cannot drift apart.
+stable name, title, caption, group and theme. The capture script writes the
+PNGs from this list, and ``docs/screenshots/README.md`` is ``render_index``'s
+output, so the collection and its index cannot drift apart.
 
-``README_SHOTS`` is the curated subset the README is intended to embed, in
-display order. It is derived from the ``readme`` flag rather than maintained as
-a second list.
+``README_SHOTS`` is the curated subset the README embeds, in display order. It
+is derived from the ``readme`` flag rather than maintained as a second list.
+
+The ``01``-``19`` generation was audited against the live product before this
+manifest became authoritative. Names whose surface and pixels survived kept
+their place under a new number when the pixels changed; the dead surfaces
+(the retired chat dock, the global knowledge page, the design gallery, the
+structure view and the shortcuts page) are gone, and nothing was overwritten
+under an old URL.
 """
 
 from __future__ import annotations
@@ -56,139 +62,6 @@ class Shot:
 
 SHOTS: tuple[Shot, ...] = (
     Shot(
-        "01-workspace-continuation",
-        "The workspace with a continuation",
-        "A chapter open in the editor and a grey continuation waiting at the caret",
-        "Writing",
-        "light",
-    ),
-    Shot(
-        "02-chat-sources",
-        "Chat with its sources",
-        "A question, a streamed answer and the two note passages it was drawn from",
-        "Assistant",
-        "light",
-    ),
-    Shot(
-        "03-knowledge-dock",
-        "The knowledge dock",
-        "The whole-book check, a consistency finding and the novel's entities",
-        "Knowledge",
-        "light",
-    ),
-    Shot(
-        "04-knowledge-search",
-        "Knowledge search",
-        "Two uploaded notes and a search whose results quote the matching passages",
-        "Knowledge",
-        "light",
-    ),
-    Shot(
-        "05-shelf",
-        "The bookshelf",
-        "Three novels with the last one offered for resuming",
-        "Writing",
-        "light",
-    ),
-    Shot(
-        "06-shelf-dark",
-        "The bookshelf in dark",
-        "The same shelf in the reader's stored dark theme",
-        "Writing",
-        "dark",
-    ),
-    Shot(
-        "07-workspace-dark",
-        "The workspace in dark",
-        "The prose surface in the reader's stored dark theme",
-        "Writing",
-        "dark",
-    ),
-    Shot(
-        "08-design",
-        "The design gallery",
-        "Every primitive, token pair and dock specimen on one page",
-        "Settings",
-        "light",
-    ),
-    Shot(
-        "09-design-dark",
-        "The design gallery in dark",
-        "The same gallery in the reader's stored dark theme",
-        "Settings",
-        "dark",
-    ),
-    Shot(
-        "10-graph",
-        "The lore graph",
-        "The novel's entities as named nodes with the selected node's glance",
-        "Knowledge",
-        "light",
-    ),
-    Shot(
-        "11-graph-dark",
-        "The lore graph in dark",
-        "The same canvas in the reader's stored dark theme",
-        "Knowledge",
-        "dark",
-    ),
-    Shot(
-        "12-timeline",
-        "The timeline",
-        "The novel's events in the writer's order, dated and unordered alike",
-        "Planning",
-        "light",
-    ),
-    Shot(
-        "13-timeline-dark",
-        "The timeline in dark",
-        "The same rows and garnish in the reader's stored dark theme",
-        "Planning",
-        "dark",
-    ),
-    Shot(
-        "14-storyboard",
-        "The storyboard",
-        "Chapters as cards in their structure's columns, each with its sync badge",
-        "Planning",
-        "light",
-    ),
-    Shot(
-        "15-storyboard-dark",
-        "The storyboard in dark",
-        "The same columns, cards and badges in the reader's stored dark theme",
-        "Planning",
-        "dark",
-    ),
-    Shot(
-        "16-structure",
-        "The structure view",
-        "The story as one proportion bar, a band per stage with its chapters",
-        "Planning",
-        "light",
-    ),
-    Shot(
-        "17-structure-dark",
-        "The structure view in dark",
-        "The same bands and marks in the reader's stored dark theme",
-        "Planning",
-        "dark",
-    ),
-    Shot(
-        "18-shortcuts",
-        "Keyboard shortcuts",
-        "Every binding grouped by scope, each with the platform's own keycap",
-        "Settings",
-        "light",
-    ),
-    Shot(
-        "19-shortcuts-dark",
-        "Keyboard shortcuts in dark",
-        "The same rows and keycaps in the reader's stored dark theme",
-        "Settings",
-        "dark",
-    ),
-    Shot(
         "20-workspace-rebuilt",
         "The rebuilt writing workspace",
         "The scene-centric workspace with the explorer, editor and docks together",
@@ -207,7 +80,7 @@ SHOTS: tuple[Shot, ...] = (
     Shot(
         "22-zen",
         "Zen mode",
-        "The prose alone, with every dock and chrome out of the way",
+        "The prose alone, with the explorer and docks out of the way",
         "Writing",
         "light",
         readme=True,
@@ -229,7 +102,7 @@ SHOTS: tuple[Shot, ...] = (
     Shot(
         "25-dossiers",
         "Dossiers",
-        "The novel's knowledge organized as dossiers",
+        "The novel's knowledge organized as dossiers with the shared dossier open",
         "Knowledge",
         "light",
         readme=True,
@@ -237,7 +110,7 @@ SHOTS: tuple[Shot, ...] = (
     Shot(
         "26-sources",
         "Sources",
-        "The documents the novel's knowledge was drawn from",
+        "The documents the novel's knowledge was drawn from, and a semantic search",
         "Knowledge",
         "light",
     ),
@@ -252,7 +125,7 @@ SHOTS: tuple[Shot, ...] = (
     Shot(
         "28-settings-hub",
         "The settings hub",
-        "Providers, models, assignments and the rest of the configuration in one place",
+        "Language, appearance and the rest of the atelier's configuration in one place",
         "Settings",
         "light",
         readme=True,
@@ -260,7 +133,7 @@ SHOTS: tuple[Shot, ...] = (
     Shot(
         "29-ai-rules",
         "AI rules",
-        "The house rules every AI task follows",
+        "The configured provider, its model and the task assignments every AI task follows",
         "Settings",
         "light",
     ),
@@ -299,6 +172,76 @@ SHOTS: tuple[Shot, ...] = (
         "The entity interview in dark",
         "The same conversation and proposal in the reader's stored dark theme",
         "Assistant",
+        "dark",
+    ),
+    Shot(
+        "35-workspace-continuation",
+        "The workspace with a continuation",
+        "A chapter open in the scene editor and a grey continuation waiting at the caret",
+        "Writing",
+        "light",
+    ),
+    Shot(
+        "36-knowledge-dock",
+        "The knowledge dock",
+        "The whole-book check, a consistency finding and the novel's entities beside the prose",
+        "Knowledge",
+        "light",
+    ),
+    Shot(
+        "37-shelf",
+        "The bookshelf",
+        "Three novels with the last one offered for resuming",
+        "Writing",
+        "light",
+    ),
+    Shot(
+        "38-shelf-dark",
+        "The bookshelf in dark",
+        "The same shelf in the reader's stored dark theme",
+        "Writing",
+        "dark",
+    ),
+    Shot(
+        "39-graph",
+        "The lore graph",
+        "The novel's canon as a named node with the selected node's dossier",
+        "Knowledge",
+        "light",
+    ),
+    Shot(
+        "40-graph-dark",
+        "The lore graph in dark",
+        "The same canvas and dossier in the reader's stored dark theme",
+        "Knowledge",
+        "dark",
+    ),
+    Shot(
+        "41-timeline",
+        "The timeline",
+        "The novel's events in the writer's order, dated and unordered alike",
+        "Planning",
+        "light",
+    ),
+    Shot(
+        "42-timeline-dark",
+        "The timeline in dark",
+        "The same rows and garnish in the reader's stored dark theme",
+        "Planning",
+        "dark",
+    ),
+    Shot(
+        "43-storyboard",
+        "The storyboard",
+        "Chapters as cards in their structure's columns, each with its sync badge",
+        "Planning",
+        "light",
+    ),
+    Shot(
+        "44-storyboard-dark",
+        "The storyboard in dark",
+        "The same columns, cards and badges in the reader's stored dark theme",
+        "Planning",
         "dark",
     ),
 )

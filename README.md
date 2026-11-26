@@ -14,7 +14,7 @@
 
 > Local-first, AI-assisted creative writing. Bring your own model — cloud or local.
 
-<img src="assets/screenshots/01-workspace-continuation.png" alt="The Narrare workspace: a chapter rail on the left, the chapter in the editor, and a grey continuation waiting at the caret for Tab" width="800">
+<img src="assets/screenshots/35-workspace-continuation.png" alt="The Narrare workspace: a chapter rail on the left, the chapter in the editor, and a grey continuation waiting at the caret for Tab" width="800">
 
 Narrare is a writing environment for novels that runs on your machine. A shelf of
 books, a chapter in a quiet editor, your own notes as a knowledge base, and a model
@@ -27,24 +27,16 @@ the contradictions you left behind.
 
 <table>
 <tr>
-<td><img src="assets/screenshots/02-chat-sources.png" alt="The chat dock beside the chapter: a question, a streamed answer, and the two note passages it was drawn from" width="400"></td>
-<td><img src="assets/screenshots/03-knowledge-dock.png" alt="The knowledge dock: the whole-book check button, a consistency finding quoting both readings, and the novel's entities" width="400"></td>
+<td><img src="assets/screenshots/36-knowledge-dock.png" alt="The knowledge dock: the whole-book check button, a consistency finding quoting both readings, and the novel's entities" width="400"></td>
+<td><img src="assets/screenshots/37-shelf.png" alt="The shelf: three novels with the last one offered for resuming, and export on every card" width="400"></td>
 </tr>
 <tr>
-<td>Ask your own notes. The answer streams, and the passages behind it sit underneath.</td>
 <td>The whole-book check reports contradictions to acknowledge or dismiss, with the cast beside them.</td>
-</tr>
-<tr>
-<td><img src="assets/screenshots/04-knowledge-search.png" alt="The knowledge page: two uploaded notes and a search whose results show the matching passages" width="400"></td>
-<td><img src="assets/screenshots/05-shelf.png" alt="The shelf: three novels with the last one offered for resuming, and export on every card" width="400"></td>
-</tr>
-<tr>
-<td>Upload the story bible. It is chunked, embedded and searched in your own Postgres.</td>
 <td>A shelf of books, not a folder of files — with export and import on the door.</td>
 </tr>
 </table>
 
-<img src="assets/screenshots/06-shelf-dark.png" alt="The same shelf in the reader's chosen dark theme: the covers keep their own inks, and the sepia tile stays quieter than the primary action" width="800">
+<img src="assets/screenshots/38-shelf-dark.png" alt="The same shelf in the reader's chosen dark theme: the covers keep their own inks, and the sepia tile stays quieter than the primary action" width="800">
 
 Light and dark are the reader's choice, stored with the account — the system
 decides only until they pick.
