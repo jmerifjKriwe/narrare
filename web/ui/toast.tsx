@@ -17,7 +17,7 @@ import { Icon } from "./icons";
 
 /**
  * The shell's toast: one short confirmation that floats above the page and
- * goes away on its own — no action, no history, no queue. The approved
+ * goes away on its own — no call to action, no history, no queue. The approved
  * create screen's fourth state («Entität angelegt · 2 Beziehungen
  * verknüpft») is the first consumer; the interview handover (Task 11) is
  * the next.
