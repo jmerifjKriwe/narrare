@@ -79,14 +79,21 @@ def _goto_dossiers(page: Page, novel_id: str) -> None:
 
 def _open_create(page: Page, door: str) -> Locator:
     page.get_by_test_id(door).click()
+    if door == "graph-new-entity":
+        # W9 Task 10: the graph's door opens the interview; the chooser's quiet
+        # second path is the hand-made create this leg drives.
+        expect(page.get_by_test_id("entity-interview")).to_be_visible()
+        page.get_by_test_id("entity-interview-manual").click()
     dialog = page.get_by_test_id("entity-create-dialog")
     expect(dialog).to_be_visible()
     return dialog
 
 
 def test_create_by_hand_from_the_graph(page: Page, installed: Stack) -> None:
-    """The graph's «Neue Entität» opens the dialog; name, type, a tag and one
-    resolved relation save together, and the new row is selected at once."""
+    """The graph's «Neue Entität» opens the interview; the chooser's quiet
+    second path, «Von Hand anlegen», reaches the create dialog. Name, type, a
+    tag and one resolved relation save together, and the new row is selected
+    at once."""
     novel_id = _seed_canon_with_station()
     _goto_graph(page, novel_id)
 
@@ -107,8 +114,10 @@ def test_create_by_hand_from_the_graph(page: Page, installed: Stack) -> None:
     dialog.get_by_test_id("entity-create-save").click()
     expect(dialog).not_to_be_visible()
 
-    # The save confirms in the shell's toast with the edges that landed.
+    # The save confirms in the shell's toast with the edges that landed;
+    # the toast's close control must clear the same a11y floor.
     expect(page.get_by_test_id("toast")).to_contain_text("Entität angelegt · 1 Beziehung verknüpft")
+    assert_accessible(page)
 
     # The save selects the new row: its dossier names the entity and the edge.
     dossier = page.get_by_test_id("entity-dossier")

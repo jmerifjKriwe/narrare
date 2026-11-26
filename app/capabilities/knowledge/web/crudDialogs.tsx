@@ -28,41 +28,35 @@
  * outage. Every close returns focus to the opener; a trigger the write itself
  * retired (a deleted row) is simply not focused, the shelf's own rule.
  *
- * New-entity creation (W9): the hand-made create lives here on the same
- * frame — one dialog for both paths (the interview's prefill arrives later),
- * the roster resolving each relation row by name or alias, duplicate names a
- * notice rather than a refusal, and the coded refusal's own code and detail
- * kept beside the answers.
+ * New-entity creation (W9) moved to `entityCreate/` in Task 11; this module
+ * keeps the shared modal frame it rides (`Modal`, `FormHeader`, `Spinner`,
+ * `INPUT`, the schema's bounds) beside the edit, delete and merge family.
  *
  * The module imports no other capability (rule 1): the busy spinner and the
  * error line are re-owned here on the shell's tokens, the writing family's
  * geometry, speaking the knowledge catalog's own words.
+ *
+ * Test seams: the create dialog's stable hooks are `entity-create-…`
+ * `data-testid`s, the house convention; they live beside the dialog in
+ * `entityCreate/`.
  */
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import type { Entity, KnowledgeDocument, Relation } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import {
   useAddRelation,
-  useCreateEntity,
   useDeleteDocument,
   useDeleteEntity,
   useDeleteRelation,
   useMergeEntities,
   useUpdateEntity,
   useUpdateRelation,
-  type WireError,
 } from "@shell/lib/query";
 import { FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 import { useModalKeys } from "@shell/ui/modalKeys";
 
-import {
-  buildEntityCreateBody,
-  findDuplicateName,
-  relationRowOutcome,
-  type EntityRelationRow,
-} from "./entityCreate";
 import { TYPE_KEYS, entityTypeLabel } from "./entityTypes";
 import { relationTypeLabel, relationTypeOptions, resolveRelationType } from "./relations";
 
@@ -71,15 +65,15 @@ const SERIF = "[font-family:var(--font-serif)]";
 
 /** The schema's bounds, mirrored on the inputs so the writer meets them
  *  before the wire does: the name column's width, the relation type's cap. */
-const NAME_MAX = 200;
-const RELATION_TYPE_MAX = 80;
+export const NAME_MAX = 200;
+export const RELATION_TYPE_MAX = 80;
 
-const INPUT =
+export const INPUT =
   "w-full rounded border border-border bg-surface-container-low px-2.5 py-1.5 text-body text-foreground";
 
 /** The shell's busy face (the quick menu's spinner): a ring with one
  *  transparent quarter, turning. No glyph — the motion is the mark. */
-function Spinner({ tone = "primary" }: { tone?: "primary" | "danger" }) {
+export function Spinner({ tone = "primary" }: { tone?: "primary" | "danger" }) {
   const ring = tone === "danger" ? "border-danger" : "border-primary-foreground";
   return (
     <span aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 animate-spin rounded-full border border-t-transparent ${ring}`} />
@@ -119,7 +113,7 @@ function ErrorLine({ message, onRetry }: { message: string; onRetry: () => void 
  *  opener (a deleted row, a folded dossier) sets `retiredRef`; the return then
  *  lands on `survivorFocusId` — the container that survives the write — instead
  *  of an opener that is gone, so focus never falls to the body. */
-function Modal({
+export function Modal({
   openerId,
   role,
   headingId,
@@ -180,7 +174,7 @@ function Modal({
 
 /** The form panel's header: the serif heading and the cross that closes
  *  (honestly unavailable while busy or dirty). */
-function FormHeader({
+export function FormHeader({
   headingId,
   title,
   badge,
@@ -214,7 +208,7 @@ function FormHeader({
         disabled={held}
         aria-label={t("knowledge.crud.close")}
         onClick={onClose}
-        className={`rounded p-0.5 text-muted transition-colors hover:text-foreground ${FOCUS} ${held ? "cursor-not-allowed opacity-50" : ""}`}
+        className={`flex h-6 w-6 items-center justify-center rounded text-muted transition-colors hover:text-foreground ${FOCUS} ${held ? "cursor-not-allowed opacity-50" : ""}`}
       >
         <Icon name="cross" size={14} />
       </button>
@@ -433,466 +427,6 @@ function ConfirmBadge({ icon }: { icon: Parameters<typeof Icon>[0]["name"] }) {
     <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full border border-danger/30 bg-danger/10 text-danger">
       <Icon name={icon} size={17} />
     </div>
-  );
-}
-
-/** The chip list after a draft: trimmed, folded into an existing chip
- *  case-insensitively, or appended when it is new. The API dedupes too, so
- *  the form never sends a doubled label. */
-function withChip(values: readonly string[], draft: string): string[] {
-  const value = draft.trim();
-  if (value === "") return [...values];
-  if (values.some((existing) => existing.toLowerCase() === value.toLowerCase())) return [...values];
-  return [...values, value];
-}
-
-/** The chip input of the create form: the screen's «Mit Enter hinzufügen».
- *  Enter commits the draft, leaving the field commits it too, and the create
- *  flushes whatever draft is still standing on save — a label typed without
- *  Enter is never discarded. The 200-character cap mirrors the name input. */
-function ChipInput({
-  testId,
-  label,
-  hint,
-  placeholder,
-  values,
-  draft,
-  onDraftChange,
-  onChange,
-}: {
-  testId: string;
-  label: string;
-  hint: string;
-  placeholder: string;
-  values: readonly string[];
-  draft: string;
-  onDraftChange: (draft: string) => void;
-  onChange: (values: string[]) => void;
-}) {
-  const id = useId();
-  const t = useTranslation();
-  function commit() {
-    const value = draft.trim();
-    onDraftChange("");
-    if (value === "") return;
-    onChange(withChip(values, value));
-  }
-  return (
-    <div>
-      <div className="mb-1 flex items-baseline justify-between gap-2">
-        <label htmlFor={id} className="block text-meta font-medium text-foreground">
-          {label}
-        </label>
-        <span className="text-[11px] text-muted">{hint}</span>
-      </div>
-      <div className="flex min-h-8 flex-wrap items-center gap-1 rounded border border-border bg-surface-container-low px-2.5 py-1.5">
-        {values.map((value) => (
-          <span
-            key={value}
-            className="inline-flex items-center gap-1 rounded bg-surface-container-high px-2 py-0.5 text-[12px] font-medium text-foreground"
-          >
-            {value}
-            <button
-              type="button"
-              aria-label={`${t("knowledge.create.removeChip")}: ${value}`}
-              onClick={() => onChange(values.filter((existing) => existing !== value))}
-              className={`flex items-center text-muted transition-colors hover:text-foreground ${FOCUS}`}
-            >
-              <Icon name="cross" size={10} />
-            </button>
-          </span>
-        ))}
-        <input
-          id={id}
-          data-testid={testId}
-          type="text"
-          value={draft}
-          maxLength={NAME_MAX}
-          placeholder={placeholder}
-          onChange={(event) => onDraftChange(event.target.value)}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter") return;
-            event.preventDefault();
-            commit();
-          }}
-          className="min-w-[8rem] flex-1 bg-transparent text-body text-foreground outline-none placeholder:text-muted"
-        />
-      </div>
-    </div>
-  );
-}
-
-// --- The entity create -----------------------------------------------------
-
-const CREATE_PANEL =
-  "max-h-[calc(100vh-2rem)] w-full max-w-xl space-y-3 overflow-y-auto rounded-lg border border-border bg-panel p-5 shadow-overlay";
-
-/**
- * The hand-made create (W9): one dialog for both paths — the interview's
- * prefill arrives in a later task, so the form owns its state. A name that
- * already exists is a quiet notice that keeps saving possible; a relation
- * row resolves against the roster by name or alias, and the rows the novel
- * cannot resolve are left out and counted below the section.
- */
-export function EntityCreateDialog({
-  novelId,
-  entities,
-  openerId,
-  onClose,
-  onCreated,
-}: {
-  novelId: string;
-  entities: readonly Entity[];
-  openerId: string;
-  onClose: () => void;
-  /** The write landed: the home selects the new row and counts its edges. */
-  onCreated?: (entity: Entity, relations: number) => void;
-}) {
-  const t = useTranslation();
-  const [name, setName] = useState("");
-  const [type, setType] = useState("");
-  const [aliases, setAliases] = useState<string[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
-  const [aliasDraft, setAliasDraft] = useState("");
-  const [tagDraft, setTagDraft] = useState("");
-  const [content, setContent] = useState("");
-  const [relations, setRelations] = useState<(EntityRelationRow & { key: number })[]>([]);
-  const [failure, setFailure] = useState<WireError | null>(null);
-  const create = useCreateEntity();
-  const busy = create.isPending;
-  const dirty =
-    name !== "" ||
-    type !== "" ||
-    aliases.length > 0 ||
-    tags.length > 0 ||
-    aliasDraft !== "" ||
-    tagDraft !== "" ||
-    content !== "" ||
-    relations.length > 0;
-
-  const nameRef = useRef<HTMLInputElement | null>(null);
-  const relationKey = useRef(0);
-  const headingId = useId();
-  const entityListId = useId();
-  const labelListId = useId();
-
-  const duplicate = findDuplicateName(name, entities);
-  // Every filled row the save will drop — an unresolved target and a
-  // resolved target without its label both count; only an untouched add-row
-  // stays silent.
-  const dropped = relations.filter((row) => {
-    const outcome = relationRowOutcome(row, entities);
-    return outcome === "unresolved-target" || outcome === "missing-label";
-  }).length;
-  const ready = name.trim() !== "" && type !== "";
-  const entityNames = useMemo(
-    () => [...new Set(entities.flatMap((entity) => [entity.name, ...entity.aliases]))],
-    [entities],
-  );
-
-  function updateRelation(index: number, patch: Partial<EntityRelationRow>) {
-    setRelations((rows) =>
-      rows.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)),
-    );
-  }
-
-  function addRelationRow() {
-    relationKey.current += 1;
-    setRelations((rows) => [
-      ...rows,
-      { key: relationKey.current, target: "", relationType: "", note: "" },
-    ]);
-  }
-
-  function save() {
-    setFailure(null);
-    if (!ready) return;
-    // A chip the writer typed but never confirmed with Enter still belongs to
-    // the save: flush both drafts into the lists, then send the lists.
-    const nextAliases = withChip(aliases, aliasDraft);
-    const nextTags = withChip(tags, tagDraft);
-    setAliases(nextAliases);
-    setTags(nextTags);
-    setAliasDraft("");
-    setTagDraft("");
-    const body = buildEntityCreateBody({
-      novelId,
-      name,
-      type,
-      aliases: nextAliases,
-      tags: nextTags,
-      content,
-      entities,
-      relations: relations.map((row) => ({
-        ...row,
-        relationType: resolveRelationType(t, row.relationType),
-      })),
-    });
-    create.mutate(body, {
-      onSuccess: (entity) => {
-        onCreated?.(entity, body.relations?.length ?? 0);
-        onClose();
-      },
-      onError: (error) => setFailure(error),
-    });
-  }
-
-  return (
-    <Modal
-      openerId={openerId}
-      role="dialog"
-      headingId={headingId}
-      onDismiss={() => {
-        if (!busy && !dirty) onClose();
-      }}
-      scrimDismiss
-      focusRef={nameRef}
-      panelClassName={CREATE_PANEL}
-      panelTestId="entity-create-dialog"
-    >
-      <FormHeader
-        headingId={headingId}
-        title={t("knowledge.create.title")}
-        badge={t("knowledge.create.manualBadge")}
-        busy={busy}
-        dirty={dirty}
-        onClose={onClose}
-      />
-      <div className="space-y-3">
-        <fieldset disabled={busy} className="m-0 min-w-0 space-y-3 border-0 p-0">
-          <div>
-            <label htmlFor={`${headingId}-name`} className="mb-1 block text-meta font-medium text-foreground">
-              {t("knowledge.create.nameLabel")}
-            </label>
-            <input
-              id={`${headingId}-name`}
-              ref={nameRef}
-              data-testid="entity-create-name"
-              type="text"
-              value={name}
-              maxLength={NAME_MAX}
-              placeholder={t("knowledge.create.namePlaceholder")}
-              onChange={(event) => setName(event.target.value)}
-              className={`${INPUT} ${FOCUS}`}
-            />
-          </div>
-          {duplicate !== null && (
-            <div
-              data-testid="entity-create-duplicate-note"
-              role="status"
-              className="flex items-start gap-1.5 rounded border border-rule bg-surface-container-low px-2.5 py-2 text-meta leading-snug text-foreground"
-            >
-              <span className="mt-0.5 shrink-0 text-primary">
-                <Icon name="info" size={13} />
-              </span>
-              <p>{t("knowledge.create.duplicateNote")}</p>
-            </div>
-          )}
-          <div>
-            <label htmlFor={`${headingId}-type`} className="mb-1 block text-meta font-medium text-foreground">
-              {t("knowledge.create.typeLabel")}
-            </label>
-            <select
-              id={`${headingId}-type`}
-              data-testid="entity-create-type"
-              value={type}
-              onChange={(event) => setType(event.target.value)}
-              className={`${INPUT} ${FOCUS}`}
-            >
-              <option value="">{t("knowledge.create.typePlaceholder")}</option>
-              {Object.keys(TYPE_KEYS).map((key) => (
-                <option key={key} value={key}>
-                  {entityTypeLabel(t, key)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <ChipInput
-            testId="entity-create-aliases"
-            label={t("knowledge.create.aliasesLabel")}
-            hint={t("knowledge.create.addHint")}
-            placeholder={t("knowledge.create.aliasPlaceholder")}
-            values={aliases}
-            draft={aliasDraft}
-            onDraftChange={setAliasDraft}
-            onChange={setAliases}
-          />
-          <ChipInput
-            testId="entity-create-tags"
-            label={t("knowledge.create.tagsLabel")}
-            hint={t("knowledge.create.addHint")}
-            placeholder={t("knowledge.create.tagPlaceholder")}
-            values={tags}
-            draft={tagDraft}
-            onDraftChange={setTagDraft}
-            onChange={setTags}
-          />
-          <div>
-            <label htmlFor={`${headingId}-content`} className="mb-1 block text-meta font-medium text-foreground">
-              {t("knowledge.create.descriptionLabel")}
-            </label>
-            <textarea
-              id={`${headingId}-content`}
-              data-testid="entity-create-content"
-              value={content}
-              rows={3}
-              placeholder={t("knowledge.create.descriptionPlaceholder")}
-              onChange={(event) => setContent(event.target.value)}
-              className={`${INPUT} resize-y leading-relaxed ${FOCUS}`}
-            />
-          </div>
-          <div className="space-y-2 pt-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-meta font-semibold text-foreground">
-                {t("knowledge.create.relationsLabel")}
-              </span>
-              <button
-                type="button"
-                data-testid="entity-create-add-relation"
-                onClick={addRelationRow}
-                className={`inline-flex items-center gap-1 text-meta font-medium text-primary transition-colors hover:text-foreground ${FOCUS}`}
-              >
-                <Icon name="plus" size={14} /> {t("knowledge.create.addRelation")}
-              </button>
-            </div>
-            {relations.length === 0 ? (
-              <p className="rounded border border-rule bg-surface-container-low px-4 py-6 text-center text-meta text-muted">
-                {t("knowledge.create.noRelations")}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {relations.map((row, index) => {
-                  const outcome = relationRowOutcome(row, entities);
-                  const missingLabel = outcome === "missing-label";
-                  const unresolvedTarget = outcome === "unresolved-target";
-                  return (
-                    <div key={row.key} className="flex items-center gap-2">
-                      <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
-                        <input
-                          data-testid={`entity-create-relation-${index}-entity`}
-                          type="text"
-                          list={entityListId}
-                          value={row.target}
-                          aria-label={t("knowledge.create.entityLabel")}
-                          aria-invalid={unresolvedTarget || undefined}
-                          placeholder={t("knowledge.create.entityLabel")}
-                          onChange={(event) => updateRelation(index, { target: event.target.value })}
-                          className={`${INPUT} ${FOCUS} ${unresolvedTarget ? "ring-1 ring-danger" : ""}`}
-                        />
-                        <input
-                          data-testid={`entity-create-relation-${index}-label`}
-                          type="text"
-                          list={labelListId}
-                          value={row.relationType}
-                          aria-label={t("knowledge.create.relationLabelLabel")}
-                          aria-invalid={missingLabel || undefined}
-                          placeholder={t("knowledge.create.relationLabelPlaceholder")}
-                          maxLength={RELATION_TYPE_MAX}
-                          onChange={(event) =>
-                            updateRelation(index, { relationType: event.target.value })
-                          }
-                          className={`${INPUT} ${FOCUS} ${missingLabel ? "ring-1 ring-danger" : ""}`}
-                        />
-                        <input
-                          data-testid={`entity-create-relation-${index}-note`}
-                          type="text"
-                          value={row.note}
-                          aria-label={t("knowledge.crud.noteLabel")}
-                          placeholder={t("knowledge.crud.noteLabel")}
-                          onChange={(event) => updateRelation(index, { note: event.target.value })}
-                          className={`${INPUT} ${FOCUS}`}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        aria-label={t("knowledge.create.removeRelation")}
-                        onClick={() =>
-                          setRelations((rows) => rows.filter((_row, rowIndex) => rowIndex !== index))
-                        }
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-danger ${FOCUS}`}
-                      >
-                        <Icon name="trash" size={15} />
-                      </button>
-                    </div>
-                  );
-                })}
-                {dropped > 0 && (
-                  <p data-testid="entity-create-unresolved-note" className="text-[11px] leading-snug text-muted">
-                    {t("knowledge.create.unresolvedNote")}
-                  </p>
-                )}
-              </div>
-            )}
-            <datalist id={entityListId}>
-              {entityNames.map((entityName) => (
-                <option key={entityName} value={entityName} />
-              ))}
-            </datalist>
-            <datalist id={labelListId}>
-              {relationTypeOptions(t).map((option) => (
-                <option key={option.key} value={option.label} />
-              ))}
-            </datalist>
-          </div>
-        </fieldset>
-        {failure !== null && (
-          <div role="alert" className="rounded border border-danger/40 bg-danger/10 px-2.5 py-2 text-meta text-foreground">
-            <div className="flex items-start gap-1.5">
-              <span className="mt-0.5 shrink-0 text-danger">
-                <Icon name="warning" size={13} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="leading-snug">
-                  {failure.code === "transport"
-                    ? t("knowledge.create.failedTransport")
-                    : failure.code === undefined
-                      ? t("knowledge.create.failedUnexpected")
-                      : t("knowledge.create.failed", {
-                          detail: failure.detail ?? failure.message,
-                        })}
-                </p>
-                {failure.code !== undefined && (
-                  <p className="mt-0.5 font-mono text-[11px] text-danger">{failure.code}</p>
-                )}
-                <button
-                  type="button"
-                  onClick={save}
-                  className={`mt-1 inline-flex items-center gap-1 text-meta font-medium text-primary underline underline-offset-2 transition-colors hover:text-foreground ${FOCUS}`}
-                >
-                  {t("knowledge.crud.retry")}
-                  <Icon name="refresh" size={12} />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        <div className="flex items-center justify-between gap-2 border-t border-rule pt-3">
-          <span className="text-meta text-muted">{t("knowledge.create.footerHint")}</span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              data-testid="entity-create-cancel"
-              disabled={busy}
-              onClick={onClose}
-              className={`rounded border border-border px-2.5 py-1.5 text-meta text-muted transition-colors hover:bg-surface-container-low ${FOCUS} ${busy ? "cursor-not-allowed opacity-50" : ""}`}
-            >
-              {t("knowledge.crud.cancel")}
-            </button>
-            <button
-              type="button"
-              data-testid="entity-create-save"
-              disabled={!ready || busy}
-              onClick={save}
-              className={`inline-flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-meta font-medium text-primary-foreground shadow-sm transition-all hover:opacity-95 ${FOCUS} ${!ready || busy ? "cursor-not-allowed opacity-60" : ""}`}
-            >
-              {busy && <Spinner />}
-              {busy ? t("knowledge.crud.busy") : t("knowledge.create.save")}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Modal>
   );
 }
 

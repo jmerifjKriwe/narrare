@@ -24,7 +24,9 @@ the shelf, welcome and setup, the scene-centric workspace, knowledge
 causality strip), and the settings hub — Allgemein, AI-Regeln
 (providers, keys, models, per-task assignment with output profiles) and
 the prompt editor with its preview and live test. Chat answers a single
-question and does not remember it. Everything else — analysis,
+question and does not remember it; the lore graph now interviews the author
+about a new entity and saves the answer as an entity (W9), and the free chat
+that remembers the conversation is next. Everything else — analysis,
 revision, import and export, production, series, notes, mobile — has
 designs, and no code.
 
@@ -75,11 +77,11 @@ the app is usable without touching an API or a `.env` file.
 - **Prompts — done (W8).** Every prompt editable with its diff against
   the shipped one, a provider-free preview (what a prompt renders before
   it runs), and a gated live test against the task's assigned model.
-- **Assistant sessions.** A conversation that ends in a typed proposal the user
-  accepts. Two waves on one substrate: the entity interview first (session
-  tables, the interview prompt key, `POST /api/knowledge/entities`, the panel on
-  the graph page), then the free chat with streaming and the prose sink in the
-  workspace dock. The design is
+- **Assistant sessions — the entity interview is done (W9).** Two waves on
+  one substrate: the interview (session tables, the `knowledge.entity-interview`
+  prompt key, `POST /api/knowledge/entities`, the panel on the graph page, the
+  handover into the create dialog) landed in W9; the free chat with streaming
+  and the prose sink in the workspace dock is next. The design is
   [`2026-11-20-assistant-sessions-design.md`](docs/superpowers/specs/2026-11-20-assistant-sessions-design.md).
 - **The rebuild's two loose doors.** The re-embed action the embedding-mismatch
   face still owes, and the activity reading — `GET /api/writing/activity` answers
@@ -92,11 +94,13 @@ commands — and that needs a cross-capability search contract plus a command
 registry. It is contract 2.9 below. The help centre has a content contract and no
 renderer; it waits for the content.
 
-**Design first:** the entity panel is drawn (drifted); the free chat and the prose
-sink have no draft of their own. Each round is a task in its wave.
+**Design first:** the entity panel is ported (the Stitch round of 2026-11-24,
+six approved screens); the free chat and the prose sink still have no draft of
+their own. Each round is a task in its wave.
 
-**Exit:** configure a model, run an interview that creates an entity, and edit the
-interview's prompt — all in the UI.
+**Exit:** configure a model, run an interview that creates an entity, and edit
+the interview's prompt — all in the UI. That is reachable since W9; the phase's
+two loose doors are still open.
 
 ## Phase 2 — Contracts
 
@@ -182,7 +186,7 @@ What the roadmap waits for, and why it blocks.
 
 | Area | Missing | Blocks |
 |---|---|---|
-| Chat | The entity panel's harmonization round (the draft carries invented scores and a graph preview); no draft for the free chat, the prose sink or the session list | Phase 1's assistant surface, and cut 2 |
+| Chat | A draft for the free chat and the prose sink | Cut 2 |
 | Analysis | A hub draft and seven families (emotional curve, readability, POV, coreference, author voice, character voice, drift) | Wave 3.2 |
 | Editing | A harmonization round: real fields instead of mock ones, plus states | Wave 3.5 |
 | Production | A verdict, then a harmonization round for the screens v1 never built | Wave 3.7 |

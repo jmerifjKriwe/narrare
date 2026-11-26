@@ -7,13 +7,23 @@
  */
 import { describe, expect, it } from "vitest";
 
-import type { Entity } from "@shell/lib/api/client";
+import type { Entity, Proposal } from "@shell/lib/api/client";
 
 import {
+  MAX_RELATIONS,
+  REFUSAL_CODES,
+  RELATION_ROW_CODES,
   buildEntityCreateBody,
+  createFormState,
+  duplicateRelationRows,
+  entityPrefillFromProposal,
   findDuplicateName,
+  keptRelationRows,
+  refusalCatalogKey,
+  refusalNamesRelationRow,
   relationRowOutcome,
   resolveRelationTarget,
+  visibleRowForSentIndex,
   type EntityCreateForm,
 } from "./entityCreate";
 
@@ -118,6 +128,97 @@ describe("buildEntityCreateBody", () => {
   });
 });
 
+describe("keptRelationRows", () => {
+  it("names the visible rows the save sends, so a sent index finds its row", () => {
+    const rows = [
+      { target: "Nebel", relationType: "kennt", note: "" },
+      { target: "Forschungsstation 7", relationType: "Liegt in", note: "" },
+      { target: "Forschungsstation 7", relationType: "", note: "nördlich" },
+      { target: "Dr. Maya Chen", relationType: "kennt", note: "" },
+    ];
+    const kept = keptRelationRows(rows, ENTITIES);
+    expect(kept).toEqual([1, 3]);
+    expect(visibleRowForSentIndex(kept, 0)).toBe(1);
+    expect(visibleRowForSentIndex(kept, 1)).toBe(3);
+    expect(visibleRowForSentIndex(kept, 2)).toBeNull();
+  });
+
+  it("pins the web mirror to twelve, the kernel's MAX_RELATIONS", () => {
+    // The kernel's constant in `app/kernel/contracts/knowledge.py` is the
+    // server's bound; this guards the web mirror the dialog's add control
+    // reads, not the constant itself.
+    expect(MAX_RELATIONS).toBe(12);
+  });
+});
+
+describe("duplicateRelationRows", () => {
+  it("flags both rows whose normalized target and label repeat", () => {
+    const rows = [
+      { target: "Forschungsstation 7", relationType: "located_in", note: "" },
+      { target: "  forschungsstation 7 ", relationType: "located_in", note: "anders" },
+      { target: "Dr. Maya Chen", relationType: "located_in", note: "" },
+    ];
+    expect(duplicateRelationRows(rows, ENTITIES)).toEqual([0, 1]);
+  });
+
+  it("ignores a different label, a different target and the note", () => {
+    const rows = [
+      { target: "Forschungsstation 7", relationType: "located_in", note: "a" },
+      { target: "Forschungsstation 7", relationType: "kennt", note: "a" },
+      { target: "Dr. Maya Chen", relationType: "located_in", note: "a" },
+    ];
+    expect(duplicateRelationRows(rows, ENTITIES)).toEqual([]);
+  });
+
+  it("flags only rows the save sends", () => {
+    const rows = [
+      { target: "Forschungsstation 7", relationType: "located_in", note: "" },
+      { target: "Nebel", relationType: "located_in", note: "" },
+      { target: "Forschungsstation 7", relationType: "located_in", note: "" },
+    ];
+    expect(duplicateRelationRows(rows, ENTITIES)).toEqual([0, 2]);
+  });
+});
+
+describe("refusalCatalogKey", () => {
+  it("maps every closed code to its catalog sentence key", () => {
+    expect(REFUSAL_CODES).toEqual([
+      "not-found",
+      "entity-invalid",
+      "relation-target-invalid",
+      "relation-duplicate",
+      "relation-limit",
+    ]);
+    for (const code of REFUSAL_CODES) {
+      expect(refusalCatalogKey(code)).toBe(`knowledge.create.refused.${code}`);
+    }
+  });
+
+  it("leaves the synthetic transport code and unknown codes unmapped", () => {
+    expect(refusalCatalogKey("transport")).toBeNull();
+    expect(refusalCatalogKey("something-else")).toBeNull();
+    expect(refusalCatalogKey(undefined)).toBeNull();
+  });
+});
+
+describe("refusalNamesRelationRow", () => {
+  it("names the three row-carrying codes and nothing else", () => {
+    expect([...RELATION_ROW_CODES].sort()).toEqual([
+      "relation-duplicate",
+      "relation-limit",
+      "relation-target-invalid",
+    ]);
+    for (const code of RELATION_ROW_CODES) {
+      expect(refusalNamesRelationRow(code)).toBe(true);
+    }
+    // `entity-invalid` marks a form field; transport and unknown codes no row.
+    expect(refusalNamesRelationRow("entity-invalid")).toBe(false);
+    expect(refusalNamesRelationRow("not-found")).toBe(false);
+    expect(refusalNamesRelationRow("transport")).toBe(false);
+    expect(refusalNamesRelationRow(undefined)).toBe(false);
+  });
+});
+
 describe("relationRowOutcome", () => {
   it("names what the save will do with a row, so nothing drops silently", () => {
     expect(
@@ -152,4 +253,133 @@ describe("relationRowOutcome", () => {
       "unresolved-target",
     );
   });
+});
+
+function proposed(overrides: Partial<Proposal> = {}): Proposal {
+  return {
+    name: null,
+    name_suggested: false,
+    aliases: [],
+    tags: [],
+    content: "",
+    relations: [],
+    ...overrides,
+  };
+}
+
+describe("entityPrefillFromProposal", () => {
+  it("the prefill maps the proposal", () => {
+    const prefill = entityPrefillFromProposal(
+      proposed({
+        name: "Resonanz-Transponder LC-89",
+        name_suggested: true,
+        aliases: ["LC-89", "Transponder"],
+        tags: ["Technologie", "Relikt"],
+        content: "Verschlossenes Prototyp-Subraumrelais.",
+        suggested: { aliases: ["Transponder"], tags: ["Technologie"], content: true },
+        relations: [
+          { target: "Forschungsstation 7", type: "related_to", note: "dort gefunden", suggested: true },
+          { target: "Dr. Maya Chen", type: "built_by", note: "", suggested: false },
+        ],
+      }),
+      "object",
+    );
+
+    expect(prefill.name).toBe("Resonanz-Transponder LC-89");
+    expect(prefill.type).toBe("object");
+    expect(prefill.aliases).toEqual(["LC-89", "Transponder"]);
+    expect(prefill.tags).toEqual(["Technologie", "Relikt"]);
+    expect(prefill.content).toBe("Verschlossenes Prototyp-Subraumrelais.");
+    expect(prefill.suggested).toEqual({
+      aliases: ["Transponder"],
+      tags: ["Technologie"],
+      content: true,
+    });
+    expect(prefill.relations).toEqual([
+      { target: "Forschungsstation 7", relation_type: "related_to", note: "dort gefunden", suggested: true },
+      { target: "Dr. Maya Chen", relation_type: "built_by", note: undefined, suggested: false },
+    ]);
+  });
+
+  it("an empty proposal maps to an empty prefill with the session's type", () => {
+    expect(entityPrefillFromProposal(null, "location")).toEqual({
+      type: "location",
+      relations: [],
+    });
+  });
+});
+
+describe("createFormState", () => {
+  it("the interview locks the type", () => {
+    const prefill = entityPrefillFromProposal(proposed({ name: "LC-89" }), "object");
+    const interview = createFormState({ source: "interview", prefill });
+    expect(interview.typeLocked).toBe(true);
+    expect(interview.type).toBe("object");
+    // The hand-made form owns its type box and starts empty.
+    const manual = createFormState({ source: "manual" });
+    expect(manual.typeLocked).toBe(false);
+    expect(manual.type).toBe("");
+  });
+
+  it("an ambiguous alias offers both", () => {
+    const prefill = entityPrefillFromProposal(
+      proposed({
+        name: "LC-89",
+        relations: [{ target: "May", type: "related_to", note: "", suggested: true }],
+      }),
+      "object",
+    );
+    const rows = createFormState({ source: "interview", prefill }).relations;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].target).toBe("May");
+
+    const resolution = resolveRelationTarget(rows[0].target, ENTITIES);
+    expect(resolution.kind).toBe("many");
+    if (resolution.kind !== "many") throw new Error("expected many");
+    expect(resolution.entities.map((row) => row.name)).toEqual(["Dr. Maya Chen", "ARIA"]);
+  });
+});
+
+describe("a chosen ambiguity stays chosen", () => {
+  // The browser leg's collision shape: «Kavic» names the location and is
+  // Mira's alias. The typed word alone is ambiguous; only the explicit pick
+  // says which row the writer meant.
+  const KAVIC = entityRow({ id: "e5", name: "Kavic", type: "location" });
+  const MIRA = entityRow({ id: "e6", name: "Mira", aliases: ["Kavic"] });
+  const COLLISION = [KAVIC, MIRA];
+
+  it("a name that is another row's alias stays many and the body drops the row", () => {
+    const row = { target: "Kavic", relationType: "located_in", note: "" };
+    const resolution = resolveRelationTarget(row.target, COLLISION);
+    expect(resolution.kind).toBe("many");
+    if (resolution.kind !== "many") throw new Error("expected many");
+    expect(new Set(resolution.entities.map((entity) => entity.id))).toEqual(new Set(["e5", "e6"]));
+
+    // No pick yet: the row is unresolved, so the save would leave it out.
+    expect(relationRowOutcome(row, COLLISION)).toBe("unresolved-target");
+    expect(
+      buildEntityCreateBody(form({ relations: [row], entities: COLLISION })).relations,
+    ).toEqual([]);
+  });
+
+  it.each([KAVIC, MIRA])(
+    "the pick saves to $name even though the typed word resolves to both",
+    (chosen) => {
+      const row = {
+        target: "Kavic",
+        relationType: "located_in",
+        note: "",
+        chosenId: chosen.id,
+      };
+      expect(relationRowOutcome(row, COLLISION)).toBe("kept");
+      expect(buildEntityCreateBody(form({ relations: [row], entities: COLLISION })).relations).toEqual([
+        { to_entity_id: chosen.id, relation_type: "located_in", note: null },
+      ]);
+
+      // Typing the target again drops the pick: the word is ambiguous again.
+      expect(relationRowOutcome({ ...row, chosenId: undefined }, COLLISION)).toBe(
+        "unresolved-target",
+      );
+    },
+  );
 });

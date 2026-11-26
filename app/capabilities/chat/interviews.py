@@ -46,7 +46,7 @@ from app.capabilities.chat.schemas import (
     TurnCreate,
     TurnReadback,
 )
-from app.kernel.contracts.models import ENTITY_TYPES, Entity
+from app.kernel.contracts.models import ENTITY_TYPES, MAX_RELATIONS, Entity
 from app.kernel.llm import (
     ASSISTANT_PREFIX,
     USER_PREFIX,
@@ -86,9 +86,6 @@ RELATION_TYPE_LIMIT: Final = 80
 
 CONTENT_LIMIT: Final = 10_000
 """The longest proposal body."""
-
-RELATIONS_LIMIT: Final = 12
-"""How many proposed relations are kept; the rest of the answer is dropped."""
 
 SLOT_KEYS: Final = ("name", "aliases", "tags", "content")
 LABEL_KEYS: Final = ("aliases", "tags")
@@ -379,7 +376,7 @@ def _normalise_slots(slots: dict[str, object]) -> dict[str, object]:
 
 
 def _normalise_relations(relations: list[dict[str, str]]) -> list[dict[str, str]]:
-    """The answer's relations: non-blank, bounded, at most twelve."""
+    """The answer's relations: non-blank, bounded, at most ``MAX_RELATIONS``."""
     kept: list[dict[str, str]] = []
     for relation in relations:
         target = _one_line(relation["target"], NAME_LIMIT)
@@ -387,7 +384,7 @@ def _normalise_relations(relations: list[dict[str, str]]) -> list[dict[str, str]
         if not target or not type_:
             continue
         kept.append({"target": target, "type": type_, "note": single_line(relation["note"])})
-        if len(kept) == RELATIONS_LIMIT:
+        if len(kept) == MAX_RELATIONS:
             break
     return kept
 
@@ -525,6 +522,12 @@ def _merge_relations(
     type, so two relations to one target survive with their own types. A
     relation the answer carried unchanged is left to the locked proposal; a new
     or changed one takes its provenance from the act.
+
+    The merged set is bounded like an answer: the entries the answer was not
+    shown (the locked proposal's, in their order) stand first, and only as many
+    of the answer's additions as fit join them — a new one beyond
+    ``MAX_RELATIONS`` is not added, so two answers computed against the same
+    older proposal cannot carry the set past the bound.
     """
     given_positions = {_relation_position(relation) for relation in given}
     answer_positions = {_relation_position(relation) for relation in model}
@@ -555,7 +558,10 @@ def _merge_relations(
             merged.append(stored)
         else:
             merged[index] = stored
-    return merged
+    # The bound holds on the merged set too, not only on one answer: the
+    # locked entries the answer was not shown stand first, so the cut can only
+    # drop the answer's additions beyond what twelve leave room for.
+    return merged[:MAX_RELATIONS]
 
 
 def _merge_proposal(

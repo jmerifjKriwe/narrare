@@ -2780,7 +2780,7 @@
         "type": "object"
       },
       "RelationCreate": {
-        "description": "The POST body of an edge: the other end, a free-text type, a note.\n\nThe type is free text on purpose (D7) — the suggested vocabulary is a\nUI autocomplete, not an API constraint; the service checks blankness\nand length, the ends are taken from the path and this body and are\nimmutable afterwards.",
+        "description": "The POST body of an edge: the other end, a free-text type, a note.\n\nThe type is free text on purpose (D7) — the suggested vocabulary is a\nUI autocomplete, not an API constraint; the service checks blankness\nand length, and the refusal is the coded ``entity-invalid`` the create\nendpoint speaks, never the framework's field list. The ends are taken\nfrom the path and this body and are immutable afterwards.",
         "properties": {
           "note": {
             "anyOf": [
@@ -2794,8 +2794,6 @@
             "title": "Note"
           },
           "relation_type": {
-            "maxLength": 80,
-            "minLength": 1,
             "title": "Relation Type",
             "type": "string"
           },
@@ -2844,7 +2842,7 @@
         "type": "object"
       },
       "RelationPatch": {
-        "description": "The PATCH body of an edge: type and note only.\n\nThe ends are immutable — moving an edge is delete plus create — so no\nfield here could carry them. ``model_fields_set`` tells a carried\n``null`` note (cleared) from an absent one (untouched).",
+        "description": "The PATCH body of an edge: type and note only.\n\nThe ends are immutable — moving an edge is delete plus create — so no\nfield here could carry them. ``model_fields_set`` tells a carried\n``null`` note (cleared) from an absent one (untouched). The type carries\nno schema bounds: a blank or over-long label is the service's coded\n``entity-invalid``, the create endpoint's own answer.",
         "properties": {
           "note": {
             "anyOf": [
@@ -2860,8 +2858,6 @@
           "relation_type": {
             "anyOf": [
               {
-                "maxLength": 80,
-                "minLength": 1,
                 "type": "string"
               },
               {
@@ -5435,7 +5431,7 @@
     },
     "/api/knowledge/entities": {
       "post": {
-        "description": "Create an entity by hand, with its relation lines, in one transaction.\n\nReturn the entity; raise HTTP 404 for an absent or unowned novel, or\nHTTP 422 for an invalid name, type or label (``entity-invalid``), a\nrelation line outside the novel (``relation-target-invalid``, naming\nthe row), or a duplicate line (``relation-duplicate``).",
+        "description": "Create an entity by hand, with its relation lines, in one transaction.\n\nReturn the entity; raise HTTP 404 for an absent or unowned novel, or\nHTTP 422 for an invalid name, type or label (``entity-invalid``), more\nthan twelve relation lines (``relation-limit``), a relation line outside\nthe novel (``relation-target-invalid``, naming the row), or a duplicate\nline (``relation-duplicate``).",
         "operationId": "create_entity_api_knowledge_entities_post",
         "requestBody": {
           "content": {
@@ -5666,7 +5662,7 @@
         ]
       },
       "post": {
-        "description": "Create a directed edge to another entity of the same novel.\n\nSelf-relations are allowed. Raise HTTP 404 when either end is absent\nor unowned or not of this novel, HTTP 422 for a blank or over-long\ntype, or HTTP 409 when this exact edge carries the type already.",
+        "description": "Create a directed edge to another entity of the same novel.\n\nSelf-relations are allowed. Raise HTTP 404 when either end is absent\nor unowned or not of this novel, HTTP 422 for a blank or over-long\ntype (``entity-invalid``, the create endpoint's own shape), or HTTP 409\nwhen this exact edge carries the type already.",
         "operationId": "add_relation_api_knowledge_entities__entity_id__relations_post",
         "parameters": [
           {
@@ -6189,7 +6185,7 @@
         ]
       },
       "patch": {
-        "description": "Retype or re-note an edge; the ends are immutable.\n\nReturn the edge; raise HTTP 404 for an absent or unowned edge,\nHTTP 422 for a blank or over-long type, or HTTP 409 when the new type\nwould duplicate the edge's sibling.",
+        "description": "Retype or re-note an edge; the ends are immutable.\n\nReturn the edge; raise HTTP 404 for an absent or unowned edge,\nHTTP 422 for a blank or over-long type (``entity-invalid``, the create\nendpoint's own shape), or HTTP 409 when the new type would duplicate the\nedge's sibling.",
         "operationId": "update_relation_api_knowledge_relations__relation_id__patch",
         "parameters": [
           {

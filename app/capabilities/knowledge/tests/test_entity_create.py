@@ -15,10 +15,11 @@ import pytest
 from httpx import ASGITransport, AsyncClient, Response
 
 from app.api.main import app
+from app.capabilities.knowledge import service as knowledge_service
 from app.capabilities.knowledge.repository import EntityRepository
 from app.capabilities.knowledge.service import KnowledgeService
 from app.kernel.auth import LOCAL_USER_ID
-from app.kernel.contracts.models import Chapter, Entity, EntitySuggestion, Novel
+from app.kernel.contracts.models import MAX_RELATIONS, Chapter, Entity, EntitySuggestion, Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 
@@ -71,13 +72,15 @@ def _body(
     }
 
 
-def _coded(response: Response) -> dict[str, str]:
+def _coded(response: Response) -> dict[str, object]:
+    """The whole coded detail: the code and sentence the surface localizes,
+    plus the structure it marks instead of printing."""
     detail = cast("dict[str, object]", response.json()["detail"])
     code = detail["code"]
     text = detail["detail"]
     assert isinstance(code, str)
     assert isinstance(text, str)
-    return {"code": code, "detail": text}
+    return detail
 
 
 async def test_create_writes_entity_and_relations_in_one_transaction() -> None:
@@ -141,7 +144,8 @@ async def test_invalid_name_and_type_are_422_naming_the_field() -> None:
             assert refused.status_code == 422, name
             detail = _coded(refused)
             assert detail["code"] == "entity-invalid"
-            assert "name" in detail["detail"]
+            assert detail["field"] == "name"
+            assert "name" in str(detail["detail"])
 
         unknown_type = await client.post(
             "/api/knowledge/entities", json=_body(novel.id, type_="idea")
@@ -149,7 +153,8 @@ async def test_invalid_name_and_type_are_422_naming_the_field() -> None:
         assert unknown_type.status_code == 422
         detail = _coded(unknown_type)
         assert detail["code"] == "entity-invalid"
-        assert "type" in detail["detail"]
+        assert detail["field"] == "type"
+        assert "type" in str(detail["detail"])
 
         # no refusal wrote anything
         assert await _entity_count(client, novel.id) == before
@@ -178,7 +183,66 @@ async def test_blank_or_over_long_relation_type_is_the_coded_422() -> None:
             assert refused.status_code == 422, relation_type
             detail = _coded(refused)
             assert detail["code"] == "entity-invalid"
-            assert "relation type" in detail["detail"]
+            assert detail["field"] == "relation type"
+            assert "relation type" in str(detail["detail"])
+        assert await _entity_count(client, novel.id) == before
+
+
+async def test_more_than_twelve_relation_lines_is_the_coded_relation_limit() -> None:
+    """The proposal's own bound holds on the request side too: a create asks
+    for at most twelve relations, and the thirteenth line refuses the whole
+    request before anything is written."""
+    novel, station, chen = await _seed_novel()
+    async with _client() as client:
+        before = await _entity_count(client, novel.id)
+        relations = [
+            {
+                "to_entity_id": str(station.id if index % 2 == 0 else chen.id),
+                "relation_type": f"verweist_{index}",
+                "note": None,
+            }
+            for index in range(13)
+        ]
+        refused = await client.post(
+            "/api/knowledge/entities", json=_body(novel.id, relations=relations)
+        )
+        assert refused.status_code == 422, refused.text
+        detail = _coded(refused)
+        assert detail["code"] == "relation-limit"
+        assert detail["row"] == 12
+        assert "12" in str(detail["detail"])
+        assert await _entity_count(client, novel.id) == before
+
+
+async def test_the_create_endpoint_reads_the_kernel_bound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The create path reads the module's name, not a literal nested into it:
+    lowering the module name here makes the refusal follow, naming the third
+    line within a bound of two, while a nested twelve would still admit three.
+    """
+    assert knowledge_service.MAX_RELATIONS is MAX_RELATIONS
+
+    monkeypatch.setattr(knowledge_service, "MAX_RELATIONS", 2)
+    novel, station, chen = await _seed_novel()
+    async with _client() as client:
+        before = await _entity_count(client, novel.id)
+        relations = [
+            {
+                "to_entity_id": str(station.id if index % 2 == 0 else chen.id),
+                "relation_type": f"verweist_{index}",
+                "note": None,
+            }
+            for index in range(3)
+        ]
+        refused = await client.post(
+            "/api/knowledge/entities", json=_body(novel.id, relations=relations)
+        )
+        assert refused.status_code == 422, refused.text
+        detail = _coded(refused)
+        assert detail["code"] == "relation-limit"
+        assert detail["row"] == 2
+        assert "at most 2" in str(detail["detail"])
         assert await _entity_count(client, novel.id) == before
 
 
@@ -222,7 +286,8 @@ async def test_relation_outside_the_novel_refuses_and_leaves_no_row() -> None:
         assert refused.status_code == 422, refused.text
         detail = _coded(refused)
         assert detail["code"] == "relation-target-invalid"
-        assert "1" in detail["detail"]  # the refused row's index
+        assert detail["row"] == 1  # the refused row's sent-list index
+        assert "1" in str(detail["detail"])
 
         # the valid first line was written to the same transaction and rolled
         # back with it: no entity, no edge
@@ -244,7 +309,8 @@ async def test_duplicate_relation_line_is_422() -> None:
         assert refused.status_code == 422, refused.text
         detail = _coded(refused)
         assert detail["code"] == "relation-duplicate"
-        assert "row 1" in detail["detail"]
+        assert detail["row"] == 1
+        assert "row 1" in str(detail["detail"])
         assert await _entity_count(client, novel.id) == before
 
 

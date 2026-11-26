@@ -21,7 +21,7 @@ from app.capabilities.chat.prompts import ROSTER_CUT_LINE
 from app.capabilities.chat.repository import AssistantSessionRepository
 from app.capabilities.chat.schemas import TurnCreate
 from app.kernel.auth import LOCAL_USER_ID
-from app.kernel.contracts.models import Entity, Novel
+from app.kernel.contracts.models import MAX_RELATIONS, Entity, Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.llm.contract import (
@@ -646,6 +646,96 @@ COMPLETE = _proposal(
     ],
 )
 """A proposal with every slot set and mixed provenance: fill-all must not move it."""
+
+
+def test_the_answer_normalisation_keeps_the_kernel_bound() -> None:
+    """The thirteenth proposed relation is the one the answer loses, and the
+    bound itself is the kernel's — the interview imports it, never a copy
+    (the direction rule 1 allows)."""
+    answered = [
+        {"target": f"Target {index}", "type": "knows", "note": ""}
+        for index in range(MAX_RELATIONS + 1)
+    ]
+
+    kept = interviews._normalise_relations(  # pyright: ignore[reportPrivateUsage]  the pure normalisation is the unit under test
+        answered
+    )
+
+    assert len(kept) == MAX_RELATIONS
+    assert kept[-1]["target"] == f"Target {MAX_RELATIONS - 1}"
+
+
+def test_the_answer_normalisation_reads_the_kernel_bound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The name the interview bounds by is the kernel's own object, and the
+    normalisation reads it: a literal nested back into the function keeps its
+    twelve, while lowering the module name here makes the answer follow."""
+    assert interviews.MAX_RELATIONS is MAX_RELATIONS
+
+    monkeypatch.setattr(interviews, "MAX_RELATIONS", 3)
+    answered = [{"target": f"Target {index}", "type": "knows", "note": ""} for index in range(5)]
+    kept = interviews._normalise_relations(  # pyright: ignore[reportPrivateUsage]  the pure normalisation is the unit under test
+        answered
+    )
+    assert len(kept) == 3
+
+
+def test_a_merged_relation_set_under_the_bound_is_untouched() -> None:
+    """Five locked relations plus an answer adding three: eight, in order."""
+    locked = [
+        {"target": f"Locked {index}", "type": "knows", "note": "", "suggested": False}
+        for index in range(5)
+    ]
+    echoes: list[dict[str, str]] = [
+        {"target": str(row["target"]), "type": str(row["type"]), "note": str(row["note"])}
+        for row in locked
+    ]
+    added = [{"target": f"Added {index}", "type": "knows", "note": ""} for index in range(3)]
+
+    merged = interviews._merge_relations(  # pyright: ignore[reportPrivateUsage]  the pure merge is the unit under test
+        [dict(row) for row in locked],
+        [dict(row) for row in locked],
+        [*echoes, *added],
+        None,
+    )
+
+    assert [(relation["target"], relation["type"]) for relation in merged] == [
+        *[(row["target"], row["type"]) for row in locked],
+        *[(row["target"], row["type"]) for row in added],
+    ]
+
+
+def test_the_relation_merge_reads_the_kernel_bound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The name the merge cuts by is the kernel's own object, and the merge
+    reads it: a literal nested back into the function keeps its twelve, while
+    lowering the module name here makes the merged set follow."""
+    assert interviews.MAX_RELATIONS is MAX_RELATIONS
+
+    monkeypatch.setattr(interviews, "MAX_RELATIONS", 5)
+    locked = [
+        {"target": f"Locked {index}", "type": "knows", "note": "", "suggested": False}
+        for index in range(4)
+    ]
+    echoes: list[dict[str, str]] = [
+        {"target": str(row["target"]), "type": str(row["type"]), "note": str(row["note"])}
+        for row in locked
+    ]
+    added = [{"target": f"Added {index}", "type": "knows", "note": ""} for index in range(3)]
+
+    merged = interviews._merge_relations(  # pyright: ignore[reportPrivateUsage]  the pure merge is the unit under test
+        [dict(row) for row in locked],
+        [dict(row) for row in locked],
+        [*echoes, *added],
+        None,
+    )
+
+    assert [relation["target"] for relation in merged] == [
+        *[row["target"] for row in locked],
+        "Added 0",
+    ]
 
 
 @pytest.mark.usefixtures("two_users")
@@ -1298,6 +1388,57 @@ async def test_two_turns_racing_on_one_list_slot_keep_both_items(
     proposal = detail.json()["proposal"]
     assert set(proposal["aliases"]) == {"Die Wächterin", "Die Hüterin"}
     assert proposal["name"] == "Mira"
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_two_answers_merged_into_one_proposal_cannot_pass_the_relation_bound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """B's answer lands first, A's second, both computed against the same five
+    relations and each proposing eight new ones. The merged set is cut at the
+    bound: the locked five in their order, then B's seven that fit; A's new
+    ones do not fit and are not added."""
+    novel = await _seed_novel()
+    original = [
+        {"target": f"Original {index}", "type": "knows", "note": "", "suggested": False}
+        for index in range(5)
+    ]
+    session_id = await _seed_session(
+        novel, proposal=_proposal(name="Mira", relations=[dict(row) for row in original])
+    )
+
+    def answer(prefix: str) -> str:
+        """One answer echoing the five it was given, then eight new relations."""
+        echoes = [
+            {"target": row["target"], "type": row["type"], "note": row["note"]} for row in original
+        ]
+        added = [{"target": f"{prefix} {index}", "type": "knows", "note": ""} for index in range(8)]
+        return json.dumps(
+            {"reply": "Notiert.", "slots": {"name": "Mira"}, "relations": [*echoes, *added]},
+            ensure_ascii=False,
+        )
+
+    provider = _ConcurrentTurnProvider(
+        session_id,
+        act="fill-all",
+        b_answer=answer("B"),
+        a_answer=answer("A"),
+    )
+    monkeypatch.setattr(interviews, "resolve_provider", _resolving(provider))
+
+    async with _client() as client:
+        response = await client.post(
+            f"/api/chat/sessions/{session_id}/turns",
+            json={"text": "Alles vorschlagen lassen", "act": "fill-all"},
+        )
+
+    assert response.status_code == 200
+    relations = response.json()["proposal"]["relations"]
+    assert [(relation["target"], relation["type"]) for relation in relations] == [
+        *[(row["target"], row["type"]) for row in original],
+        *[(f"B {index}", "knows") for index in range(MAX_RELATIONS - len(original))],
+    ]
+    assert len(relations) == MAX_RELATIONS
 
 
 @pytest.mark.usefixtures("two_users")

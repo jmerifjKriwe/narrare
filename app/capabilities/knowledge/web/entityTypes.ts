@@ -20,6 +20,9 @@ export const TYPE_KEYS = {
   generic: "knowledge.type.generic",
 } as const;
 
+/** The contract's closed type set, as the dialog's locked type can carry it. */
+export type EntityType = keyof typeof TYPE_KEYS;
+
 /**
  * The type's glyph — the app's own face for the concept the drafts pin
  * with Material names (person, location_on, token, …). The set has no

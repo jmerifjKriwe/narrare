@@ -63,6 +63,7 @@
   "shell.theme.dark": "Dunkel",
   "shell.theme.light": "Hell",
   "shell.theme.system": "System",
+  "shell.toast.dismiss": "Meldung schließen",
   "shell.topbar.atelier": "Atelier",
   "shell.topbar.manuscripts": "Manuscripts",
   "shell.topbar.search": "Suchen",

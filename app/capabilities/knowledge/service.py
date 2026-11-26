@@ -40,6 +40,7 @@ from app.capabilities.knowledge.schemas import (
 from app.kernel.auth import SetupRequiredError
 from app.kernel.contracts.models import (
     ENTITY_TYPES,
+    MAX_RELATIONS,
     Chapter,
     ConsistencyFinding,
     Document,
@@ -84,7 +85,11 @@ class FindingAlreadyReviewedError(Exception):
 class InvalidEntityUpdateError(ValueError):
     """The update breaks the entity contract: a blank or over-long name, a
     type outside the extraction vocabulary, or a blank or over-long alias
-    or tag."""
+    or tag. ``field`` names which one, so the surface can mark it."""
+
+    def __init__(self, message: str, *, field: str) -> None:
+        super().__init__(message)
+        self.field = field
 
 
 class SelfMergeError(Exception):
@@ -104,7 +109,31 @@ class InvalidRelationError(ValueError):
 
 class RelationExistsError(Exception):
     """The same directed edge between the same two rows already carries
-    this relation_type; the edge, not the wording, is the duplicate."""
+    this relation_type; the edge, not the wording, is the duplicate.
+
+    ``row`` is the duplicate line's index in a create's sent list, or None
+    when the refusal is the sibling routes' status-only 409.
+    """
+
+    def __init__(self, row: int | None = None) -> None:
+        super().__init__(
+            "this relation exists already"
+            if row is None
+            else f"relation row {row} duplicates an earlier relation"
+        )
+        self.row = row
+
+
+class RelationLimitError(ValueError):
+    """A create carries more relation lines than ``MAX_RELATIONS``.
+
+    ``row`` is the first line over the bound, in the request list's
+    indexing, so the answer can name the row the writer has to remove.
+    """
+
+    def __init__(self, row: int) -> None:
+        super().__init__(f"a create carries at most {MAX_RELATIONS} relation lines")
+        self.row = row
 
 
 class RelationTargetInvalidError(ValueError):
@@ -139,10 +168,10 @@ def _clean_labels(values: list[str] | None, what: str) -> list[str]:
     for value in values or []:
         label = value.strip()
         if not label:
-            raise InvalidEntityUpdateError(f"an entity's {what} cannot be blank")
+            raise InvalidEntityUpdateError(f"an entity's {what} cannot be blank", field=what)
         if len(label) > MAX_LABEL_LENGTH:
             raise InvalidEntityUpdateError(
-                f"an entity's {what} is over the {MAX_LABEL_LENGTH} character limit"
+                f"an entity's {what} is over the {MAX_LABEL_LENGTH} character limit", field=what
             )
         folded = label.casefold()
         if folded not in seen:
@@ -155,10 +184,10 @@ def _validate_entity_name(name: str | None) -> str:
     """The name the contract stores: nonblank after stripping, at most the
     column's width. The one check both the birth and the correction read."""
     if not name or not name.strip():
-        raise InvalidEntityUpdateError("an entity needs a name")
+        raise InvalidEntityUpdateError("an entity needs a name", field="name")
     if len(name) > MAX_NAME_LENGTH:
         raise InvalidEntityUpdateError(
-            f"an entity's name is over the {MAX_NAME_LENGTH} character limit"
+            f"an entity's name is over the {MAX_NAME_LENGTH} character limit", field="name"
         )
     return name
 
@@ -166,7 +195,9 @@ def _validate_entity_name(name: str | None) -> str:
 def _validate_entity_type(type_: str | None) -> str:
     """The type the contract stores: one of the extraction vocabulary's."""
     if type_ is None or type_ not in ENTITY_TYPES:
-        raise InvalidEntityUpdateError(f"an entity's type is not one of {'|'.join(ENTITY_TYPES)}")
+        raise InvalidEntityUpdateError(
+            f"an entity's type is not one of {'|'.join(ENTITY_TYPES)}", field="type"
+        )
     return type_
 
 
@@ -686,11 +717,14 @@ class KnowledgeService:
         Commit and return the entity. Raise NotFoundError for an absent or
         unowned novel — including one deleted between the ownership check and
         the row's flush — InvalidEntityUpdateError for an invalid name, type,
-        alias or tag, InvalidRelationError for a blank or over-long relation
-        type, RelationTargetInvalidError for a line outside the novel, or
+        alias or tag, RelationLimitError for more than MAX_RELATIONS lines,
+        InvalidRelationError for a blank or over-long relation type,
+        RelationTargetInvalidError for a line outside the novel, or
         RelationExistsError for a duplicate line.
         """
         await self._own_novel(payload.novel_id)
+        if len(payload.relations) > MAX_RELATIONS:
+            raise RelationLimitError(MAX_RELATIONS)
         try:
             entity = await self._create_entity_row(
                 payload.novel_id,
@@ -716,9 +750,7 @@ class KnowledgeService:
                 except NotFoundError:
                     raise RelationTargetInvalidError(index) from None
                 except RelationExistsError as error:
-                    raise RelationExistsError(
-                        f"relation row {index} duplicates an earlier relation"
-                    ) from error
+                    raise RelationExistsError(index) from error
                 except IntegrityError as error:
                     # The look-before-write raced a writer: the foreign key's
                     # vanished target is this row's invalid target, the unique
@@ -727,9 +759,7 @@ class KnowledgeService:
                     if getattr(error.orig, "sqlstate", None) == FOREIGN_KEY_VIOLATION:
                         raise RelationTargetInvalidError(index) from None
                     if getattr(error.orig, "sqlstate", None) == UNIQUE_VIOLATION:
-                        raise RelationExistsError(
-                            f"relation row {index} duplicates an earlier relation"
-                        ) from None
+                        raise RelationExistsError(index) from None
                     raise
         except InvalidRelationError, RelationTargetInvalidError, RelationExistsError:
             await self.session.rollback()

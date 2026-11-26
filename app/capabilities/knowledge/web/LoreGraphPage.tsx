@@ -46,15 +46,18 @@ import {
 import type { Relation } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
-import { useEntitiesQuery, useNovelRelationsQuery } from "@shell/lib/query";
+import { useEntitiesQuery, useNovelRelationsQuery, useAssistantSessionsQuery, useCloseAssistantSession } from "@shell/lib/query";
 import { CARD_EYEBROW, FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 import { useToast } from "@shell/ui/toast";
 
 import { EntityDossier } from "./EntityDossier";
-import { CreateRelationDialog, EntityCreateDialog, MergeDialog } from "./crudDialogs";
+import { CreateRelationDialog, MergeDialog } from "./crudDialogs";
+import { EntityCreateDialog } from "./entityCreate/EntityCreateDialog";
+import type { EntityPrefill } from "./entityCreate";
 import { entityTypeIcon, entityTypeLabel, typeTheme } from "./entityTypes";
 import { fitTransform, graphBounds, graphSignature, layoutGraph, type Transform } from "./graphLayout";
+import { EntityInterview } from "./interview/EntityInterview";
 import { relationTypeLabel } from "./relations";
 
 const GRAPH_PATH = "/novels/$novelId/knowledge/graph";
@@ -87,12 +90,18 @@ export function LoreGraphPage() {
   const t = useTranslation();
   const toast = useToast();
   const { novelId } = useParams({ from: GRAPH_PATH });
-  const { entity: selectedId } = useSearch({ from: GRAPH_PATH });
+  const { entity: selectedId, interview } = useSearch({ from: GRAPH_PATH });
   const navigate = useNavigate();
   usePageTitle(t("knowledge.graph.title"));
 
   const entities = useEntitiesQuery(novelId);
   const relations = useNovelRelationsQuery(novelId);
+  // The door's count and the panel's list read the same cached rows; the
+  // panel opens on the newest open session, or on the type chooser.
+  const interviewSessions = useAssistantSessionsQuery(novelId);
+  const openInterviewCount = (interviewSessions.data ?? []).filter(
+    (session) => session.closed_at === null,
+  ).length;
 
   const [activeType, setActiveType] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -100,6 +109,22 @@ export function LoreGraphPage() {
   // Which subbar CRUD dialog stands open (Task 4; the create since W9); the
   // dossier owns its own.
   const [crud, setCrud] = useState<null | "addRelation" | "merge" | "create">(null);
+  /** The interview's draft while the create dialog is open through the
+   *  handover; null is the hand-made door, which starts empty. */
+  const [prefill, setPrefill] = useState<EntityPrefill | null>(null);
+  /** The interviews the handover saved, each until that interview is ended.
+   *  Their proposals already became rows, so each panel's save door stays shut
+   *  for its own id — during the end request's flight, through a failed end,
+   *  and through hiding and re-selecting. A later handover joins the set
+   *  instead of replacing the earlier one's mark; the ended face spends only
+   *  its own id. */
+  const [handedOver, setHandedOver] = useState<ReadonlySet<string>>(() => new Set());
+  /** The interviews whose face the panel reported ended. The ended face
+   *  renders «Neues Interview» instead of «Interview beenden» and keeps the
+   *  save door live, so it is the one place the prefilled dialog's opener must
+   *  not name the end action — even if another handover re-marks the id. */
+  const [endedInterviews, setEndedInterviews] = useState<ReadonlySet<string>>(() => new Set());
+  const closeInterview = useCloseAssistantSession();
 
   const entityList = useMemo(() => entities.data ?? [], [entities.data]);
   const relationList = useMemo(() => relations.data ?? [], [relations.data]);
@@ -252,12 +277,59 @@ export function LoreGraphPage() {
       void navigate({
         to: GRAPH_PATH,
         params: { novelId },
-        search: id !== null ? { entity: id } : {},
+        search: {
+          ...(id !== null ? { entity: id } : {}),
+          ...(interview !== undefined ? { interview } : {}),
+        },
         replace: true,
       });
     },
-    [navigate, novelId],
+    [interview, navigate, novelId],
   );
+
+  // The panel's open state rides the URL beside the selection, as the
+  // selected entity does: a reload restores the conversation, and closing
+  // the panel only drops the parameter — the session stays open.
+  const setInterview = useCallback(
+    (target: string | null) => {
+      void navigate({
+        to: GRAPH_PATH,
+        params: { novelId },
+        search: {
+          ...(selectedId !== undefined ? { entity: selectedId } : {}),
+          ...(target !== null ? { interview: target } : {}),
+        },
+        replace: true,
+      });
+    },
+    [navigate, novelId, selectedId],
+  );
+
+  async function openInterviewDoor() {
+    // The list is the door's truth: the newest open session, or the chooser.
+    // A click that beats the first list read awaits it rather than guessing.
+    const rows = interviewSessions.data ?? (await interviewSessions.refetch()).data ?? [];
+    const newest = rows.find((session) => session.closed_at === null);
+    setInterview(newest !== undefined ? newest.id : "new");
+  }
+
+  // The panel says when its shown interview is ended: the handover's mark for
+  // that id is spent, and the ended face — the design's residue — is where the
+  // proposal stays savable. The ended set outlives the mark: an ended
+  // interview never renders the end action again, so the dialog's opener must
+  // know even when the ended face's live save door hands the proposal over
+  // once more.
+  const interviewEnded = useCallback((sessionId: string) => {
+    setHandedOver((saved) => {
+      if (!saved.has(sessionId)) return saved;
+      const next = new Set(saved);
+      next.delete(sessionId);
+      return next;
+    });
+    setEndedInterviews((ended) =>
+      ended.has(sessionId) ? ended : new Set(ended).add(sessionId),
+    );
+  }, []);
 
   // --- The edge popover's focus contract ---------------------------------
   // Each edge is a keyboard button; the refs let Escape (and the close door)
@@ -409,6 +481,24 @@ export function LoreGraphPage() {
         })()
       : null;
 
+  // The dialog's opener is the control that opened it: the hand-made door, or
+  // the save door a handover came from. That door is still live while the
+  // dialog is up, so a cancelled dialog returns the keyboard there — never to
+  // «Interview beenden», whose Enter would end the interview.
+  const createOpenerId =
+    prefill === null ? "entity-interview-manual" : "entity-interview-save";
+  // Once a handover's create lands, the dialog puts the keyboard on the next
+  // action itself, before it closes: «Interview beenden», which is rendered
+  // and enabled at that moment (the page's own close request does not drive
+  // the panel's busy state). The modal's cleanup then targets the save door,
+  // now shut by the handover, and no-ops on it. An ended interview renders
+  // «Neues Interview» instead of the end action and keeps its save door live,
+  // so there the dialog names nothing and the cleanup's opener stands.
+  const createdFocusId =
+    prefill !== null && interview !== undefined && !endedInterviews.has(interview)
+      ? "entity-interview-end"
+      : undefined;
+
   return (
     <div id="graph-page" data-testid="graph-page" tabIndex={-1} className="flex h-full flex-col overflow-hidden focus:outline-none">
       {/* The subbar — the view label, the type filter chips, the search and
@@ -545,16 +635,39 @@ export function LoreGraphPage() {
             type="button"
             id="graph-new-entity"
             data-testid="graph-new-entity"
-            onClick={() => setCrud("create")}
+            onClick={openInterviewDoor}
+            title={t("knowledge.graph.newEntity")}
             className={`flex items-center gap-1.5 rounded-[var(--radius-control)] bg-primary px-3 py-1 text-meta text-primary-foreground transition-colors hover:opacity-95 ${FOCUS}`}
           >
-            <Icon name="plus" size={14} /> {t("knowledge.graph.newEntity")}
+            {/* The visible row (and its count badge) is the sighted label; the
+                spoken name carries the count as a whole sentence. */}
+            <span aria-hidden="true" className="flex items-center gap-1.5">
+              <Icon name="plus" size={14} /> {t("knowledge.graph.newEntity")}
+              {openInterviewCount > 0 && (
+                <span
+                  aria-hidden="true"
+                  data-testid="graph-new-entity-count"
+                  className="flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary-container px-1 font-mono text-[10px] font-bold text-primary"
+                >
+                  {openInterviewCount}
+                </span>
+              )}
+            </span>
+            <span className="sr-only">
+              {openInterviewCount > 0
+                ? t("knowledge.graph.newEntityWithOpen", { count: openInterviewCount })
+                : t("knowledge.graph.newEntity")}
+            </span>
           </button>
         </div>
       </div>
 
-      {/* The body — the honest state's own face; the bar above stays. */}
-      {pending ? (
+      {/* The body — the honest state's own face; the bar above stays. While
+          the interview parameter stands, the panel owns the right column and
+          the selected dossier yields; closing the panel returns it. */}
+      <div className="relative flex min-h-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {pending ? (
         <div data-testid="graph-loading" className="flex min-h-0 flex-1 items-center justify-center">
           <p role="status" className="text-body text-muted">
             {t("knowledge.graph.loading")}
@@ -834,8 +947,9 @@ export function LoreGraphPage() {
             )}
           </div>
 
-          {/* The dossier dock — the selected entity's inline panel. */}
-          {selected !== null && (
+          {/* The dossier dock — the selected entity's inline panel. It yields
+              while the interview panel owns the column. */}
+          {interview === undefined && selected !== null && (
             <div className="w-[360px] shrink-0">
               <EntityDossier
                 entity={selected}
@@ -848,7 +962,34 @@ export function LoreGraphPage() {
             </div>
           )}
         </div>
-      )}
+          )}
+        </div>
+
+        {/* The interview host stands for the page's lifetime; the panel inside
+            it renders only while the `interview` parameter stands, so hiding
+            it never loses a running turn, a failure or an unsent draft. */}
+        <EntityInterview
+          novelId={novelId}
+          sessionId={interview === undefined ? undefined : interview === "new" ? null : interview}
+          onSelectSession={(target) => {
+            setInterview(target);
+          }}
+          onClose={() => {
+            setInterview(null);
+          }}
+          onManual={() => {
+            setCrud("create");
+          }}
+          onSave={(draft) => {
+            setPrefill(draft);
+            setCrud("create");
+          }}
+          onEnded={interviewEnded}
+          returnFocusId="graph-new-entity"
+          handedOver={interview !== undefined && handedOver.has(interview)}
+          closeFailed={closeInterview.isError && closeInterview.variables === interview}
+        />
+      </div>
 
       {/* The subbar's CRUD dialogs (Task 4). The selected entity is the fixed
           end when one stands; the merge moves the selection to the survivor.
@@ -876,11 +1017,62 @@ export function LoreGraphPage() {
         <EntityCreateDialog
           novelId={novelId}
           entities={entityList}
-          openerId="graph-new-entity"
-          onClose={() => setCrud(null)}
+          rosterSettled={!entities.isPending}
+          openerId={createOpenerId}
+          createdFocusId={createdFocusId}
+          source={prefill === null ? "manual" : "interview"}
+          prefill={prefill ?? undefined}
+          onClose={() => {
+            // The handover's draft belongs to this dialog: a later manual
+            // door must never inherit it.
+            setPrefill(null);
+            setCrud(null);
+          }}
           onCreated={(entity, relations) => {
-            select(entity.id);
+            const closesInterview =
+              prefill !== null && interview !== undefined && interview !== "new";
+            const sessionId = interview;
+            setPrefill(null);
             toast.show(t("knowledge.create.created", { count: relations }));
+            // The interview's proposal became the row: close the session and
+            // leave its parameter behind, so the graph owns the column again.
+            // The save door shuts for this interview from here on, so no
+            // second press can save the same proposal again — whatever
+            // happens to the end request.
+            if (closesInterview && sessionId !== undefined) {
+              setHandedOver((saved) =>
+                saved.has(sessionId) ? saved : new Set(saved).add(sessionId),
+              );
+              closeInterview.mutate(sessionId, {
+                onSuccess: () => {
+                  void navigate({
+                    to: GRAPH_PATH,
+                    params: { novelId },
+                    search: { entity: entity.id },
+                    replace: true,
+                  });
+                },
+                onError: () => {
+                  // The row landed; only the end failed. The panel stays
+                  // beside the selected row and names the failed end, and the
+                  // door stays shut until the interview is ended.
+                  select(entity.id);
+                },
+              });
+              return;
+            }
+            // A hand-made row born from the panel returns to the graph too: the
+            // panel yields the column so the new row's dossier can show.
+            if (sessionId !== undefined) {
+              void navigate({
+                to: GRAPH_PATH,
+                params: { novelId },
+                search: { entity: entity.id },
+                replace: true,
+              });
+            } else {
+              select(entity.id);
+            }
           }}
         />
       )}
