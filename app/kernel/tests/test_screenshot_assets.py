@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from scripts.screenshot_manifest import SHOTS, render_index
+from scripts.screenshot_manifest import README_SHOTS, SHOTS, render_index
 from scripts.screenshots import _publish  # pyright: ignore[reportPrivateUsage]
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -77,6 +77,35 @@ def test_every_readme_screenshot_path_resolves_to_a_master() -> None:
         committed = ROOT / source
         assert committed.is_file(), source
         assert committed.name in _manifest_names(), source
+
+
+_IMG_TAG = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+_IMG_ATTR = re.compile(r'([a-zA-Z-]+)="([^"]*)"')
+
+
+def _readme_screenshots() -> list[tuple[str, str]]:
+    """Every README ``<img>`` whose source is a screenshot, as ``(src, alt)``."""
+    images: list[tuple[str, str]] = []
+    for tag in _IMG_TAG.findall(README.read_text(encoding="utf-8")):
+        attrs = dict(_IMG_ATTR.findall(tag))
+        source = attrs.get("src", "")
+        if source.startswith("assets/screenshots/"):
+            images.append((source, attrs.get("alt", "")))
+    return images
+
+
+def test_readme_gallery_is_the_curated_manifest_in_order() -> None:
+    images = _readme_screenshots()
+    expected = [f"assets/screenshots/{shot.filename}" for shot in README_SHOTS]
+    assert [source for source, _ in images] == expected
+    for (source, alt), shot in zip(images, README_SHOTS, strict=True):
+        assert (ROOT / source).is_file(), source
+        assert alt == shot.caption, source
+
+
+def test_readme_does_not_call_live_settings_a_roadmap_phase() -> None:
+    text = README.read_text(encoding="utf-8")
+    assert "is Phase 1 of the" not in text
 
 
 def _markdown_targets(text: str) -> list[str]:
