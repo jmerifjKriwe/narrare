@@ -104,11 +104,13 @@ renders it.
   path carries capability ownership; the key keeps the feature readable.
 - **Sort keys alphabetically** in every catalog file. The generator refuses an
   unsorted file, so a new key lands where it belongs instead of at the end.
-- **Cover the plural categories the copy needs.** For a message with
-  `{count, plural, …}`, check
-  `Intl.PluralRules("<code>").resolvedOptions().pluralCategories`; write a
-  branch for each category the wording distinguishes, and let `other` cover
-  the rest. The parser test proves syntax, not grammar.
+- **Write a branch for every plural category its language has.** For a message
+  with `{count, plural, …}`, `Intl.PluralRules("<code>")` reports the categories
+  the language distinguishes; write a branch for each — except a lone `many`
+  where the language's set is exactly `one/many/other`, which the copy never
+  needs. `other` remains the runtime fallback. `web/lib/catalogRules.test.ts`
+  refuses a message that skips a required category and names the language, key
+  and category.
 - **Watch ICU quoting.** A lone `'` starts a quoted literal: `'{name}'` prints
   the braces, not the value. Use typographic quotes in prose or escape them.
 - **Name languages in their own words** via `locale.name` (Deutsch, Français,
