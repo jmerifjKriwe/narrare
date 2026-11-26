@@ -144,6 +144,12 @@ names the owner of the trigger and the row's child under the wave's index.
   „PURPOSE: …" and now open on their first prose line (one rule for every
   key). The commit is pushed and force push is forbidden, so the next
   release's notes miss that line; this record and PR 3's body name it.
+  `c1ade0439` is the same gap in the other direction — typed `fix` with a
+  `User-visible:` line, it only aligned the two sibling relation routes'
+  refusal with the create endpoint's coded 422, a wire shape no surface shows
+  (the dialog caught a blank label before and after), so under `AGENTS.md` it
+  is a hidden type and the next release's notes carry one line more than the
+  writer sees.
 
 ## Known-pattern notes (no row owed — the pattern is the record)
 
