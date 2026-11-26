@@ -285,6 +285,7 @@ def test_directory_over_the_uncompressed_cap_is_refused_named(tmp_path: Path) ->
         (True, None),
         ([1, 2], None),
         ({"x": 1}, None),
+        ("", ""),
         ("x" * 201, "x" * 201),
     ],
 )
