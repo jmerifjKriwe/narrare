@@ -412,7 +412,7 @@ export function CausalityPage() {
         /* The draft's face: the subline block with the real-count chips,
            the horizontally scrollable chain, the methodology row. */
         <div className="min-h-0 flex-1 overflow-y-auto bg-surface-container-low/30 p-4">
-          <div className="mx-auto flex max-w-6xl flex-col gap-4">
+          <div className="mx-auto flex min-h-full max-w-6xl flex-col justify-between gap-4">
             {/* The subline — the draft's eyebrow, its honest sentence and
                 the real-count chips. */}
             <div className="flex flex-wrap items-end justify-between gap-3">

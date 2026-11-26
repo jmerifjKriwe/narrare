@@ -79,8 +79,10 @@ turn's, so it is pinned at the render seam; the zen pomodoro is paused before
 it mounts. Every other time is relative to this run's own fresh seed, so it
 reads the same on every capture."""
 
-VIEWPORT_HEIGHT = 1000
-"""The master's height; the shell's top bar is the first 56 pixels."""
+VIEWPORT = (1600, 1000)
+"""The one master viewport: the browser context and every framing bound use it."""
+
+VIEWPORT_WIDTH, VIEWPORT_HEIGHT = VIEWPORT
 
 TOP_BAR_HEIGHT = 56
 """Where the scrollable main begins, so a frame's content must start below it."""
@@ -154,7 +156,7 @@ def _shot(page: Page, out: Path, name: str) -> Path:
     next. Fonts settle before the frame, so a late swap cannot change the
     text's antialiasing between captures.
     """
-    page.mouse.move(1590, 990)
+    page.mouse.move(VIEWPORT_WIDTH - 10, VIEWPORT_HEIGHT - 10)
     page.evaluate("document.fonts.ready")
     page.wait_for_timeout(300)
     path = out / f"{name}.png"
@@ -167,21 +169,28 @@ def _require_inside(
     locator: Locator,
     *,
     name: str,
+    left: float = 0,
     top: float = 0,
+    right: float = VIEWPORT_WIDTH,
     bottom: float = VIEWPORT_HEIGHT,
 ) -> None:
     """Fail the capture when a frame's own element leaves the viewport.
 
-    The recipe's framing claims are checked at capture time, where the real
-    layout answers: a scroll position that only worked on one run fails here
-    instead of shipping a cropped master.
+    Both axes are checked: a vertical scroll can still shove a wide card past
+    the right edge, and the master's claim is that the whole element is inside
+    the 1600x1000 frame. The recipe's framing claims are checked at capture
+    time, where the real layout answers.
     """
     box = locator.bounding_box()
     if box is None:
         raise SystemExit(f"{name}: nothing to measure")
-    start, end = box["y"], box["y"] + box["height"]
-    if start < top or end > bottom:
-        raise SystemExit(f"{name}: {start:.1f}..{end:.1f} is outside {top:.1f}..{bottom:.1f}")
+    start_x, end_x = box["x"], box["x"] + box["width"]
+    start_y, end_y = box["y"], box["y"] + box["height"]
+    if start_x < left or end_x > right or start_y < top or end_y > bottom:
+        raise SystemExit(
+            f"{name}: x {start_x:.1f}..{end_x:.1f} y {start_y:.1f}..{end_y:.1f} "
+            f"is outside x {left:.1f}..{right:.1f} y {top:.1f}..{bottom:.1f}"
+        )
 
 
 def _scroll_to_show_bottom(container: Locator, target: Locator, *, margin: float = 8) -> None:
@@ -913,6 +922,22 @@ def _capture(
         raise SystemExit("the causality track or its last chapter has no box")
     if last_chapter_box["x"] + last_chapter_box["width"] > track_box["x"] + track_box["width"] + 1:
         raise SystemExit("the last causality chapter is cropped by the track")
+    # The content column distributes its five real blocks over the page height:
+    # the top counts stay reachable and the footnote lands near the foot, so
+    # the frame does not leave the lower half as accidental whitespace.
+    counts = page.get_by_test_id("causality-counts")
+    note = page.get_by_test_id("causality-note")
+    _require_inside(counts, name="causality counts", top=TOP_BAR_HEIGHT)
+    _require_inside(note, name="causality footnote", top=TOP_BAR_HEIGHT)
+    note_box = note.bounding_box()
+    if note_box is None:
+        raise SystemExit("the causality footnote has no box")
+    note_bottom = note_box["y"] + note_box["height"]
+    if note_bottom < VIEWPORT_HEIGHT - 64:
+        raise SystemExit(
+            f"the causality footnote ends {VIEWPORT_HEIGHT - note_bottom:.0f}px above "
+            "the viewport foot; the content column does not fill the page height"
+        )
     written.append(_shot(page, out, "27-causality"))
 
     # 41/42. The timeline: six placed events and three unordered notes.
@@ -1090,7 +1115,7 @@ def capture(out: Path) -> list[Path]:
                 ]
             ) as browser,
             browser.new_context(
-                viewport={"width": 1600, "height": 1000},
+                viewport={"width": VIEWPORT_WIDTH, "height": VIEWPORT_HEIGHT},
                 device_scale_factor=1,
                 locale="en-US",
                 timezone_id="UTC",

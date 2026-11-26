@@ -57,6 +57,33 @@ describe("the dossier gap note speaks to the reader", () => {
   });
 });
 
+// The manuscript-excerpts area and the disabled jump door carried the same
+// "not tracked yet" sentence; both speak forward without making unbuilt
+// tracking the focus (#979). The excerpts key is the visible note in frame 25,
+// the jump key is the door's tooltip — one contract, two sites.
+const MANUSCRIPT_NOTE = {
+  en: "Manuscript references will appear here.",
+  de: "Hier erscheinen Manuskriptverweise.",
+  fr: "Les références au manuscrit apparaîtront ici.",
+} as const;
+
+describe("the manuscript-reference notes speak to the reader", () => {
+  it("are value-neutral in every catalog, never unfinished tracking copy", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      for (const key of [
+        "knowledge.dossier.excerptsGap",
+        "knowledge.dossier.jumpNote",
+      ] as const) {
+        const note = catalogs[locale][key];
+        expect(note).toBe(MANUSCRIPT_NOTE[locale]);
+        expect(note).not.toMatch(
+          /not tracked|noch nicht erfasst|pas encore suivies|wave|welle|vague|build-out|aufbau/i,
+        );
+      }
+    }
+  });
+});
+
 configure({ asyncUtilTimeout: 5000 });
 
 const NOVEL_ID = "11111111-1111-1111-1111-111111111111";

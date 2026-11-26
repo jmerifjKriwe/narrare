@@ -46,7 +46,7 @@ const api = client as unknown as Record<"GET" | "POST" | "PUT" | "DELETE", Retur
 const LATER_NOTE = {
   en: "The causality strip mirrors only your real scene entries.",
   de: "Die Kausalitätsleiste spiegelt ausschließlich deine realen Szeneneinträge wider.",
-  fr: "La bande de causalité ne reflète que tes scènes réelles.",
+  fr: "La barre de causalité ne reflète que tes scènes réelles.",
 } as const;
 
 describe("the causality footnote speaks to the reader", () => {

@@ -16,7 +16,7 @@
   "planning.causality.eyebrow": "Logique dramaturgique",
   "planning.causality.forces": "Entraîne",
   "planning.causality.gapStatus": "Statut : {count, plural, one {# lacune ouverte} other {# lacunes ouvertes}}",
-  "planning.causality.laterNote": "La bande de causalité ne reflète que tes scènes réelles.",
+  "planning.causality.laterNote": "La barre de causalité ne reflète que tes scènes réelles.",
   "planning.causality.loadFailed": "La barre de causalité est injoignable.",
   "planning.causality.loading": "Charge…",
   "planning.causality.manuscriptDoor": "Vers le manuscrit",
