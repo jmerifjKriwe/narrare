@@ -4,11 +4,11 @@
  * turning the form into the POST body.
  *
  * A row's target is a name or an alias, trimmed and case-insensitive. Zero
- * matches or several are both unresolved: the dialog says so and the row is
- * left out — a guessed edge would be worse than none. A resolved row with no
- * label is left out the same way, and the dialog counts it too: no edge
- * disappears without the writer hearing about it. Duplicate names are
- * allowed by the API; the dialog only warns.
+ * matches or several are both unresolved: the dialog says so in its notice
+ * and the row is left out — a guessed edge would be worse than none. A
+ * resolved row with no label is left out the same way, and the dialog says
+ * that at its own row: no edge disappears without the writer hearing about
+ * it. Duplicate names are allowed by the API; the dialog only warns.
  */
 import type { Entity, EntityCreate, Proposal } from "@shell/lib/api/client";
 
@@ -177,9 +177,10 @@ export type RelationResolution =
   | { kind: "many"; entities: Entity[] };
 
 /** What the save will do with one edited row. Only a row with every field
- *  blank is an untouched add-row and says nothing; the two dropped kinds are
- *  what the dialog's notice counts, so a row the writer filled — even just
- *  its label or its note, with the target still to come — is never silent. */
+ *  blank is an untouched add-row and says nothing; an unresolved target is
+ *  what the dialog's notice counts, and a missing label is said at its own
+ *  row, so a row the writer filled — even just its label or its note, with
+ *  the target still to come — is never silent. */
 export type RelationRowOutcome = "kept" | "unresolved-target" | "missing-label" | "empty";
 
 const fold = (value: string): string => value.trim().toLowerCase();
@@ -350,8 +351,8 @@ export function refusalCatalogKey(
 
 /**
  * The POST body: every row the roster resolves to exactly one entity and
- * that carries a relation label. The rest are left out — the dialog counts
- * them and says they will not be created.
+ * that carries a relation label. The rest are left out — the dialog names
+ * an unresolved target in its notice and a missing label at the row.
  */
 export function buildEntityCreateBody(form: EntityCreateForm): EntityCreateBody {
   const relations = [];
