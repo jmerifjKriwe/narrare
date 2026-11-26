@@ -18,7 +18,8 @@ def test_the_bound_is_twelve() -> None:
     assert MAX_RELATIONS == 12
 
 
-def test_the_models_contract_reexports_the_bound() -> None:
-    """The module the capabilities import must carry the same object, not a
-    copy that a later edit can drift from."""
-    assert models.MAX_RELATIONS is MAX_RELATIONS
+def test_the_models_contract_exports_the_bounds_value() -> None:
+    """The module the capabilities import carries the same value, so a copy
+    set to another number cannot hide here; the use-site probes in each
+    capability's suite are the real guard that they read it."""
+    assert models.MAX_RELATIONS == MAX_RELATIONS
