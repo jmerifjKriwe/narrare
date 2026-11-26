@@ -197,11 +197,12 @@ just screenshots
 ```
 
 The `Screenshots` GitHub Action uses the same recipe. It runs on manual dispatch, on a
-weekly schedule, and on `main` pushes that touch a UI surface; when the bytes changed it
-opens a pull request with the new frames. It is advisory: the run is never a required
-check and never blocks a merge. The manifest in `scripts/screenshot_manifest.py` drives
-both the captures and the collection index, so the gallery and
-[docs/screenshots/README.md](docs/screenshots/README.md) stay in step.
+weekly schedule, and on `main` pushes that touch a UI surface; when the frames or the
+index changed it opens a pull request with both. It is advisory: the run is never a
+required check and never blocks a merge. The manifest in
+`scripts/screenshot_manifest.py` drives both the captures and the collection index,
+so the gallery and [docs/screenshots/README.md](docs/screenshots/README.md) stay in
+step.
 
 The daily gate is `just verify` (or `just verify all` before a risky change); see
 [TESTING.md](TESTING.md) for the full test strategy. The stack is Python 3.14,

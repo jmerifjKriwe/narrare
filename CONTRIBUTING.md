@@ -207,17 +207,21 @@ It must pass cleanly.
 
 **The README's images.** On a fresh checkout, `uv run playwright install chromium`
 once — `just dev-setup` installs the Python package, not the browser itself. Then
-`uv run python -m scripts.screenshots` boots the same stack the E2E suites use,
-loads the bundled demo novel and writes the five frames under `assets/screenshots/`.
-Run it when a surface they show has changed: the images are the one part of the
-README no test reads. The same regeneration is available as the `Screenshots`
-workflow (`workflow_dispatch`), which opens a pull request with the updated
-images when they changed.
+`just screenshots` boots the same stack the E2E suites use, loads the bundled
+demo novel, captures every master frame listed in
+`scripts/screenshot_manifest.py` into `assets/screenshots/`, and regenerates the
+collection index at [docs/screenshots/README.md](docs/screenshots/README.md). Run
+it when a surface a frame shows has changed: the images are the one part of the
+README no test reads.
 
-A push to `main` regenerates screenshots automatically when a UI-relevant
-path changed (`web/`, `app/capabilities/*/web/`, `i18n/`,
-`scripts/screenshots.py`). Override the path decision with a commit footer:
-`Screenshots: regenerate` forces a run, `Screenshots: skip` suppresses one.
+The same recipe runs as the `Screenshots` workflow: on manual dispatch, on the
+Sunday schedule (`0 6 * * 0`), and on a push to `main` that touched a
+UI-relevant path (`web/`, `app/capabilities/*/web/`, `i18n/`,
+`scripts/screenshots.py` or `scripts/screenshot_manifest.py`). When a run
+changes a frame or the index it opens a pull request. The workflow is advisory
+and never a required check. Override the path decision with a commit footer:
+`Screenshots: regenerate` forces a run, `Screenshots: skip` suppresses one unless a
+UI path changed too.
 
 **Was bei jedem Commit läuft:** Der Secret-Scan (`scripts/check_secrets.py
 --staged`) prüft die gestagten Blobs gegen `.gitleaks.toml` und blockt den
