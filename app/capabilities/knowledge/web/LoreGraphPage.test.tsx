@@ -957,6 +957,130 @@ describe("the subbar's CRUD doors (Task 4)", () => {
     );
   });
 
+  it("the save door is shut while the handover's end request is in flight", async () => {
+    const session = sessionWithProposal("s1", "Nebelhaus");
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/chat/sessions/{session_id}") {
+        return Promise.resolve({ data: session, response: ok() });
+      }
+      return baseGet(path);
+    });
+    // The end request stands until the test settles it — exactly once.
+    let releaseClose: (value: unknown) => void = () => {};
+    const heldClose = new Promise((resolve) => {
+      releaseClose = resolve;
+    });
+    api.POST.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/entities") {
+        return Promise.resolve({
+          data: entityRow({ id: "e9", name: "Nebelhaus", type: "object" }),
+          response: new Response(null, { status: 201 }),
+        });
+      }
+      if (path === "/api/chat/sessions/{session_id}/close") return heldClose;
+      throw new Error(`unexpected POST: ${path}`);
+    });
+
+    await renderGraph(`/novels/${NOVEL_ID}/knowledge/graph?interview=s1`);
+    const panel = await screen.findByTestId("entity-interview");
+    const saveDoor = (await within(panel).findByTestId("entity-interview-save")) as HTMLButtonElement;
+    await waitFor(() => expect(saveDoor.disabled).toBe(false));
+    fireEvent.click(saveDoor);
+    const dialog = await screen.findByTestId("entity-create-dialog");
+    fireEvent.click(within(dialog).getByTestId("entity-create-save"));
+
+    // The row landed; the end request is still out. The door must already be
+    // shut, so a repeated Enter on it cannot open the handover again.
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+    const staying = await screen.findByTestId("entity-interview");
+    // The held request is settled exactly once, whatever the assertions do.
+    let released = false;
+    const finish = async () => {
+      if (released) return;
+      released = true;
+      await act(async () => {
+        releaseClose({
+          data: { ...session, closed_at: "2026-11-24T14:30:00Z" },
+          response: ok(),
+        });
+      });
+    };
+    try {
+      expect(
+        (within(staying).getByTestId("entity-interview-save") as HTMLButtonElement).disabled,
+      ).toBe(true);
+    } finally {
+      await finish();
+    }
+    await waitFor(() => expect(screen.queryByTestId("entity-interview")).toBeNull());
+  });
+
+  it("hiding or re-selecting the handed-over interview keeps the door shut", async () => {
+    const session = sessionWithProposal("s1", "Nebelhaus");
+    api.GET.mockImplementation((path: string) => {
+      if (path === "/api/chat/sessions/{session_id}") {
+        return Promise.resolve({ data: session, response: ok() });
+      }
+      if (path === "/api/chat/sessions") {
+        return Promise.resolve({ data: { items: [sessionSummary("s1")] }, response: ok() });
+      }
+      return baseGet(path);
+    });
+    api.POST.mockImplementation((path: string) => {
+      if (path === "/api/knowledge/entities") {
+        return Promise.resolve({
+          data: entityRow({ id: "e9", name: "Nebelhaus", type: "object" }),
+          response: new Response(null, { status: 201 }),
+        });
+      }
+      if (path === "/api/chat/sessions/{session_id}/close") {
+        return Promise.resolve({
+          data: undefined,
+          error: { detail: { code: "provider-error", detail: "offline" } },
+          response: new Response(null, { status: 500 }),
+        });
+      }
+      throw new Error(`unexpected POST: ${path}`);
+    });
+
+    await renderGraph(`/novels/${NOVEL_ID}/knowledge/graph?interview=s1`);
+    const panel = await screen.findByTestId("entity-interview");
+    const saveDoor = (await within(panel).findByTestId("entity-interview-save")) as HTMLButtonElement;
+    await waitFor(() => expect(saveDoor.disabled).toBe(false));
+    fireEvent.click(saveDoor);
+    const dialog = await screen.findByTestId("entity-create-dialog");
+    fireEvent.click(within(dialog).getByTestId("entity-create-save"));
+    await waitFor(() => expect(screen.queryByTestId("entity-create-dialog")).toBeNull());
+    const stayed = await screen.findByTestId("entity-interview");
+    await within(stayed).findByText(de["knowledge.interview.endFailed"]);
+
+    // Hiding never closes the session: the graph's door reopens the same open
+    // interview, and the mark the handover left still shuts its save door.
+    fireEvent.click(within(stayed).getByTestId("entity-interview-close"));
+    await waitFor(() => expect(screen.queryByTestId("entity-interview")).toBeNull());
+    fireEvent.click(screen.getByTestId("graph-new-entity"));
+    const reopened = await screen.findByTestId("entity-interview");
+    await waitFor(() =>
+      expect(
+        (within(reopened).getByTestId("entity-interview-save") as HTMLButtonElement).disabled,
+      ).toBe(true),
+    );
+
+    // Re-selecting it from the list is the same interview: the door stays shut.
+    fireEvent.click(within(reopened).getByTestId("entity-interview-sessions"));
+    const list = await within(reopened).findByTestId("entity-interview-list");
+    fireEvent.click(
+      await within(list).findByRole("button", { name: de["knowledge.interview.resume"] }),
+    );
+    await waitFor(() =>
+      expect(
+        (within(screen.getByTestId("entity-interview")).getByTestId(
+          "entity-interview-save",
+        ) as HTMLButtonElement).disabled,
+      ).toBe(true),
+    );
+  });
+
   it("the manual create returns focus to the chooser's own button", async () => {
     await renderGraph();
     await screen.findAllByTestId("graph-node");

@@ -112,9 +112,11 @@ export function LoreGraphPage() {
   /** The interview's draft while the create dialog is open through the
    *  handover; null is the hand-made door, which starts empty. */
   const [prefill, setPrefill] = useState<EntityPrefill | null>(null);
-  /** The handover's close failed after the row landed: the panel stays and
-   *  names the failed end until it is ended again. */
-  const [closeFailed, setCloseFailed] = useState(false);
+  /** The interview the handover saved, until that interview is ended. Its
+   *  proposal already became a row, so the panel's save door stays shut for it
+   *  — during the end request's flight, through a failed end, and through
+   *  hiding and re-selecting. The ended face clears the mark. */
+  const [handedOver, setHandedOver] = useState<string | null>(null);
   const closeInterview = useCloseAssistantSession();
 
   const entityList = useMemo(() => entities.data ?? [], [entities.data]);
@@ -299,11 +301,17 @@ export function LoreGraphPage() {
   async function openInterviewDoor() {
     // The list is the door's truth: the newest open session, or the chooser.
     // A click that beats the first list read awaits it rather than guessing.
-    setCloseFailed(false);
     const rows = interviewSessions.data ?? (await interviewSessions.refetch()).data ?? [];
     const newest = rows.find((session) => session.closed_at === null);
     setInterview(newest !== undefined ? newest.id : "new");
   }
+
+  // The panel says when its shown interview is ended: the handover's mark for
+  // that id is spent, and the ended face — the design's residue — is where the
+  // proposal stays savable.
+  const interviewEnded = useCallback((sessionId: string) => {
+    setHandedOver((saved) => (saved === sessionId ? null : saved));
+  }, []);
 
   // --- The edge popover's focus contract ---------------------------------
   // Each edge is a keyboard button; the refs let Escape (and the close door)
@@ -928,23 +936,22 @@ export function LoreGraphPage() {
           novelId={novelId}
           sessionId={interview === undefined ? undefined : interview === "new" ? null : interview}
           onSelectSession={(target) => {
-            setCloseFailed(false);
             setInterview(target);
           }}
           onClose={() => {
-            setCloseFailed(false);
             setInterview(null);
           }}
           onManual={() => {
             setCrud("create");
           }}
           onSave={(draft) => {
-            setCloseFailed(false);
             setPrefill(draft);
             setCrud("create");
           }}
+          onEnded={interviewEnded}
           returnFocusId="graph-new-entity"
-          closeFailed={closeFailed}
+          handedOver={handedOver !== null && handedOver === interview}
+          closeFailed={closeInterview.isError && closeInterview.variables === interview}
         />
       </div>
 
@@ -992,12 +999,13 @@ export function LoreGraphPage() {
             toast.show(t("knowledge.create.created", { count: relations }));
             // The interview's proposal became the row: close the session and
             // leave its parameter behind, so the graph owns the column again.
-            // A failed close is not a failed save: the panel stays beside the
-            // selected row and names the failed end above its own action.
+            // The save door shuts for this interview from here on, so no
+            // second press can save the same proposal again — whatever
+            // happens to the end request.
             if (closesInterview && sessionId !== undefined) {
+              setHandedOver(sessionId);
               closeInterview.mutate(sessionId, {
                 onSuccess: () => {
-                  setCloseFailed(false);
                   void navigate({
                     to: GRAPH_PATH,
                     params: { novelId },
@@ -1006,7 +1014,9 @@ export function LoreGraphPage() {
                   });
                 },
                 onError: () => {
-                  setCloseFailed(true);
+                  // The row landed; only the end failed. The panel stays
+                  // beside the selected row and names the failed end, and the
+                  // door stays shut until the interview is ended.
                   select(entity.id);
                 },
               });

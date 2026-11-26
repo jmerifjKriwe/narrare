@@ -15,7 +15,7 @@
  * closes the session — which is why the host outlives the view: hiding must
  * not throw the conversation away.
  */
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import type { AssistantTurnRead } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
@@ -49,8 +49,10 @@ export function EntityInterview({
   onClose,
   onManual,
   onSave,
+  onEnded,
   returnFocusId,
   closeFailed = false,
+  handedOver = false,
 }: {
   novelId: string;
   /** The interview's id, null for the chooser (the `new` door), or undefined
@@ -64,12 +66,18 @@ export function EntityInterview({
   onManual: () => void;
   /** «Als Entität speichern»: the proposal becomes the create dialog's prefill. */
   onSave: (prefill: EntityPrefill) => void;
+  /** The shown interview reached the ended face — the page's own state for
+   *  the gap the save left can go. */
+  onEnded: (sessionId: string) => void;
   /** The door that opened the panel; closing it hands focus back there (the
    *  dialog opener contract — the panel's own close button unmounts with it). */
   returnFocusId?: string;
-  /** A close fired by the handover (the save) failed after the row landed:
-   *  the panel stays and names the failed end beside its own action. */
+  /** The handover's own end request failed: the panel names the failed end
+   *  beside its action. The save door's reason is `handedOver`, never this. */
   closeFailed?: boolean;
+  /** This shown interview is the one the handover saved and has not ended:
+   *  its proposal already became a row, so the save door stays shut. */
+  handedOver?: boolean;
 }) {
   const hidden = sessionId === undefined;
   const [lastSessionId, setLastSessionId] = useState<string | null>(sessionId ?? null);
@@ -99,8 +107,10 @@ export function EntityInterview({
       onClose={onClose}
       onManual={onManual}
       onSave={onSave}
+      onEnded={onEnded}
       returnFocusId={returnFocusId}
       closeFailed={closeFailed}
+      handedOver={handedOver}
     />
   );
 }
@@ -114,8 +124,10 @@ function EntityInterviewView({
   onClose,
   onManual,
   onSave,
+  onEnded,
   returnFocusId,
   closeFailed,
+  handedOver,
 }: {
   sessionId: string | null;
   controller: InterviewController;
@@ -123,8 +135,10 @@ function EntityInterviewView({
   onClose: () => void;
   onManual: () => void;
   onSave: (prefill: EntityPrefill) => void;
+  onEnded: (sessionId: string) => void;
   returnFocusId?: string;
   closeFailed: boolean;
+  handedOver: boolean;
 }) {
   const t = useTranslation();
   const titleId = useId();
@@ -154,14 +168,45 @@ function EntityInterviewView({
   // three actions and the proposal's discard would get a silent
   // `session-closed` refusal or edit a composer that is not rendered. The
   // save door and «Neues Interview» stay live, so they read `busy` alone; the
-  // save door also reads the handover's close-failure flag below.
+  // save door also reads the handover's flag below.
   const readOnly = controller.face === "ended";
   const canSave = session !== null && readyToSave(session.proposal);
-  // A handover that created the entity but could not end the interview has
-  // already spent this proposal: while that failure stands the save door is
-  // shut, so a second press cannot create the same row again. Ending the
-  // interview reaches the ended face, where the design lets it stay savable.
-  const saveDoorShut = closeFailed && controller.face !== "ended";
+  // The proposal the handover saved already became a row: while this is the
+  // interview it was saved from, the save door stays shut — during the end
+  // request's flight, through a failed end, and through hiding and
+  // re-selecting — so no second press can create the same row again. The
+  // panel tells the page when the interview ended; the ended face is the
+  // design's residue (ledger row 30) and lets the proposal stay savable.
+  const saveDoorShut = handedOver && controller.face !== "ended";
+
+  // The shown interview reached the ended face: the page's handed-over mark
+  // for it is spent. The effect runs once per arrival at the ended face.
+  useEffect(() => {
+    if (controller.face !== "ended" || sessionId === null) return;
+    onEnded(sessionId);
+  }, [controller.face, sessionId, onEnded]);
+
+  // A door that shuts under focus must not leave it on a dead control: the
+  // end action is the one live control beside the banner, so it takes the
+  // focus. A browser blurs a button as its disabled attribute lands, so the
+  // commit before the shut remembers whether the door held focus; jsdom keeps
+  // it, which the live read below covers.
+  const doorRef = useRef<HTMLButtonElement | null>(null);
+  const endRef = useRef<HTMLButtonElement | null>(null);
+  const doorHadFocus = useRef(false);
+  const doorLive = canSave && !busy && !saveDoorShut;
+  useEffect(() => {
+    const door = doorRef.current;
+    if (door === null) return;
+    if (doorLive) {
+      doorHadFocus.current = document.activeElement === door;
+      return;
+    }
+    if (!doorHadFocus.current && document.activeElement !== door) return;
+    doorHadFocus.current = false;
+    const end = endRef.current;
+    if (end !== null && !end.disabled) end.focus();
+  });
 
   function accept(turn: AssistantTurnRead) {
     if (turn.suggestion === null) return;
@@ -316,8 +361,9 @@ function EntityInterviewView({
               <button
                 type="button"
                 id="entity-interview-save"
+                ref={doorRef}
                 data-testid="entity-interview-save"
-                disabled={!canSave || busy || saveDoorShut}
+                disabled={!doorLive}
                 onClick={() =>
                   onSave(entityPrefillFromProposal(session.proposal, session.entity_type))
                 }
@@ -337,6 +383,7 @@ function EntityInterviewView({
               ) : (
                 <button
                   type="button"
+                  ref={endRef}
                   data-testid="entity-interview-end"
                   disabled={busy}
                   onClick={controller.end}

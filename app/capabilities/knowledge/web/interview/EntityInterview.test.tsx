@@ -152,24 +152,35 @@ function deferred(): { promise: Promise<unknown>; settle: (value: unknown) => vo
   return { promise, settle };
 }
 
-function renderPanel(sessionId: string | null | undefined = SESSION_ID) {
+function renderPanel(
+  sessionId: string | null | undefined = SESSION_ID,
+  options: { handedOver?: boolean; onEnded?: (sessionId: string) => void } = {},
+) {
   const onSelectSession = vi.fn();
   const onClose = vi.fn();
   const onManual = vi.fn();
   const onSave = vi.fn();
-  const handlers = { onSelectSession, onClose, onManual, onSave };
+  const onEnded = options.onEnded ?? vi.fn();
+  let shown: string | null | undefined = sessionId;
+  let handed = options.handedOver ?? false;
+  const handlers = { onSelectSession, onClose, onManual, onSave, onEnded };
   const view = render(
     <QueryClientProvider client={queryClient}>
-      <EntityInterview novelId={NOVEL_ID} sessionId={sessionId} {...handlers} />
+      <EntityInterview novelId={NOVEL_ID} sessionId={shown} handedOver={handed} {...handlers} />
     </QueryClientProvider>,
   );
-  /** Hide (undefined), reopen a session (its id) or show the chooser (null). */
-  const show = (next: string | null | undefined) =>
+  /** Hide (undefined), reopen a session (its id) or show the chooser (null);
+   *  the handover flag travels with the page's own state, so a reopen keeps it
+   *  unless the test ends the interview. */
+  const show = (next: string | null | undefined, handedOver = handed) => {
+    shown = next;
+    handed = handedOver;
     view.rerender(
       <QueryClientProvider client={queryClient}>
-        <EntityInterview novelId={NOVEL_ID} sessionId={next} {...handlers} />
+        <EntityInterview novelId={NOVEL_ID} sessionId={shown} handedOver={handed} {...handlers} />
       </QueryClientProvider>,
     );
+  };
   return { ...handlers, show };
 }
 
@@ -217,6 +228,7 @@ describe("the door's type chooser", () => {
           onClose={vi.fn()}
           onManual={vi.fn()}
           onSave={vi.fn()}
+          onEnded={vi.fn()}
         />
       </QueryClientProvider>,
     );
@@ -1478,5 +1490,65 @@ describe("the proposal becomes an entity", () => {
     const save = screen.getByTestId("entity-interview-save") as HTMLButtonElement;
     expect(save.disabled).toBe(false);
     expect(screen.getByTestId("entity-interview-new")).toBeTruthy();
+  });
+});
+
+describe("the door is shut for the interview the handover saved", () => {
+  it("stays shut until the interview is ended, then the ended face re-livens it", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    api.POST.mockImplementation((path: string) => {
+      if (path === "/api/chat/sessions/{session_id}/close") {
+        detail = { ...detail, closed_at: "2026-11-24T14:30:00Z" };
+        return Promise.resolve({ data: detail, response: ok() });
+      }
+      return Promise.resolve({ data: readback(), response: ok() });
+    });
+    const onEnded = vi.fn();
+    renderPanel(SESSION_ID, { handedOver: true, onEnded });
+    await readySession();
+
+    // The proposal became a row: the door the writer would press again is shut
+    // while the interview still stands, and the page hears nothing yet.
+    const save = screen.getByTestId("entity-interview-save") as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    expect(onEnded).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("entity-interview-end"));
+    await screen.findByText(de["knowledge.interview.endedBanner"]);
+    // The design's residue: an ended interview's proposal stays savable, and
+    // the ended face tells the page the handover's mark is spent.
+    expect(save.disabled).toBe(false);
+    expect(onEnded).toHaveBeenCalledWith(SESSION_ID);
+  });
+
+  it("stays shut when the same interview is hidden and reopened", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    const { show } = renderPanel(SESSION_ID, { handedOver: true });
+    await readySession();
+    expect((screen.getByTestId("entity-interview-save") as HTMLButtonElement).disabled).toBe(true);
+
+    // Hiding never closes the session; the page keeps its mark, so reopening
+    // the same interview finds the door still shut.
+    show(undefined);
+    show(SESSION_ID);
+    await readySession();
+    expect((screen.getByTestId("entity-interview-save") as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("a door shut while it holds focus hands focus to «Interview beenden»", async () => {
+    detail = sessionDetail({ proposal: proposal({ name: "Resonanz-Transponder LC-89" }) });
+    const { show } = renderPanel(SESSION_ID, { handedOver: false });
+    await readySession();
+    const save = screen.getByTestId("entity-interview-save") as HTMLButtonElement;
+    save.focus();
+    expect(document.activeElement).toBe(save);
+
+    show(SESSION_ID, true);
+
+    // The door is a dead control now: the one live action beside the banner
+    // takes the focus instead of letting it fall to the body.
+    const end = screen.getByTestId("entity-interview-end");
+    await waitFor(() => expect(document.activeElement).toBe(end));
+    expect((save as HTMLButtonElement).disabled).toBe(true);
   });
 });
