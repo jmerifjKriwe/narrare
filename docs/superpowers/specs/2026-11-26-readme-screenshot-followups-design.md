@@ -64,8 +64,11 @@ task.
 
 ### Documentation truth
 
-- `docs/features/INDEX.md` marks the retired Structure view as `backend`: the
-  structures registry/API remains, but no productive surface or E2E leg exists.
+- `docs/features/INDEX.md` marks the retired Structure view as `backend` in
+  Phase 1: the structures registry/API remains, but no productive surface or E2E
+  leg exists. Phase 1 is the inventory's unfinished-surface phase; Phase 0 is
+  already done. `ROADMAP.md` lists the view among its three loose doors without
+  presenting it as a delivered or AI surface.
 - `docs/design/stitch/README.md` uses `../../superpowers/specs/...` for its two
   design/spec links, and a resolve-based test covers every relative Markdown
   target in that file.

@@ -36,7 +36,9 @@
 **Files:**
 - Modify: `docs/features/INDEX.md:64,112`
 - Modify: `docs/design/stitch/README.md:7,9`
+- Modify: `ROADMAP.md:86-89,103` for the Structure-phase review correction
 - Test: `app/kernel/tests/test_screenshot_assets.py`
+- Test: `app/kernel/tests/test_feature_inventory.py` for the Structure-phase regression
 
 **Interfaces:**
 - Produces no runtime interface.
@@ -48,7 +50,7 @@ Parse every relative Markdown link in `docs/design/stitch/README.md`; resolve it
 
 - [x] **Step 2: Correct the links and inventory state**
 
-Change the two links to `../../superpowers/specs/...`. Change `Structure view (PLAN-003)` from `live` to `backend`; leave its phase and description unchanged. Correct the AI-continuation inventory wording at line 64 from "at the caret" to "below the prose", matching the product and README.
+Change the two links to `../../superpowers/specs/...`. Change `Structure view (PLAN-003)` from `live` to `backend` and from Phase 0 to Phase 1: the API remains, but the missing productive surface belongs to the unfinished rebuild phase. Correct the AI-continuation inventory wording at line 64 from "at the caret" to "below the prose", matching the product and README.
 
 - [x] **Step 3: Run the focused tests**
 
@@ -58,6 +60,10 @@ Expected: PASS.
 - [x] **Step 4: Review and commit**
 
 Reviewer verifies the route/API evidence and link targets. Commit `docs(readme): correct the feature inventory and Stitch spec links` with `Closes #977`, `Closes #980`, a real `User-visible:` line and the Assisted-by trailer.
+
+- [ ] **Step 5: Close the Structure-phase review finding**
+
+Add a failing structured inventory test for the Structure view's `backend | 1` row and its placement in the Roadmap's Phase 1 section. Change the row's phase to `1`; change the Roadmap's “two loose doors” to “three loose doors”, describe the Structure view as an existing API with no surface/E2E leg, and update the exit sentence to “three loose doors”. Run `just test-file app/kernel/tests/test_feature_inventory.py` and `just check`. Reviewer verifies the Inventory legend, Roadmap phase boundaries and no new surface claim. Commit `chore(docs): assign the missing structure view to phase one` with the Assisted-by trailer. No E2E leg is required for this documentation-only correction.
 
 ## Task 2: Make lore-graph layout deterministic across fresh UUIDs (#978)
 
