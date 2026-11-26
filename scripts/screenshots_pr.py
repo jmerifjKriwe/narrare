@@ -1,17 +1,18 @@
 """Find an open screenshot update PR so a repeated run defers to it.
 
-Capture output is deterministic, so an unmerged regeneration PR holds the same
-asset and index diff a later scheduled or manual run would produce again.
-Opening a second PR adds review work and two branches with identical content,
-never a different result. This module asks GitHub for the open PRs the
-workflow itself opens (``chore/screenshots-*`` against ``main``) and returns
-the oldest one.
+A repeated run can reproduce a diff that is already awaiting review, so opening
+a second PR adds review work and another branch. That is not guaranteed: a
+pending PR may be stale after newer UI changes. This module only detects that
+one exists; it never updates, closes or force-pushes it. The workflow defers so
+it does not publish a duplicate, and a human closes or replaces the old PR when
+the newer captured diff matters.
 
 Only a same-repository PR counts: a fork may use the same branch name without
 being the workflow's branch. ``gh`` is invoked with a fixed argv and no shell,
 and the token is passed through its environment. The CLI prints
 ``pending=<number>`` or ``pending=none`` for the workflow; finding a PR is a
-successful outcome, not a failure.
+successful outcome, not a failure. The workflow treats any other output as a
+broken lookup and fails before creating a branch.
 """
 
 from __future__ import annotations
@@ -41,7 +42,10 @@ def _gh_binary() -> str:
 
 
 def pending_screenshot_pr(repository: str, token: str) -> int | None:
-    """The oldest open same-repository ``chore/screenshots-*`` PR against main."""
+    """The oldest open same-repository ``chore/screenshots-*`` PR against main.
+
+    Existence only: the PR may be stale and is never updated or closed here.
+    """
     completed = subprocess.run(  # noqa: S603  # nosec  # fixed argv, no shell
         [
             _gh_binary(),

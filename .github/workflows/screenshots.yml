@@ -109,14 +109,33 @@ jobs:
             exit 0
           fi
           # A real diff is worth publishing, but a previous run may already
-          # have published the same deterministic result. Defer to that PR
-          # before creating a branch or force-updating its head. The exported
-          # GH_TOKEN authenticates the query without putting it in argv.
+          # have an update PR waiting. Defer to that PR before creating a
+          # branch; it is left untouched and may be stale after newer UI
+          # changes. The exported GH_TOKEN authenticates the query without
+          # putting it in argv.
           pending=$(python3 -m scripts.screenshots_pr --repository "$REPOSITORY")
-          if [ "$pending" != "pending=none" ]; then
-            echo "screenshot update PR #${pending#pending=} is already open; leaving it in place"
-            exit 0
-          fi
+          # The lookup has exactly two valid shapes: pending=none, or
+          # pending=<digits>. Anything else means the lookup broke; fail
+          # loudly instead of mistaking it for "no PR" and publishing again.
+          fail_lookup() {
+            local detail=${pending//$'\n'/ }
+            echo "::error::Screenshot PR lookup returned an unexpected value: '$detail' (expected pending=none or pending=<number>)"
+            exit 1
+          }
+          case "$pending" in
+            pending=none)
+              ;;
+            pending=*[!0-9]*|pending=)
+              fail_lookup
+              ;;
+            pending=[0-9]*)
+              echo "screenshot update PR #${pending#pending=} is already open; leaving it in place"
+              exit 0
+              ;;
+            *)
+              fail_lookup
+              ;;
+          esac
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"

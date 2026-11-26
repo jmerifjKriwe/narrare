@@ -223,8 +223,10 @@ its short `decide` job, which skips capture unless a UI-relevant path changed
 `scripts/screenshot_manifest.py`) or a commit footer overrides the decision.
 Manual dispatch and the Sunday schedule (`0 6 * * 0`) always capture. When a run
 changes a frame or the index it opens a pull request; if a screenshot update
-pull request is already open, the run leaves that one in place instead of
-opening a duplicate. The workflow is advisory and never a required check. The
+pull request is already open, the run leaves that PR untouched instead of
+opening a duplicate, and does not update or force-push its branch. The pending
+PR may be stale after newer UI changes: close or replace it when the newer
+captured diff matters. The workflow is advisory and never a required check. The
 footer `Screenshots: regenerate` forces a run; `Screenshots: skip` suppresses one
 unless a UI path changed too. Footers are read from the pushed commits, never
 from a merge commit's generated body, so a pull request title cannot trigger a
