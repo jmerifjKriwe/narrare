@@ -172,49 +172,49 @@ Reviewer checks names, grouping, captions and the curated selection. Then commit
 - Produces `_shot(page: Page, out: Path, name: str) -> Path`, `_set_theme(page: Page, theme: Literal["light", "dark"]) -> None`, `_open_workspace(page: Page, novel_id: str) -> None`.
 - CLI adds `--index PATH`; default is `docs/screenshots/README.md`. `--out` remains `assets/screenshots`.
 
-- [ ] **Step 1: Replace the stale workspace selector**
+- [x] **Step 1: Replace the stale workspace selector**
 
 At `scripts/screenshots.py:406-408`, stop looking for a `complementary` named `Chapters`. Use the same `get_by_test_id("explorer-tree")` contract and `_goto_workspace` path as `app/capabilities/writing/e2e/test_workspace_e2e.py:77-83`. Raise a named error if the explorer is absent; do not wait 30 seconds on a role label that no longer exists.
 
-- [ ] **Step 2: Audit the legacy 01–19 frame names**
+- [x] **Step 2: Audit the legacy 01–19 frame names**
 
 With the workspace entry repaired, drive each existing surface once and compare it with its committed PNG. Keep a name only when the surface and pixels are materially unchanged; rename a materially changed frame and remove a dead surface. Update `SHOTS` and record the README path changes that must land with the renamed/generated assets. Never overwrite an old filename with different pixels merely because the capture script already uses that name.
 
-- [ ] **Step 3: Add the W4 workspace and Zen pair**
+- [x] **Step 3: Add the W4 workspace and Zen pair**
 
 Capture `20-workspace-rebuilt` and `21-workspace-rebuilt-dark` from the rebuilt scene-centric workspace, and `22-zen`/`23-zen-dark` through `_enter_zen` in `app/capabilities/writing/e2e/test_zen_e2e.py:86-92` (`zen-mode`, F9, Escape/F9 back). These new names prevent GitHub's image cache from serving the pre-W4 workspace/Zen pixels.
 
-- [ ] **Step 4: Add the missing live knowledge/planning/settings faces**
+- [x] **Step 4: Add the missing live knowledge/planning/settings faces**
 
 Capture `24-welcome-setup` at `/setup`; `25-dossiers` at `/novels/{id}/knowledge/dossiers` (`dossiers-page`); `26-sources` in the real empty state at `/novels/{id}/knowledge/sources` (`sources-empty`, upload door); `27-causality` at `/novels/{id}/planning/causality` (`causality-page`); `28-settings-hub` at `/settings` (`settings-page`); `29-ai-rules` at `/settings/ai-regeln` (`ai-rules-page`); and `30-prompts` at `/settings/prompts` (`prompts-page`, catalog and editor). The empty Sources frame avoids the server-generated upload date, which cannot be pinned without a product clock seam or a forbidden DB shortcut. Reuse the route/test-id contracts in the setup, knowledge, planning, settings and prompts E2E suites. Do not capture Stitch drafts, designed-only surfaces or update-check UI.
 
-- [ ] **Step 5: Add the W9 create/interview faces**
+- [x] **Step 5: Add the W9 create/interview faces**
 
 Capture `31-entity-create`, `32-entity-create-dark`, `33-entity-interview` and `34-entity-interview-dark` from the live W9 flow. Start at `/novels/{id}/knowledge/graph`; `graph-new-entity` now opens the interview, and `entity-interview-manual` reaches the create dialog. Use `entity-create-dialog` for the manual face. For the interview, open `?interview=new`, choose `entity-interview-type-*`, start, answer through `entity-interview-composer`/`-send`, and wait for `entity-interview-proposal`. Seed with `_seed_canon` from `app/capabilities/knowledge/e2e/test_entity_interview_e2e.py:62-69` and the real fake provider (`chat_vendor()`); reuse `_goto_graph`, `_open_interview`, `_start`, `_composer` and `_say` from that suite. The frame must show a real proposal card and composer, not an empty or mocked panel.
 
-- [ ] **Step 6: Pin the capture environment and write the generated overview**
+- [x] **Step 6: Pin the capture environment and write the generated overview**
 
 Pin `NARRE_UPDATE_CHECK_URL=off` in the `run_stack` call at `scripts/screenshots.py:643`, beside the fake-provider settings. `app/kernel/testing/stack.py:448` already defaults it for spawned stacks; the explicit value documents the capture contract. Do not use `NARRE_E2E_ATTACH` for these captures, because an attached process cannot be reconfigured by the caller's environment.
 
 After `capture` succeeds, write `render_index(SHOTS)` to the `--index` path. `just screenshots` uses the repository defaults; Task 5 owns the workflow's explicit `--index` invocation, index staging and manifest-path trigger. Capture into a temporary sibling directory first and replace the target PNG set—including removals—and index only after the full set succeeds; a failed capture must leave the previous masters untouched.
 
-- [ ] **Step 7: Write failing asset tests**
+- [x] **Step 7: Write failing asset tests**
 
 Pin: the PNG directory exactly matches `SHOTS` (no missing or stale files); every file is PNG; every image is 1600×1000; every file is below 1 MB; the generated overview references every master exactly once; every current README screenshot path resolves to a committed PNG.
 
-- [ ] **Step 8: Run the asset tests and verify failure**
+- [x] **Step 8: Run the asset tests and verify failure**
 
 Run: `just test-file app/kernel/tests/test_screenshot_assets.py`
 Expected: FAIL on missing new assets/index.
 
-- [ ] **Step 9: Run two independent temporary captures**
+- [x] **Step 9: Run two independent temporary captures**
 
 ```bash
 just screenshots --out /tmp/opencode/screenshots-a --index /tmp/opencode/screenshots-a.md
 just screenshots --out /tmp/opencode/screenshots-b --index /tmp/opencode/screenshots-b.md
 ```
 
-- [ ] **Step 10: Prove determinism**
+- [x] **Step 10: Prove determinism**
 
 ```bash
 diff -u <(cd /tmp/opencode/screenshots-a && sha256sum *.png | sort) <(cd /tmp/opencode/screenshots-b && sha256sum *.png | sort)
@@ -223,21 +223,21 @@ diff -u /tmp/opencode/screenshots-a.md /tmp/opencode/screenshots-b.md
 
 Expected: no output. Any clock, random ID, animation, update banner or scroll-position difference is a defect to fix before continuing.
 
-- [ ] **Step 11: Generate the canonical assets and index**
+- [x] **Step 11: Generate the canonical assets and index**
 
 Run: `just screenshots`
 Expected: new 20–34 PNGs and `docs/screenshots/README.md` are written; the legacy set matches the keep/rename/remove audit, with no stale PNG left behind.
 
-- [ ] **Step 12: Keep existing README image paths valid**
+- [x] **Step 12: Keep existing README image paths valid**
 
 Apply only the path changes required by the legacy audit. Do not rewrite the README narrative yet. Every existing `<img>` must resolve to a committed PNG before this task is reviewed.
 
-- [ ] **Step 13: Run both screenshot test files**
+- [x] **Step 13: Run both screenshot test files**
 
 Run: `just test-file app/kernel/tests/test_screenshot_manifest.py` and `just test-file app/kernel/tests/test_screenshot_assets.py`
 Expected: PASS.
 
-- [ ] **Step 14: Review, then commit**
+- [x] **Step 14: Review, then commit**
 
 Reviewer reads the legacy-name audit, selector/route changes, update-check pin and README path delta, and visually checks the full master set. Then commit `docs(screenshots): refresh the product capture set` with a real `User-visible:` line and the required trailer.
 
