@@ -264,7 +264,9 @@ async def test_two_concurrent_creates_keep_one_default_and_a_named_loser(
     assert statuses in ([201, 201], [201, 409]), [response.text for response in responses]
     refused = [response for response in responses if response.status_code == 409]
     if refused:
-        assert "default" in refused[0].json()["detail"].lower()
+        detail = refused[0].json()["detail"]
+        assert detail["code"] == "default-profile"
+        assert "default" in detail["detail"].lower()
 
     created = [response for response in responses if response.status_code == 201]
     async with Session() as session:
@@ -365,7 +367,9 @@ async def test_two_concurrent_default_swaps_keep_one_default_and_a_named_loser(
     assert statuses in ([200, 200], [200, 409]), [response.text for response in responses]
     refused = [response for response in responses if response.status_code == 409]
     if refused:
-        assert "default" in refused[0].json()["detail"].lower()
+        detail = refused[0].json()["detail"]
+        assert detail["code"] == "default-profile"
+        assert "default" in detail["detail"].lower()
 
     async with Session() as session:
         defaults = await session.scalar(
@@ -447,7 +451,9 @@ async def test_a_lost_swap_on_patch_is_a_named_409(
     response = await client.patch(f"/api/settings/models/{model['id']}", json={"is_default": True})
 
     assert response.status_code == 409
-    assert "default" in response.json()["detail"]
+    detail = response.json()["detail"]
+    assert detail["code"] == "default-profile"
+    assert "default" in detail["detail"]
 
 
 async def test_set_default_flips_the_old_default_out_before_raising_the_new(
@@ -491,7 +497,9 @@ async def test_the_default_model_cannot_be_deleted_and_the_error_names_the_way_o
     model = await _create(client, str(provider["id"]))
     response = await client.delete(f"/api/settings/models/{model['id']}")
     assert response.status_code == 409
-    assert "second" in response.json()["detail"]
+    detail = response.json()["detail"]
+    assert detail["code"] == "default-profile"
+    assert "second" in detail["detail"]
     listed = (await client.get("/api/settings/models")).json()
     assert [str(m["id"]) for m in listed] == [str(model["id"])]
 

@@ -62,6 +62,7 @@ from app.capabilities.settings.service import SettingsService
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.contracts.models import User
 from app.kernel.db.session import get_session
+from app.kernel.errors import ErrorCode, coded_detail
 from app.kernel.llm.models import (
     DEFAULT_OUTPUT_PROFILE,
     LLMProvider,
@@ -174,7 +175,9 @@ def _profile_errors(error: Exception) -> HTTPException:
     if isinstance(error, ProfileRefusedError):
         return _refusal(error)
     if isinstance(error, DefaultProfileError | DefaultProfileRaceError):
-        return HTTPException(status_code=409, detail=str(error))
+        return HTTPException(
+            status_code=409, detail=coded_detail(ErrorCode.DEFAULT_PROFILE, str(error))
+        )
     return HTTPException(status_code=500, detail=str(error))
 
 
@@ -184,7 +187,14 @@ def _provider_errors(error: Exception) -> HTTPException:
         return HTTPException(status_code=404, detail="provider not found")
     if isinstance(error, ProviderRefusedError):
         return _refusal(error)
-    if isinstance(error, ProviderHasModelsError | NoEndpointError):
+    if isinstance(error, ProviderHasModelsError):
+        return HTTPException(
+            status_code=409,
+            detail=coded_detail(
+                ErrorCode.PROVIDER_HAS_MODELS, str(error), models=list(error.models)
+            ),
+        )
+    if isinstance(error, NoEndpointError):
         return HTTPException(status_code=409, detail=str(error))
     if isinstance(error, NoKeyStoreError):
         return HTTPException(status_code=503, detail=str(error))
@@ -321,7 +331,11 @@ async def delete_provider(provider_id: UUID, service: ProviderServiceDep) -> Non
         # answer is the same 409 the guard gives — no cascade ever drops a
         # task's model behind a 204.
         raise HTTPException(
-            status_code=409, detail="the provider still has models pointed at it"
+            status_code=409,
+            detail=coded_detail(
+                ErrorCode.PROVIDER_HAS_MODELS,
+                "the provider still has models pointed at it",
+            ),
         ) from None
 
 

@@ -387,11 +387,7 @@ export function ModelsSection({
           })}
         </div>
       )}
-      {defaultError !== null && (
-        <div role="alert" className="rounded border border-danger/40 bg-panel px-3 py-2">
-          <p className="text-meta text-danger">{t(familyKey(defaultError.status))}</p>
-        </div>
-      )}
+      {defaultError !== null && <FamilyFace error={defaultError} />}
 
       {/* The register form: name, provider, model id — with the discovery
           door and the catalog datalist beside the provider select. */}

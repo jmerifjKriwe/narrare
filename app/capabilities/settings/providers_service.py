@@ -76,7 +76,11 @@ class ProviderRefusedError(ValueError):
 
 
 class ProviderHasModelsError(RuntimeError):
-    """The provider still has models pointed at it; the message names them."""
+    """The provider still has models pointed at it; ``models`` names them."""
+
+    def __init__(self, models: Sequence[str], message: str) -> None:
+        super().__init__(message)
+        self.models = tuple(models)
 
 
 class NoEndpointError(RuntimeError):
@@ -258,10 +262,11 @@ class ProviderService:
             raise ProviderNotFoundError(f"no provider {provider_id}")
         profiles = self._profiles()
         if await profiles.count_for_provider(provider.id):
-            names = ", ".join(await profiles.models_for_provider(provider.id))
+            names = tuple(await profiles.models_for_provider(provider.id))
             raise ProviderHasModelsError(
+                names,
                 "the provider still has models pointed at it"
-                f" ({names}); point them at another provider or delete them first"
+                f" ({', '.join(names)}); point them at another provider or delete them first",
             )
         # The flush is the refusal point: before the keychain, never after.
         await providers.delete(provider)

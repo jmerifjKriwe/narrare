@@ -203,6 +203,24 @@ def test_the_model_test_face_answers_through_the_fake(page: Page, installed: Sta
     assert_accessible(page)
 
 
+def test_a_refused_provider_delete_names_the_models_and_the_remedy(
+    page: Page, installed: Stack
+) -> None:
+    """The provider delete guard names the models still pointed at it and the
+    way out, in the reader's language — and the provider stays listed."""
+    provider_id = create_provider()
+    create_model(provider_id, name="Cloud-Schreiber", model_id="test-model")
+    goto_ai_rules(page)
+
+    card = page.locator('[data-testid="provider-card"]', has_text="Cloud")
+    card.get_by_role("button", name="Entfernen").click()
+    alert = card.get_by_role("alert")
+    expect(alert).to_contain_text("test-model")
+    expect(alert).to_contain_text("Richte sie auf einen anderen Provider aus")
+    expect(card).to_be_visible()
+    assert_accessible(page)
+
+
 def test_the_assignment_rides_with_its_profile_and_the_resolved_number(
     page: Page, installed: Stack
 ) -> None:

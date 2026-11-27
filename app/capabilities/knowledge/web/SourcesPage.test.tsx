@@ -338,7 +338,11 @@ describe("the upload fires the real multipart", () => {
   it("the server's empty-document 422 names the empty refusal", async () => {
     api.POST.mockImplementation((path: string) => {
       if (path === "/api/knowledge/documents") {
-        return Promise.resolve({ data: undefined, error: { detail: "document is empty" }, response: ok(422) });
+        return Promise.resolve({
+          data: undefined,
+          error: { detail: { code: "document-empty", detail: "document is empty" } },
+          response: ok(422),
+        });
       }
       return basePost(path);
     });

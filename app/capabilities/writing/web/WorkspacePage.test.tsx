@@ -476,6 +476,15 @@ describe("loading, error and the 404 degrade", () => {
     ).toBeTruthy();
   });
 
+  it("a scene-list 503 names the server — never something unexpected", async () => {
+    scenesAnswer = async () => ({ data: undefined, response: new Response(null, { status: 503 }) });
+    await renderWorkspace();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(de["errors.server"]);
+    expect(alert.textContent).not.toContain(de["errors.unexpected"]);
+    expect(alert.textContent).not.toContain("scenes unavailable");
+  });
+
   it("a 404 degrades to the shelf with the deleted-elsewhere note", async () => {
     novelAnswer = async () => ({ data: undefined, response: new Response(null, { status: 404 }) });
     const router = await renderWorkspace();

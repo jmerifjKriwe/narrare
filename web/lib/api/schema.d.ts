@@ -2077,7 +2077,7 @@ export interface components {
          *     serializes as itself.
          * @enum {string}
          */
-        ErrorCode: "archive_invalid" | "embedding-mismatch" | "entity-invalid" | "entity-type-required" | "entity-type-unknown" | "extraction-failed" | "key-unavailable" | "mode-unknown" | "model-not-found" | "no-context" | "not-found" | "order_mismatch" | "prompt-refused" | "provider-auth" | "provider-error" | "provider-unavailable" | "rate-limited" | "relation-duplicate" | "relation-limit" | "relation-target-invalid" | "session-closed" | "suggestion-mismatch" | "target_not_empty" | "unknown";
+        ErrorCode: "archive_invalid" | "default-profile" | "document-empty" | "embedding-mismatch" | "entity-invalid" | "entity-type-required" | "entity-type-unknown" | "extraction-failed" | "key-unavailable" | "mode-unknown" | "model-not-found" | "no-context" | "not-found" | "order_mismatch" | "prompt-refused" | "provider-auth" | "provider-error" | "provider-has-models" | "provider-unavailable" | "rate-limited" | "relation-duplicate" | "relation-limit" | "relation-target-invalid" | "session-closed" | "suggestion-mismatch" | "target_not_empty" | "unknown";
         /**
          * ExportDone
          * @description The receipt of a path export: where it went and how much.

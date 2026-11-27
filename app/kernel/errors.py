@@ -20,6 +20,8 @@ class ErrorCode(StrEnum):
     """
 
     ARCHIVE_INVALID = "archive_invalid"
+    DEFAULT_PROFILE = "default-profile"
+    DOCUMENT_EMPTY = "document-empty"
     EMBEDDING_MISMATCH = "embedding-mismatch"
     ENTITY_INVALID = "entity-invalid"
     ENTITY_TYPE_REQUIRED = "entity-type-required"
@@ -34,6 +36,7 @@ class ErrorCode(StrEnum):
     PROMPT_REFUSED = "prompt-refused"
     PROVIDER_AUTH = "provider-auth"
     PROVIDER_ERROR = "provider-error"
+    PROVIDER_HAS_MODELS = "provider-has-models"
     PROVIDER_UNAVAILABLE = "provider-unavailable"
     RATE_LIMITED = "rate-limited"
     RELATION_DUPLICATE = "relation-duplicate"
@@ -61,14 +64,17 @@ def coded_detail(
     *,
     row: int | None = None,
     field: str | None = None,
-) -> dict[str, str | int]:
+    **facts: object,
+) -> dict[str, object]:
     """The refusal's detail: the code the surfaces localize, its sentence,
-    and the optional structure the surface marks instead of printing —
-    ``row`` for a relation line's index in the sent list, ``field`` for an
-    entity field's name. Absent structure adds no key."""
-    payload: dict[str, str | int] = {"code": code, "detail": detail}
+    then the optional structure the surface reads or marks instead of
+    printing — ``row`` for a relation line's index in the sent list, ``field``
+    for an entity field's name, and any further fact as a sibling key in the
+    caller's order. Absent structure adds no key."""
+    payload: dict[str, object] = {"code": code, "detail": detail}
     if row is not None:
         payload["row"] = row
     if field is not None:
         payload["field"] = field
+    payload.update(facts)
     return payload

@@ -757,6 +757,8 @@
         "description": "Every code a failure can carry, in one list both trees read.\n\nThe generator writes these members to ``web/lib/generated/errorCodes.ts``,\nso the backend's refusals and the web's exhaustive mapping cannot name\ndifferent vocabularies. A member's value is the wire's own string and\nserializes as itself.",
         "enum": [
           "archive_invalid",
+          "default-profile",
+          "document-empty",
           "embedding-mismatch",
           "entity-invalid",
           "entity-type-required",
@@ -771,6 +773,7 @@
           "prompt-refused",
           "provider-auth",
           "provider-error",
+          "provider-has-models",
           "provider-unavailable",
           "rate-limited",
           "relation-duplicate",

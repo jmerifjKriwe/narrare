@@ -463,7 +463,7 @@ export function EntityCreateDialog({
                       ? t(refusalKey)
                       : t("knowledge.create.failedUnexpected")}
                 </p>
-                {failure.code !== null && failure.code !== undefined && (
+                {failure.code !== null && (
                   <p
                     data-testid="entity-create-refusal-code"
                     className="mt-0.5 font-mono text-[11px] text-danger"

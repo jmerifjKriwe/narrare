@@ -6,6 +6,8 @@
 
 export const ERROR_CODES = [
   "archive_invalid",
+  "default-profile",
+  "document-empty",
   "embedding-mismatch",
   "entity-invalid",
   "entity-type-required",
@@ -20,6 +22,7 @@ export const ERROR_CODES = [
   "prompt-refused",
   "provider-auth",
   "provider-error",
+  "provider-has-models",
   "provider-unavailable",
   "rate-limited",
   "relation-duplicate",

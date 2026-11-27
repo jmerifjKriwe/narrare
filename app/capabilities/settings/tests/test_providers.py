@@ -119,7 +119,9 @@ async def test_a_provider_with_models_cannot_be_deleted(
     """The delete guard names the models, not a count."""
     response = await client.delete(f"/api/settings/providers/{seeded_model.provider_id}")
     assert response.status_code == 409
-    assert "GLM" in response.json()["detail"]  # names the model, not a count
+    detail = response.json()["detail"]
+    assert detail["code"] == "provider-has-models"
+    assert detail["models"] == ["GLM"]  # names the model, not a count
 
 
 async def test_create_returns_the_full_key_once_and_masks_every_read_after(
@@ -430,7 +432,9 @@ async def test_a_delete_the_guard_cannot_see_still_refuses_as_a_409(
     refused = await client.delete(f"/api/settings/providers/{provider['id']}")
 
     assert refused.status_code == 409, refused.text
-    assert "models" in refused.json()["detail"]
+    detail = refused.json()["detail"]
+    assert detail["code"] == "provider-has-models"
+    assert "models" not in detail  # the guard could not see them, so it names none
     # The pointer is intact: nothing cascaded away behind the refusal.
     async with Session() as session:
         still_there = await session.scalar(

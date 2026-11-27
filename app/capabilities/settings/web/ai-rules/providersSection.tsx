@@ -23,6 +23,7 @@
 import { useState, type FormEvent } from "react";
 
 import type { Provider, Preset } from "@shell/lib/api/client";
+import { CODE_KEY, codeOf } from "@shell/lib/api/errors";
 import { catalogs } from "@shell/lib/generated/catalogs";
 import { useTranslation } from "@shell/lib/i18n";
 import type { MessageKey } from "@shell/lib/i18n";
@@ -61,15 +62,47 @@ export function familyKey(status: number | undefined): MessageKey {
   }
 }
 
+/** The blocking model names a coded guard put on the wire; empty when the
+ *  refusal named none (the RESTRICT backstop cannot see them). */
+function namedModels(error: WireError): string[] {
+  const detail = error.detail;
+  if (typeof detail !== "object" || detail === null) return [];
+  const models = (detail as { models?: unknown }).models;
+  return Array.isArray(models)
+    ? models.filter((name): name is string => typeof name === "string")
+    : [];
+}
+
 /** The backend's own sentence, when one rode the refusal, is not the face's
  *  copy: the family sentence speaks the reader's language, and the code — not
- *  the wire's English — is what names the refusal. */
+ *  the wire's English — is what names the refusal. A code with its own
+ *  sentence (the named delete guard, the default model) wins; any other code
+ *  wears the root sentence `CODE_KEY` names for it; a refusal without a code
+ *  falls back to the status family. */
 export function FamilyFace({ error, family }: { error: WireError | null; family?: MessageKey }) {
   const t = useTranslation();
   if (error === null) return null;
+  const code = codeOf(error);
+  const models = namedModels(error);
+  let key: MessageKey;
+  let params: Record<string, string> | undefined;
+  if (family !== undefined) {
+    key = family;
+  } else if (code === "provider-has-models" && models.length > 0) {
+    key = "settings.ai.errors.guardedNamed";
+    params = { models: models.join(", ") };
+  } else if (code === "provider-has-models") {
+    key = "settings.ai.errors.guarded";
+  } else if (code === "default-profile") {
+    key = "settings.ai.errors.defaultModel";
+  } else if (code !== null) {
+    key = CODE_KEY[code];
+  } else {
+    key = familyKey(error.status);
+  }
   return (
     <div role="alert" className="space-y-1 rounded border border-danger/40 bg-panel px-3 py-2">
-      <p className="text-meta text-danger">{t(family ?? familyKey(error.status))}</p>
+      <p className="text-meta text-danger">{t(key, params)}</p>
     </div>
   );
 }

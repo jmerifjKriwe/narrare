@@ -453,6 +453,38 @@ describe("the provider section — masks, the key-once moment, the guards", () =
     expect(screen.getByText("Cloud")).toBeTruthy();
   });
 
+  it("a coded provider-has-models 409 names every blocking model and the remedy", async () => {
+    providers = [provider()];
+    api.DELETE.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/providers/{provider_id}") {
+        return {
+          error: {
+            detail: {
+              code: "provider-has-models",
+              detail: "the provider still has models pointed at it",
+              models: ["Cloud-Schreiber", "Lokal-Schreiber"],
+            },
+          },
+          response: new Response(null, { status: 409 }),
+        };
+      }
+      throw new Error(`unexpected DELETE: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    fireEvent.click(screen.getAllByRole("button", { name: de["settings.ai.provider.remove"] })[0]);
+    expect(
+      await screen.findByText(
+        t("settings.ai.errors.guardedNamed", {
+          models: "Cloud-Schreiber, Lokal-Schreiber",
+        }),
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(de["settings.ai.errors.guarded"])).toBeNull();
+    // The provider stands — the guard kept it.
+    expect(screen.getByText("Cloud")).toBeTruthy();
+  });
+
   it("a key-store refusal (503) wears its own family, not the wire's sentence", async () => {
     providers = [provider()];
     api.DELETE.mockImplementation(async (path: string) => {
@@ -531,6 +563,28 @@ describe("the modelle section — defaults, test faces, discovery, the delete", 
     const [path, init] = patches()[0];
     expect(path).toBe("/api/settings/models/{model_id}");
     expect(init?.body).toEqual({ is_default: true });
+  });
+
+  it("a coded default-profile refusal says the model is the default — not the provider guard", async () => {
+    api.PATCH.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/models/{model_id}") {
+        return {
+          error: {
+            detail: {
+              code: "default-profile",
+              detail: "another swap made its model the default at the same moment",
+            },
+          },
+          response: new Response(null, { status: 409 }),
+        };
+      }
+      throw new Error(`unexpected PATCH: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    fireEvent.click(screen.getByRole("button", { name: de["settings.ai.models.makeDefault"] }));
+    expect(await screen.findByText(de["settings.ai.errors.defaultModel"])).toBeTruthy();
+    expect(screen.queryByText(de["settings.ai.errors.guarded"])).toBeNull();
   });
 
   it("the stat tiles answer the stored columns — the unset is the honest dash, the fake answers local", async () => {

@@ -90,6 +90,8 @@ export function isNetworkFailure(error: unknown): boolean {
  */
 export const CODE_KEY: Record<ErrorCode, MessageKey> = {
   archive_invalid: "errors.refused",
+  "default-profile": "errors.defaultProfile",
+  "document-empty": "errors.documentEmpty",
   "embedding-mismatch": "errors.embeddingMismatch",
   "entity-invalid": "errors.refused",
   "entity-type-required": "errors.refused",
@@ -104,6 +106,7 @@ export const CODE_KEY: Record<ErrorCode, MessageKey> = {
   "prompt-refused": "errors.promptUnavailable",
   "provider-auth": "errors.providerAuth",
   "provider-error": "errors.providerFailed",
+  "provider-has-models": "errors.providerHasModels",
   "provider-unavailable": "errors.providerUnavailable",
   "rate-limited": "errors.rateLimited",
   "relation-duplicate": "errors.refused",

@@ -80,7 +80,10 @@ async def upload_document(
     try:
         document = await service.ingest(resolved, text)
     except EmptyDocumentError:
-        raise HTTPException(status_code=422, detail="document is empty") from None
+        raise HTTPException(
+            status_code=422,
+            detail=coded_detail(ErrorCode.DOCUMENT_EMPTY, "document is empty"),
+        ) from None
     except DocumentTooLargeError:
         raise HTTPException(status_code=413, detail="document too large") from None
     except SetupRequiredError:
