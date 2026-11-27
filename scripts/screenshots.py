@@ -34,13 +34,12 @@ The graph's force layout orders nodes by the canon's own names, so its frame
 runs on the same three-entity canon every capture and a fresh set of UUIDs
 cannot move a card.
 
-Two captures are byte-identical across machines, not only on this one: the
-command mark is an SVG, and every captured mono glyph — keycaps, badges, code,
-dates and numeric metadata — comes from the bundled IBM Plex Mono cuts under
-``web/public/fonts``. The UI sans and brand serif are bundled too, but the
-guard names only the mono ink: ``_assert_pinned_fonts`` loads and checks the
-four mono weights, rejects a visible mono element whose first family is not
-the bundled one, and refuses a rendered U+2318 before every frame.
+Fonts are part of the recipe, not the machine: the app's faces — the UI sans,
+the brand serif and IBM Plex Mono — are bundled under ``web/public/fonts``,
+and the command mark is the app's own SVG rather than U+2318 text. Two
+captures are byte-identical here. Whether another runner produces the same
+bytes is what the ``Screenshots`` workflow answers: it regenerates the set on
+every UI-relevant push, and a run that changes no frame opens no PR.
 """
 
 import argparse
@@ -59,7 +58,6 @@ from playwright.sync_api import Locator, expect, sync_playwright
 from app.kernel.testing.jobs import wait_for_job
 from app.kernel.testing.stack import API_PORT, WEB_PORT, run_stack, stop_shared_web
 from app.kernel.testing.vendor import chat_vendor
-from scripts.screenshot_fonts import MONO_SCAN_JS, MonoUse, validate_pinned_fonts
 from scripts.screenshot_manifest import SHOTS, render_index, validate_shots
 from scripts.screenshots_publish import publish
 
@@ -153,39 +151,16 @@ def _api() -> httpx.Client:
     return httpx.Client(base_url=API, timeout=30.0)
 
 
-def _assert_pinned_fonts(page: Page) -> None:
-    """Refuse a frame whose mono ink would come from the machine's fonts.
-
-    ``scripts.screenshot_fonts.MONO_SCAN_JS`` evaluates the page — loaded
-    weights, the computed stack of every mono element with its painted state,
-    and the page's own text — and ``validate_pinned_fonts`` owns the rule.
-    Keeping both the expression and the judgement outside this wrapper lets
-    the painted-state rule run in a real-browser E2E and the first-family
-    order be tested without one; this function only fails the capture.
-    """
-    result = page.evaluate(MONO_SCAN_JS)
-    errors = validate_pinned_fonts(
-        loaded={int(weight): yes for weight, yes in result["loaded"].items()},
-        mono_uses=[
-            MonoUse(family=use["family"], visible=use["visible"]) for use in result["monoUses"]
-        ],
-        body_text=result["text"],
-    )
-    if errors:
-        raise SystemExit("; ".join(errors))
-
-
 def _shot(page: Page, out: Path, name: str) -> Path:
     """Write one 1600x1000 master with motion, caret and hover pinned.
 
     The pointer parks in a dead corner: a surviving hover from the click that
     opened the page would otherwise paint a tooltip into one run and not the
-    next. Fonts settle and then prove they are the bundled ones, so a late
-    swap or a system fallback cannot change the text between captures.
+    next. Fonts settle before the frame, so a late swap cannot change the
+    text's antialiasing between captures.
     """
     page.mouse.move(VIEWPORT_WIDTH - 10, VIEWPORT_HEIGHT - 10)
     page.evaluate("document.fonts.ready")
-    _assert_pinned_fonts(page)
     page.wait_for_timeout(300)
     path = out / f"{name}.png"
     page.screenshot(path=str(path), animations="disabled", caret="hide")

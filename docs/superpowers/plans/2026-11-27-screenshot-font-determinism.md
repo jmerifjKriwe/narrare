@@ -4,7 +4,7 @@
 
 **Goal:** Remove the remaining system-font dependencies from screenshot captures so local and CI renders do not open no-op screenshot PRs.
 
-**Architecture:** Self-host IBM Plex Mono for the existing `--font-mono` token and replace the visible `⌘` glyph with a repo-owned SVG icon. Capture asserts the bundled fonts are loaded and used, then all 25 masters are rebaselined once. The workflow keeps its strict byte-level diff, so real pixel changes still open a PR.
+**Architecture:** Self-host IBM Plex Mono for the existing `--font-mono` token and replace the visible `⌘` glyph with a repo-owned SVG icon. All 25 masters are rebaselined once; the strict CI Screenshots run proves that environment-only glyph differences are gone. The workflow keeps its strict byte-level diff, so real pixel changes still open a PR.
 
 **Tech Stack:** React, TypeScript, Tailwind/CSS, Playwright, Python, Pillow, Fontsource WOFF2 assets.
 
@@ -13,6 +13,7 @@
 ## Global Constraints
 
 - No perceptual tolerance, coordinate mask or PNG re-encoding that can hide real UI changes.
+- No browser-side font guard or meta E2E test; verify through bundled fonts and the CI Screenshots run.
 - No new route, API, schema or user-visible surface.
 - Fonts are bundled under `web/public/fonts/` with their OFL license.
 - Visible `⌘` is an SVG; accessible shortcut labels keep their existing text.
@@ -22,10 +23,10 @@
 
 ## Review Focus
 
-- A bundled weight is missing or fails to load: asset test pins all four WOFF2 files and the capture asserts `document.fonts.check` for 400/500/600/700.
+- A bundled weight is missing: asset test pins all four WOFF2 files; the CSS contract pins all four `@font-face` weights.
 - A literal `⌘` survives in rendered keycaps: TopBar/InspectorDock tests assert an SVG command icon and no visible U+2318 text.
-- A mono surface still resolves to a system-only stack: CSS contract pins `--font-mono` to IBM Plex Mono and the capture guard rejects computed mono families without it.
-- Fonts load after the screenshot: capture waits for `document.fonts.ready` and the bundled-weight checks before every shot.
+- A mono surface still resolves to a system-only stack: CSS contract pins `--font-mono` to IBM Plex Mono as the first family.
+- Fonts load after the screenshot: capture keeps the existing `document.fonts.ready` wait; a missing font shows up as a CI screenshot diff, not a second E2E suite.
 - A real UI change is accidentally suppressed: no tolerance or alignment helper is introduced; the workflow's strict staged diff remains unchanged.
 - Local and CI still rasterize differently: after push, the branch's Screenshots workflow must finish without opening a new screenshot PR.
 
@@ -42,14 +43,14 @@
 - Modify: `web/globals.css` font tokens and `@font-face` declarations
 - Modify: `web/ui/icons.tsx` command icon
 - Modify: `web/components/TopBar.tsx`, `app/capabilities/writing/web/InspectorDock.tsx`
-- Modify: `scripts/screenshots.py` capture-time font guard and caveat
+- Modify: `scripts/screenshots.py` system-font caveat only; keep `document.fonts.ready`
 - Test: `web/components/TopBar.test.tsx`, `app/capabilities/writing/web/InspectorDock.test.tsx`, `app/kernel/tests/test_screenshot_assets.py`
 - Regenerate: `assets/screenshots/*.png` (25 masters)
 
 **Interfaces:**
 - Produces: `IconName` value `command`.
 - Produces: CSS token `--font-mono` whose first family is `"IBM Plex Mono"`.
-- Produces: `_assert_pinned_fonts(page) -> None` in `scripts/screenshots.py`, called from `_shot` after `document.fonts.ready`.
+- Produces: no new capture-time guard interface; existing `document.fonts.ready` wait remains.
 - Consumes: pinned Fontsource 5.3.0 files at `https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.3.0/files/ibm-plex-mono-latin-<weight>-normal.woff2` and the package `LICENSE`.
 
 - [x] **Step 1: Add failing asset and component tests**
@@ -68,9 +69,9 @@ Download the four 400/500/600/700 Latin WOFF2 files and `LICENSE` from Fontsourc
 
 Add `@font-face` declarations for IBM Plex Mono and make `--font-mono` start with `"IBM Plex Mono"`. Add a 16×16 single-stroke `command` icon to `web/ui/icons.tsx`. Replace the visible `⌘` in TopBar and InspectorDock with `<Icon name="command" size={10} />` inside inline-flex keycaps; retain `aria-label` shortcut text and the bundled mono `K`/`J`.
 
-- [x] **Step 5: Add the capture-time font guard**
+- [x] **Step 5: Keep the existing font-ready wait; no browser guard**
 
-Implement `_assert_pinned_fonts(page) -> None` and call it in `_shot` after `document.fonts.ready`. It asserts bundled mono weights 400/500/600/700 are available, every rendered `.font-mono`/computed-mono element includes `"IBM Plex Mono"`, and `document.body.innerText` contains no U+2318. Replace the old system-font caveat in the module docstring with the new invariant.
+Keep `document.fonts.ready` in `_shot`. Replace the old system-font caveat in the module docstring with the honest statement that fonts are bundled and the CI Screenshots run is the verification. Do not add `_assert_pinned_fonts`, a meta E2E test or a browser-side validator.
 
 - [x] **Step 6: Run focused tests and verify green**
 
@@ -82,7 +83,7 @@ Run two independent full captures. Compare all 25 PNGs and `docs/screenshots/REA
 
 - [x] **Step 8: Run the full gate**
 
-Run `just verify`. Expected: backend, web, build and all current E2E suites pass. Record the final counts.
+Run `just verify` once on the final reviewed head. Expected: backend, web, build and all current app E2E suites pass. Record the final counts. Fix rounds use focused tests only.
 
 - [x] **Step 9: Commit**
 
@@ -90,4 +91,4 @@ Commit `fix(web): use bundled fonts for keycaps and badges` with a real `User-vi
 
 - [ ] **Step 10: Review, push and prove CI silence**
 
-Independent reviewer checks the font source/license, SVG accessibility, capture guard, tests and all 25 masters. After approval, push the branch and observe its `Screenshots` workflow. Expected: the run succeeds and opens no `chore/screenshots-*` PR. A new screenshot PR means the fix is not complete.
+Independent reviewer checks the font source/license, SVG accessibility, CSS token, tests and all 25 masters. After approval, push the branch and observe its `Screenshots` workflow. Expected: the run succeeds and opens no `chore/screenshots-*` PR. A new screenshot PR means the fix is not complete.

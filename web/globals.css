@@ -203,8 +203,8 @@
   --font-serif: "EB Garamond", Georgia, "Times New Roman", serif;
   /* The keyboard's voice: keycaps, badges, code, dates and the numeric
    * metadata. IBM Plex Mono is self-hosted (the faces are declared below;
-   * the OFL notice sits beside them), so a keycap's glyph is the same shape
-   * on every machine — the capture proves it (`_assert_pinned_fonts`). The
+   * the OFL notice sits beside them), so a keycap's glyph has the same shape
+   * on every machine instead of reading the machine's font packages. The
    * system mono follows it only as the fallback for a face that never
    * loads. One home for the stack: a call site reads `font-mono` or the
    * token, never a family of its own. */
@@ -623,7 +623,7 @@ p.zen-dim-block:hover {
  * above — the app's own copy, never a CDN, never whatever mono the reader's
  * machine happens to have. Four real cuts (400 / 500 / 600 / 700), so a
  * keycap's K, a badge's numeral and the prose's code block carry the same
- * glyph on every machine and the screenshot capture can prove it. The Latin
+ * glyph on every machine without reading the machine's font packages. The Latin
  * subset's range is the one Fontsource ships: the command mark (U+2318) is
  * deliberately outside it and is drawn as the app's own SVG, never as text.
  */

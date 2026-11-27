@@ -2,7 +2,3 @@ i18n/*.json merge=narrare-json
 web/lib/generated/* merge=narrare-generated
 web/lib/api/openapi.json merge=narrare-generated
 web/lib/api/schema.d.ts merge=narrare-generated
-
-# The bundled OFL notice ships LF bytes: its pinned digest is over LF, and
-# .gitattributes keeps a Windows checkout from rewriting the notice.
-web/public/fonts/*.txt text eol=lf
