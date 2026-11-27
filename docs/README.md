@@ -5,6 +5,8 @@ Where everything lives, and what each place is for.
 ## Using the application
 
 - [User guide](user/INDEX.md) — the screens, the writing flow, settings.
+- [Screenshot collection](screenshots/README.md) — every capture of the running
+  application, grouped by area.
 - [Feature inventory](features/INDEX.md) — every feature, and whether it exists yet.
 
 ## Where it is going

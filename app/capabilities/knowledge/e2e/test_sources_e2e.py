@@ -219,7 +219,7 @@ def test_the_disabled_areas_stay_inert(page: Page, installed: Stack) -> None:
 
     view = page.get_by_test_id("sources-view")
     expect(view).to_be_disabled()
-    expect(view).to_have_attribute("title", "Die Originalansicht kommt mit dem weiteren Aufbau")
+    expect(view).to_have_attribute("title", "Noch nicht verfügbar.")
     for testid, label in (
         ("sources-footnote-gap", "Automatische Fußnoten- & Zitatverknüpfung ins Manuskript"),
         ("sources-factcheck-gap", "Automatisierter Faktencheck & Kausalitäts-Abgleich"),
@@ -227,7 +227,7 @@ def test_the_disabled_areas_stay_inert(page: Page, installed: Stack) -> None:
         gap = page.get_by_test_id(testid)
         expect(gap).to_have_attribute("aria-disabled", "true")
         expect(gap).to_contain_text(label)
-        expect(gap).to_contain_text("Kommt mit dem weiteren Aufbau")
+        expect(gap).to_contain_text("Noch nicht verfügbar.")
         expect(gap.get_by_role("button")).to_have_count(0)
 
     # The hit card's original door is the same honest gap.
@@ -235,7 +235,7 @@ def test_the_disabled_areas_stay_inert(page: Page, installed: Stack) -> None:
     page.get_by_test_id("sources-search-button").click()
     original = page.get_by_test_id("sources-open-original")
     expect(original).to_be_disabled()
-    expect(original).to_have_attribute("title", "Die Originalansicht kommt mit dem weiteren Aufbau")
+    expect(original).to_have_attribute("title", "Noch nicht verfügbar.")
 
 
 def test_the_dark_sources_face_clears_the_axe_floor(page: Page, installed: Stack) -> None:

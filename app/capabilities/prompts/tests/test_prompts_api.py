@@ -183,8 +183,8 @@ async def test_every_card_hides_its_purpose_marker() -> None:
 
     by_key = {row["key"]: row["bundled_summary"] for row in listed}
     assert by_key[CONTINUATION] == (
-        "Novel: Der Nebel\nChapter: Ankunft\n\nText so far:\nDer Nebel kam von See.\n\n"
-        "Referenced entities:\n### Mira (character)\nDie Wa"
+        "Novel: The Fog\nChapter: Arrival\n\nText so far:\nThe fog came in from the lake.\n\n"
+        "Referenced entities:\n### Mira (character)\n"
     )
     assert by_key[CHAT] == (
         "Answer the question using only the sources below. Quote the passage that carries "

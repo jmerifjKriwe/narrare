@@ -96,7 +96,7 @@ LLM profile and not new in WP3.
 
 ```
 novel/
-  metadata.json      { title, author?, genre?, blurb?, language?,
+  metadata.json      { title, title_en?, author?, genre?, blurb?, language?,
                        chapters: [{file, position}],            # ordered index
                        relations: [{from, type, to, note?}] }   # names, not ids
   chapters/<file>    Markdown; frontmatter: title, position, id?, updated?
@@ -108,6 +108,16 @@ novel/
   only in exports (UUID, ISO-8601 UTC); hand-written files omit them.
 - `relations` reference entities **by name** and resolve within the novel — the same
   rule WP1's suggestion-accept uses; an absent target is skipped and reported.
+- `title_en` is optional **display-only demo metadata**: the English picker reads it
+  so a German archive reads naturally in the English face. It is never imported or
+  persisted as a novel fact; the archive's identity stays `title` and `language`,
+  and an absent or empty `title_en` falls back to `title`.
+- **Unusable display-only metadata is ignored, never fatal.** The parser preserves
+  any `title_en` string verbatim — empty and overlong included — and treats every
+  other JSON type as absent, so a malformed display title cannot block an otherwise
+  valid novel import. Persisted metadata (`title`, `author`, `genre`, `blurb`,
+  `language` and the contents' own fields) keeps its strict type and length checks.
+  Bundled demo discovery may remain strict.
 
 ## Merge rules (import into an existing novel)
 
@@ -140,7 +150,8 @@ the timestamp guard, because applying a revision bumps `updated_at` past the fil
    row (never an unguarded overwrite). An edge whose target name does not resolve
    within the novel is skipped and reported.
 7. **Novel metadata is not applied on merge.** Title, author, genre, blurb, language
-   from `metadata.json` create the novel on the new-novel path only; merging into an
+   from `metadata.json` create the novel on the new-novel path only; `title_en` is
+   display-only demo metadata and is never imported or persisted. Merging into an
    existing novel touches chapters, entities and relations, and every differing
    metadata field is a reported conflict row ("metadata differs — not applied").
    Nothing retitles a novel silently; novel metadata editing is WP6's surface.

@@ -37,7 +37,7 @@ import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
 import { storePreSetupLocale } from "@shell/lib/preSetupLocale";
-import { de, fr } from "@shell/lib/test/catalogs";
+import { de, en, fr } from "@shell/lib/test/catalogs";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
 const api = client as unknown as Record<
@@ -202,6 +202,60 @@ describe("the provisioning step — the one POST", () => {
         canon_strictness: 3,
       },
     });
+  });
+
+  it("keeps the English display title through the bound face while posting the archive title", async () => {
+    api.POST.mockImplementation(async () => {
+      instanceComplete = true;
+      return {
+        data: { ...RESULT, novel_title: "Im Stillen Wald", genre: "Literary", chapters: 2 },
+        response: new Response(null, { status: 201 }),
+      };
+    });
+    storePreSetupLocale("en");
+    renderProvisioning(
+      "/setup/provisioning?demo=im-stillen-wald&title=ignored&typology=plotter&form=three-act&role=lektor&canon=3",
+    );
+
+    await screen.findByText(en["setup.provisioning.bound.item1"]);
+    expect(
+      screen.getByText(
+        t("setup.provisioning.contextDemo", { genre: "Literary", title: "In the Silent Forest" }),
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        t("setup.provisioning.heroTitleBound", { title: "In the Silent Forest" }),
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText(
+        t("setup.provisioning.contextDemo", { genre: "Literary", title: "Im Stillen Wald" }),
+      ),
+    ).toBeNull();
+
+    // The POST still carries the archive's own title, never the display face.
+    expect(api.POST).toHaveBeenCalledWith(
+      "/api/setup",
+      expect.objectContaining({
+        body: expect.objectContaining({
+          novel_title: "Im Stillen Wald",
+          demo: "im-stillen-wald",
+        }),
+      }),
+    );
+
+    // The German face reads the archive title again.
+    fireEvent.click(screen.getByRole("radio", { name: "Deutsch" }));
+    await screen.findByText(de["setup.provisioning.bound.item1"]);
+    expect(
+      screen.getByText(
+        t("setup.provisioning.contextDemo", { genre: "Literary", title: "Im Stillen Wald" }),
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(t("setup.provisioning.heroTitleBound", { title: "Im Stillen Wald" })),
+    ).toBeTruthy();
   });
 
   it("an empty deep link falls back to the basis without posting", async () => {

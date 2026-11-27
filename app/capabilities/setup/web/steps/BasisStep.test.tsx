@@ -302,6 +302,35 @@ describe("the basis step — the blank path", () => {
 });
 
 describe("the basis step — the demo path", () => {
+  it("shows the English display title, and the archive's own title in German", async () => {
+    storePreSetupLocale("en");
+    renderBasis("/setup/basis?demo=im-stillen-wald");
+    await screen.findByRole("heading", {
+      level: 1,
+      name: en["setup.basis.heroTitle"],
+    });
+
+    const englishTitle = screen.getByRole("textbox", {
+      name: en["setup.basis.boundTitle"],
+    }) as HTMLInputElement;
+    expect(englishTitle.value).toBe("In the Silent Forest");
+    expect(
+      screen.getByText(
+        t("setup.basis.banner.title", { title: "In the Silent Forest" }),
+      ),
+    ).toBeTruthy();
+    // The archive's own title still stands behind the display: the German
+    // face reads it, and the demo slug is what the POST carries.
+    expect(screen.queryByDisplayValue("Im Stillen Wald")).toBeNull();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Deutsch" }));
+    await screen.findByRole("heading", { level: 1, name: de["setup.basis.heroTitle"] });
+    const germanTitle = screen.getByRole("textbox", {
+      name: de["setup.basis.boundTitle"],
+    }) as HTMLInputElement;
+    expect(germanTitle.value).toBe("Im Stillen Wald");
+  });
+
   it("preselects from ?demo= and binds title and genre with the lock note", async () => {
     renderBasis("/setup/basis?demo=dead-signal");
     await screen.findByRole("heading", { level: 1 });
@@ -398,6 +427,23 @@ describe("the basis step — the demo path", () => {
 });
 
 describe("the step's header", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("names the current writing year from the clock", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-01T00:00:00Z"));
+    renderBasis();
+    await screen.findByRole("heading", { level: 1 });
+
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
+    await screen.findByRole("heading", {
+      level: 1,
+      name: en["setup.basis.heroTitle"],
+    });
+    expect(screen.getByText("Writing year 2026 • Edition Prima")).toBeTruthy();
+    expect(screen.queryByText(/Writing year 2025/)).toBeNull();
+  });
+
   it("keeps the draft's DE|EN|FR switcher working before setup", async () => {
     renderBasis();
     await screen.findByRole("heading", { level: 1 });

@@ -39,7 +39,8 @@
  * active face on any planning surface — the timeline today, the storyboard
  * and the causality strip as their tasks land. The Einstellungen door is
  * live with the settings surface (W7 Task 3): global, so it opens with or
- * without a book, and `/settings` is its own active face.
+ * without a book, and every settings route — the hub and its subpages
+ * (#981) — wears its active face.
  *
  * The user block stays display-only here: the drafted user menu (W7 Task 3)
  * lives on the topbar, where the settings-allgemein draft draws the tile.
@@ -176,6 +177,18 @@ export function IconRail() {
           match.routeId === "/novels/$novelId/planning/timeline" ||
           match.routeId === "/novels/$novelId/planning/storyboard" ||
           match.routeId === "/novels/$novelId/planning/causality",
+      ),
+  });
+  // The Einstellungen door's active face: the settings area is matched — the
+  // hub and its two subpages (#981) are one location (the route ids, never a
+  // parsed pathname — the chrome's own discipline). One area, three surfaces.
+  const settingsActive = useRouterState({
+    select: (state) =>
+      state.matches.some(
+        (match) =>
+          match.routeId === "/settings" ||
+          match.routeId === "/settings/ai-regeln" ||
+          match.routeId === "/settings/prompts",
       ),
   });
 
@@ -584,14 +597,18 @@ export function IconRail() {
                 </button>
               );
             }
+            // The settings entry marks the settings area on every settings
+            // route (#981); every other plain door is exact.
+            const isCurrent =
+              entry.to === "/settings" ? settingsActive : pathname === entry.to;
             return entry.to !== undefined ? (
               <Link
                 key={entry.label}
                 to={entry.to}
                 aria-label={t(entry.label)}
                 title={t(entry.label)}
-                aria-current={pathname === entry.to ? "page" : undefined}
-                className={face(pathname === entry.to)}
+                aria-current={isCurrent ? "page" : undefined}
+                className={face(isCurrent)}
               >
                 {children}
               </Link>

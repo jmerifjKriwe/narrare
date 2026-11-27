@@ -412,10 +412,10 @@ export function CausalityPage() {
         /* The draft's face: the subline block with the real-count chips,
            the horizontally scrollable chain, the methodology row. */
         <div className="min-h-0 flex-1 overflow-y-auto bg-surface-container-low/30 p-4">
-          <div className="mx-auto flex max-w-6xl flex-col gap-4">
-            {/* The subline — the draft's eyebrow, its honest sentence and
+          <div className="mx-auto flex min-h-full max-w-6xl flex-col gap-4">
+            {/* The top group — the draft's eyebrow, its honest sentence and
                 the real-count chips. */}
-            <div className="flex flex-wrap items-end justify-between gap-3">
+            <div data-testid="causality-subline" className="flex flex-wrap items-end justify-between gap-3">
               <div className="flex max-w-xl flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
@@ -463,67 +463,76 @@ export function CausalityPage() {
               </div>
             </div>
 
-            {/* The track header — the chain reads left-to-right; the
-                scroll affordance names itself. */}
-            <div className="flex items-center justify-between px-1">
-              <h2 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted">
-                <span className="text-primary">
-                  <Icon name="schema" size={15} />
-                </span>
-                {t("planning.causality.trackLabel")}
-              </h2>
-              <span className="text-meta italic text-muted">{t("planning.causality.trackHint")}</span>
-            </div>
+            {/* The middle group — the track header and the chain together.
+                Its flex-1 share is the page's one intentional vertical gap,
+                which stands between this group and the methodology row. */}
+            <div className="flex flex-1 flex-col gap-4">
+              {/* The track header — the chain reads left-to-right; the
+                  scroll affordance names itself. */}
+              <div data-testid="causality-track-header" className="flex items-center justify-between px-1">
+                <h2 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted">
+                  <span className="text-primary">
+                    <Icon name="schema" size={15} />
+                  </span>
+                  {t("planning.causality.trackLabel")}
+                </h2>
+                <span className="text-meta italic text-muted">{t("planning.causality.trackHint")}</span>
+              </div>
 
-            {/* The chain — the draft's horizontally scrollable track, the
-                chapter groups left-to-right with their connectors. The
-                tabIndex keeps the scrollable region on the keyboard (the
-                scrollable-region rule the axe floor runs). */}
-            <div
-              data-testid="causality-track"
-              aria-label={t("planning.causality.trackLabel")}
-              tabIndex={0}
-              className="w-full overflow-x-auto pb-2"
-            >
-              <div className="inline-flex min-w-max items-stretch gap-3 pr-3">
-                {chain.map((entry, index) =>
-                  chapterGroup(entry, index > 0 && (chain[index - 1]?.scenes.length ?? 0) > 0),
-                )}
+              {/* The chain — the draft's horizontally scrollable track, the
+                  chapter groups left-to-right with their connectors. The
+                  tabIndex keeps the scrollable region on the keyboard (the
+                  scrollable-region rule the axe floor runs). */}
+              <div
+                data-testid="causality-track"
+                aria-label={t("planning.causality.trackLabel")}
+                tabIndex={0}
+                className="w-full overflow-x-auto pb-2"
+              >
+                <div className="inline-flex min-w-max items-stretch gap-3 pr-3">
+                  {chain.map((entry, index) =>
+                    chapterGroup(entry, index > 0 && (chain[index - 1]?.scenes.length ?? 0) > 0),
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* The methodology row — the draft's three boxes on the shell's
-                tokens; the diagnostics box counts the real gaps. */}
-            <div
-              data-testid="causality-bento"
-              className="grid grid-cols-1 gap-3 pt-1 md:grid-cols-3"
-            >
-              {METHODOLOGY.map(({ icon, title, body, footer }) => (
-                <div
-                  key={title}
-                  className="flex flex-col justify-between gap-2 rounded-[var(--radius-surface)] bg-card p-3.5 shadow-card"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <span aria-hidden="true" className="text-primary">
-                      <Icon name={icon} size={20} />
-                    </span>
-                    <div className="flex flex-col gap-1">
-                      <h3 className="text-label font-semibold text-foreground">{t(title)}</h3>
-                      <p className="text-meta leading-relaxed text-muted">{t(body)}</p>
+            {/* The bottom group — the methodology row and the footnote stay
+                together at the foot of the page. */}
+            <div className="flex flex-col gap-4">
+              {/* The methodology row — the draft's three boxes on the shell's
+                  tokens; the diagnostics box counts the real gaps. */}
+              <div
+                data-testid="causality-bento"
+                className="grid grid-cols-1 gap-3 pt-1 md:grid-cols-3"
+              >
+                {METHODOLOGY.map(({ icon, title, body, footer }) => (
+                  <div
+                    key={title}
+                    className="flex flex-col justify-between gap-2 rounded-[var(--radius-surface)] bg-card p-3.5 shadow-card"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <span aria-hidden="true" className="text-primary">
+                        <Icon name={icon} size={20} />
+                      </span>
+                      <div className="flex flex-col gap-1">
+                        <h3 className="text-label font-semibold text-foreground">{t(title)}</h3>
+                        <p className="text-meta leading-relaxed text-muted">{t(body)}</p>
+                      </div>
                     </div>
+                    {footer?.(t, gaps ?? 0)}
                   </div>
-                  {footer?.(t, gaps ?? 0)}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            {/* The bottom disclaimer — the draft's footnote, reworded into
-                the vocabulary gate's own law: the strip mirrors only the
-                novel's real scene entries, and everything deeper comes
-                with the further build-out (the owner's one-key ruling). */}
-            <p data-testid="causality-note" className="border-t border-rule/30 pt-2 text-meta italic leading-relaxed text-muted">
-              {t("planning.causality.laterNote")}
-            </p>
+              {/* The bottom disclaimer — the draft's footnote, reworded into
+                  the vocabulary gate's own law: the strip mirrors only the
+                  novel's real scene entries, and claims nothing beyond them
+                  (the owner's one-key ruling). */}
+              <p data-testid="causality-note" className="border-t border-rule/30 pt-2 text-meta italic leading-relaxed text-muted">
+                {t("planning.causality.laterNote")}
+              </p>
+            </div>
           </div>
         </div>
       )}

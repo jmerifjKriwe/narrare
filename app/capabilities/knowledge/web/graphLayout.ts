@@ -1,11 +1,13 @@
 /**
- * The lore graph's layout, pure (W5 Task 3): the same entities and relations
- * always answer the same positions. The nodes take a canonical order (the
- * entity id, so the server's arrival order cannot move the picture), seed
- * onto a circle by that order, and settle through a fixed-iteration
+ * The lore graph's layout, pure (W5 Task 3): the same canon always answers
+ * the same positions. The nodes take a canonical order — the case-folded
+ * name first, then the id only to separate two namesakes — seed onto a
+ * circle by that order, and settle through a fixed-iteration
  * Fruchterman–Reingold pass — repulsion between every pair, attraction along
- * every edge, a gentle pull to the centre, cooling each step. No randomness
- * anywhere: a re-run, a reorder or a remount draws the identical web.
+ * every edge, a gentle pull to the centre, cooling each step. The writer's
+ * names are the canon's identity; the server's UUIDs are fresh on every seed,
+ * so ordering by them would move a re-seeded picture. No randomness anywhere:
+ * a re-run, a reorder or a remount draws the identical web.
  *
  * The viewport's fit math lives here too, so the reset's answer is a pure
  * function of the bounds and the viewport — testable without an SVG.
@@ -32,10 +34,12 @@ export interface Transform {
   k: number;
 }
 
-/** The layout reads only the identity and the edges' ends — the rows' other
- *  fields are the panel's business, never the geometry's. */
+/** The layout reads the identity and the edges' ends — the rows' other
+ *  fields are the panel's business, never the geometry's. The name is the
+ *  canon's stable identity; the id is the server's, fresh on every seed. */
 export interface LayoutEntity {
   id: string;
+  name: string;
 }
 export interface LayoutRelation {
   from_entity_id: string;
@@ -45,6 +49,28 @@ export interface LayoutRelation {
 const ITERATIONS = 300;
 const COOLING = 0.97;
 
+/** The canonical key: the case-folded name, then the id. Names carry the
+ *  writer's canon and stay put across a re-seed; the id is the server's fresh
+ *  UUID, so it only separates two rows that share a name. Case folding is the
+ *  locale-independent `toLowerCase` and the compare is by code unit, so the
+ *  order is the same in every browser and every run. */
+function canonicalKey(entity: LayoutEntity): [string, string] {
+  return [entity.name.toLowerCase(), entity.id];
+}
+
+/** The canonical node order: case-folded name, then id. Exported so a reader
+ *  that must mirror the layout's own pair order — the parallel arcs — reads
+ *  the identical key instead of the raw UUIDs. */
+export function compareCanonical(a: LayoutEntity, b: LayoutEntity): number {
+  const [nameA, idA] = canonicalKey(a);
+  const [nameB, idB] = canonicalKey(b);
+  if (nameA < nameB) return -1;
+  if (nameA > nameB) return 1;
+  if (idA < idB) return -1;
+  if (idA > idB) return 1;
+  return 0;
+}
+
 function round(value: number): number {
   const rounded = Math.round(value * 100) / 100;
   // Negative zero is a float artefact of the centroid subtraction; it must
@@ -53,16 +79,17 @@ function round(value: number): number {
 }
 
 /**
- * Settle the web. Entities are ordered by id (the canonical seed), placed on
- * a circle, then relaxed. Edges whose ends are absent — and self-loops, which
- * pull a node onto itself — are skipped in the force pass; the canvas still
- * draws a self-loop, it just cannot move its node.
+ * Settle the web. Entities are ordered by case-folded name, then id (the
+ * canonical seed), placed on a circle, then relaxed. Edges whose ends are
+ * absent — and self-loops, which pull a node onto itself — are skipped in the
+ * force pass; the canvas still draws a self-loop, it just cannot move its
+ * node.
  */
 export function layoutGraph(
   entities: readonly LayoutEntity[],
   relations: readonly LayoutRelation[],
 ): Map<string, Point> {
-  const nodes = [...entities].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const nodes = [...entities].sort(compareCanonical);
   const positions = new Map<string, Point>();
   const n = nodes.length;
   if (n === 0) return positions;
@@ -200,20 +227,23 @@ export function fitTransform(bounds: Bounds, width: number, height: number, padd
 }
 
 /**
- * A stable key for the SET the web draws: the sorted entity ids and the sorted
- * edge ends. Two reads of the same rows answer the same key whatever their
- * arrival order or object identity, so a background refetch of an unchanged
- * canon does not reframe the viewport — only a materially different set (a node
- * or an edge added or gone) changes the key. The separators are control
- * characters no id carries.
+ * A stable key for the SET the web draws: the entities' canonical name/id
+ * keys and the sorted edge ends, each in the layout's own order. Two reads of
+ * the same rows answer the same key whatever their arrival order or object
+ * identity, so a background refetch of an unchanged canon does not reframe the
+ * viewport — only a materially different set (a node, a rename or an edge
+ * added or gone) changes the key. The separators are control characters no id
+ * or name carries.
  */
 export function graphSignature(
   entities: readonly LayoutEntity[],
   relations: readonly LayoutRelation[],
 ): string {
-  const ids = entities.map((entity) => entity.id).sort((a, b) => a.localeCompare(b));
+  const keys = [...entities]
+    .sort(compareCanonical)
+    .map((entity) => canonicalKey(entity).join("\u0000"));
   const edges = relations
     .map((relation) => `${relation.from_entity_id}\u0000${relation.to_entity_id}`)
     .sort((a, b) => a.localeCompare(b));
-  return `${ids.join("\u0001")}\u0002${edges.join("\u0001")}`;
+  return `${keys.join("\u0001")}\u0002${edges.join("\u0001")}`;
 }

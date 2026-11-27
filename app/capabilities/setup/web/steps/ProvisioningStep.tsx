@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 
 import { client, type SetupResult } from "@shell/lib/api/client";
 import { BookCover } from "@shell/lib/cover/BookCover";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
+import { activeLocale } from "@shell/lib/locale";
 import { usePageTitle } from "@shell/lib/pageTitle";
 import { queryClient } from "@shell/lib/query";
 import { Icon } from "@shell/ui/icons";
@@ -13,6 +14,7 @@ import { useSetupStatus } from "../useSetupStatus";
 import { WizardHeader } from "../WizardHeader";
 import {
   basisComplete,
+  demoDisplayTitle,
   findDemo,
   joinGenres,
   useWizardState,
@@ -110,6 +112,9 @@ export function ProvisioningStep() {
   const t = useTranslation();
   const navigate = useNavigate();
   const { state } = useWizardState("/setup/provisioning");
+  // `useTranslation` subscribes to the locale store, so this render-time read
+  // follows a language switch; the POST below still binds the archive's title.
+  const locale = activeLocale();
   // The status query suspends before any early return: a direct entry asks
   // it once, and the 409's invalidation refetches it while this step still
   // observes — the `/` gate then reads the fresh complete answer.
@@ -211,15 +216,16 @@ export function ProvisioningStep() {
 
   const archive = findDemo(state.demo);
   const facts = phase === "bound" ? result : null;
-  // The book object and the hero title read the response's facts once bound,
-  // else the state-derived identity (the demo manifest, or the trimmed title
-  // and first genre pill; an untitled blank answers with the cover's own
-  // „Unbenanntes Manuskript").
+  // The book object and the hero title read the demo's localized display title
+  // on the demo path (the POST still sends archive.title); otherwise the
+  // response's facts once bound, else the trimmed blank-path title and first
+  // genre pill — an untitled blank answers with the cover's own
+  // „Unbenanntes Manuskript".
   const displayTitle =
-    facts !== null
-      ? facts.novel_title
-      : archive !== null
-        ? archive.title
+    archive !== null
+      ? demoDisplayTitle(archive, locale)
+      : facts !== null
+        ? facts.novel_title
         : state.title.trim() !== ""
           ? state.title.trim()
           : t("setup.basis.coverUntitled");
@@ -252,7 +258,10 @@ export function ProvisioningStep() {
           <span className="inline-flex items-center gap-1.5 rounded-full border border-outline-variant/60 bg-surface-container-highest px-3 py-1 text-eyebrow tracking-wide text-foreground">
             <Icon name="autoStories" size={14} />
             {archive !== null
-              ? t("setup.provisioning.contextDemo", { genre: archive.genre, title: archive.title })
+              ? t("setup.provisioning.contextDemo", {
+                  genre: archive.genre,
+                  title: demoDisplayTitle(archive, locale),
+                })
               : t("setup.provisioning.contextBlank")}
           </span>
         </div>

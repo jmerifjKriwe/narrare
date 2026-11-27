@@ -37,7 +37,7 @@ vi.mock("@shell/lib/api/client", () => ({
 import { client, type Chapter, type TimelineEvent } from "@shell/lib/api/client";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
-import { de } from "@shell/lib/test/catalogs";
+import { de, merged } from "@shell/lib/test/catalogs";
 
 import { TimelinePage } from "./TimelinePage";
 
@@ -55,6 +55,27 @@ const WORKSPACE_PATH = "/novels/$novelId";
 function ok(status = 200): Response {
   return new Response(null, { status });
 }
+
+// The disabled chapter-order view names its state, not a future drawing
+// schedule (#979).
+const STATUS_NOTE = {
+  en: "Not available yet.",
+  de: "Noch nicht verfügbar.",
+  fr: "Pas encore disponible.",
+} as const;
+
+const FUTURE_PROMISE =
+  /drawn|gezeichnet|dessinée|build-out|aufbau|wave|welle|vague|appear|erschein|appara|coming soon|kommt mit|arrive avec|future|becomes available|later/i;
+
+describe("the chapter-order note speaks to the reader", () => {
+  it("is status-only in every catalog, never a future promise", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      const note = merged[locale]["planning.timeline.chapterSequenceNote"];
+      expect(note).toBe(STATUS_NOTE[locale]);
+      expect(note).not.toMatch(FUTURE_PROMISE);
+    }
+  });
+});
 
 function chapterRow(overrides: Partial<Chapter> & { id: string }): Chapter {
   return {

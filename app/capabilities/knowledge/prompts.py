@@ -168,16 +168,16 @@ def sample_variables_extraction() -> dict[str, object]:
     The chapter arrives as the marker-carrying payload an override receives —
     what its author may reorder, never rewrite.
     """
-    return extraction_variables(chapter_title="Ankunft", body="Der Nebel kam von See.")
+    return extraction_variables(chapter_title="Arrival", body="The fog came from the lake.")
 
 
 def sample_variables_consistency() -> dict[str, object]:
     """The sample the editor's legend and the save-time validation render."""
     return consistency_variables(
-        entities=[("Mira", "character"), ("Haus", "location")],
+        entities=[("Mira", "character"), ("House", "location")],
         chapters=[
-            ("Ankunft", "Der Nebel kam von See."),
-            ("Später", "Mira betrat das alte Haus."),
+            ("Arrival", "The fog came from the lake."),
+            ("Later", "Mira entered the old house."),
         ],
     )
 

@@ -28,10 +28,36 @@ import type { Chapter, Novel, Scene } from "@shell/lib/api/client";
 import { applyLocale } from "@shell/lib/locale";
 import type { SaveStatus } from "@shell/lib/saveStatus";
 import { countWords } from "@shell/lib/words";
-import { de } from "@shell/lib/test/catalogs";
+import { de, merged } from "@shell/lib/test/catalogs";
 
 import { EditorColumn } from "./EditorColumn";
 import type { Continuation, SceneEntry } from "./workspace";
+
+// The ribbon's history and export doors name their state, not a future
+// release (#979).
+const STATUS_NOTE = {
+  en: "Not available yet.",
+  de: "Noch nicht verfügbar.",
+  fr: "Pas encore disponible.",
+} as const;
+
+const FUTURE_PROMISE =
+  /build-out|aufbau|wave|welle|vague|appear|erschein|appara|coming soon|kommt mit|arrive avec|future|becomes available|later/i;
+
+describe("the ribbon's disabled notes speak to the reader", () => {
+  it("are status-only in every catalog, never a future promise", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      for (const key of [
+        "writing.workspace.ribbon.historyNote",
+        "writing.workspace.ribbon.exportNote",
+      ] as const) {
+        const note = merged[locale][key];
+        expect(note).toBe(STATUS_NOTE[locale]);
+        expect(note).not.toMatch(FUTURE_PROMISE);
+      }
+    }
+  });
+});
 
 // jsdom lays out nothing: ProseMirror reads Range rects when it scrolls a
 // selection into view (the typing leg focuses the live editor). Hand it the

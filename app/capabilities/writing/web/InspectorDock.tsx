@@ -19,9 +19,9 @@
  * - Cover miniature: the ONE real card — the cover system's miniature,
  *   the book's own target_words, word_count and the derived progress
  *   (the shelf's floored-percent rule, never the draft's 4 %).
- * - Foot: the ⌘J assistant chip disabled with the „bald" mark (INTERIM
- *   #869 — the chat wave owns the composer) and the Workspace-Layout tune
- *   disabled with the draft's own parenthetical „später verfügbar"
+ * - Foot: the ⌘J assistant chip disabled with the canonical status note
+ *   (INTERIM #869 — the chat wave owns the composer) and the
+ *   Workspace-Layout tune disabled with the same note in its parenthetical
  *   (INTERIM #881 — light wins over the dark's enabled button).
  *
  * Task 20 finalized the family: the geometry is audited against both
@@ -246,7 +246,7 @@ export function InspectorDock({ novel }: { novel: Novel }) {
               </kbd>
               <span className="text-meta">{t("writing.workspace.dock.assistant")}</span>
             </div>
-            <span className="rounded bg-surface-container-low px-1 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted">
+            <span data-testid="dock-soon-badge" className="rounded bg-surface-container-low px-1 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted">
               {t("writing.workspace.dock.soon")}
             </span>
           </div>

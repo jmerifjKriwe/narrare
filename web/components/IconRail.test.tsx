@@ -243,6 +243,28 @@ const settingsRoute = createRoute({
     </>
   ),
 });
+/** The hub's two subpages (#981): the gear door marks the settings area, so
+ *  its active face stands on them too — never the shelf's. */
+const aiRulesRoute = createRoute({
+  getParentRoute: () => testRoot,
+  path: "/settings/ai-regeln",
+  component: () => (
+    <>
+      <p>ai-rules</p>
+      <IconRail />
+    </>
+  ),
+});
+const promptsRoute = createRoute({
+  getParentRoute: () => testRoot,
+  path: "/settings/prompts",
+  component: () => (
+    <>
+      <p>prompts</p>
+      <IconRail />
+    </>
+  ),
+});
 
 function renderRail(path = "/rail-test") {
   const router = createRouter({
@@ -257,6 +279,8 @@ function renderRail(path = "/rail-test") {
       storyboardRoute,
       causalityRoute,
       settingsRoute,
+      aiRulesRoute,
+      promptsRoute,
     ]),
     history: createMemoryHistory({ initialEntries: [path] }),
   });
@@ -511,6 +535,26 @@ describe("the rail — nav", () => {
     const current = await screen.findByRole("link", { name: de["shell.nav.settings"] });
     expect(current.getAttribute("aria-current")).toBe("page");
     expect(current.getAttribute("href")).toBe("/settings");
+  });
+
+  it("the gear door marks the settings area on the hub's subpages too (#981)", async () => {
+    for (const path of ["/settings/ai-regeln", "/settings/prompts"]) {
+      renderRail(path);
+      const current = await screen.findByRole("link", { name: de["shell.nav.settings"] });
+      expect(current.getAttribute("aria-current")).toBe("page");
+      // The door still opens the area's first surface; the shelf is not
+      // current there.
+      expect(current.getAttribute("href")).toBe("/settings");
+      // The active face agrees with the mark — not the muted inactive one.
+      expect(current.className).toContain("border-primary/20");
+      expect(current.className).toContain("bg-primary/10");
+      expect(current.className).toContain("text-primary");
+      expect(
+        screen.getByRole("link", { name: de["shell.nav.shelf"] }).getAttribute("aria-current"),
+      ).toBeNull();
+      cleanup();
+      queryClient.clear();
+    }
   });
 });
 

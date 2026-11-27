@@ -53,11 +53,11 @@ EXTRACT = "knowledge.extract-entities"
 CONSISTENCY = "knowledge.check-consistency"
 INTERVIEW = "knowledge.entity-interview"
 
-SAMPLE_TAIL = "Der Nebel kam von See."
+SAMPLE_TAIL = "The fog came in from the lake."
 # The writing sample factory's tail — what a SAMPLE-scope render would carry.
 # The live test's assertions lean on its absence: the real assembly rides the
 # seeded manuscript, never the samples.
-PASSAGE = "Der Leuchtturm am Horizont war seit Jahren dunkel."
+PASSAGE = "The lighthouse on the horizon had been dark for years."
 
 
 @pytest.fixture(autouse=True)
@@ -198,7 +198,7 @@ async def test_the_preview_renders_the_saved_effective_and_never_calls_the_model
         assert preview.status_code == 200, preview.text
         body = preview.json()
 
-    assert body["rendered"] == "P: Der Nebel kam von See."
+    assert body["rendered"] == f"P: {SAMPLE_TAIL}"
     assert body["diagnostics"]["chars"] == len(body["rendered"])
     # The key carries no contract; the diagnostic states None, never a guess.
     assert body["diagnostics"]["contract_ok"] is None
@@ -225,7 +225,7 @@ async def test_the_preview_prefers_the_body_draft_over_the_saved() -> None:
         )
         assert preview.status_code == 200, preview.text
 
-    assert preview.json()["rendered"] == "DRAFT Der Nebel kam von See."
+    assert preview.json()["rendered"] == f"DRAFT {SAMPLE_TAIL}"
 
 
 async def test_the_preview_of_an_untouched_key_renders_the_bundled_template() -> None:
@@ -416,7 +416,7 @@ async def test_the_chat_live_test_retrieves_real_passages() -> None:
     [row] = await _audit_rows()
     assert row["task_key"] == CHAT
     assert PASSAGE in row["prompt_text"]
-    assert "Wo war der Leuchtturm?" in row["prompt_text"]
+    assert "Where was the lighthouse?" in row["prompt_text"]
 
 
 async def test_interview_live_test_resolves_and_audits_chat_ask() -> None:
@@ -448,7 +448,7 @@ async def test_interview_live_test_resolves_and_audits_chat_ask() -> None:
     assert row["prompt_key"] == INTERVIEW
     assert "PURPOSE: entity-interview" in row["prompt_text"]
     assert "Mira (character; none)" in row["prompt_text"]
-    assert 'novel "Der Nebel" in the genre Mystery' in row["prompt_text"]
+    assert 'novel "The Fog" in the genre Mystery' in row["prompt_text"]
     assert '"reply"' in row["response_text"]
 
 

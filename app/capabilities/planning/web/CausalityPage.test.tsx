@@ -34,11 +34,29 @@ import { client, type Chapter } from "@shell/lib/api/client";
 import { applyLocale } from "@shell/lib/locale";
 import { t, type MessageKey } from "@shell/lib/i18n";
 import { queryClient } from "@shell/lib/query";
-import { de } from "@shell/lib/test/catalogs";
+import { de, merged } from "@shell/lib/test/catalogs";
 
 import { CausalityPage } from "./CausalityPage";
 
 const api = client as unknown as Record<"GET" | "POST" | "PUT" | "DELETE", ReturnType<typeof vi.fn>>;
+
+// The footnote claims only what the strip does; the old build-out promise
+// made unbuilt copy the point of the frame (#979).
+const LATER_NOTE = {
+  en: "The causality strip mirrors only your real scene entries.",
+  de: "Die Kausalitätsleiste spiegelt ausschließlich deine realen Szeneneinträge wider.",
+  fr: "La barre de causalité ne reflète que tes scènes réelles.",
+} as const;
+
+describe("the causality footnote speaks to the reader", () => {
+  it("is value-neutral in every catalog, never a wave or build-out", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      const note = merged[locale]["planning.causality.laterNote"];
+      expect(note).toBe(LATER_NOTE[locale]);
+      expect(note).not.toMatch(/wave|welle|vague|build-out|aufbau/i);
+    }
+  });
+});
 
 /** The catalog's own formatter — a plural key formats through the active
  *  locale (de in this suite), it never string-replaces. */

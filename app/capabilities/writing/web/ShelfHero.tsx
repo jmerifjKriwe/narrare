@@ -172,7 +172,8 @@ export function ShelfHero({ novel, noteId }: { novel: Novel; noteId: string }) {
             {/* The two doors — the workspace door is LIVE (W4 Task 11,
                 row 3): it opens the book at its last-edited scene, the
                 label naming chapter + scene honestly. The lore door stays
-                disabled with the drafted note until the knowledge wave. */}
+                disabled; its future-facing note is shared with the adjacent
+                live workspace CTA. */}
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <Link
                 to="/novels/$novelId"

@@ -24,21 +24,22 @@ def _bundled(name: str) -> str:
 
 
 # Today's sample renders — the bundled template against its sample factory —
-# captured when the prompts docked. Provenance: writing's literal is the
-# capability suite's own GOLDEN string plus the instruction sample block
-# (W4 D5 — the legend shows the writer instruction the override may place);
-# chat's sample rides that suite's QUESTION and first passage; the knowledge
-# extract sample's body is the writing suite's BODY (not a shortened knowledge
-# CHAPTER_BODY). A drift in either tier — template or factory — rots here first.
+# captured when the prompts docked. Provenance: each literal mirrors its own
+# capability suite's sample values — writing's sample (plus the instruction
+# block W4 D5 shows in the legend), chat's QUESTION and first passage, the
+# interview sample's transcript and roster, and the knowledge samples' canon
+# and chapters. The knowledge suite's CHAPTER_BODY and golden inputs are
+# separate fixtures, not the registry sample. A drift in either tier — template
+# or factory — rots here first.
 GOLDENS: dict[str, str] = {
     "chat.ask": (
         "Answer the question using only the sources below. Quote the passage that "
         "carries the answer verbatim, and do not add knowledge from outside them.\n"
         "\n"
-        "Question: Wo war der Leuchtturm?\n"
+        "Question: Where was the lighthouse?\n"
         "\n"
         "Sources:\n"
-        "SOURCE: Der Leuchtturm am Horizont war seit Jahren dunkel.\n"
+        "SOURCE: The lighthouse on the horizon had been dark for years.\n"
     ),
     "knowledge.extract-entities": (
         "PURPOSE: extract-entities\n"
@@ -56,9 +57,9 @@ GOLDENS: dict[str, str] = {
         'array, empty when it proposes none. Answer with {"items": []} when the '
         "chapter proposes no entity.\n"
         "\n"
-        "Chapter: Ankunft\n"
+        "Chapter: Arrival\n"
         "Text:\n"
-        "SOURCE: Der Nebel kam von See.\n"
+        "SOURCE: The fog came from the lake.\n"
     ),
     "knowledge.check-consistency": (
         "PURPOSE: check-consistency\n"
@@ -74,21 +75,21 @@ GOLDENS: dict[str, str] = {
         "\n"
         "The story's accepted entities, as grounding:\n"
         "Mira (character)\n"
-        "Haus (location)\n"
+        "House (location)\n"
         "\n"
-        "Chapter: Ankunft\n"
+        "Chapter: Arrival\n"
         "Text:\n"
-        "SOURCE: Der Nebel kam von See.\n"
+        "SOURCE: The fog came from the lake.\n"
         "\n"
-        "Chapter: Später\n"
+        "Chapter: Later\n"
         "Text:\n"
-        "SOURCE: Mira betrat das alte Haus.\n"
+        "SOURCE: Mira entered the old house.\n"
     ),
     "knowledge.entity-interview": (
         "PURPOSE: entity-interview\n"
         "\n"
         "You are interviewing the writer to build one new entity for the novel "
-        '"Der Nebel" in the genre Mystery.\n'
+        '"The Fog" in the genre Mystery.\n'
         "Ask exactly one question per turn — the most useful one for this entity — and\n"
         "never tell the writer what type of entity it is. When nothing useful is left\n"
         "to ask, say so in your reply and stop.\n"
@@ -131,36 +132,36 @@ GOLDENS: dict[str, str] = {
         "SLOTS: {}\n"
         "RELATIONS: []\n"
         "TURNS:\n"
-        "ASSISTANT: Wie heißt die Figur, und welche Rolle spielt sie in der Geschichte?\n"
-        "USER: Eine Wächterin am See; einen Namen habe ich noch nicht.\n"
+        "ASSISTANT: What is the character's name, and what role do they play in the story?\n"
+        "USER: A keeper by the lake; I don't have a name yet.\n"
         "ROSTER:\n"
-        "Mira (character; Die Wanderin)\n"
-        "Haus (location; Das Haus am See)\n"
-        "Der Winter (event; Das Jahr ohne Sonne)\n"
+        "Mira (character; The Wanderer)\n"
+        "House (location; The House by the Lake)\n"
+        "Winter (event; The Year Without Sun)\n"
         "REQUEST: answer\n"
     ),
     "writing.continuation": (
-        "Novel: Der Nebel\n"
-        "Chapter: Ankunft\n"
+        "Novel: The Fog\n"
+        "Chapter: Arrival\n"
         "\n"
         "Text so far:\n"
-        "Der Nebel kam von See.\n"
+        "The fog came in from the lake.\n"
         "\n"
         "Referenced entities:\n"
         "### Mira (character)\n"
-        "Die Wanderin.\n"
+        "The wanderer.\n"
         "\n"
         "Previous chapters:\n"
-        "### Ursprung\n"
-        "Mira kam.\n"
+        "### Origin\n"
+        "Mira arrived.\n"
         "\n"
         "Style notes:\n"
         "Genre: Mystery\n"
-        "Blurb: Ein Nebeljahr.\n"
+        "Blurb: A year of fog.\n"
         "\n"
         "Continue the chapter in the same voice. Keep the language of the existing "
         "text. Return only the new text, without a heading or commentary."
-        "\n\nWriter's instruction:\nLass Mira am Ufer zögern."
+        "\n\nWriter's instruction:\nLet Mira linger at the shore."
     ),
 }
 
@@ -178,6 +179,47 @@ def test_every_bundled_prompt_renders_its_golden_sample(key: str) -> None:
     )
     if spec.contract is not None:
         assert spec.contract(rendered), f"the bundled render of '{key}' fails its contract"
+
+
+GERMAN_SAMPLE_MARKERS = (
+    "ä",
+    "ö",
+    "ü",
+    "ß",
+    "Nebel",
+    "Wanderin",
+    "zögern",
+    "Leuchtturm",
+    "Ankunft",
+    "Später",
+    "Haus",
+    "Der Winter",
+    "Das Jahr ohne Sonne",
+    "betrat",
+    "alte",
+    "Wächterin",
+    "Wie heißt",
+    "Eine",
+)
+"""Tokens that betray a German example in the editor's legend. ``Winter`` alone
+is a legitimate language-neutral entity name in the translated roster, so the
+German marker is the phrase ``Der Winter``."""
+
+
+def test_every_bundled_sample_speaks_english_not_german() -> None:
+    """Every registered factory is the editor's legend in every catalog, so no
+    sample may carry German prose: the English UI must not teach a German
+    example."""
+    keys = set(get_registry().keys())
+    assert keys, "the registry has no bundled samples to guard"
+    offenders: dict[str, list[str]] = {}
+    for key in keys:
+        sample = get_registry().spec(key).sample_variables()
+        text = "\n".join(str(value) for value in sample.values())
+        found = [marker for marker in GERMAN_SAMPLE_MARKERS if marker in text]
+        if found:
+            offenders[key] = found
+    assert offenders == {}
 
 
 def test_the_registry_holds_exactly_the_pinned_keys() -> None:

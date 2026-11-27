@@ -51,6 +51,32 @@ function ok(status = 200): Response {
   return new Response(null, { status });
 }
 
+// The footnote/fact-check gaps and the original-view doors name their state,
+// not a future build (#979).
+const STATUS_NOTE = {
+  en: "Not available yet.",
+  de: "Noch nicht verfügbar.",
+  fr: "Pas encore disponible.",
+} as const;
+
+const FUTURE_PROMISE =
+  /build-out|aufbau|wave|welle|vague|appear|erschein|appara|coming soon|kommt mit|arrive avec|future|becomes available|later/i;
+
+describe("the sources gap notes speak to the reader", () => {
+  it("are status-only in every catalog, never a future promise", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      for (const key of [
+        "knowledge.sources.laterNote",
+        "knowledge.sources.viewNote",
+      ] as const) {
+        const note = merged[locale][key];
+        expect(note).toBe(STATUS_NOTE[locale]);
+        expect(note).not.toMatch(FUTURE_PROMISE);
+      }
+    }
+  });
+});
+
 function docRow(overrides: Partial<KnowledgeDocument> & { id: string; title: string }): KnowledgeDocument {
   return {
     created_at: "2026-10-14T10:00:00Z",

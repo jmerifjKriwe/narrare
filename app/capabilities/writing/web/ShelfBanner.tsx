@@ -220,8 +220,8 @@ export function ShelfBanner({ noteId }: { noteId: string }) {
           ) : !showError && activity.data !== undefined ? (
             <Sparkline points={activity.data.points} />
           ) : null}
-          {/* No statistics surface exists to open yet — the door stays
-              honestly disabled with the drafted note. */}
+          {/* No statistics surface exists yet — the door stays honestly
+              disabled with the status-only note. */}
           <button
             type="button"
             disabled
@@ -233,7 +233,7 @@ export function ShelfBanner({ noteId }: { noteId: string }) {
         </div>
       </div>
       <p id={noteId} className="mt-2 text-meta text-muted">
-        {t("writing.shelf.comingSoon")}
+        {t("writing.shelf.banner.statsNote")}
       </p>
     </section>
   );

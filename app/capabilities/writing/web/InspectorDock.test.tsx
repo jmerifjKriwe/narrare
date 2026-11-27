@@ -56,6 +56,32 @@ import { InspectorDock } from "./InspectorDock";
 
 const api = client as unknown as Record<"GET", ReturnType<typeof vi.fn>>;
 
+// The dock foot's ⌘J chip and layout tune name their state, not a future
+// release (#979).
+const STATUS_NOTE = {
+  en: "Not available yet.",
+  de: "Noch nicht verfügbar.",
+  fr: "Pas encore disponible.",
+} as const;
+
+const FUTURE_PROMISE =
+  /build-out|aufbau|wave|welle|vague|appear|erschein|appara|coming soon|kommt mit|arrive avec|future|becomes available|later/i;
+
+describe("the dock status notes speak to the reader", () => {
+  it("are status-only in every catalog, never a future promise", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      for (const key of [
+        "writing.workspace.dock.soon",
+        "writing.workspace.dock.layoutNote",
+      ] as const) {
+        const note = merged[locale][key];
+        expect(note).toBe(STATUS_NOTE[locale]);
+        expect(note).not.toMatch(FUTURE_PROMISE);
+      }
+    }
+  });
+});
+
 function novelRow(overrides: Partial<Novel> = {}): Novel {
   return {
     id: "11111111-1111-1111-1111-111111111111",
@@ -256,25 +282,23 @@ describe("the badges read the real queue (#866 retired)", () => {
 });
 
 describe("the remaining interims speak their child issue's own language", () => {
-  // The literals are the issues' own words (#881, #869) — a catalog echo
-  // would pass with any copy; these pin the note to the issue's language
-  // so a drift in either home fails here.
-  it("the layout tune's tooltip is the draft's own parenthetical (#881)", async () => {
-    // workspace-scene-centric.html, dock foot: title="Workspace-Layout
-    // (später verfügbar)" — the note rides lowercase inside the brackets,
-    // exactly as the light draft draws it (the dark face is enabled and
-    // loses per the archive convention).
+  // These pin the canonical status copy in the draft's geometry, so a drift
+  // in either home fails here.
+  it("the layout tune's tooltip keeps the draft's parenthetical (#881)", async () => {
+    // workspace-scene-centric.html, dock foot: the layout title keeps its
+    // bracketed note. The copy is now the canonical status note, not a
+    // future promise (#979).
     await renderDock();
     const layout = within(screen.getByTestId("dock-foot")).getByRole("button", {
       name: "Workspace-Layout",
     });
-    expect(layout.getAttribute("title")).toBe("Workspace-Layout (später verfügbar)");
+    expect(layout.getAttribute("title")).toBe("Workspace-Layout (Noch nicht verfügbar.)");
   });
 
-  it("the ⌘J chip carries the „bald“ mark the issue names (#869)", async () => {
+  it("the ⌘J chip carries the status mark (#869)", async () => {
     await renderDock();
     const foot = screen.getByTestId("dock-foot");
-    expect(within(foot).getByText("bald")).toBeTruthy();
+    expect(within(foot).getByText("Noch nicht verfügbar.")).toBeTruthy();
     expect(within(foot).getByText("KI-Assistent")).toBeTruthy();
     expect(within(foot).getByText("⌘J")).toBeTruthy();
   });
@@ -392,7 +416,7 @@ describe("the dock speaks du-tone in every catalog — no German fallback", () =
     const foot = screen.getByTestId("dock-foot");
     expect(within(foot).getByText(en["writing.workspace.dock.soon"])).toBeTruthy();
     expect(within(foot).getByRole("button", { name: "Workspace layout" }).getAttribute("title")).toBe(
-      "Workspace layout (available later)",
+      "Workspace layout (Not available yet.)",
     );
     // The registry tab speaks the English catalog too.
     expect(
@@ -402,7 +426,7 @@ describe("the dock speaks du-tone in every catalog — no German fallback", () =
     ).toBeTruthy();
     // The German copy is absent — the face is translated, not fallen back.
     expect(screen.queryByText("Konsistenz-Prüfer")).toBeNull();
-    expect(screen.queryByText("später verfügbar")).toBeNull();
+    expect(screen.queryByText("Noch nicht verfügbar.")).toBeNull();
   });
 
   it("the French face speaks the French catalog's own copy", async () => {
@@ -412,10 +436,10 @@ describe("the dock speaks du-tone in every catalog — no German fallback", () =
     const badge = await screen.findByTestId("dock-findings-badge");
     await waitFor(() => expect(badge.getAttribute("aria-label")).toBe("1 constat ouvert"));
     const foot = screen.getByTestId("dock-foot");
-    expect(within(foot).getByText("bientôt")).toBeTruthy();
+    expect(within(foot).getByText("Pas encore disponible.")).toBeTruthy();
     expect(
       within(foot).getByRole("button", { name: "Disposition de l'espace" }).getAttribute("title"),
-    ).toBe("Disposition de l'espace (disponible plus tard)");
+    ).toBe("Disposition de l'espace (Pas encore disponible.)");
     expect(screen.queryByText("Konsistenz-Prüfer")).toBeNull();
   });
 

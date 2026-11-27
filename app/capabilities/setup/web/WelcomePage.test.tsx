@@ -37,7 +37,7 @@ import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
 import { readPreSetupLocale, storePreSetupLocale } from "@shell/lib/preSetupLocale";
-import { de } from "@shell/lib/test/catalogs";
+import { de, en, merged } from "@shell/lib/test/catalogs";
 import { routes } from "./routes";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
@@ -49,6 +49,26 @@ const api = client as unknown as Record<
 function ok(): Response {
   return new Response(null, { status: 200 });
 }
+
+// The disabled import door names its state, not a future build (#979).
+const STATUS_NOTE = {
+  en: "Not available yet.",
+  de: "Noch nicht verfügbar.",
+  fr: "Pas encore disponible.",
+} as const;
+
+const FUTURE_PROMISE =
+  /build-out|aufbau|wave|welle|vague|appear|erschein|appara|coming soon|kommt mit|arrive avec|future|becomes available|later/i;
+
+describe("the disabled import note speaks to the reader", () => {
+  it("is status-only in every catalog, never a future promise", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      const note = merged[locale]["setup.welcome.comingSoon"];
+      expect(note).toBe(STATUS_NOTE[locale]);
+      expect(note).not.toMatch(FUTURE_PROMISE);
+    }
+  });
+});
 
 /** The mock instance's state: setup creates the user row, and only then can
  *  the settings write land — the backend's own sequence. */
@@ -159,6 +179,26 @@ describe("the welcome screen", () => {
     }
   });
 
+  it("speaks the English display title for the German archive, the archive title in German", async () => {
+    // The English visitor: the welcome leads with the localized title, while
+    // the archive itself keeps its own-language identity (the POST's fact).
+    storePreSetupLocale("en");
+    renderWelcome();
+    await screen.findByRole("heading", { level: 1 });
+
+    const germanDemo = demos.find((demo) => demo.slug === "im-stillen-wald");
+    expect(germanDemo).toBeDefined();
+    expect(germanDemo?.title).toBe("Im Stillen Wald");
+    expect(germanDemo?.titleEn).toBe("In the Silent Forest");
+    expect(screen.getByText("»In the Silent Forest«")).toBeTruthy();
+    expect(screen.queryByText("»Im Stillen Wald«")).toBeNull();
+
+    // The German face keeps the archive's own title: display only, never identity.
+    fireEvent.click(screen.getByRole("radio", { name: "Deutsch" }));
+    await screen.findByText("»Im Stillen Wald«");
+    expect(screen.queryByText("»In the Silent Forest«")).toBeNull();
+  });
+
   it("keeps the draft's full-bleed pinned composition and selectable copy", async () => {
     renderWelcome();
     await screen.findByRole("heading", { level: 1 });
@@ -179,6 +219,22 @@ describe("the welcome screen", () => {
     expect(grid.className).toContain("grid");
     expect(grid.className).toContain("w-full");
     expect(grid.className).not.toContain("max-w-");
+  });
+});
+
+describe("the welcome's year line", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("renders the current writing year from the clock, never a literal", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-01T00:00:00Z"));
+    storePreSetupLocale("en");
+    renderWelcome();
+
+    await screen.findByRole("heading", { level: 1 });
+    expect(en["setup.welcome.year"]).toBe("Writing year {year}");
+    expect(screen.getByText("Writing year 2026")).toBeTruthy();
+    expect(screen.queryByText("Writing year 2025")).toBeNull();
   });
 });
 

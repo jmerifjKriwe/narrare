@@ -86,7 +86,8 @@ export function WizardHeader({
               <span className="text-label font-medium text-muted">{t("setup.basis.context")}</span>
             </div>
             <p className="text-eyebrow uppercase tracking-wider text-muted">
-              {t("setup.welcome.year")} • {t("setup.welcome.edition")}
+              {t("setup.welcome.year", { year: new Date().getFullYear() })} •{" "}
+              {t("setup.welcome.edition")}
             </p>
           </div>
         </div>
