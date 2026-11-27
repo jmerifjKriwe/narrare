@@ -33,12 +33,14 @@ import { PROMPT_MAX_LENGTH, promptWithinBound, type Continuation } from "./works
 const FOCUS =
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
 
-/** The drafted three — the emoji is the draft's own mark, the label is the
- *  prompt that rides the parameter (localized, du-tone). */
+/** The drafted three — the repo icon is the pill's mark, the label is the
+ *  prompt that rides the parameter (localized, du-tone). SVG on
+ *  `currentColor`, never a literal emoji: the machine's emoji font decides
+ *  how that paints, and two runners disagreed on it (PR #1042). */
 const PILLS = [
-  { emoji: "⚡", key: "writing.workspace.promptBar.pillTension" },
-  { emoji: "💬", key: "writing.workspace.promptBar.pillDialogue" },
-  { emoji: "🔍", key: "writing.workspace.promptBar.pillDetail" },
+  { icon: "insights", key: "writing.workspace.promptBar.pillTension" },
+  { icon: "chat", key: "writing.workspace.promptBar.pillDialogue" },
+  { icon: "search", key: "writing.workspace.promptBar.pillDetail" },
 ] as const;
 
 export function PromptBar({ continuation }: { continuation: Continuation }) {
@@ -145,7 +147,7 @@ export function PromptBar({ continuation }: { continuation: Continuation }) {
                   onClick={() => send(t(pill.key))}
                   className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-border bg-surface-container-low px-2.5 py-1 text-[11px] text-muted transition-colors hover:bg-surface-container hover:text-foreground ${FOCUS}`}
                 >
-                  <span aria-hidden="true">{pill.emoji}</span>
+                  <Icon name={pill.icon} size={12} />
                   <span>{t(pill.key)}</span>
                 </button>
               ))}

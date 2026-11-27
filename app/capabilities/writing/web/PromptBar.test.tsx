@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { applyLocale } from "@shell/lib/locale";
 import { de, merged } from "@shell/lib/test/catalogs";
+import { icons } from "@shell/ui/icons";
 
 import { PromptBar } from "./PromptBar";
 import { PROMPT_MAX_LENGTH, type Continuation } from "./workspace";
@@ -56,6 +57,19 @@ function inputOf(): HTMLInputElement {
   return screen.getByRole("textbox", { name: INPUT_LABEL }) as HTMLInputElement;
 }
 
+/** The repo drawing a pill must carry, serialized the way jsdom writes it. */
+function iconMarkup(name: keyof typeof icons): string {
+  const { container, unmount } = render(<svg>{icons[name]}</svg>);
+  const markup = container.firstElementChild?.innerHTML ?? "";
+  unmount();
+  return markup;
+}
+
+// The screenshots run on machines whose emoji fonts disagree (PR #1042): a
+// literal emoji paints colored on CI and monochrome locally. The pills use the
+// app's own SVG vocabulary instead, and their ink is the label alone.
+const SYSTEM_GLYPH = /\p{Extended_Pictographic}|\u2318/u;
+
 beforeEach(() => {
   applyLocale("de");
 });
@@ -83,6 +97,25 @@ describe("the idle face — the drafted bar", () => {
       "writing.workspace.promptBar.pillDetail",
     ] as const) {
       expect(screen.getByRole("button", { name: de[key] })).not.toBeNull();
+    }
+  });
+
+  it("draws each pill with its repo icon and leaves the label as the only text", () => {
+    render(<PromptBar continuation={continuationOf()} />);
+    const pills = [
+      { key: "writing.workspace.promptBar.pillTension", icon: "insights" },
+      { key: "writing.workspace.promptBar.pillDialogue", icon: "chat" },
+      { key: "writing.workspace.promptBar.pillDetail", icon: "search" },
+    ] as const;
+    for (const { key, icon } of pills) {
+      const button = screen.getByRole("button", { name: de[key] });
+      const svg = button.querySelector("svg");
+      expect(svg).not.toBeNull();
+      expect(svg?.getAttribute("aria-hidden")).toBe("true");
+      expect(svg?.innerHTML).toBe(iconMarkup(icon));
+      // No emoji and no system-font symbol: the pill's ink is its label.
+      expect(button.textContent).toBe(de[key]);
+      expect(button.textContent).not.toMatch(SYSTEM_GLYPH);
     }
   });
 
