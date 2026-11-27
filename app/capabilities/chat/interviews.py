@@ -945,7 +945,7 @@ class InterviewService:
                 novel_id,
                 failed=failed,
                 error=_failure_name(error),
-                error_code="provider-error",
+                error_code=ErrorCode.PROVIDER_ERROR,
             )
             raise ProviderCallError(_failure_name(error)) from None
 
@@ -975,7 +975,7 @@ class InterviewService:
                     resolved,
                     state.novel_id,
                     status="error",
-                    error_code="not-found",
+                    error_code=ErrorCode.NOT_FOUND,
                     error="the session is absent or not yours",
                 )
             raise InterviewNotFoundError("the session is absent or not yours")
@@ -989,7 +989,7 @@ class InterviewService:
                     resolved,
                     state.novel_id,
                     status="error",
-                    error_code="session-closed",
+                    error_code=ErrorCode.SESSION_CLOSED,
                     error=f"session {state.session_id} was closed",
                 )
             raise SessionClosedError(f"session {state.session_id} was closed")
@@ -1006,7 +1006,7 @@ class InterviewService:
                         resolved,
                         state.novel_id,
                         status="error",
-                        error_code="suggestion-mismatch",
+                        error_code=ErrorCode.SUGGESTION_MISMATCH,
                         error=reason,
                     )
                 raise InterviewValidationError(ErrorCode.SUGGESTION_MISMATCH, reason)
@@ -1109,7 +1109,7 @@ class InterviewService:
         *,
         status: str = "ok",
         error: str | None = None,
-        error_code: str | None = None,
+        error_code: ErrorCode | None = None,
         failed: AuditedCall | None = None,
     ) -> None:
         """A failed turn's audit rows, alone in their own short transaction.
@@ -1138,7 +1138,7 @@ class InterviewService:
         *,
         status: str = "ok",
         error: str | None = None,
-        error_code: str | None = None,
+        error_code: ErrorCode | None = None,
     ) -> None:
         """One audit row per provider attempt in the caller's transaction.
 
@@ -1160,7 +1160,7 @@ class InterviewService:
                 prompt_text=call.prompt,
                 response_text=call.answer,
                 error=error if parsed else call.parse_error,
-                error_code=error_code if parsed else "extraction-failed",
+                error_code=error_code if parsed else ErrorCode.EXTRACTION_FAILED,
                 input_tokens=call.usage.input_tokens if call.usage else None,
                 output_tokens=call.usage.output_tokens if call.usage else None,
                 novel_id=novel_id,

@@ -7,6 +7,7 @@ from sqlalchemy import DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.kernel.db.base import Base
+from app.kernel.language_tag import LANGUAGE_TAG_MAX_LENGTH
 
 
 class User(Base):
@@ -17,7 +18,7 @@ class User(Base):
     # NULL means "follow the browser": a user who never chose has no opinion,
     # and the client decides from navigator.languages. A tag the catalog does
     # not carry is refused at the API, not stored.
-    locale: Mapped[str | None] = mapped_column(String(64))
+    locale: Mapped[str | None] = mapped_column(String(LANGUAGE_TAG_MAX_LENGTH))
     # NULL means "follow the system": the browser's `prefers-color-scheme`
     # decides. A stored value is the reader's own answer and wins over it.
     theme: Mapped[str | None] = mapped_column(String(8))

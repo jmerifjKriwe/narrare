@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.generated.locales import LOCALES
 from app.kernel.contracts.models import WORD_GOAL_MAX, WORD_GOAL_MIN
+from app.kernel.language_tag import LANGUAGE_TAG_MAX_LENGTH
 from app.kernel.llm.models import (
     CUSTOM_OUTPUT_PROFILE,
     OUTPUT_PROFILE_CUSTOM_MAX,
@@ -51,8 +52,9 @@ class SettingsUpdate(BaseModel):
     # Present and nullable, deliberately: ``{"locale": null}`` hands the choice
     # back to the browser, while ``{}`` is a client bug and must not mean the
     # same thing. A field with a default could not tell the two apart. The
-    # width is the column's own (String(64)) — the registry's longest code.
-    locale: str | None = Field(max_length=64)
+    # width is the column's own (String(LANGUAGE_TAG_MAX_LENGTH)) — the
+    # registry's longest code.
+    locale: str | None = Field(max_length=LANGUAGE_TAG_MAX_LENGTH)
     # The profile fields (W4) are present-and-nullable through
     # ``model_fields_set``, the novel update's rule: an absent field keeps the
     # stored answer — the language switchers carry the locale alone — while a

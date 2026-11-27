@@ -89,6 +89,7 @@ from app.kernel.errors import ErrorCode
 from app.kernel.interchange import parse_archive
 from app.kernel.interchange.demos import DEMOS as KERNEL_DEMOS
 from app.kernel.interchange.demos import demo_tree
+from app.kernel.language_tag import LANGUAGE_TAG, LANGUAGE_TAG_MAX_LENGTH
 
 # The capability whose registry STRUCTURES is: the structures view is that
 # capability's UI contribution — the switcher offers its rows — so it emits
@@ -101,8 +102,6 @@ SOURCE_LOCALE = "en"
 # The registry: the languages and their display order, one entry each. It and
 # the central catalogs must list the same set.
 REGISTRY = "i18n/registry/locales.json"
-_LOCALE_TAG = re.compile(r"[a-z]{2,3}(-[A-Za-z0-9]{1,8})*")
-LOCALE_MAX_LENGTH = 64
 
 # Keys the generated views read by name. A catalog missing one stops generation
 # instead of rendering an empty table header.
@@ -182,11 +181,11 @@ def registry_locales(root: Path) -> tuple[str, ...]:
     codes = tuple(cast("list[str]", entries))
     seen: set[str] = set()
     for code in codes:
-        if len(code) > LOCALE_MAX_LENGTH or _LOCALE_TAG.fullmatch(code) is None:
+        if len(code) > LANGUAGE_TAG_MAX_LENGTH or LANGUAGE_TAG.fullmatch(code) is None:
             raise SystemExit(
                 f"{source}: {code!r} is not a language tag — two or three lowercase"
                 f" letters, then subtags of one to eight letters or digits, at most"
-                f" {LOCALE_MAX_LENGTH} characters"
+                f" {LANGUAGE_TAG_MAX_LENGTH} characters"
             )
         if code in seen:
             raise SystemExit(f"{source}: {code!r} is listed twice; a language appears once")

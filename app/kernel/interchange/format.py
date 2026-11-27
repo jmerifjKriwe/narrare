@@ -53,6 +53,8 @@ from uuid import UUID
 
 import yaml
 
+from app.kernel.language_tag import LANGUAGE_TAG_MAX_LENGTH, is_language_tag
+
 if TYPE_CHECKING:
     from app.kernel.interchange.tree import ArchiveTree
 
@@ -69,7 +71,7 @@ _MAX_LENGTHS: dict[str, int] = {
     "title": 200,  # novels.title, chapters.title
     "author": 200,  # novels.author
     "genre": 80,  # novels.genre
-    "language": 64,  # novels.language
+    "language": LANGUAGE_TAG_MAX_LENGTH,  # novels.language
     "name": 200,  # entities.name
     "relation_type": 80,  # entity_relations.relation_type
 }
@@ -177,6 +179,22 @@ def _check_length(value: str, relpath: str, field: str, limit: int, label: str =
         raise ArchiveError(
             relpath,
             f"{prefix}'{field}' is {len(value)} characters — the format allows {limit}",
+        )
+
+
+def _check_language_tag(value: str, relpath: str) -> None:
+    """Refuse a language that no tag names, naming the field and the grammar.
+
+    The width check runs first, so an over-long value keeps its own message.
+    The archive's value is otherwise stored as written; this gate only asks
+    whether the folded value names a tag.
+    """
+    if not is_language_tag(value):
+        raise ArchiveError(
+            relpath,
+            "'language' is not a language tag — two or three lowercase letters, "
+            "then subtags of one to eight letters or digits, at most "
+            f"{LANGUAGE_TAG_MAX_LENGTH} characters",
         )
 
 
@@ -406,6 +424,8 @@ def _meta_str(metadata: dict[str, Any], key: str) -> str | None:
         raise ArchiveError(METADATA_NAME, f"'{key}' is not a string")
     if key in _MAX_LENGTHS:
         _check_length(value, METADATA_NAME, key, _MAX_LENGTHS[key])
+    if key == "language":
+        _check_language_tag(value, METADATA_NAME)
     return value
 
 

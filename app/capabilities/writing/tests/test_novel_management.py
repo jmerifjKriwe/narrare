@@ -126,6 +126,19 @@ async def test_patch_refuses_an_over_long_language() -> None:
         assert fetched.json()["language"] is None
 
 
+async def test_patch_stores_a_language_tag_of_exactly_the_column_width() -> None:
+    """Exactly 64 characters is inside the width; only 65 refuses."""
+    tag = f"de-{'-'.join(['abcdefgh'] * 6)}-abcdefg"
+    assert len(tag) == 64
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client)
+        patched = await client.patch(f"/api/writing/novels/{novel_id}", json={"language": tag})
+        assert patched.status_code == 200
+        assert patched.json()["language"] == tag
+        fetched = await client.get(f"/api/writing/novels/{novel_id}")
+        assert fetched.json()["language"] == tag
+
+
 async def test_patch_clears_the_language_with_null_and_with_empty_string() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         novel_id = await _novel_id(client)

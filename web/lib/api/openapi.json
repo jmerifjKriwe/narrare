@@ -753,6 +753,37 @@
         "title": "EntityUpdate",
         "type": "object"
       },
+      "ErrorCode": {
+        "description": "Every code a failure can carry, in one list both trees read.\n\nThe generator writes these members to ``web/lib/generated/errorCodes.ts``,\nso the backend's refusals and the web's exhaustive mapping cannot name\ndifferent vocabularies. A member's value is the wire's own string and\nserializes as itself.",
+        "enum": [
+          "archive_invalid",
+          "embedding-mismatch",
+          "entity-invalid",
+          "entity-type-required",
+          "entity-type-unknown",
+          "extraction-failed",
+          "key-unavailable",
+          "mode-unknown",
+          "model-not-found",
+          "no-context",
+          "not-found",
+          "order_mismatch",
+          "prompt-refused",
+          "provider-auth",
+          "provider-error",
+          "provider-unavailable",
+          "rate-limited",
+          "relation-duplicate",
+          "relation-limit",
+          "relation-target-invalid",
+          "session-closed",
+          "suggestion-mismatch",
+          "target_not_empty",
+          "unknown"
+        ],
+        "title": "ErrorCode",
+        "type": "string"
+      },
       "ExportDone": {
         "description": "The receipt of a path export: where it went and how much.",
         "properties": {
@@ -1887,9 +1918,8 @@
             "type": "array"
           },
           "code": {
-            "default": "order_mismatch",
-            "title": "Code",
-            "type": "string"
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": "order_mismatch"
           }
         },
         "required": [
@@ -3105,9 +3135,8 @@
       "SceneOrderMismatchDetail": {
         "properties": {
           "code": {
-            "default": "order_mismatch",
-            "title": "Code",
-            "type": "string"
+            "$ref": "#/components/schemas/ErrorCode",
+            "default": "order_mismatch"
           },
           "scene_ids": {
             "items": {

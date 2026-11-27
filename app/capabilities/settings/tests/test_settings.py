@@ -93,6 +93,30 @@ async def test_a_long_registered_locale_is_stored(monkeypatch: pytest.MonkeyPatc
         assert user.locale == "zh-Hans-CN"
 
 
+async def test_a_locale_of_exactly_the_column_width_is_stored(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exactly 64 characters is inside the width; only 65 refuses.
+
+    The catalog is patched to carry the code so only the field's width is
+    asked. The mutation probe (``max_length=63``) shows this test catches a
+    ceiling that became exclusive.
+    """
+    tag = f"de-{'-'.join(['abcdefgh'] * 6)}-abcdefg"
+    assert len(tag) == 64
+    monkeypatch.setattr(settings_schemas, "LOCALES", ("de", "en", "fr", tag))
+    async with _client() as client:
+        written = await client.patch("/api/settings", json={"locale": tag})
+        assert written.status_code == 200
+        assert written.json()["locale"] == tag
+        assert (await client.get("/api/settings")).json()["locale"] == tag
+
+    async with Session() as session:
+        user = await session.get(User, LOCAL_USER_ID)
+        assert user is not None
+        assert user.locale == tag
+
+
 async def test_an_over_long_locale_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     """A locale wider than the column is a 422; the stored choice is unchanged.
 

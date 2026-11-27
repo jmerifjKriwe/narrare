@@ -358,6 +358,56 @@ def test_a_language_tag_wider_than_the_column_is_refused_by_name() -> None:
     assert "64" in raised.value.reason
 
 
+@pytest.mark.parametrize("value", ["deutsch", "German"])
+def test_a_language_that_is_no_tag_is_refused_by_name(value: str) -> None:
+    """A value no tag names refuses at parse, naming ``language``.
+
+    The same value through the novel update endpoint is a 422; the archive's
+    front matter must not smuggle it into the novel through the import.
+    """
+    files = {
+        "metadata.json": json.dumps({"title": "X", "language": value}).encode(),
+        "chapters/a.md": b"Text.\n",
+    }
+
+    with pytest.raises(ArchiveError) as raised:
+        parse_archive(open_zip(zip_bytes(files)))
+
+    assert raised.value.path == "metadata.json"
+    assert "language" in raised.value.reason
+    assert "not a language tag" in raised.value.reason
+
+
+def test_a_well_formed_language_is_stored_as_the_archive_wrote_it() -> None:
+    """The import does not fold: the archive's value is the stored value.
+
+    The merge's conflict report compares the archive's value with the stored
+    one, so ``DE`` stays ``DE`` — the update path's fold is the update's own.
+    """
+    files = {
+        "metadata.json": json.dumps({"title": "X", "language": "DE"}).encode(),
+        "chapters/a.md": b"Text.\n",
+    }
+
+    parsed = parse_archive(open_zip(zip_bytes(files)))
+
+    assert parsed.language == "DE"
+
+
+def test_a_language_tag_of_exactly_the_column_width_parses() -> None:
+    """Exactly 64 characters is inside the width; only 65 refuses."""
+    tag = f"de-{'-'.join(['abcdefgh'] * 6)}-abcdefg"
+    assert len(tag) == 64
+    files = {
+        "metadata.json": json.dumps({"title": "X", "language": tag}).encode(),
+        "chapters/a.md": b"Text.\n",
+    }
+
+    parsed = parse_archive(open_zip(zip_bytes(files)))
+
+    assert parsed.language == tag
+
+
 def test_a_long_language_tag_round_trips() -> None:
     """A registry code wider than the old column survives parse and serialize."""
     archive = NovelArchive(title="X", language="hy-Latn-IT-arevela")

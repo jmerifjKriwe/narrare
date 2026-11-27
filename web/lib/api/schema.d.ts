@@ -2068,6 +2068,17 @@ export interface components {
             type?: string | null;
         };
         /**
+         * ErrorCode
+         * @description Every code a failure can carry, in one list both trees read.
+         *
+         *     The generator writes these members to ``web/lib/generated/errorCodes.ts``,
+         *     so the backend's refusals and the web's exhaustive mapping cannot name
+         *     different vocabularies. A member's value is the wire's own string and
+         *     serializes as itself.
+         * @enum {string}
+         */
+        ErrorCode: "archive_invalid" | "embedding-mismatch" | "entity-invalid" | "entity-type-required" | "entity-type-unknown" | "extraction-failed" | "key-unavailable" | "mode-unknown" | "model-not-found" | "no-context" | "not-found" | "order_mismatch" | "prompt-refused" | "provider-auth" | "provider-error" | "provider-unavailable" | "rate-limited" | "relation-duplicate" | "relation-limit" | "relation-target-invalid" | "session-closed" | "suggestion-mismatch" | "target_not_empty" | "unknown";
+        /**
          * ExportDone
          * @description The receipt of a path export: where it went and how much.
          */
@@ -2485,11 +2496,8 @@ export interface components {
         OrderMismatchDetail: {
             /** Chapter Ids */
             chapter_ids: string[];
-            /**
-             * Code
-             * @default order_mismatch
-             */
-            code: string;
+            /** @default order_mismatch */
+            code: components["schemas"]["ErrorCode"];
         };
         /**
          * OrderMismatchRead
@@ -3077,11 +3085,8 @@ export interface components {
         };
         /** SceneOrderMismatchDetail */
         SceneOrderMismatchDetail: {
-            /**
-             * Code
-             * @default order_mismatch
-             */
-            code: string;
+            /** @default order_mismatch */
+            code: components["schemas"]["ErrorCode"];
             /** Scene Ids */
             scene_ids: string[];
         };
