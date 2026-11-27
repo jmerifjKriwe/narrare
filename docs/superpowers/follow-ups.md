@@ -1,6 +1,7 @@
 # Follow-ups
 
-Open findings are GitHub issues, one per finding, label `follow-up`:
+New `follow-up` issues record a larger bug with a clearly different subject;
+findings opened earlier stay tracked here:
 
     gh issue list --label follow-up --state open --limit 300
 
@@ -43,9 +44,10 @@ still resolve; a closed id is in the table the Archive section points to.
 | Localization hardening (2026-11-25) — a fourth language as a data change: the ordered language registry with generator-derived views, the typed failure vocabulary translated where a face renders, catalogs loaded as lazy modules on demand, and `:lang()` manuscript font stacks for Han-script text (spec: `docs/superpowers/specs/2026-11-25-i18n-architecture-hardening-design.md`, plan: `docs/superpowers/plans/2026-11-25-i18n-architecture-hardening.md`). One PR. Opened with Task 0 | Localization hardening index issue #992 — open with no children at opening |
 
 A new wave opens its index and adds a row here. A fix closes its issue from the
-commit that lands it: `Closes #<n>`. Nothing is dropped for being minor:
-`severity: minor` is a defect the product survives, `severity: major` is one it
-should not ship again.
+commit that lands it: `Closes #<n>`. A pure NIT with no effect on behavior, quality
+or gates is discarded without an issue or further triage; `severity: minor` is a
+filed defect the product survives, `severity: major` is one it should not ship
+again.
 
 ## Decided not to act
 

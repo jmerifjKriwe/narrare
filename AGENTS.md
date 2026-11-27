@@ -33,15 +33,21 @@ A gate counts only when its output was read.
 
 ## Follow-ups
 
-A finding that survives an implementation becomes a GitHub issue before the branch
-merges — one per finding, label `follow-up`, hung under its wave's index issue. The
-issue carries the trigger that makes it bite and where it lives; nothing is dropped
-for being minor. A finding from a Lane B change (Frontend & UI) hangs under the
-wave index the worked issue hangs under, or stands alone when there is none;
-working it stays a Lane B change while it stays inside the lane's gate, so the
-recording stays cheap even when the finding is not. A fix closes it from its own
-commit (`Closes #<n>`); an issue that will not be acted on is closed with the
-condition that re-opens it, and an index closes with its last child.
+A task is complete only when the work in its own scope is finished. Findings needed
+for the agreed behavior, correctness, tests or gates belong in the same change, even
+when they were not planned. If such work cannot be finished in the change, the task
+is not complete; it stays open or blocked.
+Only a larger bug with a clearly different subject becomes a GitHub issue
+before the branch merges — one per finding, label `follow-up`, hung under its
+wave's index issue. The issue carries the trigger that
+makes it bite and where it lives. A pure NIT with no effect on behavior, quality or
+gates is discarded without an issue or further triage. A follow-up from a Lane B
+change (Frontend & UI) hangs under the wave index the worked issue hangs under, or
+stands alone when there is none; working it stays a Lane B change while it stays
+inside the lane's gate, so the recording stays cheap even when the finding is not.
+A fix closes it from its own commit (`Closes #<n>`); an issue that will not be acted
+on is closed with the condition that re-opens it, and an index closes with its last
+child.
 
 **Processing issues** (picking one up, triaging, or batch review) follows the
 `secure-issue-work` skill (`.agents/skills/secure-issue-work/SKILL.md`): duplicate

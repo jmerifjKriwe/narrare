@@ -162,9 +162,11 @@ load-bearing ones for issue work:
   `Closes #<N>` in the commit/PR body is fine and is how the issue gets
   closed.
 
-Scope discipline: implement exactly what the issue asks; if you discover
-related work, open a new issue (label `follow-up`) instead of expanding
-the change.
+Scope discipline: finish all work in the issue's own scope, including related
+findings needed for its behavior, correctness, tests or gates. If you discover
+a larger bug with a clearly different subject, open a new issue (label `follow-up`)
+instead of expanding the change. Discard a pure NIT with no effect on behavior,
+quality or gates without an issue or further triage.
 
 ## Phase 5 — Close-out
 

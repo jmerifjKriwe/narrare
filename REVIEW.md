@@ -38,8 +38,11 @@ diff.
   while presenting itself as Lane B.
 - A schema change whose model and revision are not in one commit, or whose commit
   does not state why the schema changed.
-- A surviving finding with no `follow-up` issue (one per finding, `area:` label
-  mandatory, `kind:` optional) before the branch merges.
+- A task that closes with unfinished work from its own scope. Findings needed for
+  the agreed behavior, correctness, tests or gates belong in that change; only a
+  larger bug with a clearly different subject becomes a `follow-up` issue before
+  merge (`area:` mandatory, `kind:` optional). A pure NIT with no effect on behavior,
+  quality or gates is discarded, not filed.
 - A commit of a release-note type (`feat`, `fix`, `perf`, `docs`) without an honest
   `User-visible:` line, or observable work hidden under a hidden type.
 - `--no-verify`, a force push, or an agent commit without the
