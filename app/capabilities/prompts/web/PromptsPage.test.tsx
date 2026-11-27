@@ -93,8 +93,17 @@ function ok(status = 200): Response {
 /** The wire's refusal body: FastAPI's HTTPException wraps the gate's
  *  refusal in `detail` — the API pins' shape (`{detail: {reason, detail}}`),
  *  exactly what openapi-fetch hands back as `error`. */
-function refused(status: number, reason: string, message: string): { data: null; error: unknown; response: Response } {
-  return { data: null, error: { detail: { reason, detail: message } }, response: new Response(null, { status }) };
+function refused(
+  status: number,
+  reason: string,
+  message: string,
+  facts: { line?: number; name?: string } = {},
+): { data: null; error: unknown; response: Response } {
+  return {
+    data: null,
+    error: { detail: { reason, detail: message, ...facts } },
+    response: new Response(null, { status }),
+  };
 }
 
 /** The refusal face's localized headline for a known reason. */
@@ -475,6 +484,32 @@ describe("the save gate's refusal family", () => {
     expect(face.textContent).toContain(de["prompts.errors.generic"]);
     const textarea = screen.getByTestId("draft-textarea") as HTMLTextAreaElement;
     expect(textarea.value).toBe("# Umgestimmt\n{{tail}}");
+  });
+
+  it("a syntax refusal renders the place sentence with the engine's line", async () => {
+    api.PUT.mockResolvedValue(refused(422, "syntax", "unexpected end of template", { line: 3 }));
+    renderPage();
+    await saveDraft();
+    const face = await screen.findByTestId("refusal-face");
+    expect(face.textContent).toContain(refusalHeadline("syntax"));
+    expect(face.textContent).toContain(de["prompts.refusal.place.syntax"].replace("{line}", "3"));
+  });
+
+  it("an undefined-variable refusal names the unknown variable", async () => {
+    api.PUT.mockResolvedValue(refused(422, "undefined-variable", "'nope' is undefined", { name: "nope" }));
+    renderPage();
+    await saveDraft();
+    const face = await screen.findByTestId("refusal-face");
+    expect(face.textContent).toContain(refusalHeadline("undefined-variable"));
+    expect(face.textContent).toContain(de["prompts.refusal.place.undefined-variable"].replace("{name}", "nope"));
+  });
+
+  it("a refusal whose cause names nothing keeps the headline alone", async () => {
+    api.PUT.mockResolvedValue(refused(422, "syntax", "unexpected end of template"));
+    renderPage();
+    await saveDraft();
+    const face = await screen.findByTestId("refusal-face");
+    expect(face.textContent).toBe(refusalHeadline("syntax"));
   });
 });
 

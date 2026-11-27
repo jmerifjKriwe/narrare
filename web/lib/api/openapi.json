@@ -2280,11 +2280,33 @@
         "type": "object"
       },
       "PromptRefusal": {
-        "description": "The save gate's 422 body: which rule refused, and what it said.",
+        "description": "The save gate's 422 body: which rule refused, what it said, and the fact\nthe cause named — ``line`` for a syntax error, ``name`` for an undefined\nvariable or an unresolved include. A cause that names nothing carries\nneither key.",
         "properties": {
           "detail": {
             "title": "Detail",
             "type": "string"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
           "reason": {
             "title": "Reason",

@@ -96,8 +96,18 @@ _KEY_RESPONSES = _NOT_FOUND_RESPONSES | _REFUSED_RESPONSES
 
 
 def _refused(error: PromptRefusedError) -> HTTPException:
-    """The gate's refusal as a 422 naming its reason and its detail."""
-    return HTTPException(status_code=422, detail={"reason": error.reason, "detail": str(error)})
+    """The gate's refusal as a 422 naming its reason, its detail and its fact.
+
+    The wire shape is flat and stable: ``reason`` first, the sentence second,
+    then the fact the cause names — a refusal whose cause names nothing adds
+    no key.
+    """
+    body: dict[str, object] = {"reason": error.reason, "detail": str(error)}
+    if error.line is not None:
+        body["line"] = error.line
+    if error.name is not None:
+        body["name"] = error.name
+    return HTTPException(status_code=422, detail=body)
 
 
 def _errors(error: Exception) -> HTTPException:

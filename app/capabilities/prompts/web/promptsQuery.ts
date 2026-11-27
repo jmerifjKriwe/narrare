@@ -35,7 +35,8 @@ import { queryClient } from "@shell/lib/query";
 
 /** The wire's failure, enriched for the faces: the status picks the copy
  *  family, the body carries the backend's own refusal (the gate's
- *  `{reason, detail}` beside the framework's validation list). */
+ *  `{reason, detail}` with its optional `line`/`name` fact, beside the
+ *  framework's validation list). */
 export type WireError = Error & { status?: number; body?: unknown };
 
 function enrich(cause: unknown, what: string): WireError {

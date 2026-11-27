@@ -2664,11 +2664,18 @@ export interface components {
         };
         /**
          * PromptRefusal
-         * @description The save gate's 422 body: which rule refused, and what it said.
+         * @description The save gate's 422 body: which rule refused, what it said, and the fact
+         *     the cause named — ``line`` for a syntax error, ``name`` for an undefined
+         *     variable or an unresolved include. A cause that names nothing carries
+         *     neither key.
          */
         PromptRefusal: {
             /** Detail */
             detail: string;
+            /** Line */
+            line?: number | null;
+            /** Name */
+            name?: string | null;
             /** Reason */
             reason: string;
         };
