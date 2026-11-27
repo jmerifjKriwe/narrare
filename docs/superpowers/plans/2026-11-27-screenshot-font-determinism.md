@@ -52,39 +52,39 @@
 - Produces: `_assert_pinned_fonts(page) -> None` in `scripts/screenshots.py`, called from `_shot` after `document.fonts.ready`.
 - Consumes: pinned Fontsource 5.3.0 files at `https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.3.0/files/ibm-plex-mono-latin-<weight>-normal.woff2` and the package `LICENSE`.
 
-- [ ] **Step 1: Add failing asset and component tests**
+- [x] **Step 1: Add failing asset and component tests**
 
 Add an asset contract asserting the four WOFF2 files and OFL license exist and `--font-mono` names IBM Plex Mono before any system fallback. Extend TopBar and InspectorDock tests so their keycaps contain a command SVG, contain no U+2318 text node and still expose the existing accessible shortcut labels. Add a workflow contract asserting the strict `git diff --cached --quiet` gate remains and no pixel-tolerance/alignment helper is introduced.
 
-- [ ] **Step 2: Run the focused tests and verify red**
+- [x] **Step 2: Run the focused tests and verify red**
 
 Run the TopBar, InspectorDock and screenshot asset tests. Expected: the new assertions fail because the font assets/token and command icon do not exist yet.
 
-- [ ] **Step 3: Add the pinned font assets and license**
+- [x] **Step 3: Add the pinned font assets and license**
 
 Download the four 400/500/600/700 Latin WOFF2 files and `LICENSE` from Fontsource 5.3.0. Save the license as `web/public/fonts/IBMPlexMono-OFL.txt`. Do not add an npm dependency or mutable `latest` URL.
 
-- [ ] **Step 4: Wire the bundled mono family and command SVG**
+- [x] **Step 4: Wire the bundled mono family and command SVG**
 
 Add `@font-face` declarations for IBM Plex Mono and make `--font-mono` start with `"IBM Plex Mono"`. Add a 16×16 single-stroke `command` icon to `web/ui/icons.tsx`. Replace the visible `⌘` in TopBar and InspectorDock with `<Icon name="command" size={10} />` inside inline-flex keycaps; retain `aria-label` shortcut text and the bundled mono `K`/`J`.
 
-- [ ] **Step 5: Add the capture-time font guard**
+- [x] **Step 5: Add the capture-time font guard**
 
 Implement `_assert_pinned_fonts(page) -> None` and call it in `_shot` after `document.fonts.ready`. It asserts bundled mono weights 400/500/600/700 are available, every rendered `.font-mono`/computed-mono element includes `"IBM Plex Mono"`, and `document.body.innerText` contains no U+2318. Replace the old system-font caveat in the module docstring with the new invariant.
 
-- [ ] **Step 6: Run focused tests and verify green**
+- [x] **Step 6: Run focused tests and verify green**
 
 Run the TopBar, InspectorDock and screenshot asset tests plus `just check`. Expected: all pass; no Playwright import is introduced into filesystem-only asset tests.
 
-- [ ] **Step 7: Rebaseline and prove local determinism**
+- [x] **Step 7: Rebaseline and prove local determinism**
 
 Run two independent full captures. Compare all 25 PNGs and `docs/screenshots/README.md`; expected byte-identical runs. Inspect keycaps, badges and representative prose/planning frames, verify dimensions/size limits, and commit the regenerated masters with the source changes. The index should remain byte-identical because captions did not change.
 
-- [ ] **Step 8: Run the full gate**
+- [x] **Step 8: Run the full gate**
 
 Run `just verify`. Expected: backend, web, build and all current E2E suites pass. Record the final counts.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 Commit `fix(web): use bundled fonts for keycaps and badges` with a real `User-visible:` line and Assisted-by trailer. Include the design, plan, font assets, source/tests and regenerated masters. Do not add a `Closes` keyword for the already closed #1010.
 

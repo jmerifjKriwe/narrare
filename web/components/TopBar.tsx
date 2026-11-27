@@ -402,27 +402,28 @@ export function TopBar() {
           <button
             type="button"
             disabled
-            // The visible keycap rides the name (WCAG 2.5.3) — the note
-            // below carries the reason the shortcut does not work yet.
-            aria-label={`${t("shell.topbar.search")} ⌘K`}
+            // The visible label rides the name (WCAG 2.5.3): the name spells
+            // out what the keycap shows — the search word, the K, and the
+            // command shortcut in its ⌘K notation — so the visible
+            // "Suchen K" is a literal substring of the accessible name. The
+            // note below carries the reason the shortcut does not work yet.
+            aria-label={`${t("shell.topbar.search")} K (⌘K)`}
             aria-describedby={searchNoteId}
             className="flex cursor-not-allowed items-center gap-2 rounded border border-border/80 bg-surface-container-low px-2.5 py-1 text-meta text-muted opacity-75"
           >
             <Icon name="search" size={17} />
             <span>{t("shell.topbar.search")}</span>
             {/* The space keeps the visible label two words in the text
-                content as it is on screen: axe's label-in-name check reads
-                the concatenated text ("SuchenK" failed it), while the
-                control's name keeps the drafted shortcut, ⌘K. A
-                whitespace-only flex child paints nothing, so the bar's gap
-                stays the only spacing. */}
+                content as it is on screen, so the name's "Suchen K" is a
+                literal substring of what a reader sees. A whitespace-only
+                flex child paints nothing, so the bar's gap stays the only
+                spacing. */}
             {" "}
-            {/* The keycap is a visual hint, not part of the control's name
-                (WCAG 2.5.3: the visible label is the name; the note carries
-                the reason) — aria-hidden keeps the two in agreement. The
-                command mark is the app's own SVG: the bundled mono's Latin
-                subset has no U+2318, and setting the glyph as text would
-                hand the cap back to the machine's system font. */}
+            {/* The keycap is a visual hint and stays aria-hidden: its text is
+                the bundled mono K, and the name already spells out the
+                shortcut. The command mark is the app's own SVG — the bundled
+                mono's Latin subset has no U+2318, and setting the glyph as
+                text would hand the cap back to the machine's system font. */}
             <kbd
               aria-hidden="true"
               className="inline-flex items-center gap-px rounded border border-border bg-surface-container-lowest px-1.5 py-0.5 font-mono text-[10px] text-muted"

@@ -287,8 +287,14 @@ describe("the topbar — save, search, language", () => {
 
   it("the ⌘K search chip is honestly disabled with the palette note (#882)", async () => {
     renderTopBar("/");
-    const search = await screen.findByRole("button", { name: `${de["shell.topbar.search"]} ⌘K` });
+    const label = `${de["shell.topbar.search"]} K (⌘K)`;
+    const search = await screen.findByRole("button", { name: label });
     expect(search.hasAttribute("disabled")).toBe(true);
+    // WCAG 2.5.3: the visible text ("Suchen K") is a literal substring of
+    // the name, which also spells out the command shortcut.
+    expect(search.getAttribute("aria-label")).toBe(label);
+    expect(search.textContent).toBe(`${de["shell.topbar.search"]} K`);
+    expect(search.textContent).not.toContain("⌘");
     // The keycap draws the command mark as the app's own SVG; the only text
     // it carries is the bundled mono K. No U+2318 depends on a system face.
     const keycap = search.querySelector("kbd") as HTMLElement | null;
@@ -297,7 +303,6 @@ describe("the topbar — save, search, language", () => {
     expect(command).toBeTruthy();
     expect(command?.getAttribute("aria-hidden")).toBe("true");
     expect(keycap?.textContent).toBe("K");
-    expect(search.textContent).not.toContain("⌘");
     // The drafted tooltip names the reason, and the description carries it
     // to assistive tech even while the tooltip waits for hover.
     const noteId = search.getAttribute("aria-describedby");
@@ -309,7 +314,9 @@ describe("the topbar — save, search, language", () => {
 
   it("the interim ⌘K chip folds away below sm — the bar fits phone widths (#911)", async () => {
     renderTopBar("/");
-    const search = await screen.findByRole("button", { name: `${de["shell.topbar.search"]} ⌘K` });
+    const search = await screen.findByRole("button", {
+      name: `${de["shell.topbar.search"]} K (⌘K)`,
+    });
     // jsdom lays out nothing, so the pin holds the mechanism — the chip is
     // display:none below the sm breakpoint and back at sm — while the live
     // capture at 390px is the behavioral proof of the width itself.
@@ -370,7 +377,9 @@ describe("the topbar — the settings face (W7)", () => {
     expect(await screen.findByText(de["shell.nav.settings"])).toBeTruthy();
     // The narrow mechanism the suite pins stays the search chip's: the real
     // crumb and the right cluster's controls never fold.
-    const search = await screen.findByRole("button", { name: `${de["shell.topbar.search"]} ⌘K` });
+    const search = await screen.findByRole("button", {
+      name: `${de["shell.topbar.search"]} K (⌘K)`,
+    });
     const chip = search.closest("div") as HTMLElement;
     expect(chip.classList.contains("hidden")).toBe(true);
     expect((await screen.findByRole("button", { name: /Sprache/ })).classList.contains("hidden")).toBe(false);

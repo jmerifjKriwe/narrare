@@ -9,6 +9,7 @@ These tests read the committed files, never the running stack.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import shutil
@@ -52,7 +53,25 @@ SCREENSHOTS = ROOT / "scripts" / "screenshots.py"
 WORKFLOW = ROOT / ".github" / "workflows" / "screenshots.yml"
 MONO_WEIGHTS = (400, 500, 600, 700)
 WOFF2_MAGIC = b"wOF2"
-COMMAND_GLYPH = "\u2318"
+
+# The pinned bytes, not a shape: a different IBM Plex Mono build (or a swapped
+# licence) changes the glyphs the masters were captured against, and only a
+# digest makes that a failed test instead of an invisible substitution.
+_FONT_SHA256 = {
+    "ibm-plex-mono-latin-400-normal.woff2": (
+        "08949f728dc52d528e69b1667d15c89a5686a4ee9a296ff90983985f99c380f7"
+    ),
+    "ibm-plex-mono-latin-500-normal.woff2": (
+        "01d285447409c8a588692162439a038b8cbd7871309ee20267b0d2d91c6e8e22"
+    ),
+    "ibm-plex-mono-latin-600-normal.woff2": (
+        "0d1f0b8d0722224e32e9f28261bdc86c79115be73444ae5eceb73976a1bcdf83"
+    ),
+    "ibm-plex-mono-latin-700-normal.woff2": (
+        "4f84d86cfd060f4ded334358ff8a4c81d4db2ed5addd568359d693f44a87765a"
+    ),
+    "IBMPlexMono-OFL.txt": ("23b0a9d0c6d3f140a0b77e483c5cfa6bba574325ef5cb189ed9f2fec4884533f"),
+}
 
 
 def _manifest_names() -> set[str]:
@@ -502,6 +521,12 @@ def test_bundled_mono_assets_are_the_pinned_fontsource_cuts() -> None:
         assert len(payload) > 5_000, f"{path} is too small to carry the Latin cut"
 
 
+def test_bundled_font_files_are_the_pinned_bytes() -> None:
+    for name, digest in _FONT_SHA256.items():
+        actual = hashlib.sha256((FONTS / name).read_bytes()).hexdigest()
+        assert actual == digest, f"{name} is not the pinned Fontsource 5.3.0 asset"
+
+
 def test_bundled_mono_license_is_the_ofl() -> None:
     license_text = (FONTS / "IBMPlexMono-OFL.txt").read_text(encoding="utf-8")
     assert "SIL OPEN FONT LICENSE" in license_text
@@ -528,11 +553,14 @@ def test_globals_speaks_mono_in_the_bundled_family_first() -> None:
 def test_capture_guard_holds_the_pinned_fonts_before_every_shot() -> None:
     source = SCREENSHOTS.read_text(encoding="utf-8")
     assert "def _assert_pinned_fonts(page: Page) -> None:" in source
+    assert "from scripts.screenshot_fonts import" in source
+    assert "validate_pinned_fonts(" in source
     for weight in MONO_WEIGHTS:
         assert str(weight) in source
-    assert "IBM Plex Mono" in source
-    assert COMMAND_GLYPH in source
+    # The page answers are evaluated in the browser; the rule is pure.
     assert "document.fonts.check" in source
+    assert "document.body.innerText" in source
+    assert "checkVisibility" in source
     # The guard runs after the faces settle and before the frame is written.
     shot = source[source.index("def _shot(") : source.index("def _require_inside(")]
     assert "document.fonts.ready" in shot

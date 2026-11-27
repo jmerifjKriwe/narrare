@@ -34,12 +34,13 @@ The graph's force layout orders nodes by the canon's own names, so its frame
 runs on the same three-entity canon every capture and a fresh set of UUIDs
 cannot move a card.
 
-Two captures are byte-identical across machines, not only on this one: every
-glyph in a frame comes from a face bundled under ``web/public/fonts`` — the
-command mark is an SVG, and mono text (keycaps, badges, code, dates) wears
-IBM Plex Mono from its own WOFF2 cuts. ``_assert_pinned_fonts`` proves that
-before every frame: the four mono weights are loaded, every computed mono
-element names the bundled family, and no U+2318 text reaches the page.
+Two captures are byte-identical across machines, not only on this one: the
+command mark is an SVG, and every captured mono glyph — keycaps, badges, code,
+dates and numeric metadata — comes from the bundled IBM Plex Mono cuts under
+``web/public/fonts``. The UI sans and brand serif are bundled too, but the
+guard names only the mono ink: ``_assert_pinned_fonts`` loads and checks the
+four mono weights, rejects a visible mono element whose first family is not
+the bundled one, and refuses a rendered U+2318 before every frame.
 """
 
 import argparse
@@ -58,6 +59,7 @@ from playwright.sync_api import Locator, expect, sync_playwright
 from app.kernel.testing.jobs import wait_for_job
 from app.kernel.testing.stack import API_PORT, WEB_PORT, run_stack, stop_shared_web
 from app.kernel.testing.vendor import chat_vendor
+from scripts.screenshot_fonts import MonoUse, validate_pinned_fonts
 from scripts.screenshot_manifest import SHOTS, render_index, validate_shots
 from scripts.screenshots_publish import publish
 
@@ -152,14 +154,14 @@ def _api() -> httpx.Client:
 
 
 def _assert_pinned_fonts(page: Page) -> None:
-    """Refuse a frame whose glyphs would come from the machine's own fonts.
+    """Refuse a frame whose mono ink would come from the machine's fonts.
 
-    The bundled mono cuts are loaded on purpose: a page may declare them
-    without any text needing all four weights, and an unloaded face answers
-    ``document.fonts.check`` with false. Once loaded, three claims hold the
-    capture: every weight resolves to the bundled file, every element whose
-    computed family is a mono stack names ``"IBM Plex Mono"`` first, and no
-    U+2318 reaches the page's own text — the command mark is an SVG.
+    The page answers three facts — which bundled weights loaded, the computed
+    font stack of every mono element with its visibility, and its own text —
+    and ``scripts.screenshot_fonts.validate_pinned_fonts`` owns the rule.
+    Keeping the judgement pure lets the first-family order and the
+    visible/hidden distinction be tested without a browser; this wrapper only
+    evaluates the page and turns the errors into a failed capture.
     """
     result = page.evaluate(
         """async () => {
@@ -169,28 +171,34 @@ def _assert_pinned_fonts(page: Page) -> None:
                     document.fonts.load(`${weight} 10px "IBM Plex Mono"`, "BESbswy"),
                 ),
             );
-            const missing = weights.filter(
-                (weight) => !document.fonts.check(`${weight} 10px "IBM Plex Mono"`, "BESbswy"),
+            const loaded = Object.fromEntries(
+                weights.map((weight) => [
+                    weight,
+                    document.fonts.check(`${weight} 10px "IBM Plex Mono"`, "BESbswy"),
+                ]),
             );
-            const strays = new Set();
+            const monoUses = [];
             for (const element of document.querySelectorAll("body *")) {
                 const family = getComputedStyle(element).fontFamily;
-                if (!/mono/i.test(family) || family.includes('"IBM Plex Mono"')) continue;
-                strays.add(family);
+                if (!/mono/i.test(family)) continue;
+                const visible =
+                    typeof element.checkVisibility === "function"
+                        ? element.checkVisibility()
+                        : element.getClientRects().length > 0;
+                monoUses.push({ family, visible });
             }
-            return {
-                missing,
-                strays: [...strays],
-                command: document.body.innerText.includes("⌘"),
-            };
+            return { loaded, monoUses, text: document.body.innerText };
         }"""
     )
-    if result["missing"]:
-        raise SystemExit(f"the bundled mono weights {result['missing']} did not load")
-    if result["strays"]:
-        raise SystemExit(f"a mono element falls back to a system face: {result['strays']}")
-    if result["command"]:
-        raise SystemExit("a rendered U+2318 command mark remains — it must be the SVG icon")
+    errors = validate_pinned_fonts(
+        loaded={int(weight): yes for weight, yes in result["loaded"].items()},
+        mono_uses=[
+            MonoUse(family=use["family"], visible=use["visible"]) for use in result["monoUses"]
+        ],
+        body_text=result["text"],
+    )
+    if errors:
+        raise SystemExit("; ".join(errors))
 
 
 def _shot(page: Page, out: Path, name: str) -> Path:
