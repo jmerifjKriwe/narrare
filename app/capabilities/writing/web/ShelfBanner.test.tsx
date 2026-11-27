@@ -41,6 +41,28 @@ import { ShelfBanner } from "./ShelfBanner";
 const api = client as unknown as Record<"GET", ReturnType<typeof vi.fn>>;
 const de = catalogs.de;
 
+// The disabled statistics door names its state, not a shared-CTA promise
+// (#979). The banner key is separate from writing.shelf.comingSoon, which
+// stays on the shelf's live-CTA-adjacent notes.
+const STATUS_NOTE = {
+  en: "Not available yet.",
+  de: "Noch nicht verfügbar.",
+  fr: "Pas encore disponible.",
+} as const;
+
+const FUTURE_PROMISE =
+  /build-out|aufbau|wave|welle|vague|appear|erschein|appara|coming soon|kommt mit|arrive avec|future|becomes available|later|options/i;
+
+describe("the banner status note speaks to the reader", () => {
+  it("is status-only in every catalog, never a future promise", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      const note = catalogs[locale]["writing.shelf.banner.statsNote"];
+      expect(note).toBe(STATUS_NOTE[locale]);
+      expect(note).not.toMatch(FUTURE_PROMISE);
+    }
+  });
+});
+
 function ok(): Response {
   return new Response(null, { status: 200 });
 }
@@ -172,7 +194,9 @@ describe("the banner — a populated window speaks the aggregate's own figures",
     const door = screen.getByRole("button", { name: de["writing.shelf.banner.stats"] });
     expect(door.hasAttribute("disabled")).toBe(true);
     const noteId = door.getAttribute("aria-describedby");
-    expect(document.getElementById(noteId as string)?.textContent).toBe(de["writing.shelf.comingSoon"]);
+    expect(document.getElementById(noteId as string)?.textContent).toBe(
+      de["writing.shelf.banner.statsNote"],
+    );
   });
 
   it("the hero-book pin is gone — no book title, no book pair in the banner", async () => {

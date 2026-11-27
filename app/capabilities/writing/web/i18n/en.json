@@ -129,6 +129,7 @@
   "writing.shelf.banner.noGoal": "No writing goal yet",
   "writing.shelf.banner.sparkline": "Net words per day, last {days} days — UTC day boundary; the marked point is today.",
   "writing.shelf.banner.stats": "Open Statistics",
+  "writing.shelf.banner.statsNote": "Not available yet.",
   "writing.shelf.banner.today": "{state, select, written {You have already written {count, number} words today.} quiet {No words written today yet.} removed {You removed more text than you added today — the day stands at {count, number} words.} other {Today''s net in the atelier: {count, number} words.}}",
   "writing.shelf.banner.weekly": "Weekly Average",
   "writing.shelf.card.options": "Project options",
