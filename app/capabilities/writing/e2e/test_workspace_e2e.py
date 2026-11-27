@@ -83,6 +83,13 @@ def _goto_workspace(page: Page, novel_id: str) -> None:
     ).to_be_visible()
 
 
+def test_the_prose_carries_the_manuscripts_language(page: Page, installed: Stack) -> None:
+    novel = _seed_klang()
+    patch_novel(str(novel["id"]), language="ja")
+    _goto_workspace(page, str(novel["id"]))
+    expect(page.locator(".ProseMirror")).to_have_attribute("lang", "ja")
+
+
 def test_the_workspace_reads_the_seeded_book(page: Page, installed: Stack) -> None:
     """The three columns on the rows' own data, the chrome's book face, the
     hero door's resume — and every unbuilt door honestly disabled."""

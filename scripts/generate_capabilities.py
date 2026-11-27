@@ -2,10 +2,13 @@
 """Write every generated view of the capability facts and the language list.
 
 Sources of truth: ``app/capabilities/*/capability.yaml`` — facts only (spec §4) —
-``i18n/*.json`` for the shared text, whose *filenames* are the set of languages,
-and ``app/capabilities/*/web/i18n/*.json`` for each capability's own text, with
-``i18n/overlays/formality/*.json`` carrying sparse formal variants. Nothing
-declares a language twice. Fifteen views, none hand-edited, all committed:
+``i18n/registry/locales.json`` for the set and the display order of the
+languages, ``i18n/*.json`` for the shared text, and
+``app/capabilities/*/web/i18n/*.json`` for each capability's own text, with
+``i18n/overlays/formality/*.json`` carrying sparse formal variants. The
+registry and the central catalogs list the same languages, one entry each, so
+nothing declares a language twice. Sixteen views, none hand-edited, all
+committed:
 
 * ``app/generated/capabilities.py`` — the registry ``app/api/main.py``
   cross-checks against the mounted routers at startup;
@@ -13,12 +16,15 @@ declares a language twice. Fifteen views, none hand-edited, all committed:
   with title keys the TypeScript compiler checks against the merged catalog;
 * ``app/generated/locales.py`` — the languages, for anything server-side that
   validates one;
-* ``web/lib/generated/catalogs.ts`` — the imports, the ``Locale`` union and the
-  merged catalog map, so a new ``i18n/<code>.json`` or a new capability
-  catalog needs no TypeScript edit;
+* ``web/lib/generated/catalogs.ts`` — the imports, the ``Locale`` union, the
+  ``localeOrder`` line and the eager source catalog; ``i18n/registry/locales.json``
+  supplies the language set and the ``localeOrder`` line, so a new registry
+  entry or capability catalog needs no TypeScript edit;
 * ``web/lib/generated/overlays.ts`` — the sparse formal variants, one import
   per language that carries an overlay; a new overlay appears on the next
   ``just generate``;
+* ``web/lib/generated/errorCodes.ts`` — the kernel's error codes as one typed
+  union, so a refusal and the web's mapping cannot name different vocabularies;
 * ``web/lib/generated/routes.ts`` — the capability route table the router
   mounts, one import per capability that owns ``web/routes.tsx``, and the
   composition points of two conventions: dockRoutes factories are called with
@@ -51,6 +57,12 @@ declares a language twice. Fifteen views, none hand-edited, all committed:
 * ``docs/user/help-coverage.md`` — which capabilities ship help, in which
   languages, one table per capability the help scan found.
 
+One output per language other than the source stands beside those views:
+``web/lib/generated/catalogs/<identifier>.ts`` carries that language's merged
+catalog as a lazy module, alongside the eager ``catalogs`` map above, which
+holds the source language only; every other language is one of those lazy
+modules, fetched by ``catalogLoaders`` on first read.
+
 A capability without a ``web/`` directory has no UI: it contributes no nav
 row, no route import, no INDEX row, no catalog import, no dock, command,
 settings or help entry. Its facts stay in the backend registry — the routers
@@ -58,10 +70,10 @@ still mount it. A capability that owns ``web/`` must carry a title key every
 merged catalog resolves; a typo stops generation with the file and the key
 named.
 
-Adding a language is therefore one central file plus one file per capability
-that owns text, then ``just generate``. A field no view reads is deleted from
-the Facts schema; a view no consumer reads is deleted with it. ``just generate``
-runs this after the facts change.
+Adding a language is therefore one line in the registry, one central file plus
+one file per capability that owns text, then ``just generate``. A field no view
+reads is deleted from the Facts schema; a view no consumer reads is deleted
+with it. ``just generate`` runs this after the facts change.
 """
 
 import json
@@ -73,18 +85,23 @@ from typing import cast
 import yaml
 
 from app.capabilities.planning.structures import STRUCTURES
+from app.kernel.errors import ErrorCode
 from app.kernel.interchange import parse_archive
 from app.kernel.interchange.demos import DEMOS as KERNEL_DEMOS
 from app.kernel.interchange.demos import demo_tree
+from app.kernel.language_tag import LANGUAGE_TAG, LANGUAGE_TAG_MAX_LENGTH
 
 # The capability whose registry STRUCTURES is: the structures view is that
 # capability's UI contribution — the switcher offers its rows — so it emits
 # rows only while the capability owns a web/ directory too.
 STRUCTURES_OWNER = "planning"
 
-# The source language leads the docs and the switcher; the rest follow in a
-# stable order so the generated diff does not shuffle when a file appears.
+# The source language leads the views; the registry orders the switcher.
 SOURCE_LOCALE = "en"
+
+# The registry: the languages and their display order, one entry each. It and
+# the central catalogs must list the same set.
+REGISTRY = "i18n/registry/locales.json"
 
 # Keys the generated views read by name. A catalog missing one stops generation
 # instead of rendering an empty table header.
@@ -137,19 +154,67 @@ class SettingsPage:
     title_key: str
 
 
+def registry_locales(root: Path) -> tuple[str, ...]:
+    """The languages in the registry's display order.
+
+    The registry is the one list: a code it carries without a central catalog,
+    or a central catalog it does not carry, stops generation naming the file
+    and the offender. A malformed or duplicate code, or a registry without the
+    source language, stops it the same way.
+    """
+    source = root / REGISTRY
+    if not source.is_file():
+        raise SystemExit(f"{source} is missing: it lists the languages and their display order")
+    try:
+        loaded = json.loads(source.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise SystemExit(f"{source}: not valid JSON: {error}") from error
+    if not isinstance(loaded, dict) or set(cast("dict[str, object]", loaded)) != {"locales"}:
+        raise SystemExit(f"{source}: the registry is one object with one `locales` list")
+    raw = cast("dict[str, object]", loaded)["locales"]
+    not_codes = f"{source}: `locales` is a list of language codes"
+    if not isinstance(raw, list):
+        raise SystemExit(not_codes)
+    entries = cast("list[object]", raw)
+    if not all(isinstance(code, str) for code in entries):
+        raise SystemExit(not_codes)
+    codes = tuple(cast("list[str]", entries))
+    seen: set[str] = set()
+    for code in codes:
+        if len(code) > LANGUAGE_TAG_MAX_LENGTH or LANGUAGE_TAG.fullmatch(code) is None:
+            raise SystemExit(
+                f"{source}: {code!r} is not a language tag — two or three lowercase"
+                f" letters, then subtags of one to eight letters or digits, at most"
+                f" {LANGUAGE_TAG_MAX_LENGTH} characters"
+            )
+        if code in seen:
+            raise SystemExit(f"{source}: {code!r} is listed twice; a language appears once")
+        seen.add(code)
+    if SOURCE_LOCALE not in seen:
+        raise SystemExit(f"{source}: the source locale {SOURCE_LOCALE!r} is not a member")
+    missing = [
+        f"i18n/{code}.json" for code in codes if not (root / "i18n" / f"{code}.json").is_file()
+    ]
+    if missing:
+        raise SystemExit(f"{source}: entries without a central catalog: {missing}")
+    strangers = sorted(
+        f"i18n/{path.stem}.json" for path in (root / "i18n").glob("*.json") if path.stem not in seen
+    )
+    if strangers:
+        raise SystemExit(f"{source}: central catalogs the registry does not list: {strangers}")
+    return codes
+
+
 def locales(root: Path) -> tuple[str, ...]:
-    """Every language the catalog carries, discovered from the files."""
-    found = sorted(path.stem for path in (root / "i18n").glob("*.json"))
-    if SOURCE_LOCALE not in found:
-        raise SystemExit(f"i18n/{SOURCE_LOCALE}.json is missing: it is the type source")
-    return tuple([SOURCE_LOCALE] + [locale for locale in found if locale != SOURCE_LOCALE])
+    """Every language the catalog carries: the source first, then registry order."""
+    return (SOURCE_LOCALE, *(code for code in registry_locales(root) if code != SOURCE_LOCALE))
 
 
 def catalog_sources(root: Path, known: tuple[str, ...]) -> dict[str, tuple[Path, ...]]:
     """Every file one locale's catalog is merged from.
 
-    The central ``i18n/<locale>.json`` leads — it is the language registry and
-    the shared text — and each capability's ``web/i18n/<locale>.json`` follows,
+    The central ``i18n/<locale>.json`` leads — it carries the shared text — and
+    each capability's ``web/i18n/<locale>.json`` follows,
     sorted by capability id. A capability that carries an ``i18n`` directory
     must carry every locale: a half-translated capability would render one
     language from its file and another from nowhere.
@@ -329,10 +394,11 @@ def python_locales(known: tuple[str, ...]) -> str:
     literal = ", ".join(f'"{locale}"' for locale in known)
     trailing = "," if len(known) == 1 else ""
     return (
-        '"""Generated by scripts/generate_capabilities.py from i18n/*.json — DO NOT EDIT.\n'
+        '"""Generated by scripts/generate_capabilities.py from the locale registry — DO NOT EDIT.\n'
         "\n"
-        "The languages the catalog carries, discovered from its files. A new\n"
-        "i18n/<code>.json appears here on the next `just generate`.\n"
+        "The languages the catalog carries, in the registry's display order with\n"
+        "the source language first. A new registry entry appears here on the next\n"
+        "`just generate`.\n"
         '"""\n'
         "\n"
         f"LOCALES: tuple[str, ...] = ({literal}{trailing})\n"
@@ -345,47 +411,155 @@ def _identifier(value: str) -> str:
     return re.sub(r"[^0-9A-Za-z_]", "_", value)
 
 
-def typescript_catalogs(root: Path, known: tuple[str, ...]) -> str:
-    """The web-side view: one merged object per locale, typed from the source."""
-    sources = catalog_sources(root, known)
+def _ts_property(value: str) -> str:
+    """An object key: bare while it is already a valid identifier, quoted otherwise."""
+    return value if _identifier(value) == value else f'"{value}"'
+
+
+def _catalog_imports(
+    root: Path, sources: tuple[Path, ...], locale: str, prefix: str
+) -> tuple[list[str], list[str]]:
+    """One language's import lines and the aliases its merged object spreads.
+
+    ``prefix`` is the relative step from the generated file to the repo root:
+    the eager catalog map and its lazy one-language module sit one directory
+    apart, so they pass different prefixes and share the source resolution,
+    the central-file detection and the alias names.
+    """
+    loc = _identifier(locale)
     imports: list[str] = []
-    merged: list[str] = []
-    mapping: list[str] = []
-    for locale in known:
-        loc = _identifier(locale)
-        aliases: list[str] = []
-        for source in sources[locale]:
-            if source == root / "i18n" / f"{locale}.json":
-                alias = f"{loc}_central"
-            else:
-                capability = source.parents[2].name
-                alias = f"{loc}_{_identifier(capability)}"
-            imports.append(
-                f'import {alias} from "../../../{source.relative_to(root).as_posix()}";\n'
-            )
-            aliases.append(alias)
-        merged.append(
-            f"const {loc}_merged = {{\n" + "".join(f"  ...{alias},\n" for alias in aliases) + "};\n"
-        )
-        mapping.append(f'  "{locale}": {loc}_merged,\n')
-    union = ", ".join(f'"{locale}"' for locale in known)
-    source_merged = f"{_identifier(SOURCE_LOCALE)}_merged"
+    aliases: list[str] = []
+    for source in sources:
+        if source == root / "i18n" / f"{locale}.json":
+            alias = f"{loc}_central"
+        else:
+            capability = source.parents[2].name
+            alias = f"{loc}_{_identifier(capability)}"
+        imports.append(f'import {alias} from "{prefix}{source.relative_to(root).as_posix()}";\n')
+        aliases.append(alias)
+    return imports, aliases
+
+
+def typescript_endonyms(root: Path, known: tuple[str, ...]) -> str:
+    """The endonyms table: each language's own name, from its central catalog.
+
+    The catalog's language set orders the rows; each language's name is its own
+    catalog's ``locale.name``, so no view spells a language's name in code.
+    """
+    rows = "".join(
+        f"  {_ts_property(locale)}:"
+        f" {_ts_string(load_catalog(root / 'i18n' / f'{locale}.json')['locale.name'])},\n"
+        for locale in known
+    )
     return (
-        "// Generated by scripts/generate_capabilities.py from i18n/*.json and\n"
-        "// app/capabilities/*/web/i18n/*.json — DO NOT EDIT.\n"
-        "// A capability's text is merged over the shared catalog; a new capability\n"
-        "// file appears on the next `just generate`.\n"
+        "// Each language in its own words, read from its catalog's locale.name.\n"
+        "export const endonyms: Record<Locale, string> = {\n"
+        f"{rows}"
+        "};\n"
+    )
+
+
+def typescript_catalog_module(root: Path, known: tuple[str, ...], locale: str) -> str:
+    """One language's merged catalog as a lazy module.
+
+    The module sits one directory below the eager ``catalogs.ts``, so its
+    imports step up one level further. It imports ``Catalog`` as a type only —
+    erased by the compiler — and satisfies it, so the loader map and the module
+    it loads never form a runtime cycle.
+    """
+    loc = _identifier(locale)
+    imports, aliases = _catalog_imports(
+        root, catalog_sources(root, known)[locale], locale, "../../../../"
+    )
+    merged = (
+        f"const {loc}_merged = {{\n" + "".join(f"  ...{alias},\n" for alias in aliases) + "};\n"
+    )
+    return (
+        "// Generated by scripts/generate_capabilities.py from"
+        f" i18n/{locale}.json and app/capabilities/*/web/i18n/{locale}.json"
+        " — DO NOT EDIT.\n"
+        "// One language's merged catalog, loaded the first time a reader picks\n"
+        "// that language. The type import is erased; the loader map owns the\n"
+        "// runtime import.\n"
+        'import type { Catalog } from "../catalogs";\n'
+        f"{''.join(imports)}"
+        "\n"
+        f"{merged}"
+        "\n"
+        f'export const locale = "{locale}" as const;\n'
+        f"export default {loc}_merged satisfies Catalog;\n"
+    )
+
+
+def lazy_catalog_outputs(root: Path, known: tuple[str, ...]) -> dict[str, str]:
+    """One lazy module per language other than the source, keyed by its path."""
+    return {
+        f"web/lib/generated/catalogs/{_identifier(locale)}.ts": typescript_catalog_module(
+            root, known, locale
+        )
+        for locale in known
+        if locale != SOURCE_LOCALE
+    }
+
+
+def typescript_catalogs(
+    root: Path, known: tuple[str, ...], order: tuple[str, ...] | None = None
+) -> str:
+    """The web-side view: the source catalog eagerly, one loader per other.
+
+    ``known`` is the catalog's language set in ``locales`` order; ``order`` is
+    the registry's display order, which the switcher reads from ``localeOrder``.
+    Only the source language is bundled: every other language is a lazy module
+    under ``web/lib/generated/catalogs/``, fetched when it is first read.
+    """
+    sources = catalog_sources(root, known)
+    source_identifier = _identifier(SOURCE_LOCALE)
+    imports, aliases = _catalog_imports(root, sources[SOURCE_LOCALE], SOURCE_LOCALE, "../../../")
+    merged = (
+        f"const {source_identifier}_merged = {{\n"
+        + "".join(f"  ...{alias},\n" for alias in aliases)
+        + "};\n"
+    )
+    union = ", ".join(f'"{locale}"' for locale in known)
+    ordered = ", ".join(f'"{locale}"' for locale in (known if order is None else order))
+    loaders = "".join(
+        f'  {_ts_property(locale)}: () => import("./catalogs/{_identifier(locale)}"),\n'
+        for locale in known
+        if locale != SOURCE_LOCALE
+    )
+    return (
+        "// Generated by scripts/generate_capabilities.py from\n"
+        "// i18n/registry/locales.json for the language set and the localeOrder\n"
+        "// line, i18n/*.json for the shared text, and\n"
+        "// app/capabilities/*/web/i18n/*.json for each capability's text\n"
+        "// — DO NOT EDIT. A capability's text is merged over the shared catalog;\n"
+        "// a new registry entry or capability file appears on the next\n"
+        "// `just generate`.\n"
         f"{''.join(imports)}"
         "\n"
         f"export const locales = [{union}] as const;\n"
+        f"export const localeOrder = [{ordered}] as const satisfies readonly Locale[];\n"
         "export type Locale = (typeof locales)[number];\n"
         "\n"
-        f"{''.join(merged)}"
+        f"{merged}"
         "\n"
-        "// Typed against the source catalog: a key missing in any locale is a build\n"
-        "// error at this assignment, not a blank label at runtime.\n"
-        f"export const catalogs: Record<Locale, typeof {source_merged}> = {{\n"
-        f"{''.join(mapping)}}};\n"
+        "// The source catalog is bundled; every other language is a lazy module\n"
+        "// fetched the first time a reader reads it. Typed against the source\n"
+        "// catalog, so a key missing in any language is a build error at that\n"
+        "// module's assignment, not a blank label at runtime.\n"
+        f"export const catalogs = {{ {_ts_property(SOURCE_LOCALE)}: {source_identifier}_merged }}"
+        f' as const satisfies Record<"{SOURCE_LOCALE}", Catalog>;\n'
+        "\n"
+        f"export type Catalog = typeof {source_identifier}_merged;\n"
+        "export type CatalogModule = { locale: Locale; default: Catalog };\n"
+        "\n"
+        f"{typescript_endonyms(root, known)}"
+        "\n"
+        "// One lazy loader per language other than the source: the module is\n"
+        "// fetched the first time the shell reads that language.\n"
+        "export const catalogLoaders: { [L in Exclude<Locale, "
+        f'"{SOURCE_LOCALE}">]: () => Promise<CatalogModule> }} = {{\n'
+        f"{loaders}}};\n"
     )
 
 
@@ -462,6 +636,33 @@ def typescript_overlays(known: tuple[str, ...], overlays: dict[str, dict[str, st
         "export const overlays: Partial<Record<Locale, Record<string, string>>> = {\n"
         f"{mapping}"
         "};\n"
+    )
+
+
+def typescript_error_codes() -> str:
+    """The web-side view: the kernel's error codes, one typed list on both sides.
+
+    The members come from ``ErrorCode`` in declaration order. The web's
+    exhaustive mapping is typed against ``ErrorCode``, so a code the backend
+    can emit and the web cannot name — or one without a catalog sentence —
+    is a build error rather than a failure the reader sees in English.
+    """
+    members = "".join(f'  "{code}",\n' for code in ErrorCode)
+    return (
+        "// Generated by scripts/generate_capabilities.py from"
+        " app/kernel/errors.py — DO NOT EDIT.\n"
+        "// The kernel's error codes, in declaration order. A failure's code is\n"
+        "// a member on both sides of the wire; the web's exhaustive mapping is\n"
+        "// typed against ErrorCode, so a code without a sentence cannot appear\n"
+        "// unnoticed.\n"
+        "\n"
+        f"export const ERROR_CODES = [\n{members}] as const;\n"
+        "\n"
+        "export type ErrorCode = (typeof ERROR_CODES)[number];\n"
+        "\n"
+        "export function isErrorCode(value: unknown): value is ErrorCode {\n"
+        "  return (ERROR_CODES as readonly unknown[]).includes(value);\n"
+        "}\n"
     )
 
 
@@ -1071,11 +1272,13 @@ def help_coverage(root: Path) -> str:
     One ``## <capability>`` section per capability the help scan found, in
     scan order (alphabetical by id); its table is one row per topic (by
     slug) and one column per catalog locale in ``locales()`` order — a
-    ``—`` marks a translation the topic does not carry yet. Every folder
-    under ``app/capabilities/`` that holds a ``capability.yaml`` but no
-    help the scan found closes the report as a plain list, so a reader
-    sees at a glance where help is still missing entirely; with every
-    capability covered, the list (and its heading) is absent.
+    ``—`` marks a translation the topic does not carry yet. A capability
+    that owns a ``web/`` directory (``web_ids``) and no help the scan found
+    closes the report as a plain list, so a reader sees at a glance where
+    help is still missing for a UI surface. A capability without ``web/``
+    owes no help: it is absent from the report entirely, never listed as
+    missing. With every UI capability covered, the list (and its heading)
+    is absent.
     """
     capabilities = tuple(
         folder.name
@@ -1112,8 +1315,8 @@ def help_coverage(root: Path) -> str:
         "\n"
         "# Help coverage\n"
         "\n"
-        "One row per capability that ships help; capabilities without help are"
-        " listed at the bottom.\n"
+        "One row per topic under each capability that ships help; UI"
+        " capabilities without help are listed at the bottom.\n"
         "\n" + "\n".join(blocks)
     )
 
@@ -1541,13 +1744,14 @@ def typescript_demos(root: Path) -> str:
 
 
 def main() -> None:
-    """Validate capability inputs and overwrite the fifteen views from the current directory.
+    """Validate capability inputs and overwrite the sixteen views from the current directory.
 
     Validation may raise SystemExit; file and parse errors propagate. Parent
     directories are created as needed when writing the views.
     """
     root = Path(".")
     known = locales(root)
+    order = registry_locales(root)
     loaded = catalogs(root, known)
     overlays = overlay_sources(root, known, loaded)
     loaded_facts: tuple[Facts, ...] = facts(root, known, loaded)
@@ -1555,8 +1759,9 @@ def main() -> None:
         "app/generated/capabilities.py": python_registry(loaded_facts),
         "app/generated/locales.py": python_locales(known),
         "web/lib/generated/capabilities.ts": typescript_nav(ui_facts(loaded_facts, root)),
-        "web/lib/generated/catalogs.ts": typescript_catalogs(root, known),
+        "web/lib/generated/catalogs.ts": typescript_catalogs(root, known, order),
         "web/lib/generated/overlays.ts": typescript_overlays(known, overlays),
+        "web/lib/generated/errorCodes.ts": typescript_error_codes(),
         "web/lib/generated/routes.ts": typescript_routes(root),
         "web/lib/generated/workspace.ts": typescript_workspace(root),
         "web/lib/generated/docks.ts": typescript_docks(root),
@@ -1567,6 +1772,7 @@ def main() -> None:
         "web/lib/generated/demos.ts": typescript_demos(root),
         "docs/user/INDEX.md": docs_index(loaded_facts, known, loaded, root),
         "docs/user/help-coverage.md": help_coverage(root),
+        **lazy_catalog_outputs(root, known),
     }
     for target, content in outputs.items():
         path = root / target

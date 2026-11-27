@@ -32,13 +32,12 @@ vi.mock("@shell/lib/api/client", async (importOriginal) => {
 });
 
 import { client, type Hit, type KnowledgeDocument } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de, en, fr, merged } from "@shell/lib/test/catalogs";
 
 import { SourcesPage } from "./SourcesPage";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "POST" | "DELETE", ReturnType<typeof vi.fn>>;
 
 configure({ asyncUtilTimeout: 5000 });
@@ -70,7 +69,7 @@ describe("the sources gap notes speak to the reader", () => {
         "knowledge.sources.laterNote",
         "knowledge.sources.viewNote",
       ] as const) {
-        const note = catalogs[locale][key];
+        const note = merged[locale][key];
         expect(note).toBe(STATUS_NOTE[locale]);
         expect(note).not.toMatch(FUTURE_PROMISE);
       }
@@ -339,7 +338,11 @@ describe("the upload fires the real multipart", () => {
   it("the server's empty-document 422 names the empty refusal", async () => {
     api.POST.mockImplementation((path: string) => {
       if (path === "/api/knowledge/documents") {
-        return Promise.resolve({ data: undefined, error: { detail: "document is empty" }, response: ok(422) });
+        return Promise.resolve({
+          data: undefined,
+          error: { detail: { code: "document-empty", detail: "document is empty" } },
+          response: ok(422),
+        });
       }
       return basePost(path);
     });
@@ -750,7 +753,6 @@ describe("the subbar's sibling doors connect the three surfaces", () => {
 describe("the face speaks du-tone in every catalog — no German fallback", () => {
   it("the English face speaks the English catalog's own copy", async () => {
     applyLocale("en");
-    const en = catalogs.en;
     await renderSources();
     const rows = await screen.findAllByTestId("sources-document");
     expect(within(rows[0]).getByText("142 chunks")).toBeTruthy();
@@ -761,7 +763,6 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
 
   it("the French face counts zero as one — the locale's own plural rule", async () => {
     applyLocale("fr");
-    const fr = catalogs.fr;
     documents = [docRow({ id: "d9", title: "Altlast.txt", byte_size: null, chunk_count: 0 })];
     await renderSources();
     const row = await screen.findByTestId("sources-document");
@@ -773,11 +774,11 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
   });
 
   it("the three catalogs carry the sources' keys in parity, each translated and sorted", () => {
-    const keys = Object.keys(catalogs.de).filter((key) => key.startsWith("knowledge.sources."));
+    const keys = Object.keys(de).filter((key) => key.startsWith("knowledge.sources."));
     expect(keys.length).toBeGreaterThan(0);
     expect(keys).toEqual([...keys].sort());
     for (const locale of ["en", "fr"] as const) {
-      const localeKeys = Object.keys(catalogs[locale]).filter((key) => key.startsWith("knowledge.sources."));
+      const localeKeys = Object.keys(merged[locale]).filter((key) => key.startsWith("knowledge.sources."));
       expect(localeKeys, locale).toEqual(keys);
       expect(localeKeys, `${locale} sorted`).toEqual([...localeKeys].sort());
     }
@@ -789,17 +790,17 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
       "knowledge.sources.footnote",
     ] as const;
     for (const key of translated) {
-      expect(catalogs.en[key], key).not.toBe(catalogs.de[key]);
-      expect(catalogs.fr[key], key).not.toBe(catalogs.de[key]);
+      expect(en[key], key).not.toBe(de[key]);
+      expect(fr[key], key).not.toBe(de[key]);
     }
   });
 
   it("the German copy keeps the du register — no Sie form sneaks in", () => {
-    for (const [key, value] of Object.entries(catalogs.de)) {
+    for (const [key, value] of Object.entries(de)) {
       if (!key.startsWith("knowledge.sources.")) continue;
       expect(value, key).not.toMatch(/\b(Sie|Ihnen|Ihr|Ihre)\b/);
     }
-    expect(catalogs.de["knowledge.sources.description"]).toContain("deine");
-    expect(catalogs.de["knowledge.sources.emptyNote"]).toContain("dein");
+    expect(de["knowledge.sources.description"]).toContain("deine");
+    expect(de["knowledge.sources.emptyNote"]).toContain("dein");
   });
 });

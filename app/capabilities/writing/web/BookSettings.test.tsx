@@ -15,7 +15,7 @@
  * section's door routes there at the profile section's address, held while
  * edits stand like every close path.
  */
-import { cleanup, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 // Full-suite load: see WorkspacePage.test.tsx.
 configure({ asyncUtilTimeout: 5000 });
@@ -36,9 +36,9 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Novel, type Series } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de } from "@shell/lib/test/catalogs";
 
 import { BookSettings } from "./BookSettings";
 import {
@@ -51,7 +51,6 @@ import {
 } from "./bookSettings";
 import { TARGET_WORDS_MAX } from "./newBook";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "POST" | "PATCH", ReturnType<typeof vi.fn>>;
 
 /** The repo's plain assertions (no jest-dom): the input's value and the
@@ -287,6 +286,13 @@ describe("the fields read the real rows", () => {
 
     // The header chip names the book; the footer note stands verbatim.
     expect(screen.getByText(de["writing.settings.inheritance"])).toBeTruthy();
+  });
+
+  it("the manuscript segment offers the registry's languages in its order", async () => {
+    await openDialog();
+    const segment = screen.getByRole("radiogroup", { name: de["writing.settings.languageLabel"] });
+    const options = within(segment).getAllByRole("radio");
+    expect(options.map((option) => option.textContent)).toEqual(["DE", "EN", "FR"]);
   });
 
   it("an unset book keeps the honest neutrals — no goal, no status, no series", async () => {

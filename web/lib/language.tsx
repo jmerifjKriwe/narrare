@@ -23,15 +23,16 @@
  * written choice.
  *
  * The radio face keeps the doors' drafted geometry (the welcome's
- * separators, the wizard's compact pill) and the draft's DE|EN|FR order —
- * the generated catalog order is the compiler's, not the design's. Its
- * keyboard contract: arrows cycle and wrap, Home/End jump to the ends,
- * Space/Enter select; the move selects and focuses, and the roving
- * tabindex keeps the group one tab stop. The chip face is a menu button
- * (aria-haspopup="menu"): arrows walk the open menu without choosing,
- * Enter/Space/click choose and return focus to the trigger, Escape closes
- * innermost-first, an outside press closes without stealing focus — the
- * quick menu's popover discipline, on the draft's tile-5 geometry.
+ * separators, the wizard's compact pill) and the registry's order — the one
+ * list the switcher, the settings cards and the manuscript segment read, so
+ * no face keeps a code of its own. Its keyboard contract: arrows cycle and
+ * wrap, Home/End jump to the ends, Space/Enter select; the move selects and
+ * focuses, and the roving tabindex keeps the group one tab stop. The chip
+ * face is a menu button (aria-haspopup="menu"): arrows walk the open menu
+ * without choosing, Enter/Space/click choose and return focus to the
+ * trigger, Escape closes innermost-first, an outside press closes without
+ * stealing focus — the quick menu's popover discipline, on the draft's
+ * tile-5 geometry.
  */
 import {
   Fragment,
@@ -46,15 +47,20 @@ import {
 } from "react";
 
 import { client } from "./api/client";
-import { catalogs } from "./generated/catalogs";
+import { endonyms, localeOrder } from "./generated/catalogs";
 import { useTranslation } from "./i18n";
-import { activeLocale, applyLocale, chosenLocale, subscribeLocale, type Locale } from "./locale";
+import {
+  activateLocale,
+  activeLocale,
+  applyLocale,
+  chosenLocale,
+  subscribeLocale,
+  targetLocale,
+  type Locale,
+} from "./locale";
 import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
 import { queryClient } from "./query";
 import { Icon } from "../ui/icons";
-
-/** The draft draws DE|EN|FR with DE leading; every face keeps that order. */
-const SWITCHER_ORDER: readonly Locale[] = ["de", "en", "fr"];
 
 /** The shell's focus ring on every control the contract offers. */
 const FOCUS =
@@ -81,24 +87,34 @@ export function useLanguageChoice({ preSetup = false }: { preSetup?: boolean } =
   const locale = useSyncExternalStore(subscribeLocale, activeLocale, activeLocale);
   const chosen = useSyncExternalStore(subscribeLocale, chosenLocale, chosenLocale);
 
-  // The pre-setup mirror, adopted before paint when the row holds no choice
-  // yet — a refresh keeps the language, never flashes the browser's own.
+  // The pre-setup mirror, adopted when the row holds no choice yet. The boot
+  // has already hydrated it before its ready gate opened, so the first paint
+  // is the mirror's language; a mount without that boot settles the
+  // activation a microtask later.
   useLayoutEffect(() => {
     if (!preSetup || chosenLocale() !== null) return;
     const mirrored = readPreSetupLocale();
-    if (mirrored !== null) applyLocale(mirrored);
+    // The mirror is a choice like any other: its catalog is loaded before
+    // the language becomes active. The boot has usually hydrated it already,
+    // so this resolves from the store without a request.
+    if (mirrored !== null) void activateLocale(mirrored);
   }, [preSetup]);
 
-  /** Apply and persist a choice — the one write every face makes. The
-   *  guard is against the STORED answer: choosing the language the row
-   *  already holds (or following the browser when it is followed) is no
-   *  write, while a null over a stored choice — and a stored choice over
-   *  the follow — is the real change the write owes. */
+  /** Apply and persist a choice — the one write every face makes. A
+   *  language is already selected only when it is both the stored answer
+   *  and the one on screen: after the boot's fallback the row can hold
+   *  `fr` while the source shows, and a click on Français is a retry, not
+   *  a dead click. The follow choice is selected while it is stored and
+   *  its browser language is active; a null over a stored choice — and a
+   *  stored choice over the follow — is the real change the write owes. */
   async function choose(next: Locale | null) {
-    if (next === chosenLocale()) return;
+    if (next === chosenLocale() && targetLocale(next) === activeLocale()) return;
     if (preSetup && next === null) return;
     const previous = chosenLocale();
-    applyLocale(next);
+    // The language becomes active only once its catalog is here: a failed or
+    // superseded load activates nothing, so this choice writes nothing.
+    const activated = await activateLocale(next);
+    if (!activated) return;
     // The choice stands in the settings caches at once (#939): a save
     // whose click lands while the write is in flight reads the row's
     // cache at that moment and must see the pending choice, never the
@@ -221,7 +237,7 @@ export function LanguageSwitcher({
   /** The radio group's keyboard contract: arrows cycle and wrap, Home/End
    *  jump to the ends, Space/Enter select; the move selects and focuses. */
   function radioKey(event: KeyboardEvent<HTMLButtonElement>, at: number) {
-    const span = SWITCHER_ORDER.length;
+    const span = localeOrder.length;
     let next: number;
     if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (at + 1) % span;
     else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (at - 1 + span) % span;
@@ -230,14 +246,14 @@ export function LanguageSwitcher({
     else if (event.key === " " || event.key === "Enter") next = at;
     else return;
     event.preventDefault();
-    const code = SWITCHER_ORDER[next];
+    const code = localeOrder[next];
     void choose(code);
     radioRefs.current[code]?.focus();
   }
 
   return (
     <div role="radiogroup" aria-label={t("shell.language")} className={face.group}>
-      {SWITCHER_ORDER.map((code, at) => (
+      {localeOrder.map((code, at) => (
         <Fragment key={code}>
           {face.separators && at > 0 ? (
             <span aria-hidden="true" className="text-outline-variant opacity-40">
@@ -249,7 +265,7 @@ export function LanguageSwitcher({
             role="radio"
             // The endonym names the radio for assistive tech — the visible
             // face stays the draft's compact code.
-            aria-label={catalogs[code]["locale.name"]}
+            aria-label={endonyms[code]}
             aria-checked={code === locale}
             tabIndex={code === locale ? 0 : -1}
             ref={(node) => {
@@ -283,7 +299,7 @@ export function LanguageChip() {
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const itemRefs = useRef<Partial<Record<Locale, HTMLButtonElement | null>>>({});
 
-  const activeAt = SWITCHER_ORDER.indexOf(locale);
+  const activeAt = localeOrder.indexOf(locale);
 
   const close = useCallback((returnFocus: boolean) => {
     setOpen(false);
@@ -323,7 +339,7 @@ export function LanguageChip() {
   // choice closes the menu, so the active row only moves while it stands
   // if another face switched the language — the focus follows the check.
   useEffect(() => {
-    if (open) itemRefs.current[SWITCHER_ORDER[activeAt]]?.focus();
+    if (open) itemRefs.current[localeOrder[activeAt]]?.focus();
   }, [open, activeAt]);
 
   /** The trigger's keyboard: ArrowDown/ArrowUp open the menu; Enter/Space
@@ -337,7 +353,7 @@ export function LanguageChip() {
   /** The menu's keyboard: arrows walk with wrap without choosing, Home/End
    *  jump, Enter/Space choose, Tab closes and advances past the trigger. */
   function itemKey(event: KeyboardEvent<HTMLButtonElement>, at: number) {
-    const span = SWITCHER_ORDER.length;
+    const span = localeOrder.length;
     let next: number;
     if (event.key === "ArrowDown") next = (at + 1) % span;
     else if (event.key === "ArrowUp") next = (at - 1 + span) % span;
@@ -345,7 +361,7 @@ export function LanguageChip() {
     else if (event.key === "End") next = span - 1;
     else if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      pick(SWITCHER_ORDER[at]);
+      pick(localeOrder[at]);
       return;
     } else if (event.key === "Tab") {
       // Close and hand focus back to the trigger; the default Tab action
@@ -354,7 +370,7 @@ export function LanguageChip() {
       return;
     } else return;
     event.preventDefault();
-    itemRefs.current[SWITCHER_ORDER[next]]?.focus();
+    itemRefs.current[localeOrder[next]]?.focus();
   }
 
   return (
@@ -367,7 +383,7 @@ export function LanguageChip() {
         aria-controls={menuId}
         // The visible face is part of the name (WCAG 2.5.3): the language
         // word and the chip's own code-and-endonym label.
-        aria-label={`${t("shell.language")}: ${locale.toUpperCase()} (${catalogs[locale]["locale.name"]})`}
+        aria-label={`${t("shell.language")}: ${locale.toUpperCase()} (${endonyms[locale]})`}
         onClick={() => setOpen((previous) => !previous)}
         onKeyDown={triggerKey}
         className={`flex items-center gap-1.5 rounded px-2.5 py-1 font-mono text-meta ${
@@ -377,7 +393,7 @@ export function LanguageChip() {
         } ${FOCUS}`}
       >
         <span className="font-bold">
-          {locale.toUpperCase()} ({catalogs[locale]["locale.name"]})
+          {locale.toUpperCase()} ({endonyms[locale]})
         </span>
         <Icon name={open ? "expandLess" : "chevronDown"} size={16} />
       </button>
@@ -388,7 +404,7 @@ export function LanguageChip() {
           aria-label={t("shell.language")}
           className="absolute right-0 top-full z-50 mt-1 w-[190px] space-y-1 rounded-lg border border-border bg-surface-container-lowest p-1.5 shadow-overlay"
         >
-          {SWITCHER_ORDER.map((code, at) => (
+          {localeOrder.map((code, at) => (
             <button
               key={code}
               type="button"
@@ -405,7 +421,7 @@ export function LanguageChip() {
                   : "text-foreground transition-colors hover:bg-surface-container-low"
               } ${FOCUS}`}
             >
-              <span>{catalogs[code]["locale.name"]}</span>
+              <span>{endonyms[code]}</span>
               {code === locale ? (
                 <Icon name="check" size={15} />
               ) : (

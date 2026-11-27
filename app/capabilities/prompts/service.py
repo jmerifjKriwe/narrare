@@ -108,15 +108,27 @@ class PromptRefusedError(ValueError):
 
     ``reason`` is one of :data:`REFUSAL_REASONS` or the render's own
     vocabulary (:data:`REASONS`) — a reason outside the union is a
-    programming error and raises before any 422 can carry it.
+    programming error and raises before any 422 can carry it. A cause that
+    names itself carries its fact as data: ``line`` for a syntax error,
+    ``name`` for an undefined variable or an unresolved include; a cause that
+    names nothing carries neither.
     """
 
-    def __init__(self, reason: str, detail: str) -> None:
+    def __init__(
+        self,
+        reason: str,
+        detail: str,
+        *,
+        line: int | None = None,
+        name: str | None = None,
+    ) -> None:
         if reason not in REFUSAL_REASONS and reason not in REASONS:
             raise ValueError(
                 f"'{reason}' is outside the refusal vocabulary {REFUSAL_REASONS + REASONS}"
             )
         self.reason = reason
+        self.line = line
+        self.name = name
         super().__init__(detail)
 
 
@@ -214,7 +226,9 @@ class PromptService:
         try:
             rendered = render_source(content, spec.sample_variables(), include=include)
         except PromptRenderError as error:
-            raise PromptRefusedError(error.reason, error.detail) from None
+            raise PromptRefusedError(
+                error.reason, error.detail, line=error.line, name=error.name
+            ) from None
         if spec.contract is not None and not spec.contract(rendered):
             raise PromptRefusedError(
                 "contract",
@@ -335,7 +349,9 @@ class PromptService:
         try:
             rendered = render_source(source, spec.sample_variables(), include=include)
         except PromptRenderError as error:
-            raise PromptRefusedError(error.reason, error.detail) from None
+            raise PromptRefusedError(
+                error.reason, error.detail, line=error.line, name=error.name
+            ) from None
         reads = referenced_names(source)
         return PromptPreview(
             rendered=rendered,
@@ -416,7 +432,9 @@ class PromptService:
         except LiveContextMissingError:
             raise
         except PromptRenderError as error:
-            raise PromptRefusedError(error.reason, error.detail) from None
+            raise PromptRefusedError(
+                error.reason, error.detail, line=error.line, name=error.name
+            ) from None
         except BudgetImpossibleError as error:
             raise PromptRefusedError("budget", str(error)) from None
 

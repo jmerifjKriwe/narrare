@@ -39,6 +39,7 @@ import {
   type TimelineEventCreate,
   type TimelineEventUpdate,
 } from "./api/client";
+import { ApiError, TransportError, wireCode } from "./api/errors";
 import { applyTheme, type Theme } from "./theme";
 
 /**
@@ -56,6 +57,19 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+/**
+ * One request refusal, whichever call met it: the response's status, the
+ * body's stable code and its detail, so a face can name the failure in the
+ * reader's language instead of echoing the wire's English.
+ */
+export function refused(what: string, response: Response, error?: unknown): ApiError {
+  return new ApiError(what, {
+    status: response.status,
+    code: wireCode(error),
+    detail: (error as { detail?: unknown } | null | undefined)?.detail,
+  });
+}
 
 /**
  * The stored settings row, as `{ locale, theme, author_name,
@@ -124,8 +138,8 @@ export function useSettings(): UseQueryResult<{
     queryKey: ["settings", "read"],
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const { data, response } = await client.GET("/api/settings");
-      if (!response.ok || !data) throw new Error(`settings unavailable: ${response.status}`);
+      const { data, error, response } = await client.GET("/api/settings");
+      if (!response.ok || !data) throw refused("settings unavailable", response, error);
       return {
         locale: data.locale ?? null,
         theme: data.theme ?? null,
@@ -181,10 +195,7 @@ export function useUpdateSettings(): UseMutationResult<
       }
       const { error, response } = await client.PATCH("/api/settings", { body });
       if (!response.ok) {
-        throw Object.assign(new Error(`settings update refused: ${response.status}`), {
-          status: response.status,
-          detail: (error as { detail?: unknown } | null | undefined)?.detail,
-        });
+        throw refused("settings update refused", response, error);
       }
     },
     onSuccess: () => {
@@ -213,8 +224,10 @@ export function useTheme(): {
     const previous = theme;
     applyTheme(next);
     try {
-      const { response } = await client.PATCH("/api/settings/theme", { body: { theme: next } });
-      if (!response.ok) throw new Error(`refused: ${response.status}`);
+      const { error, response } = await client.PATCH("/api/settings/theme", {
+        body: { theme: next },
+      });
+      if (!response.ok) throw refused("refused", response, error);
       void queryClient.invalidateQueries({ queryKey: ["settings"] });
     } catch {
       applyTheme(previous === "light" || previous === "dark" ? previous : null);
@@ -260,12 +273,12 @@ export function useNovelsQuery(includeArchived = false): UseQueryResult<Novel[]>
     queryKey: ["novels", { include_archived: includeArchived }],
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, response } = includeArchived
+      const { data, error, response } = includeArchived
         ? await client.GET("/api/writing/novels", {
             params: { query: { include_archived: true } },
           })
         : await client.GET("/api/writing/novels");
-      if (!response.ok) throw new Error(`novels unavailable: ${response.status}`);
+      if (!response.ok) throw refused("novels unavailable", response, error);
       return data ?? [];
     },
   });
@@ -285,11 +298,11 @@ export function useActivityQuery(days = 30): UseQueryResult<Activity> {
   return useQuery({
     queryKey: ["activity", { days }],
     queryFn: async () => {
-      const { data, response } =
+      const { data, error, response } =
         days === 30
           ? await client.GET("/api/writing/activity")
           : await client.GET("/api/writing/activity", { params: { query: { days } } });
-      if (!response.ok || !data) throw new Error(`activity unavailable: ${response.status}`);
+      if (!response.ok || !data) throw refused("activity unavailable", response, error);
       return data;
     },
   });
@@ -305,8 +318,8 @@ export function useActivityQuery(days = 30): UseQueryResult<Activity> {
 export function useCreateNovel(): UseMutationResult<Novel, Error, NovelCreate> {
   return useMutation({
     mutationFn: async (input: NovelCreate) => {
-      const { data, response } = await client.POST("/api/writing/novels", { body: input });
-      if (!response.ok || !data) throw new Error(`create refused: ${response.status}`);
+      const { data, error, response } = await client.POST("/api/writing/novels", { body: input });
+      if (!response.ok || !data) throw refused("create refused", response, error);
       return data;
     },
     onSuccess: () => {
@@ -326,7 +339,7 @@ export function useNovelQuery(novelId: string): UseQueryResult<Novel> {
   return useQuery({
     queryKey: ["novels", novelId],
     queryFn: async () => {
-      const { data, response } = await client.GET("/api/writing/novels/{novel_id}", {
+      const { data, error, response } = await client.GET("/api/writing/novels/{novel_id}", {
         params: { path: { novel_id: novelId } },
       });
       if (!response.ok || !data) {
@@ -334,9 +347,7 @@ export function useNovelQuery(novelId: string): UseQueryResult<Novel> {
         // 404 is the one failure the workbench answers with a navigation —
         // the book was deleted elsewhere — so the machine-readable fact
         // must survive the query boundary.
-        throw Object.assign(new Error(`novel unavailable: ${response.status}`), {
-          status: response.status,
-        });
+        throw refused("novel unavailable", response, error);
       }
       return data;
     },
@@ -396,10 +407,7 @@ export function useUpdateNovel(): UseMutationResult<
         { params: { path: { novel_id: input.novelId } }, body: input.changes },
       );
       if (!response.ok || !data) {
-        throw Object.assign(new Error(`novel update refused: ${response.status}`), {
-          status: response.status,
-          detail: (error as { detail?: unknown } | null | undefined)?.detail,
-        });
+        throw refused("novel update refused", response, error);
       }
       return data;
     },
@@ -420,10 +428,10 @@ export function useUpdateNovel(): UseMutationResult<
 export function useDeleteNovel(): UseMutationResult<void, Error, string> {
   return useMutation({
     mutationFn: async (novelId: string) => {
-      const { response } = await client.DELETE("/api/writing/novels/{novel_id}", {
+      const { error, response } = await client.DELETE("/api/writing/novels/{novel_id}", {
         params: { path: { novel_id: novelId } },
       });
-      if (!response.ok) throw new Error(`novel delete refused: ${response.status}`);
+      if (!response.ok) throw refused("novel delete refused", response, error);
     },
     onSuccess: () => {
       void invalidateNovelShelf();
@@ -442,10 +450,11 @@ export function useDeleteNovel(): UseMutationResult<void, Error, string> {
 export function useDuplicateNovel(): UseMutationResult<Novel, Error, string> {
   return useMutation({
     mutationFn: async (novelId: string) => {
-      const { data, response } = await client.POST("/api/writing/novels/{novel_id}/duplicate", {
-        params: { path: { novel_id: novelId } },
-      });
-      if (!response.ok || !data) throw new Error(`duplicate refused: ${response.status}`);
+      const { data, error, response } = await client.POST(
+        "/api/writing/novels/{novel_id}/duplicate",
+        { params: { path: { novel_id: novelId } } },
+      );
+      if (!response.ok || !data) throw refused("duplicate refused", response, error);
       return data;
     },
     onSuccess: () => {
@@ -478,12 +487,12 @@ function filenameFromDisposition(header: string | null): string | null {
 export function useExportNovel(): UseMutationResult<ZipDownload, Error, string> {
   return useMutation({
     mutationFn: async (novelId: string) => {
-      const { data, response } = await client.POST("/api/writing/novels/{novel_id}/export", {
+      const { data, error, response } = await client.POST("/api/writing/novels/{novel_id}/export", {
         params: { path: { novel_id: novelId } },
         body: { mode: "zip" },
         parseAs: "blob",
       });
-      if (!response.ok || !data) throw new Error(`export refused: ${response.status}`);
+      if (!response.ok || !data) throw refused("export refused", response, error);
       // `parseAs: "blob"` reads the ZIP bytes at runtime; openapi-fetch's
       // init intersection widens the literal, so the inferred result still
       // names the JSON receipt the ZIP answer is not — one cast at the
@@ -515,11 +524,11 @@ export function useArchiveNovel(): UseMutationResult<
 > {
   return useMutation({
     mutationFn: async (input: { novelId: string; archived: boolean }) => {
-      const { data, response } = await client.PATCH("/api/writing/novels/{novel_id}", {
+      const { data, error, response } = await client.PATCH("/api/writing/novels/{novel_id}", {
         params: { path: { novel_id: input.novelId } },
         body: { archived_at: input.archived ? new Date().toISOString() : null },
       });
-      if (!response.ok || !data) throw new Error(`archive refused: ${response.status}`);
+      if (!response.ok || !data) throw refused("archive refused", response, error);
       return data;
     },
     onSuccess: () => {
@@ -542,10 +551,11 @@ export function useChaptersQuery(novelId: string): UseQueryResult<Chapter[]> {
   return useQuery({
     queryKey: ["chapters", novelId],
     queryFn: async () => {
-      const { data, response } = await client.GET("/api/writing/novels/{novel_id}/chapters", {
-        params: { path: { novel_id: novelId } },
-      });
-      if (!response.ok) throw new Error(`chapters unavailable: ${response.status}`);
+      const { data, error, response } = await client.GET(
+        "/api/writing/novels/{novel_id}/chapters",
+        { params: { path: { novel_id: novelId } } },
+      );
+      if (!response.ok) throw refused("chapters unavailable", response, error);
       return data ?? [];
     },
   });
@@ -591,8 +601,8 @@ export function useJobQuery(jobId: string | null): UseQueryResult<Job> {
       return status === "queued" || status === "running" ? 1000 : false;
     },
     queryFn: async () => {
-      if (jobId === null) throw new Error("no job to poll");
-      const { data, response } = await client.GET("/api/jobs/{job_id}", {
+      if (jobId === null) throw new ApiError("no job to poll");
+      const { data, error, response } = await client.GET("/api/jobs/{job_id}", {
         params: { path: { job_id: jobId } },
       });
       if (!response.ok || !data) {
@@ -602,9 +612,7 @@ export function useJobQuery(jobId: string | null): UseQueryResult<Job> {
         // machine-readable fact must survive the query boundary. A
         // network failure throws before this line and carries no
         // status, which is its own honest answer.
-        throw Object.assign(new Error(`job unavailable: ${response.status}`), {
-          status: response.status,
-        });
+        throw refused("job unavailable", response, error);
       }
       return data;
     },
@@ -668,7 +676,7 @@ export function useEntitiesQuery(
     queryKey: ["knowledge", "entities", novelId, filters],
     placeholderData: sameNovelPlaceholder(novelId),
     queryFn: async () => {
-      const { data, response } = await client.GET(
+      const { data, error, response } = await client.GET(
         "/api/knowledge/novels/{novel_id}/entities",
         {
           params: {
@@ -681,7 +689,7 @@ export function useEntitiesQuery(
           },
         },
       );
-      if (!response.ok) throw new Error(`entities unavailable: ${response.status}`);
+      if (!response.ok) throw refused("entities unavailable", response, error);
       return data ?? [];
     },
   });
@@ -696,11 +704,11 @@ export function useEntityRelationsQuery(entityId: string): UseQueryResult<Relati
   return useQuery({
     queryKey: ["knowledge", "relations", entityId],
     queryFn: async () => {
-      const { data, response } = await client.GET(
+      const { data, error, response } = await client.GET(
         "/api/knowledge/entities/{entity_id}/relations",
         { params: { path: { entity_id: entityId } } },
       );
-      if (!response.ok) throw new Error(`relations unavailable: ${response.status}`);
+      if (!response.ok) throw refused("relations unavailable", response, error);
       return data ?? [];
     },
   });
@@ -719,11 +727,11 @@ export function useNovelRelationsQuery(novelId: string): UseQueryResult<Relation
   return useQuery({
     queryKey: ["knowledge", "relations", "novel", novelId],
     queryFn: async () => {
-      const { data, response } = await client.GET(
+      const { data, error, response } = await client.GET(
         "/api/knowledge/novels/{novel_id}/relations",
         { params: { path: { novel_id: novelId } } },
       );
-      if (!response.ok) throw new Error(`novel relations unavailable: ${response.status}`);
+      if (!response.ok) throw refused("novel relations unavailable", response, error);
       return data ?? [];
     },
   });
@@ -755,7 +763,7 @@ export type RelationChanges = { relationType?: string; note?: string | null };
 export function useAddRelation(): UseMutationResult<Relation, Error, RelationInput> {
   return useMutation({
     mutationFn: async (input: RelationInput) => {
-      const { data, response } = await client.POST(
+      const { data, error, response } = await client.POST(
         "/api/knowledge/entities/{entity_id}/relations",
         {
           params: { path: { entity_id: input.entityId } },
@@ -770,10 +778,8 @@ export function useAddRelation(): UseMutationResult<Relation, Error, RelationInp
         // The refusal's status rides the throw (the accept path's carry):
         // a 409 is a duplicate the dialog names in its own words, not an
         // outage, so the machine-readable status must survive the mutation
-        // boundary. Every other refusal keeps its status-only Error.
-        throw Object.assign(new Error(`add relation refused: ${response.status}`), {
-          status: response.status,
-        });
+        // boundary.
+        throw refused("add relation refused", response, error);
       }
       return data;
     },
@@ -791,16 +797,17 @@ export function useUpdateRelation(): UseMutationResult<
 > {
   return useMutation({
     mutationFn: async (input: { relationId: string } & RelationChanges) => {
-      const { data, response } = await client.PATCH("/api/knowledge/relations/{relation_id}", {
-        params: { path: { relation_id: input.relationId } },
-        body: { relation_type: input.relationType, note: input.note },
-      });
+      const { data, error, response } = await client.PATCH(
+        "/api/knowledge/relations/{relation_id}",
+        {
+          params: { path: { relation_id: input.relationId } },
+          body: { relation_type: input.relationType, note: input.note },
+        },
+      );
       if (!response.ok || !data) {
         // The add path's carry: the status rides the throw, so a 409 can
         // be named as the duplicate it is, not as an outage.
-        throw Object.assign(new Error(`relation update refused: ${response.status}`), {
-          status: response.status,
-        });
+        throw refused("relation update refused", response, error);
       }
       return data;
     },
@@ -814,10 +821,10 @@ export function useUpdateRelation(): UseMutationResult<
 export function useDeleteRelation(): UseMutationResult<void, Error, { relationId: string }> {
   return useMutation({
     mutationFn: async (input: { relationId: string }) => {
-      const { response } = await client.DELETE("/api/knowledge/relations/{relation_id}", {
+      const { error, response } = await client.DELETE("/api/knowledge/relations/{relation_id}", {
         params: { path: { relation_id: input.relationId } },
       });
-      if (!response.ok) throw new Error(`relation delete refused: ${response.status}`);
+      if (!response.ok) throw refused("relation delete refused", response, error);
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
@@ -831,11 +838,11 @@ export function usePendingSuggestionsQuery(novelId: string): UseQueryResult<Sugg
   return useQuery({
     queryKey: ["knowledge", "suggestions", novelId],
     queryFn: async () => {
-      const { data, response } = await client.GET(
+      const { data, error, response } = await client.GET(
         "/api/knowledge/novels/{novel_id}/suggestions",
         { params: { path: { novel_id: novelId }, query: { status: "pending" } } },
       );
-      if (!response.ok) throw new Error(`suggestions unavailable: ${response.status}`);
+      if (!response.ok) throw refused("suggestions unavailable", response, error);
       return data ?? [];
     },
   });
@@ -857,10 +864,7 @@ async function searchCorpus(query: string): Promise<Hit[]> {
     body: { query, limit },
   });
   if (!response.ok) {
-    throw Object.assign(new Error(`search unavailable: ${response.status}`), {
-      status: response.status,
-      detail: (error as { detail?: unknown } | null | undefined)?.detail,
-    });
+    throw refused("search unavailable", response, error);
   }
   return data ?? [];
 }
@@ -929,8 +933,8 @@ export function useDocumentsQuery(): UseQueryResult<KnowledgeDocument[]> {
   return useQuery({
     queryKey: ["knowledge", "documents"],
     queryFn: async () => {
-      const { data, response } = await client.GET("/api/knowledge/documents");
-      if (!response.ok) throw new Error(`documents unavailable: ${response.status}`);
+      const { data, error, response } = await client.GET("/api/knowledge/documents");
+      if (!response.ok) throw refused("documents unavailable", response, error);
       return data ?? [];
     },
   });
@@ -961,10 +965,7 @@ export function useUploadDocument(): UseMutationResult<KnowledgeDocument, Error,
         body: form as unknown as { file: string },
       });
       if (!response.ok || !data) {
-        throw Object.assign(new Error(`upload refused: ${response.status}`), {
-          status: response.status,
-          detail: (error as { detail?: unknown } | null | undefined)?.detail,
-        });
+        throw refused("upload refused", response, error);
       }
       return data;
     },
@@ -990,10 +991,11 @@ export function useUploadDocument(): UseMutationResult<KnowledgeDocument, Error,
 export function useDeleteDocument(): UseMutationResult<void, Error, string> {
   return useMutation({
     mutationFn: async (documentId: string) => {
-      const { response } = await client.DELETE("/api/knowledge/documents/{document_id}", {
-        params: { path: { document_id: documentId } },
-      });
-      if (!response.ok) throw new Error(`document delete refused: ${response.status}`);
+      const { error, response } = await client.DELETE(
+        "/api/knowledge/documents/{document_id}",
+        { params: { path: { document_id: documentId } } },
+      );
+      if (!response.ok) throw refused("document delete refused", response, error);
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "documents"] });
@@ -1010,11 +1012,14 @@ export function useEnqueueExtraction(
 ): UseMutationResult<{ job_id: string }, Error, { chapterId: string }> {
   return useMutation({
     mutationFn: async (input: { chapterId: string }) => {
-      const { data, response } = await client.POST("/api/knowledge/extraction/{novel_id}", {
-        params: { path: { novel_id: novelId } },
-        body: { chapter_id: input.chapterId },
-      });
-      if (!response.ok || !data) throw new Error(`extraction refused: ${response.status}`);
+      const { data, error, response } = await client.POST(
+        "/api/knowledge/extraction/{novel_id}",
+        {
+          params: { path: { novel_id: novelId } },
+          body: { chapter_id: input.chapterId },
+        },
+      );
+      if (!response.ok || !data) throw refused("extraction refused", response, error);
       return data;
     },
     onSuccess: () => {
@@ -1029,11 +1034,11 @@ export function useFindingsQuery(novelId: string): UseQueryResult<Finding[]> {
   return useQuery({
     queryKey: ["knowledge", "findings", novelId],
     queryFn: async () => {
-      const { data, response } = await client.GET(
+      const { data, error, response } = await client.GET(
         "/api/knowledge/novels/{novel_id}/findings",
         { params: { path: { novel_id: novelId }, query: { status: "pending" } } },
       );
-      if (!response.ok) throw new Error(`findings unavailable: ${response.status}`);
+      if (!response.ok) throw refused("findings unavailable", response, error);
       return data ?? [];
     },
   });
@@ -1047,10 +1052,11 @@ export function useEnqueueCheck(
 ): UseMutationResult<{ job_id: string }, Error, void> {
   return useMutation({
     mutationFn: async () => {
-      const { data, response } = await client.POST("/api/knowledge/consistency/{novel_id}", {
-        params: { path: { novel_id: novelId } },
-      });
-      if (!response.ok || !data) throw new Error(`check refused: ${response.status}`);
+      const { data, error, response } = await client.POST(
+        "/api/knowledge/consistency/{novel_id}",
+        { params: { path: { novel_id: novelId } } },
+      );
+      if (!response.ok || !data) throw refused("check refused", response, error);
       return data;
     },
     onSuccess: () => {
@@ -1070,11 +1076,11 @@ export function useAcknowledgeFinding(
 ): UseMutationResult<Finding, Error, string> {
   return useMutation({
     mutationFn: async (findingId: string) => {
-      const { data, response } = await client.POST(
+      const { data, error, response } = await client.POST(
         "/api/knowledge/findings/{finding_id}/acknowledge",
         { params: { path: { finding_id: findingId } } },
       );
-      if (!response.ok || !data) throw new Error(`acknowledge refused: ${response.status}`);
+      if (!response.ok || !data) throw refused("acknowledge refused", response, error);
       return data;
     },
     onSettled: () => {
@@ -1089,11 +1095,11 @@ export function useDismissFinding(
 ): UseMutationResult<Finding, Error, string> {
   return useMutation({
     mutationFn: async (findingId: string) => {
-      const { data, response } = await client.POST(
+      const { data, error, response } = await client.POST(
         "/api/knowledge/findings/{finding_id}/dismiss",
         { params: { path: { finding_id: findingId } } },
       );
-      if (!response.ok || !data) throw new Error(`dismiss refused: ${response.status}`);
+      if (!response.ok || !data) throw refused("dismiss refused", response, error);
       return data;
     },
     onSettled: () => {
@@ -1121,10 +1127,8 @@ export function useAcceptSuggestion(
         // The refusal's detail rides the throw: one failure here has a fix
         // the UI can name (the embedding model changed, the re-embed is
         // owed first), so the machine-readable code must survive the
-        // mutation boundary. Every other refusal keeps its status-only Error.
-        throw Object.assign(new Error(`accept refused: ${response.status}`), {
-          detail: (error as { detail?: unknown } | null | undefined)?.detail,
-        });
+        // mutation boundary.
+        throw refused("accept refused", response, error);
       }
       return data;
     },
@@ -1141,11 +1145,11 @@ export function useDiscardSuggestion(
 ): UseMutationResult<Suggestion, Error, string> {
   return useMutation({
     mutationFn: async (suggestionId: string) => {
-      const { data, response } = await client.POST(
+      const { data, error, response } = await client.POST(
         "/api/knowledge/suggestions/{suggestion_id}/discard",
         { params: { path: { suggestion_id: suggestionId } } },
       );
-      if (!response.ok || !data) throw new Error(`discard refused: ${response.status}`);
+      if (!response.ok || !data) throw refused("discard refused", response, error);
       return data;
     },
     onSettled: () => {
@@ -1173,11 +1177,14 @@ export function useUpdateEntity(
 ): UseMutationResult<Entity, Error, { entityId: string; changes: EntityChanges }> {
   return useMutation({
     mutationFn: async (input: { entityId: string; changes: EntityChanges }) => {
-      const { data, response } = await client.PATCH("/api/knowledge/entities/{entity_id}", {
-        params: { path: { entity_id: input.entityId } },
-        body: input.changes,
-      });
-      if (!response.ok || !data) throw new Error(`update refused: ${response.status}`);
+      const { data, error, response } = await client.PATCH(
+        "/api/knowledge/entities/{entity_id}",
+        {
+          params: { path: { entity_id: input.entityId } },
+          body: input.changes,
+        },
+      );
+      if (!response.ok || !data) throw refused("update refused", response, error);
       return data;
     },
     onSettled: () => {
@@ -1191,10 +1198,10 @@ export function useUpdateEntity(
 export function useDeleteEntity(novelId: string): UseMutationResult<void, Error, string> {
   return useMutation({
     mutationFn: async (entityId: string) => {
-      const { response } = await client.DELETE("/api/knowledge/entities/{entity_id}", {
+      const { error, response } = await client.DELETE("/api/knowledge/entities/{entity_id}", {
         params: { path: { entity_id: entityId } },
       });
-      if (!response.ok) throw new Error(`delete refused: ${response.status}`);
+      if (!response.ok) throw refused("delete refused", response, error);
     },
     onSettled: () => {
       void invalidateEntities(novelId);
@@ -1212,11 +1219,11 @@ export function useMergeEntities(
 ): UseMutationResult<Entity, Error, { sourceId: string; targetId: string }> {
   return useMutation({
     mutationFn: async (input: { sourceId: string; targetId: string }) => {
-      const { data, response } = await client.POST(
+      const { data, error, response } = await client.POST(
         "/api/knowledge/entities/{entity_id}/merge",
         { params: { path: { entity_id: input.sourceId } }, body: { target_id: input.targetId } },
       );
-      if (!response.ok || !data) throw new Error(`merge refused: ${response.status}`);
+      if (!response.ok || !data) throw refused("merge refused", response, error);
       return data;
     },
     onSettled: () => {
@@ -1230,19 +1237,11 @@ export function useMergeEntities(
 }
 
 /** The create's failure, enriched for the dialog: the status picks the copy
- *  family, `code` and `detail` carry the backend's coded refusal, `row` names
- *  the visible row the dialog marks, and `field` is carried for a field-level
- *  marking the dialog does not do — the refusal's sentence says what to check
- *  (the prompt editor's precedent beside the knowledge hooks). */
-export type WireError = Error & {
-  status?: number;
-  code?: string;
-  detail?: string;
-  row?: number;
-  field?: string;
-};
-
-function createEntityFailure(cause: unknown): WireError {
+ *  family, `code` and `detail` carry the backend's coded refusal, and `row`
+ *  names the visible row the dialog marks; `field` rides along for a
+ *  field-level marking the dialog does not do. A request that never reached
+ *  the server keeps its own recognisable shape (`TransportError`). */
+function createEntityFailure(cause: unknown): ApiError {
   const failure = cause as {
     response?: Response;
     error?: { detail?: { code?: string; detail?: string; row?: number; field?: string } };
@@ -1252,15 +1251,14 @@ function createEntityFailure(cause: unknown): WireError {
     // A transport failure carries no HTTP answer: the browser's own
     // «Failed to fetch» is English and names no cause a writer can act on,
     // so the dialog renders the catalog's sentence instead.
-    return Object.assign(new Error("create refused: transport"), { code: "transport" });
+    return new TransportError("create refused", cause);
   }
   const detail = failure?.error?.detail;
-  return Object.assign(new Error(`create refused: ${response.status}`), {
+  return new ApiError("create refused", {
     status: response.status,
     code: detail?.code,
     detail: detail?.detail,
-    row: detail?.row,
-    field: detail?.field,
+    extra: { row: detail?.row, field: detail?.field },
   });
 }
 
@@ -1270,7 +1268,7 @@ function createEntityFailure(cause: unknown): WireError {
  * and the dossiers refetch the server's truth, never an optimistic row — and
  * the shelf's canon rule follows, because a birth is a write to the book.
  */
-export function useCreateEntity(): UseMutationResult<Entity, WireError, EntityCreate> {
+export function useCreateEntity(): UseMutationResult<Entity, ApiError, EntityCreate> {
   return useMutation({
     mutationFn: async (body: EntityCreate) => {
       const result = await client.POST("/api/knowledge/entities", { body }).catch((cause: unknown) => {
@@ -1317,11 +1315,11 @@ export function useTimelineEvents(novelId: string): UseQueryResult<TimelineEvent
   return useQuery({
     queryKey: ["planning", "timeline", novelId],
     queryFn: async () => {
-      const { data, response } = await client.GET(
+      const { data, error, response } = await client.GET(
         "/api/planning/novels/{novel_id}/timeline-events",
         { params: { path: { novel_id: novelId } } },
       );
-      if (!response.ok) throw new Error(`timeline events unavailable: ${response.status}`);
+      if (!response.ok) throw refused("timeline events unavailable", response, error);
       return data ?? [];
     },
   });
@@ -1364,10 +1362,7 @@ export function useCreateTimelineEvent(
         { params: { path: { novel_id: novelId } }, body: input },
       );
       if (!response.ok || !data) {
-        throw Object.assign(new Error(`event create refused: ${response.status}`), {
-          status: response.status,
-          detail: (error as { detail?: unknown } | null | undefined)?.detail,
-        });
+        throw refused("event create refused", response, error);
       }
       return data;
     },
@@ -1400,10 +1395,7 @@ export function useUpdateTimelineEvent(
         },
       );
       if (!response.ok || !data) {
-        throw Object.assign(new Error(`event update refused: ${response.status}`), {
-          status: response.status,
-          detail: (error as { detail?: unknown } | null | undefined)?.detail,
-        });
+        throw refused("event update refused", response, error);
       }
       return data;
     },
@@ -1424,11 +1416,11 @@ export function useDeleteTimelineEvent(
 ): UseMutationResult<void, Error, string> {
   return useMutation({
     mutationFn: async (eventId: string) => {
-      const { response } = await client.DELETE(
+      const { error, response } = await client.DELETE(
         "/api/planning/novels/{novel_id}/timeline-events/{event_id}",
         { params: { path: { novel_id: novelId, event_id: eventId } } },
       );
-      if (!response.ok) throw new Error(`event delete refused: ${response.status}`);
+      if (!response.ok) throw refused("event delete refused", response, error);
     },
     onSettled: () => {
       invalidateTimeline(novelId);
@@ -1473,14 +1465,14 @@ export function useNovelScenes(
     queries: chapters.map((chapter) => ({
       queryKey: chapterScenesKey(chapter.id),
       queryFn: async () => {
-        const { data, response } = await client.GET(
+        const { data, error, response } = await client.GET(
           "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes",
           {
             params: { path: { novel_id: chapter.novel_id, chapter_id: chapter.id } },
           },
         );
         if (!response.ok || !data) {
-          throw new Error(`scenes unavailable: ${response.status}`);
+          throw refused("scenes unavailable", response, error);
         }
         return data;
       },
@@ -1513,10 +1505,11 @@ export function useStoryboard(novelId: string): UseQueryResult<Storyboard> {
   return useQuery({
     queryKey: ["planning", "storyboard", novelId],
     queryFn: async () => {
-      const { data, response } = await client.GET("/api/planning/novels/{novel_id}/storyboard", {
-        params: { path: { novel_id: novelId } },
-      });
-      if (!response.ok || !data) throw new Error(`storyboard unavailable: ${response.status}`);
+      const { data, error, response } = await client.GET(
+        "/api/planning/novels/{novel_id}/storyboard",
+        { params: { path: { novel_id: novelId } } },
+      );
+      if (!response.ok || !data) throw refused("storyboard unavailable", response, error);
       return data;
     },
   });
@@ -1546,10 +1539,7 @@ export function useSetChapterStage(
         },
       );
       if (!response.ok || !data) {
-        throw Object.assign(new Error(`stage assignment refused: ${response.status}`), {
-          status: response.status,
-          detail: (error as { detail?: unknown } | null | undefined)?.detail,
-        });
+        throw refused("stage assignment refused", response, error);
       }
       return data;
     },
@@ -1578,10 +1568,7 @@ export function useRemapStoryboard(
         body: { structure_id: input.structureId, confirm: input.confirm },
       });
       if (!response.ok || !data) {
-        throw Object.assign(new Error(`remap refused: ${response.status}`), {
-          status: response.status,
-          detail: (error as { detail?: unknown } | null | undefined)?.detail,
-        });
+        throw refused("remap refused", response, error);
       }
       return data;
     },
@@ -1656,10 +1643,7 @@ export function useSaveChapterScenes(
         // through on a broken read would name last-writer-wins for a
         // writer who never chose it.
         if (!response.ok || data === undefined) {
-          throw Object.assign(new Error(`scene aggregate pre-read refused: ${response.status}`), {
-            status: response.status,
-            detail: (error as { detail?: unknown } | null | undefined)?.detail,
-          });
+          throw refused("scene aggregate pre-read refused", response, error);
         }
         if (data.version_updated_at !== input.expectedVersion) {
           // The server's copy is the answer the conflict face shows — and
@@ -1679,10 +1663,7 @@ export function useSaveChapterScenes(
         },
       );
       if (!response.ok || !data) {
-        throw Object.assign(new Error(`scene aggregate refused: ${response.status}`), {
-          status: response.status,
-          detail: (error as { detail?: unknown } | null | undefined)?.detail,
-        });
+        throw refused("scene aggregate refused", response, error);
       }
       return data;
     },
@@ -1733,19 +1714,17 @@ function invalidateNovelShelf(): void {
 /** The session read's coded refusal (`{"detail": {"code", "detail"}}`) as the
  *  panel names it. A transport failure has no HTTP answer and is the one
  *  provider failure the panel can only describe, never inspect. */
-function assistantFailure(cause: unknown): WireError {
+function assistantFailure(cause: unknown): ApiError {
   const failure = cause as {
     response?: Response;
     error?: { detail?: { code?: string; detail?: string } };
   };
   const response = failure?.response;
   if (response === undefined) {
-    return Object.assign(new Error("assistant session failed: transport"), {
-      code: "provider-error",
-    });
+    return new ApiError("assistant session failed", { code: "provider-error" });
   }
   const detail = failure?.error?.detail;
-  return Object.assign(new Error(`assistant session failed: ${response.status}`), {
+  return new ApiError("assistant session failed", {
     status: response.status,
     code: detail?.code ?? (response.status === 404 ? "not-found" : undefined),
     detail: detail?.detail,
@@ -1803,7 +1782,7 @@ export function useAssistantSessionQuery(
 /** Open one interview: the panel always sends its mode and the chosen type. */
 export function useOpenAssistantSession(): UseMutationResult<
   AssistantSessionRead,
-  WireError,
+  ApiError,
   AssistantSessionCreate
 > {
   return useMutation({
@@ -1824,7 +1803,7 @@ export function useOpenAssistantSession(): UseMutationResult<
  *  panel's text lives in its own state, so a failed turn has lost nothing. */
 export function useAssistantTurn(): UseMutationResult<
   AssistantTurnReadback,
-  WireError,
+  ApiError,
   { sessionId: string; body: AssistantTurnCreate }
 > {
   return useMutation({
@@ -1849,7 +1828,7 @@ export function useAssistantTurn(): UseMutationResult<
  *  the row from the open group. */
 export function useCloseAssistantSession(): UseMutationResult<
   AssistantSessionRead,
-  WireError,
+  ApiError,
   string
 > {
   return useMutation({

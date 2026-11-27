@@ -8,7 +8,7 @@ catalog carries. The registry tests pin what ``typescript_help`` emits for
 a scanned tree: canonical ids, per-locale lazy ``?raw`` loads, escaped
 titles, and the default sort order. The coverage tests pin what
 ``help_coverage`` emits: the per-topic locale matrix, the alphabetical
-capability sections, and the list of capabilities that ship no help.
+capability sections, and the list of UI capabilities that ship no help.
 """
 
 import sys
@@ -28,12 +28,15 @@ class HelpRootTestCase(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         root = Path(tmp.name)
-        # locales(root) resolves from the central files' names; the scan
-        # never reads their contents.
+        # locales(root) reads the registry and checks it against the central
+        # files' names; the scan never reads their contents.
         i18n = root / "i18n"
         i18n.mkdir()
         for locale in ("en", "de", "fr"):
             (i18n / f"{locale}.json").write_text("{}", encoding="utf-8")
+        registry = i18n / "registry" / "locales.json"
+        registry.parent.mkdir()
+        registry.write_text('{"locales": ["de", "en", "fr"]}\n', encoding="utf-8")
         base = root / "app" / "capabilities" / "writing" / "web" / "help"
         for rel, body in files.items():
             path = base / rel
@@ -249,10 +252,12 @@ class HelpCoverageTests(HelpRootTestCase):
     """The coverage report: what help_coverage emits for a capability tree."""
 
     def _capability(self, root: Path, name: str) -> None:
-        """One capability folder with just the capability.yaml that names it."""
+        """One capability folder with the capability.yaml that names it and a
+        web/ directory: the coverage report counts capabilities that own a UI."""
         folder = root / "app" / "capabilities" / name
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "capability.yaml").write_text(f"id: {name}\n", encoding="utf-8")
+        (folder / "web").mkdir(exist_ok=True)
 
     def _topic(self, root: Path, capability: str, locale: str, slug: str) -> None:
         """One valid help topic file under a capability's help tree."""
@@ -278,8 +283,8 @@ class HelpCoverageTests(HelpRootTestCase):
             "\n"
             "# Help coverage\n"
             "\n"
-            "One row per capability that ships help; capabilities without help"
-            " are listed at the bottom.\n"
+            "One row per topic under each capability that ships help; UI"
+            " capabilities without help are listed at the bottom.\n"
             "\n"
             "## writing\n"
             "\n"
@@ -320,6 +325,19 @@ class HelpCoverageTests(HelpRootTestCase):
         out = help_coverage(root)
         self.assertNotIn("## writing", out)
         self.assertIn("## Capabilities without help\n\n- chat\n- writing\n", out)
+
+    def test_coverage_leaves_out_a_capability_without_a_web_directory(self):
+        # The missing list counts UI capabilities only: a capability whose
+        # web/ directory is gone owes no help, so it is absent from the report
+        # entirely instead of closing it as missing.
+        root = self._make({})
+        self._capability(root, "writing")
+        folder = root / "app" / "capabilities" / "backend_only"
+        folder.mkdir(parents=True)
+        (folder / "capability.yaml").write_text("id: backend_only\n", encoding="utf-8")
+        out = help_coverage(root)
+        self.assertIn("## Capabilities without help\n\n- writing\n", out)
+        self.assertNotIn("backend_only", out)
 
     def test_coverage_ignores_folders_without_capability_yaml(self):
         root = self._make(

@@ -17,7 +17,7 @@
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
-import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -33,15 +33,15 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Activity, type Chapter, type Novel, type Scene, type Storyboard } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { capabilityRoutes } from "@shell/lib/generated/routes";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient, takeNovelDeletedElsewhere } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
+import { de } from "@shell/lib/test/catalogs";
 
+import { AUTOSAVE_DELAY_MS } from "./useAutosave";
 import { requestDeskFocus } from "./workspace";
 
-const de = catalogs.de;
 const NOVEL_ID = "11111111-1111-1111-1111-111111111111";
 
 // jsdom lays out nothing: Element geometry reports zeros, but Range geometry
@@ -301,6 +301,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   queryClient.clear();
   vi.clearAllMocks();
   vi.unstubAllGlobals();
@@ -462,14 +463,26 @@ describe("loading, error and the 404 degrade", () => {
       screen.getByText("Deine Änderungen bleiben im Editor, bis sie gesichert sind."),
     ).toBeTruthy();
     expect(screen.getByText(de["writing.workspace.error.body"])).toBeTruthy();
+    // The catalog's sentence rides the card — never the seam's own English.
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain(de["errors.server"]);
+    expect(alert.textContent).not.toContain("novel unavailable");
     // The offline door is gone — the retry stands alone.
     expect(screen.queryByText(/Offline/)).toBeNull();
-    const alert = screen.getByRole("alert");
     expect(within(alert).getAllByRole("button")).toHaveLength(1);
     fireEvent.click(within(alert).getByRole("button", { name: "Erneut versuchen" }));
     expect(
       await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" }),
     ).toBeTruthy();
+  });
+
+  it("a scene-list 503 names the server — never something unexpected", async () => {
+    scenesAnswer = async () => ({ data: undefined, response: new Response(null, { status: 503 }) });
+    await renderWorkspace();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(de["errors.server"]);
+    expect(alert.textContent).not.toContain(de["errors.unexpected"]);
+    expect(alert.textContent).not.toContain("scenes unavailable");
   });
 
   it("a 404 degrades to the shelf with the deleted-elsewhere note", async () => {
@@ -697,28 +710,68 @@ describe("the delete flows — always allowed, the cascade honest", () => {
   it("deleting the active scene selects its neighbour — and drops the dead scene's draft", async () => {
     await renderWorkspace();
     await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
-    // A pending body on the active scene — the delete must discard it,
-    // never flush it into a row that no longer exists.
-    const user = userEvent.setup({ pointerEventsCheck: 0 });
-    screen.getByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] }).focus();
-    await user.keyboard(" Ungesichert.");
-    expect(await screen.findByText(de["writing.workspace.ribbon.unsaved"])).toBeTruthy();
+    // The draft's wire waits on the autosave's 800 ms debounce. Hold that
+    // clock from the first keystroke, so the delete sequence cannot race it,
+    // then advance it only after the DELETE has landed.
+    vi.useFakeTimers();
+    try {
+      // Testing Library detects fake timers through a Jest-style global; with
+      // Vitest's clock it then advances the held timers inside `waitFor`.
+      // Without the shim, waitFor's own interval never fires and the test
+      // stalls — the clock is held, its waits still have to move.
+      vi.stubGlobal("jest", { advanceTimersByTime: vi.advanceTimersByTime.bind(vi) });
+      // A pending body on the active scene — the delete must discard it,
+      // never flush it into a row that no longer exists.
+      const user = userEvent.setup({
+        pointerEventsCheck: 0,
+        advanceTimers: vi.advanceTimersByTime,
+      });
+      screen.getByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] }).focus();
+      await user.keyboard(" Ungesichert.");
+      expect(await screen.findByText(de["writing.workspace.ribbon.unsaved"])).toBeTruthy();
 
-    await openSceneMenu(/Szene 2 · Das Signal im Permafrost/);
-    fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.delete"] }));
-    chaptersAnswer = async () => ({ data: [{ ...CH1, scene_count: 1, word_count: 342 }, CH2], response: ok() });
-    scenesAnswer = async (chapterId) => ({ data: chapterId === "c1" ? [S11] : [S21], response: ok() });
-    fireEvent.click(
-      await screen.findByRole("button", { name: de["writing.workspace.crud.deleteConfirm"] }),
-    );
-    await waitFor(() => expect(api.DELETE).toHaveBeenCalled());
-    // The neighbour (the previous scene — the deleted one was the last).
-    expect(await screen.findByRole("heading", { level: 1, name: "An Bord der Vanguard" })).toBeTruthy();
-    // The discarded draft never reached the wire: no PUT to the dead scene.
-    const deadPuts = api.PUT.mock.calls.filter(
-      (call) => call[0] === "/api/writing/scenes/{scene_id}" && call[1].params.path.scene_id === "s12",
-    );
-    expect(deadPuts).toEqual([]);
+      await openSceneMenu(/Szene 2 · Das Signal im Permafrost/);
+      fireEvent.click(screen.getByRole("button", { name: de["writing.workspace.tree.delete"] }));
+      chaptersAnswer = async () => ({ data: [{ ...CH1, scene_count: 1, word_count: 342 }, CH2], response: ok() });
+      scenesAnswer = async (chapterId) => ({ data: chapterId === "c1" ? [S11] : [S21], response: ok() });
+      fireEvent.click(
+        await screen.findByRole("button", { name: de["writing.workspace.crud.deleteConfirm"] }),
+      );
+      await waitFor(() => expect(api.DELETE).toHaveBeenCalled());
+      // The neighbour (the previous scene — the deleted one was the last).
+      expect(await screen.findByRole("heading", { level: 1, name: "An Bord der Vanguard" })).toBeTruthy();
+
+      // The DELETE landed, so its discard has retired the armed timer. Advance
+      // the held clock past the debounce the draft was waiting out: a draft
+      // that survived the delete would now leave — for the dead scene, or for
+      // the neighbour the dead draft was mistakenly re-aimed at.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS + 1);
+      });
+
+      const deleteCall = api.DELETE.mock.calls.findIndex(
+        ([path, init]) =>
+          path === "/api/writing/scenes/{scene_id}" && init?.params?.path?.scene_id === "s12",
+      );
+      expect(deleteCall).toBeGreaterThanOrEqual(0);
+      const deleteOrder = api.DELETE.mock.invocationCallOrder[deleteCall];
+      const putsAfterDelete = api.PUT.mock.calls.filter(
+        (_call, index) => api.PUT.mock.invocationCallOrder[index] > deleteOrder,
+      );
+      // The named contract: no PUT for the dead scene after the DELETE.
+      const deadPutsAfterDelete = putsAfterDelete.filter(
+        (call) => call[0] === "/api/writing/scenes/{scene_id}" && call[1].params.path.scene_id === "s12",
+      );
+      expect(deadPutsAfterDelete).toEqual([]);
+      // The stronger fact the case exists for: the draft dies with the row, so
+      // advancing its clock cannot put those words on any scene's wire.
+      const draftLeaks = putsAfterDelete.filter((call) =>
+        ((call[1]?.body as { body?: string } | undefined)?.body ?? "").includes("Ungesichert"),
+      );
+      expect(draftLeaks).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("deleting a chapter cascades its scenes and opens the neighbour — the last chapter leaves the empty book", async () => {

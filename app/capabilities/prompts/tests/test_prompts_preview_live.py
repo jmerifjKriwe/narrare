@@ -248,6 +248,8 @@ async def test_a_broken_draft_is_refused_by_the_render_s_own_reason() -> None:
         assert preview.status_code == 422
         body = preview.json()["detail"]
         assert body["reason"] == "undefined-variable"
+        assert body["name"] == "nope"
+        assert "line" not in body
         assert "nope" in body["detail"]
 
 
@@ -673,7 +675,10 @@ async def test_a_draft_that_fails_the_gate_is_refused_before_any_call() -> None:
             f"/api/prompts/{CONTINUATION}/live-test", json={"content": "Hello {{ nope }}"}
         )
         assert refused.status_code == 422
-        assert refused.json()["detail"]["reason"] == "undefined-variable"
+        body = refused.json()["detail"]
+        assert body["reason"] == "undefined-variable"
+        assert body["name"] == "nope"
+        assert "line" not in body
         assert await _audit_rows() == []
 
         # The refused draft consumed no rate-limit window: the next call goes through.

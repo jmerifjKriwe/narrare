@@ -24,14 +24,13 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Chapter, type Scene } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de } from "@shell/lib/test/catalogs";
 
 import { DeleteTreeDialog, TreeEditDialog } from "./TreeDialogs";
 import type { SceneEntry } from "./workspace";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"PUT" | "DELETE", ReturnType<typeof vi.fn>>;
 
 const CHAPTER: Chapter = {

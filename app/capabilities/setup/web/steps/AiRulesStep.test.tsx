@@ -27,13 +27,13 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
 import { storePreSetupLocale } from "@shell/lib/preSetupLocale";
+import { de, en } from "@shell/lib/test/catalogs";
 import { routes } from "../routes";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
@@ -77,7 +77,6 @@ function renderAiRules(entry = "/setup/ai-rules") {
 }
 
 /** The step's controls, named by the German catalog the mirror adopts. */
-const de = catalogs.de;
 const continueButton = () => screen.getByRole("button", { name: de["setup.aiRules.continue"] });
 const backButton = () => screen.getByRole("link", { name: de["setup.aiRules.back"] });
 const roleRadio = (key: "archivar" | "lektor" | "coautor" | "sparring") =>
@@ -316,7 +315,7 @@ describe("the AI-rules step's header", () => {
     expect(radios[0].getAttribute("aria-checked")).toBe("true");
 
     fireEvent.click(screen.getByRole("radio", { name: "English" }));
-    await screen.findByRole("heading", { level: 1, name: catalogs.en["setup.aiRules.heroTitle"] });
+    await screen.findByRole("heading", { level: 1, name: en["setup.aiRules.heroTitle"] });
     expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "en" } });
   });
 });

@@ -141,8 +141,9 @@ A first run needs the toolchain below and two commands.
 ### Requirements
 
 You need [Python 3.14+](https://www.python.org/downloads/) with
-[uv](https://docs.astral.sh/uv/), [Node.js 22+](https://nodejs.org/) with
-[pnpm](https://pnpm.io/), [Docker](https://docs.docker.com/get-docker/) with Compose,
+[uv](https://docs.astral.sh/uv/), [Node.js](https://nodejs.org/) (the major
+[`.nvmrc`](.nvmrc) names) with [pnpm](https://pnpm.io/),
+[Docker](https://docs.docker.com/get-docker/) with Compose,
 [just](https://just.systems/), and the PostgreSQL client tools
 (`postgresql-client` 17, or the version matching the Compose Postgres —
 needed before the first upgrade of a populated database: its pre-upgrade

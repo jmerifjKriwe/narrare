@@ -16,11 +16,13 @@ budget — is the [v2 architecture spec](../superpowers/specs/2026-10-21-narrare
 4. **Every user-owned row carries `user_id`**; data access goes through the scoped
    repository base.
 5. **English in code, tests and developer documentation; user-visible text in
-   every catalog the app carries** (en, de, fr today) through `i18n/<code>.json`
-   for shared text and `app/capabilities/<id>/web/i18n/<code>.json` for
-   capability text. Every catalog is sorted, carries the same keys, and writes
-   the plural categories its copy needs (`other` is ICU's fallback); a missing
-   key is a build error.
+   every catalog the app carries** through `i18n/<code>.json` for shared text and
+   `app/capabilities/<id>/web/i18n/<code>.json` for capability text. The languages
+   and their display order come from `i18n/registry/locales.json`, never from a
+   list in code. Every catalog is sorted, carries the same keys, and writes every
+   plural category its language has — except a lone `many` where the language's
+   set is exactly `one/many/other`; `other` remains the runtime fallback. A
+   missing key is a build error.
 
 ## Flakes
 

@@ -134,7 +134,12 @@ describe("the / shelf gate", () => {
     renderTree("/");
 
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("503");
+    // The root's error face names the server family — the status read's 503
+    // is a server outage, not an unexpected failure, and never the seam's
+    // own English.
+    expect(alert.textContent).toContain(t("errors.server"));
+    expect(alert.textContent).not.toContain(t("errors.unexpected"));
+    expect(alert.textContent).not.toContain("setup status unavailable");
     expect(screen.queryByText("shelf placeholder")).toBeNull();
     expect(screen.queryByText(t("setup.welcome.heroTitle"))).toBeNull();
   });

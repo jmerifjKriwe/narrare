@@ -45,7 +45,6 @@
 
 import type { Chapter, Novel } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
-import { activeLocale } from "@shell/lib/locale";
 import { capitalizedWord } from "@shell/lib/numberWords";
 import { unsavedStatus, type SaveStatus } from "@shell/lib/saveStatus";
 import { countWords } from "@shell/lib/words";
@@ -264,7 +263,6 @@ function ScenePaper({
   zenBusy: boolean;
 }) {
   const t = useTranslation();
-  const locale = activeLocale();
   const code = sceneCodeNumbers(entry);
   const title = sceneTitle(entry.scene.title, t("writing.workspace.untitledScene"));
   const overline = [entry.scene.setting, entry.scene.story_time]
@@ -294,8 +292,8 @@ function ScenePaper({
               digit fallback) — the draft's tracked terracotta eyebrow. */}
           <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
             {t("writing.workspace.header.eyebrow", {
-              chapter: capitalizedWord(code.chapter, locale),
-              scene: capitalizedWord(code.scene, locale),
+              chapter: capitalizedWord(code.chapter),
+              scene: capitalizedWord(code.scene),
             })}
           </div>
           <h1 className={`${SERIF} text-3xl font-normal tracking-tight text-foreground md:text-4xl`}>
@@ -318,6 +316,7 @@ function ScenePaper({
             body={entry.scene.body}
             label={t("writing.workspace.editor.proseLabel")}
             continuation={continuation}
+            language={novel.language ?? null}
             editable={!zenBusy}
             onChange={(body) => {
               setWords(countWords(body));

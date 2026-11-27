@@ -23,9 +23,9 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Entity, type Relation } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de, en, fr, merged } from "@shell/lib/test/catalogs";
 
 import {
   CreateRelationDialog,
@@ -36,7 +36,6 @@ import {
   MergeDialog,
 } from "./crudDialogs";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "POST" | "PATCH" | "DELETE", ReturnType<typeof vi.fn>>;
 
 configure({ asyncUtilTimeout: 5000 });
@@ -645,7 +644,6 @@ describe("the focus survivor contract — a write that retires its opener (revie
 describe("the face speaks du-tone in every catalog — no German fallback", () => {
   it("the English edit dialog speaks the English catalog's own copy", () => {
     applyLocale("en");
-    const en = catalogs.en;
     const Harness = harness((close) => <EditEntityDialog entity={MAYA} openerId="opener" onClose={close} />);
     mount(Harness);
     openDialog();
@@ -656,7 +654,6 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
 
   it("the French merge dialog speaks the French catalog's own copy", () => {
     applyLocale("fr");
-    const fr = catalogs.fr;
     const Harness = harness((close) => (
       <MergeDialog novelId={NOVEL_ID} entities={ENTITIES} source={MAYA} openerId="opener" onClose={close} />
     ));
@@ -667,27 +664,27 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
   });
 
   it("the three catalogs carry the crud keys in parity, each translated", () => {
-    const keys = Object.keys(catalogs.de).filter((key) => key.startsWith("knowledge.crud."));
+    const keys = Object.keys(de).filter((key) => key.startsWith("knowledge.crud."));
     expect(keys.length).toBeGreaterThan(0);
     for (const key of keys) {
       for (const locale of ["en", "fr"] as const) {
-        expect(catalogs[locale][key as keyof typeof catalogs.en], `${locale}/${key}`).toBeTruthy();
+        expect(merged[locale][key as keyof typeof en], `${locale}/${key}`).toBeTruthy();
       }
     }
     const translated = ["knowledge.crud.save", "knowledge.crud.cancel", "knowledge.crud.mergeTitle", "knowledge.crud.nameRequired"] as const;
     for (const key of translated) {
-      expect(catalogs.en[key], key).not.toBe(catalogs.de[key]);
-      expect(catalogs.fr[key], key).not.toBe(catalogs.de[key]);
+      expect(en[key], key).not.toBe(de[key]);
+      expect(fr[key], key).not.toBe(de[key]);
     }
   });
 
   it("the German copy keeps the du register — no Sie form sneaks in", () => {
-    for (const [key, value] of Object.entries(catalogs.de)) {
+    for (const [key, value] of Object.entries(de)) {
       if (!key.startsWith("knowledge.crud.")) continue;
       expect(value, key).not.toMatch(/\b(Sie|Ihnen|Ihr|Ihre)\b/);
     }
-    expect(catalogs.de["knowledge.crud.error"]).toContain("Deine");
-    expect(catalogs.de["knowledge.crud.fromRequired"]).toContain("Wähle");
+    expect(de["knowledge.crud.error"]).toContain("Deine");
+    expect(de["knowledge.crud.fromRequired"]).toContain("Wähle");
   });
 });
 

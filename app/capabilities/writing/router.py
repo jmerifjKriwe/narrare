@@ -51,6 +51,7 @@ from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.context import BudgetImpossibleError
 from app.kernel.contracts.models import Chapter, Scene
 from app.kernel.db.session import get_session
+from app.kernel.errors import ErrorCode, coded
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta, Message
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
@@ -345,7 +346,7 @@ async def export_novel(
         raise HTTPException(status_code=404, detail="novel not found") from None
     except TargetNotEmptyError as error:
         raise HTTPException(
-            status_code=409, detail={"code": "target_not_empty", "path": error.path}
+            status_code=409, detail=coded(ErrorCode.TARGET_NOT_EMPTY, path=error.path)
         ) from None
     except FieldRefusedError as error:
         raise _refusal(error) from None
@@ -421,7 +422,7 @@ async def import_novel(
         # and `file` carries the archive-supplied path as a plain string.
         raise HTTPException(
             status_code=422,
-            detail={"code": "archive_invalid", "file": error.file, "reason": error.reason},
+            detail=coded(ErrorCode.ARCHIVE_INVALID, file=error.file, reason=error.reason),
         ) from None
     except FieldRefusedError as error:
         raise _refusal(error) from None
@@ -496,10 +497,10 @@ async def reorder_chapters(
         # name, and `code` is the stable key it localizes.
         raise HTTPException(
             status_code=409,
-            detail={
-                "code": "order_mismatch",
-                "chapter_ids": [str(chapter_id) for chapter_id in error.current],
-            },
+            detail=coded(
+                ErrorCode.ORDER_MISMATCH,
+                chapter_ids=[str(chapter_id) for chapter_id in error.current],
+            ),
         ) from None
 
 
@@ -626,10 +627,10 @@ async def reorder_scenes(chapter_id: UUID, payload: SceneOrderUpdate, service: S
         # name, and `code` is the stable key it localizes.
         raise HTTPException(
             status_code=409,
-            detail={
-                "code": "order_mismatch",
-                "scene_ids": [str(scene_id) for scene_id in error.current],
-            },
+            detail=coded(
+                ErrorCode.ORDER_MISMATCH,
+                scene_ids=[str(scene_id) for scene_id in error.current],
+            ),
         ) from None
 
 
@@ -731,7 +732,9 @@ async def continue_scene(
     except KeyUnavailableError:
         logger.exception("continuation provider resolution failed")
         return FinalizingStreamingResponse(
-            error_events("key-unavailable"), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events(ErrorCode.KEY_UNAVAILABLE),
+            media_type="text/event-stream",
+            headers=SSE_HEADERS,
         )
     # The builder sizes its slices from the resolved facts; a pair whose output
     # reserve fills the window refused there — mapped like the lost key above:
@@ -754,14 +757,16 @@ async def continue_scene(
     except BudgetImpossibleError:
         logger.exception("continuation budget refused")
         return FinalizingStreamingResponse(
-            error_events("prompt-refused", reason="budget"),
+            error_events(ErrorCode.PROMPT_REFUSED, reason="budget"),
             media_type="text/event-stream",
             headers=SSE_HEADERS,
         )
     except PromptRenderError:
         logger.exception("continuation prompt refused")
         return FinalizingStreamingResponse(
-            error_events("prompt-refused"), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events(ErrorCode.PROMPT_REFUSED),
+            media_type="text/event-stream",
+            headers=SSE_HEADERS,
         )
     # The audit names the novel, so read its id before the response starts,
     # while the request's session is still open — one scalar, scoped to the

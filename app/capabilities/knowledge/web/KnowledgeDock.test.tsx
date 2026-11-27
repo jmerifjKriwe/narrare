@@ -54,13 +54,12 @@ import {
   type Job,
   type Suggestion,
 } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de, en, fr, merged } from "@shell/lib/test/catalogs";
 
 import { KnowledgeDock } from "./KnowledgeDock";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "POST", ReturnType<typeof vi.fn>>;
 
 // The full-suite run spawns one worker per file on a four-core box; the
@@ -1325,7 +1324,6 @@ describe("the suggestion review is real mutations", () => {
 describe("the face speaks du-tone in every catalog — no German fallback", () => {
   it("the English face speaks the English catalog's own copy", async () => {
     applyLocale("en");
-    const en = catalogs.en;
     queue = [findingRow()];
     await renderDock();
     const card = await screen.findByTestId("knowledge-finding");
@@ -1340,7 +1338,6 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
 
   it("the English chips and review speak the English catalog too", async () => {
     applyLocale("en");
-    const en = catalogs.en;
     suggestions = [suggestionRow()];
     await renderDock();
     const chips = await screen.findAllByTestId("knowledge-entity-chip");
@@ -1358,7 +1355,6 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
 
   it("the French face speaks the French catalog's own copy", async () => {
     applyLocale("fr");
-    const fr = catalogs.fr;
     queue = [];
     await renderDock();
     const empty = await screen.findByTestId("knowledge-empty");
@@ -1372,7 +1368,6 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
 
   it("the French chips count zero as one — the locale's own plural rule", async () => {
     applyLocale("fr");
-    const fr = catalogs.fr;
     entities = [];
     await renderDock();
     expect(await screen.findByText("0 entité")).toBeTruthy();
@@ -1383,11 +1378,11 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
   });
 
   it("the three catalogs carry the face's keys in parity, each translated", () => {
-    const keys = Object.keys(catalogs.de).filter((key) => key.startsWith("knowledge."));
+    const keys = Object.keys(de).filter((key) => key.startsWith("knowledge."));
     expect(keys.length).toBeGreaterThan(0);
     for (const key of keys) {
       for (const locale of ["en", "fr"] as const) {
-        expect(catalogs[locale][key as keyof typeof catalogs.en], `${locale}/${key}`).toBeTruthy();
+        expect(merged[locale][key as keyof typeof en], `${locale}/${key}`).toBeTruthy();
       }
     }
     const translated = [
@@ -1412,20 +1407,20 @@ describe("the face speaks du-tone in every catalog — no German fallback", () =
       "knowledge.relation.located_in",
     ] as const;
     for (const key of translated) {
-      expect(catalogs.en[key], key).not.toBe(catalogs.de[key]);
-      expect(catalogs.fr[key], key).not.toBe(catalogs.de[key]);
+      expect(en[key], key).not.toBe(de[key]);
+      expect(fr[key], key).not.toBe(de[key]);
     }
   });
 
   it("the German copy keeps the du register — no Sie form sneaks in", () => {
-    for (const [key, value] of Object.entries(catalogs.de)) {
+    for (const [key, value] of Object.entries(de)) {
       if (!key.startsWith("knowledge.")) continue;
       expect(value, key).not.toMatch(/\b(Sie|Ihnen|Ihr|Ihre)\b/);
     }
     // The du forms are present, not merely the absence of Sie.
-    expect(catalogs.de["knowledge.dock.emptyNote"]).toContain("deinem");
-    expect(catalogs.de["knowledge.dock.actionFailed"]).toContain("Versuche");
-    expect(catalogs.de["knowledge.dock.entitiesEmptyNote"]).toContain("deinem");
-    expect(catalogs.de["knowledge.dock.extractFailed"]).toContain("Versuche");
+    expect(de["knowledge.dock.emptyNote"]).toContain("deinem");
+    expect(de["knowledge.dock.actionFailed"]).toContain("Versuche");
+    expect(de["knowledge.dock.entitiesEmptyNote"]).toContain("deinem");
+    expect(de["knowledge.dock.extractFailed"]).toContain("Versuche");
   });
 });

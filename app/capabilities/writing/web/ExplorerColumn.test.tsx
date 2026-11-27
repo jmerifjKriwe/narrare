@@ -35,14 +35,12 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import type { Activity, Chapter, Novel, Scene, Storyboard } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de } from "@shell/lib/test/catalogs";
 
 import { ExplorerColumn } from "./ExplorerColumn";
 import { orderedSceneEntries } from "./workspace";
-
-const de = catalogs.de;
 
 /** The props' callbacks are vi.fn()s — the harness types them as the
  *  component's function props; the mock surface reads through the cast. */

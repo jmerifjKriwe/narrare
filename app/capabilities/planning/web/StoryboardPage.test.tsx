@@ -33,14 +33,13 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Chapter, type Novel, type Storyboard } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { structures } from "@shell/lib/generated/structures";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de, en, fr, merged } from "@shell/lib/test/catalogs";
 
 import { StoryboardPage } from "./StoryboardPage";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "POST" | "PUT" | "DELETE", ReturnType<typeof vi.fn>>;
 
 /** A literal string as a regex — the structure labels carry parentheses a
@@ -1401,16 +1400,16 @@ describe("the catalogs", () => {
     expect(deKeys.length).toBeGreaterThan(60);
     for (const locale of ["en", "fr"] as const) {
       for (const key of deKeys) {
-        expect((catalogs[locale] as Record<string, string>)[key], `${locale}/${key}`).toBeTruthy();
+        expect((merged[locale] as Record<string, string>)[key], `${locale}/${key}`).toBeTruthy();
       }
     }
     // The du register: the conflict's own words speak to the writer.
     expect(de["planning.storyboard.conflictBody"]).toMatch(/Deine\b/);
     expect(de["planning.storyboard.emptyNote"]).toMatch(/deine\b/);
     // The English stage chip carries its own unit — no German „W." leak.
-    expect(catalogs.en["planning.storyboard.stageShare"]).toContain("words");
-    expect(catalogs.en["planning.storyboard.stageShare"]).not.toContain("W.");
-    expect(catalogs.fr["planning.storyboard.stageShare"]).toContain("mots");
+    expect(en["planning.storyboard.stageShare"]).toContain("words");
+    expect(en["planning.storyboard.stageShare"]).not.toContain("W.");
+    expect(fr["planning.storyboard.stageShare"]).toContain("mots");
   });
 });
 

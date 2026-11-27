@@ -3,7 +3,7 @@
 
 # Help coverage
 
-One row per capability that ships help; capabilities without help are listed at the bottom.
+One row per topic under each capability that ships help; UI capabilities without help are listed at the bottom.
 
 ## Capabilities without help
 

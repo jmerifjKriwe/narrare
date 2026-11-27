@@ -429,6 +429,7 @@ export function SceneEditor({
   focus,
   autoFocus,
   editable = true,
+  language = null,
 }: {
   /** The scene's plain body — initializes the document once (mount-only). */
   body: string;
@@ -457,6 +458,11 @@ export function SceneEditor({
    *  unmount. The lock lifts on the same instance, never a remount; the
    *  ghost's Tab acceptance waits with it. Default true: the writing face. */
   editable?: boolean;
+  /** The manuscript's language tag, carried on the ProseMirror element so
+   *  the prose reads (and is spoken) in its own language. `globals.css`'s
+   *  `:lang()` rules pick the faces; absent or null, the prose keeps the
+   *  interface's language. */
+  language?: string | null;
 }) {
   const emit = useRef(onChange);
   emit.current = onChange;
@@ -509,6 +515,16 @@ export function SceneEditor({
     if (editor === null) return;
     if (editor.isEditable !== editable) editor.setEditable(editable, false);
   }, [editor, editable]);
+
+  // The manuscript's language rides the ProseMirror element itself, so the
+  // prose's own faces resolve there (globals.css's :lang() rules) and a
+  // screen reader speaks the words in their language. Nothing named, the
+  // attribute comes off and the prose keeps the interface's language.
+  useEffect(() => {
+    if (editor === null) return;
+    if (language != null) editor.view.dom.setAttribute("lang", language);
+    else editor.view.dom.removeAttribute("lang");
+  }, [editor, language]);
 
   // The zen entry's seat: the caret lands at the prose tail once the
   // instance exists — the writer continues where the scene stands.

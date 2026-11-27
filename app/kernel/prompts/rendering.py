@@ -15,9 +15,14 @@ Every refusal names itself with a ``PromptRenderError`` reason: a broken
 ``{% %}`` is ``syntax``, an unknown ``{{ var }}`` is ``undefined-variable``,
 a sandbox violation is ``forbidden``, any other template-time exception is
 ``runtime``, and an include key the callback cannot resolve (its
-``KeyError``) is ``include-missing``. The include stack refuses
+``KeyError``) is ``include-missing``. A refusal that can name its cause
+carries the fact as data beside the sentence: ``line`` is the engine's own
+line of a syntax error, ``name`` the variable a template read undefined or
+the include a chain could not resolve. A refusal whose cause names nothing
+carries no fact. The include stack refuses
 ``include-cycle`` (a key already being rendered above) and ``include-depth``
-(deeper than the limit) — both before the deeper body renders. The stack
+(deeper than the limit) — both before the deeper body renders, each with the
+include's name. The stack
 lives where template text cannot reach it: the environment hands Jinja every
 loaded include wrapped so the bracket enters where the deeper body actually
 renders and pops in a ``finally`` after it — the eager without-context load
@@ -40,7 +45,7 @@ from collections.abc import (  # noqa: TC003  signatures evaluate
     Mapping,
     MutableMapping,
 )
-from typing import Any, cast
+from typing import Any, NoReturn, cast
 from uuid import UUID  # noqa: TC003  signatures evaluate
 
 from jinja2 import (
@@ -65,6 +70,37 @@ MAX_INCLUDE_DEPTH = 5
 """The include depth limit: an include that would render one level deeper is refused."""
 
 
+class _NamedUndefinedError(UndefinedError):
+    """An ``undefined-variable`` refusal that carries the name the template read."""
+
+    def __init__(self, name: str | None, message: str) -> None:
+        super().__init__(message)
+        self.name = name
+
+
+class _NamedUndefined(StrictUndefined):
+    """``StrictUndefined`` whose failure carries the undefined name as data.
+
+    Jinja's exception type is chosen per undefined object (the base failure
+    calls ``self._undefined_exception``), so this class points that slot at
+    its own failure: every operation that refuses — printing, a boolean test,
+    arithmetic — raises an exception holding the name the template read
+    beside Jinja's sentence. The name is data, not a parse of the sentence.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        # The sandbox hands an unsafe attribute its own ``SecurityError``;
+        # that refusal keeps its reason. Only Jinja's default exception is
+        # replaced, so every ordinary undefined failure carries the name.
+        if self._undefined_exception is UndefinedError:  # pyright: ignore[reportPrivateUsage]
+            self._undefined_exception = self._named_failure  # pyright: ignore[reportAttributeAccessIssue]
+
+    def _named_failure(self, message: str) -> NoReturn:
+        name = self._undefined_name  # pyright: ignore[reportPrivateUsage]  Jinja's own name
+        raise _NamedUndefinedError(name if isinstance(name, str) else None, message)
+
+
 class _IncludeGuard:
     """The render-time include stack: cycle and depth, refused before deeper rendering.
 
@@ -86,12 +122,14 @@ class _IncludeGuard:
             raise PromptRenderError(
                 "include-cycle",
                 f"the prompt '{key}' is already being rendered above it",
+                name=key,
             )
         if len(self._stack) + 1 > self._limit:
             raise PromptRenderError(
                 "include-depth",
                 f"the prompt '{key}' would render {len(self._stack) + 1} includes "
                 f"deep, above the limit of {self._limit}",
+                name=key,
             )
         self._stack.append(key)
 
@@ -135,6 +173,7 @@ class _IncludeLoader(BaseLoader):
             raise PromptRenderError(
                 "include-missing",
                 f"the include chain has no source for '{template}' ({error})",
+                name=template,
             ) from error
         except Exception as error:
             raise _CallbackError(error) from error
@@ -235,7 +274,7 @@ class _RenderEnvironment(SandboxedEnvironment):
 
     def __init__(self, include: Callable[[str], str], guard: _IncludeGuard) -> None:
         super().__init__(
-            undefined=StrictUndefined,
+            undefined=_NamedUndefined,
             autoescape=False,
             keep_trailing_newline=True,
             loader=_IncludeLoader(include),
@@ -281,7 +320,9 @@ def render_source(
     except _CallbackError as failure:
         raise failure.original from None
     except TemplateSyntaxError as error:
-        raise PromptRenderError("syntax", str(error)) from None
+        raise PromptRenderError("syntax", str(error), line=error.lineno) from None
+    except _NamedUndefinedError as error:
+        raise PromptRenderError("undefined-variable", str(error), name=error.name) from None
     except UndefinedError as error:
         raise PromptRenderError("undefined-variable", str(error)) from None
     except SecurityError as error:

@@ -43,6 +43,7 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 
+import { codeOf } from "@shell/lib/api/errors";
 import { isModelChange, type KnowledgeDocument } from "@shell/lib/api/client";
 import { formatDate } from "@shell/lib/format";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
@@ -78,9 +79,8 @@ const UPLOAD_MESSAGES: Record<UploadRefusal, MessageKey> = {
 
 function classifyUpload(error: unknown): UploadRefusal {
   const status = (error as { status?: number } | null)?.status;
-  const detail = (error as { detail?: unknown } | null)?.detail;
   if (status === 413) return "tooLarge";
-  if (status === 422 && detail === "document is empty") return "empty";
+  if (codeOf(error) === "document-empty") return "empty";
   if (isModelChange(error)) return "mismatch";
   return "failed";
 }

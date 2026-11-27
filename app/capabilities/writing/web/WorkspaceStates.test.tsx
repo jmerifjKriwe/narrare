@@ -12,12 +12,10 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
+import { de } from "@shell/lib/test/catalogs";
 
 import { LeaveGuardDialog } from "./WorkspaceStates";
-
-const de = catalogs.de;
 
 beforeEach(() => {
   applyLocale("de");

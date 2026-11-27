@@ -65,10 +65,15 @@ class PromptDiff(BaseModel):
 
 
 class PromptRefusal(BaseModel):
-    """The save gate's 422 body: which rule refused, and what it said."""
+    """The save gate's 422 body: which rule refused, what it said, and the fact
+    the cause named — ``line`` for a syntax error, ``name`` for an undefined
+    variable or an unresolved include. A cause that names nothing carries
+    neither key."""
 
     reason: str
     detail: str
+    line: int | None = None
+    name: str | None = None
 
 
 class PromptKeyNotFound(BaseModel):

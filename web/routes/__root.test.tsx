@@ -33,9 +33,11 @@ vi.mock("../lib/api/client", () => ({
 }));
 
 import { client } from "../lib/api/client";
-import { catalogs, locales } from "../lib/generated/catalogs";
+import { ApiError } from "../lib/api/errors";
+import { locales } from "../lib/generated/catalogs";
 import { applyLocale } from "../lib/locale";
 import { queryClient } from "../lib/query";
+import { merged } from "../lib/test/catalogs";
 import { rootRoute } from "./__root";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
@@ -92,13 +94,13 @@ describe("the shell's fallbacks", () => {
       renderTree([home], "/nowhere");
 
       const heading = await screen.findByRole("heading", {
-        name: catalogs[candidate]["shell.notFound"],
+        name: merged[candidate]["shell.notFound"],
       });
       expect(heading).toBeTruthy();
       // The body is the catalog's truthful interim copy (#850), and the way
       // home is the shelf gate — not TanStack's English default.
-      expect(screen.getByText(catalogs[candidate]["shell.notFoundBody"])).toBeTruthy();
-      const back = screen.getByRole("link", { name: catalogs[candidate]["nav.back"] });
+      expect(screen.getByText(merged[candidate]["shell.notFoundBody"])).toBeTruthy();
+      const back = screen.getByRole("link", { name: merged[candidate]["nav.back"] });
       expect(back.getAttribute("href")).toBe("/");
       expect(document.body.textContent).not.toContain("Not Found");
       cleanup();
@@ -120,15 +122,42 @@ describe("the shell's fallbacks", () => {
       renderTree([home, boom], "/boom");
 
       const heading = await screen.findByRole("heading", {
-        name: catalogs[candidate]["shell.error"],
+        name: merged[candidate]["shell.error"],
       });
       expect(heading).toBeTruthy();
-      // The thrown message rides along — a local-first app shows its own
-      // errors — and the router's English default stays out.
-      expect(screen.getByRole("alert").textContent).toContain("die Route ist explodiert");
-      const back = screen.getByRole("link", { name: catalogs[candidate]["nav.back"] });
+      // The catalog names the failure — the thrown sentence never reaches
+      // the face, and the router's English default stays out.
+      const alert = screen.getByRole("alert");
+      expect(alert.textContent).toContain(merged[candidate]["errors.unexpected"]);
+      expect(alert.textContent).not.toContain("die Route ist explodiert");
+      const back = screen.getByRole("link", { name: merged[candidate]["nav.back"] });
       expect(back.getAttribute("href")).toBe("/");
       expect(document.body.textContent).not.toContain("Something went wrong");
+      cleanup();
+    }
+  });
+
+  it("names a thrown failure with a status by its family", async () => {
+    const boom = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/boom",
+      component: () => {
+        throw new ApiError("x", { status: 503 });
+      },
+    });
+    for (const candidate of locales) {
+      queryClient.clear();
+      scriptSettings(candidate);
+      applyLocale(candidate);
+      renderTree([home, boom], "/boom");
+
+      const heading = await screen.findByRole("heading", {
+        name: merged[candidate]["shell.error"],
+      });
+      expect(heading).toBeTruthy();
+      const alert = screen.getByRole("alert");
+      expect(alert.textContent).toContain(merged[candidate]["errors.server"]);
+      expect(alert.textContent).not.toContain("x: 503");
       cleanup();
     }
   });

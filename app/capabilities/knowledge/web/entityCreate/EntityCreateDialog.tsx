@@ -8,8 +8,9 @@
 import { useId, useMemo, useRef, useState } from "react";
 
 import type { Entity } from "@shell/lib/api/client";
+import { isNetworkFailure, type ApiError } from "@shell/lib/api/errors";
 import { useTranslation } from "@shell/lib/i18n";
-import { useCreateEntity, type WireError } from "@shell/lib/query";
+import { useCreateEntity } from "@shell/lib/query";
 import { FOCUS } from "@shell/ui/card";
 import { Icon } from "@shell/ui/icons";
 
@@ -109,7 +110,7 @@ export function EntityCreateDialog({
   const [tagDraft, setTagDraft] = useState("");
   const [content, setContent] = useState(initial.content);
   const [relations, setRelations] = useState<EntityCreateRelationRow[]>(initial.relations);
-  const [failure, setFailure] = useState<WireError | null>(null);
+  const [failure, setFailure] = useState<ApiError | null>(null);
   /** The visible row a relation refusal names; the sent list's index is
    *  mapped back through the rows the body builder kept. */
   const [refusedRow, setRefusedRow] = useState<number | null>(null);
@@ -243,9 +244,10 @@ export function EntityCreateDialog({
         setFailure(error);
         // The relation codes carry the refused line's index in the SENT
         // list; the writer sees visible rows, so it is mapped back.
-        if (error.row !== undefined && refusalNamesRelationRow(error.code)) {
+        const row = error.extra.row;
+        if (typeof row === "number" && refusalNamesRelationRow(error.code)) {
           setRefusedRow(
-            visibleRowForSentIndex(keptRelationRows(normalizedRelations, entities), error.row),
+            visibleRowForSentIndex(keptRelationRows(normalizedRelations, entities), row),
           );
         }
       },
@@ -455,13 +457,13 @@ export function EntityCreateDialog({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="leading-snug">
-                  {failure.code === "transport"
+                  {isNetworkFailure(failure)
                     ? t("knowledge.create.failedTransport")
                     : refusalKey !== null
                       ? t(refusalKey)
                       : t("knowledge.create.failedUnexpected")}
                 </p>
-                {failure.code !== undefined && failure.code !== "transport" && (
+                {failure.code !== null && (
                   <p
                     data-testid="entity-create-refusal-code"
                     className="mt-0.5 font-mono text-[11px] text-danger"

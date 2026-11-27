@@ -54,14 +54,23 @@ def test_blurb_is_trimmed_and_empty_clears() -> None:
 
 @pytest.mark.parametrize(
     ("given", "expected"),
-    [("DE", "de"), ("en-GB", "en-GB"), ("  de  ", "de"), ("   ", None)],
+    [
+        ("DE", "de"),
+        ("en-GB", "en-GB"),
+        ("  de  ", "de"),
+        ("   ", None),
+        ("zh-Hans-CN", "zh-Hans-CN"),
+        ("de-CH-1906", "de-CH-1906"),
+        ("hy-Latn-IT-arevela", "hy-Latn-IT-arevela"),
+        ("yue", "yue"),
+    ],
 )
 def test_language_folds_only_its_primary_subtag(given: str, expected: str | None) -> None:
     assert normalized_novel_updates(NovelUpdate(language=given)) == {"language": expected}
 
 
 def test_an_invalid_language_is_refused_by_name() -> None:
-    for value in ("deutsch", "d", "de_DE", "x" * 17):
+    for value in ("deutsch", "d", "de_DE", "x" * 17, "de-" + "-".join(["abcdefgh"] * 8)):
         with pytest.raises(InvalidNovelUpdateError) as refused:
             normalized_novel_updates(NovelUpdate(language=value))
         assert refused.value.field == "language"

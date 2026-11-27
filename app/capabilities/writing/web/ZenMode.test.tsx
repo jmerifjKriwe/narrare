@@ -22,13 +22,11 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import type { Chapter, Novel, Scene } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
+import { de, merged } from "@shell/lib/test/catalogs";
 
 import { ZenMode } from "./ZenMode";
 import type { Continuation, SceneEntry } from "./workspace";
-
-const de = catalogs.de;
 
 // The soundscape door names its state, not a future wave (#979).
 const STATUS_NOTE = {
@@ -43,7 +41,7 @@ const FUTURE_PROMISE =
 describe("the soundscape note speaks to the reader", () => {
   it("is status-only in every catalog, never a future promise", () => {
     for (const locale of ["en", "de", "fr"] as const) {
-      const note = catalogs[locale]["writing.workspace.zen.soundscapeNote"];
+      const note = merged[locale]["writing.workspace.zen.soundscapeNote"];
       expect(note).toBe(STATUS_NOTE[locale]);
       expect(note).not.toMatch(FUTURE_PROMISE);
     }
@@ -119,6 +117,7 @@ function continuationOf(overrides: Partial<Continuation> = {}): Continuation {
 
 function renderZen(
   props: {
+    novel?: Novel;
     entry?: SceneEntry;
     todayWords?: number | null;
     continuation?: Continuation;
@@ -130,9 +129,9 @@ function renderZen(
   const onBodyChange = props.onBodyChange ?? vi.fn();
   const onExit = props.onExit ?? vi.fn();
   const continuation = props.continuation ?? continuationOf();
-  render(
+  const utils = render(
     <ZenMode
-      novel={NOVEL}
+      novel={props.novel ?? NOVEL}
       entry={props.entry ?? { scene: SCENE, chapter: CHAPTER }}
       todayWords={props.todayWords === undefined ? 412 : props.todayWords}
       continuation={continuation}
@@ -141,7 +140,7 @@ function renderZen(
       zenBusy={props.zenBusy ?? false}
     />,
   );
-  return { onBodyChange, onExit, continuation };
+  return { ...utils, onBodyChange, onExit, continuation };
 }
 
 beforeEach(() => {
@@ -179,6 +178,13 @@ describe("the zen anatomy — the round's zen-focus-2 authority", () => {
     // The prose is the scene's own, live and labelled.
     const box = await screen.findByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] });
     await waitFor(() => expect(box.textContent).toContain("Dritter Absatz schließt ab."));
+  });
+
+  it("carries the manuscript's language on the prose", async () => {
+    const { container } = renderZen({ novel: { ...NOVEL, language: "zh-Hans-CN" } });
+    await waitFor(() =>
+      expect(container.querySelector(".ProseMirror")?.getAttribute("lang")).toBe("zh-Hans-CN"),
+    );
   });
 
   it("an unset overline keeps the head honest — no invented line", async () => {

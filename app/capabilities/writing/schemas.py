@@ -8,6 +8,7 @@ from uuid import UUID  # noqa: TC003
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.kernel.contracts.models import WORD_GOAL_MAX, WORD_GOAL_MIN
+from app.kernel.errors import ErrorCode
 
 
 class WritingErrorRead(BaseModel):
@@ -17,7 +18,7 @@ class WritingErrorRead(BaseModel):
 
 
 class OrderMismatchDetail(BaseModel):
-    code: str = "order_mismatch"
+    code: ErrorCode = ErrorCode.ORDER_MISMATCH
     chapter_ids: list[UUID]
 
 
@@ -28,7 +29,7 @@ class OrderMismatchRead(BaseModel):
 
 
 class SceneOrderMismatchDetail(BaseModel):
-    code: str = "order_mismatch"
+    code: ErrorCode = ErrorCode.ORDER_MISMATCH
     scene_ids: list[UUID]
 
 

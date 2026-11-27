@@ -21,7 +21,8 @@ diff.
   re-rolled, or given a higher timeout instead of a root cause; a fake other than
   the LLM provider at its boundary.
 - `i18n/` and capability `web/i18n/` — keys unsorted, catalogs with different key
-  sets, or a plural category the copy needs missing.
+  sets, a language outside `i18n/registry/locales.json`, or a plural message that
+  skips a category its language requires (a lone `many` excepted).
 - `docs/` — a page tells the reader to do something that no longer works.
 - `justfile`, `scripts/`, `.github/` — a gate that can no longer go red, or a
   bypass.

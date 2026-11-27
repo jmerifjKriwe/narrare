@@ -16,14 +16,13 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Entity } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de } from "@shell/lib/test/catalogs";
 
 import { EntityCreateDialog } from "./EntityCreateDialog";
 import type { EntityPrefill } from "../entityCreate";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "POST" | "PATCH" | "DELETE", ReturnType<typeof vi.fn>>;
 
 configure({ asyncUtilTimeout: 5000 });

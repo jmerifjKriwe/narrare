@@ -3,7 +3,7 @@ import { createRoute, redirect } from "@tanstack/react-router";
 import { lazy } from "react";
 
 import { client } from "@shell/lib/api/client";
-import { queryClient } from "@shell/lib/query";
+import { queryClient, refused } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
 // React.lazy keeps the page out of the shell's bundle: it loads as its own
@@ -34,8 +34,12 @@ const setupStatusQueryOptions = queryOptions({
   queryKey: ["setup", "status"],
   staleTime: Infinity,
   queryFn: async () => {
-    const { data, response } = await client.GET("/api/setup/status");
-    if (!response.ok || !data) {
+    const { data, error, response } = await client.GET("/api/setup/status");
+    if (!response.ok) {
+      throw refused("setup status unavailable", response, error);
+    }
+    if (!data) {
+      // A 2xx without a body is no refusal: the face's fallback names it.
       throw new Error(`setup status unavailable: ${response.status}`);
     }
     return data.complete;

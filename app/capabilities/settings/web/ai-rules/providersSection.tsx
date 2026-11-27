@@ -12,9 +12,9 @@
  *   response, the create's, and the create form's success face is where the
  *   surface shows it once (the key-once moment); the grid re-asks the mask.
  * - The delete guard's 409 names the models still pointed at the provider;
- *   the family face renders the backend's own sentence beside the copy
- *   family. The 503 key-store face and the create/update refusals wear
- *   their families the same way.
+ *   the family face renders the copy family's sentence in the reader's
+ *   language — the wire's English detail stays out. The 503 key-store face
+ *   and the create/update refusals wear their families the same way.
  * - The draft's per-card „Verbindung testen“ button is not ported: the
  *   backend tests MODELS (`POST /models/{id}/test`), never providers — a
  *   provider-level button would be a dead promise. The test lives on the
@@ -23,6 +23,7 @@
 import { useState, type FormEvent } from "react";
 
 import type { Provider, Preset } from "@shell/lib/api/client";
+import { CODE_KEY, codeOf } from "@shell/lib/api/errors";
 import { catalogs } from "@shell/lib/generated/catalogs";
 import { useTranslation } from "@shell/lib/i18n";
 import type { MessageKey } from "@shell/lib/i18n";
@@ -61,23 +62,47 @@ export function familyKey(status: number | undefined): MessageKey {
   }
 }
 
-/** The backend's own sentence, when one rode the refusal — the named
- *  models, the refused field — rendered as the mono detail line. */
-function detailLine(error: WireError | null): string | null {
-  if (error === null) return null;
+/** The blocking model names a coded guard put on the wire; empty when the
+ *  refusal named none (the RESTRICT backstop cannot see them). */
+function namedModels(error: WireError): string[] {
   const detail = error.detail;
-  if (typeof detail === "string" && detail.trim() !== "") return detail;
-  return null;
+  if (typeof detail !== "object" || detail === null) return [];
+  const models = (detail as { models?: unknown }).models;
+  return Array.isArray(models)
+    ? models.filter((name): name is string => typeof name === "string")
+    : [];
 }
 
+/** The backend's own sentence, when one rode the refusal, is not the face's
+ *  copy: the family sentence speaks the reader's language, and the code — not
+ *  the wire's English — is what names the refusal. A code with its own
+ *  sentence (the named delete guard, the default model) wins; any other code
+ *  wears the root sentence `CODE_KEY` names for it; a refusal without a code
+ *  falls back to the status family. */
 export function FamilyFace({ error, family }: { error: WireError | null; family?: MessageKey }) {
   const t = useTranslation();
   if (error === null) return null;
-  const detail = detailLine(error);
+  const code = codeOf(error);
+  const models = namedModels(error);
+  let key: MessageKey;
+  let params: Record<string, string> | undefined;
+  if (family !== undefined) {
+    key = family;
+  } else if (code === "provider-has-models" && models.length > 0) {
+    key = "settings.ai.errors.guardedNamed";
+    params = { models: models.join(", ") };
+  } else if (code === "provider-has-models") {
+    key = "settings.ai.errors.guarded";
+  } else if (code === "default-profile") {
+    key = "settings.ai.errors.defaultModel";
+  } else if (code !== null) {
+    key = CODE_KEY[code];
+  } else {
+    key = familyKey(error.status);
+  }
   return (
     <div role="alert" className="space-y-1 rounded border border-danger/40 bg-panel px-3 py-2">
-      <p className="text-meta text-danger">{t(family ?? familyKey(error.status))}</p>
-      {detail !== null && <p className="font-mono text-[11px] leading-relaxed text-muted">{detail}</p>}
+      <p className="text-meta text-danger">{t(key, params)}</p>
     </div>
   );
 }

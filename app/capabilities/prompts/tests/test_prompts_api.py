@@ -246,6 +246,9 @@ async def test_an_unknown_variable_is_refused_by_name() -> None:
         assert saved.status_code == 422
         body = saved.json()["detail"]
         assert body["reason"] == "undefined-variable"
+        assert body["name"] == "nope"
+        assert "line" not in body
+        assert list(body) == ["reason", "detail", "name"]
         assert "nope" in body["detail"]
         assert await _rows() == []  # nothing half-valid was stored
 
@@ -254,10 +257,15 @@ async def test_a_syntax_error_is_refused_by_name() -> None:
     """A broken ``{% %}`` is refused ``syntax`` before anything renders."""
     async with _client() as client:
         saved = await client.put(
-            f"/api/prompts/{CONTINUATION}", json={"content": "{% if %} broken"}
+            f"/api/prompts/{CONTINUATION}",
+            json={"content": "first line\nsecond line\n{% if entities %}"},
         )
         assert saved.status_code == 422
-        assert saved.json()["detail"]["reason"] == "syntax"
+        body = saved.json()["detail"]
+        assert body["reason"] == "syntax"
+        assert body["line"] == 3
+        assert "name" not in body
+        assert list(body) == ["reason", "detail", "line"]
         assert await _rows() == []
 
 
@@ -270,6 +278,9 @@ async def test_an_override_that_drops_the_chat_contract_is_refused() -> None:
         assert saved.status_code == 422
         body = saved.json()["detail"]
         assert body["reason"] == "contract"
+        assert "line" not in body
+        assert "name" not in body
+        assert list(body) == ["reason", "detail"]
         assert "contract" in body["detail"]
         assert await _rows() == []
 

@@ -26,6 +26,7 @@ vi.mock("./api/client", async (importOriginal) => {
 });
 
 import { client } from "./api/client";
+import { ApiError, failureKey } from "./api/errors";
 import { UPDATE_KEY, fetchUpdate, useUpdateCheck, type UpdateRead } from "./updates";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
@@ -81,13 +82,21 @@ describe("fetchUpdate", () => {
       response: new Response(null, { status: 503 }),
     });
 
-    await expect(fetchUpdate(false)).rejects.toThrow("503");
+    const failure = (await fetchUpdate(false).catch((error: unknown) => error)) as ApiError;
+    expect(failure).toBeInstanceOf(ApiError);
+    expect(failure.message).toContain("503");
+    expect(failure.status).toBe(503);
+    expect(failureKey(failure)).toBe("errors.server");
   });
 
   it("a 200 with no body is a failure too, never an empty update", async () => {
     api.GET.mockResolvedValue({ data: undefined, response: ok() });
 
-    await expect(fetchUpdate(false)).rejects.toThrow("200");
+    const failure = (await fetchUpdate(false).catch((error: unknown) => error)) as ApiError;
+    expect(failure).toBeInstanceOf(ApiError);
+    expect(failure.message).toContain("200");
+    expect(failure.status).toBe(200);
+    expect(failureKey(failure)).toBe("errors.refused");
   });
 });
 

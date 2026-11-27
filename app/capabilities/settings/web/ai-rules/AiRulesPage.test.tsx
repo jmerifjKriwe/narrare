@@ -31,16 +31,13 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de, en, fr } from "@shell/lib/test/catalogs";
 
 import { AiRulesPage } from "./AiRulesPage";
 
-const de = catalogs.de;
-const en = catalogs.en;
-const fr = catalogs.fr;
 const api = client as unknown as Record<
   "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
   ReturnType<typeof vi.fn>
@@ -436,7 +433,7 @@ describe("the provider section — masks, the key-once moment, the guards", () =
     expect((screen.getByLabelText(de["settings.ai.create.name"]) as HTMLInputElement).value).toBe("Neu");
   });
 
-  it("the delete guard's 409 names the models — the family face with the backend's own sentence", async () => {
+  it("the delete guard's 409 wears its family; the backend's English sentence stays out", async () => {
     providers = [provider()];
     api.DELETE.mockImplementation(async (path: string) => {
       if (path === "/api/settings/providers/{provider_id}") {
@@ -451,12 +448,44 @@ describe("the provider section — masks, the key-once moment, the guards", () =
     await screen.findAllByTestId("task-row");
     fireEvent.click(screen.getAllByRole("button", { name: de["settings.ai.provider.remove"] })[0]);
     expect(await screen.findByText(de["settings.ai.errors.guarded"])).toBeTruthy();
-    expect(screen.getByText("the provider still has models pointed at it: Cloud-Schreiber")).toBeTruthy();
+    expect(screen.queryByText("the provider still has models pointed at it: Cloud-Schreiber")).toBeNull();
     // The provider stands — the guard kept it.
     expect(screen.getByText("Cloud")).toBeTruthy();
   });
 
-  it("a key-store refusal (503) wears its own family", async () => {
+  it("a coded provider-has-models 409 names every blocking model and the remedy", async () => {
+    providers = [provider()];
+    api.DELETE.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/providers/{provider_id}") {
+        return {
+          error: {
+            detail: {
+              code: "provider-has-models",
+              detail: "the provider still has models pointed at it",
+              models: ["Cloud-Schreiber", "Lokal-Schreiber"],
+            },
+          },
+          response: new Response(null, { status: 409 }),
+        };
+      }
+      throw new Error(`unexpected DELETE: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    fireEvent.click(screen.getAllByRole("button", { name: de["settings.ai.provider.remove"] })[0]);
+    expect(
+      await screen.findByText(
+        t("settings.ai.errors.guardedNamed", {
+          models: "Cloud-Schreiber, Lokal-Schreiber",
+        }),
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(de["settings.ai.errors.guarded"])).toBeNull();
+    // The provider stands — the guard kept it.
+    expect(screen.getByText("Cloud")).toBeTruthy();
+  });
+
+  it("a key-store refusal (503) wears its own family, not the wire's sentence", async () => {
     providers = [provider()];
     api.DELETE.mockImplementation(async (path: string) => {
       if (path === "/api/settings/providers/{provider_id}") {
@@ -468,6 +497,7 @@ describe("the provider section — masks, the key-once moment, the guards", () =
     await screen.findAllByTestId("task-row");
     fireEvent.click(screen.getAllByRole("button", { name: de["settings.ai.provider.remove"] })[0]);
     expect(await screen.findByText(de["settings.ai.errors.keystore"])).toBeTruthy();
+    expect(screen.queryByText("the key store refused")).toBeNull();
   });
 
   it("the inline edit patches only what it carries; an empty key field keeps the stored one", async () => {
@@ -533,6 +563,28 @@ describe("the modelle section — defaults, test faces, discovery, the delete", 
     const [path, init] = patches()[0];
     expect(path).toBe("/api/settings/models/{model_id}");
     expect(init?.body).toEqual({ is_default: true });
+  });
+
+  it("a coded default-profile refusal says the model is the default — not the provider guard", async () => {
+    api.PATCH.mockImplementation(async (path: string) => {
+      if (path === "/api/settings/models/{model_id}") {
+        return {
+          error: {
+            detail: {
+              code: "default-profile",
+              detail: "another swap made its model the default at the same moment",
+            },
+          },
+          response: new Response(null, { status: 409 }),
+        };
+      }
+      throw new Error(`unexpected PATCH: ${path}`);
+    });
+    renderPage();
+    await screen.findAllByTestId("task-row");
+    fireEvent.click(screen.getByRole("button", { name: de["settings.ai.models.makeDefault"] }));
+    expect(await screen.findByText(de["settings.ai.errors.defaultModel"])).toBeTruthy();
+    expect(screen.queryByText(de["settings.ai.errors.guarded"])).toBeNull();
   });
 
   it("the stat tiles answer the stored columns — the unset is the honest dash, the fake answers local", async () => {

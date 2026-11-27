@@ -37,6 +37,7 @@
 import { useRef, useState } from "react";
 
 import type { Activity, ActivityPoint } from "@shell/lib/api/client";
+import { useLocalizedError } from "@shell/lib/api/errors";
 import { formatNumber } from "@shell/lib/format";
 import { useTranslation } from "@shell/lib/i18n";
 import { useActivityQuery } from "@shell/lib/query";
@@ -119,15 +120,16 @@ function BannerLive({ data }: { data: Activity }) {
 /** The error face — the retry family's compact form: the real failure,
  *  the loss-free line, and a retry that actually asks again. */
 function BannerError({
-  message,
+  error,
   retrying,
   onRetry,
 }: {
-  message: string;
+  error: unknown;
   retrying: boolean;
   onRetry: () => void;
 }) {
   const t = useTranslation();
+  const localized = useLocalizedError();
   return (
     <div role="alert" className="flex w-full items-start gap-3">
       <span className="mt-0.5 shrink-0 text-danger">
@@ -135,8 +137,8 @@ function BannerError({
       </span>
       <div className="space-y-1">
         <h3 className="text-emph text-foreground">{t("writing.shelf.banner.error.title")}</h3>
-        {/* The real failure — the query's own message, status included. */}
-        <p className="font-mono text-meta text-danger">{message}</p>
+        {/* The failure, named in the reader's language. */}
+        <p className="font-mono text-meta text-danger">{localized(error)}</p>
         <p className="text-meta text-muted">{t("writing.shelf.banner.error.body")}</p>
         <button
           type="button"
@@ -164,10 +166,9 @@ export function ShelfBanner({ noteId }: { noteId: string }) {
   // page's own discipline: a refetch clears the query's error while it
   // runs, so the banner's flag holds the panel until the answer lands.
   const [retrying, setRetrying] = useState(false);
-  const lastError = useRef("");
+  const lastError = useRef<unknown>(null);
   if (activity.error) {
-    lastError.current =
-      activity.error instanceof Error ? activity.error.message : String(activity.error);
+    lastError.current = activity.error;
   }
   function retry() {
     setRetrying(true);
@@ -180,7 +181,7 @@ export function ShelfBanner({ noteId }: { noteId: string }) {
     <section className="rounded-xl border border-border bg-surface p-4 shadow-sm lg:p-6">
       <div className="flex flex-col items-center justify-between gap-4 lg:flex-row">
         {showError ? (
-          <BannerError message={lastError.current} retrying={retrying} onRetry={retry} />
+          <BannerError error={lastError.current} retrying={retrying} onRetry={retry} />
         ) : (
           <div className="flex items-center gap-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-container-high text-primary">

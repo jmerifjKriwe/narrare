@@ -28,7 +28,7 @@ from app.capabilities.chat.service import ChatService
 from app.kernel.auth import current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
-from app.kernel.errors import coded_detail
+from app.kernel.errors import ErrorCode, coded, coded_detail
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
@@ -146,7 +146,7 @@ async def ask(
         # A dict, not a sentence: the UI localizes this error and needs a code.
         raise HTTPException(
             status_code=409,
-            detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
+            detail=coded(ErrorCode.EMBEDDING_MISMATCH, stored=error.stored, found=error.found),
         ) from None
     except PromptRenderError:
         # A prompt the effective chain refuses (an override that cannot render)
@@ -154,7 +154,9 @@ async def ask(
         # frame, refused by name and never swapped for the bundled template.
         logger.exception("chat prompt refused")
         return FinalizingStreamingResponse(
-            error_events("prompt-refused"), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events(ErrorCode.PROMPT_REFUSED),
+            media_type="text/event-stream",
+            headers=SSE_HEADERS,
         )
     # Resolution reads the user's profiles on the request's own session, so it
     # must run before the connection goes back. A profile whose key its tier
@@ -165,7 +167,9 @@ async def ask(
     except KeyUnavailableError:
         logger.exception("chat provider resolution failed")
         return FinalizingStreamingResponse(
-            error_events("key-unavailable"), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events(ErrorCode.KEY_UNAVAILABLE),
+            media_type="text/event-stream",
+            headers=SSE_HEADERS,
         )
     # The pooled connection goes back before the provider stream holds the
     # response open: nothing reads the database during the stream.

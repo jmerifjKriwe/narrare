@@ -9,7 +9,7 @@
  * rule), so the section never invents a second settings contract.
  */
 import { QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -17,13 +17,12 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de, en } from "@shell/lib/test/catalogs";
 
 import { UpdatesSection } from "./UpdatesSection";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"PATCH", ReturnType<typeof vi.fn>>;
 
 configure({ asyncUtilTimeout: 5000 });
@@ -138,5 +137,21 @@ describe("the Updates section", () => {
     fireEvent.click(screen.getByRole("button", { name: de["settings.retry"] }));
     await waitFor(() => expect(screen.queryByText(de["settings.update.error"])).toBeNull());
     expect(await screen.findByText(de["settings.update.saved"])).toBeTruthy();
+  });
+
+  it("a language switch re-renders the refusal in the reader's language", async () => {
+    api.PATCH.mockImplementation(async () => ({
+      data: undefined,
+      response: new Response(null, { status: 500 }),
+    }));
+    renderSection(7);
+
+    fireEvent.change(intervalInput(), { target: { value: "3" } });
+    fireEvent.click(saveButton());
+    expect(await screen.findByText(de["settings.update.error"])).toBeTruthy();
+
+    act(() => applyLocale("en"));
+    expect(await screen.findByText(en["settings.update.error"])).toBeTruthy();
+    expect(screen.queryByText(de["settings.update.error"])).toBeNull();
   });
 });

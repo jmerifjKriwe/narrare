@@ -25,15 +25,13 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import type { Chapter, Novel, Scene } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import type { SaveStatus } from "@shell/lib/saveStatus";
 import { countWords } from "@shell/lib/words";
+import { de, merged } from "@shell/lib/test/catalogs";
 
 import { EditorColumn } from "./EditorColumn";
 import type { Continuation, SceneEntry } from "./workspace";
-
-const de = catalogs.de;
 
 // The ribbon's history and export doors name their state, not a future
 // release (#979).
@@ -53,7 +51,7 @@ describe("the ribbon's disabled notes speak to the reader", () => {
         "writing.workspace.ribbon.historyNote",
         "writing.workspace.ribbon.exportNote",
       ] as const) {
-        const note = catalogs[locale][key];
+        const note = merged[locale][key];
         expect(note).toBe(STATUS_NOTE[locale]);
         expect(note).not.toMatch(FUTURE_PROMISE);
       }
@@ -318,6 +316,13 @@ describe("the scene face", () => {
     renderColumn({ entry: entryOf(sceneRow({ body: "  " })) });
     const box = await screen.findByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] });
     await waitFor(() => expect(box.textContent).toBe(""));
+  });
+
+  it("carries the manuscript's language on the prose", async () => {
+    const { container } = renderColumn({ novel: novelRow({ language: "zh-Hans-CN" }) });
+    await waitFor(() =>
+      expect(container.querySelector(".ProseMirror")?.getAttribute("lang")).toBe("zh-Hans-CN"),
+    );
   });
 
 });

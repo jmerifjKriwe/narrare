@@ -10,6 +10,7 @@
  * no cache surface exists to open (a reason row, not a disabled fake).
  */
 
+import { useLocalizedError } from "@shell/lib/api/errors";
 import { useTranslation } from "@shell/lib/i18n";
 import { Icon } from "@shell/ui/icons";
 
@@ -75,15 +76,16 @@ export function ShelfLoading() {
 }
 
 export function ShelfError({
-  message,
+  error,
   retrying,
   onRetry,
 }: {
-  message: string;
+  error: unknown;
   retrying: boolean;
   onRetry: () => void;
 }) {
   const t = useTranslation();
+  const localized = useLocalizedError();
   return (
     <section
       role="alert"
@@ -100,8 +102,8 @@ export function ShelfError({
             <h2 className={`${SERIF} text-title font-semibold leading-snug text-foreground`}>
               {t("writing.shelf.error.title")}
             </h2>
-            {/* The real failure — the query's own message, status included. */}
-            <p className="mt-0.5 font-mono text-meta text-danger">{message}</p>
+            {/* The failure, named in the reader's language. */}
+            <p className="mt-0.5 font-mono text-meta text-danger">{localized(error)}</p>
           </div>
         </div>
         <div className="space-y-2 rounded-lg border border-border bg-surface-container-lowest/70 p-3 text-body leading-relaxed text-muted">

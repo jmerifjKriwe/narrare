@@ -8,9 +8,10 @@ more.
 ## Getting Started
 
 You need [Python 3.14+](https://www.python.org/downloads/) with
-[uv](https://docs.astral.sh/uv/), [Node.js 22+](https://nodejs.org/) with
-[pnpm](https://pnpm.io/), [Docker](https://docs.docker.com/get-docker/) with
-Compose, [just](https://just.systems/), and the PostgreSQL 17 command-line
+[uv](https://docs.astral.sh/uv/), [Node.js](https://nodejs.org/) (the major
+[`.nvmrc`](.nvmrc) names) with [pnpm](https://pnpm.io/),
+[Docker](https://docs.docker.com/get-docker/) with Compose,
+[just](https://just.systems/), and the PostgreSQL 17 command-line
 client (`postgresql-client-17`: `pg_dump`/`pg_restore` — the migration tests
 and the release snapshots use them; nothing shipped depends on the tools
 being on `PATH`). One command sets everything else
@@ -94,7 +95,9 @@ The scope convention lives in [`AGENTS.md`](AGENTS.md) and is checked in review.
 User-visible text lives in the catalogs, never in a component. The shell's and
 shared text lives in `i18n/<code>.json`; a capability's own text lives in
 `app/capabilities/<id>/web/i18n/<code>.json`. The generator merges both into
-`web/lib/generated/catalogs.ts`; a missing key in any catalog is a build error.
+`web/lib/generated/catalogs.ts` for the source language and into one lazy module
+per other language under `web/lib/generated/catalogs/`, which the shell loads
+when that language is first read; a missing key in any catalog is a build error.
 Ownership follows the key's namespace, not the component that renders it:
 `settings.*` lives in the settings capability even though the shell's bar
 renders it.
@@ -104,18 +107,21 @@ renders it.
   path carries capability ownership; the key keeps the feature readable.
 - **Sort keys alphabetically** in every catalog file. The generator refuses an
   unsorted file, so a new key lands where it belongs instead of at the end.
-- **Cover the plural categories the copy needs.** For a message with
-  `{count, plural, …}`, check
-  `Intl.PluralRules("<code>").resolvedOptions().pluralCategories`; write a
-  branch for each category the wording distinguishes, and let `other` cover
-  the rest. The parser test proves syntax, not grammar.
+- **Write a branch for every plural category its language has.** For a message
+  with `{count, plural, …}`, `Intl.PluralRules("<code>")` reports the categories
+  the language distinguishes; write a branch for each — except a lone `many`
+  where the language's set is exactly `one/many/other`, which the copy never
+  needs. `other` remains the runtime fallback. `web/lib/catalogRules.test.ts`
+  refuses a message that skips a required category and names the language, key
+  and category.
 - **Watch ICU quoting.** A lone `'` starts a quoted literal: `'{name}'` prints
   the braces, not the value. Use typographic quotes in prose or escape them.
 - **Name languages in their own words** via `locale.name` (Deutsch, Français,
   English); the switcher shows the endonym whatever the app currently speaks.
-- **Never hardcode a locale list.** The set of languages is discovered from
-  `i18n/*.json`; a new catalog appears in the union and the switcher on the
-  next `just generate`.
+- **Never hardcode a locale list.** The languages and their display order come
+  from `i18n/registry/locales.json`. The generator refuses a registry entry
+  without a catalog and a catalog without an entry, and writes the list into
+  the generated views on the next `just generate`.
 - **Format through `web/lib/format.ts`.** `formatDate`, `formatNumber` and
   `formattingLocale` keep the chosen language and take the browser's regional
   variant when it agrees (`de` + `de-AT` → `de-AT`). Do not call
@@ -125,9 +131,9 @@ renders it.
   to the base catalog. English has no overlay, and there is no de/fr key
   parity: French already speaks the neutral register in its base.
 
-Adding a language means one central catalog plus one file per capability that
-owns keys, then `just generate`. Translating all keys is the work; registering
-the language is not.
+Adding a language means one line in `i18n/registry/locales.json`, one central
+catalog plus one file per capability that owns keys, then `just generate`.
+Translating all keys is the work; registering the language is not.
 
 ## Changing the Schema
 
