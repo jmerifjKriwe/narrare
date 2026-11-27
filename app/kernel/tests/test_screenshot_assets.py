@@ -9,6 +9,7 @@ These tests read the committed files, never the running stack.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import shutil
@@ -46,6 +47,31 @@ DOCS_README = ROOT / "docs" / "README.md"
 STITCH_README = ROOT / "docs" / "design" / "stitch" / "README.md"
 MAX_BYTES = 1_000_000
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+FONTS = ROOT / "web" / "public" / "fonts"
+GLOBALS_CSS = ROOT / "web" / "globals.css"
+WORKFLOW = ROOT / ".github" / "workflows" / "screenshots.yml"
+MONO_WEIGHTS = (400, 500, 600, 700)
+WOFF2_MAGIC = b"wOF2"
+
+# The exact bytes Fontsource 5.3.0 serves: a re-vendored or locally subsetted
+# cut would render differently while still passing the format check. The
+# license digest is over LF line endings, so a CRLF checkout still matches.
+MONO_FONT_SHA256 = {
+    400: "08949f728dc52d528e69b1667d15c89a5686a4ee9a296ff90983985f99c380f7",
+    500: "01d285447409c8a588692162439a038b8cbd7871309ee20267b0d2d91c6e8e22",
+    600: "0d1f0b8d0722224e32e9f28261bdc86c79115be73444ae5eceb73976a1bcdf83",
+    700: "4f84d86cfd060f4ded334358ff8a4c81d4db2ed5addd568359d693f44a87765a",
+}
+MONO_LICENSE_SHA256 = "23b0a9d0c6d3f140a0b77e483c5cfa6bba574325ef5cb189ed9f2fec4884533f"
+
+# The Latin cuts carry U+2191 (↑) and U+2193 (↓) only; ← and → are absent.
+# Declaring the wider Fontsource arrow range would let a future mono surface
+# select these faces for U+2190/U+2192 and silently fall back to a system font.
+MONO_UNICODE_RANGE = (
+    "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, "
+    "U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, "
+    "U+FEFF, U+FFFD"
+)
 
 
 def _manifest_names() -> set[str]:
@@ -458,6 +484,167 @@ def test_asset_contract_imports_no_capture_stack() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+# The capture's determinism rests on bundled faces, not on the machine's own:
+# a missing or renamed cut silently falls back to a system font, which is the
+# glyph-rasterization difference the post-merge run exposed (#1010). These
+# contracts read the committed assets and sources, never the running stack.
+
+_FONT_FACE = re.compile(r"@font-face\s*\{([^}]*)\}", re.DOTALL)
+
+
+def _css_declarations(css: str, name: str) -> list[str]:
+    """Every value declared for one custom property, in document order."""
+    return re.findall(rf"{re.escape(name)}\s*:\s*([^;]+);", css)
+
+
+def _font_faces(css: str, family: str) -> list[dict[str, str]]:
+    """The ``@font-face`` blocks naming one family, as declaration maps."""
+    faces: list[dict[str, str]] = []
+    for body in _FONT_FACE.findall(css):
+        declarations = {
+            key.strip(): value.strip()
+            for key, value in re.findall(r"([\w-]+)\s*:\s*([^;]+);", body)
+        }
+        if declarations.get("font-family", "").strip("\"'") == family:
+            faces.append(declarations)
+    return faces
+
+
+def test_bundled_mono_assets_are_the_pinned_fontsource_cuts() -> None:
+    for weight in MONO_WEIGHTS:
+        path = FONTS / f"ibm-plex-mono-latin-{weight}-normal.woff2"
+        assert path.is_file(), path
+        payload = path.read_bytes()
+        assert payload.startswith(WOFF2_MAGIC), path
+        assert len(payload) > 5_000, f"{path} is too small to carry the Latin cut"
+        digest = hashlib.sha256(payload).hexdigest()
+        assert digest == MONO_FONT_SHA256[weight], f"{path.name} is not the pinned cut"
+
+
+def test_bundled_mono_license_is_the_ofl() -> None:
+    payload = (FONTS / "IBMPlexMono-OFL.txt").read_bytes()
+    # Browsers never read the notice, but its provenance is pinned with the
+    # faces; normalizing line endings keeps a CRLF checkout on the same digest.
+    assert hashlib.sha256(payload.replace(b"\r\n", b"\n")).hexdigest() == MONO_LICENSE_SHA256
+    license_text = payload.decode("utf-8")
+    assert "SIL OPEN FONT LICENSE" in license_text
+    assert "IBMPlexMono" in license_text
+
+
+def test_globals_speaks_mono_in_the_bundled_family_first() -> None:
+    css = GLOBALS_CSS.read_text(encoding="utf-8")
+    stacks = _css_declarations(css, "--font-mono")
+    assert len(stacks) == 1, "the mono stack needs exactly one home"
+    families = [family.strip() for family in stacks[0].split(",")]
+    assert families[0].strip("\"'") == "IBM Plex Mono", stacks[0]
+    # The system stack stays behind the bundled face as the fallback only.
+    assert any(family.strip("\"'") in {"ui-monospace", "monospace"} for family in families[1:])
+
+    faces = _font_faces(css, "IBM Plex Mono")
+    assert sorted(int(face["font-weight"]) for face in faces) == list(MONO_WEIGHTS)
+    for face in faces:
+        weight = int(face["font-weight"])
+        assert f"/fonts/ibm-plex-mono-latin-{weight}-normal.woff2" in face["src"]
+        assert 'format("woff2")' in face["src"]
+        # The declared range is the cut's own, not the wider Fontsource
+        # default: the exact string keeps ← and → from being claimed.
+        declared = " ".join(face["unicode-range"].split())
+        assert declared == MONO_UNICODE_RANGE, f"{weight} declares {declared}"
+
+
+def test_capture_keeps_the_document_fonts_ready_wait_before_each_shot() -> None:
+    """Fonts settle before the frame; the capture asserts nothing further."""
+    source = (ROOT / "scripts" / "screenshots.py").read_text(encoding="utf-8")
+    shot = source[source.index("def _shot(") : source.index("def _require_inside(")]
+    assert "document.fonts.ready" in shot
+    assert shot.index("page.screenshot") > shot.index("document.fonts.ready")
+    assert "_assert_pinned_fonts" not in source
+
+
+def test_screenshot_workflow_keeps_the_strict_staged_diff_gate() -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    assert "git add assets/screenshots docs/screenshots/README.md" in workflow
+    assert "git diff --cached --quiet" in workflow
+    # The gate exits clean on an empty staged diff — no pixel comparison here.
+    assert 'echo "no screenshot changes; nothing to do"' in workflow
+
+
+def test_no_pixel_tolerance_or_alignment_helper_is_introduced() -> None:
+    """A real one-pixel change must still count; nothing here may hide it."""
+    for path in sorted((ROOT / "scripts").glob("screenshots*.py")):
+        source = path.read_text(encoding="utf-8")
+        assert "from PIL" not in source, path
+        assert "import PIL" not in source, path
+        hidden = re.search(r"def\s+\w*(?:toleran|align|compare_pixels|mask)\w*\s*\(", source)
+        assert hidden is None, f"{path} hides a pixel change: {hidden}"
+
+
+# Captured UI must not lean on the machine's emoji font: a literal emoji paints
+# colored on one runner and monochrome on another, which is exactly the
+# prompt-pill band PR #1042 showed. The pill marks are now repo SVG drawings on
+# `currentColor`. The scan names the surfaces a screenshot renders from — the
+# capability web folders and the shell's components, UI primitives and root
+# route — and excludes their tests (test fixtures may spell the glyphs) and the
+# capture scripts (tooling, never painted). Widen `CAPTURED_UI_ROOTS` to widen
+# the scan.
+def _capability_web_roots() -> list[Path]:
+    return sorted(
+        capability / "web"
+        for capability in (ROOT / "app" / "capabilities").iterdir()
+        if (capability / "web").is_dir()
+    )
+
+
+CAPTURED_UI_ROOTS = (
+    *_capability_web_roots(),
+    ROOT / "web" / "components",
+    ROOT / "web" / "ui",
+    ROOT / "web" / "routes",
+)
+CAPTURED_UI_SUFFIXES = {".ts", ".tsx", ".json"}
+_TEST_SOURCE = re.compile(r"\.(?:test|spec)\.(?:[cm]?[jt]sx?)$")
+_EMOJI = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\u2b00-\u2bff\ufe0f]")
+
+
+def _captured_ui_sources() -> list[Path]:
+    """Product UI files a screenshot can paint, never tests or tooling."""
+    candidates = [path for root in CAPTURED_UI_ROOTS for path in root.rglob("*") if path.is_file()]
+    return sorted(
+        path
+        for path in candidates
+        if path.suffix in CAPTURED_UI_SUFFIXES and not _TEST_SOURCE.search(path.name)
+    )
+
+
+def test_captured_ui_sources_carry_no_literal_emoji() -> None:
+    sources = _captured_ui_sources()
+    paths = {path.relative_to(ROOT).as_posix() for path in sources}
+    assert "app/capabilities/writing/web/PromptBar.tsx" in paths, "the prompt bar left the scan"
+    assert "web/components/TopBar.tsx" in paths, "the shell components left the scan"
+    assert "web/ui/icons.tsx" in paths, "the shell UI set left the scan"
+    assert "web/routes/__root.tsx" in paths, "the root route left the scan"
+    offenders = [
+        f"{path.relative_to(ROOT)}: {match.group(0)}"
+        for path in sources
+        for match in _EMOJI.finditer(path.read_text(encoding="utf-8"))
+    ]
+    assert not offenders, "captured UI draws a system emoji font: " + ", ".join(offenders)
+
+
+def test_captured_ui_emoji_guard_names_the_incident_glyphs() -> None:
+    """The matcher reads the three glyphs that broke #1042, not notation."""
+    for glyph in ("⚡", "💬", "🔍"):
+        assert _EMOJI.search(glyph), glyph
+    # The command mark and the arrows are notation, not emoji: the command
+    # mark lives in accessible names, arrows in bundled-font text.
+    assert _EMOJI.search("⌘ ↑ ↓ ← →") is None
+
+
+def test_captured_ui_scan_excludes_tests() -> None:
+    names = {path.name for path in _captured_ui_sources()}
+    assert "workspace.test.tsx" not in names, "a test fixture entered the captured-UI scan"
 
 
 def _previous_outputs(masters: Path, index: Path) -> None:

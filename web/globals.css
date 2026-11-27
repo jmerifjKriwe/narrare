@@ -201,6 +201,15 @@
    * the prose surface below and the procedural cover's title both read it,
    * so the two can never drift into different serifs. */
   --font-serif: "EB Garamond", Georgia, "Times New Roman", serif;
+  /* The keyboard's voice: keycaps, badges, code, dates and the numeric
+   * metadata. IBM Plex Mono is self-hosted (the faces are declared below;
+   * the OFL notice sits beside them), so a keycap's glyph has the same shape
+   * on every machine instead of reading the machine's font packages. The
+   * system mono follows it only as the fallback for a face that never
+   * loads. One home for the stack: a call site reads `font-mono` or the
+   * token, never a family of its own. */
+  --font-mono:
+    "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 /*
@@ -650,6 +659,57 @@ p.zen-dim-block:hover {
     U+2C60-2C7F, U+A720-A7FF;
 }
 
+/*
+ * The keyboard's voice: IBM Plex Mono, self-hosted like the two families
+ * above — the app's own copy, never a CDN, never whatever mono the reader's
+ * machine happens to have. Four real cuts (400 / 500 / 600 / 700), so a
+ * keycap's K, a badge's numeral and the prose's code block carry the same
+ * glyph on every machine without reading the machine's font packages. The
+ * declared range is the cut's own: IBM Plex Mono 5.3.0 ships exactly U+2191
+ * and U+2193, and the command mark (U+2318) is deliberately outside it and is
+ * drawn as the app's own SVG, never as text. The wider U+2190-2193 span was
+ * copied locally from the Plus Jakarta Sans faces and has been removed.
+ */
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-latin-600-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-latin-700-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 /* The editor's prose: the one place long-form text is read, so it gets the
  * brand serif and a comfortable measure. TipTap manages the DOM; the surface
  * and the document structure it writes are styled here. */
@@ -796,7 +856,7 @@ p.zen-dim-block:hover {
 .ProseMirror code {
   background: var(--rule);
   border-radius: var(--radius);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 0.9em;
   padding: 0.1em 0.35em;
 }

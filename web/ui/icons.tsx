@@ -1,21 +1,21 @@
 import type { ReactNode } from "react";
 
 /**
- * The icon set: sixty-eight line glyphs on one 16×16 grid, drawn for the
+ * The icon set: seventy line glyphs on one 16×16 grid, drawn for the
  * stroke they run on — `currentColor` at 1.5, round caps and joins, no
  * fills — so a glyph wears the ink of whatever it sits beside and carries
  * no color of its own. The whole presentation contract lives on the
  * `<svg>` that `Icon` renders, once; the entries of `icons` are the inner
  * drawings, bare geometry with no attributes of their own.
  *
- * The set replaces the app's only glyph, the `⚙` in the TopBar, with the
+ * The set replaces the app's only glyph, the cog in the TopBar, with the
  * wave's whole vocabulary; P9 wired the names into the controls. A glyph
  * is never its own accessible name — `Icon` is always `aria-hidden`, and
  * the control's label (P7's catalog keys) does the naming.
  */
 
 /**
- * The sixty-eight drawings. Each stays inside the 2.35–13.65 envelope —
+ * The seventy drawings. Each stays inside the 2.35–13.65 envelope —
  * knowledge's stack sets both extremes; on the x axis the ink never leaves
  * 2.5–13.5 — so the 1.5 stroke, reaching half its width past the ink, never
  * clips the viewBox. Each is a single-stroke metaphor: detail that
@@ -39,7 +39,7 @@ export const icons = {
   chat: (
     <path d="M2.5 4A1.5 1.5 0 0 1 4 2.5H12A1.5 1.5 0 0 1 13.5 4V9A1.5 1.5 0 0 1 12 10.5H8L4.5 13.5V10.5H4A1.5 1.5 0 0 1 2.5 9Z" />
   ),
-  /** Settings: a cog — the ⚙ it replaces, ring and teeth. */
+  /** Settings: a cog — the gear it replaces, ring and teeth. */
   settings: (
     <>
       <circle cx="8" cy="8" r="2.5" />
@@ -77,7 +77,7 @@ export const icons = {
   minus: <path d="M3 8H13" />,
   /** Confirm: the plain check. */
   check: <path d="M3 8.5L6.5 12L13 4.5" />,
-  /** Dismiss: the ✕. Not `close` — a dismissal drops content, a close folds a panel. */
+  /** Dismiss: the cross. Not `close` — a dismissal drops content, a close folds a panel. */
   cross: <path d="M4.5 4.5L11.5 11.5M11.5 4.5L4.5 11.5" />,
   /** Disclosure: selects and menus point down. */
   chevronDown: <path d="M3.5 6L8 10.5L12.5 6" />,
@@ -465,7 +465,7 @@ export const icons = {
    *  points the way the time flows. */
   play: <path d="M5.25 3.25L12 8L5.25 12.75Z" />,
   /** The drafts' `volume_off`: the muted soundscape — the speaker and the
-   *  ✕ that silences it (the lock beside it is the set's own `lock`). */
+   *  cross that silences it (the lock beside it is the set's own `lock`). */
   soundOff: (
     <>
       <path d="M2.5 6.25H4.75L8 3.5V12.5L4.75 9.75H2.5Z" />
@@ -478,6 +478,16 @@ export const icons = {
   /** The drafts' `fullscreen_exit`: the corners drawn back in — the screen
    *  returns to the window. */
   fullscreenExit: <path d="M5.5 2.75V5.5H2.75M10.5 2.75V5.5H13.25M13.25 10.5H10.5V13.25M2.75 10.5H5.5V13.25" />,
+
+  // The keyboard's concepts (screenshot font determinism). The bundled mono
+  // Latin subset carries no U+2318, so the mark is repo-owned: drawing it
+  // avoids a system-font glyph whose rasterization differs by machine.
+
+  /** The command key: the square and the four loops it hangs — the ⌘ the
+   *  keycaps used to set as text. One closed path, as the glyph itself is. */
+  command: (
+    <path d="M9.875 4.25V11.75A1.875 1.875 0 1 0 11.75 9.875H4.25A1.875 1.875 0 1 0 6.125 11.75V4.25A1.875 1.875 0 1 0 4.25 6.125H11.75A1.875 1.875 0 1 0 9.875 4.25Z" />
+  ),
 } satisfies Record<string, ReactNode>;
 
 /** A name in the icon set — the wave's whole glyph vocabulary. */
