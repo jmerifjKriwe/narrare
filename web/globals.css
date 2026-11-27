@@ -203,6 +203,47 @@
   --font-serif: "EB Garamond", Georgia, "Times New Roman", serif;
 }
 
+/*
+ * The manuscript's own language picks its face (design §6.5). The prose
+ * carries the manuscript's `lang`, and a Chinese, Japanese or Korean
+ * manuscript needs its language's Han faces rather than whatever Han face the
+ * system's fallback list happens to hold. Each rule repeats its token's base
+ * stack first, then names the language's families, then closes with the
+ * base's generic family last: a generic family declared ahead of a Han family
+ * is resolved against the system's whole fallback list (fontconfig), and the
+ * Han families named after it would never be consulted.
+ */
+:lang(zh) {
+  --font-ui:
+    "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    "Noto Sans", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC",
+    "Source Han Sans SC", sans-serif;
+  --font-serif:
+    "EB Garamond", Georgia, "Times New Roman", "Songti SC", "SimSun", "Noto Serif CJK SC",
+    "Source Han Serif SC", serif;
+}
+
+:lang(ja) {
+  --font-ui:
+    "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    "Noto Sans", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji", "Hiragino Sans", "Yu Gothic", "Meiryo", "Noto Sans CJK JP", sans-serif;
+  --font-serif:
+    "EB Garamond", Georgia, "Times New Roman", "Yu Mincho", "Hiragino Mincho ProN",
+    "Noto Serif CJK JP", serif;
+}
+
+:lang(ko) {
+  --font-ui:
+    "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    "Noto Sans", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR", sans-serif;
+  --font-serif:
+    "EB Garamond", Georgia, "Times New Roman", "AppleMyungjo", "Batang", "Noto Serif CJK KR",
+    serif;
+}
+
 /* The reader's choice, as the browser's own `color-scheme`: "system" leaves
  * both open and `light-dark()` follows the OS (the media query the tokens
  * used to duplicate); a stored value forces one side, native controls and all.

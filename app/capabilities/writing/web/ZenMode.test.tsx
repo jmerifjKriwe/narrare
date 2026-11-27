@@ -117,6 +117,7 @@ function continuationOf(overrides: Partial<Continuation> = {}): Continuation {
 
 function renderZen(
   props: {
+    novel?: Novel;
     entry?: SceneEntry;
     todayWords?: number | null;
     continuation?: Continuation;
@@ -128,9 +129,9 @@ function renderZen(
   const onBodyChange = props.onBodyChange ?? vi.fn();
   const onExit = props.onExit ?? vi.fn();
   const continuation = props.continuation ?? continuationOf();
-  render(
+  const utils = render(
     <ZenMode
-      novel={NOVEL}
+      novel={props.novel ?? NOVEL}
       entry={props.entry ?? { scene: SCENE, chapter: CHAPTER }}
       todayWords={props.todayWords === undefined ? 412 : props.todayWords}
       continuation={continuation}
@@ -139,7 +140,7 @@ function renderZen(
       zenBusy={props.zenBusy ?? false}
     />,
   );
-  return { onBodyChange, onExit, continuation };
+  return { ...utils, onBodyChange, onExit, continuation };
 }
 
 beforeEach(() => {
@@ -177,6 +178,13 @@ describe("the zen anatomy — the round's zen-focus-2 authority", () => {
     // The prose is the scene's own, live and labelled.
     const box = await screen.findByRole("textbox", { name: de["writing.workspace.editor.proseLabel"] });
     await waitFor(() => expect(box.textContent).toContain("Dritter Absatz schließt ab."));
+  });
+
+  it("carries the manuscript's language on the prose", async () => {
+    const { container } = renderZen({ novel: { ...NOVEL, language: "zh-Hans-CN" } });
+    await waitFor(() =>
+      expect(container.querySelector(".ProseMirror")?.getAttribute("lang")).toBe("zh-Hans-CN"),
+    );
   });
 
   it("an unset overline keeps the head honest — no invented line", async () => {

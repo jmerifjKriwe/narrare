@@ -316,6 +316,7 @@ function ScenePaper({
             body={entry.scene.body}
             label={t("writing.workspace.editor.proseLabel")}
             continuation={continuation}
+            language={novel.language ?? null}
             editable={!zenBusy}
             onChange={(body) => {
               setWords(countWords(body));

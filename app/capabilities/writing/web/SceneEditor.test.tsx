@@ -183,6 +183,24 @@ describe("the editing surface", () => {
     rerender(<SceneEditor key="s2" body="Szene zwei." onChange={() => {}} label="Prosa" />);
     await waitFor(() => expect(screen.getByRole("textbox").textContent).toBe("Szene zwei."));
   });
+
+  it("carries the manuscript's language on its prose", async () => {
+    const { container } = render(
+      <SceneEditor body="Text" onChange={vi.fn()} label="Scene" language="ja" />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector(".ProseMirror")?.getAttribute("lang")).toBe("ja"),
+    );
+  });
+
+  it("leaves the prose to the interface's language when the manuscript names none", async () => {
+    const { container } = render(
+      <SceneEditor body="Text" onChange={vi.fn()} label="Scene" language={null} />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector(".ProseMirror")?.hasAttribute("lang")).toBe(false),
+    );
+  });
 });
 
 // --- The editable seam (the Codacy swap-window fix) -------------------------

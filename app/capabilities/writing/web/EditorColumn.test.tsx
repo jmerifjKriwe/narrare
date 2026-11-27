@@ -318,6 +318,13 @@ describe("the scene face", () => {
     await waitFor(() => expect(box.textContent).toBe(""));
   });
 
+  it("carries the manuscript's language on the prose", async () => {
+    const { container } = renderColumn({ novel: novelRow({ language: "zh-Hans-CN" }) });
+    await waitFor(() =>
+      expect(container.querySelector(".ProseMirror")?.getAttribute("lang")).toBe("zh-Hans-CN"),
+    );
+  });
+
 });
 
 describe("the foot — one status owner, three faces", () => {
