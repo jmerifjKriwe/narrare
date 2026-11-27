@@ -5,8 +5,9 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { ChromeFrame } from "../components/ChromeFrame";
 import { useLocalizedError } from "../lib/api/errors";
 import { useTranslation } from "../lib/i18n";
-import { adoptServerLocale, activeLocale, subscribeLocale } from "../lib/locale";
+import { adoptServerLocale, activeLocale, hydrateLocale, subscribeLocale } from "../lib/locale";
 import { PageTitleProvider, applyBaseTitle, usePageTitle } from "../lib/pageTitle";
+import { readPreSetupLocale } from "../lib/preSetupLocale";
 import { useSettingsQuery } from "../lib/query";
 import { adoptServerTheme } from "../lib/theme";
 import { ToastProvider } from "../ui/toast";
@@ -31,9 +32,21 @@ function Shell() {
 
   useEffect(() => {
     if (!settings.isSuccess) return;
+    let cancelled = false;
+    // The row's language is user data, so the first paint waits for its
+    // catalog too: the language is adopted, its module fetched, and only
+    // then is the page opened. A chunk that cannot be fetched leaves the
+    // source language active (hydrateLocale's own fallback).
     adoptServerLocale(settings.data.locale);
-    adoptServerTheme(settings.data.theme);
-    setReady(true);
+    void (async () => {
+      await hydrateLocale(readPreSetupLocale() ?? activeLocale());
+      if (cancelled) return;
+      adoptServerTheme(settings.data.theme);
+      setReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [settings.data, settings.isSuccess]);
 
   // The language the catalog renders in, as reactive state: the title effect

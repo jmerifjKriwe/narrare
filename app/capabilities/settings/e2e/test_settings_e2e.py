@@ -61,6 +61,7 @@ BASE = WEB_URL
 # The catalog's own words, pinned where a leg leans on them (de-DE context).
 HEADING_DE = "Atelier-Einstellungen"
 HEADING_EN = "Atelier settings"
+HEADING_FR = "Réglages de l'atelier"
 LANGUAGE_LABEL_DE = "Oberflächensprache"
 NAME_LABEL = "Autorenname"
 GOAL_LABEL = "Tagesziel (Wörter)"
@@ -71,6 +72,7 @@ NEUTRAL_HINT = "Leerlassen, um den neutralen Bezeichner des Ateliers zu behalten
 GOAL_INVALID = "Das Tagesziel muss eine ganze Zahl zwischen 1 und 2.147.483.647 sein."
 FOLLOW_DE = "Dem Browser folgen (Spracherkennung beim Start)"
 FOLLOW_EN = "Follow the browser (language detection at start)"
+FOLLOW_FR = "Suivre le navigateur (détection de la langue au démarrage)"
 OFFLINE_TITLE = "Offline-Kompensation"
 OFFLINE_BODY = "Lokaler Fake-Treiber aktiv. Eingaben verbleiben auf diesem Rechner."
 MENU_TRIGGER = re.compile(r"^Benutzerprofil:")
@@ -217,6 +219,31 @@ def test_the_language_cards_follow_the_registry_order(page: Page, installed: Sta
         "English",
         "Français",
     ]
+
+
+def test_a_language_is_loaded_only_when_it_is_read(page: Page, installed: Stack) -> None:
+    asked: list[str] = []
+    page.on("request", lambda request: asked.append(request.url))
+    goto_settings(page)
+    expect(page.get_by_role("heading", name=HEADING_DE)).to_be_visible()
+    page.get_by_text("Français", exact=True).click()
+    expect(page.get_by_role("heading", name=HEADING_FR)).to_be_visible()
+    page.reload()
+    expect(page.get_by_role("heading", name=HEADING_FR)).to_be_visible()
+    await_settings(locale="fr")
+
+    def module_requests(code: str) -> int:
+        return sum(1 for url in asked if f"/lib/generated/catalogs/{code}.ts" in url)
+
+    assert module_requests("de") >= 1, "the browser's language is fetched when it is read"
+    assert module_requests("fr") >= 1, "a switched-to language is fetched when it is read"
+    assert module_requests("en") == 0, "the source language is bundled, never fetched"
+    # The catalog loads before the choice applies, so the controlled state
+    # settles a moment after the click; following the browser also renames
+    # the checkbox to the browser's language, so assert the landed face.
+    page.get_by_role("checkbox", name=FOLLOW_FR).click()
+    expect(page.get_by_role("checkbox", name=FOLLOW_DE)).to_be_checked()
+    await_settings(locale=None)
 
 
 def test_the_theme_flips_persists_and_shares_the_one_seam(page: Page, installed: Stack) -> None:

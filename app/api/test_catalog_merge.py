@@ -210,9 +210,13 @@ def test_a_hyphenated_locale_becomes_a_valid_identifier(tmp_path: Path) -> None:
 
     generated = typescript_catalogs(tmp_path, ("en", "pt-BR"))
 
-    assert 'import pt_BR_central from "../../../i18n/pt-BR.json";' in generated
-    assert "const pt_BR_merged = {\n  ...pt_BR_central,\n  ...pt_BR_demo,\n};" in generated
-    assert '  "pt-BR": pt_BR_merged,' in generated
+    # Only the source is eager now; the hyphenated code keeps its valid
+    # identifier in the loader map, and its merged catalog is a lazy module.
+    assert 'import pt_BR_central from "../../../i18n/pt-BR.json";' not in generated
+    assert "pt_BR_merged" not in generated
+    assert '"pt-BR": () => import("./catalogs/pt_BR"),' in generated
+    eager = 'export const catalogs = { en: en_merged } as const satisfies Record<"en", Catalog>;'
+    assert eager in generated
 
 
 def test_every_other_language_is_one_lazy_module(tmp_path: Path) -> None:

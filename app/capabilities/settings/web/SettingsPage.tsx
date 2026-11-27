@@ -31,7 +31,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { SettingsHub } from "@shell/components/SettingsHub";
-import { catalogs, localeOrder } from "@shell/lib/generated/catalogs";
+import { endonyms, localeOrder } from "@shell/lib/generated/catalogs";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
 import { useLanguageChoice } from "@shell/lib/language";
@@ -155,7 +155,7 @@ export function SettingsPage() {
                             type="radio"
                             name="surface-language"
                             className="sr-only"
-                            aria-label={catalogs[code]["locale.name"]}
+                            aria-label={endonyms[code]}
                             checked={active}
                             onChange={() => void choose(code)}
                           />
@@ -169,7 +169,7 @@ export function SettingsPage() {
                               {active && <span className="h-2 w-2 rounded-full bg-primary" />}
                             </span>
                             <span className={`text-body ${active ? "font-medium" : "font-normal"} text-foreground`}>
-                              {catalogs[code]["locale.name"]}
+                              {endonyms[code]}
                             </span>
                           </span>
                           {active ? (

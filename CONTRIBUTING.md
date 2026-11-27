@@ -94,7 +94,9 @@ The scope convention lives in [`AGENTS.md`](AGENTS.md) and is checked in review.
 User-visible text lives in the catalogs, never in a component. The shell's and
 shared text lives in `i18n/<code>.json`; a capability's own text lives in
 `app/capabilities/<id>/web/i18n/<code>.json`. The generator merges both into
-`web/lib/generated/catalogs.ts`; a missing key in any catalog is a build error.
+`web/lib/generated/catalogs.ts` for the source language and into one lazy module
+per other language under `web/lib/generated/catalogs/`, which the shell loads
+when that language is first read; a missing key in any catalog is a build error.
 Ownership follows the key's namespace, not the component that renders it:
 `settings.*` lives in the settings capability even though the shell's bar
 renders it.

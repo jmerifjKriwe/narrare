@@ -15,6 +15,7 @@ vi.mock("./generated/catalogs", async (importOriginal) => {
     locales: [...real.locales, "pt-BR"],
     localeOrder: [...real.localeOrder, "pt-BR"],
     catalogs: { ...real.catalogs, "pt-BR": { ...real.catalogs.en, "locale.name": "Português (Brasil)" } },
+    endonyms: { ...real.endonyms, "pt-BR": "Português (Brasil)" },
   };
 });
 

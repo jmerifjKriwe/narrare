@@ -504,26 +504,23 @@ def lazy_catalog_outputs(root: Path, known: tuple[str, ...]) -> dict[str, str]:
 def typescript_catalogs(
     root: Path, known: tuple[str, ...], order: tuple[str, ...] | None = None
 ) -> str:
-    """The web-side view: one merged object per locale, typed from the source.
+    """The web-side view: the source catalog eagerly, one loader per other.
 
     ``known`` is the catalog's language set in ``locales`` order; ``order`` is
     the registry's display order, which the switcher reads from ``localeOrder``.
+    Only the source language is bundled: every other language is a lazy module
+    under ``web/lib/generated/catalogs/``, fetched when it is first read.
     """
     sources = catalog_sources(root, known)
-    imports: list[str] = []
-    merged: list[str] = []
-    mapping: list[str] = []
-    for locale in known:
-        loc = _identifier(locale)
-        locale_imports, aliases = _catalog_imports(root, sources[locale], locale, "../../../")
-        imports.extend(locale_imports)
-        merged.append(
-            f"const {loc}_merged = {{\n" + "".join(f"  ...{alias},\n" for alias in aliases) + "};\n"
-        )
-        mapping.append(f'  "{locale}": {loc}_merged,\n')
+    source_identifier = _identifier(SOURCE_LOCALE)
+    imports, aliases = _catalog_imports(root, sources[SOURCE_LOCALE], SOURCE_LOCALE, "../../../")
+    merged = (
+        f"const {source_identifier}_merged = {{\n"
+        + "".join(f"  ...{alias},\n" for alias in aliases)
+        + "};\n"
+    )
     union = ", ".join(f'"{locale}"' for locale in known)
     ordered = ", ".join(f'"{locale}"' for locale in (known if order is None else order))
-    source_merged = f"{_identifier(SOURCE_LOCALE)}_merged"
     loaders = "".join(
         f'  {_ts_property(locale)}: () => import("./catalogs/{_identifier(locale)}"),\n'
         for locale in known
@@ -540,21 +537,22 @@ def typescript_catalogs(
         f"export const localeOrder = [{ordered}] as const satisfies readonly Locale[];\n"
         "export type Locale = (typeof locales)[number];\n"
         "\n"
-        f"{''.join(merged)}"
+        f"{merged}"
         "\n"
-        "// Typed against the source catalog: a key missing in any locale is a build\n"
-        "// error at this assignment, not a blank label at runtime.\n"
-        f"export const catalogs: Record<Locale, typeof {source_merged}> = {{\n"
-        f"{''.join(mapping)}}};\n"
+        "// The source catalog is bundled; every other language is a lazy module\n"
+        "// fetched the first time a reader reads it. Typed against the source\n"
+        "// catalog, so a key missing in any language is a build error at that\n"
+        "// module's assignment, not a blank label at runtime.\n"
+        f"export const catalogs = {{ {_ts_property(SOURCE_LOCALE)}: {source_identifier}_merged }}"
+        f' as const satisfies Record<"{SOURCE_LOCALE}", Catalog>;\n'
         "\n"
-        f"export type Catalog = typeof {source_merged};\n"
+        f"export type Catalog = typeof {source_identifier}_merged;\n"
         "export type CatalogModule = { locale: Locale; default: Catalog };\n"
         "\n"
         f"{typescript_endonyms(root, known)}"
         "\n"
         "// One lazy loader per language other than the source: the module is\n"
-        "// fetched the first time the shell reads that language. The eager map\n"
-        "// above still carries every language for the runtime that reads it.\n"
+        "// fetched the first time the shell reads that language.\n"
         "export const catalogLoaders: { [L in Exclude<Locale, "
         f'"{SOURCE_LOCALE}">]: () => Promise<CatalogModule> }} = {{\n'
         f"{loaders}}};\n"

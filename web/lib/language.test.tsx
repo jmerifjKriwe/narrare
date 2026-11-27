@@ -29,17 +29,23 @@ vi.mock("./api/client", () => ({
 }));
 
 import { client } from "./api/client";
+import { isLoaded, resetCatalogs } from "./catalog";
+import { catalogLoaders } from "./generated/catalogs";
 import { LanguageChip, LanguageSwitcher, useLanguageChoice } from "./language";
-import { activeLocale, applyLocale, chosenLocale } from "./locale";
+import { activeLocale, adoptServerLocale, applyLocale, chosenLocale, hydrateLocale } from "./locale";
 import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
 import { queryClient, useSettings, useSettingsQuery } from "./query";
-import { de } from "./test/catalogs";
+import { de, preloadCatalogs } from "./test/catalogs";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
 const api = client as unknown as Record<
   "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
   ReturnType<typeof vi.fn>
 >;
+
+/** The generated loaders, restored after a case replaces one to hold or
+ *  refuse a language. */
+const generatedLoaders = { ...catalogLoaders };
 
 function ok(): Response {
   return new Response(null, { status: 200 });
@@ -95,6 +101,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
   applyLocale(null);
   localStorage.clear();
+  Object.assign(catalogLoaders, generatedLoaders);
+  // A case that emptied the store (a refused or held catalog) restores the
+  // bed's preloaded catalogs for the next one.
+  resetCatalogs();
+  preloadCatalogs();
 });
 
 describe("the radio face — the draft's DE|EN|FR group", () => {
@@ -190,13 +201,13 @@ describe("the radio face — the draft's DE|EN|FR group", () => {
 });
 
 describe("the pre-setup contract — the mirror stands until the row can hold it", () => {
-  it("adopts the mirrored language before paint when the row holds no choice", () => {
+  it("adopts the mirrored language when the row holds no choice", async () => {
     storePreSetupLocale("fr");
     render(<LanguageSwitcher variant="welcome" preSetup />);
 
-    // The layout effect ran during the commit: the first paint is French,
-    // never a flash of the browser's language past the mirror.
-    expect(activeLocale()).toBe("fr");
+    // The mirror is a choice like any other: its catalog loads before the
+    // language becomes active, so the adoption settles a microtask later.
+    await waitFor(() => expect(activeLocale()).toBe("fr"));
     expect(screen.getByRole("radio", { name: "Français" }).getAttribute("aria-checked")).toBe("true");
   });
 
@@ -218,7 +229,9 @@ describe("the pre-setup contract — the mirror stands until the row can hold it
     );
 
     fireEvent.click(screen.getByRole("radio", { name: "English" }));
-    expect(activeLocale()).toBe("en"); // applied before the answer lands
+    // The activation (its catalog is already in the store) precedes the
+    // write's answer, which keeps the choice on the structural 409.
+    await waitFor(() => expect(activeLocale()).toBe("en"));
     await waitFor(() => expect(readPreSetupLocale()).toBe("en"));
     expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "en" } });
     expect(chosenLocale()).toBe("en");
@@ -250,6 +263,8 @@ describe("the pre-setup contract — the mirror stands until the row can hold it
   it("any other refusal restores the prior choice and its mirror", async () => {
     storePreSetupLocale("de");
     render(<LanguageSwitcher variant="welcome" preSetup />);
+    // The mirror's own activation settles before the refusal is scripted.
+    await waitFor(() => expect(activeLocale()).toBe("de"));
 
     api.PATCH.mockResolvedValueOnce({
       error: { detail: "refused" },
@@ -266,6 +281,7 @@ describe("the pre-setup contract — the mirror stands until the row can hold it
   it("a network failure restores the prior choice too", async () => {
     storePreSetupLocale("de");
     render(<LanguageSwitcher variant="wizard" preSetup />);
+    await waitFor(() => expect(activeLocale()).toBe("de"));
 
     api.PATCH.mockRejectedValueOnce(new Error("offline"));
     fireEvent.click(screen.getByRole("radio", { name: "Français" }));
@@ -515,7 +531,9 @@ describe("the null choice — „Dem Browser folgen“ (W7)", () => {
     await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
 
     fireEvent.click(screen.getByRole("button", { name: "follow" }));
-    expect(screen.getByTestId("chosen").textContent).toBe("browser"); // at once
+    // The browser's catalog loads before the choice applies; the write
+    // follows the activation, not a paint.
+    await waitFor(() => expect(screen.getByTestId("chosen").textContent).toBe("browser"));
     await waitFor(() =>
       expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: null } }),
     );
@@ -597,6 +615,185 @@ describe("the null choice — „Dem Browser folgen“ (W7)", () => {
     expect(api.PATCH).not.toHaveBeenCalled();
     expect(readPreSetupLocale()).toBe("de"); // the mirror stands untouched
     expect(screen.getByTestId("chosen").textContent).toBe("de");
+  });
+});
+
+// --- A catalog that cannot be fetched — the choice writes nothing ----------
+
+describe("a catalog that cannot be fetched", () => {
+  it("a refused catalog keeps the previous language and writes nothing", async () => {
+    setUp = true;
+    applyLocale("de");
+    resetCatalogs();
+    catalogLoaders.fr = () => Promise.reject(new Error("chunk"));
+    render(<LanguageSwitcher variant="welcome" />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("radio", { name: "Français" }));
+    });
+
+    expect(activeLocale()).toBe("de");
+    expect(api.PATCH).not.toHaveBeenCalled();
+  });
+
+  it("a superseded choice writes nothing", async () => {
+    setUp = true;
+    storedLocale = "de";
+    applyLocale("de");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SaveSurfaceProbe />
+        <LanguageSwitcher variant="welcome" />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(queryClient.getQueryState(["settings", "read"])?.status).toBe("success"));
+    await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
+    resetCatalogs();
+
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const realFr = catalogLoaders.fr;
+    catalogLoaders.fr = async () => {
+      await gate;
+      return realFr();
+    };
+
+    fireEvent.click(screen.getByRole("radio", { name: "Français" }));
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
+
+    // The newer choice commits; the held fr catalog lands afterwards and
+    // activates nothing (the store still keeps it). Await the released call
+    // itself — the store's load landing proves it ran — so a missing
+    // latest-activation guard cannot pass here unseen.
+    await waitFor(() => expect(storedLocale).toBe("en"));
+    release();
+    await waitFor(() => expect(isLoaded("fr")).toBe(true));
+    await act(async () => {});
+    expect(activeLocale()).toBe("en");
+    expect(api.PATCH).toHaveBeenCalledTimes(1);
+    expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "en" } });
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("en");
+  });
+});
+
+// --- The boot's source fallback — the row's language is still the choice ----
+
+/** The boot's fallback state: `row` is the stored choice, its catalog cannot
+ *  be fetched, and hydration has made the source language active. The way
+ *  `__root.boot.test.tsx` produces it. */
+async function fallbackToSource(row: "fr" | null, browser?: string): Promise<void> {
+  if (browser !== undefined) {
+    vi.stubGlobal("navigator", { language: browser, languages: [browser] });
+  }
+  const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+  adoptServerLocale(row);
+  resetCatalogs();
+  catalogLoaders.fr = () => Promise.reject(new Error("chunk"));
+  await hydrateLocale("fr");
+  quiet.mockRestore();
+}
+
+describe("the boot's source fallback", () => {
+  it("a click on the row's language retries it instead of being a dead click", async () => {
+    setUp = true;
+    storedLocale = "fr";
+    await fallbackToSource("fr");
+    catalogLoaders.fr = generatedLoaders.fr;
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SaveSurfaceProbe />
+        <LanguageSwitcher variant="welcome" />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(queryClient.getQueryState(["settings", "read"])?.status).toBe("success"));
+    await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
+
+    fireEvent.click(screen.getByRole("radio", { name: "Français" }));
+
+    await waitFor(() => expect(activeLocale()).toBe("fr"));
+    expect(api.PATCH).toHaveBeenCalledTimes(1);
+    expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "fr" } });
+  });
+
+  it("a retry whose catalog still fails keeps the source and writes nothing", async () => {
+    setUp = true;
+    storedLocale = "fr";
+    await fallbackToSource("fr");
+    // A fresh rejecting loader counts the retry: the fallback's own load
+    // must not be what makes the count.
+    let retries = 0;
+    catalogLoaders.fr = async () => {
+      retries += 1;
+      throw new Error("chunk");
+    };
+    render(<LanguageSwitcher variant="welcome" />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("radio", { name: "Français" }));
+    });
+
+    expect(retries).toBe(1);
+    expect(activeLocale()).toBe("en");
+    expect(api.PATCH).not.toHaveBeenCalled();
+    expect(chosenLocale()).toBe("fr");
+  });
+
+  it("a refused write restores the stored choice without announcing its missing catalog", async () => {
+    setUp = true;
+    storedLocale = "fr";
+    await fallbackToSource("fr");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SaveSurfaceProbe />
+        <LanguageSwitcher variant="welcome" />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(queryClient.getQueryState(["settings", "read"])?.status).toBe("success"));
+    await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
+    api.PATCH.mockResolvedValueOnce({
+      error: { detail: "refused" },
+      response: new Response(null, { status: 503 }),
+    });
+
+    fireEvent.click(screen.getByRole("radio", { name: "Deutsch" }));
+
+    // Wait for the write, then let its refusal land: the restore is the
+    // assertion, not the pre-click state.
+    await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
+    await act(async () => {});
+    expect(activeLocale()).toBe("en");
+    expect(isLoaded(activeLocale())).toBe(true);
+    expect(chosenLocale()).toBe("fr");
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings", "read"])?.locale).toBe("fr");
+    expect(queryClient.getQueryData<{ locale: string | null }>(["settings"])?.locale).toBe("fr");
+  });
+
+  it("a stored follow whose browser catalog is missing restores the source", async () => {
+    setUp = true;
+    storedLocale = null;
+    await fallbackToSource(null, "fr-FR");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SaveSurfaceProbe />
+        <LanguageSwitcher variant="welcome" />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(queryClient.getQueryState(["settings", "read"])?.status).toBe("success"));
+    await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
+    api.PATCH.mockResolvedValueOnce({
+      error: { detail: "refused" },
+      response: new Response(null, { status: 503 }),
+    });
+
+    fireEvent.click(screen.getByRole("radio", { name: "Deutsch" }));
+
+    await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
+    await act(async () => {});
+    expect(activeLocale()).toBe("en");
+    expect(chosenLocale()).toBeNull();
+    expect(isLoaded(activeLocale())).toBe(true);
   });
 });
 

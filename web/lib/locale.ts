@@ -1,3 +1,4 @@
+import { isLoaded, loadCatalog } from "./catalog";
 import { locales, type Locale } from "./generated/catalogs";
 
 /**
@@ -143,6 +144,12 @@ let active: Locale = initial.catalog;
 let activeFormat: string = initial.formatLocale;
 const listeners = new Set<() => void>();
 
+// The latest catalog call, shared by the boot's hydration and a switch: a
+// load that lands after a newer call still fills the store, but activates
+// nothing. Without it a reader who picks two languages quickly would end up
+// in the first one once its chunk arrives.
+let latestActivation = 0;
+
 function announce(resolved: ResolvedLocale): void {
   active = resolved.catalog;
   activeFormat = resolved.formatLocale;
@@ -187,14 +194,79 @@ export function adoptServerLocale(locale: string | null): void {
 }
 
 /**
- * A choice made in the UI, applied immediately. Persisting it is the caller's
- * job: it knows what to do when the write is refused.
+ * The language a choice would make active: the code itself, or the browser's
+ * language for `null`, or the source when the browser speaks none of them.
+ */
+export function targetLocale(locale: Locale | null): Locale {
+  return locale ?? fromBrowser()?.catalog ?? SOURCE;
+}
+
+/**
+ * A choice made in the UI, applied immediately when its catalog is in the
+ * store. Persisting it is the caller's job: it knows what to do when the
+ * write is refused. A language whose catalog is not here is still recorded as
+ * the choice — the row, the mirror and `chosen` are the record — but the
+ * source language answers: no face is announced without its own words, so the
+ * restore after a refused write cannot paint a half-translated language.
  */
 export function applyLocale(locale: Locale | null): void {
+  const resolved =
+    locale !== null
+      ? { catalog: locale, formatLocale: formatTagFor(locale) }
+      : (fromBrowser() ?? source());
   chosen = locale;
-  announce(
-    locale !== null ? { catalog: locale, formatLocale: formatTagFor(locale) } : (fromBrowser() ?? source()),
-  );
+  if (!isLoaded(resolved.catalog)) {
+    reveal(SOURCE);
+    return;
+  }
+  announce(resolved);
+}
+
+/**
+ * Announces a catalog the store already holds, without touching the stored
+ * choice: the boot's hydration makes the row's or the browser's language
+ * active, and only a choice writes `chosen`.
+ */
+function reveal(locale: Locale): void {
+  announce({ catalog: locale, formatLocale: formatTagFor(locale) });
+}
+
+/**
+ * The boot's one async edge: loads `target`'s catalog before the first paint.
+ * A chunk that cannot be fetched is logged and the source language answers,
+ * so the page never renders half translated; the call never rejects. A newer
+ * call supersedes this one — the load still fills the store, nothing is
+ * announced.
+ */
+export async function hydrateLocale(target: Locale): Promise<void> {
+  const call = ++latestActivation;
+  try {
+    await loadCatalog(target);
+  } catch (error) {
+    console.error(`[i18n] the ${target} catalog could not be loaded`, error);
+    if (call === latestActivation) reveal(SOURCE);
+    return;
+  }
+  if (call === latestActivation) reveal(target);
+}
+
+/**
+ * A switch: resolves the language that would become active (`null` follows
+ * the browser), loads its catalog, then applies it. A failed load keeps the
+ * active language and resolves `false`; so does a call a newer one superseded
+ * — in both cases nothing was activated, so the caller writes nothing.
+ */
+export async function activateLocale(locale: Locale | null): Promise<boolean> {
+  const target = targetLocale(locale);
+  const call = ++latestActivation;
+  try {
+    await loadCatalog(target);
+  } catch {
+    return false;
+  }
+  if (call !== latestActivation) return false;
+  applyLocale(locale);
+  return true;
 }
 
 export type { Locale };

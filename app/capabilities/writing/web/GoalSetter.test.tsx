@@ -260,9 +260,16 @@ describe("the locale the daily save carries — #933", () => {
     await waitFor(() => expect(saveButton().disabled).toBe(false));
 
     fireEvent.click(screen.getByRole("button", { name: "choose-en" }));
-    held = true; // the choice's refetch never lands — the window stays open
+    // The choice's invalidation refetch must never land: hold every read
+    // from here, before the activation's microtask drain can issue it.
+    held = true;
+    // The choice activates only once its catalog is here, so the dialog
+    // speaks English after that settles — the window the save rides.
+    const englishSave = await screen.findByRole("button", {
+      name: en["writing.workspace.crud.save"],
+    });
     fireEvent.change(field, { target: { value: "750" } });
-    fireEvent.click(screen.getByRole("button", { name: en["writing.workspace.crud.save"] }));
+    fireEvent.click(englishSave);
 
     await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(2));
     const savePatch = api.PATCH.mock.calls.find(([, init]) => "daily_goal_words" in (init?.body ?? {}));

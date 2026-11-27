@@ -47,9 +47,17 @@ import {
 } from "react";
 
 import { client } from "./api/client";
-import { catalogs, localeOrder } from "./generated/catalogs";
+import { endonyms, localeOrder } from "./generated/catalogs";
 import { useTranslation } from "./i18n";
-import { activeLocale, applyLocale, chosenLocale, subscribeLocale, type Locale } from "./locale";
+import {
+  activateLocale,
+  activeLocale,
+  applyLocale,
+  chosenLocale,
+  subscribeLocale,
+  targetLocale,
+  type Locale,
+} from "./locale";
 import { readPreSetupLocale, storePreSetupLocale } from "./preSetupLocale";
 import { queryClient } from "./query";
 import { Icon } from "../ui/icons";
@@ -79,24 +87,34 @@ export function useLanguageChoice({ preSetup = false }: { preSetup?: boolean } =
   const locale = useSyncExternalStore(subscribeLocale, activeLocale, activeLocale);
   const chosen = useSyncExternalStore(subscribeLocale, chosenLocale, chosenLocale);
 
-  // The pre-setup mirror, adopted before paint when the row holds no choice
-  // yet — a refresh keeps the language, never flashes the browser's own.
+  // The pre-setup mirror, adopted when the row holds no choice yet. The boot
+  // has already hydrated it before its ready gate opened, so the first paint
+  // is the mirror's language; a mount without that boot settles the
+  // activation a microtask later.
   useLayoutEffect(() => {
     if (!preSetup || chosenLocale() !== null) return;
     const mirrored = readPreSetupLocale();
-    if (mirrored !== null) applyLocale(mirrored);
+    // The mirror is a choice like any other: its catalog is loaded before
+    // the language becomes active. The boot has usually hydrated it already,
+    // so this resolves from the store without a request.
+    if (mirrored !== null) void activateLocale(mirrored);
   }, [preSetup]);
 
-  /** Apply and persist a choice — the one write every face makes. The
-   *  guard is against the STORED answer: choosing the language the row
-   *  already holds (or following the browser when it is followed) is no
-   *  write, while a null over a stored choice — and a stored choice over
-   *  the follow — is the real change the write owes. */
+  /** Apply and persist a choice — the one write every face makes. A
+   *  language is already selected only when it is both the stored answer
+   *  and the one on screen: after the boot's fallback the row can hold
+   *  `fr` while the source shows, and a click on Français is a retry, not
+   *  a dead click. The follow choice is selected while it is stored and
+   *  its browser language is active; a null over a stored choice — and a
+   *  stored choice over the follow — is the real change the write owes. */
   async function choose(next: Locale | null) {
-    if (next === chosenLocale()) return;
+    if (next === chosenLocale() && targetLocale(next) === activeLocale()) return;
     if (preSetup && next === null) return;
     const previous = chosenLocale();
-    applyLocale(next);
+    // The language becomes active only once its catalog is here: a failed or
+    // superseded load activates nothing, so this choice writes nothing.
+    const activated = await activateLocale(next);
+    if (!activated) return;
     // The choice stands in the settings caches at once (#939): a save
     // whose click lands while the write is in flight reads the row's
     // cache at that moment and must see the pending choice, never the
@@ -247,7 +265,7 @@ export function LanguageSwitcher({
             role="radio"
             // The endonym names the radio for assistive tech — the visible
             // face stays the draft's compact code.
-            aria-label={catalogs[code]["locale.name"]}
+            aria-label={endonyms[code]}
             aria-checked={code === locale}
             tabIndex={code === locale ? 0 : -1}
             ref={(node) => {
@@ -365,7 +383,7 @@ export function LanguageChip() {
         aria-controls={menuId}
         // The visible face is part of the name (WCAG 2.5.3): the language
         // word and the chip's own code-and-endonym label.
-        aria-label={`${t("shell.language")}: ${locale.toUpperCase()} (${catalogs[locale]["locale.name"]})`}
+        aria-label={`${t("shell.language")}: ${locale.toUpperCase()} (${endonyms[locale]})`}
         onClick={() => setOpen((previous) => !previous)}
         onKeyDown={triggerKey}
         className={`flex items-center gap-1.5 rounded px-2.5 py-1 font-mono text-meta ${
@@ -375,7 +393,7 @@ export function LanguageChip() {
         } ${FOCUS}`}
       >
         <span className="font-bold">
-          {locale.toUpperCase()} ({catalogs[locale]["locale.name"]})
+          {locale.toUpperCase()} ({endonyms[locale]})
         </span>
         <Icon name={open ? "expandLess" : "chevronDown"} size={16} />
       </button>
@@ -403,7 +421,7 @@ export function LanguageChip() {
                   : "text-foreground transition-colors hover:bg-surface-container-low"
               } ${FOCUS}`}
             >
-              <span>{catalogs[code]["locale.name"]}</span>
+              <span>{endonyms[code]}</span>
               {code === locale ? (
                 <Icon name="check" size={15} />
               ) : (

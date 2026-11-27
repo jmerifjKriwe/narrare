@@ -9,20 +9,6 @@ import en_prompts from "../../../app/capabilities/prompts/web/i18n/en.json";
 import en_settings from "../../../app/capabilities/settings/web/i18n/en.json";
 import en_setup from "../../../app/capabilities/setup/web/i18n/en.json";
 import en_writing from "../../../app/capabilities/writing/web/i18n/en.json";
-import de_central from "../../../i18n/de.json";
-import de_knowledge from "../../../app/capabilities/knowledge/web/i18n/de.json";
-import de_planning from "../../../app/capabilities/planning/web/i18n/de.json";
-import de_prompts from "../../../app/capabilities/prompts/web/i18n/de.json";
-import de_settings from "../../../app/capabilities/settings/web/i18n/de.json";
-import de_setup from "../../../app/capabilities/setup/web/i18n/de.json";
-import de_writing from "../../../app/capabilities/writing/web/i18n/de.json";
-import fr_central from "../../../i18n/fr.json";
-import fr_knowledge from "../../../app/capabilities/knowledge/web/i18n/fr.json";
-import fr_planning from "../../../app/capabilities/planning/web/i18n/fr.json";
-import fr_prompts from "../../../app/capabilities/prompts/web/i18n/fr.json";
-import fr_settings from "../../../app/capabilities/settings/web/i18n/fr.json";
-import fr_setup from "../../../app/capabilities/setup/web/i18n/fr.json";
-import fr_writing from "../../../app/capabilities/writing/web/i18n/fr.json";
 
 export const locales = ["en", "de", "fr"] as const;
 export const localeOrder = ["de", "en", "fr"] as const satisfies readonly Locale[];
@@ -37,32 +23,12 @@ const en_merged = {
   ...en_setup,
   ...en_writing,
 };
-const de_merged = {
-  ...de_central,
-  ...de_knowledge,
-  ...de_planning,
-  ...de_prompts,
-  ...de_settings,
-  ...de_setup,
-  ...de_writing,
-};
-const fr_merged = {
-  ...fr_central,
-  ...fr_knowledge,
-  ...fr_planning,
-  ...fr_prompts,
-  ...fr_settings,
-  ...fr_setup,
-  ...fr_writing,
-};
 
-// Typed against the source catalog: a key missing in any locale is a build
-// error at this assignment, not a blank label at runtime.
-export const catalogs: Record<Locale, typeof en_merged> = {
-  "en": en_merged,
-  "de": de_merged,
-  "fr": fr_merged,
-};
+// The source catalog is bundled; every other language is a lazy module
+// fetched the first time a reader reads it. Typed against the source
+// catalog, so a key missing in any language is a build error at that
+// module's assignment, not a blank label at runtime.
+export const catalogs = { en: en_merged } as const satisfies Record<"en", Catalog>;
 
 export type Catalog = typeof en_merged;
 export type CatalogModule = { locale: Locale; default: Catalog };
@@ -75,8 +41,7 @@ export const endonyms: Record<Locale, string> = {
 };
 
 // One lazy loader per language other than the source: the module is
-// fetched the first time the shell reads that language. The eager map
-// above still carries every language for the runtime that reads it.
+// fetched the first time the shell reads that language.
 export const catalogLoaders: { [L in Exclude<Locale, "en">]: () => Promise<CatalogModule> } = {
   de: () => import("./catalogs/de"),
   fr: () => import("./catalogs/fr"),

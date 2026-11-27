@@ -1,11 +1,12 @@
 import IntlMessageFormat from "intl-messageformat";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { loadCatalog, resetCatalogs } from "./catalog";
 import { applyFormality } from "./formality";
 import { locales } from "./generated/catalogs";
 import { t, type MessageKey } from "./i18n";
 import { activeLocale, adoptServerLocale, applyLocale } from "./locale";
-import { de, en, merged } from "./test/catalogs";
+import { de, en, merged, preloadCatalogs } from "./test/catalogs";
 
 /**
  * Every assertion walks the generated map, never a hand-written list of
@@ -227,5 +228,28 @@ describe("the active language", () => {
     applyLocale(null);
 
     expect(activeLocale()).toBe("fr");
+  });
+});
+
+describe("the catalog store", () => {
+  // The case empties the store the setup file preloaded; the store is put
+  // back so this describe leaves no state behind.
+  afterEach(() => {
+    preloadCatalogs();
+    applyLocale("en");
+  });
+
+  it("t() reads the store", async () => {
+    // `applyLocale` announces only a loaded catalog, so German becomes
+    // active from the bed first; the reset then reproduces the one state
+    // where the active language's catalog is missing.
+    applyLocale("de");
+    resetCatalogs();
+
+    // No German catalog in the store: the source language answers.
+    expect(t("nav.back")).toBe(en["nav.back"]);
+
+    await loadCatalog("de");
+    expect(t("nav.back")).toBe(de["nav.back"]);
   });
 });
