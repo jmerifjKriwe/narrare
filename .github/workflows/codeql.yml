@@ -120,7 +120,7 @@ jobs:
           # Nothing below pushes; the token has no work to persist.
           persist-credentials: false
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        uses: github/codeql-action/init@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -135,7 +135,7 @@ jobs:
           # this file pins.)
           queries: code-scanning
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
         with:
           # `category` is what makes the uploads collision-free in a matrix:
           # one per language, each SARIF lands under its own key instead of
