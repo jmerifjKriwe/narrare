@@ -295,12 +295,20 @@ describe("the remaining interims speak their child issue's own language", () => 
     expect(layout.getAttribute("title")).toBe("Workspace-Layout (Noch nicht verfügbar.)");
   });
 
-  it("the ⌘J chip carries the status mark (#869)", async () => {
+  it("the ⌘J chip carries the status mark and keeps its shortcut name (#869)", async () => {
     await renderDock();
     const foot = screen.getByTestId("dock-foot");
     expect(within(foot).getByText("Noch nicht verfügbar.")).toBeTruthy();
     expect(within(foot).getByText("KI-Assistent")).toBeTruthy();
-    expect(within(foot).getByText("⌘J")).toBeTruthy();
+    // The keycap's accessible name keeps the command modifier; the visible
+    // ink is the app's SVG plus the bundled mono J, and no U+2318 text.
+    const keycap = within(foot).getByRole("img", { name: "⌘J" });
+    expect(keycap.tagName).toBe("KBD");
+    const command = keycap.querySelector("svg");
+    expect(command).toBeTruthy();
+    expect(command?.getAttribute("aria-hidden")).toBe("true");
+    expect(keycap.textContent).toBe("J");
+    expect(foot.textContent).not.toContain("⌘");
   });
 });
 

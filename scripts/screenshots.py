@@ -34,9 +34,12 @@ The graph's force layout orders nodes by the canon's own names, so its frame
 runs on the same three-entity canon every capture and a fresh set of UUIDs
 cannot move a card.
 
-Two captures on this machine are byte-identical. That identity is proven here,
-not across runners: the ⌘ glyph sits outside the bundled Latin font range and
-falls back to a system face, so another machine may render it differently.
+Fonts are part of the recipe, not the machine: the app's faces — the UI sans,
+the brand serif and IBM Plex Mono — are bundled under ``web/public/fonts``,
+and the command mark is the app's own SVG rather than U+2318 text. Two
+captures are byte-identical here. Whether another runner produces the same
+bytes is what the ``Screenshots`` workflow answers: it regenerates the set on
+every UI-relevant push, and a run that changes no frame opens no PR.
 """
 
 import argparse
@@ -863,6 +866,12 @@ def _capture(
     page.get_by_role("button", name="Continue writing").click()
     ghost = page.get_by_test_id("ghost-preview")
     expect(ghost).to_contain_text("relay clicked")
+    # The `done` frame swaps the streaming ghost for the pending one — a new
+    # node under the same test id — so the locator above can detach between
+    # the text and the scroll. The announcement is filled only at that
+    # transition; wait for it, then re-acquire the ghost it swapped.
+    expect(page.get_by_test_id("ghost-announcement")).not_to_be_empty()
+    ghost = page.get_by_test_id("ghost-preview")
     ghost.scroll_into_view_if_needed()
     _require_dock_badge(page)
     written.append(_shot(page, out, "35-workspace-continuation"))
