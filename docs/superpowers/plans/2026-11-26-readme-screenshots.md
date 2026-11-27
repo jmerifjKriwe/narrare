@@ -354,16 +354,16 @@ Closes #903" --trailer "Assisted-by: OpenCode (<actual-model>)"
 
 ## Task 6: Whole-branch verification and handoff
 
-- [ ] **Step 1: Run the affected full gate**
+- [x] **Step 1: Run the affected full gate**
 
 Run: `just verify`
 Expected: PASS. W9's last PR reported 142 browser tests, and #965 added another E2E leg afterward; use the current count printed by `just verify`. `assets/screenshots/**` currently resolves to every capability E2E suite, so confirm the output includes the full current set rather than accepting a narrower affected run.
 
-- [ ] **Step 2: Run the whole-branch review**
+- [x] **Step 2: Run the whole-branch review**
 
 A fresh reviewer reads the complete diff, including binary assets and generated Markdown. Findings are fixed before push; no minor finding is deferred.
 
-- [ ] **Step 3: Push and open the PR**
+- [x] **Step 3: Push and open the PR**
 
 Use a plain-language PR title, for example: `The README shows the current product and screenshots regenerate reliably`. The body names #903/#848, the revalidated `main` baseline and W9 completion evidence, the two-run hash proof, the full E2E proof and the workflow-lint commands. Push after each green task group; do not save the entire branch for the end.
 

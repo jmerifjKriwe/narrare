@@ -347,15 +347,15 @@ Add `writing.shelf.banner.statsNote` with the canonical status copy in en/de/fr 
 
 Complete Task 3 Step 8, Task 5 Step 8 and Task 7 Step 7; re-review each fix round. Record that pushed `3689a5fb1 fix(tooling)` must be dropped from the release-please entry because history cannot be rewritten. Correct the Task 5 report's index-temp ignore wording. Only then run Steps 1–5 on the new final head.
 
-- [ ] **Step 1: Run `just verify` on the final head**
+- [x] **Step 1: Run `just verify` on the final head**
 
 Expected: PASS. Read the output; record current backend/web/E2E counts.
 
-- [ ] **Step 2: Run actionlint and zizmor**
+- [x] **Step 2: Run actionlint and zizmor**
 
 Expected: PASS with no new findings.
 
-- [ ] **Step 3: Whole-branch review**
+- [x] **Step 3: Whole-branch review**
 
 Dispatch a fresh reviewer on `zai-coding-plan/glm-5.4` over the complete branch from `12186926e`. Include this plan, the follow-up design and all closing commits.
 
@@ -363,6 +363,6 @@ Dispatch a fresh reviewer on `zai-coding-plan/glm-5.4` over the complete branch 
 
 Each fixing commit must carry its `Closes #...`. Remove `status: in-progress` from any issue that remains open after merge; no follow-up may remain open.
 
-- [ ] **Step 5: Push and update PR #976**
+- [x] **Step 5: Push and update PR #976**
 
 PR body lists #977–#991 with closing commit SHAs, final gate output and the whole-branch verdict. Stop before merge and wait for owner approval.
