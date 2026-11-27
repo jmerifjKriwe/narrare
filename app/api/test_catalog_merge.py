@@ -111,6 +111,54 @@ def test_a_catalog_outside_the_registry_stops_generation(tmp_path: Path) -> None
         locales(tmp_path)
 
 
+def test_a_missing_registry_file_stops_generation(tmp_path: Path) -> None:
+    source = tmp_path / "i18n/registry/locales.json"
+    with pytest.raises(SystemExit, match=re.escape(f"{source} is missing")):
+        registry_locales(tmp_path)
+
+
+def test_a_registry_that_is_not_json_stops_generation(tmp_path: Path) -> None:
+    source = tmp_path / "i18n/registry/locales.json"
+    source.parent.mkdir(parents=True)
+    source.write_text("{not json\n", encoding="utf-8")
+    with pytest.raises(SystemExit, match=re.escape(f"{source}: not valid JSON")):
+        registry_locales(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    ("[]\n", '{"languages": ["en"]}\n', '{"locales": ["en"], "extra": true}\n'),
+    ids=("a-list", "another-key", "a-second-key"),
+)
+def test_a_registry_that_is_not_one_object_with_one_key_stops_generation(
+    tmp_path: Path, payload: str
+) -> None:
+    source = tmp_path / "i18n/registry/locales.json"
+    source.parent.mkdir(parents=True)
+    source.write_text(payload, encoding="utf-8")
+    message = f"{source}: the registry is one object with one `locales` list"
+    with pytest.raises(SystemExit, match=re.escape(message)):
+        registry_locales(tmp_path)
+
+
+def test_a_registry_whose_locales_is_not_a_list_stops_generation(tmp_path: Path) -> None:
+    source = tmp_path / "i18n/registry/locales.json"
+    source.parent.mkdir(parents=True)
+    source.write_text('{"locales": "en"}\n', encoding="utf-8")
+    message = f"{source}: `locales` is a list of language codes"
+    with pytest.raises(SystemExit, match=re.escape(message)):
+        registry_locales(tmp_path)
+
+
+def test_a_registry_with_a_non_string_code_stops_generation(tmp_path: Path) -> None:
+    source = tmp_path / "i18n/registry/locales.json"
+    source.parent.mkdir(parents=True)
+    source.write_text('{"locales": ["en", 3]}\n', encoding="utf-8")
+    message = f"{source}: `locales` is a list of language codes"
+    with pytest.raises(SystemExit, match=re.escape(message)):
+        registry_locales(tmp_path)
+
+
 def test_catalogs_merge_the_central_and_capability_files(tmp_path: Path) -> None:
     write_catalog(tmp_path / "i18n/en.json", {"app.title": "App"})
     write_catalog(

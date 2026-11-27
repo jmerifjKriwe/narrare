@@ -1,15 +1,11 @@
 """The committed generated views are the facts files and the catalogs, rendered.
 
-`just generate` writes eleven views: the Python registry `app/api/main.py`
-cross-checks at startup, the locale list the server validates against, the
-TypeScript nav data, the TypeScript catalog map, the TypeScript overlay map,
-the TypeScript route table, the TypeScript workspace-route id, the TypeScript
-dock registry, the TypeScript settings registry, the TypeScript command
-registry and the user-docs index.
-A stale view means the
-UI or the startup check runs on old facts — the same failure mode the OpenAPI
-drift test guards — so forgetting `just generate` must be a red suite, not a
-wrong UI.
+`just generate` writes the views listed in `scripts/generate_capabilities.py`
+(its module docstring and `main()`); one count lives there. This module checks
+the committed copies this sweep covers against the generator's current output.
+A stale view means the UI or the startup check runs on old facts — the same
+failure mode the OpenAPI drift test guards — so forgetting `just generate` must
+be a red suite, not a wrong UI.
 """
 
 import json
@@ -82,8 +78,9 @@ def test_committed_typescript_nav_matches_the_facts() -> None:
 
 
 def test_committed_typescript_catalogs_match_the_catalog_files() -> None:
-    # The map and the Locale union are generated from i18n/*.json: a language
-    # added without `just generate` would exist on disk and not in the build.
+    # The map, the Locale union and localeOrder are generated from
+    # i18n/registry/locales.json and the catalogs: a language added without
+    # `just generate` would exist on disk and not in the build.
     known, _, _ = _views()
     committed = _committed("web", "lib", "generated", "catalogs.ts")
     assert committed == typescript_catalogs(ROOT, known, registry_locales(ROOT)), (

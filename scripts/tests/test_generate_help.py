@@ -8,7 +8,7 @@ catalog carries. The registry tests pin what ``typescript_help`` emits for
 a scanned tree: canonical ids, per-locale lazy ``?raw`` loads, escaped
 titles, and the default sort order. The coverage tests pin what
 ``help_coverage`` emits: the per-topic locale matrix, the alphabetical
-capability sections, and the list of capabilities that ship no help.
+capability sections, and the list of UI capabilities that ship no help.
 """
 
 import sys
@@ -283,8 +283,8 @@ class HelpCoverageTests(HelpRootTestCase):
             "\n"
             "# Help coverage\n"
             "\n"
-            "One row per capability that ships help; capabilities without help"
-            " are listed at the bottom.\n"
+            "One row per topic under each capability that ships help; UI"
+            " capabilities without help are listed at the bottom.\n"
             "\n"
             "## writing\n"
             "\n"
@@ -325,6 +325,19 @@ class HelpCoverageTests(HelpRootTestCase):
         out = help_coverage(root)
         self.assertNotIn("## writing", out)
         self.assertIn("## Capabilities without help\n\n- chat\n- writing\n", out)
+
+    def test_coverage_leaves_out_a_capability_without_a_web_directory(self):
+        # The missing list counts UI capabilities only: a capability whose
+        # web/ directory is gone owes no help, so it is absent from the report
+        # entirely instead of closing it as missing.
+        root = self._make({})
+        self._capability(root, "writing")
+        folder = root / "app" / "capabilities" / "backend_only"
+        folder.mkdir(parents=True)
+        (folder / "capability.yaml").write_text("id: backend_only\n", encoding="utf-8")
+        out = help_coverage(root)
+        self.assertIn("## Capabilities without help\n\n- writing\n", out)
+        self.assertNotIn("backend_only", out)
 
     def test_coverage_ignores_folders_without_capability_yaml(self):
         root = self._make(

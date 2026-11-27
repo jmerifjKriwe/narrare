@@ -70,7 +70,7 @@ class SettingsUpdate(BaseModel):
     @field_validator("locale")
     @classmethod
     def _carried_by_the_catalog(cls, value: str | None) -> str | None:
-        # The catalog's filenames are the list of languages; a code outside it
+        # The registry's entries are the list of languages; a code outside it
         # would render an untranslated page and hide the mistake.
         if value is not None and value not in LOCALES:
             known = ", ".join(LOCALES)
