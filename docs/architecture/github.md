@@ -258,11 +258,15 @@ corpus is checked in, so a fix that regresses a known shape is re-found.
 | --- | --- | --- | --- | --- |
 | `uv` | monthly | minor/patch, major | `default-days: 7`, majors 30 | `uv`, never `pip` — the pip updater cannot touch `uv.lock` |
 | `npm` | monthly | minor/patch, major | `default-days: 7`, majors 30 | entry at `/`, not `/web`, so `pnpm-lock.yaml` moves with the manifest |
+| `docker` | monthly | — | none — the docker ecosystem rejects `cooldown` | reads the `FROM` pins in the `Dockerfile` |
 | `github-actions` | weekly | minor/patch, major | `default-days: 3` — the Actions updater supports `default-days` only, so there is no 14-day major hold | two entries — workflows (`/`) and the composite tree (`/.github/actions/*`); weekly is what keeps the SHA pins current |
 
-- No `docker` and no `devcontainers` entry: a `docker` entry returns with a
-  `Dockerfile`, a `devcontainers` entry with a dev container. Empty entries
-  against absent trees were part of the defect this platform fixed.
+- The file carries `uv`, `npm`, `docker` and two `github-actions` entries. No
+  `devcontainers` entry: it returns with a dev container, and this repository
+  has none. Empty entries against absent trees were part of the defect this
+  platform fixed.
+- The `web` stage's Node major follows `.nvmrc`, a test holds it, and
+  Dependabot moves the image inside the major.
 - `rebase-strategy` is the default (`auto`); the old `disabled` let PRs rot
   behind strict status checks.
 - Every update commits as `chore(<scope>)` — Dependabot's default

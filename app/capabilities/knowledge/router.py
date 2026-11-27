@@ -44,7 +44,7 @@ from app.capabilities.knowledge.service import (
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
-from app.kernel.errors import coded_detail
+from app.kernel.errors import ErrorCode, coded, coded_detail
 from app.kernel.retrieval import EmbeddingMismatchError
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
@@ -80,7 +80,10 @@ async def upload_document(
     try:
         document = await service.ingest(resolved, text)
     except EmptyDocumentError:
-        raise HTTPException(status_code=422, detail="document is empty") from None
+        raise HTTPException(
+            status_code=422,
+            detail=coded_detail(ErrorCode.DOCUMENT_EMPTY, "document is empty"),
+        ) from None
     except DocumentTooLargeError:
         raise HTTPException(status_code=413, detail="document too large") from None
     except SetupRequiredError:
@@ -89,7 +92,7 @@ async def upload_document(
         # A dict, not a sentence: the UI localizes this error and needs a code.
         raise HTTPException(
             status_code=409,
-            detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
+            detail=coded(ErrorCode.EMBEDDING_MISMATCH, stored=error.stored, found=error.found),
         ) from None
     return DocumentRead.of(document, await service.chunk_count(document.id))
 
@@ -123,7 +126,7 @@ async def search(payload: SearchRequest, service: ServiceDep) -> list[SearchHit]
     except EmbeddingMismatchError as error:
         raise HTTPException(
             status_code=409,
-            detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
+            detail=coded(ErrorCode.EMBEDDING_MISMATCH, stored=error.stored, found=error.found),
         ) from None
     return [
         SearchHit(
@@ -317,32 +320,34 @@ async def create_entity(payload: EntityCreate, service: ServiceDep) -> EntityRea
         entity = await service.create_entity(payload)
     except NotFoundError:
         raise HTTPException(
-            status_code=404, detail=coded_detail("not-found", "novel not found")
+            status_code=404, detail=coded_detail(ErrorCode.NOT_FOUND, "novel not found")
         ) from None
     except RelationLimitError as error:
         raise HTTPException(
             status_code=422,
-            detail=coded_detail("relation-limit", str(error), row=error.row),
+            detail=coded_detail(ErrorCode.RELATION_LIMIT, str(error), row=error.row),
         ) from None
     except InvalidEntityUpdateError as error:
         raise HTTPException(
             status_code=422,
-            detail=coded_detail("entity-invalid", str(error), field=error.field),
+            detail=coded_detail(ErrorCode.ENTITY_INVALID, str(error), field=error.field),
         ) from None
     except InvalidRelationError as error:
         raise HTTPException(
             status_code=422,
-            detail=coded_detail("entity-invalid", f"relation type: {error}", field="relation type"),
+            detail=coded_detail(
+                ErrorCode.ENTITY_INVALID, f"relation type: {error}", field="relation type"
+            ),
         ) from None
     except RelationTargetInvalidError as error:
         raise HTTPException(
             status_code=422,
-            detail=coded_detail("relation-target-invalid", str(error), row=error.index),
+            detail=coded_detail(ErrorCode.RELATION_TARGET_INVALID, str(error), row=error.index),
         ) from None
     except RelationExistsError as error:
         raise HTTPException(
             status_code=422,
-            detail=coded_detail("relation-duplicate", str(error), row=error.row),
+            detail=coded_detail(ErrorCode.RELATION_DUPLICATE, str(error), row=error.row),
         ) from None
     return EntityRead.model_validate(entity)
 
@@ -425,7 +430,9 @@ async def add_relation(
     except InvalidRelationError as error:
         raise HTTPException(
             status_code=422,
-            detail=coded_detail("entity-invalid", f"relation type: {error}", field="relation type"),
+            detail=coded_detail(
+                ErrorCode.ENTITY_INVALID, f"relation type: {error}", field="relation type"
+            ),
         ) from None
     except RelationExistsError:
         raise HTTPException(status_code=409, detail="this relation exists already") from None
@@ -450,7 +457,9 @@ async def update_relation(
     except InvalidRelationError as error:
         raise HTTPException(
             status_code=422,
-            detail=coded_detail("entity-invalid", f"relation type: {error}", field="relation type"),
+            detail=coded_detail(
+                ErrorCode.ENTITY_INVALID, f"relation type: {error}", field="relation type"
+            ),
         ) from None
     except RelationExistsError:
         raise HTTPException(status_code=409, detail="this relation exists already") from None

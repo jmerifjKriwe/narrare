@@ -29,7 +29,7 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client } from "@shell/lib/api/client";
-import { catalogs, locales } from "@shell/lib/generated/catalogs";
+import { locales } from "@shell/lib/generated/catalogs";
 import { demos } from "@shell/lib/generated/demos";
 import { t } from "@shell/lib/i18n";
 import { activeLocale, applyLocale, chosenLocale } from "@shell/lib/locale";
@@ -37,6 +37,7 @@ import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
 import { readPreSetupLocale, storePreSetupLocale } from "@shell/lib/preSetupLocale";
+import { de, en, merged } from "@shell/lib/test/catalogs";
 import { routes } from "./routes";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
@@ -62,7 +63,7 @@ const FUTURE_PROMISE =
 describe("the disabled import note speaks to the reader", () => {
   it("is status-only in every catalog, never a future promise", () => {
     for (const locale of ["en", "de", "fr"] as const) {
-      const note = catalogs[locale]["setup.welcome.comingSoon"];
+      const note = merged[locale]["setup.welcome.comingSoon"];
       expect(note).toBe(STATUS_NOTE[locale]);
       expect(note).not.toMatch(FUTURE_PROMISE);
     }
@@ -136,11 +137,11 @@ describe("the welcome screen", () => {
     // paint. The expectation reads the German catalog itself — t() at call
     // time would still speak the browser's language, the pre-adoption state.
     const heading = await screen.findByRole("heading", { level: 1 });
-    expect(heading.textContent).toBe(catalogs.de["setup.welcome.heroTitle"]);
-    expect(screen.getByText(catalogs.de["setup.welcome.heroBody"])).toBeTruthy();
+    expect(heading.textContent).toBe(de["setup.welcome.heroTitle"]);
+    expect(screen.getByText(de["setup.welcome.heroBody"])).toBeTruthy();
     // The du-tone is the copy's own: "deiner", not "Ihrer".
     expect(screen.getByText(/zu deiner eigenen Erzählarchitektur/)).toBeTruthy();
-    expect(document.title).toBe(`${catalogs.de["setup.welcome"]} — ${t("app.title")}`);
+    expect(document.title).toBe(`${de["setup.welcome"]} — ${t("app.title")}`);
     expect(screen.getByRole("radio", { name: "Deutsch" }).getAttribute("aria-checked")).toBe("true");
   });
 
@@ -149,15 +150,15 @@ describe("the welcome screen", () => {
     await screen.findByRole("heading", { level: 1 });
 
     // The wizard's door, and the demo card's lead CTA after the first demo.
-    const wizard = screen.getByRole("link", { name: catalogs.de["setup.welcome.card1.cta"] });
+    const wizard = screen.getByRole("link", { name: de["setup.welcome.card1.cta"] });
     expect(wizard.getAttribute("href")).toBe("/setup/basis");
-    const lead = screen.getByRole("link", { name: catalogs.de["setup.welcome.card2.cta"] });
+    const lead = screen.getByRole("link", { name: de["setup.welcome.card2.cta"] });
     expect(lead.getAttribute("href")).toBe(`/setup/basis?demo=${demos[0].slug}`);
 
     // The import entry is honestly disabled, and says why.
-    const importButton = screen.getByRole("button", { name: catalogs.de["setup.welcome.card3.cta"] });
+    const importButton = screen.getByRole("button", { name: de["setup.welcome.card3.cta"] });
     expect(importButton.hasAttribute("disabled")).toBe(true);
-    expect(screen.getByText(catalogs.de["setup.welcome.comingSoon"])).toBeTruthy();
+    expect(screen.getByText(de["setup.welcome.comingSoon"])).toBeTruthy();
   });
 
   it("carries the three real demos — title, genre, chapters, and their doors", async () => {
@@ -231,7 +232,7 @@ describe("the welcome's year line", () => {
     renderWelcome();
 
     await screen.findByRole("heading", { level: 1 });
-    expect(catalogs.en["setup.welcome.year"]).toBe("Writing year {year}");
+    expect(en["setup.welcome.year"]).toBe("Writing year {year}");
     expect(screen.getByText("Writing year 2026")).toBeTruthy();
     expect(screen.queryByText("Writing year 2025")).toBeNull();
   });
@@ -245,7 +246,7 @@ describe("the language switcher", () => {
     // The generated order is the compiler's (en first); the design's is not.
     expect(locales[0]).toBe("en");
     const group = screen.getByRole("radiogroup", {
-      name: catalogs.de["shell.language"],
+      name: de["shell.language"],
     });
     const radios = within(group).getAllByRole("radio");
     expect(radios.map((radio) => radio.textContent)).toEqual(["DE", "EN", "FR"]);
@@ -358,7 +359,7 @@ describe("the language switcher", () => {
     expect(chosenLocale()).toBe("de");
     expect(readPreSetupLocale()).toBe("de");
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
-      catalogs.de["setup.welcome.heroTitle"],
+      de["setup.welcome.heroTitle"],
     );
     expect(screen.getByRole("radio", { name: "Deutsch" }).getAttribute("aria-checked")).toBe("true");
   });

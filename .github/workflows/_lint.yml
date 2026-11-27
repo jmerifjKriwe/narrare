@@ -11,10 +11,6 @@ on:
         description: Python version for the setup action.
         type: string
         required: true
-      node-version:
-        description: Node version for the setup action.
-        type: string
-        required: true
       pnpm-version:
         description: >-
           pnpm version for the setup action. Must match package.json's
@@ -62,7 +58,6 @@ jobs:
       - uses: ./.github/actions/setup # zizmor: ignore[self-repository]
         with:
           python-version: ${{ inputs.python-version }}
-          node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           just-version: ${{ inputs.just-version }}
       - run: just lint

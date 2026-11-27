@@ -49,6 +49,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 
+import { useLocalizedError } from "@shell/lib/api/errors";
 import { BookCover } from "@shell/lib/cover/BookCover";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 import { useCreateNovel } from "@shell/lib/query";
@@ -112,13 +113,14 @@ function Spinner() {
 
 export function NewBookDialog({ onClose }: { onClose: (created: boolean) => void }) {
   const t = useTranslation();
+  const localized = useLocalizedError();
   // The three answers, transient by design: an unmounted dialog is a
   // forgotten one — the draft carries no draft-persistence.
   const [title, setTitle] = useState("");
   const [pills, setPills] = useState<readonly string[]>([]);
   const [words, setWords] = useState(DEFAULT_TARGET_WORDS);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const titleRef = useRef<HTMLInputElement | null>(null);
   const headingId = useId();
@@ -180,7 +182,7 @@ export function NewBookDialog({ onClose }: { onClose: (created: boolean) => void
         },
         onError: (failure) => {
           setBusy(false);
-          setError(failure.message);
+          setError(failure);
         },
       },
     );
@@ -444,7 +446,7 @@ export function NewBookDialog({ onClose }: { onClose: (created: boolean) => void
                   <p className="text-meta leading-tight text-foreground">
                     {t("writing.shelf.dialog.error")}
                   </p>
-                  <p className="mt-0.5 font-mono text-meta text-danger">{error}</p>
+                  <p className="mt-0.5 font-mono text-meta text-danger">{localized(error)}</p>
                   {/* The retry obeys the CTA's own completeness guard: with
                       no standing title it is disabled, never an idle promise
                       the submit guard would silently eat. */}

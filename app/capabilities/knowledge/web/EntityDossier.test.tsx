@@ -18,13 +18,11 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Entity, type Relation } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de, merged } from "@shell/lib/test/catalogs";
 
 import { EntityDossier } from "./EntityDossier";
-
-const de = catalogs.de;
 
 // The bookmark and export doors name their state in title and aria-label,
 // never a future wave (#979).
@@ -44,7 +42,7 @@ describe("the bookmark and export notes speak to the reader", () => {
         "knowledge.dossier.bookmarkNote",
         "knowledge.dossier.exportNote",
       ] as const) {
-        const note = catalogs[locale][key];
+        const note = merged[locale][key];
         expect(note).toBe(STATUS_NOTE[locale]);
         expect(note).not.toMatch(FUTURE_PROMISE);
       }

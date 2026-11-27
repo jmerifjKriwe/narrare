@@ -125,15 +125,27 @@ class PromptRenderError(RuntimeError):
 
     The reason is what a caller maps — the continuation's error frame, a
     failed knowledge job row, chat's error frame; the detail is the message
-    for whoever reads the frame. A reason outside the vocabulary is a
-    programming error and raises before any frame can show it.
+    for whoever reads the frame. A cause that can name itself carries the
+    fact as data: ``line`` for a syntax error (the engine's own line), ``name``
+    for an undefined variable or an include the chain cannot resolve. A reason
+    whose cause names nothing carries no fact. A reason outside the vocabulary
+    is a programming error and raises before any frame can show it.
     """
 
-    def __init__(self, reason: str, detail: str) -> None:
+    def __init__(
+        self,
+        reason: str,
+        detail: str,
+        *,
+        line: int | None = None,
+        name: str | None = None,
+    ) -> None:
         if reason not in REASONS:
             raise ValueError(f"'{reason}' is outside the refusal vocabulary {REASONS}")
         self.reason = reason
         self.detail = detail
+        self.line = line
+        self.name = name
         super().__init__(f"{reason}: {detail}")
 
 

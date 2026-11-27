@@ -1,3 +1,5 @@
+> **Superseded 2026-11-26 (whole plan):** never started. See `docs/superpowers/plans/2026-11-25-i18n-architecture-hardening.md`.
+
 # Implementation Plan: Server-Injected Locale Catalogs
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use

@@ -30,7 +30,6 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { capabilityRoutes } from "@shell/lib/generated/routes";
 import { t } from "@shell/lib/i18n";
 import { applyLocale, chosenLocale } from "@shell/lib/locale";
@@ -38,6 +37,7 @@ import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
 import { storePreSetupLocale } from "@shell/lib/preSetupLocale";
+import { de, en, fr } from "@shell/lib/test/catalogs";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
 const api = client as unknown as Record<
@@ -130,7 +130,6 @@ function renderProvisioning(entry: string, strict = false) {
 }
 
 /** The step's controls, named by the German catalog the mirror adopts. */
-const de = catalogs.de;
 const workspaceButton = () => screen.getByRole("button", { name: de["setup.provisioning.cta.workspace"] });
 const loreButton = () => screen.getByRole("button", { name: de["setup.provisioning.cta.lore"] });
 const retryButton = () => screen.getByRole("button", { name: de["setup.provisioning.retry"] });
@@ -218,7 +217,7 @@ describe("the provisioning step — the one POST", () => {
       "/setup/provisioning?demo=im-stillen-wald&title=ignored&typology=plotter&form=three-act&role=lektor&canon=3",
     );
 
-    await screen.findByText(catalogs.en["setup.provisioning.bound.item1"]);
+    await screen.findByText(en["setup.provisioning.bound.item1"]);
     expect(
       screen.getByText(
         t("setup.provisioning.contextDemo", { genre: "Literary", title: "In the Silent Forest" }),
@@ -393,6 +392,10 @@ describe("the provisioning step — the loading state (states-reference panel 3)
     expect(workspaceButton().hasAttribute("disabled")).toBe(true);
     expect(loreButton().hasAttribute("disabled")).toBe(true);
 
+    // The loading face renders from the initial `phase = "binding"` before
+    // the passive effect issues the POST — so the resolver exists only once
+    // the mock has been called. Wait for the POST, not for the committed DOM.
+    await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(1));
     resolvePost({ data: RESULT, response: new Response(null, { status: 201 }) });
     expect(await screen.findByText(de["setup.provisioning.bound.item1"])).toBeTruthy();
   });
@@ -411,6 +414,10 @@ describe("the provisioning step — the loading state (states-reference panel 3)
     // No manifest, no count: the slot answers with a dash, not a guess.
     expect(screen.getByText("—")).toBeTruthy();
 
+    // The loading face renders from the initial `phase = "binding"` before
+    // the passive effect issues the POST — so the resolver exists only once
+    // the mock has been called. Wait for the POST, not for the committed DOM.
+    await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(1));
     resolvePost({ data: RESULT, response: new Response(null, { status: 201 }) });
     await screen.findByText(de["setup.provisioning.bound.item1"]);
   });
@@ -440,6 +447,10 @@ describe("the provisioning step — the header locks while the book binds", () =
     expect(screen.getByRole("radiogroup", { name: de["shell.language"] })).toBeTruthy();
 
     // Once the POST lands, the done steps link again.
+    // The loading face renders from the initial `phase = "binding"` before
+    // the passive effect issues the POST — so the resolver exists only once
+    // the mock has been called. Wait for the POST, not for the committed DOM.
+    await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(1));
     resolvePost({ data: RESULT, response: new Response(null, { status: 201 }) });
     await screen.findByText(de["setup.provisioning.bound.item1"]);
     const unlocked = screen.getByRole("navigation", { name: de["setup.wizard.progress"] });
@@ -515,7 +526,6 @@ describe("the provisioning step — the locale seam and the bound actions", () =
     renderProvisioning(DEMO_ENTRY);
 
     // The mirror is adopted before paint: the checklist speaks French.
-    const fr = catalogs.fr;
     expect(await screen.findByText(fr["setup.provisioning.bound.item1"])).toBeTruthy();
     await waitFor(() =>
       expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "fr" } }),
@@ -537,7 +547,6 @@ describe("the provisioning step — the locale seam and the bound actions", () =
     }));
     renderProvisioning(DEMO_ENTRY);
 
-    const fr = catalogs.fr;
     expect(await screen.findByText(fr["setup.provisioning.bound.item1"])).toBeTruthy();
     await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(1));
     expect(localStorage.getItem("narrare.locale.preSetup")).toBe("fr");

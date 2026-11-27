@@ -118,10 +118,10 @@ def _build_url(parts: Mapping[str, str], port: int) -> URL:
 def resolve(env: Mapping[str, str] | None = None) -> DatabaseConfig:
     """The effective connection: URL, else the parts, else the development default.
 
-    ``NARRE_DEV_DB_PORT`` is a dev-only convenience for parallel checkouts: it
-    overrides the port in every branch below (full URL wins, since a URL carries
-    its own port), so a single knob moves the application connection together
-    with the compose mapping.
+    ``NARRE_DEV_DB_PORT`` is a dev-only convenience for parallel checkouts: a
+    full ``NARRE_DATABASE_URL`` wins and keeps its own port; with no URL set,
+    the port moves the application connection together with the compose
+    mapping.
     """
     source = environ if env is None else env
 

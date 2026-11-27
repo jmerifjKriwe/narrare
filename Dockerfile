@@ -8,15 +8,23 @@
 # ── the shell ───────────────────────────────────────────────────────────────
 # Node exists only here. The workspace metadata is copied first so that a
 # source change does not re-run the install.
-FROM node:25-slim@sha256:81db02c4b671288a03915da9534dbd54f96d0e7c24d80ccc54f5b36b2e684370 AS web
+# This stage's Node major is the major .nvmrc names, and a test holds it there.
+FROM node:24-slim@sha256:873f586f3794f52281bd039bf02c048a0be08fde619338f9941bad1eb6b34530 AS web
+
+# Debian bookworm, the slim base's suite, does not ship libatomic1; the
+# standalone pnpm binary copied below links against it and exits 127 without it.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libatomic1 \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY web/package.json web/
-# Node 25 ships no corepack (`command -v corepack` is empty in node:25-slim),
-# so pnpm comes from its own image, pinned by digest like every base image here:
+# pnpm comes from its own image, pinned by digest like every base image here:
 # a bare `npm install -g pnpm@11.5.2` names a version but no hash, which was
-# Scorecard's last Pinned-Dependencies finding (alert #21). The tag and
+# Scorecard's last Pinned-Dependencies finding (alert #21). Taking pnpm from a
+# pinned image keeps the package manager fixed by digest whatever corepack the
+# Node base happens to ship. The tag and
 # `package.json`'s `packageManager` move together — pnpm switches itself to the
 # version packageManager names (neither a CLI flag, an env var nor .npmrc stops
 # it), so bumping one alone silently downloads the other from the registry.

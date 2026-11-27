@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.generated.locales import LOCALES
 from app.kernel.contracts.models import WORD_GOAL_MAX, WORD_GOAL_MIN
+from app.kernel.language_tag import LANGUAGE_TAG_MAX_LENGTH
 from app.kernel.llm.models import (
     CUSTOM_OUTPUT_PROFILE,
     OUTPUT_PROFILE_CUSTOM_MAX,
@@ -50,8 +51,10 @@ class SettingsRead(BaseModel):
 class SettingsUpdate(BaseModel):
     # Present and nullable, deliberately: ``{"locale": null}`` hands the choice
     # back to the browser, while ``{}`` is a client bug and must not mean the
-    # same thing. A field with a default could not tell the two apart.
-    locale: str | None
+    # same thing. A field with a default could not tell the two apart. The
+    # width is the column's own (String(LANGUAGE_TAG_MAX_LENGTH)) — the
+    # registry's longest code.
+    locale: str | None = Field(max_length=LANGUAGE_TAG_MAX_LENGTH)
     # The profile fields (W4) are present-and-nullable through
     # ``model_fields_set``, the novel update's rule: an absent field keeps the
     # stored answer — the language switchers carry the locale alone — while a
@@ -69,7 +72,7 @@ class SettingsUpdate(BaseModel):
     @field_validator("locale")
     @classmethod
     def _carried_by_the_catalog(cls, value: str | None) -> str | None:
-        # The catalog's filenames are the list of languages; a code outside it
+        # The registry's entries are the list of languages; a code outside it
         # would render an untranslated page and hide the mistake.
         if value is not None and value not in LOCALES:
             known = ", ".join(LOCALES)

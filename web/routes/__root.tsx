@@ -3,9 +3,11 @@ import type { ErrorComponentProps } from "@tanstack/react-router";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { ChromeFrame } from "../components/ChromeFrame";
+import { useLocalizedError } from "../lib/api/errors";
 import { useTranslation } from "../lib/i18n";
-import { adoptServerLocale, activeLocale, subscribeLocale } from "../lib/locale";
+import { adoptServerLocale, activeLocale, hydrateLocale, subscribeLocale } from "../lib/locale";
 import { PageTitleProvider, applyBaseTitle, usePageTitle } from "../lib/pageTitle";
+import { readPreSetupLocale } from "../lib/preSetupLocale";
 import { useSettingsQuery } from "../lib/query";
 import { adoptServerTheme } from "../lib/theme";
 import { ToastProvider } from "../ui/toast";
@@ -30,9 +32,21 @@ function Shell() {
 
   useEffect(() => {
     if (!settings.isSuccess) return;
+    let cancelled = false;
+    // The row's language is user data, so the first paint waits for its
+    // catalog too: the language is adopted, its module fetched, and only
+    // then is the page opened. A chunk that cannot be fetched leaves the
+    // source language active (hydrateLocale's own fallback).
     adoptServerLocale(settings.data.locale);
-    adoptServerTheme(settings.data.theme);
-    setReady(true);
+    void (async () => {
+      await hydrateLocale(readPreSetupLocale() ?? activeLocale());
+      if (cancelled) return;
+      adoptServerTheme(settings.data.theme);
+      setReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [settings.data, settings.isSuccess]);
 
   // The language the catalog renders in, as reactive state: the title effect
@@ -97,20 +111,20 @@ function NotFound() {
 }
 
 /** A route that throws lands here, not on TanStack's English default: the
- * failure is named in the catalog's language and the thrown message rides
- * along — a local-first app shows its own errors. A thrown error or notFound
- * reaches the catch boundary, which mounts this component in place of the
+ * failure is named in the catalog's language — the thrown message never
+ * reaches the face; a local-first app still speaks the reader's language. A
+ * thrown error or notFound reaches the catch boundary, which mounts this component in place of the
  * whole Shell — unlike the unknown URL above, which renders inside it — and
  * the tab reads the title. */
 function RouteError({ error }: ErrorComponentProps) {
   const t = useTranslation();
-  const message = error instanceof Error ? error.message : String(error);
+  const localized = useLocalizedError();
   usePageTitle(t("shell.error"));
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
       <h1 className="text-title font-semibold tracking-tight">{t("shell.error")}</h1>
       <p role="alert" className="mt-4 text-body text-muted">
-        {message}
+        {localized(error)}
       </p>
       <Link
         to="/"

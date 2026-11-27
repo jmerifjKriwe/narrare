@@ -46,6 +46,19 @@ function scriptStatus(complete: boolean) {
   });
 }
 
+/** The status read answers a server outage, without a body. */
+function scriptStatusFailure() {
+  api.GET.mockImplementation(async (path: string) => {
+    if (path === "/api/settings") {
+      return { data: { locale: null, theme: null }, response: ok() };
+    }
+    if (path === "/api/setup/status") {
+      return { data: undefined, response: new Response(null, { status: 503 }) };
+    }
+    throw new Error(`unexpected request: ${path}`);
+  });
+}
+
 function renderTree(path: string) {
   const router = createRouter({
     routeTree: rootRoute.addChildren([...capabilityRoutes]),
@@ -82,5 +95,16 @@ describe("the /settings/prompts gate", () => {
     const router = renderTree("/settings/prompts");
     await waitFor(() => expect(screen.getByText("prompts placeholder")).toBeTruthy());
     expect(router.state.location.pathname).toBe("/settings/prompts");
+  });
+
+  it("names a failed status read by its server family", async () => {
+    scriptStatusFailure();
+    renderTree("/settings/prompts");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("errors.server"));
+    expect(alert.textContent).not.toContain(t("errors.unexpected"));
+    expect(alert.textContent).not.toContain("setup status unavailable");
+    expect(screen.queryByText("prompts placeholder")).toBeNull();
   });
 });

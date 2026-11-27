@@ -27,7 +27,6 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { demos } from "@shell/lib/generated/demos";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
@@ -35,6 +34,7 @@ import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
 import { storePreSetupLocale } from "@shell/lib/preSetupLocale";
+import { de, en } from "@shell/lib/test/catalogs";
 import { routes } from "../routes";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
@@ -78,7 +78,6 @@ function renderStructure(entry = "/setup/structure") {
 }
 
 /** The step's controls, named by the German catalog the mirror adopts. */
-const de = catalogs.de;
 const continueButton = () => screen.getByRole("button", { name: de["setup.structure.continue"] });
 const backButton = () => screen.getByRole("link", { name: de["setup.structure.back"] });
 const typologyRadio = (key: "plotter" | "pantser" | "plantser") =>
@@ -300,7 +299,7 @@ describe("the structure step — the basis banner and the honest status", () => 
     renderStructure("/setup/structure?demo=im-stillen-wald");
     await screen.findByRole("heading", {
       level: 1,
-      name: catalogs.en["setup.structure.heroTitle"],
+      name: en["setup.structure.heroTitle"],
     });
 
     // The strip and the preview both name the basis, in the English face.
@@ -358,7 +357,7 @@ describe("the structure step's header", () => {
     expect(radios[0].getAttribute("aria-checked")).toBe("true");
 
     fireEvent.click(screen.getByRole("radio", { name: "English" }));
-    await screen.findByRole("heading", { level: 1, name: catalogs.en["setup.structure.heroTitle"] });
+    await screen.findByRole("heading", { level: 1, name: en["setup.structure.heroTitle"] });
     expect(api.PATCH).toHaveBeenCalledWith("/api/settings", { body: { locale: "en" } });
   });
 });

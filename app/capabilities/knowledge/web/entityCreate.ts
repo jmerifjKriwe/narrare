@@ -332,8 +332,8 @@ export const RELATION_ROW_CODES: ReadonlySet<string> = new Set<RefusalCode>([
 ]);
 
 /** Whether a wire code's `row` marks a relation line rather than the form. */
-export function refusalNamesRelationRow(code: string | undefined): boolean {
-  return code !== undefined && RELATION_ROW_CODES.has(code);
+export function refusalNamesRelationRow(code: string | null | undefined): boolean {
+  return code !== null && code !== undefined && RELATION_ROW_CODES.has(code);
 }
 
 /**
@@ -343,9 +343,10 @@ export function refusalNamesRelationRow(code: string | undefined): boolean {
  * English detail.
  */
 export function refusalCatalogKey(
-  code: string | undefined,
+  code: string | null | undefined,
 ): `knowledge.create.refused.${RefusalCode}` | null {
-  if (code === undefined || !REFUSAL_CODES.some((candidate) => candidate === code)) return null;
+  if (code === null || code === undefined) return null;
+  if (!REFUSAL_CODES.some((candidate) => candidate === code)) return null;
   return `knowledge.create.refused.${code as RefusalCode}`;
 }
 

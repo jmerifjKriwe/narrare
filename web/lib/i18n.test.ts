@@ -1,10 +1,12 @@
 import IntlMessageFormat from "intl-messageformat";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { loadCatalog, resetCatalogs } from "./catalog";
 import { applyFormality } from "./formality";
-import { catalogs, locales } from "./generated/catalogs";
+import { locales } from "./generated/catalogs";
 import { t, type MessageKey } from "./i18n";
 import { activeLocale, adoptServerLocale, applyLocale } from "./locale";
+import { de, en, merged, preloadCatalogs } from "./test/catalogs";
 
 /**
  * Every assertion walks the generated map, never a hand-written list of
@@ -13,15 +15,15 @@ import { activeLocale, adoptServerLocale, applyLocale } from "./locale";
  */
 describe("i18n catalogs", () => {
   it("carry the same keys in every locale", () => {
-    const expected = Object.keys(catalogs.en).sort();
+    const expected = Object.keys(en).sort();
     for (const candidate of locales) {
-      expect(Object.keys(catalogs[candidate]).sort(), candidate).toEqual(expected);
+      expect(Object.keys(merged[candidate]).sort(), candidate).toEqual(expected);
     }
   });
 
   it("have no empty strings", () => {
     for (const candidate of locales) {
-      for (const [key, value] of Object.entries(catalogs[candidate])) {
+      for (const [key, value] of Object.entries(merged[candidate])) {
         expect(value.trim(), `${candidate}/${key}`).not.toBe("");
       }
     }
@@ -33,7 +35,7 @@ describe("ICU message format", () => {
     // A malformed plural or select is a runtime crash in the middle of a page.
     // Parsing the whole catalog turns it into a failing build.
     for (const candidate of locales) {
-      for (const [key, message] of Object.entries(catalogs[candidate])) {
+      for (const [key, message] of Object.entries(merged[candidate])) {
         expect(
           () => new IntlMessageFormat(message, candidate),
           `${candidate}/${key}`,
@@ -49,13 +51,13 @@ describe("ICU message format", () => {
     // badge. The expected value comes from the active catalog, so the test
     // survives a locale change; a formatter that never ran would return the
     // raw "{step}".
-    const counter = catalogs[activeLocale()]["setup.structure.stepOf"];
+    const counter = merged[activeLocale()]["setup.structure.stepOf"];
     expect(t("setup.structure.stepOf", { step: 2, total: 4 })).toBe(
       counter.replace("{step}", "2").replace("{total}", "4"),
     );
     expect(t("setup.structure.stepOf", { step: 2, total: 4 })).not.toContain("{");
 
-    const badge = catalogs[activeLocale()]["setup.aiRules.canon.badge"];
+    const badge = merged[activeLocale()]["setup.aiRules.canon.badge"];
     expect(t("setup.aiRules.canon.badge", { n: 4 })).toBe(badge.replace("{n}", "4"));
     expect(t("setup.aiRules.canon.badge", { n: 4 })).not.toContain("{");
   });
@@ -74,7 +76,7 @@ describe("ICU message format", () => {
     for (const candidate of locales) {
       for (const { key, params, value } of cases) {
         const rendered = String(
-          new IntlMessageFormat(catalogs[candidate][key], candidate).format(params),
+          new IntlMessageFormat(merged[candidate][key], candidate).format(params),
         );
         expect(rendered, `${candidate}/${key}`).not.toMatch(/[{}]/);
         expect(rendered, `${candidate}/${key}`).toContain(value);
@@ -84,7 +86,7 @@ describe("ICU message format", () => {
     // prints a literal apostrophe in any ICU, where a lone ' starts quoted
     // text — directly before a placeholder it quotes the placeholder itself.
     const fr = String(
-      new IntlMessageFormat(catalogs.fr["setup.basis.demoEyebrow"], "fr").format({ n: 1 }),
+      new IntlMessageFormat(merged.fr["setup.basis.demoEyebrow"], "fr").format({ n: 1 }),
     );
     expect(fr).toBe("Modèle d'atelier 1");
     // The failure shape itself, pinned so the escape's reason stays visible:
@@ -116,7 +118,7 @@ describe("ICU message format", () => {
     for (const candidate of locales) {
       for (const { key, params, count } of carriers) {
         const formatted = String(
-          new IntlMessageFormat(catalogs[candidate][key], candidate).format(params),
+          new IntlMessageFormat(merged[candidate][key], candidate).format(params),
         );
         const occurrences = formatted.split(String(count)).length - 1;
         expect(occurrences, `${candidate}/${key} count=${count}`).toBe(1);
@@ -127,7 +129,7 @@ describe("ICU message format", () => {
       // slip past the occurrence pins above.
       const meta = (count: number) =>
         String(
-          new IntlMessageFormat(catalogs[candidate]["setup.welcome.demoMeta"], candidate).format({
+          new IntlMessageFormat(merged[candidate]["setup.welcome.demoMeta"], candidate).format({
             genre: "Science Fiction",
             count,
           }),
@@ -166,14 +168,14 @@ describe("the formal register", () => {
     applyLocale("de");
     applyFormality("formal");
 
-    expect(t("nav.back")).toBe(catalogs.de["nav.back"]);
+    expect(t("nav.back")).toBe(de["nav.back"]);
   });
 
   it("leaves English unchanged", () => {
     applyLocale("en");
     applyFormality("formal");
 
-    expect(t("nav.back")).toBe(catalogs.en["nav.back"]);
+    expect(t("nav.back")).toBe(en["nav.back"]);
   });
 });
 
@@ -193,7 +195,7 @@ describe("the active language", () => {
     adoptServerLocale("de");
 
     expect(activeLocale()).toBe("de");
-    expect(t("nav.back")).toBe(catalogs.de["nav.back"]);
+    expect(t("nav.back")).toBe(de["nav.back"]);
   });
 
   it("ignores a code the catalog does not carry", () => {
@@ -226,5 +228,28 @@ describe("the active language", () => {
     applyLocale(null);
 
     expect(activeLocale()).toBe("fr");
+  });
+});
+
+describe("the catalog store", () => {
+  // The case empties the store the setup file preloaded; the store is put
+  // back so this describe leaves no state behind.
+  afterEach(() => {
+    preloadCatalogs();
+    applyLocale("en");
+  });
+
+  it("t() reads the store", async () => {
+    // `applyLocale` announces only a loaded catalog, so German becomes
+    // active from the bed first; the reset then reproduces the one state
+    // where the active language's catalog is missing.
+    applyLocale("de");
+    resetCatalogs();
+
+    // No German catalog in the store: the source language answers.
+    expect(t("nav.back")).toBe(en["nav.back"]);
+
+    await loadCatalog("de");
+    expect(t("nav.back")).toBe(de["nav.back"]);
   });
 });

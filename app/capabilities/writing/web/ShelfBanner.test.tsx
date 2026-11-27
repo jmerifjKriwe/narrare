@@ -30,16 +30,15 @@ vi.mock("@shell/lib/api/client", () => ({
 }));
 
 import { client, type Activity } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { t } from "@shell/lib/i18n";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de, merged } from "@shell/lib/test/catalogs";
 
 import { sparkline } from "./activity";
 import { ShelfBanner } from "./ShelfBanner";
 
 const api = client as unknown as Record<"GET", ReturnType<typeof vi.fn>>;
-const de = catalogs.de;
 
 // The disabled statistics door names its state, not a shared-CTA promise
 // (#979). The banner key is separate from writing.shelf.comingSoon, which
@@ -56,7 +55,7 @@ const FUTURE_PROMISE =
 describe("the banner status note speaks to the reader", () => {
   it("is status-only in every catalog, never a future promise", () => {
     for (const locale of ["en", "de", "fr"] as const) {
-      const note = catalogs[locale]["writing.shelf.banner.statsNote"];
+      const note = merged[locale]["writing.shelf.banner.statsNote"];
       expect(note).toBe(STATUS_NOTE[locale]);
       expect(note).not.toMatch(FUTURE_PROMISE);
     }
@@ -412,8 +411,9 @@ describe("the banner — error answers the honest retry family", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(de["writing.shelf.banner.error.title"]);
-    // The real status rides the message — never an invented gateway story.
-    expect(alert.textContent).toContain("503");
+    // The catalog's sentence rides the line — never the seam's own English.
+    expect(alert.textContent).toContain(de["errors.server"]);
+    expect(alert.textContent).not.toContain("activity unavailable");
     expect(alert.textContent).toContain(de["writing.shelf.banner.error.body"]);
     expect(screen.queryByRole("img")).toBeNull();
     expect(screen.getByText("—")).toBeTruthy();

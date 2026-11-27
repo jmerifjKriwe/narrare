@@ -597,9 +597,9 @@ export function WorkspacePage() {
   // refetch clears the error into pending — the flag holds the panel, the
   // shelf's own discipline). Every read the page owns asks again.
   const [retrying, setRetrying] = useState(false);
-  const lastError = useRef("");
+  const lastError = useRef<unknown>(null);
   const failure = novel.error ?? chapters.error ?? sceneResults.find((result) => result.error)?.error;
-  if (failure) lastError.current = failure instanceof Error ? failure.message : String(failure);
+  if (failure) lastError.current = failure;
   function retry() {
     setRetrying(true);
     void Promise.all([
@@ -619,7 +619,7 @@ export function WorkspacePage() {
   if (novel.isError && novelStatus === 404) return null;
   if (showLoading) return <WorkspaceLoading />;
   if (showError) {
-    return <WorkspaceError message={lastError.current} retrying={retrying} onRetry={retry} />;
+    return <WorkspaceError error={lastError.current} retrying={retrying} onRetry={retry} />;
   }
   if (novel.data == null) return null;
 

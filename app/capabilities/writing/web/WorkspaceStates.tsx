@@ -23,6 +23,7 @@
 
 import { useEffect, useId, useRef } from "react";
 
+import { useLocalizedError } from "@shell/lib/api/errors";
 import { useTranslation } from "@shell/lib/i18n";
 import { Icon } from "@shell/ui/icons";
 import { useModalKeys } from "@shell/ui/modalKeys";
@@ -92,15 +93,16 @@ export function WorkspaceLoading() {
 /** Kachel 2 — the error card: the real failure, the honest cause, a retry
  *  that actually asks again. No offline-copy door (#887). */
 export function WorkspaceError({
-  message,
+  error,
   retrying,
   onRetry,
 }: {
-  message: string;
+  error: unknown;
   retrying: boolean;
   onRetry: () => void;
 }) {
   const t = useTranslation();
+  const localized = useLocalizedError();
   return (
     <div role="alert" className="flex h-full items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-3 rounded-md border border-danger/30 bg-danger/5 p-5 text-center shadow-card">
@@ -110,8 +112,8 @@ export function WorkspaceError({
         <div>
           <h1 className="text-body font-semibold text-danger">{t("writing.workspace.error.title")}</h1>
           <p className="mt-1 text-meta leading-relaxed text-muted">{t("writing.workspace.error.body")}</p>
-          {/* The real failure — the query's own message, status included. */}
-          <p className="mt-1 font-mono text-[11px] text-danger">{message}</p>
+          {/* The failure, named in the reader's language. */}
+          <p className="mt-1 font-mono text-[11px] text-danger">{localized(error)}</p>
         </div>
         <div className="flex items-center justify-center pt-1">
           <button

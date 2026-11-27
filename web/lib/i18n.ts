@@ -1,6 +1,7 @@
 import IntlMessageFormat from "intl-messageformat";
 import { useSyncExternalStore } from "react";
 
+import { catalogFor } from "./catalog";
 import { formattingLocale } from "./format";
 import { activeFormality, subscribeFormality } from "./formality";
 import { catalogs } from "./generated/catalogs";
@@ -25,10 +26,11 @@ const formatters = new Map<string, IntlMessageFormat>();
 export function t(key: MessageKey, params?: Record<string, string | number>): string {
   const locale: Locale = activeLocale();
   const formality = activeFormality();
+  const catalog = catalogFor(locale);
   const message =
     formality === "formal" && locale !== "en"
-      ? (overlays[locale]?.[key] ?? catalogs[locale][key])
-      : catalogs[locale][key];
+      ? (overlays[locale]?.[key] ?? catalog[key])
+      : catalog[key];
   // No parameters: the message is its own rendering, no parser involved.
   if (params === undefined) return message;
 

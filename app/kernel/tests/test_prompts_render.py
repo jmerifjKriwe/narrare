@@ -27,7 +27,14 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 from app.kernel.contracts.models import Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
-from app.kernel.prompts import PromptRegistry, PromptRenderError, referenced_names, render
+from app.kernel.prompts import (
+    PromptRegistry,
+    PromptRenderError,
+    no_includes,
+    referenced_names,
+    render,
+    render_source,
+)
 from app.kernel.prompts import registry as prompts_registry
 from app.kernel.prompts.models import PromptTemplate, PromptTemplateRepository
 
@@ -215,7 +222,27 @@ async def test_unknown_include_refused_by_name() -> None:
         with pytest.raises(PromptRenderError) as error:
             await render(session, OWNER, "toy.ask", {})
     assert error.value.reason == "include-missing"
+    assert error.value.name == "toy.nope"
     assert "toy.nope" in error.value.detail
+
+
+def test_undefined_variable_carries_the_name_it_read() -> None:
+    """The refusal's fact is the variable's name, not a parse of Jinja's sentence."""
+    with pytest.raises(PromptRenderError) as error:
+        render_source("Hello {{ nope }}", {}, include=no_includes)
+    assert error.value.reason == "undefined-variable"
+    assert error.value.name == "nope"
+    assert error.value.line is None
+
+
+def test_syntax_error_carries_the_engine_s_line() -> None:
+    """An ``{% if %}`` left open on the third line carries the engine's own line."""
+    draft = "first line\nsecond line\n{% if entities %}"
+    with pytest.raises(PromptRenderError) as error:
+        render_source(draft, {}, include=no_includes)
+    assert error.value.reason == "syntax"
+    assert error.value.line == 3
+    assert error.value.name is None
 
 
 @pytest.mark.usefixtures("two_users", "toy_registry")
@@ -257,6 +284,7 @@ async def test_stored_chain_deeper_than_five_is_include_depth() -> None:
         with pytest.raises(PromptRenderError) as error:
             await render(session, OWNER, "toy.k0", {})
     assert error.value.reason == "include-depth"
+    assert error.value.name == "toy.k6"
 
 
 @pytest.mark.usefixtures("two_users", "toy_registry")
@@ -270,6 +298,7 @@ async def test_stored_cycle_is_include_cycle() -> None:
         with pytest.raises(PromptRenderError) as error:
             await render(session, OWNER, "toy.a", {})
     assert error.value.reason == "include-cycle"
+    assert error.value.name == "toy.b"
 
 
 @pytest.mark.usefixtures("two_users", "toy_registry")

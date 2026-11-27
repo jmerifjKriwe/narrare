@@ -27,8 +27,8 @@ import { useEffect, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { client } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
+import { de } from "@shell/lib/test/catalogs";
 
 import { SceneEditor, bodyToHtml } from "./SceneEditor";
 import { LeaveGuardDialog } from "./WorkspaceStates";
@@ -39,7 +39,6 @@ vi.mock("@shell/lib/api/client", () => ({
   client: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() },
 }));
 
-const de = catalogs.de;
 const api = client as unknown as { PUT: ReturnType<typeof vi.fn> };
 
 // jsdom lays out nothing: ProseMirror reads Range rects when it scrolls a
@@ -183,6 +182,24 @@ describe("the editing surface", () => {
     // The page keys the editor by scene id: a new key is a new document.
     rerender(<SceneEditor key="s2" body="Szene zwei." onChange={() => {}} label="Prosa" />);
     await waitFor(() => expect(screen.getByRole("textbox").textContent).toBe("Szene zwei."));
+  });
+
+  it("carries the manuscript's language on its prose", async () => {
+    const { container } = render(
+      <SceneEditor body="Text" onChange={vi.fn()} label="Scene" language="ja" />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector(".ProseMirror")?.getAttribute("lang")).toBe("ja"),
+    );
+  });
+
+  it("leaves the prose to the interface's language when the manuscript names none", async () => {
+    const { container } = render(
+      <SceneEditor body="Text" onChange={vi.fn()} label="Scene" language={null} />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector(".ProseMirror")?.hasAttribute("lang")).toBe(false),
+    );
   });
 });
 

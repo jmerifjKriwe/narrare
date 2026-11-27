@@ -12,6 +12,8 @@ import json
 import sys
 from pathlib import Path
 
+from scripts.generate_capabilities import locales
+
 CAPABILITIES = Path("app/capabilities")
 
 INTEGRATION_FIXTURE = '''"""Fixtures for the {name} suite.
@@ -97,14 +99,14 @@ def main() -> None:
     )
     (root / "e2e" / "conftest.py").write_text(E2E_FIXTURE.format(name=name), encoding="utf-8")
     # Every catalog the generator discovers must carry the capability's title:
-    # the scaffold writes one file per language the central catalog declares,
-    # with the English label as the placeholder, so the first `just generate`
-    # is green and translation is the next edit.
-    locales = sorted(path.stem for path in Path("i18n").glob("*.json"))
-    if not locales:
-        raise SystemExit("i18n/*.json is missing: no catalog to scaffold against")
+    # the scaffold writes one file per language the registry declares — read
+    # through the generator's own `locales()`, so the set and its order are the
+    # ones `just generate` will demand — with the English label as the
+    # placeholder, so the first `just generate` is green and translation is the
+    # next edit.
+    catalog_locales = locales(Path("."))
     catalog = {f"{name}.heading": name.replace("_", " ").title()}
-    for locale in locales:
+    for locale in catalog_locales:
         source = root / "web" / "i18n" / f"{locale}.json"
         source.parent.mkdir(parents=True, exist_ok=True)
         source.write_text(
@@ -113,7 +115,7 @@ def main() -> None:
         )
 
     print(f"created {root}")
-    print(f"next: translate web/i18n/{{{', '.join(locales)}}}.json, then")
+    print(f"next: translate web/i18n/{{{', '.join(catalog_locales)}}}.json, then")
     print("      `just generate` (the registry must name the new capability before")
     print("      the app boots), router.py (auto-mounted), service.py, schemas.py,")
     print("      a test, an E2E spec")

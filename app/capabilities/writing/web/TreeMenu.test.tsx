@@ -12,12 +12,10 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
+import { de } from "@shell/lib/test/catalogs";
 
 import { TreeMenu } from "./TreeMenu";
-
-const de = catalogs.de;
 
 function renderMenu(overrides: Partial<Parameters<typeof TreeMenu>[0]> = {}) {
   const props = {

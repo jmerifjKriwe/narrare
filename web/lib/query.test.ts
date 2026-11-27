@@ -27,6 +27,7 @@ vi.mock("./api/client", async (importOriginal) => {
 });
 
 import { client, isModelChange } from "./api/client";
+import { ApiError } from "./api/errors";
 import {
   queryClient,
   sameNovelPlaceholder,
@@ -321,8 +322,10 @@ describe("the shared [\"knowledge\", \"passages\"] family — one cache, one ref
     const dock = renderHook(() => usePassageSearch("Echo"), { wrapper });
 
     await waitFor(() => expect(dock.result.current.isError).toBe(true));
-    // The refusal carries its status and detail — `isModelChange` is the
-    // very predicate the sources face keys its mismatch face on.
+    // The refusal carries its status, code and detail — `isModelChange` is
+    // the very predicate the sources face keys its mismatch face on.
+    expect(dock.result.current.error).toBeInstanceOf(ApiError);
+    expect((dock.result.current.error as ApiError).code).toBe("embedding-mismatch");
     expect(isModelChange(dock.result.current.error)).toBe(true);
     expect((dock.result.current.error as { status?: number }).status).toBe(409);
     // The failure is cached under the family key both doors read.
@@ -482,6 +485,8 @@ describe("the planning reads", () => {
     ).rejects.toThrow();
     await waitFor(() => expect(edit.result.current.error).not.toBeNull());
     const thrown = edit.result.current.error;
+    expect(thrown).toBeInstanceOf(ApiError);
+    expect((thrown as ApiError).code).toBeNull();
     expect((thrown as { status?: number }).status).toBe(422);
     expect((thrown as { detail?: unknown }).detail).toBe("title must not be blank");
   });

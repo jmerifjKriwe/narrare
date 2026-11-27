@@ -1,22 +1,17 @@
-import { activeLocale } from "./locale";
+import { activeFormatLocale } from "./locale";
 
 /**
- * The locale `Intl` formats in: the chosen catalog's language, carrying the
+ * The locale `Intl` formats in: the active catalog's language, carrying the
  * browser's regional variant when the two agree.
  *
  * The app speaks one catalog per language (`de`), but a browser in Austria
- * asks for `de-AT`: same words, regional numbers and dates. Taking the
- * browser's tag only when its primary subtag matches the active catalog keeps
- * a deliberate language choice intact — a German UI on an English browser
- * formats as German, not English — while a `de-AT` reader gets `de-AT` dates.
+ * asks for `de-AT`: same words, regional numbers and dates. The locale store
+ * keeps the matched tag beside the active language, so a deliberate language
+ * choice stays intact — a German UI on an English browser formats as German,
+ * not English — while a `de-AT` reader gets `de-AT` dates.
  */
 export function formattingLocale(): string {
-  const active = activeLocale();
-  if (typeof navigator === "undefined") return active;
-  const browser = navigator.language;
-  if (!browser) return active;
-  const base = browser.split("-")[0]?.toLowerCase() ?? "";
-  return base === active ? browser : active;
+  return activeFormatLocale();
 }
 
 /** A date in the reader's regional format; `value` is anything `Date` parses. */

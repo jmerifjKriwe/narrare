@@ -1,15 +1,11 @@
 """The committed generated views are the facts files and the catalogs, rendered.
 
-`just generate` writes eleven views: the Python registry `app/api/main.py`
-cross-checks at startup, the locale list the server validates against, the
-TypeScript nav data, the TypeScript catalog map, the TypeScript overlay map,
-the TypeScript route table, the TypeScript workspace-route id, the TypeScript
-dock registry, the TypeScript settings registry, the TypeScript command
-registry and the user-docs index.
-A stale view means the
-UI or the startup check runs on old facts — the same failure mode the OpenAPI
-drift test guards — so forgetting `just generate` must be a red suite, not a
-wrong UI.
+`just generate` writes the views listed in `scripts/generate_capabilities.py`
+(its module docstring and `main()`); one count lives there. This module checks
+the committed copies this sweep covers against the generator's current output.
+A stale view means the UI or the startup check runs on old facts — the same
+failure mode the OpenAPI drift test guards — so forgetting `just generate` must
+be a red suite, not a wrong UI.
 """
 
 import json
@@ -24,16 +20,19 @@ from scripts.generate_capabilities import (
     catalogs,
     docs_index,
     facts,
+    lazy_catalog_outputs,
     locales,
     overlay_sources,
     python_locales,
     python_registry,
+    registry_locales,
     scan_commands,
     scan_docks,
     scan_settings,
     typescript_catalogs,
     typescript_commands,
     typescript_docks,
+    typescript_error_codes,
     typescript_nav,
     typescript_overlays,
     typescript_routes,
@@ -79,12 +78,21 @@ def test_committed_typescript_nav_matches_the_facts() -> None:
 
 
 def test_committed_typescript_catalogs_match_the_catalog_files() -> None:
-    # The map and the Locale union are generated from i18n/*.json: a language
-    # added without `just generate` would exist on disk and not in the build.
+    # The map, the Locale union and localeOrder are generated from
+    # i18n/registry/locales.json and the catalogs: a language added without
+    # `just generate` would exist on disk and not in the build.
     known, _, _ = _views()
-    assert _committed("web", "lib", "generated", "catalogs.ts") == typescript_catalogs(
-        ROOT, known
-    ), "web/lib/generated/catalogs.ts is stale: run `just generate` and commit the result"
+    committed = _committed("web", "lib", "generated", "catalogs.ts")
+    assert committed == typescript_catalogs(ROOT, known, registry_locales(ROOT)), (
+        "web/lib/generated/catalogs.ts is stale: run `just generate` and commit the result"
+    )
+    assert "export const localeOrder = [" in committed
+    # Every non-source language is its own lazy module: a language added
+    # without `just generate` would exist on disk and not in the loader map.
+    for target, content in lazy_catalog_outputs(ROOT, known).items():
+        assert (ROOT / target).read_text(encoding="utf-8") == content, (
+            f"{target} is stale: run `just generate` and commit the result"
+        )
 
 
 def test_committed_typescript_overlays_match_the_overlay_files() -> None:
@@ -125,6 +133,12 @@ def test_committed_typescript_commands_match_the_command_modules() -> None:
     # change is a palette running on rows that no longer exist as written.
     assert _committed("web", "lib", "generated", "commands.ts") == typescript_commands(ROOT), (
         "web/lib/generated/commands.ts is stale: run `just generate` and commit the result"
+    )
+
+
+def test_committed_typescript_error_codes_match_the_kernel() -> None:
+    assert _committed("web", "lib", "generated", "errorCodes.ts") == typescript_error_codes(), (
+        "web/lib/generated/errorCodes.ts is stale: run `just generate` and commit the result"
     )
 
 
@@ -170,6 +184,9 @@ def _facts_tree(
     (tmp_path / "i18n" / "en.json").write_text(
         json.dumps(dict(sorted(catalog.items()))), encoding="utf-8"
     )
+    registry = tmp_path / "i18n" / "registry" / "locales.json"
+    registry.parent.mkdir()
+    registry.write_text(json.dumps({"locales": ["en"]}) + "\n", encoding="utf-8")
     folder = tmp_path / "app" / "capabilities" / "demo"
     folder.mkdir(parents=True)
     lines = ["id: demo"]

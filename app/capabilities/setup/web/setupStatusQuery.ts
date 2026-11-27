@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { client } from "@shell/lib/api/client";
+import { refused } from "@shell/lib/query";
 
 /**
  * The one setup-status question, as shared query options. Two readers ask it
@@ -21,8 +22,12 @@ export const setupStatusQueryOptions = queryOptions({
   queryKey: ["setup", "status"],
   staleTime: Infinity,
   queryFn: async () => {
-    const { data, response } = await client.GET("/api/setup/status");
-    if (!response.ok || !data) {
+    const { data, error, response } = await client.GET("/api/setup/status");
+    if (!response.ok) {
+      throw refused("setup status unavailable", response, error);
+    }
+    if (!data) {
+      // A 2xx without a body is no refusal: the face's fallback names it.
       throw new Error(`setup status unavailable: ${response.status}`);
     }
     return data.complete;

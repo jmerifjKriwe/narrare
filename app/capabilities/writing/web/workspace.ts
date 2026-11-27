@@ -38,7 +38,7 @@ import {
 import { readSse } from "@shell/lib/api/sse";
 import { catalogs } from "@shell/lib/generated/catalogs";
 import type { MessageKey } from "@shell/lib/i18n";
-import { queryClient } from "@shell/lib/query";
+import { queryClient, refused as refusedRequest } from "@shell/lib/query";
 import { countWords } from "@shell/lib/words";
 
 // Type-only: the autosave's flush vocabulary, erased at runtime (the
@@ -166,10 +166,11 @@ function scenesQueryOptions(chapterId: string) {
   return {
     queryKey: ["scenes", chapterId],
     queryFn: async () => {
-      const { data, response } = await client.GET("/api/writing/chapters/{chapter_id}/scenes", {
-        params: { path: { chapter_id: chapterId } },
-      });
-      if (!response.ok) throw new Error(`scenes unavailable: ${response.status}`);
+      const { data, error, response } = await client.GET(
+        "/api/writing/chapters/{chapter_id}/scenes",
+        { params: { path: { chapter_id: chapterId } } },
+      );
+      if (!response.ok) throw refusedRequest("scenes unavailable", response, error);
       return data ?? [];
     },
   };

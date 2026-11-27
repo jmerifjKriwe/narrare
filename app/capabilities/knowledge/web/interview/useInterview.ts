@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { AssistantTurnCreate } from "@shell/lib/api/client";
-import type { WireError } from "@shell/lib/query";
+import type { ApiError } from "@shell/lib/api/errors";
 import {
   useAssistantSessionQuery,
   useAssistantSessionsQuery,
@@ -124,7 +124,7 @@ export function useInterview({
   // turns off with it.
   useEffect(() => {
     if (!visible) return;
-    const error = session.error as WireError | null;
+    const error = session.error as ApiError | null;
     if (error?.status === 404 || error?.code === "not-found") onNotFound();
   }, [session.error, onNotFound, visible]);
 
@@ -166,7 +166,7 @@ export function useInterview({
             text: chip ? slot.text : "",
           }));
         } catch (error) {
-          const wire = error as WireError;
+          const wire = error as ApiError;
           if (wire.code === "not-found") {
             // A missing session is the read's own 404: navigate only when it
             // is the interview now shown and the panel is visible, so a turn
@@ -184,7 +184,10 @@ export function useInterview({
           if (wire.code === "suggestion-mismatch") {
             updateSlot(sentFor, (slot) => ({
               ...slot,
-              failure: { code: "suggestion-mismatch", detail: wire.detail },
+              failure: {
+                code: "suggestion-mismatch",
+                detail: typeof wire.detail === "string" ? wire.detail : undefined,
+              },
               failed: null,
             }));
             return;
@@ -194,10 +197,14 @@ export function useInterview({
           updateSlot(sentFor, (slot) => ({
             ...slot,
             failure: {
-              code: isTurnFailure(wire.code) ? (wire.code as string) : "provider-error",
-              detail: wire.detail,
+              code: isTurnFailure(wire.code ?? undefined)
+                ? (wire.code as string)
+                : "provider-error",
+              detail: typeof wire.detail === "string" ? wire.detail : undefined,
               // An unknown code keeps its name beside the generic copy.
-              cause: isTurnFailure(wire.code) ? undefined : wire.code,
+              cause: isTurnFailure(wire.code ?? undefined)
+                ? undefined
+                : (wire.code ?? undefined),
               chip,
             },
             failed: { sessionId: sentFor, body },

@@ -1,7 +1,7 @@
 # Spec: Server-Injected Locale Catalogs
 
 **Date:** 2026-11-09
-**Status:** Proposed
+**Status:** Superseded 2026-11-26 — never built; replaced by `docs/superpowers/specs/2026-11-25-i18n-architecture-hardening-design.md`, which loads catalogs as lazy modules instead of injecting them into the shell.
 **Author:** Coordinator
 **Depends on:** the fourth and fifth locale catalogs landing first (they are
 data-only additions and are not part of this work)

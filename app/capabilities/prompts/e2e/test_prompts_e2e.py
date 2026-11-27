@@ -61,6 +61,7 @@ NOVEL_STATE = re.compile(r"Aktuell ist für Dead Signal ein spezifischer Roman-O
 INHERIT_STATE = "Keine lokale Abweichung für diesen Roman definiert."
 DIFF_NONE = "Kein Override gespeichert — in diesem Geltungsbereich trägt der Standard unverändert."
 REFUSED_SYNTAX = "Speichern abgelehnt: Syntax"
+REFUSED_SYNTAX_LINE = "Die Vorlage bricht bei Zeile 3 ab."
 SAVED = "Gespeichert."
 RESET_QUESTION = "Wirklich zurücksetzen?"
 DIAGNOSTICS = "Diagnostik: Providerfrei gerendert. Kein API-Aufruf, keine Datenübertragung."
@@ -78,9 +79,10 @@ COOLDOWN = re.compile(r"Cooldown: \d+ Sekunden")
 NO_CONTEXT = "Keine realen Daten für diesen Test"
 PASSAGES_ZERO = "Passagen: 0"
 
-# The broken draft: an {% if %} without its {% endif %} — the gate's syntax
-# refusal on the wire. Intentional Jinja, not a typo.
-BROKEN_DRAFT = "# Umgestimmt\n{% if entities %}\nDer Text bricht ab."
+# The broken draft: an {% if %} left open on its third line — the gate's
+# syntax refusal on the wire, the engine's own line 3. Intentional Jinja, not a
+# typo.
+BROKEN_DRAFT = "# Umgestimmt\nDer Text bricht ab.\n{% if entities %}"
 HONEST_DRAFT = "# Umgestimmt\nDu bist ein literarischer Ghost-Writing-Assistent.\n{{tail}}"
 
 
@@ -266,6 +268,8 @@ def test_the_save_gate_refuses_by_name_and_the_honest_save_lands(
     editor.get_by_test_id("save-button").click()
     face = page.get_by_test_id("refusal-face")
     expect(face).to_contain_text(REFUSED_SYNTAX)
+    # The place sentence localizes the gate's fact: the engine's own line.
+    expect(face).to_contain_text(REFUSED_SYNTAX_LINE)
     expect(textarea).to_have_value(BROKEN_DRAFT)
 
     # The honest save: the fresh detail answers, the face says saved, the
@@ -314,7 +318,9 @@ def test_the_preview_is_providerfree_and_names_the_contract(page: Page, installe
     editor = _editor(page)
     editor.get_by_test_id("draft-textarea").fill(BROKEN_DRAFT)
     editor.get_by_test_id("preview-button").click()
-    expect(page.get_by_test_id("refusal-face")).to_contain_text(REFUSED_SYNTAX)
+    face = page.get_by_test_id("refusal-face")
+    expect(face).to_contain_text(REFUSED_SYNTAX)
+    expect(face).to_contain_text(REFUSED_SYNTAX_LINE)
 
     # The dark face stays accessible: the shell adopts the stored theme at
     # boot, so the reload lands dark.

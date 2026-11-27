@@ -81,7 +81,7 @@ async def test_empty_document_is_rejected() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         status, body = await _post_document(client, "   \n\n  ")
         assert status == 422
-        assert body["detail"] == "document is empty"
+        assert body["detail"] == {"code": "document-empty", "detail": "document is empty"}
 
 
 async def test_title_falls_back_to_the_filename() -> None:

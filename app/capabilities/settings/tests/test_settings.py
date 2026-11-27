@@ -16,6 +16,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
 
 from app.api.main import app
+from app.capabilities.settings import schemas as settings_schemas
 from app.capabilities.settings.schemas import SettingsUpdate
 from app.capabilities.settings.service import SettingsService
 from app.kernel.auth import LOCAL_USER_ID
@@ -71,6 +72,66 @@ async def test_a_chosen_locale_is_stored_on_the_user_row() -> None:
         user = await session.get(User, LOCAL_USER_ID)
         assert user is not None
         assert user.locale == "de"
+
+
+async def test_a_long_registered_locale_is_stored(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A registry code wider than eight characters is stored like any other.
+
+    The membership check is untouched — only the width moved — so the catalog
+    is patched to carry the long code the column must now hold.
+    """
+    monkeypatch.setattr(settings_schemas, "LOCALES", ("de", "en", "fr", "zh-Hans-CN"))
+    async with _client() as client:
+        written = await client.patch("/api/settings", json={"locale": "zh-Hans-CN"})
+        assert written.status_code == 200
+        assert written.json()["locale"] == "zh-Hans-CN"
+        assert (await client.get("/api/settings")).json()["locale"] == "zh-Hans-CN"
+
+    async with Session() as session:
+        user = await session.get(User, LOCAL_USER_ID)
+        assert user is not None
+        assert user.locale == "zh-Hans-CN"
+
+
+async def test_a_locale_of_exactly_the_column_width_is_stored(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exactly 64 characters is inside the width; only 65 refuses.
+
+    The catalog is patched to carry the code so only the field's width is
+    asked. The mutation probe (``max_length=63``) shows this test catches a
+    ceiling that became exclusive.
+    """
+    tag = f"de-{'-'.join(['abcdefgh'] * 6)}-abcdefg"
+    assert len(tag) == 64
+    monkeypatch.setattr(settings_schemas, "LOCALES", ("de", "en", "fr", tag))
+    async with _client() as client:
+        written = await client.patch("/api/settings", json={"locale": tag})
+        assert written.status_code == 200
+        assert written.json()["locale"] == tag
+        assert (await client.get("/api/settings")).json()["locale"] == tag
+
+    async with Session() as session:
+        user = await session.get(User, LOCAL_USER_ID)
+        assert user is not None
+        assert user.locale == tag
+
+
+async def test_an_over_long_locale_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A locale wider than the column is a 422; the stored choice is unchanged.
+
+    The catalog is patched to carry the over-long code, so only the field's
+    width can refuse it — the membership check stays out of the way.
+    """
+    over_long = f"de-{'-'.join(['abcdefgh'] * 7)}"
+    assert len(over_long) == 65
+    monkeypatch.setattr(settings_schemas, "LOCALES", ("de", "en", "fr", over_long))
+    async with _client() as client:
+        await client.patch("/api/settings", json={"locale": "de"})
+        refused = await client.patch("/api/settings", json={"locale": over_long})
+        assert refused.status_code == 422
+        assert any(entry["loc"] == ["body", "locale"] for entry in refused.json()["detail"])
+        assert (await client.get("/api/settings")).json()["locale"] == "de"
 
 
 async def test_an_unknown_locale_is_refused_and_changes_nothing() -> None:

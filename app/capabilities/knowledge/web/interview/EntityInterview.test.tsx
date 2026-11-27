@@ -24,13 +24,12 @@ import {
   type AssistantTurnRead,
   type Proposal,
 } from "@shell/lib/api/client";
-import { catalogs } from "@shell/lib/generated/catalogs";
 import { applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { de } from "@shell/lib/test/catalogs";
 
 import { EntityInterview } from "./EntityInterview";
 
-const de = catalogs.de;
 const api = client as unknown as Record<"GET" | "POST", ReturnType<typeof vi.fn>>;
 
 configure({ asyncUtilTimeout: 5000 });

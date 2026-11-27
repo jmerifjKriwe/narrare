@@ -45,6 +45,10 @@ export default defineConfig({
       "**/*.{test,spec}.?(c|m)[jt]s?(x)",
       "../app/capabilities/*/web/**/*.{test,spec}.?(c|m)[jt]s?(x)",
     ],
+    // The bed every test reads a language's real catalog through: the eager
+    // catalogs, the store preloaded with them, and jsdom's missing scrollTo
+    // as a no-op. One entry, so no test has to remember any of it.
+    setupFiles: ["./lib/test/setup.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],

@@ -60,7 +60,8 @@ Pure rendering and wiring do not require unit tests.
 - `just check-generated` — regenerates the capability views, the OpenAPI document,
   the typed client and the docs index; fails if the committed files change (CI
   only: `pnpm dlx` needs the network).
-- `just test` — backend integration suite.
+- `just test` — backend integration suite, including the script tests under
+  `scripts/tests/`.
 - `just test-frontend` — vitest unit suite.
 - `just test-e2e` — the E2E suites the change touches (`all`, or a capability name, for more).
   Two workers when the machine has 6 GB available, one below that (`NARRE_E2E_WORKERS`

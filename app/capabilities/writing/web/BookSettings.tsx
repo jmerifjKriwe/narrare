@@ -45,6 +45,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { UseQueryResult } from "@tanstack/react-query";
 
 import type { Novel, NovelChanges, Series } from "@shell/lib/api/client";
+import { localeOrder } from "@shell/lib/generated/catalogs";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 import { queryClient } from "@shell/lib/query";
 import { Icon, type IconName } from "@shell/ui/icons";
@@ -117,10 +118,6 @@ const CANON_NAMES: Record<number, MessageKey> = {
   3: "writing.settings.canonBalanced",
   5: "writing.settings.canonStrict",
 };
-
-/** The manuscript languages the draft's segment draws — the catalog's
- *  own three, the codes the novel's language column stores. */
-const LANGUAGES: readonly string[] = ["de", "en", "fr"];
 
 /** The status vocabulary — the shelf pill's own keys. */
 const STATUSES: readonly { id: string; label: MessageKey }[] = [
@@ -597,7 +594,7 @@ function SettingsForm({
               <div className="md:col-span-4">
                 <Segment
                   label={t("writing.settings.languageLabel")}
-                  options={LANGUAGES.map((code) => ({ id: code, label: code.toUpperCase() }))}
+                  options={localeOrder.map((code) => ({ id: code, label: code.toUpperCase() }))}
                   value={language}
                   onChange={setLanguage}
                 />

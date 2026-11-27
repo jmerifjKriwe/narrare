@@ -709,6 +709,114 @@ async def test_the_provider_step_gives_every_profile_a_provider(url: str) -> Non
 
 
 # ---------------------------------------------------------------------------
+# A data-carrying replay: the language widening
+# ---------------------------------------------------------------------------
+
+WIDENING_STEP_PREDECESSOR = "12fc7ddcec6f"
+"""The revision before the widening, named as the replay's first stop.
+
+The provider-step precedent: a hardcoded id reads better here than a walk of
+the script directory — what the test is about is exactly what lies between the
+two upgrades, and history growing above the widening does not change that.
+The second upgrade to head replays the widening for real over rows written in
+the old columns' shape.
+"""
+
+
+async def column_width(database_url: str, table: str, column: str) -> int | None:
+    """The column's declared maximum length, straight from the catalog."""
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.connect() as connection:
+            width: int | None = await connection.scalar(
+                text(
+                    "SELECT character_maximum_length FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name = :table "
+                    "AND column_name = :column"
+                ),
+                {"table": table, "column": column},
+            )
+            return width
+    finally:
+        await engine.dispose()
+
+
+async def test_the_language_widening_keeps_every_stored_tag(url: str) -> None:
+    """The widening changes the type, never the data: stored tags survive.
+
+    The gate replays real history over real rows — upgrade to the revision
+    before the widening, insert a user and a novel the way the old schema
+    holds them (a tag and NULL), upgrade to head. Both stored values come out
+    unchanged and both columns are 64 characters wide, the registry's ceiling.
+    """
+    await drop_every_table(url)
+    await asyncio.to_thread(command.upgrade, alembic_config(url), WIDENING_STEP_PREDECESSOR)
+
+    user_id, novel_id = uuid4(), uuid4()
+    engine = create_async_engine(url)
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(
+                text("INSERT INTO users (id, locale, created_at) VALUES (:id, :locale, now())"),
+                {"id": user_id, "locale": "de"},
+            )
+            await connection.execute(
+                text("INSERT INTO users (id, created_at) VALUES (:id, now())"),
+                {"id": uuid4()},
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO novels (id, user_id, title, language, created_at, updated_at) "
+                    "VALUES (:id, :user_id, :title, :language, now(), now())"
+                ),
+                {
+                    "id": novel_id,
+                    "user_id": user_id,
+                    "title": "Der Nebel",
+                    "language": "en-GB",
+                },
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                    "VALUES (:id, :user_id, :title, now(), now())"
+                ),
+                {"id": uuid4(), "user_id": user_id, "title": "Ohne Sprache"},
+            )
+    finally:
+        await engine.dispose()
+
+    await asyncio.to_thread(command.upgrade, alembic_config(url), "head")
+
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as connection:
+            user_locales = [
+                row[0]
+                for row in (
+                    await connection.execute(
+                        text("SELECT locale FROM users ORDER BY locale NULLS LAST")
+                    )
+                ).all()
+            ]
+            novel_languages = [
+                row[0]
+                for row in (
+                    await connection.execute(
+                        text("SELECT language FROM novels ORDER BY language NULLS LAST")
+                    )
+                ).all()
+            ]
+    finally:
+        await engine.dispose()
+
+    assert user_locales == ["de", None]
+    assert novel_languages == ["en-GB", None]
+    assert await column_width(url, "users", "locale") == 64
+    assert await column_width(url, "novels", "language") == 64
+
+
+# ---------------------------------------------------------------------------
 # A data-carrying replay: the scene step's wrap (W4 design §5)
 # ---------------------------------------------------------------------------
 
