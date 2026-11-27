@@ -29,7 +29,7 @@ vi.mock("./api/client", () => ({
 }));
 
 import { client } from "./api/client";
-import { isLoaded, resetCatalogs } from "./catalog";
+import { isLoaded, resetCatalogs, setCatalog } from "./catalog";
 import { catalogLoaders } from "./generated/catalogs";
 import { LanguageChip, LanguageSwitcher, useLanguageChoice } from "./language";
 import { activeLocale, adoptServerLocale, applyLocale, chosenLocale, hydrateLocale } from "./locale";
@@ -623,8 +623,12 @@ describe("the null choice — „Dem Browser folgen“ (W7)", () => {
 describe("a catalog that cannot be fetched", () => {
   it("a refused catalog keeps the previous language and writes nothing", async () => {
     setUp = true;
-    applyLocale("de");
+    // Empty the store, then put the previous language back: a reset that
+    // dropped German answers the source, so an unloaded German cannot stand
+    // as "the previous language" any more.
     resetCatalogs();
+    setCatalog("de", de);
+    applyLocale("de");
     catalogLoaders.fr = () => Promise.reject(new Error("chunk"));
     render(<LanguageSwitcher variant="welcome" />);
 
@@ -633,6 +637,7 @@ describe("a catalog that cannot be fetched", () => {
     });
 
     expect(activeLocale()).toBe("de");
+    expect(isLoaded("de")).toBe(true);
     expect(api.PATCH).not.toHaveBeenCalled();
   });
 
@@ -648,7 +653,14 @@ describe("a catalog that cannot be fetched", () => {
     );
     await waitFor(() => expect(queryClient.getQueryState(["settings", "read"])?.status).toBe("success"));
     await waitFor(() => expect(queryClient.getQueryState(["settings"])?.status).toBe("success"));
-    resetCatalogs();
+    // Empty the store while the faces are mounted, then put back the language
+    // the case speaks: the reset alone would answer the source, and the held
+    // French switch needs a German face to stay on.
+    await act(async () => {
+      resetCatalogs();
+      setCatalog("de", de);
+      applyLocale("de");
+    });
 
     let release: () => void = () => {};
     const gate = new Promise<void>((resolve) => {
@@ -681,8 +693,8 @@ describe("a catalog that cannot be fetched", () => {
 // --- The boot's source fallback — the row's language is still the choice ----
 
 /** The boot's fallback state: `row` is the stored choice, its catalog cannot
- *  be fetched, and hydration has made the source language active. The way
- *  `__root.boot.test.tsx` produces it. */
+ *  be fetched, and the reset (then the failed hydration) has made the source
+ *  language active. The way `__root.boot.test.tsx` produces it. */
 async function fallbackToSource(row: "fr" | null, browser?: string): Promise<void> {
   if (browser !== undefined) {
     vi.stubGlobal("navigator", { language: browser, languages: [browser] });

@@ -16,7 +16,7 @@
  */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
-import { cleanup, configure, render, screen } from "@testing-library/react";
+import { act, cleanup, configure, render, screen, waitFor } from "@testing-library/react";
 
 // Full-suite load: renders RouterProvider; see WorkspacePage.test.tsx.
 configure({ asyncUtilTimeout: 5000 });
@@ -37,7 +37,7 @@ import { ApiError } from "../lib/api/errors";
 import { locales } from "../lib/generated/catalogs";
 import { applyLocale } from "../lib/locale";
 import { queryClient } from "../lib/query";
-import { merged } from "../lib/test/catalogs";
+import { de, en, merged } from "../lib/test/catalogs";
 import { rootRoute } from "./__root";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
@@ -135,6 +135,27 @@ describe("the shell's fallbacks", () => {
       expect(document.body.textContent).not.toContain("Something went wrong");
       cleanup();
     }
+  });
+
+  it("a language switch re-renders a failure that is on screen", async () => {
+    const boom = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/boom",
+      component: () => {
+        throw new Error("die Route ist explodiert");
+      },
+    });
+    queryClient.clear();
+    scriptSettings("de");
+    applyLocale("de");
+    renderTree([home, boom], "/boom");
+
+    expect((await screen.findByRole("alert")).textContent).toContain(de["errors.unexpected"]);
+
+    act(() => applyLocale("en"));
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain(en["errors.unexpected"]),
+    );
   });
 
   it("names a thrown failure with a status by its family", async () => {

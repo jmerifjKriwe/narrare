@@ -240,16 +240,17 @@ describe("the catalog store", () => {
   });
 
   it("t() reads the store", async () => {
-    // `applyLocale` announces only a loaded catalog, so German becomes
-    // active from the bed first; the reset then reproduces the one state
-    // where the active language's catalog is missing.
+    // The reset drops the active German and answers the source, so the face
+    // is always a loaded catalog: while the reader's language is out of the
+    // store, the source's words answer.
     applyLocale("de");
     resetCatalogs();
-
-    // No German catalog in the store: the source language answers.
+    expect(activeLocale()).toBe("en");
     expect(t("nav.back")).toBe(en["nav.back"]);
 
+    // Once the German catalog is here, announcing it reads its own words.
     await loadCatalog("de");
+    applyLocale("de");
     expect(t("nav.back")).toBe(de["nav.back"]);
   });
 });

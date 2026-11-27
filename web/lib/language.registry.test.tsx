@@ -27,7 +27,12 @@ afterEach(() => {
 
 it("shows a language the registry adds, in the registry's order, without a code change", async () => {
   const { applyLocale } = await import("./locale");
+  const { preloadCatalogs } = await import("./test/catalogs");
   const { LanguageSwitcher } = await import("./language");
+  // The reset module registry starts empty: the setup file's preload ran on
+  // the registry this case discarded. Seed the store before a language is
+  // announced — no language is spoken without its catalog.
+  preloadCatalogs();
   applyLocale("de");
   render(<LanguageSwitcher variant="welcome" preSetup />);
   const radios = within(screen.getByRole("radiogroup")).getAllByRole("radio");

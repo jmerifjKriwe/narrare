@@ -5,7 +5,14 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { ChromeFrame } from "../components/ChromeFrame";
 import { useLocalizedError } from "../lib/api/errors";
 import { useTranslation } from "../lib/i18n";
-import { adoptServerLocale, activeLocale, hydrateLocale, subscribeLocale } from "../lib/locale";
+import {
+  adoptServerLocale,
+  activeLocale,
+  chosenLocale,
+  hydrateLocale,
+  subscribeLocale,
+  targetLocale,
+} from "../lib/locale";
 import { PageTitleProvider, applyBaseTitle, usePageTitle } from "../lib/pageTitle";
 import { readPreSetupLocale } from "../lib/preSetupLocale";
 import { useSettingsQuery } from "../lib/query";
@@ -26,7 +33,8 @@ function Shell() {
   // every load, which is the one visible artefact this gate prevents. The
   // gate rests on the query never erroring: an unreachable service resolves
   // to `locale: null` (web/lib/query.ts), so `isSuccess` is reached on an
-  // outage too, and the gate opens into the browser's language.
+  // outage too, and the gate opens into the browser's language (the
+  // pre-setup mirror when one stands).
   const [ready, setReady] = useState(false);
   const settings = useSettingsQuery();
 
@@ -38,8 +46,23 @@ function Shell() {
     // then is the page opened. A chunk that cannot be fetched leaves the
     // source language active (hydrateLocale's own fallback).
     adoptServerLocale(settings.data.locale);
+    // The target follows the switcher's own precedence: the row's choice when
+    // the row holds one, else the pre-setup mirror, else the browser, else the
+    // source. The mirror is read only while the row holds no choice — a stored
+    // choice always wins over a mirror a refused carry-over left behind. A
+    // hydration of the language already active and in the store takes no
+    // number, so a settings change that changes nothing cannot supersede a
+    // switch in flight.
+    const row = chosenLocale();
+    const mirrored = row === null ? readPreSetupLocale() : null;
+    const target =
+      row !== null
+        ? targetLocale(row)
+        : mirrored !== null
+          ? targetLocale(mirrored)
+          : targetLocale(null);
     void (async () => {
-      await hydrateLocale(readPreSetupLocale() ?? activeLocale());
+      await hydrateLocale(target);
       if (cancelled) return;
       adoptServerTheme(settings.data.theme);
       setReady(true);
