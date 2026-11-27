@@ -8,7 +8,7 @@ The post-merge `Screenshots` run opened PR #1010 because local and CI renders us
 
 - Self-host IBM Plex Mono 400/500/600/700 from the pinned `@fontsource/ibm-plex-mono@5.3.0` package, with its OFL license.
 - Make `--font-mono` use the bundled family first for keycaps, badges, code, dates and numeric metadata.
-- Replace the visible `⌘` text glyph in TopBar and InspectorDock with a repo-owned SVG command icon; keep accessible shortcut labels unchanged.
+- Replace the visible `⌘` text glyph in TopBar and InspectorDock with a repo-owned SVG command icon; keep the accessible shortcut notation, with TopBar's name `Suchen K (⌘K)` so the visible `Suchen K` stays a literal substring of the name (WCAG label-in-name).
 - Verify through the strict CI Screenshots run that the bundled fonts make environment-only glyph differences disappear.
 - Rebaseline all 25 masters once and keep the generated collection index byte-identical.
 - Preserve the workflow's strict rule: real pixel changes still open a PR.
@@ -41,10 +41,10 @@ The post-merge `Screenshots` run opened PR #1010 because local and CI renders us
 - No rendered U+2318 text depends on a system font.
 - All `font-mono` CSS resolves to the bundled family as the first choice.
 - Two independent local captures are byte-identical.
-- A CI Screenshots run on the fix branch produces no new screenshot PR after the rebaseline.
+- A manually dispatched CI Screenshots run on the fix branch (`gh workflow run screenshots.yml --ref fix/screenshot-render-noise`) produces no new screenshot PR after the rebaseline.
 - A deliberate one-pixel fixture change still counts as a real difference; no tolerance is introduced.
 - Existing screenshot, component, accessibility and E2E gates remain green.
 
 ## Commit
 
-One reviewed task commit: `fix(web): use bundled fonts for keycaps and badges`, including the font assets, component/CSS changes, tests and regenerated masters. It carries a real `User-visible:` line and the Assisted-by trailer. No issue is closed twice and no merge occurs without owner approval.
+One reviewed task commit, `fix(web): use bundled fonts for keycaps and badges`, carries the font assets, component/CSS changes, tests and regenerated masters, with a real `User-visible:` line and the Assisted-by trailer. Three fix commits follow it: `fix(web): restore dock shortcut label and tighten font guard`, `fix(tooling): ignore non-painted mono and pin font guard`, and `refactor(tooling): remove the screenshot font guard` — the browser guard was withdrawn again in favour of the committed-asset contract. No issue is closed twice and no merge occurs without owner approval.

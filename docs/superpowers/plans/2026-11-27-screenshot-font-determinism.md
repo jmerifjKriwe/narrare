@@ -6,7 +6,7 @@
 
 **Architecture:** Self-host IBM Plex Mono for the existing `--font-mono` token and replace the visible `⌘` glyph with a repo-owned SVG icon. All 25 masters are rebaselined once; the strict CI Screenshots run proves that environment-only glyph differences are gone. The workflow keeps its strict byte-level diff, so real pixel changes still open a PR.
 
-**Tech Stack:** React, TypeScript, Tailwind/CSS, Playwright, Python, Pillow, Fontsource WOFF2 assets.
+**Tech Stack:** React, TypeScript, Tailwind/CSS, Playwright, Python, Fontsource WOFF2 assets.
 
 **Spec:** `docs/superpowers/specs/2026-11-27-screenshot-font-determinism-design.md`
 
@@ -16,7 +16,7 @@
 - No browser-side font guard or meta E2E test; verify through bundled fonts and the CI Screenshots run.
 - No new route, API, schema or user-visible surface.
 - Fonts are bundled under `web/public/fonts/` with their OFL license.
-- Visible `⌘` is an SVG; accessible shortcut labels keep their existing text.
+- Visible `⌘` is an SVG; the accessible shortcut notation is retained — TopBar's name is `Suchen K (⌘K)`, so its visible text is a literal substring of the name (WCAG label-in-name).
 - All generated masters are real-stack 1600×1000 captures, below 1 MB.
 - Two independent local captures must be byte-identical before commit.
 - No merge without owner approval.
@@ -55,7 +55,7 @@
 
 - [x] **Step 1: Add failing asset and component tests**
 
-Add an asset contract asserting the four WOFF2 files and OFL license exist and `--font-mono` names IBM Plex Mono before any system fallback. Extend TopBar and InspectorDock tests so their keycaps contain a command SVG, contain no U+2318 text node and still expose the existing accessible shortcut labels. Add a workflow contract asserting the strict `git diff --cached --quiet` gate remains and no pixel-tolerance/alignment helper is introduced.
+Add an asset contract asserting the four WOFF2 files and OFL license exist and `--font-mono` names IBM Plex Mono before any system fallback. Extend TopBar and InspectorDock tests so their keycaps contain a command SVG, contain no U+2318 text node and expose the accessible shortcut notation — TopBar's name is `Suchen K (⌘K)`, with its visible text a literal substring. Add a workflow contract asserting the strict `git diff --cached --quiet` gate remains and no pixel-tolerance/alignment helper is introduced.
 
 - [x] **Step 2: Run the focused tests and verify red**
 
@@ -67,7 +67,7 @@ Download the four 400/500/600/700 Latin WOFF2 files and `LICENSE` from Fontsourc
 
 - [x] **Step 4: Wire the bundled mono family and command SVG**
 
-Add `@font-face` declarations for IBM Plex Mono and make `--font-mono` start with `"IBM Plex Mono"`. Add a 16×16 single-stroke `command` icon to `web/ui/icons.tsx`. Replace the visible `⌘` in TopBar and InspectorDock with `<Icon name="command" size={10} />` inside inline-flex keycaps; retain `aria-label` shortcut text and the bundled mono `K`/`J`.
+Add `@font-face` declarations for IBM Plex Mono and make `--font-mono` start with `"IBM Plex Mono"`. Add a 16×16 single-stroke `command` icon to `web/ui/icons.tsx`. Replace the visible `⌘` in TopBar and InspectorDock with `<Icon name="command" size={10} />` inside inline-flex keycaps; keep the shortcut in the accessible name (`Suchen K (⌘K)` on TopBar) and the bundled mono `K`/`J`.
 
 - [x] **Step 5: Keep the existing font-ready wait; no browser guard**
 
@@ -91,4 +91,4 @@ Commit `fix(web): use bundled fonts for keycaps and badges` with a real `User-vi
 
 - [ ] **Step 10: Review, push and prove CI silence**
 
-Independent reviewer checks the font source/license, SVG accessibility, CSS token, tests and all 25 masters. After approval, push the branch and observe its `Screenshots` workflow. Expected: the run succeeds and opens no `chore/screenshots-*` PR. A new screenshot PR means the fix is not complete.
+Independent reviewer checks the font source/license, SVG accessibility, CSS token, tests and all 25 masters. The `Screenshots` workflow runs only on `workflow_dispatch`, the Sunday schedule and `push` to `main`, so pushing the branch starts nothing. The proof is a manual dispatch, `gh workflow run screenshots.yml --ref fix/screenshot-render-noise`, which must succeed and open no new `chore/screenshots-*` PR; otherwise the proof is the post-merge `main` run. A new screenshot PR means the fix is not complete.

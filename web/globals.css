@@ -623,9 +623,11 @@ p.zen-dim-block:hover {
  * above — the app's own copy, never a CDN, never whatever mono the reader's
  * machine happens to have. Four real cuts (400 / 500 / 600 / 700), so a
  * keycap's K, a badge's numeral and the prose's code block carry the same
- * glyph on every machine without reading the machine's font packages. The Latin
- * subset's range is the one Fontsource ships: the command mark (U+2318) is
- * deliberately outside it and is drawn as the app's own SVG, never as text.
+ * glyph on every machine without reading the machine's font packages. The
+ * declared range is the cut's own: IBM Plex Mono 5.3.0 ships exactly U+2191
+ * and U+2193, and the command mark (U+2318) is deliberately outside it and is
+ * drawn as the app's own SVG, never as text. The wider U+2190-2193 span was
+ * copied locally from the Plus Jakarta Sans faces and has been removed.
  */
 @font-face {
   font-family: "IBM Plex Mono";
@@ -634,7 +636,7 @@ p.zen-dim-block:hover {
   font-display: swap;
   src: url("/fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
-    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
@@ -644,7 +646,7 @@ p.zen-dim-block:hover {
   font-display: swap;
   src: url("/fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
-    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
@@ -654,7 +656,7 @@ p.zen-dim-block:hover {
   font-display: swap;
   src: url("/fonts/ibm-plex-mono-latin-600-normal.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
-    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
@@ -664,7 +666,7 @@ p.zen-dim-block:hover {
   font-display: swap;
   src: url("/fonts/ibm-plex-mono-latin-700-normal.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
-    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 /* The editor's prose: the one place long-form text is read, so it gets the

@@ -480,8 +480,8 @@ export const icons = {
   fullscreenExit: <path d="M5.5 2.75V5.5H2.75M10.5 2.75V5.5H13.25M13.25 10.5H10.5V13.25M2.75 10.5H5.5V13.25" />,
 
   // The keyboard's concepts (screenshot font determinism). The bundled mono
-  // Latin subset carries no U+2318, and a system glyph is exactly the
-  // machine-dependent ink the capture guard forbids — so the mark is drawn.
+  // Latin subset carries no U+2318, so the mark is repo-owned: drawing it
+  // avoids a system-font glyph whose rasterization differs by machine.
 
   /** The command key: the square and the four loops it hangs — the ⌘ the
    *  keycaps used to set as text. One closed path, as the glyph itself is. */

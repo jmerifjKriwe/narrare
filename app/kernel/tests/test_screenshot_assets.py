@@ -9,6 +9,7 @@ These tests read the committed files, never the running stack.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import shutil
@@ -51,6 +52,26 @@ GLOBALS_CSS = ROOT / "web" / "globals.css"
 WORKFLOW = ROOT / ".github" / "workflows" / "screenshots.yml"
 MONO_WEIGHTS = (400, 500, 600, 700)
 WOFF2_MAGIC = b"wOF2"
+
+# The exact bytes Fontsource 5.3.0 serves: a re-vendored or locally subsetted
+# cut would render differently while still passing the format check. The
+# license digest is over LF line endings, so a CRLF checkout still matches.
+MONO_FONT_SHA256 = {
+    400: "08949f728dc52d528e69b1667d15c89a5686a4ee9a296ff90983985f99c380f7",
+    500: "01d285447409c8a588692162439a038b8cbd7871309ee20267b0d2d91c6e8e22",
+    600: "0d1f0b8d0722224e32e9f28261bdc86c79115be73444ae5eceb73976a1bcdf83",
+    700: "4f84d86cfd060f4ded334358ff8a4c81d4db2ed5addd568359d693f44a87765a",
+}
+MONO_LICENSE_SHA256 = "23b0a9d0c6d3f140a0b77e483c5cfa6bba574325ef5cb189ed9f2fec4884533f"
+
+# The Latin cuts carry U+2191 (↑) and U+2193 (↓) only; ← and → are absent.
+# Declaring the wider Fontsource arrow range would let a future mono surface
+# select these faces for U+2190/U+2192 and silently fall back to a system font.
+MONO_UNICODE_RANGE = (
+    "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, "
+    "U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, "
+    "U+FEFF, U+FFFD"
+)
 
 
 def _manifest_names() -> set[str]:
@@ -498,10 +519,16 @@ def test_bundled_mono_assets_are_the_pinned_fontsource_cuts() -> None:
         payload = path.read_bytes()
         assert payload.startswith(WOFF2_MAGIC), path
         assert len(payload) > 5_000, f"{path} is too small to carry the Latin cut"
+        digest = hashlib.sha256(payload).hexdigest()
+        assert digest == MONO_FONT_SHA256[weight], f"{path.name} is not the pinned cut"
 
 
 def test_bundled_mono_license_is_the_ofl() -> None:
-    license_text = (FONTS / "IBMPlexMono-OFL.txt").read_text(encoding="utf-8")
+    payload = (FONTS / "IBMPlexMono-OFL.txt").read_bytes()
+    # Browsers never read the notice, but its provenance is pinned with the
+    # faces; normalizing line endings keeps a CRLF checkout on the same digest.
+    assert hashlib.sha256(payload.replace(b"\r\n", b"\n")).hexdigest() == MONO_LICENSE_SHA256
+    license_text = payload.decode("utf-8")
     assert "SIL OPEN FONT LICENSE" in license_text
     assert "IBMPlexMono" in license_text
 
@@ -521,6 +548,10 @@ def test_globals_speaks_mono_in_the_bundled_family_first() -> None:
         weight = int(face["font-weight"])
         assert f"/fonts/ibm-plex-mono-latin-{weight}-normal.woff2" in face["src"]
         assert 'format("woff2")' in face["src"]
+        # The declared range is the cut's own, not the wider Fontsource
+        # default: the exact string keeps ← and → from being claimed.
+        declared = " ".join(face["unicode-range"].split())
+        assert declared == MONO_UNICODE_RANGE, f"{weight} declares {declared}"
 
 
 def test_capture_keeps_the_document_fonts_ready_wait_before_each_shot() -> None:
