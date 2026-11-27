@@ -31,6 +31,52 @@ PINNED_WEIGHTS = (400, 500, 600, 700)
 COMMAND_GLYPH = "\u2318"
 """The command mark that must never reach the page as text."""
 
+MONO_SCAN_JS = """async () => {
+    const weights = [400, 500, 600, 700];
+    await Promise.all(
+        weights.map((weight) =>
+            document.fonts.load(`${weight} 10px "IBM Plex Mono"`, "BESbswy"),
+        ),
+    );
+    const loaded = Object.fromEntries(
+        weights.map((weight) => [
+            weight,
+            document.fonts.check(`${weight} 10px "IBM Plex Mono"`, "BESbswy"),
+        ]),
+    );
+    const monoUses = [];
+    for (const element of document.querySelectorAll("body *")) {
+        const family = getComputedStyle(element).fontFamily;
+        if (!/mono/i.test(family)) continue;
+        const style = getComputedStyle(element);
+        const visible =
+            typeof element.checkVisibility === "function"
+                ? element.checkVisibility({
+                      checkOpacity: true,
+                      checkVisibilityCSS: true,
+                      checkContentVisibility: true,
+                  })
+                : element.getClientRects().length > 0 &&
+                  style.visibility !== "hidden" &&
+                  Number(style.opacity) !== 0;
+        monoUses.push({ family, visible });
+    }
+    return { loaded, monoUses, text: document.body.innerText };
+}"""
+"""The page evaluation the capture guard runs, as one expression.
+
+``element.checkVisibility()`` without options answers "not ``display: none``"
+in current Chromium: an element with ``visibility: hidden`` or ``opacity: 0``
+still returns true and keeps client rects, and a system-mono stack there would
+abort a capture that paints none of it. The explicit options make the scan's
+meaning "paints pixels": the CSS visibility property, zero opacity and
+``content-visibility: hidden`` all count as invisible. The fallback carries
+the same meaning for a Chromium too old to support the options.
+
+The expression lives here, not in the Playwright wrapper, so a real-browser
+E2E can evaluate exactly what the capture evaluates.
+"""
+
 
 @dataclass(frozen=True, slots=True)
 class MonoUse:

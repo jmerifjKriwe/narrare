@@ -521,10 +521,33 @@ def test_bundled_mono_assets_are_the_pinned_fontsource_cuts() -> None:
         assert len(payload) > 5_000, f"{path} is too small to carry the Latin cut"
 
 
+def _font_digest(path: Path) -> str:
+    """The pinned digest, with text line endings normalized to LF.
+
+    The OFL is a text file: a Windows checkout with CRLF bytes is the same
+    licence, so the digest is over its LF form. The WOFF2 files are binary
+    and hash as written. ``.gitattributes`` also pins the notice to LF, which
+    keeps the working tree stable across platforms.
+    """
+    payload = path.read_bytes()
+    if path.suffix == ".txt":
+        payload = payload.replace(b"\r\n", b"\n")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def test_bundled_font_files_are_the_pinned_bytes() -> None:
     for name, digest in _FONT_SHA256.items():
-        actual = hashlib.sha256((FONTS / name).read_bytes()).hexdigest()
-        assert actual == digest, f"{name} is not the pinned Fontsource 5.3.0 asset"
+        assert _font_digest(FONTS / name) == digest, (
+            f"{name} is not the pinned Fontsource 5.3.0 asset"
+        )
+
+
+def test_the_text_licence_digest_ignores_crlf_checkouts(tmp_path: Path) -> None:
+    """A CRLF checkout of the OFL is the same licence, not a failed digest."""
+    source = (FONTS / "IBMPlexMono-OFL.txt").read_bytes().replace(b"\r\n", b"\n")
+    crlf = tmp_path / "IBMPlexMono-OFL.txt"
+    crlf.write_bytes(source.replace(b"\n", b"\r\n"))
+    assert _font_digest(crlf) == _FONT_SHA256["IBMPlexMono-OFL.txt"]
 
 
 def test_bundled_mono_license_is_the_ofl() -> None:
@@ -555,12 +578,17 @@ def test_capture_guard_holds_the_pinned_fonts_before_every_shot() -> None:
     assert "def _assert_pinned_fonts(page: Page) -> None:" in source
     assert "from scripts.screenshot_fonts import" in source
     assert "validate_pinned_fonts(" in source
+    assert "page.evaluate(MONO_SCAN_JS)" in source
+    # The page answers live in the expression the wrapper evaluates; the
+    # painted-state options are part of the capture's meaning, not a default.
+    scan = (ROOT / "scripts" / "screenshot_fonts.py").read_text(encoding="utf-8")
     for weight in MONO_WEIGHTS:
-        assert str(weight) in source
-    # The page answers are evaluated in the browser; the rule is pure.
-    assert "document.fonts.check" in source
-    assert "document.body.innerText" in source
-    assert "checkVisibility" in source
+        assert str(weight) in scan
+    assert "document.fonts.check" in scan
+    assert "document.body.innerText" in scan
+    assert "checkVisibility" in scan
+    assert "checkOpacity: true" in scan
+    assert "checkVisibilityCSS: true" in scan
     # The guard runs after the faces settle and before the frame is written.
     shot = source[source.index("def _shot(") : source.index("def _require_inside(")]
     assert "document.fonts.ready" in shot
@@ -578,12 +606,19 @@ def test_screenshot_workflow_keeps_the_strict_staged_diff_gate() -> None:
 
 def test_no_pixel_tolerance_or_alignment_helper_is_introduced() -> None:
     """A real one-pixel change must still count; nothing here may hide it."""
-    for path in sorted((ROOT / "scripts").glob("screenshots*.py")):
+    for path in sorted((ROOT / "scripts").glob("screenshot*.py")):
         source = path.read_text(encoding="utf-8")
         assert "from PIL" not in source, path
         assert "import PIL" not in source, path
         hidden = re.search(r"def\s+\w*(?:toleran|align|compare_pixels|mask)\w*\s*\(", source)
         assert hidden is None, f"{path} hides a pixel change: {hidden}"
+    # The extracted font rule is imported by filesystem-only asset tests, so
+    # it must stay free of the capture stack as well as of image comparison.
+    pure = (ROOT / "scripts" / "screenshot_fonts.py").read_text(encoding="utf-8")
+    assert "from playwright" not in pure
+    assert "import playwright" not in pure
+    assert "from PIL" not in pure
+    assert "import PIL" not in pure
 
 
 def _previous_outputs(masters: Path, index: Path) -> None:

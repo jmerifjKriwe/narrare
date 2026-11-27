@@ -59,7 +59,7 @@ from playwright.sync_api import Locator, expect, sync_playwright
 from app.kernel.testing.jobs import wait_for_job
 from app.kernel.testing.stack import API_PORT, WEB_PORT, run_stack, stop_shared_web
 from app.kernel.testing.vendor import chat_vendor
-from scripts.screenshot_fonts import MonoUse, validate_pinned_fonts
+from scripts.screenshot_fonts import MONO_SCAN_JS, MonoUse, validate_pinned_fonts
 from scripts.screenshot_manifest import SHOTS, render_index, validate_shots
 from scripts.screenshots_publish import publish
 
@@ -156,40 +156,14 @@ def _api() -> httpx.Client:
 def _assert_pinned_fonts(page: Page) -> None:
     """Refuse a frame whose mono ink would come from the machine's fonts.
 
-    The page answers three facts — which bundled weights loaded, the computed
-    font stack of every mono element with its visibility, and its own text —
-    and ``scripts.screenshot_fonts.validate_pinned_fonts`` owns the rule.
-    Keeping the judgement pure lets the first-family order and the
-    visible/hidden distinction be tested without a browser; this wrapper only
-    evaluates the page and turns the errors into a failed capture.
+    ``scripts.screenshot_fonts.MONO_SCAN_JS`` evaluates the page — loaded
+    weights, the computed stack of every mono element with its painted state,
+    and the page's own text — and ``validate_pinned_fonts`` owns the rule.
+    Keeping both the expression and the judgement outside this wrapper lets
+    the painted-state rule run in a real-browser E2E and the first-family
+    order be tested without one; this function only fails the capture.
     """
-    result = page.evaluate(
-        """async () => {
-            const weights = [400, 500, 600, 700];
-            await Promise.all(
-                weights.map((weight) =>
-                    document.fonts.load(`${weight} 10px "IBM Plex Mono"`, "BESbswy"),
-                ),
-            );
-            const loaded = Object.fromEntries(
-                weights.map((weight) => [
-                    weight,
-                    document.fonts.check(`${weight} 10px "IBM Plex Mono"`, "BESbswy"),
-                ]),
-            );
-            const monoUses = [];
-            for (const element of document.querySelectorAll("body *")) {
-                const family = getComputedStyle(element).fontFamily;
-                if (!/mono/i.test(family)) continue;
-                const visible =
-                    typeof element.checkVisibility === "function"
-                        ? element.checkVisibility()
-                        : element.getClientRects().length > 0;
-                monoUses.push({ family, visible });
-            }
-            return { loaded, monoUses, text: document.body.innerText };
-        }"""
-    )
+    result = page.evaluate(MONO_SCAN_JS)
     errors = validate_pinned_fonts(
         loaded={int(weight): yes for weight, yes in result["loaded"].items()},
         mono_uses=[
