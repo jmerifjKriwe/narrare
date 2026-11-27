@@ -8,9 +8,10 @@ more.
 ## Getting Started
 
 You need [Python 3.14+](https://www.python.org/downloads/) with
-[uv](https://docs.astral.sh/uv/), [Node.js 22+](https://nodejs.org/) with
-[pnpm](https://pnpm.io/), [Docker](https://docs.docker.com/get-docker/) with
-Compose, [just](https://just.systems/), and the PostgreSQL 17 command-line
+[uv](https://docs.astral.sh/uv/), [Node.js](https://nodejs.org/) (the major
+[`.nvmrc`](.nvmrc) names) with [pnpm](https://pnpm.io/),
+[Docker](https://docs.docker.com/get-docker/) with Compose,
+[just](https://just.systems/), and the PostgreSQL 17 command-line
 client (`postgresql-client-17`: `pg_dump`/`pg_restore` — the migration tests
 and the release snapshots use them; nothing shipped depends on the tools
 being on `PATH`). One command sets everything else

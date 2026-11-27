@@ -37,6 +37,15 @@ dev:
 
 # First run: python env, web deps, hooks, services, schema.
 dev-setup:
+    @nvmrc_major=$(sed -e 's/^v//' -e 's/[[:space:]]//g' .nvmrc 2>/dev/null || true); \
+        nvmrc_major=${nvmrc_major%%.*}; \
+        node_version=$(node --version 2>/dev/null || true); \
+        node_major=${node_version#v}; \
+        node_major=${node_major%%.*}; \
+        echo "Node major: .nvmrc names ${nvmrc_major:-unknown}; node --version runs ${node_version:-not found} (major ${node_major:-unknown})"; \
+        if [ -n "$nvmrc_major" ] && [ -n "$node_major" ] && [ "$nvmrc_major" != "$node_major" ]; then \
+            echo "Node major differs from .nvmrc: run 'nvm install' then 'nvm use' (both read .nvmrc)"; \
+        fi
     uv sync
     pnpm install
     pre-commit install --install-hooks

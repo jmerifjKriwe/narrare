@@ -59,10 +59,9 @@ function walkMessage(locale: string, key: string, message: string): Walked {
   }
 
   walk(new IntlMessageFormat(message, locale).getAst());
-  // The engine's category order differs between Node versions — Node 22 lists
-  // the English ordinals as one, few, two, other; Node 24 as one, two, few,
-  // other. The rule names a set, not an order, so the report is sorted and the
-  // fixtures state sorted arrays.
+  // The engine's category order differs between Node majors — the English
+  // ordinals are not listed in a stable order. The rule names a set, not an
+  // order, so the report is sorted and the fixtures state sorted arrays.
   return { missing: missing.sort(), plurals };
 }
 

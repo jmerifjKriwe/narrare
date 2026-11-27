@@ -9,10 +9,6 @@ inputs:
     description: Python version for actions/setup-python.
     required: false
     default: "3.14"
-  node-version:
-    description: Node version for actions/setup-node.
-    required: false
-    default: "22"
   pnpm-version:
     description: >-
       pnpm version for pnpm/action-setup. Must match package.json's
@@ -62,7 +58,7 @@ runs:
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       if: inputs.node != 'false'
       with:
-        node-version: ${{ inputs.node-version }}
+        node-version-file: .nvmrc
         cache: pnpm
     - name: Install JavaScript dependencies (lockfile is the contract)
       run: pnpm install --frozen-lockfile
