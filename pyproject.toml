@@ -134,7 +134,7 @@ ignore = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
-testpaths = ["app"]
+testpaths = ["app", "scripts/tests"]
 pythonpath = ["."]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
@@ -157,7 +157,7 @@ markers = [
 norecursedirs = ["e2e", ".venv", "node_modules", ".git", "dist", "build", "__pycache__", "*.egg-info", ".hypothesis", ".pytest_cache"]
 
 [tool.coverage.run]
-source = ["app"]
+source = ["app", "scripts"]
 branch = true
 
 [tool.coverage.report]

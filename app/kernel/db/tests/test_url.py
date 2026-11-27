@@ -152,3 +152,15 @@ def test_the_url_wins_over_the_dev_db_port() -> None:
         }
     )
     assert config.url.port == 5432
+
+
+def test_the_url_wins_even_when_the_dev_db_port_is_invalid() -> None:
+    """A given URL returns before the dev port is parsed, so it cannot refuse."""
+    config = resolve(
+        {
+            "NARRE_DATABASE_URL": "postgresql+asyncpg://u:p@elsewhere:5432/other",
+            "NARRE_DEV_DB_PORT": "not-a-port",
+        }
+    )
+    assert config.url.port == 5432
+    assert config.source == "NARRE_DATABASE_URL"

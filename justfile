@@ -79,17 +79,18 @@ format:
     uv run ruff check --fix app scripts
     uv run ruff format app scripts
 
-# Every integration test.
+# Every integration test, including the script tests under scripts/tests.
 test:
-    uv run pytest app/ -v
+    uv run pytest app scripts/tests -v
 
 # One file or one node: just test-file app/capabilities/chat/tests/test_chat.py
 test-file file:
     uv run pytest {{file}} -v
 
-# Every integration test with coverage, for the main-push report.
+# Every integration test with coverage, for the main-push report. Both roots,
+# like `test`.
 test-cov:
-    uv run pytest app --cov --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+    uv run pytest app scripts/tests --cov --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
 
 # Every capability E2E: real browser, real API, real Postgres. `all` or a
 # capability name overrides the affected default. Workers: the second argument,
@@ -174,9 +175,11 @@ db-reset:
     just db-init
 
 # Draft a revision from the models: just db-revision "add chapters.word_count"
+# The URL is the application's own resolution (as db-init), so a given
+# NARRE_DATABASE_URL or NARRE_DEV_DB_PORT reaches alembic unchanged.
 [positional-arguments]
 db-revision message:
-    NARRE_DATABASE_URL="${NARRE_DATABASE_URL:-postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_v2_dev}" \
+    NARRE_DATABASE_URL="$(uv run python -c 'from app.kernel.db.session import DATABASE_URL; print(DATABASE_URL)')" \
         uv run alembic revision --autogenerate -m "$1"
 
 # A psql shell on the development database.
