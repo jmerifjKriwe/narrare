@@ -866,6 +866,12 @@ def _capture(
     page.get_by_role("button", name="Continue writing").click()
     ghost = page.get_by_test_id("ghost-preview")
     expect(ghost).to_contain_text("relay clicked")
+    # The `done` frame swaps the streaming ghost for the pending one — a new
+    # node under the same test id — so the locator above can detach between
+    # the text and the scroll. The announcement is filled only at that
+    # transition; wait for it, then re-acquire the ghost it swapped.
+    expect(page.get_by_test_id("ghost-announcement")).not_to_be_empty()
+    ghost = page.get_by_test_id("ghost-preview")
     ghost.scroll_into_view_if_needed()
     _require_dock_badge(page)
     written.append(_shot(page, out, "35-workspace-continuation"))
