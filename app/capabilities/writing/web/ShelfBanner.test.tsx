@@ -188,7 +188,7 @@ describe("the banner — a populated window speaks the aggregate's own figures",
     expect(dot?.getAttribute("cy")).toBe(String(today?.y));
   });
 
-  it("the statistics door stays honestly disabled with the drafted note", async () => {
+  it("the statistics door stays honestly disabled with the status-only note", async () => {
     renderBanner();
     await screen.findByText(goalHeading());
     const door = screen.getByRole("button", { name: de["writing.shelf.banner.stats"] });
