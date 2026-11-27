@@ -329,9 +329,14 @@ out. The generator writes the members to `web/lib/generated/errorCodes.ts`:
 has 57 throw sites in five shapes today; its request-failure sites lose their bare English
 messages and carry the response's status, code and detail. `web/lib/updates.ts` uses the same
 helper for its non-ok and missing-body branches, without inventing a code.
-`SceneVersionConflict` remains its own domain exception. The console message keeps today's form
-(`create refused: 422`). A request that never reached the server is the browser's own
-`TypeError`; the seam recognizes it.
+The root error face binds a code-less failure to its status, so all six copies of the setup-status
+`queryFn` — the five capability routes and `app/capabilities/setup/web/setupStatusQuery.ts` —
+change together in this task: the thrown failure carries the response's status and any body code and detail,
+a 2xx without a body stays a status-less failure (`errors.unexpected`), and each gate has a
+503 → `errors.server` test. `SceneVersionConflict` remains its own domain exception. The console
+message keeps today's form (`create refused: 422`). A request that never reached the server is
+the browser's own `TypeError`, or the `TransportError` this seam wraps it in; `isNetworkFailure`
+recognizes both.
 
 **The mapping.** `CODE_KEY: Record<ErrorCode, MessageKey>` is exhaustive by type. Each code
 names a sentence in the shared catalog:
@@ -377,8 +382,10 @@ remote content rather than failure prose. The plan converts `updates.ts` to `Api
 stay untouched. It adds no code, wire field or catalog key for the coded-less 409.
 
 **Accepted trade-offs.** The mono diagnostic lines that showed a failure's own message go; the
-console keeps them. Where a face shows a stable code in parentheses (`The test failed (HTTP
-503)`), it stays: a code is not prose.
+console keeps them. The AI rules' 409 delete guard no longer names the models that block the
+deletion, nor the remedy, and the prompt editor's refusal no longer names the line of a template
+error; both sentences survive only as follow-ups. Where a face shows a stable code in parentheses
+(`The test failed (HTTP 503)`), it stays: a code is not prose.
 
 ## 11. Catalogs on demand
 
@@ -406,10 +413,19 @@ complete it.
 - **Boot.** The root route already waits for the settings read. It then calls
   `hydrateLocale(target)` with the pre-setup mirror's language or the adopted one, and only
   then opens the ready gate. A chunk that cannot be fetched makes the source language active, so
-  the page never renders half translated. `hydrateLocale` never rejects.
+  the page never renders half translated. `hydrateLocale` never rejects. The stored choice stays
+  the reader's — the row, the mirror and `chosen` — and a language counts as already selected
+  only when it is both the stored choice and the active one.
 - **A switch.** `activateLocale(locale)` loads, then applies. If the chunk cannot be fetched
-  the active language stays as it was and the call resolves `false`. The pre-setup mirror takes
-  the same path.
+  the active language stays as it was and the call resolves `false`; a click on the row's
+  language while the source fallback shows is a retry through `activateLocale`, and takes
+  `choose`'s ordinary path only when the retry succeeds. The pre-setup mirror takes the same
+  path.
+- **`applyLocale`.** It records the choice but announces only a catalog the store holds: a
+  language whose catalog is not there leaves the choice stored and makes the source active, so
+  the restore after a refused write announces `previous` only when its catalog is in the store
+  (for `null`, the browser's language it would resolve to). `adoptServerLocale` announces
+  directly at the boot, behind the closed ready gate.
 
 **What this replaces.** The eager table loses every non-source language in the same commit that
 makes the runtime read the store. Nothing else changes for the reader: endonyms come from the
@@ -420,12 +436,13 @@ test that switches a language keeps working (125 `applyLocale` call sites at the
 baseline). Tests read a language's real catalog from `web/lib/test/catalogs.ts`, never from the
 store — that is the anti-goal of section 4. The helper seeds the source catalog beside the lazy
 modules. A test that mocks a module of that bed resets the module registry first and imports what it tests
-dynamously, because the setup file has already evaluated those modules.
+dynamically, because the setup file has already evaluated those modules.
 
 **Proof.** Component tests cover the store, hydration and a failed switch. A settings E2E leg
 records the module requests the dev server answers: German and French are fetched when they are
 read, English never. `just build` shows one chunk per non-source language and no German string
-outside it. The baseline for the before-and-after sizes is recorded on `main` at Task 0.
+outside it. The baseline for the before-and-after sizes is recorded on the fresh branch at
+`main`'s tip in Task 0.
 
 **Numbers.** The spec of 2026-11-09 measured the catalog-bearing chunk at 127,660 bytes raw and
 32,845 bytes gzip for three languages, and each merged catalog at 26–29 KB raw. Two catalogs
@@ -451,9 +468,13 @@ they match, and their custom properties inherit to everything below it:
             --font-serif: …"AppleMyungjo", "Batang", "Noto Serif CJK KR", serif; }
 ```
 
-Each stack repeats the Latin base before its Han families, so a Latin word inside the
-manuscript still reads in the brand face. Every other language keeps the base stacks and the
-system's own choice.
+Each declaration has three parts, in order: the base token's named families in the base's order
+(emoji fonts included, its generic family left out), then the rule's Han families in the table's
+order, then the base's generic family last (`sans-serif` for `--font-ui`, `serif` for
+`--font-serif`). No generic family may stand before a Han family: a browser resolves a generic
+against the system's fallback list and would never consult the later Han families on fontconfig
+systems. A Latin word inside the manuscript still reads in the brand face, and every other
+language keeps the base stacks and the system's own choice.
 
 **What is proven, and how.** A unit test reads `web/globals.css` as text and pins the three
 rules and that the base stacks name no Han family — the precedent is `web/lib/tokens.test.ts`.

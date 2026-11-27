@@ -26,7 +26,7 @@
 - Tests read a language's real catalog through `web/lib/test/catalogs.ts` once it exists (Task 10); none compares rendered text with the store's fallback.
 - A test that mocks a module of that bed — `./catalog` or `./generated/catalogs` — starts with `vi.resetModules()`, imports what it tests dynamically, and calls `preloadCatalogs()` when it needs the preloaded store: the setup file has already evaluated those modules.
 - No right-to-left work, no new language, no translation of novel content, demo novels, help or AI prompts, no palette, no server-side `<html lang>`, no registry membership for `novels.language`, no extension of the formality overlay.
-- `CI=true` for every pnpm-involving gate in the shared checkout. Pre-commit runs on the staged files only.
+- `CI=true` for `just test-frontend` and `just check-generated` in the shared checkout; `just check` and `just typecheck` run without it. Pre-commit runs on the staged files only.
 
 ## Review Focus
 
@@ -81,7 +81,7 @@ Expected: `git status --short` prints nothing; `git log -1 --format=%h` names th
 
 - [ ] **Step 2: Record the bundle baseline**
 
-On `main`, run `just build`, then `mkdir -p .superpowers/sdd/i18n-hardening && ls -l web/dist/assets > .superpowers/sdd/i18n-hardening/baseline-assets.txt`.
+On the fresh `feat/i18n-hardening` branch at `main`'s tip, run `just build`, then `mkdir -p .superpowers/sdd/i18n-hardening && ls -l web/dist/assets > .superpowers/sdd/i18n-hardening/baseline-assets.txt`.
 
 Expected: the file lists the eager chunks; `git status --short` still prints nothing (`web/dist` and `.superpowers/` are ignored).
 
@@ -132,7 +132,7 @@ Title, a plain sentence and not a commit subject: "Languages come from a registr
 - Create: `i18n/registry/locales.json`
 - Modify: `scripts/generate_capabilities.py` (module docstring, `locales`, new `registry_locales`, `typescript_catalogs`, the comment above `SOURCE_LOCALE`)
 - Regenerate: `app/generated/locales.py`, `web/lib/generated/catalogs.ts`
-- Test: `app/api/test_catalog_merge.py`, `app/api/test_capability_views.py`
+- Test: `app/api/test_catalog_merge.py`, `app/api/test_capability_views.py`, `scripts/tests/test_generate_help.py`
 - Modify: `CONTRIBUTING.md` (the i18n section)
 
 **Interfaces:**
@@ -166,6 +166,9 @@ def test_the_registry_orders_the_languages_and_the_source_leads_the_views(tmp_pa
 @pytest.mark.parametrize("code", ["en_US", "x", "de-", "zh hans", f"de-{'a' * 9}", "de-" + "-".join(["abcdefgh"] * 8)])
 def test_a_malformed_registry_code_stops_generation(tmp_path: Path, code: str) -> None:
     write_registry(tmp_path / "i18n/registry/locales.json", ["en", code])
+    # Both catalogs exist so parity cannot raise: only the tag check can.
+    write_catalog(tmp_path / "i18n/en.json", {"app.title": "en"})
+    write_catalog(tmp_path / f"i18n/{code}.json", {"app.title": code})
     with pytest.raises(SystemExit, match=re.escape(code[:10])):
         locales(tmp_path)
 
@@ -246,11 +249,11 @@ No production code changes.
 
 **Interfaces:**
 - Produces (test-only): `requiredCategories(locale: string, type: Intl.PluralRulesOptions["type"]): string[]` — every category `Intl.PluralRules` reports, minus `many` when the complete set is exactly `one/many/other`.
-- Produces (test-only): `missingCategories(locale: string, key: string, message: string): string[]` — each skipped category as `locale:key:category`; walks the message's plural and ordinal elements, nested ones included, through `new IntlMessageFormat(message).getAst()`.
+- Produces (test-only): `missingCategories(locale: string, key: string, message: string): string[]` — each skipped category as `locale:key:category`; walks the message's plural and ordinal elements, nested ones included, through `new IntlMessageFormat(message, locale).getAst()` — the locale reaches parsing only for datetime skeletons, and `requiredCategories` constructs `Intl.PluralRules` on the same argument.
 
 - [ ] **Step 1: Write the failing tests**
 
-`web/lib/catalogRules.test.ts` imports `IntlMessageFormat`, `catalogs` and `locales` from `./generated/catalogs`.
+`web/lib/catalogRules.test.ts` imports `IntlMessageFormat` from `intl-messageformat`, `locales` from `./generated/catalogs`, and `merged` from `./test/catalogs` once Task 10 builds the bed.
 
 ```ts
 it("names each category a message skips", () => {
@@ -270,9 +273,10 @@ it("asks a language without categories for other only", () => {
 });
 
 it("applies the rule to ordinal messages with the ordinal categories", () => {
+  // The report is sorted: the engine's category order differs between Node versions, and the rule names a set.
   expect(missingCategories("en", "rank", "{n, selectordinal, one {st} other {th}}")).toEqual([
-    "en:rank:two",
     "en:rank:few",
+    "en:rank:two",
   ]);
 });
 
@@ -296,21 +300,28 @@ it("knows every language and writes it in canonical case", () => {
 });
 
 it("writes every plural message in every catalog with the categories its language requires", () => {
+  const visited = new Set<string>();
   const missing = locales.flatMap((code) =>
-    Object.entries(catalogs[code]).flatMap(([key, message]) => missingCategories(code, key, message)),
+    Object.entries(merged[code]).flatMap(([key, message]) => {
+      const walked = walkMessage(code, key, message);
+      if (walked.plurals > 0) visited.add(code);
+      return walked.missing;
+    }),
   );
   expect(missing).toEqual([]);
+  // What the walk covered: an empty walk cannot pass as clean.
+  expect([...visited].sort()).toEqual([...locales].sort());
 });
 ```
 
 - [ ] **Step 2: Run the tests red**
 
 Run: `CI=true pnpm --dir web exec vitest run lib/catalogRules.test.ts`
-Expected: FAIL — `missingCategories` is not defined. With the two functions present as empty stubs, the six fixture tests fail on their assertions.
+Expected: FAIL — `missingCategories` is not defined. With the two functions present as empty stubs, four fixture tests fail on their assertions; the two expecting `[]` pass vacuously.
 
 - [ ] **Step 3: Implement the two test helpers**
 
-`requiredCategories` as the interface says. `missingCategories` narrows an element to a plural by `"pluralType" in element`, recurses into every option's `value` and into `value` arrays, and collects the categories of `element.pluralType` that are absent from `element.options`.
+`requiredCategories` as the interface says. `walkMessage` narrows an element to a plural by `"pluralType" in element`, recurses into every option's `value` and into `value` arrays, counts the plural elements it walked, and collects the categories of `element.pluralType` that are absent from `element.options`; `missingCategories` returns its sorted `missing` list.
 
 - [ ] **Step 4: Run the tests green**
 
@@ -645,7 +656,7 @@ def downgrade() -> None:
 - [ ] **Step 5: Regenerate and run green**
 
 Run: `just generate`; the Step 2 commands; `just test`.
-Expected: PASS. `web/lib/api/schema.d.ts` shows `maxLength: 64` on the settings update's locale.
+Expected: PASS. `web/lib/api/openapi.json` shows `maxLength: 64` on the settings update's locale; the pinned `openapi-typescript@7.13.0` emits no `maxLength`, so `schema.d.ts` stays byte-identical.
 
 - [ ] **Step 6: Task gate, review and commit**
 
@@ -723,8 +734,8 @@ Task gate: `just check`, `just test`, `CI=true just check-generated`. Reviewer: 
 - Regenerate: `web/lib/generated/catalogs.ts`
 
 **Interfaces:**
-- Produces: `class ApiError extends Error` — `status: number | null`, `code: ErrorCode | null`, `detail: unknown`; `new ApiError(what: string, init: { status?: number | null; code?: unknown; detail?: unknown; extra?: Record<string, unknown> } = {})`. The message keeps today's console form: `` `${what}: ${status}` ``, or `` `${what}: transport` `` without a status. A `code` that is not an `ErrorCode` is stored as `null`.
-- Produces: `wireCode(body: unknown): ErrorCode | null` — the code of `{"detail": {"code"}}` or of a bare `{"code"}`; `codeOf(error: unknown): ErrorCode | null` — an `ApiError`'s own code, else `wireCode` of its `detail`, else of its `body`; `statusOf(error: unknown): number | null`; `isNetworkFailure(error: unknown): boolean` — the browser's own `TypeError`, which is what a rejected request throws.
+- Produces: `class ApiError extends Error` — `status: number | null`, `code: ErrorCode | null`, `detail: unknown`; `new ApiError(what: string, init: { status?: number | null; code?: unknown; detail?: unknown; extra?: Record<string, unknown> } = {})`. The message keeps today's console form: `` `${what}: ${status}` ``, or `` `${what}: transport` `` without a status. A `code` that is not an `ErrorCode` is stored as `null`. A request that threw before there was a response is wrapped in `class TransportError extends ApiError`, with `status` and `code` `null` and `cause` set to what the request threw.
+- Produces: `wireCode(body: unknown): ErrorCode | null` — the code of `{"detail": {"code"}}` or of a bare `{"code"}`; `codeOf(error: unknown): ErrorCode | null` — an `ApiError`'s own code, else `wireCode` of its `detail`, else of its `body`; `statusOf(error: unknown): number | null`; `isNetworkFailure(error: unknown): boolean` — true for a `TransportError` and for the browser's own `TypeError`.
 - Produces: `CODE_KEY: Record<ErrorCode, MessageKey>` — the mapping of design §10, verbatim:
 
 ```ts
@@ -768,15 +779,15 @@ const CODE_KEY: Record<ErrorCode, MessageKey> = {
 | `errors.changedMeanwhile` | This changed elsewhere in the meantime. Load it again and retry. | Das hat sich inzwischen anderswo geändert. Lade es neu und versuch es erneut. | Cela a changé entre-temps. Recharge-le et réessaie. |
 | `errors.closed` | This was closed in the meantime. | Das wurde inzwischen geschlossen. | Cela a été clos entre-temps. |
 | `errors.embeddingMismatch` | The embedding model has changed. The knowledge corpus must be embedded again before this works. | Das Embedding-Modell hat sich geändert. Der Wissenskorpus muss neu eingebettet werden, bevor das wieder funktioniert. | Le modèle d'embedding a changé. Le corpus de connaissances doit être vectorisé de nouveau avant que cela refonctionne. |
-| `errors.keyUnavailable` | No key is stored for the AI provider this task uses. | Für den KI-Anbieter dieser Aufgabe ist kein Schlüssel hinterlegt. | Aucune clé n'est enregistrée pour le fournisseur d'IA de cette tâche. |
-| `errors.modelNotFound` | The AI model this task uses is no longer configured. | Das KI-Modell dieser Aufgabe ist nicht mehr eingerichtet. | Le modèle d'IA de cette tâche n'est plus configuré. |
+| `errors.keyUnavailable` | No key is stored for the AI provider this task uses. | Für den Provider dieser Aufgabe ist kein Schlüssel hinterlegt. | Aucune clé n'est enregistrée pour le fournisseur d'IA de cette tâche. |
+| `errors.modelNotFound` | The AI model this task uses is no longer configured. | Das Modell dieser Aufgabe ist nicht mehr eingerichtet. | Le modèle d'IA de cette tâche n'est plus configuré. |
 | `errors.network` | The server could not be reached. Try again. | Der Server ist nicht erreichbar. Versuch es erneut. | Le serveur est injoignable. Réessaie. |
 | `errors.noContext` | There is no content for this request yet. | Für diese Anfrage gibt es noch keinen Inhalt. | Il n'y a pas encore de contenu pour cette requête. |
 | `errors.notFound` | What you asked for was not found. | Das Gewünschte wurde nicht gefunden. | L'élément demandé est introuvable. |
 | `errors.promptUnavailable` | The prompt behind this request is faulty. | Der Prompt hinter dieser Anfrage ist fehlerhaft. | Le prompt derrière cette requête est défectueux. |
-| `errors.providerAuth` | The AI provider did not accept the stored key. | Der KI-Anbieter hat den hinterlegten Schlüssel nicht akzeptiert. | Le fournisseur d'IA n'a pas accepté la clé enregistrée. |
-| `errors.providerFailed` | The AI provider failed. Try again. | Der KI-Anbieter hat versagt. Versuch es erneut. | Le fournisseur d'IA a échoué. Réessaie. |
-| `errors.providerUnavailable` | No AI provider is configured for this task yet. | Für diese Aufgabe ist noch kein KI-Anbieter eingerichtet. | Aucun fournisseur d'IA n'est encore configuré pour cette tâche. |
+| `errors.providerAuth` | The AI provider did not accept the stored key. | Der Provider hat den hinterlegten Schlüssel nicht akzeptiert. | Le fournisseur d'IA n'a pas accepté la clé enregistrée. |
+| `errors.providerFailed` | The AI provider failed. Try again. | Der Provider hat versagt. Versuch es erneut. | Le fournisseur d'IA a échoué. Réessaie. |
+| `errors.providerUnavailable` | No AI provider is configured for this task yet. | Für diese Aufgabe ist noch kein Provider eingerichtet. | Aucun fournisseur d'IA n'est encore configuré pour cette tâche. |
 | `errors.rateLimited` | Too many requests in quick succession. Please wait a moment. | Zu viele Anfragen in kurzer Folge. Bitte kurz warten. | Trop de requêtes en peu de temps. Veuillez patienter un instant. |
 | `errors.refused` | The request was refused. | Die Anfrage wurde abgelehnt. | La requête a été refusée. |
 | `errors.server` | The server failed to answer. Try again. | Der Server hat nicht geantwortet. Versuch es erneut. | Le serveur n'a pas répondu. Réessaie. |
@@ -841,7 +852,7 @@ Expected: FAIL — `web/lib/api/errors.ts` does not exist; the `errors.*` keys d
 
 - [ ] **Step 4: Make the request clients throw one shape**
 
-Every request-failure `throw` in `web/lib/query.ts` becomes `throw refused(what, response, error)`; the calls destructure `error` beside `data` and `response`. Preserve the `update_check_interval_days` fields added by #965 in `useSettings`, `SettingsChanges` and `useUpdateSettings`. `createEntityFailure` and `assistantFailure` build `ApiError` with the same `status`, `code` and `detail` they carry today (`row` and `field` through `extra`; the transport cases keep their synthesized codes). `SceneVersionConflict` stays its own class. `WireError` and its export go; its importers use `ApiError`. In `web/lib/updates.ts`, both the non-ok and missing-body branches use `refused("update check failed", response, error)` and pass no invented code.
+Every request-failure `throw` in `web/lib/query.ts` becomes `throw refused(what, response, error)`; the calls destructure `error` beside `data` and `response`. Preserve the `update_check_interval_days` fields added by #965 in `useSettings`, `SettingsChanges` and `useUpdateSettings`. `createEntityFailure` and `assistantFailure` build `ApiError` with the same `status`, `code` and `detail` they carry today (`row` and `field` through `extra`). `createEntityFailure`'s no-response case returns a `TransportError`; `assistantFailure`'s `provider-error` and `not-found` fallbacks are wire codes and stay. `SceneVersionConflict` stays its own class. `WireError` and its export go; its importers use `ApiError`. In `web/lib/updates.ts`, both the non-ok and missing-body branches use `refused("update check failed", response, error)` and pass no invented code.
 
 - [ ] **Step 5: Run the tests green**
 
@@ -857,8 +868,8 @@ Task gate: `just check`, `CI=true just check-generated`, `CI=true just test-fron
 ## Task 8: Failures speak the reader's language
 
 **Files:**
-- Modify: `web/routes/__root.tsx`, `app/capabilities/writing/web/ShelfStates.tsx`, `ShelfPage.tsx`, `WorkspaceStates.tsx`, `WorkspacePage.tsx`, `ShelfBanner.tsx`, `NewBookDialog.tsx`, `app/capabilities/settings/web/ai-rules/providersSection.tsx`, `app/capabilities/prompts/web/refusal.tsx`
-- Test: `web/routes/__root.test.tsx`, `app/capabilities/writing/web/ShelfPage.test.tsx`, `ShelfBanner.test.tsx`, `WorkspacePage.test.tsx`, `app/capabilities/settings/web/ai-rules/AiRulesPage.test.tsx`, `app/capabilities/prompts/web/PromptsPage.test.tsx`, `web/components/UpdateBanner.test.tsx`, `app/capabilities/settings/web/UpdatesSection.test.tsx`
+- Modify: `web/routes/__root.tsx`, `app/capabilities/writing/web/ShelfStates.tsx`, `ShelfPage.tsx`, `WorkspaceStates.tsx`, `WorkspacePage.tsx`, `ShelfBanner.tsx`, `NewBookDialog.tsx`, `app/capabilities/settings/web/ai-rules/providersSection.tsx`, `app/capabilities/prompts/web/refusal.tsx`, `app/capabilities/planning/web/routes.tsx`, `app/capabilities/knowledge/web/routes.tsx`, `app/capabilities/settings/web/routes.tsx`, `app/capabilities/prompts/web/routes.tsx`, `app/capabilities/writing/web/routes.tsx`, `app/capabilities/setup/web/setupStatusQuery.ts`
+- Test: `web/routes/__root.test.tsx`, `app/capabilities/writing/web/ShelfPage.test.tsx`, `ShelfBanner.test.tsx`, `WorkspacePage.test.tsx`, `app/capabilities/settings/web/ai-rules/AiRulesPage.test.tsx`, `app/capabilities/prompts/web/PromptsPage.test.tsx`, `web/components/UpdateBanner.test.tsx`, `app/capabilities/settings/web/UpdatesSection.test.tsx`, `app/capabilities/setup/web/routes.test.tsx`, `app/capabilities/prompts/web/routes.test.tsx`, `app/capabilities/settings/web/routes.test.tsx`, `app/capabilities/knowledge/web/routes.test.tsx`, `app/capabilities/writing/web/routes.test.tsx`, `app/capabilities/planning/web/routes.test.tsx`
 - E2E: `app/capabilities/prompts/e2e/test_prompts_e2e.py`
 
 **Interfaces:**
@@ -869,18 +880,19 @@ Task gate: `just check`, `CI=true just check-generated`, `CI=true just test-fron
 - [ ] **Step 1: Write the failing tests**
 
 - `web/routes/__root.test.tsx`: the route-error cases assert the alert has the text `catalogs[language]["errors.unexpected"]` and does not contain the thrown message; new: "a thrown failure with a status is named by its family" — a route throws `new ApiError("x", { status: 503 })`, the alert reads `errors.server` in the active language.
-- `app/capabilities/writing/web/ShelfPage.test.tsx`: the error-alert case asserts the text `catalogs.de["errors.network"]` and not `"novels unavailable"`; new: "a language switch re-renders a failure that is on screen" — with the alert shown under `de`, `act(() => applyLocale("en"))`, and the alert reads `catalogs.en["errors.network"]`. The new-book dialog's refusal case asserts `catalogs.de["errors.refused"]` and not `"create refused"`.
+- `app/capabilities/writing/web/ShelfPage.test.tsx`: the error-alert case asserts the text `catalogs.de["errors.network"]` and not `"novels unavailable"`; new: "a language switch re-renders a failure that is on screen" — with the alert shown under `de`, `act(() => applyLocale("en"))`, and the alert reads `catalogs.en["errors.network"]`. The new-book dialog's refusal case asserts `catalogs.de["errors.refused"]` and not `"create refused"`. The shelf-list fixture throws a bare `TypeError("Failed to fetch")` and the dialog's refusal answers 422 without a code, because by the design's order a status-carrying 503 would read `errors.server`.
 - `ShelfBanner.test.tsx`, `WorkspacePage.test.tsx`: their error faces assert the catalog sentence and not `"activity unavailable"` / `"novel unavailable"`.
-- `app/capabilities/settings/web/ai-rules/AiRulesPage.test.tsx`: the refused-create face does not contain `"the key store refused"`.
-- `app/capabilities/prompts/web/PromptsPage.test.tsx`: the 422 save-gate refusal face does not contain `"the assembled context exceeds the budget"`.
+- `app/capabilities/settings/web/ai-rules/AiRulesPage.test.tsx`: the refused-create face asserts `settings.refused`; the delete guard's 409 asserts `settings.ai.errors.guarded` and the key-store 503 `settings.ai.errors.keystore`, neither the backend's English (`"the provider still has models pointed at it: …"`, `"the key store refused"`), because the raw detail line no longer renders.
+- `app/capabilities/prompts/web/PromptsPage.test.tsx`: the 422 save-gate face asserts the localized headline for its reason and not `"the assembled context exceeds the budget"`; the preview, live-test and reset-refusal cases do the same because the raw detail line no longer renders, and the reset cases assert the headline for each refusal's reason — `runtime` in most and `syntax` in the case the catalog labels Syntax.
+- `app/capabilities/writing/web/routes.test.tsx`: the `/` gate's unreachable-status case asserts `t("errors.server")`, not the seam's English `"setup status unavailable"`.
 - `web/components/UpdateBanner.test.tsx`: the failed-check case seeds `new ApiError("x", { status: 503 })` and asserts no banner or toast and no visible `"update check failed"` or `"503"`; the dismissal's empty catch stays because it renders nothing.
 - `app/capabilities/settings/web/UpdatesSection.test.tsx`: after the refusal under `de`, `applyLocale("en")` and the alert reads `catalogs.en["settings.update.error"]`. Keep the capability-specific `t("settings.update.error")`; do not replace it with the generic `useLocalizedError()` sentence.
 
-In `app/capabilities/prompts/e2e/test_prompts_e2e.py`, in `test_the_save_gate_refuses_by_name_and_the_honest_save_lands` and the preview's refusal: after the existing `to_contain_text(REFUSED_SYNTAX)`, add `expect(face).not_to_contain_text(re.compile(r"(?i)line \d+"))`.
+In `app/capabilities/prompts/e2e/test_prompts_e2e.py`, in `test_the_save_gate_refuses_by_name_and_the_honest_save_lands` and the preview's refusal: after the existing `to_contain_text(REFUSED_SYNTAX)`, add `expect(face).not_to_contain_text(re.compile(r"line \d+", re.IGNORECASE))`; Playwright builds a JavaScript `RegExp`, which has no inline `(?i)`.
 
 - [ ] **Step 2: Run the tests red**
 
-Run: `CI=true pnpm --dir web exec vitest run routes/__root.test.tsx app/capabilities/writing/web/ShelfPage.test.tsx app/capabilities/writing/web/ShelfBanner.test.tsx app/capabilities/writing/web/WorkspacePage.test.tsx app/capabilities/settings/web/ai-rules/AiRulesPage.test.tsx app/capabilities/prompts/web/PromptsPage.test.tsx web/components/UpdateBanner.test.tsx app/capabilities/settings/web/UpdatesSection.test.tsx`; `just test-e2e-file app/capabilities/prompts/e2e/test_prompts_e2e.py -k save_gate`.
+Run: `CI=true pnpm --dir web exec vitest run routes/__root.test.tsx app/capabilities/writing/web/ShelfPage.test.tsx app/capabilities/writing/web/ShelfBanner.test.tsx app/capabilities/writing/web/WorkspacePage.test.tsx app/capabilities/settings/web/ai-rules/AiRulesPage.test.tsx app/capabilities/prompts/web/PromptsPage.test.tsx components/UpdateBanner.test.tsx app/capabilities/settings/web/UpdatesSection.test.tsx`; `just test-e2e-file app/capabilities/prompts/e2e/test_prompts_e2e.py -k save_gate`. Vitest's root is `web`, so its filters are relative to it; the other seven filters are unchanged.
 Expected: FAIL — the faces render raw messages and sentences.
 
 - [ ] **Step 3: Translate at render**
@@ -941,9 +953,11 @@ def test_every_other_language_is_one_lazy_module(tmp_path: Path) -> None:
 def test_the_loader_map_names_every_other_language_once(tmp_path: Path) -> None:
     typescript = typescript_catalogs(tmp_path, ("en", "de", "pt-BR"), ("de", "en", "pt-BR"))
     assert 'de: () => import("./catalogs/de"),' in typescript
-    assert 'pt_BR: () => import("./catalogs/pt_BR"),' in typescript
+    assert '"pt-BR": () => import("./catalogs/pt_BR"),' in typescript
     assert 'import("./catalogs/en")' not in typescript
 ```
+
+The loader map is keyed by the locale code `pt-BR`; `pt_BR` names the module file and its merged object, never an object key.
 
 In `app/api/test_capability_views.py`, extend `test_committed_typescript_catalogs_match_the_catalog_files`: every module `lazy_catalog_outputs` names is committed byte for byte.
 
@@ -976,7 +990,7 @@ Task gate: `just check`, `CI=true just check-generated`, `CI=true just test-fron
 **Interfaces:**
 - Consumes: `catalogs`, `catalogLoaders`, `Catalog`, `Locale`, `locales` from `web/lib/generated/catalogs`.
 - Produces: `catalogFor(locale: Locale): Catalog` — never throws, never `undefined`; an unloaded language reads the source catalog. `isLoaded(locale: Locale): boolean`. `setCatalog(locale: Locale, catalog: Catalog): void`. `loadCatalog(locale: Locale): Promise<Catalog>` — resolved at once for the source language; otherwise one request per language, shared by parallel callers; rejects when the module cannot be fetched and leaves the store untouched. `resetCatalogs(): void` — forgets every catalog but the source one; the tests' starting point.
-- Produces (test-only): `web/lib/test/catalogs.ts` exports `merged: Record<string, Catalog>` — every non-source module under `generated/catalogs/`, read with `import.meta.glob("../generated/catalogs/*.ts", { eager: true })` and keyed by each module's `locale`, with `merged.en = catalogs.en` seeded explicitly because no `en.ts` module exists. It also exports `de`, `en`, `fr`, and `preloadCatalogs(): void`, which calls `setCatalog` for every entry of `merged`. `web/lib/test/setup.ts` calls `preloadCatalogs()` and is the one `setupFiles` entry.
+- Produces (test-only): `web/lib/test/catalogs.ts` exports `merged: Record<string, Catalog>` — every non-source module under `generated/catalogs/`, read with `import.meta.glob("../generated/catalogs/*.ts", { eager: true })` and keyed by each module's `locale`, with `merged.en = catalogs.en` seeded explicitly because no `en.ts` module exists. It also exports `de`, `en`, `fr`, and `preloadCatalogs(): void`, which calls `setCatalog` for every entry of `merged`. `web/lib/test/setup.ts` calls `preloadCatalogs()`, assigns a no-op to `window.scrollTo` (a dependency calls it on mount, and jsdom logged 980 lines of "Not implemented" while no test under `web/` or `app/` reads a scroll position), and is the one `setupFiles` entry.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1052,7 +1066,7 @@ Run: the Step 2 commands; `just typecheck`; `CI=true just test-frontend`.
 Expected: PASS.
 
 Run: `rg -n "catalogs\.(de|fr|en)\b" web app --glob '*.test.*'`; `rg -n "catalogs\[" web app --glob '*.test.*'`
-Expected: no output from either.
+Expected: the second has no output. The first has two hits, and they stay: the `vi.mock` factories in `web/lib/locale.script.test.ts` and `web/lib/language.registry.test.tsx` fabricate a registry entry on top of `real.catalogs.en` — the bed's own mocking, not a test's read of a language's catalog.
 
 - [ ] **Step 6: Task gate, review and commit**
 
@@ -1066,12 +1080,13 @@ Task gate: `just check`. Reviewer: a test never takes its expected text from the
 - Modify: `web/lib/i18n.ts`, `web/lib/locale.ts`, `web/routes/__root.tsx`, `web/lib/language.tsx`, `app/capabilities/settings/web/SettingsPage.tsx`, `scripts/generate_capabilities.py` (`typescript_catalogs`)
 - Regenerate: `web/lib/generated/catalogs.ts`
 - Modify: `CONTRIBUTING.md` (the sentence on where the generator merges catalogs)
-- Test: `web/lib/locale.loading.test.ts` (new), `web/lib/language.test.tsx`, `web/lib/language.registry.test.tsx` (its mock gains `endonyms`), `web/lib/i18n.test.ts`, `web/routes/__root.boot.test.tsx` (new), `app/capabilities/settings/web/SettingsPage.test.tsx`
+- Test: `web/lib/locale.loading.test.ts` (new), `web/lib/language.test.tsx`, `web/lib/language.registry.test.tsx` (its mock gains `endonyms`), `web/lib/i18n.test.ts`, `web/routes/__root.boot.test.tsx` (new), `app/capabilities/settings/web/SettingsPage.test.tsx`, `app/api/test_catalog_merge.py` (its hyphenated-locale case pins the eager table's old shape), `app/capabilities/writing/web/GoalSetter.test.tsx` (its case awaits the English save button after `choose("en")`, because activation is async)
 - E2E: `app/capabilities/settings/e2e/test_settings_e2e.py`
 
 **Interfaces:**
 - Consumes: `catalogFor`, `isLoaded`, `loadCatalog` from `web/lib/catalog.ts`; `endonyms` from the generated module.
-- Produces: `hydrateLocale(target: Locale): Promise<void>` in `web/lib/locale.ts` — loads `target`'s catalog; when it cannot be fetched, logs to the console and makes the source language active; never rejects; afterwards `isLoaded(activeLocale())` holds. `activateLocale(locale: Locale | null): Promise<boolean>` — resolves what would become active (`null` follows the browser), loads its catalog, then calls `applyLocale`; on a failed load the active language stays and the call resolves `false`.
+- Produces: `hydrateLocale(target: Locale): Promise<void>` in `web/lib/locale.ts` — loads `target`'s catalog; when it cannot be fetched, logs to the console and makes the source language active; never rejects; afterwards `isLoaded(activeLocale())` holds. `targetLocale(locale: Locale | null): Locale` — the code itself, the browser's language for `null`, the source when the browser speaks none of them. `activateLocale(locale: Locale | null): Promise<boolean>` — loads `targetLocale(locale)`, then calls `applyLocale`; on a failed load the active language stays and the call resolves `false`. `choose`'s guard has two clauses: a language is already selected only when `next === chosenLocale()` and `targetLocale(next) === activeLocale()`. The boot retains the reader's stored choice, a click on the row's language is a retry, and a restore announces a language only when its catalog is in the store, otherwise the source becomes active.
+- Supersession: `hydrateLocale` and `activateLocale` share one counter in `web/lib/locale.ts`; each call takes the next number at start and calls `applyLocale` (or `reveal`) only while its number is still the latest. A superseded load still fills the store but activates nothing: `activateLocale` resolves `false`, so `choose` writes nothing, and `hydrateLocale` returns without revealing. The restore after a refused write stays under `patchCachedLocale`'s generation guard.
 - Generated, changed: `catalogs` in `web/lib/generated/catalogs.ts` holds the source language only; nothing else in that file changes.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1079,15 +1094,39 @@ Task gate: `just check`. Reviewer: a test never takes its expected text from the
 `web/lib/locale.loading.test.ts` mocks `./catalog` and follows the Global Constraints' rule for mocking the bed:
 
 ```ts
+const control = vi.hoisted(() => ({
+  failFr: true,
+  releaseFr: null as (() => void) | null,
+}));
+
 vi.mock("./catalog", async (importOriginal) => {
   const real = await importOriginal<typeof import("./catalog")>();
   return {
     ...real,
     loadCatalog: async (locale: Locale) => {
-      if (locale === "fr") throw new Error("chunk");
+      if (locale === "fr") {
+        if (control.failFr) throw new Error("chunk");
+        await new Promise<void>((resolve) => {
+          control.releaseFr = resolve;
+        });
+      }
       return real.loadCatalog(locale);
     },
   };
+});
+
+beforeEach(() => {
+  control.failFr = true;
+  control.releaseFr = null;
+  vi.spyOn(console, "error").mockImplementation(() => {});
+});
+
+afterEach(async () => {
+  control.releaseFr?.();
+  control.releaseFr = null;
+  await Promise.resolve();
+  await Promise.resolve();
+  vi.restoreAllMocks();
 });
 
 it("falls back to the source language when the first paint's catalog cannot be fetched", async () => {
@@ -1098,22 +1137,47 @@ it("falls back to the source language when the first paint's catalog cannot be f
   applyLocale("en");
   await expect(hydrateLocale("fr")).resolves.toBeUndefined();
   expect(activeLocale()).toBe("en");
+  expect(console.error).toHaveBeenCalled();
 });
 
 it("keeps the active language when a switch's catalog cannot be fetched", async () => {
   vi.resetModules();
   const { activateLocale, activeLocale, applyLocale } = await import("./locale");
-  const { resetCatalogs } = await import("./catalog");
-  resetCatalogs();
+  const { loadCatalog } = await import("./catalog");
+  // `applyLocale` never announces a language without its catalog: the
+  // German catalog is put in the store first, as the boot's hydration does.
+  await loadCatalog("de");
   applyLocale("de");
   await expect(activateLocale("fr")).resolves.toBe(false);
   expect(activeLocale()).toBe("de");
   await expect(activateLocale("de")).resolves.toBe(true);
   expect(activeLocale()).toBe("de");
 });
+
+it("only the latest of two overlapping choices becomes active", async () => {
+  vi.resetModules();
+  const { activateLocale, activeLocale, applyLocale } = await import("./locale");
+  const { isLoaded, loadCatalog } = await import("./catalog");
+  control.failFr = false;
+  // `applyLocale` never announces a language without its catalog: the
+  // German catalog is put in the store first, as the boot's hydration does.
+  await loadCatalog("de");
+  applyLocale("de");
+
+  const first = activateLocale("fr");
+  await expect(activateLocale("en")).resolves.toBe(true);
+  expect(activeLocale()).toBe("en");
+
+  control.releaseFr?.();
+  await expect(first).resolves.toBe(false);
+  expect(activeLocale()).toBe("en");
+  expect(isLoaded("fr")).toBe(true);
+});
 ```
 
-`web/lib/language.test.tsx`: "a refused catalog keeps the previous language and writes nothing" — `choose("fr")` under `de` leaves `activeLocale()` at `de` and `api.PATCH` uncalled.
+`web/lib/language.test.tsx`: "a superseded choice writes nothing" — the second of two quick choices activates and the first writes nothing.
+
+`web/lib/language.test.tsx`: "a refused catalog keeps the previous language and writes nothing" — `choose("fr")` under `de` leaves `activeLocale()` at `de` and `api.PATCH` uncalled; beside it, a click on the row's language retries it and writes once, a retry whose catalog still fails keeps the source and writes nothing, a refused write restores the stored choice without announcing its missing catalog, and a stored follow whose browser catalog is missing restores the source.
 
 `web/lib/i18n.test.ts`: "`t()` reads the store" — after `resetCatalogs()`, `applyLocale("de")` renders `nav.back` in English; after `await loadCatalog("de")`, in German.
 
@@ -1139,7 +1203,10 @@ def test_a_language_is_loaded_only_when_it_is_read(page: Page, installed: Stack)
     assert module_requests("de") >= 1, "the browser's language is fetched when it is read"
     assert module_requests("fr") >= 1, "a switched-to language is fetched when it is read"
     assert module_requests("en") == 0, "the source language is bundled, never fetched"
-    page.get_by_role("checkbox", name=FOLLOW_FR).check()
+    # The controlled box settles after the awaited load; following the browser
+    # also renames it, so click and assert the landed face.
+    page.get_by_role("checkbox", name=FOLLOW_FR).click()
+    expect(page.get_by_role("checkbox", name=FOLLOW_DE)).to_be_checked()
     await_settings(locale=None)
 ```
 
@@ -1179,7 +1246,7 @@ Expected: exactly two lines from the first — one `de-…js`, one `fr-…js`; e
 
 - [ ] **Step 8: Task gate, review and commit**
 
-Task gate: `just check`, `CI=true just check-generated`, `CI=true just test-frontend`. Reviewer: every path to an active language awaits its catalog; the pre-setup mirror included. Commit: `perf(i18n): load a language's catalog only when it is read` with
+Task gate: `just check`, `CI=true just check-generated`, `CI=true just test-frontend`, `just test-e2e settings`, `just test-e2e writing` (the task changes the boot every route runs through; writing is its heaviest consumer). Reviewer: every path to an active language awaits its catalog; the pre-setup mirror included. Commit: `perf(i18n): load a language's catalog only when it is read` with
 `User-visible: A reader of English no longer downloads the German and French catalogs; German and French readers fetch theirs once as a cached file. Nothing else changes on screen.`
 
 ---
@@ -1201,7 +1268,7 @@ Task gate: `just check`, `CI=true just check-generated`, `CI=true just test-fron
 | `:lang(ja)` | `"Hiragino Sans", "Yu Gothic", "Meiryo", "Noto Sans CJK JP"` | `"Yu Mincho", "Hiragino Mincho ProN", "Noto Serif CJK JP"` |
 | `:lang(ko)` | `"Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR"` | `"AppleMyungjo", "Batang", "Noto Serif CJK KR"` |
 
-Each declaration repeats the base stack of its token first (Latin faces included) and ends in the generic family.
+Each declaration has three parts, in order: every named family of the base stack in the base's order (emoji fonts included, the base's generic family left out), then the rule's Han families in the table's order, then the base's generic family last (`sans-serif` for `--font-ui`, `serif` for `--font-serif`). No generic family may stand before a Han family: a browser resolves a generic against the system's fallback list and would never consult the later Han families on fontconfig systems.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1224,21 +1291,23 @@ it("keeps the base stacks free of Han families", () => {
 });
 ```
 
-`HAN_FAMILIES` is the table above as literals; `EVERY_HAN_FAMILY` its twelve families.
+`HAN_FAMILIES` is the table above as literals, in the quotes `globals.css` uses; `EVERY_HAN_FAMILY` is the union derived from them (twenty-one families, none shared).
 
 `app/capabilities/writing/web/SceneEditor.test.tsx`, following the neighboring cases' inline `body`, `onChange` and `label` props (there is no `baseProps` helper today):
 
 ```ts
 it("carries the manuscript's language on its prose", async () => {
   const { container } = render(<SceneEditor body="Text" onChange={vi.fn()} label="Scene" language="ja" />);
-  await waitFor(() => expect(container.querySelector(".ProseMirror")).toHaveAttribute("lang", "ja"));
+  await waitFor(() => expect(container.querySelector(".ProseMirror")?.getAttribute("lang")).toBe("ja"));
 });
 
 it("leaves the prose to the interface's language when the manuscript names none", async () => {
   const { container } = render(<SceneEditor body="Text" onChange={vi.fn()} label="Scene" language={null} />);
-  await waitFor(() => expect(container.querySelector(".ProseMirror")).not.toHaveAttribute("lang"));
+  await waitFor(() => expect(container.querySelector(".ProseMirror")?.hasAttribute("lang")).toBe(false));
 });
 ```
+
+The repository carries no jest-dom, so the cases read the attribute directly.
 
 `EditorColumn.test.tsx` and `ZenMode.test.tsx`: with `novel.language === "zh-Hans-CN"` the prose has `lang="zh-Hans-CN"`.
 
@@ -1298,7 +1367,24 @@ Task gate: `just check`, `CI=true just test-frontend`, `just test-e2e writing`. 
 
 ## Deviations
 
-None at execution time yet. The build session records each deviation with its cause, the coordinator's decision and the gate evidence in the SDD task report.
+Execution departed from this plan's text in the places below; each entry names the cause and the coordinator's decision that ruled it. Gate evidence stays in the SDD task reports under `.superpowers/sdd/` (git-ignored), which record each departure's result; it is not repeated here.
+
+- **Design §11, the deferred typo.** "dynamously" becomes "dynamically"; Task 0 deferred the correction to this commit.
+- **Task 2, the parser's locale and the ordinal fixture's order.** `missingCategories` keeps `new IntlMessageFormat(message, locale)` because the locale reaches parsing only for datetime skeletons and `requiredCategories` builds `Intl.PluralRules` on the same argument; the ordinal fixture expects the sorted array because the engine's category order differs between Node versions and the rule names a set. Ruled: correct both places in the plan.
+- **Task 1, the malformed-code test.** The test creates both catalogs so parity cannot raise and only the tag check can; the reviewer showed the parity message also matched the malformed code's first ten characters. Ruled: correct Step 1's text to the test as built.
+- **Task 5, the `maxLength` expectation.** Step 5 pins `web/lib/api/openapi.json`, where the settings update's locale carries `maxLength: 64`; the pinned `openapi-typescript@7.13.0` emits none, so `schema.d.ts` stays byte-identical. Ruled: correct the expectation, with its cause.
+- **Task 7, the German `errors.*` values.** The five values say `Provider` and `Modell`, not `KI-Anbieter` and `KI-Modell`; the design's sentence already let the catalog's own term win. Ruled: correct the plan's table only.
+- **Task 8, five corrections.** The vitest filter is root-relative (`components/UpdateBanner.test.tsx`); the E2E regex uses `re.IGNORECASE` because Playwright builds a JavaScript `RegExp` with no inline `(?i)`; the file lists gain the writing `routes.test.tsx` and the six setup-status gates with their tests, whose removed pins now name the refusal's reason and the family sentence; the shelf fixture throws a bare `TypeError` and the dialog's refusal answers 422 without a code, because a status-carrying 503 would read `errors.server`; design §10 names the six gates and the two removed detail lines. Ruled: correct all five.
+- **Task 9, the loader key.** The loader map is keyed by the locale code, `"pt-BR": () => import("./catalogs/pt_BR")`; `pt_BR` names the module file and its merged object, never an object key. Ruled: correct the assertion.
+- **Task 10, the two `rg` hits.** The first search keeps two hits, the bed's own `vi.mock` factories in `web/lib/locale.script.test.ts` and `web/lib/language.registry.test.tsx`, which fabricate a registry entry on `real.catalogs.en`; the second has none. The "44 at the current baseline" stays because it was true at the plan's baseline. Ruled: name the two hits; the count and `setupFiles` stand.
+- **Global Constraints, `CI=true`.** The rule applies to `just test-frontend` and `just check-generated`; `just check` and `just typecheck` ran without it as the gate lines prescribe. Ruled: narrow the sentence to the gates it means.
+- **Task 11, six corrections.** The boot retains the reader's stored choice and a click on the row's language is a retry; the interface names `targetLocale`, `choose`'s two-clause guard and the fallback cases; the E2E clicks the controlled French checkbox and asserts the landed `FOLLOW_DE` face; `test_catalog_merge.py` and `GoalSetter.test.tsx` stay in the commit because Step 4 and the async activation change them; the task gate adds `just test-e2e writing`; one activation counter makes the latest call win, a superseded choice activates nothing and resolves `false`, and `hydrateLocale` returns without revealing. Ruled: correct all six.
+- **Task 0, the baseline's branch.** The bundle baseline was recorded on the fresh `feat/i18n-hardening` branch at `main`'s tip, not "on `main`". Ruled: tighten the wording in both documents.
+- **Task 1, the help fixture.** `scripts/tests/test_generate_help.py` stays in the commit: its fixture writes a registry for `locales()` and creates `web/` for `help_coverage`'s UI-only rule. Ruled: add it to the file list.
+- **Task 2, the sweep and the red-phase count.** The sweep reads `merged` and asserts that every language of `locales` had a plural walked, so an empty walk cannot pass. The plan's red-phase count was too high because the `[]` fixtures pass vacuously; Step 2 states the count as built. Ruled: correct the test text and the count.
+- **Task 7, the no-response failure.** `TransportError extends ApiError` carries a request that threw before there was a response; `isNetworkFailure` recognizes it and the browser's `TypeError`; `createEntityFailure`'s no-response case returns it, while `assistantFailure`'s `provider-error` and `not-found` fallbacks stay wire codes. Ruled: correct the interface and design §10.
+- **Task 10, the scroll no-op.** `web/lib/test/setup.ts` also assigns a no-op to `window.scrollTo`, with its reason: a dependency calls it on mount, jsdom logged 980 lines of "Not implemented", and no test under `web/` or `app/` reads a scroll position. Ruled: name it in the plan's interface line; the design's sentence stands.
+- **Task 12, the `:lang()` shape and the assertions.** Each declaration has three parts — the base's named families in order, the rule's Han families, then the base's generic family last — because a generic family before a Han family makes fontconfig resolve the generic and never consult the later Han families; `EVERY_HAN_FAMILY` is the union of the twenty-one quoted literals; the scene cases read `getAttribute` and `hasAttribute` because the repository carries no jest-dom. Ruled: correct both documents.
 
 **Revalidated on 2026-11-26 against `main` `12186926e`:** the update-check wave (#965) moved the Alembic head to `12fc7ddcec6f`, added the update interval fields that Task 7 must preserve, and added `web/lib/updates.ts` plus update-check faces that need regression pins but no new error code or catalog key. The plan also corrects the current throw/test counts, the Task 1 committed-file anchor, the source-catalog seed in the test bed, the interchange pattern ownership and the inline `SceneEditor` test props.
 
