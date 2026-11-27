@@ -6,6 +6,7 @@ import { channelFor, type CoverChannel } from "@shell/lib/cover/cover";
 import { GenreMotif } from "@shell/lib/cover/motifs";
 import { demos } from "@shell/lib/generated/demos";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
+import { activeLocale } from "@shell/lib/locale";
 import { usePageTitle } from "@shell/lib/pageTitle";
 import { Icon } from "@shell/ui/icons";
 
@@ -15,6 +16,7 @@ import {
   GENRE_PILL_DEFS,
   TARGET_WORDS_MAX,
   basisComplete,
+  demoDisplayTitle,
   findDemo,
   useWizardState,
   wouldOverflow,
@@ -129,6 +131,9 @@ export function BasisStep() {
   const { state, update } = useWizardState("/setup/basis");
   const demo = findDemo(state.demo);
   const bound = demo !== null;
+  // `useTranslation` above subscribes to the locale store, so this render-time
+  // read follows a language switch; only the display title is localized.
+  const locale = activeLocale();
   const complete = basisComplete(state);
   const titleMissing = !bound && state.title.trim() === "";
   const titleErrorId = useId();
@@ -199,7 +204,9 @@ export function BasisStep() {
   const capBlocked = GENRE_PILL_DEFS.some(
     (pill) => !state.genrePills.includes(pill.value) && wouldOverflow(state.genrePills, pill.value),
   );
-  const coverTitle = bound ? demo.title : state.title.trim() || t("setup.basis.coverUntitled");
+  const coverTitle = bound
+    ? demoDisplayTitle(demo, locale)
+    : state.title.trim() || t("setup.basis.coverUntitled");
   const coverGenre = bound ? demo.genre : (state.genrePills[0] ?? null);
 
   return (
@@ -282,7 +289,7 @@ export function BasisStep() {
                       required={!bound}
                       aria-invalid={titleMissing}
                       aria-describedby={titleMissing ? titleErrorId : undefined}
-                      value={bound ? demo.title : (titleDraft ?? state.title)}
+                      value={bound ? demoDisplayTitle(demo, locale) : (titleDraft ?? state.title)}
                       onChange={(event) => changeTitle(event.target.value)}
                       onBlur={() => setTitleDraft(null)}
                       placeholder={t("setup.basis.titlePlaceholder")}
@@ -494,7 +501,9 @@ export function BasisStep() {
                           <GenreMotif channel={channel} className="size-4" />
                         </div>
                         <div className="my-auto text-left">
-                          <div className={`${SERIF} text-lg italic leading-tight`}>{entry.title}</div>
+                          <div className={`${SERIF} text-lg italic leading-tight`}>
+                            {demoDisplayTitle(entry, locale)}
+                          </div>
                         </div>
                         <div className="flex justify-between text-[8px] uppercase tracking-wider opacity-80">
                           <span>{entry.genre}</span>
@@ -504,7 +513,9 @@ export function BasisStep() {
                       {/* The archive's facts — title, genre, chapters */}
                       <div className="mb-3 space-y-1.5">
                         <div className="flex items-center justify-between gap-2">
-                          <h3 className="text-emph font-bold text-foreground">{entry.title}</h3>
+                          <h3 className="text-emph font-bold text-foreground">
+                            {demoDisplayTitle(entry, locale)}
+                          </h3>
                           <span
                             className={`shrink-0 text-meta ${selected ? "font-semibold text-primary" : "text-muted"}`}
                           >
@@ -552,7 +563,7 @@ export function BasisStep() {
                 </div>
                 <div>
                   <div className="text-label font-semibold text-foreground">
-                    {t("setup.basis.banner.title", { title: demo.title })}{" "}
+                    {t("setup.basis.banner.title", { title: demoDisplayTitle(demo, locale) })}{" "}
                     <span className="font-normal text-muted">
                       {t("setup.basis.banner.meta", { genre: demo.genre, count: demo.chapters })}
                     </span>

@@ -278,6 +278,49 @@ def test_directory_over_the_uncompressed_cap_is_refused_named(tmp_path: Path) ->
     assert str(MAX_UNCOMPRESSED_BYTES) in raised.value.reason
 
 
+@pytest.mark.parametrize(
+    ("raw_title_en", "expected"),
+    [
+        (42, None),
+        (True, None),
+        ([1, 2], None),
+        ({"x": 1}, None),
+        ("", ""),
+        ("x" * 201, "x" * 201),
+    ],
+)
+def test_unusable_display_title_never_blocks_a_valid_archive(
+    raw_title_en: object, expected: str | None
+) -> None:
+    """Display-only metadata cannot refuse novel content: non-strings read as
+    absent, and a string survives serialization verbatim with no length cap."""
+    files = {
+        "metadata.json": json.dumps(
+            {
+                "title": "Der Wanderer",
+                "title_en": raw_title_en,
+                "chapters": [{"file": "chapters/01-ankunft.md", "position": 1}],
+            }
+        ).encode(),
+        "chapters/01-ankunft.md": (
+            "---\ntitle: Ankunft\nposition: 1\n---\n\nDer Regen hörte auf.\n"
+        ).encode(),
+        "kb/mira.md": b"---\ntype: character\nname: Mira\n---\n\nDie Wanderin.\n",
+    }
+
+    parsed = parse_archive(open_zip(zip_bytes(files)))
+
+    assert parsed.title_en == expected
+    assert parsed.title == "Der Wanderer"
+    assert [chapter.title for chapter in parsed.chapters] == ["Ankunft"]
+    assert [entity.name for entity in parsed.entities] == ["Mira"]
+
+    # The serialized archive carries the same display state: a non-string key
+    # is dropped, while an empty or overlong string round-trips verbatim.
+    reparsed = parse_archive(open_zip(zip_bytes(serialize_archive(parsed))))
+    assert reparsed.title_en == expected
+
+
 def test_over_long_metadata_title_is_refused_by_name() -> None:
     """A field wider than its column refuses at parse, naming field and limit —
     never a database error halfway through the import."""

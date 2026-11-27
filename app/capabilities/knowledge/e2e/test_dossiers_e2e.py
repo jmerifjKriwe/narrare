@@ -131,13 +131,15 @@ def test_a_card_opens_the_shared_dossier(page: Page, installed: Stack) -> None:
     expect(dossier).to_contain_text("Kavic appears in the chapter.")
     expect(dossier).to_contain_text("Verknüpfte Relationen (2)")
     # The shared component's own honesty: the status gap row, the excerpts.
-    expect(dossier).to_contain_text("Fundstellen im Manuskript werden noch nicht erfasst.")
+    expect(dossier.get_by_text("Manuskript-Fundstellen").locator("..")).to_contain_text(
+        "Noch nicht verfügbar."
+    )
 
     # The page's profile areas — honest disabled, never fake content.
     for testid in ("dossier-psych-gap", "dossier-linguistic-gap"):
         gap = page.get_by_test_id(testid)
         expect(gap).to_have_attribute("aria-disabled", "true")
-        expect(gap).to_contain_text("Kommt mit einer späteren Welle")
+        expect(gap).to_contain_text("Noch nicht verfügbar.")
         expect(gap.get_by_role("button")).to_have_count(0)
     expect(page.get_by_test_id("dossier-psych-gap")).to_contain_text(
         "Psychologisches Profil & Motivation"

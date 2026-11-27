@@ -14,69 +14,121 @@
 
 > Local-first, AI-assisted creative writing. Bring your own model — cloud or local.
 
-<img src="assets/screenshots/01-workspace-continuation.png" alt="The Narrare workspace: a chapter rail on the left, the chapter in the editor, and a grey continuation waiting at the caret for Tab" width="800">
-
 Narrare is a writing environment for novels that runs on your machine. A shelf of
-books, a chapter in a quiet editor, your own notes as a knowledge base, and a model
-you choose that continues a scene, answers questions about your story and points at
-the contradictions you left behind.
+books, a scene-centric editor, your own notes as a knowledge base, planning that keeps
+the plot honest, and a model you choose to continue a scene or build an entity through a
+guided interview.
 
-**Contents:** [What it looks like](#what-it-looks-like) · [Features](#what-you-do-with-it) · [Why local](#why-local) · [Getting started](#getting-started) · [Status](#status) · [Documentation](#documentation) · [Development](#development) · [Contributing](#contributing) · [License](#license)
+**Contents:** [What it looks like](#what-it-looks-like) · [Writing & Zen](#writing--zen) · [Knowledge](#knowledge) · [Planning](#planning) · [Settings & prompts](#settings--prompts) · [AI assistant](#ai-assistant) · [Why local](#why-local) · [Getting started](#getting-started) · [Status](#status) · [Documentation](#documentation) · [Development](#development) · [Contributing](#contributing) · [License](#license)
 
 ## What it looks like
 
+Eight frames from the running application, in the order the work happens: write and
+focus, build the knowledge base, plan the structure, configure the model, and build an
+entity through a guided interview.
+
+<img src="assets/screenshots/20-workspace-rebuilt.png" alt="The scene-centric workspace with the explorer, editor and docks together" width="800">
+
 <table>
 <tr>
-<td><img src="assets/screenshots/02-chat-sources.png" alt="The chat dock beside the chapter: a question, a streamed answer, and the two note passages it was drawn from" width="400"></td>
-<td><img src="assets/screenshots/03-knowledge-dock.png" alt="The knowledge dock: the whole-book check button, a consistency finding quoting both readings, and the novel's entities" width="400"></td>
+<td><img src="assets/screenshots/21-workspace-rebuilt-dark.png" alt="The same workspace in the reader's stored dark theme" width="400"></td>
+<td><img src="assets/screenshots/22-zen.png" alt="The prose alone, with the explorer and docks out of the way" width="400"></td>
 </tr>
 <tr>
-<td>Ask your own notes. The answer streams, and the passages behind it sit underneath.</td>
-<td>The whole-book check reports contradictions to acknowledge or dismiss, with the cast beside them.</td>
+<td><img src="assets/screenshots/25-dossiers.png" alt="The novel's knowledge organized as dossiers with a character's dossier open" width="400"></td>
+<td><img src="assets/screenshots/27-causality.png" alt="The planned chain of cause and effect behind the story" width="400"></td>
 </tr>
 <tr>
-<td><img src="assets/screenshots/04-knowledge-search.png" alt="The knowledge page: two uploaded notes and a search whose results show the matching passages" width="400"></td>
-<td><img src="assets/screenshots/05-shelf.png" alt="The shelf: three novels with the last one offered for resuming, and export on every card" width="400"></td>
+<td><img src="assets/screenshots/28-settings-hub.png" alt="Language, appearance and the author profile" width="400"></td>
+<td><img src="assets/screenshots/30-prompts.png" alt="The prompt catalog beside the selected prompt's editor and template" width="400"></td>
 </tr>
 <tr>
-<td>Upload the story bible. It is chunked, embedded and searched in your own Postgres.</td>
-<td>A shelf of books, not a folder of files — with export and import on the door.</td>
+<td><img src="assets/screenshots/33-entity-interview.png" alt="An answered interview and the proposal it built" width="400"></td>
 </tr>
 </table>
 
-<img src="assets/screenshots/06-shelf-dark.png" alt="The same shelf in the reader's chosen dark theme: the covers keep their own inks, and the sepia tile stays quieter than the primary action" width="800">
+These are captures of the running application, not mock-ups. Some frames use
+deterministic stand-ins at the model boundary: the dossiers frame shows extraction
+output from the fake extraction provider, the knowledge-dock frame shows a finding from
+the fake consistency provider and the extracted cast, the AI-rules frame shows the fake
+provider card, both interview frames show stand-in replies, both graph frames show the
+extracted cast, and the continuation frame uses the chat stand-in. The full collection,
+including the dark variants and the remaining settings and entity frames, is in
+[docs/screenshots/README.md](docs/screenshots/README.md).
 
-Light and dark are the reader's choice, stored with the account — the system
-decides only until they pick.
+## Writing & Zen
 
-## What you do with it
+Narrare treats a novel as scenes, not as a file. The explorer holds chapters and scenes
+in order; the editor autosaves after every pause, so the draft is never waiting on a
+save button. `F9` clears the desk: the prose and the caret, with the chrome and docks
+gone.
 
-- **Write the book.** Several novels on one shelf, chapters in a rail beside the
-  editor, autosave after every pause, and a focus mode (`F9`) that puts everything
-  but the page away.
-- **Ask for a continuation, not a rewrite.** "Continue writing" streams a suggestion
-  where the cursor stands. It stays grey until you press Tab — a stream that dies
-  never drops half a sentence into your manuscript. Esc discards it.
-- **Make your notes searchable.** Upload plain-text reference material — a story
-  bible, a timeline, the research you keep re-reading. It is chunked, embedded and
-  searched in your own Postgres, and a model switch re-embeds it from the page where
-  you uploaded it.
-- **Let it read the whole book.** Extraction proposes the cast as a review queue —
-  accept or discard each name — and the entries it creates can be edited, merged and
-  related. The whole-book check reports contradictions to acknowledge or dismiss.
-- **Export and import a manuscript.** A book leaves and returns as a portable
-  archive; conflicts are reported rather than silently overwritten.
-- **English, Deutsch, français** — the interface speaks all three, and a missing
-  translation is a build error rather than a quiet fallback.
+**Continue the scene.** *Continue writing* streams a ghost below the prose. It arrives grey
+and stays provisional: `Tab` accepts it, `Esc` throws it away, and a stream that dies
+never leaves half a sentence in the manuscript. A short instruction can steer the next
+attempt — more tension, more dialogue, more detail.
+
+**Keep the shelf.** Novels sit on a shelf as covers with their progress and last edit,
+with a demo book to explore or a blank one to start. Covers are drawn from title and
+genre. A daily word goal tracks the work.
+
+**Book Settings** carries the book's genre, target length and per-book AI rules, plus a
+series link and a volume number. Shared canon across a series is designed, not built.
+
+## Knowledge
+
+The world of the book is a knowledge base: **dossiers** for people and places, typed
+**entities and relations**, and a **lore graph** to walk the canon. Entries can be
+created by hand, edited, merged when they are duplicates, and related to one another.
+
+**Extraction** reads a chapter and proposes facts as a review queue: accept or discard
+each one, and the dossier fills in. The **consistency check** runs over the whole novel
+and names contradictions as findings.
+
+**Sources** holds plain-text reference material — a story bible, a timeline, the
+research you keep re-reading. Uploaded documents are chunked and searchable, and their
+vectors live in your own Postgres.
+
+## Planning
+
+Planning sits beside the prose rather than in a separate tool:
+
+- **Causality** — each scene's conflict and resolution as a chain.
+- **Chronology** — events on a timeline, linked back to their chapters.
+- **Storyboard** — chapters as cards in the stages of one of five structures, with
+  remapping and a scene-level drill-in.
+- **Scene planning** — goal, conflict, resolution and beats per scene, set before the
+  draft is written.
+
+## Settings & prompts
+
+**Settings** is where the model and the interface are configured. One page holds
+language and appearance — light, dark or system; English, Deutsch or français, with `du`
+or `Sie` — and the author profile. The **AI rules** page holds several OpenAI-compatible
+**provider profiles**, with keys in the OS keychain or encrypted, and points each task
+at its own model and output profile.
+
+**Prompts** are editable. Every prompt shows a diff against the shipped version, its
+variables and a preview of what it will render, and a draft can be tested against the
+live wire before it is saved.
+
+## AI assistant
+
+The assistant surface that exists today is the **entity interview**: a guided
+conversation that asks about an entity, such as a character, place or object, and
+proposes an entity from the answers. Nothing is written to the knowledge base until you
+review the proposal and save it.
 
 ## Why local
 
 The manuscripts, the chapters, the notes and the embeddings live in your own Postgres
-with `pgvector`, on your disk. There is no account and no cloud: one local user, one
-database, one machine. The model is yours to pick — any OpenAI-compatible endpoint,
-from OpenAI, OpenRouter, DeepSeek or Groq to Ollama, llama.cpp or vLLM on localhost,
-where the key is nothing at all. Nothing leaves the machine but what you send to a
-model.
+with `pgvector`, on your disk. There is no account, no hosted service and no telemetry:
+one local user, one database, one machine. The model is yours to pick — any
+OpenAI-compatible endpoint, from OpenAI, OpenRouter, DeepSeek or Groq to Ollama,
+llama.cpp or vLLM on localhost, where the key is nothing at all.
+
+The model is the only feature that sends story content out of the application; point it
+at a local endpoint and the prose never leaves the machine.
 
 ## Getting started
 
@@ -108,23 +160,19 @@ novel is one click away and a blank one is a title field. Nothing needs configur
 first: the default provider is a deterministic stand-in, so a first run needs no key
 and no `.env`.
 
-To write with a real model, add an OpenAI-compatible endpoint as a provider profile;
-each task — the continuation, the chat, the extraction, the check — can be pointed at
-its own profile. The settings screen that makes this a form is Phase 1 of the
-[roadmap](ROADMAP.md); until then `.env` configures the whole process, which is what a
-headless run wants anyway.
+To write with a real model, open **Settings → AI rules**, add an OpenAI-compatible
+endpoint as a provider profile, and point each task at the profile it should use. A
+local endpoint needs no key.
 
 ## Status
 
-Pre-1.0 and moving. The foundation is in place: provider profiles and their per-task
-assignment are served by the API, and a manuscript exports to and imports from a
-portable archive, with conflicts reported rather than silently overwritten. Series
-exist as a name and a volume number on a book, not as a surface. The only packaged form
-is the container image — no installer, no desktop app.
+Pre-1.0 and moving. The writing workspace, the knowledge base, the planning surfaces,
+settings and prompts, and the entity interview are live. Import and export exist in the
+API but have no page yet. The only packaged form is the container image — no installer,
+no desktop app.
 
-What *is* built is proven the expensive way: every capability carries an end-to-end
-test that drives a real browser against the real API and a real Postgres, and the only
-fake in the system is the model at its boundary.
+Every live capability carries an end-to-end test that drives a real browser against the
+real API and a real Postgres; the model is the only fake, at its boundary.
 
 What is missing, in which order: [ROADMAP.md](ROADMAP.md).
 
@@ -145,17 +193,20 @@ What is missing, in which order: [ROADMAP.md](ROADMAP.md).
 ## Development
 
 The images in this README come from the app itself, captured by
-`scripts/screenshots.py`; the prose in them is supplied by a stand-in model, so
-nothing here was written by one. Recapture them after changing a surface they show:
+`scripts/screenshots.py`. Recapture them after changing a surface they show:
 
 ```bash
 uv run playwright install chromium   # once, after dev-setup
-uv run python -m scripts.screenshots
+just screenshots
 ```
 
-The same regeneration can be triggered without a local setup via the
-`Screenshots` GitHub Action (`workflow_dispatch`), which opens a pull
-request with the updated images when they changed.
+The `Screenshots` GitHub Action uses the same recipe. It runs on manual dispatch, on a
+weekly schedule, and on `main` pushes that touch a UI surface; whenever the frames or
+the index change, it opens a pull request with whichever changed. It is advisory: the
+run is never a required check and never blocks a merge. The manifest in
+`scripts/screenshot_manifest.py` drives both the captures and the collection index,
+so the gallery and [docs/screenshots/README.md](docs/screenshots/README.md) stay in
+step.
 
 The daily gate is `just verify` (or `just verify all` before a risky change); see
 [TESTING.md](TESTING.md) for the full test strategy. The stack is Python 3.14,

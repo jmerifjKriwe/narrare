@@ -1,22 +1,24 @@
 name: Screenshots
 
 # Regenerates the README's images from the real app and opens a pull request
-# when they changed. Manual by default; the weekly schedule catches drift that
-# nobody triggered by hand; a push to main regenerates when a UI-relevant path
-# changed or a commit carries a `Screenshots: regenerate` footer. A
-# `Screenshots: skip` footer suppresses a run that would otherwise fire.
-# This workflow is deliberately not a required check: a flaky screenshot run
-# must never block a merge.
+# when they changed. Runs on manual dispatch, on the weekly Sunday schedule, and
+# on every push to main; the decide job skips a push when no UI-relevant path
+# changed and no commit carries a `Screenshots: regenerate` footer. A
+# `Screenshots: skip` footer suppresses a run that would otherwise fire, unless
+# a UI path changed too. The decision itself lives in
+# `scripts/screenshots_decide.py`: it reads complete git output and ignores
+# merge-commit bodies, where GitHub writes an editable pull request title. An
+# open screenshot update PR is left untouched instead of being duplicated; it
+# may be stale after newer UI changes, and a human closes or replaces it when
+# the newer captures matter. This workflow is deliberately not a required
+# check: a flaky screenshot run must never block a merge.
 
 on:
   workflow_dispatch:
-  # Paused by the frontend rebuild (W0): the script drives the real UI, which
-  # is an interim placeholder until the shelf and workspace screens return.
-  # Re-enable schedule and push when those screens are rebuilt (W3+).
-  # schedule:
-  #   - cron: "0 6 * * 0"
-  # push:
-  #   branches: [main]
+  schedule:
+    - cron: "0 6 * * 0"
+  push:
+    branches: [main]
 
 concurrency:
   group: screenshots
@@ -33,6 +35,7 @@ jobs:
       contents: read
     outputs:
       run: ${{ steps.decide.outputs.run }}
+      reason: ${{ steps.decide.outputs.reason }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -46,42 +49,10 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          # Manual dispatch and the weekly sweep always run.
-          if [ "$EVENT" != "push" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "trigger=$EVENT: always regenerate"
-            exit 0
-          fi
-          # First push to a branch: treat everything as changed.
-          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "first push: regenerate"
-            exit 0
-          fi
-          commits=$(git log --format=%B "${BEFORE}..${SHA}")
-          # An explicit regenerate override in any commit wins.
-          if printf '%s\n' "$commits" | grep -qiE '^Screenshots:[[:space:]]*regenerate[[:space:]]*$'; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "override: regenerate requested"
-            exit 0
-          fi
-          # An explicit skip override suppresses, unless a UI path also changed.
-          ui_changed=false
-          if git diff --name-only "$BEFORE" "$SHA" | grep -qE '^(web/|app/capabilities/[^/]+/web/|i18n/|scripts/screenshots\.py$)'; then
-            ui_changed=true
-          fi
-          if [ "$ui_changed" = "true" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "UI path changed: regenerate"
-            exit 0
-          fi
-          if printf '%s\n' "$commits" | grep -qiE '^Screenshots:[[:space:]]*skip[[:space:]]*$'; then
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "override: skip requested and no UI path changed"
-            exit 0
-          fi
-          echo "run=false" >> "$GITHUB_OUTPUT"
-          echo "no UI path changed and no regenerate override; skipping"
+          python3 -m scripts.screenshots_decide \
+            --event "$EVENT" \
+            --before "$BEFORE" \
+            --sha "$SHA" | tee -a "$GITHUB_OUTPUT"
 
   screenshots:
     name: screenshots
@@ -123,7 +94,7 @@ jobs:
       - name: Install Playwright browser
         run: uv run playwright install chromium
       - name: Regenerate screenshots
-        run: uv run python -m scripts.screenshots
+        run: uv run python -m scripts.screenshots --out assets/screenshots --index docs/screenshots/README.md
       - name: Open pull request if images changed
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -132,15 +103,46 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
-          if git diff --quiet -- assets/screenshots; then
+          branch="chore/screenshots-${RUN_ID}"
+          git add assets/screenshots docs/screenshots/README.md
+          if git diff --cached --quiet; then
             echo "no screenshot changes; nothing to do"
             exit 0
           fi
-          branch="chore/screenshots-${RUN_ID}"
+          # A real diff is worth publishing, but a previous run may already
+          # have an update PR waiting. Defer to that PR before creating a
+          # branch; it is left untouched and may be stale after newer UI
+          # changes. The exported GH_TOKEN authenticates the query without
+          # putting it in argv.
+          pending=$(python3 -m scripts.screenshots_pr --repository "$REPOSITORY")
+          # The lookup has exactly two valid shapes: pending=none, or a
+          # positive PR number (GitHub starts at 1). Anything else means the
+          # lookup broke; fail loudly instead of mistaking it for "no PR" and
+          # publishing again.
+          fail_lookup() {
+            local detail=${pending//$'\n'/ }
+            echo "::error::Screenshot PR lookup returned an unexpected value: '$detail' (expected pending=none or pending=<positive number>)"
+            exit 1
+          }
+          case "$pending" in
+            pending=none)
+              ;;
+            pending=*[!0-9]*|pending=)
+              fail_lookup
+              ;;
+            pending=[1-9]*)
+              echo "screenshot update PR #${pending#pending=} is already open; leaving it in place"
+              exit 0
+              ;;
+            *)
+              fail_lookup
+              ;;
+          esac
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
-          git add assets/screenshots
+          # No `Screenshots: regenerate` footer: the merge back to main must not
+          # retrigger this workflow.
           git commit -m "chore(screenshots): regenerate README images"
           git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPOSITORY}.git" "HEAD:refs/heads/${branch}"
           gh pr create \
@@ -148,4 +150,4 @@ jobs:
             --base main \
             --head "$branch" \
             --title "Regenerated README screenshots" \
-            --body "Automated screenshot regeneration from the Screenshots workflow. Review the diff and merge if the new images look right."
+            --body "Automated screenshot regeneration from the Screenshots workflow. Review the updated frames and docs/screenshots/README.md, and merge if they look right."

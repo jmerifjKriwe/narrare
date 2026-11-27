@@ -111,7 +111,8 @@ export function ShelfEmpty({
           <Icon name="plus" size={18} />
           <span>{t("writing.shelf.newBook")}</span>
         </button>
-        {/* The import wave opens this door. */}
+        {/* The import door stays disabled; its future-facing note is shared
+            with the adjacent live new-book CTA. */}
         <button
           type="button"
           disabled

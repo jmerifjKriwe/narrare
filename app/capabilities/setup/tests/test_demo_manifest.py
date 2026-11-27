@@ -28,6 +28,8 @@ ENTRY = re.compile(
     + _STR
     + r"\s*,\s*title:\s*"
     + _STR
+    + r"\s*,\s*titleEn:\s*"
+    + _STR
     + r"\s*,\s*language:\s*"
     + _STR
     + r"\s*,\s*genre:\s*"
@@ -54,19 +56,21 @@ def _unquote(literal: str) -> str:
     )
 
 
-def web_manifest() -> list[tuple[str, str, str, str, str, int, int]]:
-    """The picker's entries as (slug, title, language, genre, blurb, chapters, entities)."""
+def web_manifest() -> list[tuple[str, str, str, str, str, str, int, int]]:
+    """The picker's entries as (slug, title, titleEn, language, genre, blurb,
+    chapters, entities)."""
     return [
         (
             _unquote(slug),
             _unquote(title),
+            _unquote(title_en),
             _unquote(language),
             _unquote(genre),
             _unquote(blurb),
             int(chapters),
             int(entities),
         )
-        for slug, title, language, genre, blurb, chapters, entities in ENTRY.findall(
+        for slug, title, title_en, language, genre, blurb, chapters, entities in ENTRY.findall(
             PAGE.read_text(encoding="utf-8")
         )
     ]
@@ -74,8 +78,8 @@ def web_manifest() -> list[tuple[str, str, str, str, str, int, int]]:
 
 def test_web_manifest_matches_the_python_manifest() -> None:
     web = [
-        DemoInfo(slug=slug, title=title, language=language)
-        for slug, title, language, _genre, _blurb, _chapters, _entities in web_manifest()
+        DemoInfo(slug=slug, title=title, title_en=title_en, language=language)
+        for slug, title, title_en, language, _genre, _blurb, _chapters, _entities in web_manifest()
     ]
     assert web == list(DEMOS)
 
@@ -84,7 +88,7 @@ def test_web_manifest_counts_match_the_bundled_archives() -> None:
     entries = web_manifest()
     # A regex that parsed nothing must fail here, not pass the loop vacuously.
     assert len(entries) == len(DEMOS)
-    for slug, _title, _language, _genre, _blurb, chapters, entities in entries:
+    for slug, _title, _title_en, _language, _genre, _blurb, chapters, entities in entries:
         archive = parse_archive(demo_tree(slug))
         assert chapters == len(archive.chapters), f"{slug}: card says {chapters} chapters"
         assert entities == len(archive.entities), f"{slug}: card says {entities} entities"
@@ -93,7 +97,7 @@ def test_web_manifest_counts_match_the_bundled_archives() -> None:
 def test_web_manifest_genre_and_blurb_match_the_archives() -> None:
     entries = web_manifest()
     assert len(entries) == len(DEMOS)
-    for slug, _title, _language, genre, blurb, _chapters, _entities in entries:
+    for slug, _title, _title_en, _language, genre, blurb, _chapters, _entities in entries:
         archive = parse_archive(demo_tree(slug))
         assert genre == archive.genre, f"{slug}: card genre does not match the archive"
         assert blurb == archive.blurb, f"{slug}: card blurb does not match the archive"

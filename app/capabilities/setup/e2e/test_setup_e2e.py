@@ -91,7 +91,7 @@ def test_welcome_offers_the_three_real_demos_and_an_honest_import(page: Page, st
     expect(
         page.get_by_role("button", name="Manuskript importieren (.docx, .scriv)")
     ).to_be_disabled()
-    expect(page.get_by_text("kommt mit dem weiteren Aufbau")).to_be_visible()
+    expect(page.get_by_text("Noch nicht verfügbar.")).to_be_visible()
 
     assert_accessible(page)
 
@@ -406,6 +406,10 @@ def test_the_language_contract_rides_one_home_and_the_chrome_frames_only_the_she
     expect(page.get_by_role("heading", name="Step in. Your unwritten work awaits.")).to_be_visible()
     page.reload()
     expect(page.get_by_role("heading", name="Step in. Your unwritten work awaits.")).to_be_visible()
+    # The English face reads the German archive's English display title; the
+    # archive itself keeps its own-language identity for the POST to import.
+    expect(page.get_by_text("»In the Silent Forest«")).to_be_visible()
+    expect(page.get_by_text("»Im Stillen Wald«")).to_have_count(0)
     assert _rows("SELECT id FROM users") == []
 
     # The wizard header carries the same contract — the step stands alone

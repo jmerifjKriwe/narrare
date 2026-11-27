@@ -156,7 +156,7 @@ def test_the_workspace_reads_the_seeded_book(page: Page, installed: Stack) -> No
 
     # Every unbuilt door stays disabled with its note — the ribbon's
     # history/export (#875/#876) and the layout tune (#881); the ⌘J chip
-    # carries its „bald" mark (#869). The wiki door retired with #867
+    # carries its status mark (#869). The wiki door retired with #867
     # (W5 Task 2 — the dossier is the entity's expanded view, Tasks 3/5).
     # The CRUD doors are LIVE (Task 13) — the create suite drives them;
     # Fokus is LIVE (Task 18) — the zen suite drives it.
@@ -168,7 +168,7 @@ def test_the_workspace_reads_the_seeded_book(page: Page, installed: Stack) -> No
         expect(page.get_by_role("button", name=name, exact=True)).to_be_disabled()
     for name in ("Neues Kapitel", "Neue Szene", "Fokus (F9)"):
         expect(page.get_by_role("button", name=name, exact=True)).to_be_enabled()
-    expect(page.get_by_text("bald")).to_be_visible()
+    expect(page.get_by_text("Noch nicht verfügbar.")).to_be_visible()
 
     # Selecting another scene moves the editor and the marker — read-only
     # navigation, no write.

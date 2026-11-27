@@ -150,10 +150,39 @@ const settingsRoute = createRoute({
     </>
   ),
 });
+/** The hub's two subpages (#981): the settings capability's own routes — the
+ *  crumb must keep naming the settings location on them too, never fall back
+ *  to the shelf face. */
+const aiRulesRoute = createRoute({
+  getParentRoute: () => testRoot,
+  path: "/settings/ai-regeln",
+  component: () => (
+    <>
+      <p>ai-rules</p>
+      <TopBar />
+    </>
+  ),
+});
+const promptsRoute = createRoute({
+  getParentRoute: () => testRoot,
+  path: "/settings/prompts",
+  component: () => (
+    <>
+      <p>prompts</p>
+      <TopBar />
+    </>
+  ),
+});
 
 function renderTopBar(path = "/") {
   const router = createRouter({
-    routeTree: testRoot.addChildren([homeRoute, bookRoute, settingsRoute]),
+    routeTree: testRoot.addChildren([
+      homeRoute,
+      bookRoute,
+      settingsRoute,
+      aiRulesRoute,
+      promptsRoute,
+    ]),
     history: createMemoryHistory({ initialEntries: [path] }),
   });
   render(
@@ -306,17 +335,37 @@ describe("the topbar — save, search, language", () => {
 // --- The user block menu (W7 Task 3) — the drafted tile, wired --------------
 
 describe("the topbar — the settings face (W7)", () => {
-  it("reads Atelier / Einstellungen — the draft's crumb on its surface", async () => {
-    renderTopBar("/settings");
-    await screen.findByText("settings");
-    expect(screen.getByText(de["shell.nav.settings"])).toBeTruthy();
-    expect(screen.queryByText(de["shell.topbar.shelf"])).toBeNull();
+  it("reads Atelier / Einstellungen on the hub and on both subpages (#981)", async () => {
+    const markers: Record<string, string> = {
+      "/settings": "settings",
+      "/settings/ai-regeln": "ai-rules",
+      "/settings/prompts": "prompts",
+    };
+    for (const [path, marker] of Object.entries(markers)) {
+      renderTopBar(path);
+      // The route's own marker proves the harness face mounted, not the
+      // shelf's.
+      await screen.findByText(marker);
+      expect(screen.getByText(de["shell.nav.settings"])).toBeTruthy();
+      expect(screen.queryByText(de["shell.topbar.shelf"])).toBeNull();
+      cleanup();
+      queryClient.clear();
+    }
     // And nowhere else: the shelf keeps its own face.
-    cleanup();
-    queryClient.clear();
     renderTopBar("/");
     await screen.findByRole("link", { name: de["shell.topbar.atelier"] });
     expect(screen.getByText(de["shell.topbar.shelf"])).toBeTruthy();
+  });
+
+  it("keeps the settings crumb while the bar folds for phone widths (#911)", async () => {
+    renderTopBar("/settings/prompts");
+    expect(await screen.findByText(de["shell.nav.settings"])).toBeTruthy();
+    // The narrow mechanism the suite pins stays the search chip's: the real
+    // crumb and the right cluster's controls never fold.
+    const search = await screen.findByRole("button", { name: `${de["shell.topbar.search"]} ⌘K` });
+    const chip = search.closest("div") as HTMLElement;
+    expect(chip.classList.contains("hidden")).toBe(true);
+    expect((await screen.findByRole("button", { name: /Sprache/ })).classList.contains("hidden")).toBe(false);
   });
 });
 
@@ -397,6 +446,18 @@ describe("the user block menu — the drafted tile, wired", () => {
     cleanup();
     queryClient.clear();
     renderTopBar("/settings");
+    await openMenu();
+    const active = within(await screen.findByRole("menu", { name: de["shell.rail.user"] })).getByRole(
+      "menuitem",
+      { name: /Einstellungen/ },
+    );
+    expect(active.getAttribute("aria-current")).toBe("true");
+    expect(screen.getByText(de["shell.menu.settingsActive"])).toBeTruthy();
+  });
+
+  it("the Einstellungen row stays Aktiv on the hub's subpages (#981)", async () => {
+    renderTopBar("/settings/prompts");
+    await screen.findByText("prompts");
     await openMenu();
     const active = within(await screen.findByRole("menu", { name: de["shell.rail.user"] })).getByRole(
       "menuitem",

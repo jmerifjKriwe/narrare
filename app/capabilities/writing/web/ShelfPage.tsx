@@ -272,8 +272,8 @@ export function ShelfPage() {
               label={t("writing.shelf.metrics.streakLabel")}
             />
             {/* The primary actions — the new-book door opens Task 9's
-                dialog; the import wave opens the import door, honestly
-                disabled with the drafted note until then. */}
+                dialog; the import door stays disabled, its future-facing
+                note shared with the adjacent live new-book CTA. */}
             <div className="flex flex-col items-start gap-1 pl-2">
               <div className="flex items-center gap-2">
                 <button

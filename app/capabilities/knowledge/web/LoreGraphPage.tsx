@@ -6,7 +6,8 @@
  * - Nodes are EntityRead rows (name, type, the body's first line), edges are
  *   RelationRead rows (the type's wording on the line, the note in the
  *   popover). The layout is the pure deterministic pass (graphLayout.ts):
- *   the same entities and relations always draw the same picture.
+ *   nodes take the canon's own name order, so the same cast always draws the
+ *   same picture across fresh UUIDs and arrival orders.
  * - Zoom (wheel + the HUD buttons) and pan (drag the canvas), with an honest
  *   reset that returns to the fit framing — a pure function of the bounds.
  * - A node click opens the entity's dossier (the shared EntityDossier); the
@@ -43,7 +44,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 
-import type { Relation } from "@shell/lib/api/client";
+import type { Entity, Relation } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
 import { useEntitiesQuery, useNovelRelationsQuery, useAssistantSessionsQuery, useCloseAssistantSession } from "@shell/lib/query";
@@ -56,7 +57,7 @@ import { CreateRelationDialog, MergeDialog } from "./crudDialogs";
 import { EntityCreateDialog } from "./entityCreate/EntityCreateDialog";
 import type { EntityPrefill } from "./entityCreate";
 import { entityTypeIcon, entityTypeLabel, typeTheme } from "./entityTypes";
-import { fitTransform, graphBounds, graphSignature, layoutGraph, type Transform } from "./graphLayout";
+import { compareCanonical, fitTransform, graphBounds, graphSignature, layoutGraph, type Transform } from "./graphLayout";
 import { EntityInterview } from "./interview/EntityInterview";
 import { relationTypeLabel } from "./relations";
 
@@ -84,6 +85,42 @@ function clamp(value: number, lo: number, hi: number): number {
 function snippet(content: string): string {
   const line = content.trim().split("\n")[0] ?? "";
   return line;
+}
+
+/** The pair's canonical first end: the layout's own name-first node order,
+ *  never the raw UUID. The arc's direction is then a bit against this end. */
+function canonicalFirstEnd(from: string, to: string, nodeById: Map<string, Entity>): string {
+  const source = nodeById.get(from);
+  const target = nodeById.get(to);
+  if (source === undefined || target === undefined) {
+    // Absent rows never draw an arc; the id order keeps the sort total.
+    return from <= to ? from : to;
+  }
+  return compareCanonical(source, target) <= 0 ? from : to;
+}
+
+/** The content a parallel arc is ordered by: the pair in the layout's
+ *  canonical order, then whether the source is the canonical first end, then
+ *  type and note. The id is only the last tiebreaker, for rows that are
+ *  visible twins. */
+function parallelContentKey(relation: Relation, nodeById: Map<string, Entity>): string {
+  const first = canonicalFirstEnd(relation.from_entity_id, relation.to_entity_id, nodeById);
+  const second = first === relation.from_entity_id ? relation.to_entity_id : relation.from_entity_id;
+  const direction = first === relation.from_entity_id ? "0" : "1";
+  return [first, second, direction, relation.relation_type, relation.note ?? ""].join("\u0000");
+}
+
+/** Parallel arcs take their bows in content order, then id only when two
+ *  rows are identical in every visible field. Code-unit compares keep the
+ *  order independent of the browser's collation. */
+function compareParallelArcs(a: Relation, b: Relation, nodeById: Map<string, Entity>): number {
+  const keyA = parallelContentKey(a, nodeById);
+  const keyB = parallelContentKey(b, nodeById);
+  if (keyA < keyB) return -1;
+  if (keyA > keyB) return 1;
+  if (a.id < b.id) return -1;
+  if (a.id > b.id) return 1;
+  return 0;
 }
 
 export function LoreGraphPage() {
@@ -128,6 +165,7 @@ export function LoreGraphPage() {
 
   const entityList = useMemo(() => entities.data ?? [], [entities.data]);
   const relationList = useMemo(() => relations.data ?? [], [relations.data]);
+  const nameById = useMemo(() => new Map(entityList.map((entity) => [entity.id, entity])), [entityList]);
 
   // The one deterministic layout of the whole web; filtering hides nodes and
   // edges without re-seating the rest, so the picture stays put.
@@ -141,25 +179,26 @@ export function LoreGraphPage() {
   // Parallel edges: relations that share an unordered pair of ends would
   // otherwise draw the identical centre line — the earlier edge and its
   // note unreachable under the later. Each takes a bow of its own, indexed
-  // in the canonical id order (the layout's own edge-sort convention), so
-  // the same set always draws the same picture whatever the rows' arrival
-  // order. A self-loop keys on its node alone: its slot fans successive
-  // loops off the same node apart.
+  // by the pair's canonical order and its direction against that pair, then
+  // type and note, with the id only as the last tiebreaker for rows that are
+  // visible twins. Fresh UUIDs can neither reorder the slots nor mirror an
+  // arc. A self-loop keys on its node alone: its slot fans successive loops
+  // off the same node apart.
   const parallelSlot = useMemo(() => {
-    const groups = new Map<string, string[]>();
+    const groups = new Map<string, Relation[]>();
     for (const relation of relationList) {
       const key = [relation.from_entity_id, relation.to_entity_id].sort((a, b) => a.localeCompare(b)).join("\u0000");
       const group = groups.get(key);
-      if (group === undefined) groups.set(key, [relation.id]);
-      else group.push(relation.id);
+      if (group === undefined) groups.set(key, [relation]);
+      else group.push(relation);
     }
     const slots = new Map<string, { index: number; count: number }>();
     for (const group of groups.values()) {
-      group.sort((a, b) => a.localeCompare(b));
-      group.forEach((id, index) => slots.set(id, { index, count: group.length }));
+      group.sort((a, b) => compareParallelArcs(a, b, nameById));
+      group.forEach((relation, index) => slots.set(relation.id, { index, count: group.length }));
     }
     return slots;
-  }, [relationList]);
+  }, [nameById, relationList]);
 
   // --- The viewport -------------------------------------------------------
   // The canvas element is state, not a bare ref: on an uncached load the
@@ -394,7 +433,6 @@ export function LoreGraphPage() {
           ),
     [relationList, selected],
   );
-  const nameById = useMemo(() => new Map(entityList.map((entity) => [entity.id, entity])), [entityList]);
   const edge = edgeId !== null ? (relationList.find((relation) => relation.id === edgeId) ?? null) : null;
 
   // --- The honest states --------------------------------------------------
@@ -447,15 +485,18 @@ export function LoreGraphPage() {
       return { d: `M ${from.x} ${from.y} L ${tipX} ${tipY}`, midX: (from.x + to.x) / 2, midY: (from.y + to.y) / 2, tipX, tipY, ux, uy };
     }
     // Parallel edges bow apart. The bow rides the pair's canonical
-    // perpendicular — first id to second, whatever this edge's direction —
-    // so A→B and B→A separate too instead of collapsing onto one side. The
+    // perpendicular — the layout's name-first first end to second, whatever
+    // this edge's direction — so A→B and B→A separate too instead of
+    // collapsing onto one side, and fresh UUIDs cannot mirror the pair. The
     // quadratic's control point carries twice the bow, which puts B(0.5),
     // the label's anchor and the popover's, exactly one bow off the chord.
     // The tip itself staggers half the bow along the same perpendicular,
     // so two same-direction parallels end in two visible arrowheads
     // instead of one drawn twice; a pair's only edge bows nothing and its
     // tip stands exactly where the straight line's did.
-    const flipped = relation.to_entity_id < relation.from_entity_id;
+    const flipped =
+      canonicalFirstEnd(relation.from_entity_id, relation.to_entity_id, nameById) !==
+      relation.from_entity_id;
     const px = flipped ? uy : -uy;
     const py = flipped ? -ux : ux;
     const bow = (slot.index - (slot.count - 1) / 2) * EDGE_SPACING;

@@ -295,6 +295,34 @@ describe("the structure step — the basis banner and the honest status", () => 
     expect(screen.getByText(de["setup.structure.banner.causality"])).toBeTruthy();
   });
 
+  it("reads the English display title in English and the archive title in German", async () => {
+    storePreSetupLocale("en");
+    renderStructure("/setup/structure?demo=im-stillen-wald");
+    await screen.findByRole("heading", {
+      level: 1,
+      name: catalogs.en["setup.structure.heroTitle"],
+    });
+
+    // The strip and the preview both name the basis, in the English face.
+    expect(
+      screen.getAllByText(
+        t("setup.structure.banner.demoTitle", { title: "In the Silent Forest" }),
+      ),
+    ).toHaveLength(2);
+    expect(
+      screen.queryByText(
+        t("setup.structure.banner.demoTitle", { title: "Im Stillen Wald" }),
+      ),
+    ).toBeNull();
+
+    // The German face keeps the archive's own title.
+    fireEvent.click(screen.getByRole("radio", { name: "Deutsch" }));
+    await screen.findByRole("heading", { level: 1, name: de["setup.structure.heroTitle"] });
+    expect(
+      screen.getAllByText(t("setup.structure.banner.demoTitle", { title: "Im Stillen Wald" })),
+    ).toHaveLength(2);
+  });
+
   it("is honest and minimal on the blank path — no demo facts", async () => {
     renderStructure();
     await screen.findByRole("heading", { level: 1 });

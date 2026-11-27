@@ -30,6 +30,26 @@ import type { Continuation, SceneEntry } from "./workspace";
 
 const de = catalogs.de;
 
+// The soundscape door names its state, not a future wave (#979).
+const STATUS_NOTE = {
+  en: "Not available yet.",
+  de: "Noch nicht verfügbar.",
+  fr: "Pas encore disponible.",
+} as const;
+
+const FUTURE_PROMISE =
+  /build-out|aufbau|wave|welle|vague|appear|erschein|appara|coming soon|kommt mit|arrive avec|future|becomes available|later/i;
+
+describe("the soundscape note speaks to the reader", () => {
+  it("is status-only in every catalog, never a future promise", () => {
+    for (const locale of ["en", "de", "fr"] as const) {
+      const note = catalogs[locale]["writing.workspace.zen.soundscapeNote"];
+      expect(note).toBe(STATUS_NOTE[locale]);
+      expect(note).not.toMatch(FUTURE_PROMISE);
+    }
+  });
+});
+
 // jsdom lays out nothing: ProseMirror reads Range rects when it scrolls a
 // selection into view (the zen entry focuses the prose tail). Hand it the
 // zeros the elements claim (the page test's own polyfill).
@@ -321,7 +341,7 @@ describe("the soundscape — disabled with the gap note (row 12, INTERIM #877)",
     const button = screen.getByRole("button", { name: de["writing.workspace.zen.soundscape"] });
     expect(button.hasAttribute("disabled")).toBe(true);
     expect(button.getAttribute("title")).toBe(de["writing.workspace.zen.soundscapeNote"]);
-    expect(button.getAttribute("title")).toBe("Klanglandschaften kommen in einer späteren Welle");
+    expect(button.getAttribute("title")).toBe("Noch nicht verfügbar.");
   });
 });
 

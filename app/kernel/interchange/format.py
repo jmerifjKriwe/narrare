@@ -3,11 +3,20 @@
 One novel is one directory (or one ZIP of the same bytes):
 
     novel/
-      metadata.json      { title, author?, genre?, blurb?, language?,
+      metadata.json      { title, title_en?, author?, genre?, blurb?, language?,
                            chapters: [{file, position}],            # ordered index
                            relations: [{from, type, to, note?}] }   # names, not ids
       chapters/<nn>-<slug>.md   frontmatter: title, position, id?, updated?
       kb/<slug>.md              frontmatter: type, name, aliases[], tags[], id?, updated?
+
+``title_en`` is optional display-only demo metadata. The parser preserves any
+string verbatim — including an empty or overlong one — and treats every other
+JSON type as absent, so unusable display metadata can never block an otherwise
+valid novel archive. No import applies it to the novel; the archive's identity
+stays ``title`` and ``language``, and every persisted metadata field keeps its
+strict type and length checks. The demo picker's reader in ``demos.py`` supplies
+the fallback: a missing or empty ``title_en`` reads there as ``title``, and
+bundled demo discovery may stay strict.
 
 This module is pure parsing and serialization — no database, no merge rules
 (those live in the engine). Everything is deterministic so that exporting an
@@ -132,10 +141,14 @@ class NovelArchive:
 
     `title` is empty when `metadata.json` is absent or carries none — the
     new-novel import path refuses an empty title, the merge path never
-    applies novel metadata.
+    applies novel metadata. `title_en` is display-only demo metadata: a string
+    round-trips verbatim (no length cap), a non-string reads as absent, and it
+    is never imported into the novel, whose identity stays `title` and
+    `language`.
     """
 
     title: str
+    title_en: str | None = None
     author: str | None = None
     genre: str | None = None
     blurb: str | None = None
@@ -359,6 +372,7 @@ def parse_archive(tree: ArchiveTree) -> NovelArchive:
     metadata = _read_metadata(tree)
     return NovelArchive(
         title=_meta_str(metadata, "title") or "",
+        title_en=_meta_optional_str(metadata, "title_en"),
         author=_meta_str(metadata, "author"),
         genre=_meta_str(metadata, "genre"),
         blurb=_meta_str(metadata, "blurb"),
@@ -393,6 +407,16 @@ def _meta_str(metadata: dict[str, Any], key: str) -> str | None:
     if key in _MAX_LENGTHS:
         _check_length(value, METADATA_NAME, key, _MAX_LENGTHS[key])
     return value
+
+
+def _meta_optional_str(metadata: dict[str, Any], key: str) -> str | None:
+    """A display-only string: preserved verbatim, any other JSON type absent.
+
+    No length cap and no type error: unusable display metadata must not refuse
+    a valid novel archive. Persisted metadata keeps `_meta_str`'s strictness.
+    """
+    value = metadata.get(key)
+    return value if isinstance(value, str) else None
 
 
 def _parse_chapters(tree: ArchiveTree, metadata: dict[str, Any]) -> list[ChapterFile]:
@@ -592,6 +616,8 @@ def serialize_archive(archive: NovelArchive) -> dict[str, bytes]:
 
 def _metadata_bytes(archive: NovelArchive, chapter_names: list[str]) -> bytes:
     document: dict[str, Any] = {"title": archive.title}
+    if archive.title_en is not None:
+        document["title_en"] = archive.title_en
     document.update(
         {
             key: value
