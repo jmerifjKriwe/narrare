@@ -392,6 +392,10 @@ describe("the provisioning step — the loading state (states-reference panel 3)
     expect(workspaceButton().hasAttribute("disabled")).toBe(true);
     expect(loreButton().hasAttribute("disabled")).toBe(true);
 
+    // The loading face renders from the initial `phase = "binding"` before
+    // the passive effect issues the POST — so the resolver exists only once
+    // the mock has been called. Wait for the POST, not for the committed DOM.
+    await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(1));
     resolvePost({ data: RESULT, response: new Response(null, { status: 201 }) });
     expect(await screen.findByText(de["setup.provisioning.bound.item1"])).toBeTruthy();
   });
@@ -410,6 +414,10 @@ describe("the provisioning step — the loading state (states-reference panel 3)
     // No manifest, no count: the slot answers with a dash, not a guess.
     expect(screen.getByText("—")).toBeTruthy();
 
+    // The loading face renders from the initial `phase = "binding"` before
+    // the passive effect issues the POST — so the resolver exists only once
+    // the mock has been called. Wait for the POST, not for the committed DOM.
+    await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(1));
     resolvePost({ data: RESULT, response: new Response(null, { status: 201 }) });
     await screen.findByText(de["setup.provisioning.bound.item1"]);
   });
@@ -439,6 +447,10 @@ describe("the provisioning step — the header locks while the book binds", () =
     expect(screen.getByRole("radiogroup", { name: de["shell.language"] })).toBeTruthy();
 
     // Once the POST lands, the done steps link again.
+    // The loading face renders from the initial `phase = "binding"` before
+    // the passive effect issues the POST — so the resolver exists only once
+    // the mock has been called. Wait for the POST, not for the committed DOM.
+    await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(1));
     resolvePost({ data: RESULT, response: new Response(null, { status: 201 }) });
     await screen.findByText(de["setup.provisioning.bound.item1"]);
     const unlocked = screen.getByRole("navigation", { name: de["setup.wizard.progress"] });
