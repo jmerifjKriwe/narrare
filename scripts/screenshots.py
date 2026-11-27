@@ -34,9 +34,12 @@ The graph's force layout orders nodes by the canon's own names, so its frame
 runs on the same three-entity canon every capture and a fresh set of UUIDs
 cannot move a card.
 
-Two captures on this machine are byte-identical. That identity is proven here,
-not across runners: the ⌘ glyph sits outside the bundled Latin font range and
-falls back to a system face, so another machine may render it differently.
+Two captures are byte-identical across machines, not only on this one: every
+glyph in a frame comes from a face bundled under ``web/public/fonts`` — the
+command mark is an SVG, and mono text (keycaps, badges, code, dates) wears
+IBM Plex Mono from its own WOFF2 cuts. ``_assert_pinned_fonts`` proves that
+before every frame: the four mono weights are loaded, every computed mono
+element names the bundled family, and no U+2318 text reaches the page.
 """
 
 import argparse
@@ -148,16 +151,59 @@ def _api() -> httpx.Client:
     return httpx.Client(base_url=API, timeout=30.0)
 
 
+def _assert_pinned_fonts(page: Page) -> None:
+    """Refuse a frame whose glyphs would come from the machine's own fonts.
+
+    The bundled mono cuts are loaded on purpose: a page may declare them
+    without any text needing all four weights, and an unloaded face answers
+    ``document.fonts.check`` with false. Once loaded, three claims hold the
+    capture: every weight resolves to the bundled file, every element whose
+    computed family is a mono stack names ``"IBM Plex Mono"`` first, and no
+    U+2318 reaches the page's own text — the command mark is an SVG.
+    """
+    result = page.evaluate(
+        """async () => {
+            const weights = [400, 500, 600, 700];
+            await Promise.all(
+                weights.map((weight) =>
+                    document.fonts.load(`${weight} 10px "IBM Plex Mono"`, "BESbswy"),
+                ),
+            );
+            const missing = weights.filter(
+                (weight) => !document.fonts.check(`${weight} 10px "IBM Plex Mono"`, "BESbswy"),
+            );
+            const strays = new Set();
+            for (const element of document.querySelectorAll("body *")) {
+                const family = getComputedStyle(element).fontFamily;
+                if (!/mono/i.test(family) || family.includes('"IBM Plex Mono"')) continue;
+                strays.add(family);
+            }
+            return {
+                missing,
+                strays: [...strays],
+                command: document.body.innerText.includes("⌘"),
+            };
+        }"""
+    )
+    if result["missing"]:
+        raise SystemExit(f"the bundled mono weights {result['missing']} did not load")
+    if result["strays"]:
+        raise SystemExit(f"a mono element falls back to a system face: {result['strays']}")
+    if result["command"]:
+        raise SystemExit("a rendered U+2318 command mark remains — it must be the SVG icon")
+
+
 def _shot(page: Page, out: Path, name: str) -> Path:
     """Write one 1600x1000 master with motion, caret and hover pinned.
 
     The pointer parks in a dead corner: a surviving hover from the click that
     opened the page would otherwise paint a tooltip into one run and not the
-    next. Fonts settle before the frame, so a late swap cannot change the
-    text's antialiasing between captures.
+    next. Fonts settle and then prove they are the bundled ones, so a late
+    swap or a system fallback cannot change the text between captures.
     """
     page.mouse.move(VIEWPORT_WIDTH - 10, VIEWPORT_HEIGHT - 10)
     page.evaluate("document.fonts.ready")
+    _assert_pinned_fonts(page)
     page.wait_for_timeout(300)
     path = out / f"{name}.png"
     page.screenshot(path=str(path), animations="disabled", caret="hide")

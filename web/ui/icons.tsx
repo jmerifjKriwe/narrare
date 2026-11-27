@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The icon set: sixty-eight line glyphs on one 16×16 grid, drawn for the
+ * The icon set: seventy line glyphs on one 16×16 grid, drawn for the
  * stroke they run on — `currentColor` at 1.5, round caps and joins, no
  * fills — so a glyph wears the ink of whatever it sits beside and carries
  * no color of its own. The whole presentation contract lives on the
@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
  */
 
 /**
- * The sixty-eight drawings. Each stays inside the 2.35–13.65 envelope —
+ * The seventy drawings. Each stays inside the 2.35–13.65 envelope —
  * knowledge's stack sets both extremes; on the x axis the ink never leaves
  * 2.5–13.5 — so the 1.5 stroke, reaching half its width past the ink, never
  * clips the viewBox. Each is a single-stroke metaphor: detail that
@@ -478,6 +478,16 @@ export const icons = {
   /** The drafts' `fullscreen_exit`: the corners drawn back in — the screen
    *  returns to the window. */
   fullscreenExit: <path d="M5.5 2.75V5.5H2.75M10.5 2.75V5.5H13.25M13.25 10.5H10.5V13.25M2.75 10.5H5.5V13.25" />,
+
+  // The keyboard's concepts (screenshot font determinism). The bundled mono
+  // Latin subset carries no U+2318, and a system glyph is exactly the
+  // machine-dependent ink the capture guard forbids — so the mark is drawn.
+
+  /** The command key: the square and the four loops it hangs — the ⌘ the
+   *  keycaps used to set as text. One closed path, as the glyph itself is. */
+  command: (
+    <path d="M9.875 4.25V11.75A1.875 1.875 0 1 0 11.75 9.875H4.25A1.875 1.875 0 1 0 6.125 11.75V4.25A1.875 1.875 0 1 0 4.25 6.125H11.75A1.875 1.875 0 1 0 9.875 4.25Z" />
+  ),
 } satisfies Record<string, ReactNode>;
 
 /** A name in the icon set — the wave's whole glyph vocabulary. */

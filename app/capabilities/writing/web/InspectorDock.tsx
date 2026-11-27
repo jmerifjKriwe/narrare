@@ -241,8 +241,11 @@ export function InspectorDock({ novel }: { novel: Novel }) {
             className="flex flex-1 cursor-not-allowed select-none items-center justify-between rounded border border-border/70 bg-surface-container-low/50 px-2.5 py-1.5 text-muted opacity-60"
           >
             <div className="flex items-center gap-1.5">
-              <kbd className="rounded border border-border bg-surface-container-low px-1 font-mono text-[10px]">
-                ⌘J
+              {/* The command mark is the app's own SVG and the J the bundled
+                  mono's real glyph — no U+2318 rides a system face. */}
+              <kbd className="inline-flex items-center gap-px rounded border border-border bg-surface-container-low px-1 font-mono text-[10px]">
+                <Icon name="command" size={10} />
+                J
               </kbd>
               <span className="text-meta">{t("writing.workspace.dock.assistant")}</span>
             </div>

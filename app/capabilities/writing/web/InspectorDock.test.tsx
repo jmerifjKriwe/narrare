@@ -301,7 +301,15 @@ describe("the remaining interims speak their child issue's own language", () => 
     const foot = screen.getByTestId("dock-foot");
     expect(within(foot).getByText("Noch nicht verfügbar.")).toBeTruthy();
     expect(within(foot).getByText("KI-Assistent")).toBeTruthy();
-    expect(within(foot).getByText("⌘J")).toBeTruthy();
+    // The command mark is the app's own SVG; the keycap's text is the
+    // bundled mono J. No U+2318 rides a system face.
+    const keycap = foot.querySelector("kbd") as HTMLElement | null;
+    expect(keycap).not.toBeNull();
+    const command = keycap?.querySelector("svg");
+    expect(command).toBeTruthy();
+    expect(command?.getAttribute("aria-hidden")).toBe("true");
+    expect(keycap?.textContent).toBe("J");
+    expect(foot.textContent).not.toContain("⌘");
   });
 });
 

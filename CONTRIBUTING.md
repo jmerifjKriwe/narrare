@@ -213,9 +213,11 @@ demo novel, captures every master frame listed in
 collection index at [docs/screenshots/README.md](docs/screenshots/README.md). Run
 it when a surface a frame shows has changed: the asset tests pin the image paths,
 captions and dimensions, but they cannot prove the pixels still show the current UI.
-Two captures produce identical bytes on the machine that made them; that identity is
-not a cross-machine promise, because the ⌘ glyph sits outside the bundled Latin font
-range and may render differently on another runner.
+Two captures produce identical bytes, and that identity is a cross-machine promise:
+every glyph comes from a face bundled under `web/public/fonts` (the ⌘ mark is an
+SVG, mono text is IBM Plex Mono), and the capture refuses a frame where the bundled
+weights are unloaded, a mono element falls back to a system face, or a rendered
+U+2318 remains.
 
 The same recipe runs as the `Screenshots` workflow. Every push to `main` starts
 its short `decide` job, which skips capture unless a UI-relevant path changed

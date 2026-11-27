@@ -289,7 +289,15 @@ describe("the topbar — save, search, language", () => {
     renderTopBar("/");
     const search = await screen.findByRole("button", { name: `${de["shell.topbar.search"]} ⌘K` });
     expect(search.hasAttribute("disabled")).toBe(true);
-    expect(search.textContent).toContain("⌘K");
+    // The keycap draws the command mark as the app's own SVG; the only text
+    // it carries is the bundled mono K. No U+2318 depends on a system face.
+    const keycap = search.querySelector("kbd") as HTMLElement | null;
+    expect(keycap).not.toBeNull();
+    const command = keycap?.querySelector("svg");
+    expect(command).toBeTruthy();
+    expect(command?.getAttribute("aria-hidden")).toBe("true");
+    expect(keycap?.textContent).toBe("K");
+    expect(search.textContent).not.toContain("⌘");
     // The drafted tooltip names the reason, and the description carries it
     // to assistive tech even while the tooltip waits for hover.
     const noteId = search.getAttribute("aria-describedby");

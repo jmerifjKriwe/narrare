@@ -46,6 +46,13 @@ DOCS_README = ROOT / "docs" / "README.md"
 STITCH_README = ROOT / "docs" / "design" / "stitch" / "README.md"
 MAX_BYTES = 1_000_000
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+FONTS = ROOT / "web" / "public" / "fonts"
+GLOBALS_CSS = ROOT / "web" / "globals.css"
+SCREENSHOTS = ROOT / "scripts" / "screenshots.py"
+WORKFLOW = ROOT / ".github" / "workflows" / "screenshots.yml"
+MONO_WEIGHTS = (400, 500, 600, 700)
+WOFF2_MAGIC = b"wOF2"
+COMMAND_GLYPH = "\u2318"
 
 
 def _manifest_names() -> set[str]:
@@ -458,6 +465,97 @@ def test_asset_contract_imports_no_capture_stack() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+# The capture's determinism rests on bundled faces, not on the machine's own:
+# a missing or renamed cut silently falls back to a system font, which is the
+# glyph-rasterization difference the post-merge run exposed (#1010). These
+# contracts read the committed assets and sources, never the running stack.
+
+_FONT_FACE = re.compile(r"@font-face\s*\{([^}]*)\}", re.DOTALL)
+
+
+def _css_declarations(css: str, name: str) -> list[str]:
+    """Every value declared for one custom property, in document order."""
+    return re.findall(rf"{re.escape(name)}\s*:\s*([^;]+);", css)
+
+
+def _font_faces(css: str, family: str) -> list[dict[str, str]]:
+    """The ``@font-face`` blocks naming one family, as declaration maps."""
+    faces: list[dict[str, str]] = []
+    for body in _FONT_FACE.findall(css):
+        declarations = {
+            key.strip(): value.strip()
+            for key, value in re.findall(r"([\w-]+)\s*:\s*([^;]+);", body)
+        }
+        if declarations.get("font-family", "").strip("\"'") == family:
+            faces.append(declarations)
+    return faces
+
+
+def test_bundled_mono_assets_are_the_pinned_fontsource_cuts() -> None:
+    for weight in MONO_WEIGHTS:
+        path = FONTS / f"ibm-plex-mono-latin-{weight}-normal.woff2"
+        assert path.is_file(), path
+        payload = path.read_bytes()
+        assert payload.startswith(WOFF2_MAGIC), path
+        assert len(payload) > 5_000, f"{path} is too small to carry the Latin cut"
+
+
+def test_bundled_mono_license_is_the_ofl() -> None:
+    license_text = (FONTS / "IBMPlexMono-OFL.txt").read_text(encoding="utf-8")
+    assert "SIL OPEN FONT LICENSE" in license_text
+    assert "IBMPlexMono" in license_text
+
+
+def test_globals_speaks_mono_in_the_bundled_family_first() -> None:
+    css = GLOBALS_CSS.read_text(encoding="utf-8")
+    stacks = _css_declarations(css, "--font-mono")
+    assert len(stacks) == 1, "the mono stack needs exactly one home"
+    families = [family.strip() for family in stacks[0].split(",")]
+    assert families[0].strip("\"'") == "IBM Plex Mono", stacks[0]
+    # The system stack stays behind the bundled face as the fallback only.
+    assert any(family.strip("\"'") in {"ui-monospace", "monospace"} for family in families[1:])
+
+    faces = _font_faces(css, "IBM Plex Mono")
+    assert sorted(int(face["font-weight"]) for face in faces) == list(MONO_WEIGHTS)
+    for face in faces:
+        weight = int(face["font-weight"])
+        assert f"/fonts/ibm-plex-mono-latin-{weight}-normal.woff2" in face["src"]
+        assert 'format("woff2")' in face["src"]
+
+
+def test_capture_guard_holds_the_pinned_fonts_before_every_shot() -> None:
+    source = SCREENSHOTS.read_text(encoding="utf-8")
+    assert "def _assert_pinned_fonts(page: Page) -> None:" in source
+    for weight in MONO_WEIGHTS:
+        assert str(weight) in source
+    assert "IBM Plex Mono" in source
+    assert COMMAND_GLYPH in source
+    assert "document.fonts.check" in source
+    # The guard runs after the faces settle and before the frame is written.
+    shot = source[source.index("def _shot(") : source.index("def _require_inside(")]
+    assert "document.fonts.ready" in shot
+    assert shot.index("_assert_pinned_fonts(page)") > shot.index("document.fonts.ready")
+    assert shot.index("page.screenshot") > shot.index("_assert_pinned_fonts(page)")
+
+
+def test_screenshot_workflow_keeps_the_strict_staged_diff_gate() -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    assert "git add assets/screenshots docs/screenshots/README.md" in workflow
+    assert "git diff --cached --quiet" in workflow
+    # The gate exits clean on an empty staged diff — no pixel comparison here.
+    assert 'echo "no screenshot changes; nothing to do"' in workflow
+
+
+def test_no_pixel_tolerance_or_alignment_helper_is_introduced() -> None:
+    """A real one-pixel change must still count; nothing here may hide it."""
+    for path in sorted((ROOT / "scripts").glob("screenshots*.py")):
+        source = path.read_text(encoding="utf-8")
+        assert "from PIL" not in source, path
+        assert "import PIL" not in source, path
+        hidden = re.search(r"def\s+\w*(?:toleran|align|compare_pixels|mask)\w*\s*\(", source)
+        assert hidden is None, f"{path} hides a pixel change: {hidden}"
 
 
 def _previous_outputs(masters: Path, index: Path) -> None:

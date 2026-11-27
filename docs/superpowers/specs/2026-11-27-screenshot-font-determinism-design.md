@@ -1,0 +1,49 @@
+# Screenshot font determinism
+
+## Intent
+
+The post-merge `Screenshots` run opened PR #1010 because local and CI renders use different system fonts for `⌘` and every `font-mono` surface. The PNGs have real glyph-rasterization differences, not compression noise. Remove the remaining system-font lookups so environment-only changes cannot open screenshot PRs.
+
+## Goals
+
+- Self-host IBM Plex Mono 400/500/600/700 from the pinned `@fontsource/ibm-plex-mono@5.3.0` package, with its OFL license.
+- Make `--font-mono` use the bundled family first for keycaps, badges, code, dates and numeric metadata.
+- Replace the visible `⌘` text glyph in TopBar and InspectorDock with a repo-owned SVG command icon; keep accessible shortcut labels unchanged.
+- Assert during capture that bundled mono fonts are loaded, mono elements resolve to the bundled family and no rendered `⌘` text remains.
+- Rebaseline all 25 masters once and keep the generated collection index byte-identical.
+- Preserve the workflow's strict rule: real pixel changes still open a PR.
+
+## Non-goals
+
+- No perceptual tolerance or coordinate mask that could hide real UI changes.
+- No runner-image or CI font-package pinning as the primary fix.
+- No PNG re-encoding helper; the discarded exact-pixel alignment experiment does not address this incident.
+- No new route, API, schema or user-visible surface.
+
+## Approaches considered
+
+1. **Bundle the missing fonts and draw `⌘` as SVG — chosen.** Removes the cause rather than suppressing its output. Costs one visual rebaseline and a small font/license addition.
+2. **Pin CI fonts and runner to the local environment.** Stabilizes CI only; arbitrary developer machines can still differ and the removed font-install cost returns.
+3. **Ignore known glyph regions or use a pixel tolerance.** Smaller, but can hide real text changes in exactly those regions.
+
+## Implementation shape
+
+- Add four WOFF2 assets and `IBMPlexMono-OFL.txt` under `web/public/fonts/`.
+- Add `@font-face` declarations and point `--font-mono` at `IBM Plex Mono` in `web/globals.css`.
+- Add a `command` SVG to `web/ui/icons.tsx`; render it inside the `⌘K` and `⌘J` keycaps with the bundled mono face for `K`/`J`.
+- Add a capture-time font assertion in `scripts/screenshots.py` after `document.fonts.ready`.
+- Add focused component/asset tests for the command icon, font assets/token and capture guard.
+- Regenerate all 25 masters from two identical local runs; inspect keycap, badge and representative prose frames.
+
+## Acceptance
+
+- No rendered U+2318 text depends on a system font.
+- All current `font-mono` text uses the bundled family in captures.
+- Two independent local captures are byte-identical.
+- A CI Screenshots run on the fix branch produces no new screenshot PR after the rebaseline.
+- A deliberate one-pixel fixture change still counts as a real difference; no tolerance is introduced.
+- Existing screenshot, component, accessibility and E2E gates remain green.
+
+## Commit
+
+One reviewed task commit: `fix(web): use bundled fonts for keycaps and badges`, including the font assets, component/CSS changes, capture guard, tests and regenerated masters. It carries a real `User-visible:` line and the Assisted-by trailer. No issue is closed twice and no merge occurs without owner approval.
