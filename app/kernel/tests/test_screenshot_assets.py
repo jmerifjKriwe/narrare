@@ -581,6 +581,72 @@ def test_no_pixel_tolerance_or_alignment_helper_is_introduced() -> None:
         assert hidden is None, f"{path} hides a pixel change: {hidden}"
 
 
+# Captured UI must not lean on the machine's emoji font: a literal emoji paints
+# colored on one runner and monochrome on another, which is exactly the
+# prompt-pill band PR #1042 showed. The pill marks are now repo SVG drawings on
+# `currentColor`. The scan names the surfaces a screenshot renders from — the
+# capability web folders and the shell's components, UI primitives and root
+# route — and excludes their tests (test fixtures may spell the glyphs) and the
+# capture scripts (tooling, never painted). Widen `CAPTURED_UI_ROOTS` to widen
+# the scan.
+def _capability_web_roots() -> list[Path]:
+    return sorted(
+        capability / "web"
+        for capability in (ROOT / "app" / "capabilities").iterdir()
+        if (capability / "web").is_dir()
+    )
+
+
+CAPTURED_UI_ROOTS = (
+    *_capability_web_roots(),
+    ROOT / "web" / "components",
+    ROOT / "web" / "ui",
+    ROOT / "web" / "routes",
+)
+CAPTURED_UI_SUFFIXES = {".ts", ".tsx", ".json"}
+_TEST_SOURCE = re.compile(r"\.(?:test|spec)\.(?:[cm]?[jt]sx?)$")
+_EMOJI = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\u2b00-\u2bff\ufe0f]")
+
+
+def _captured_ui_sources() -> list[Path]:
+    """Product UI files a screenshot can paint, never tests or tooling."""
+    candidates = [path for root in CAPTURED_UI_ROOTS for path in root.rglob("*") if path.is_file()]
+    return sorted(
+        path
+        for path in candidates
+        if path.suffix in CAPTURED_UI_SUFFIXES and not _TEST_SOURCE.search(path.name)
+    )
+
+
+def test_captured_ui_sources_carry_no_literal_emoji() -> None:
+    sources = _captured_ui_sources()
+    paths = {path.relative_to(ROOT).as_posix() for path in sources}
+    assert "app/capabilities/writing/web/PromptBar.tsx" in paths, "the prompt bar left the scan"
+    assert "web/components/TopBar.tsx" in paths, "the shell components left the scan"
+    assert "web/ui/icons.tsx" in paths, "the shell UI set left the scan"
+    assert "web/routes/__root.tsx" in paths, "the root route left the scan"
+    offenders = [
+        f"{path.relative_to(ROOT)}: {match.group(0)}"
+        for path in sources
+        for match in _EMOJI.finditer(path.read_text(encoding="utf-8"))
+    ]
+    assert not offenders, "captured UI draws a system emoji font: " + ", ".join(offenders)
+
+
+def test_captured_ui_emoji_guard_names_the_incident_glyphs() -> None:
+    """The matcher reads the three glyphs that broke #1042, not notation."""
+    for glyph in ("⚡", "💬", "🔍"):
+        assert _EMOJI.search(glyph), glyph
+    # The command mark and the arrows are notation, not emoji: the command
+    # mark lives in accessible names, arrows in bundled-font text.
+    assert _EMOJI.search("⌘ ↑ ↓ ← →") is None
+
+
+def test_captured_ui_scan_excludes_tests() -> None:
+    names = {path.name for path in _captured_ui_sources()}
+    assert "workspace.test.tsx" not in names, "a test fixture entered the captured-UI scan"
+
+
 def _previous_outputs(masters: Path, index: Path) -> None:
     """The canonical outputs a publication replaces."""
     masters.mkdir(parents=True)

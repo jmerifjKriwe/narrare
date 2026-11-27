@@ -14,6 +14,7 @@
 
 - No perceptual tolerance, coordinate mask or PNG re-encoding that can hide real UI changes.
 - No browser-side font guard or meta E2E test; verify through bundled fonts and the CI Screenshots run.
+- No literal emoji or system-font symbol in captured UI; prompt pills use repo SVG icons.
 - No new route, API, schema or user-visible surface.
 - Fonts are bundled under `web/public/fonts/` with their OFL license.
 - Visible `⌘` is an SVG; the accessible shortcut notation is retained — TopBar's name is `Suchen K (⌘K)`, so its visible text is a literal substring of the name (WCAG label-in-name).
@@ -92,3 +93,35 @@ Commit `fix(web): use bundled fonts for keycaps and badges` with a real `User-vi
 - [ ] **Step 10: Review, push and prove CI silence**
 
 Independent reviewer checks the font source/license, SVG accessibility, CSS token, tests and all 25 masters. The `Screenshots` workflow runs only on `workflow_dispatch`, the Sunday schedule and `push` to `main`, so pushing the branch starts nothing. The proof is a manual dispatch, `gh workflow run screenshots.yml --ref fix/screenshot-render-noise`, which must succeed and open no new `chore/screenshots-*` PR; otherwise the proof is the post-merge `main` run. A new screenshot PR means the fix is not complete.
+
+### Task 2: Replace remaining system-emoji glyphs (post-PR #1042 finding)
+
+**Files:**
+- Modify: `app/capabilities/writing/web/PromptBar.tsx`
+- Test: `app/capabilities/writing/web/PromptBar.test.tsx`, `app/kernel/tests/test_screenshot_assets.py`
+- Modify: design/plan glyph rule
+- Regenerate: affected masters from new captures; close PR #1042 as superseded
+
+**Interfaces:**
+- Produces: prompt pills render repo `insights`, `chat` and `search` icons with `aria-hidden`; localized labels unchanged.
+
+- [x] **Step 1: Add failing component and source contracts**
+
+Assert the three prompt pills render repo SVG icons and contain no literal emoji. Add a narrow captured-UI source contract for emoji literals outside docs/scripts.
+
+- [x] **Step 2: Replace the emoji with repo icons**
+
+Use `insights` for the tension peak, `chat` for dialogue and `search` for detail; keep labels and pill behavior unchanged.
+
+- [x] **Step 3: Recapture and prove determinism**
+
+Run two independent full captures; expect only 20/21/22/23/35/36 to change. Prove byte-identical runs and an unchanged index.
+
+- [x] **Step 4: Run focused gates and commit**
+
+Run PromptBar tests, screenshot asset tests and `just check`; do not run full E2E in this task. Commit `fix(writing): draw prompt pills with repo icons` with User-visible and Assisted-by. No `Closes` for #1042.
+
+- [ ] **Step 5: Close superseded PR**
+
+After push, close PR #1042 with a comment naming the replacement commit and the pixel evidence.
+

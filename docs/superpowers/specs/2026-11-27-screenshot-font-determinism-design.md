@@ -19,6 +19,7 @@ The post-merge `Screenshots` run opened PR #1010 because local and CI renders us
 - No runner-image or CI font-package pinning as the primary fix.
 - No PNG re-encoding helper; the discarded exact-pixel alignment experiment does not address this incident.
 - No browser-side font guard or meta E2E test: it tests screenshot tooling, not the app, and costs full-gate time without being the real acceptance signal.
+- No literal emoji or system-font symbol in captured UI; every captured glyph comes from a bundled font or a repo SVG icon.
 - No new route, API, schema or user-visible surface.
 
 ## Approaches considered
@@ -38,7 +39,7 @@ The post-merge `Screenshots` run opened PR #1010 because local and CI renders us
 
 ## Acceptance
 
-- No rendered U+2318 text depends on a system font.
+- No rendered U+2318 text or prompt-pill emoji depends on a system font.
 - All `font-mono` CSS resolves to the bundled family as the first choice.
 - Two independent local captures are byte-identical.
 - A manually dispatched CI Screenshots run on the fix branch (`gh workflow run screenshots.yml --ref fix/screenshot-render-noise`) produces no new screenshot PR after the rebaseline.
