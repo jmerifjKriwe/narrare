@@ -8,10 +8,15 @@ budget — is the [v2 architecture spec](../superpowers/specs/2026-10-21-narrare
 
 1. **One capability is one folder** under `app/capabilities/<name>/`. A capability
    never imports another capability; shared domain lives in `app/kernel/`.
-2. **A capability is done only with a green E2E** that drives the real UI, the real
-   backend and the real database. The only permitted fake is the LLM provider at
-   its boundary: a provider row of kind `fake`, chosen by configuration, never
-   a test branch.
+2. **A capability is done only with a green E2E** that proves a user-reachable
+   path through the real UI, the real backend and the real database. A
+   maintainer- or developer-only tool — a demo, a generator, screenshot or
+   showcase tooling, a CI hook — has no user-reachable path: it owes unit or
+   integration tests, never an E2E. The narrow exception is a change to
+   `.github/workflows/` or `.github/actions/`, which owes the smoke suite
+   `settings` as proof the harness runs. The only permitted fake is the LLM
+   provider at its boundary: a provider row of kind `fake`, chosen by
+   configuration, never a test branch.
 3. **No side effect in the request path** beyond the request's own transaction.
 4. **Every user-owned row carries `user_id`**; data access goes through the scoped
    repository base.

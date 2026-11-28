@@ -109,7 +109,7 @@ decided before the first dispatch, by the product surface it touches:
   review, a new E2E leg.
 - **Lane B — a bounded change.** A fix, a follow-up, a refactor or a UI correction
   inside one capability folder that changes no surface. One task: one implementer,
-  one review of the whole diff, no design doc, no plan, no gap ledger, no index
+  one independent review of the whole diff, no design doc, no plan, no gap ledger, no index
   issue. The capability's existing E2E leg must run green; if it does not cover the
   change, the change is Lane A.
 
@@ -126,6 +126,21 @@ fresh branch, not patched back into the lane.
 The line is deliberately conservative: a Lane B change cannot produce the failure
 Lane A's E2E leg exists to catch, because it cannot add reachability. Neither lane
 trades the E2E proof, the independent reviewer or a gate.
+
+**Lane B's review loop** (2026-11-28, owner decision). The implementer runs the
+full `just verify` for the change's affected scope once, before the first review,
+and records the exact command and its output. One independent reviewer then reads
+the whole diff against `main` at tree hash A: there is no per-task review and no
+second final review. One consolidated fix round answers every `Important` and
+`Nit` finding from that review; nothing is deferred, because the change's scope
+is the whole diff. The fix round produces tree hash B. The scoped re-review reads
+only the diff A→B plus the findings that round answered — one re-review, at most.
+After the fixes, run only the gate that covers what a fix touched: `just check`
+for code, the capability's E2E file or test file for a UI or logic path, the
+static checks for prose alone. A Lane B change commits only after the review is
+green. Evidence is temporary and stays out of the commit:
+`.superpowers/sdd/lane-b-<slug>/` holds tree hashes A and B, the diff A→B, the
+exact commands and output, the review, the fix round and the re-review.
 
 **A task is a seam, not a file.** The surface, the code it retires and the E2E leg
 that proves it are one task and one commit: the leg lands with the surface, never
