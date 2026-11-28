@@ -1,4 +1,4 @@
-import { isLoaded, loadCatalog } from "./catalog";
+import { isLoaded, loadCatalog, registerCatalogReset } from "./catalog";
 import { locales, type Locale } from "./generated/catalogs";
 
 /**
@@ -139,10 +139,21 @@ function formatTagFor(catalog: Locale): string {
 }
 
 let chosen: Locale | null = null;
-const initial = fromBrowser() ?? source();
-let active: Locale = initial.catalog;
-let activeFormat: string = initial.formatLocale;
+
+// The invariant's floor: before its first adoption the app speaks the source
+// catalog — the only language the store holds at init — never the browser's,
+// whose catalog is not here yet. `activeLocale()` is a loaded catalog from
+// module init on, so no face can be announced without its own words.
+let active: Locale = SOURCE;
+let activeFormat: string = SOURCE;
 const listeners = new Set<() => void>();
+
+// The document language is what screen readers and hyphenation read: it must
+// follow the rendered text, not the browser's preference. At init that text is
+// the source's, so the tag is too.
+if (typeof document !== "undefined") {
+  document.documentElement.lang = SOURCE;
+}
 
 // The latest catalog call, shared by the boot's hydration and a switch: a
 // load that lands after a newer call still fills the store, but activates
@@ -150,13 +161,25 @@ const listeners = new Set<() => void>();
 // in the first one once its chunk arrives.
 let latestActivation = 0;
 
+// The boot's own ordering, beside the shared number: every hydration takes
+// one, so a hydration of an already-held target can retire an older
+// hydration without taking the number a switch in flight owns.
+let latestHydration = 0;
+
 function announce(resolved: ResolvedLocale): void {
-  active = resolved.catalog;
-  activeFormat = resolved.formatLocale;
+  // No face is announced without its own words: a catalog the store does not
+  // hold is answered by the source — the catalog and the tag the boot's own
+  // source fallback uses — so `activeLocale()` is always a loaded catalog,
+  // whichever caller asked.
+  const spoken = isLoaded(resolved.catalog)
+    ? resolved
+    : { catalog: SOURCE, formatLocale: formatTagFor(SOURCE) };
+  active = spoken.catalog;
+  activeFormat = spoken.formatLocale;
   // The document language is what screen readers and hyphenation read: it must
   // follow the rendered text, not the browser's preference.
   if (typeof document !== "undefined") {
-    document.documentElement.lang = resolved.catalog;
+    document.documentElement.lang = spoken.catalog;
   }
   for (const listener of listeners) listener();
 }
@@ -186,11 +209,15 @@ export function subscribeLocale(listener: () => void): () => void {
 /** The row's value, as the boot read it. A code outside the catalog is ignored. */
 export function adoptServerLocale(locale: string | null): void {
   chosen = isKnown(locale) ? locale : null;
-  announce(
+  const resolved =
     chosen !== null
       ? { catalog: chosen, formatLocale: formatTagFor(chosen) }
-      : (fromBrowser() ?? source()),
-  );
+      : (fromBrowser() ?? source());
+  // A row that names a language this session never loaded is recorded, never
+  // spoken: the face keeps the loaded language it has (announcing the source
+  // would repaint the page while the row's catalog is on its way), and the
+  // boot's hydration reveals the row's language once it lands.
+  if (isLoaded(resolved.catalog)) announce(resolved);
 }
 
 /**
@@ -215,10 +242,8 @@ export function applyLocale(locale: Locale | null): void {
       ? { catalog: locale, formatLocale: formatTagFor(locale) }
       : (fromBrowser() ?? source());
   chosen = locale;
-  if (!isLoaded(resolved.catalog)) {
-    reveal(SOURCE);
-    return;
-  }
+  // `announce` answers the source for a catalog the store does not hold: the
+  // choice stays recorded, and no missing language is ever spoken.
   announce(resolved);
 }
 
@@ -231,23 +256,39 @@ function reveal(locale: Locale): void {
   announce({ catalog: locale, formatLocale: formatTagFor(locale) });
 }
 
+// A store reset (the test bed's) drops every catalog but the source. A face
+// still wearing one of the dropped languages would read the source's words
+// under that tag — and a parameterized sentence would cache a source
+// formatter under its key — so the reset answers the source at once.
+registerCatalogReset(() => {
+  if (!isLoaded(active)) reveal(SOURCE);
+});
+
 /**
  * The boot's one async edge: loads `target`'s catalog before the first paint.
  * A chunk that cannot be fetched is logged and the source language answers,
  * so the page never renders half translated; the call never rejects. A newer
  * call supersedes this one — the load still fills the store, nothing is
  * announced.
+ *
+ * A target that is already the active language and in the store returns at
+ * once, taking no number from the shared counter: a settings change that
+ * changes nothing must not supersede a switch in flight. It still moves the
+ * hydration's own number, so an older hydration's late landing cannot reveal
+ * over this newer decision.
  */
 export async function hydrateLocale(target: Locale): Promise<void> {
+  const hydration = ++latestHydration;
+  if (target === active && isLoaded(target)) return;
   const call = ++latestActivation;
   try {
     await loadCatalog(target);
   } catch (error) {
     console.error(`[i18n] the ${target} catalog could not be loaded`, error);
-    if (call === latestActivation) reveal(SOURCE);
+    if (call === latestActivation && hydration === latestHydration) reveal(SOURCE);
     return;
   }
-  if (call === latestActivation) reveal(target);
+  if (call === latestActivation && hydration === latestHydration) reveal(target);
 }
 
 /**

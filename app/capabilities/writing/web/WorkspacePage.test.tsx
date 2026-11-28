@@ -269,6 +269,25 @@ async function renderWorkspace(novelId: string = NOVEL_ID) {
   return router;
 }
 
+/** A zen key at the page. The page's keydown listener is installed by the
+ *  passive phase of its mount commit. A cold mount — every test's first, the
+ *  query cache cleared after each — cannot lose the key: the node the caller
+ *  awaits is painted by a later data commit, and React flushes the mount's
+ *  pending passive phase at that commit's start, so the listener is in place
+ *  before the await returns (solo trace: listener 697, awaited heading painted
+ *  784). The cached remount is the one that races: this file's focus-flag case
+ *  mounts a second page with the cache warm, its ribbon door is painted before
+ *  that mount's passive phase, and a key sent as soon as the door is found can
+ *  arrive first (solo trace: door 390, listener 423; captured: the F9 148 ms
+ *  before the phase, lost, the wait polling a room that never opened until the
+ *  budget ran out). One flush here covers every zen key the file sends at a
+ *  page a just-mounted caller awaited, so no caller has to work out which
+ *  mount is cached; the Esc exits after a press need none of their own. */
+async function pressZenKey(key: string) {
+  await act(async () => {});
+  fireEvent.keyDown(document, { key });
+}
+
 beforeEach(() => {
   applyLocale("de");
   // TipTap's platform detection reads userAgent — the stub must carry it.
@@ -1248,7 +1267,7 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
   }
 
   async function enterZen() {
-    fireEvent.keyDown(document, { key: "F9" });
+    await pressZenKey("F9");
     expect(await screen.findByRole("button", { name: EXIT })).toBeTruthy();
   }
 
@@ -1299,11 +1318,11 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
   it("the pending focus flag dies with the page — unmount, remount, no door focus absent a fresh exit", async () => {
     await renderWorkspace();
     await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
-    await enterZen();
-    // The hazard the unmount cleanup owns (Task 21's review): an exit that
-    // navigates instead of remounting the columns leaves the flag pending
-    // with no door to take it. Set it as such an exit would — the room
-    // standing, the door gone — then leave the page without an exit.
+    // The hazard the unmount cleanup owns (Task 21's review): a focus flag
+    // still pending when the page leaves. Production sets it only while the
+    // room stands and the door is unmounted (returnFocusToDesk's other
+    // branch); the case's subject is the page's unmount, which owns the flag
+    // whatever set it, so it sets the flag directly.
     requestDeskFocus();
     cleanup();
     await renderWorkspace();
@@ -1312,15 +1331,18 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     // unmount, the ref would have taken it and focused the door — unasked.
     expect(document.activeElement).not.toBe(door);
     // A fresh exit still returns the focus — the reset killed the stale
-    // flag, not the mechanism.
+    // flag, not the mechanism. One exit, not two: the case owns two full
+    // mounts already.
     await enterZen();
     fireEvent.keyDown(document, { key: "Escape" });
-    expect(await screen.findByTestId("workspace-ribbon")).toBeTruthy();
     await waitFor(() =>
       expect(document.activeElement).toBe(
         screen.getByRole("button", { name: de["writing.workspace.ribbon.focus"] }),
       ),
     );
+    // The focus wait already proves the door is back; the ribbon is the room's
+    // own face, asserted from that settled commit.
+    expect(screen.getByTestId("workspace-ribbon")).toBeTruthy();
   });
 
   it("the ribbon's Fokus door opens zen — the interim ends (Task 18)", async () => {
@@ -1336,7 +1358,7 @@ describe("zen mode (Task 18) — F9 clears the desk, Esc returns (D19)", () => {
     chaptersAnswer = async () => ({ data: [], response: ok() });
     await renderWorkspace();
     await screen.findByRole("heading", { level: 1, name: de["writing.workspace.emptyBook.editorTitle"] });
-    fireEvent.keyDown(document, { key: "F9" });
+    await pressZenKey("F9");
     expect(screen.queryByRole("button", { name: EXIT })).toBeNull();
     expect(
       screen.getByRole("heading", { level: 1, name: de["writing.workspace.emptyBook.editorTitle"] }),
@@ -1540,7 +1562,7 @@ describe("the zen swap window (the Codacy fix) — the transition locks the live
     const box = screen.getByRole("textbox", { name: PROSE });
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     gate.hold();
-    fireEvent.keyDown(document, { key: "F9" });
+    await pressZenKey("F9");
     // The flush lands; the refetch the swap awaits is held — the window stands.
     await waitFor(() => expect(api.PUT).toHaveBeenCalled());
     await waitFor(() => expect(box.getAttribute("contenteditable")).toBe("false"));
@@ -1552,7 +1574,7 @@ describe("the zen swap window (the Codacy fix) — the transition locks the live
     expect(box.textContent).not.toContain("Fensterwort.");
     expect(api.PUT).toHaveBeenCalledTimes(1);
     // A second F9 in the window is ignored — one swap, not a toggle race.
-    fireEvent.keyDown(document, { key: "F9" });
+    await pressZenKey("F9");
     gate.release();
     // The swap lands: the room stands on the saved words, its editor live,
     // the pending flag lifted (the exit chip wears its resting face).
@@ -1571,7 +1593,7 @@ describe("the zen swap window (the Codacy fix) — the transition locks the live
     const gate = refetchGate();
     await renderWorkspace();
     await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
-    fireEvent.keyDown(document, { key: "F9" });
+    await pressZenKey("F9");
     expect(await screen.findByRole("button", { name: EXIT })).toBeTruthy();
     await typeIntoProse(" Noch ein Satz.");
     const box = screen.getByRole("textbox", { name: PROSE });
@@ -1606,7 +1628,7 @@ describe("the zen swap window (the Codacy fix) — the transition locks the live
     await screen.findByRole("heading", { level: 1, name: "Das Signal im Permafrost" });
     await typeIntoProse(" Ungesichert.");
     putSceneAnswer = async () => ({ data: undefined, response: new Response(null, { status: 503 }) });
-    fireEvent.keyDown(document, { key: "F9" });
+    await pressZenKey("F9");
     await waitFor(() => expect(api.PUT).toHaveBeenCalled());
     // The failed flush keeps the room closed (the writer saves first) and
     // lifts the window: the door rests, the prose edits again.

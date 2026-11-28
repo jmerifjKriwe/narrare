@@ -17,9 +17,11 @@ import { locales, type Locale } from "@shell/lib/generated/catalogs";
  * the structural 409 keeps the mirror, a success clears it (the row is the
  * record from then on), any other refusal restores the prior choice.
  *
- * Carrying the mirrored choice into the fresh row at provisioning is the
- * setup flow's seam (Task 8); until then a completed setup falls back to
- * the row's own null — the browser's language — and the mirror is spent.
+ * The provisioning seam carries the mirrored choice into the fresh row and
+ * clears the mirror when that write lands; a refused carry-over keeps the
+ * mirror, so the choice is not lost. The boot reads the mirror only while the
+ * row holds no choice, and a stored choice always wins: a mirror a failed
+ * carry-over left behind can never override the row's language.
  */
 
 const STORAGE_KEY = "narrare.locale.preSetup";
