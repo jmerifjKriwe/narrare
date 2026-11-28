@@ -892,16 +892,24 @@ jobs:
           retention-days: 1
 
   # SonarCloud analysis: single scan combining backend + frontend coverage.
-  # Runs on every event (PRs get analysis/decoration), and the downloads
-  # are unconditional: `tests` and `frontend` instrument on every event
-  # too, so the artifacts are always here when this job runs — a PR scan
-  # without them has no new_coverage, reads 0.0, and fails the quality
-  # gate on every PR.
+  # Runs on pull requests, pushes and manual dispatches — never on
+  # `pull_request_review`, on the release PR, or on a pull request authored by
+  # Dependabot, whichever actor triggered or re-triggered the run: only
+  # Dependabot secrets are available to those runs, so the scan would fail on a
+  # missing SONAR_TOKEN. The author is the guard, not the actor: a human
+  # reopening a Dependabot PR or pushing to its branch is still a
+  # Dependabot-authored PR, and its run must skip the scan too. Non-PR events
+  # carry no `pull_request` payload, so the author check leaves them
+  # unaffected. The downloads are unconditional: `tests` and `frontend`
+  # instrument on the same events too, so the artifacts are always here when
+  # this job runs — a PR scan without them has no new_coverage, reads 0.0, and
+  # fails the quality gate on every PR.
   sonar:
     needs: [changes, tests, frontend]
     if: >-
       github.event_name != 'pull_request_review'
       && needs.changes.outputs.release_pr != 'true'
+      && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
