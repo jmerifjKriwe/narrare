@@ -213,6 +213,22 @@ def read_assignments() -> list[dict[str, Any]]:
     return assignments
 
 
+def await_assignments(task_key: str) -> list[dict[str, Any]]:
+    """Poll the assignments read until the stored rows carry ``task_key`` — the
+    browser's assignment PUT commits after the tasks read can already answer the
+    cascade. The last read rides the failure so a missing row names itself."""
+    deadline = time.monotonic() + 10.0
+    assignments = read_assignments()
+    while time.monotonic() < deadline:
+        if any(row["task_key"] == task_key for row in assignments):
+            return assignments
+        time.sleep(0.1)
+        assignments = read_assignments()
+    raise AssertionError(
+        f"no assignment row for {task_key} ever landed; last read: {assignments!r}"
+    )
+
+
 def _task_row(task_key: str) -> dict[str, Any]:
     for row in read_tasks():
         if row["task_key"] == task_key:

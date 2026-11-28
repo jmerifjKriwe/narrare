@@ -29,6 +29,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from app.capabilities.settings.e2e.conftest import (
+    await_assignments,
     await_tasks,
     create_fake_provider,
     create_model,
@@ -37,7 +38,6 @@ from app.capabilities.settings.e2e.conftest import (
     expect_ai_rules,
     goto_ai_rules,
     goto_settings,
-    read_assignments,
     read_providers,
     set_theme,
 )
@@ -247,10 +247,16 @@ def test_the_assignment_rides_with_its_profile_and_the_resolved_number(
 
     # The model assignment: the PUT carries the model AND the profile.
     model_select.select_option(label="Cloud-Schreiber")
+    # The stored-row proof lands first: the assignment row itself must carry
+    # the model and the profile, not merely a cascade that satisfies them.
+    assignments = await_assignments("writing.continuation")
+    (assignment,) = [row for row in assignments if row["task_key"] == "writing.continuation"]
+    assert assignment["profile_id"] == model_id
+    assert assignment["output_profile"] == "balanced"
+
     stored = await_tasks("writing.continuation", profile_id=model_id, output_profile="balanced")
     assert stored["profile_name"] == "Cloud-Schreiber"
     assert stored["kind"] == "openai-chat"
-    assert read_assignments()[0]["task_key"] == "writing.continuation"
 
     # The profile select woke with the assignment; „Lange Texte“ rides and
     # the resolved number is the honest min: 12.288 at the stored ceiling of
