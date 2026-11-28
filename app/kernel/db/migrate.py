@@ -234,16 +234,23 @@ def diff_against_models(
 async def current_revision(connection: AsyncConnection) -> str | None:
     """The revision the database's ``alembic_version`` row names; None if none.
 
-    A database with no history yet has no version table at all, so the read
-    tolerates exactly that error. It runs inside a savepoint: the failed
-    statement rolls back to it and the connection stays usable — without the
-    repair, every statement after the first read would die on an aborted
-    transaction. Any other failure is a real problem and surfaces.
+    An absent version table means this database has no history yet, and that
+    is ``None``. The catalog says so before the read, so the failing statement
+    that would otherwise be logged by the server never runs. An existing table
+    must name exactly one row.
+
+    The read runs inside a savepoint: a table dropped between the catalog check
+    and the read fails with 42P01, which rolls back to the savepoint and the
+    connection stays usable — without the repair, every statement after the
+    first read would die on an aborted transaction. Any other failure is a real
+    problem and surfaces.
 
     Every row is read, not ``scalar``'s arbitrary one: two rows would mean
     two writers appointed two heads, and collapsing that to one revision
     hides the other — the database is refused instead.
     """
+    if not await _has_version_table(connection):
+        return None
     try:
         async with connection.begin_nested():
             rows = (
@@ -260,6 +267,22 @@ async def current_revision(connection: AsyncConnection) -> str | None:
             f"alembic_version holds {len(rows)} revisions ({named}), expected exactly one"
         )
     return str(rows[0][0])
+
+
+async def _has_version_table(connection: AsyncConnection) -> bool:
+    """Whether the public schema holds the migration history's version table.
+
+    ``current_revision``'s pre-check: a database that never migrated has no
+    table, and asking the catalog answers that without a failing statement
+    the server would log.
+    """
+    present: bool | None = await connection.scalar(
+        text(
+            "SELECT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' "
+            "AND tablename = 'alembic_version')"
+        )
+    )
+    return bool(present)
 
 
 async def _has_tables(connection: AsyncConnection) -> bool:

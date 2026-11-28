@@ -25,7 +25,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
-from sqlalchemy import Uuid, text
+from sqlalchemy import Uuid, event, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -1559,23 +1559,55 @@ class _WithSQLState(Exception):  # noqa: N818  a stand-in for the dialect's wrap
         self.sqlstate = sqlstate
 
 
-class _ExplodingConnection:
-    """The one method ``current_revision`` uses — and it fails, as asked."""
+class _FetchedRows:
+    """The version-table read's result: the seam uses ``fetchall`` only."""
 
-    def __init__(self, error: Exception) -> None:
+    def __init__(self, rows: list[tuple[str, ...]]) -> None:
+        self._rows = rows
+
+    def fetchall(self) -> list[tuple[str, ...]]:
+        return self._rows
+
+
+class _VersionTableConnection:
+    """A fake connection for ``current_revision``'s two reads.
+
+    ``scalar`` answers the catalog pre-check and ``execute`` the version-table
+    read — the second is reached only when the first says the table exists.
+    Every statement is recorded, so a test can prove the version-table read
+    never ran at all.
+    """
+
+    def __init__(
+        self,
+        *,
+        version_table: bool,
+        rows: list[tuple[str, ...]] | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        self.version_table = version_table
+        self._rows = rows if rows is not None else []
         self._error = error
+        self.statements: list[str] = []
 
-    def begin_nested(self) -> _ExplodingConnection:
+    async def scalar(self, statement: object) -> bool:
+        self.statements.append(str(statement))
+        return self.version_table
+
+    def begin_nested(self) -> _VersionTableConnection:
         return self
 
-    async def __aenter__(self) -> _ExplodingConnection:
+    async def __aenter__(self) -> _VersionTableConnection:
         return self
 
     async def __aexit__(self, *_args: object) -> bool:
         return False
 
-    async def execute(self, _statement: object) -> None:
-        raise self._error
+    async def execute(self, statement: object) -> _FetchedRows:
+        self.statements.append(str(statement))
+        if self._error is not None:
+            raise self._error
+        return _FetchedRows(self._rows)
 
 
 async def test_extension_privilege_failure_is_refused(
@@ -1625,14 +1657,107 @@ async def test_unreachable_database_surfaces_unchanged(
         await prepare_database(url, backup=False)
 
 
+async def test_current_revision_skips_select_when_version_table_is_absent() -> None:
+    """No version table means None without the statement the server would log."""
+    connection = _VersionTableConnection(version_table=False)
+
+    assert await current_revision(cast("AsyncConnection", connection)) is None
+
+    assert not any(
+        "SELECT version_num FROM alembic_version" in statement
+        for statement in connection.statements
+    )
+    # The catalog answered with exactly the mandated statement, whitespace aside.
+    catalog = [statement for statement in connection.statements if "pg_tables" in statement]
+    assert len(catalog) == 1
+    expected = (
+        "SELECT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' "
+        "AND tablename = 'alembic_version')"
+    )
+    assert " ".join(catalog[0].split()) == " ".join(expected.split())
+
+
+async def test_current_revision_refuses_an_existing_empty_version_table() -> None:
+    """A real version table with no row is the refusal, not a silent None."""
+    connection = _VersionTableConnection(version_table=True, rows=[])
+
+    with pytest.raises(MigrationRefused, match="holds 0 revisions"):
+        await current_revision(cast("AsyncConnection", connection))
+
+
+async def test_current_revision_refuses_an_empty_version_table_on_a_real_database(
+    url: str,
+) -> None:
+    """The real catalog and a real empty version table produce the same refusal."""
+    await reset_schema(url)
+    engine = create_async_engine(url)
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(
+                text("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)")
+            )
+        async with engine.connect() as connection:
+            with pytest.raises(MigrationRefused, match="holds 0 revisions"):
+                await current_revision(connection)
+    finally:
+        async with engine.begin() as connection:
+            await connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        await engine.dispose()
+
+
+async def test_current_revision_returns_none_when_version_table_disappears() -> None:
+    """The catalog can say yes and the table still be gone: 42P01 stays tolerated."""
+    cause = _WithSQLState(UNDEFINED_TABLE)
+    error = ProgrammingError("SELECT version_num FROM alembic_version", {}, cause)
+    error.__cause__ = cause
+    connection = _VersionTableConnection(version_table=True, error=error)
+
+    assert await current_revision(cast("AsyncConnection", connection)) is None
+
+
 async def test_current_revision_reraises_other_programming_errors() -> None:
     """A ProgrammingError that is not undefined-table raises — it is not None."""
     cause = _WithSQLState("42601")  # syntax error: a failure, not an empty history
     error = ProgrammingError("SELECT version_num FROM alembic_version", {}, cause)
     error.__cause__ = cause
+    connection = _VersionTableConnection(version_table=True, error=error)
 
     with pytest.raises(ProgrammingError):
-        await current_revision(cast("AsyncConnection", _ExplodingConnection(error)))
+        await current_revision(cast("AsyncConnection", connection))
+
+
+async def test_current_revision_reads_no_version_table_on_a_models_built_database(
+    url: str,
+) -> None:
+    """``reset_schema`` builds no version table; the read stays off it (#1040).
+
+    The direct call, not ``prepare_database``: the statement log then holds
+    only what the read itself issues.
+    """
+    await reset_schema(url)
+    engine = create_async_engine(url)
+    captured: list[str] = []
+
+    def _record(
+        conn: object,
+        cursor: object,
+        statement: str,
+        parameters: object,
+        context: object,
+        executemany: bool,
+    ) -> None:
+        captured.append(statement)
+
+    event.listen(engine.sync_engine, "before_cursor_execute", _record)
+    try:
+        async with engine.connect() as connection:
+            assert await current_revision(connection) is None
+    finally:
+        event.remove(engine.sync_engine, "before_cursor_execute", _record)
+        await engine.dispose()
+
+    assert not any("SELECT version_num FROM alembic_version" in statement for statement in captured)
+    assert any("pg_tables" in statement for statement in captured)  # the catalog answered
 
 
 async def test_two_version_rows_are_refused(url: str) -> None:
