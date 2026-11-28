@@ -123,7 +123,7 @@ test-e2e scope="affected" workers="":
     else
       echo "E2E on ${workers} worker(s)"
     fi
-    uv run pytest $paths -v -m "e2e and not showcase" --timeout=60 -n "$workers"
+    uv run pytest $paths -v -m e2e --timeout=60 -n "$workers"
 
 # One E2E file, node or `-k` selection with the suite's own marker and timeout
 # (no affected resolver): just test-e2e-file <file> --lf — setup's suite is

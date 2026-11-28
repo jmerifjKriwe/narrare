@@ -1,22 +1,21 @@
 """Compose the fidelity artifact: a real surface beside its archived draft.
 
 The Literary Modernism pilot's acceptance is the side-by-side (spec §6.6, §9):
-one image per theme holding the E2E screenshot of the seeded route next to the
+one image per theme holding a real capture of the seeded route next to the
 Stitch WebP it was built against. This script is the composition step — it
 scales both panels to one height, labels them and writes one PNG. It is not a
 gate: the artifact lands in the wave's ``.superpowers/`` folder for the PR
 description, never in ``assets/screenshots/``.
 
-Run against the writing showcase's screenshots (``just test-e2e writing -m
-showcase`` writes them to ``/tmp/opencode/showcase/``)::
+Pass a real capture and its archived draft with ``--real`` and ``--draft``::
 
     uv run python -m scripts.side_by_side \
-        --real /tmp/opencode/showcase/shelf.png \
+        --real path/to/shelf.png \
         --draft docs/design/stitch/screens/library/shelf.webp \
-        --out .superpowers/sdd/2026-11-11-literary-modernism-pilot/side-by-side-light.png
+        --out .superpowers/sdd/<wave>/side-by-side-light.png
 
 The dark artifact pairs ``shelf-dark.png`` with ``shelf-dark.webp`` and passes
-``--dark`` so the frame around the comparison wears the midnight ground.
+``--theme dark`` so the frame around the comparison wears the midnight ground.
 """
 
 import argparse
@@ -68,7 +67,7 @@ def compose(
     out: Path,
     *,
     theme: str = "light",
-    real_label: str = "Narrare · the real surface (seeded E2E)",
+    real_label: str = "Narrare · the real surface",
     draft_label: str = "Stitch · the archived draft",
 ) -> Path:
     """Write one side-by-side PNG and return its path."""
@@ -102,11 +101,11 @@ def compose(
 def main(argv: list[str] | None = None) -> int:
     """Compose one artifact; exit non-zero when an input is missing."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--real", type=Path, required=True, help="the E2E screenshot")
+    parser.add_argument("--real", type=Path, required=True, help="the real capture")
     parser.add_argument("--draft", type=Path, required=True, help="the archived Stitch screen")
     parser.add_argument("--out", type=Path, required=True, help="the PNG to write")
     parser.add_argument("--theme", choices=sorted(THEMES), default="light")
-    parser.add_argument("--real-label", default="Narrare · the real shelf (seeded E2E)")
+    parser.add_argument("--real-label", default="Narrare · the real shelf")
     parser.add_argument("--draft-label", default="Stitch · the archived shelf draft")
     args = parser.parse_args(argv)
 

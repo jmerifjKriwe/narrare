@@ -36,6 +36,10 @@ diff.
 - A change that crosses a Lane B limit (more than one capability folder, more than
   15 hand-edited files or 400 changed lines, a new route/endpoint/schema/surface)
   while presenting itself as Lane B.
+- An E2E suite demanded for, or added to, a maintainer- or developer-only tool
+  (a demo, generator, screenshot/showcase tool, or CI hook). Such a tool has no
+  user-reachable path and owes unit or integration tests. A CI-harness change
+  owes the smoke suite `settings`, not every suite.
 - A schema change whose model and revision are not in one commit, or whose commit
   does not state why the schema changed.
 - A task that closes with unfinished work from its own scope. Findings needed for
@@ -61,6 +65,8 @@ diff.
   `uv.lock`, `package-lock.json`.
 - Snapshots, unless the change is about the snapshot.
 - The PR title: it is deliberately not conventional. Do not flag it.
+- A missing E2E for a maintainer- or developer-only tool. It is covered at its
+  own layer; the smoke suite is owed only when the CI harness itself changes.
 
 ## Evidence
 
@@ -81,6 +87,26 @@ diff.
   0 Rule change`. With nothing to fix and no rule change, write `Nothing to fix.`
   and stop.
 
+## Lane B
+
+- One independent review of the whole diff against `main` replaces the per-task
+  and final reviews. Read the diff once, whole, at tree hash A.
+- One consolidated fix round answers every `Important` and `Nit` finding from
+  that review. Nothing is deferred: a finding needed for the agreed behavior,
+  correctness, tests or gates belongs in that round. The fix round produces tree
+  hash B.
+- The scoped re-review reads only the diff A→B plus the findings it answers —
+  one re-review, at most. Do not re-read tree B as a whole or repeat a finding
+  already posted.
+- The change commits only after this review is green. The implementer ran
+  `just verify` once before the first review; after fixes, only the gate covering
+  each fixed path is owed, not a second full `just verify`.
+- Evidence lives in `.superpowers/sdd/lane-b-<slug>/` — tree hashes A and B, the
+  diff A→B, exact commands and output, review, fix round, re-review — and is not
+  committed.
+
 ## Re-review
 
 - After round 2, review only the new diff. Never repeat a finding already posted.
+- A Lane B fix round gets one scoped re-review of the diff A→B only; there is no
+  further round.

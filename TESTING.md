@@ -5,10 +5,14 @@ unit and integration tests exist to make failures cheap to find and fix.
 
 ## Philosophy
 
-- **E2E is the gate.** A capability is done when a green E2E drives the real
-  UI, the real backend and the real database. Nothing else counts as "done".
+- **E2E is the gate for what a user can reach.** A capability is done when a
+  green E2E drives the real UI, the real backend and the real database. A
+  maintainer- or developer-only tool has no user-reachable path and is tested at
+  its own layer instead. Nothing else counts as "done" for a capability.
 - **Unit and integration tests are leverage, not gates.** They exist to catch
   regressions in logic cheaply and to document intent. They do not replace E2E.
+  For a maintainer-only tool they are the proof, because the E2E gate does not
+  apply.
 - **No coverage percentage target.** Coverage is a diagnostic, not a goal.
   New logic with state or parsing ships with a test in the same commit; review
   checks that critical logic is not left untested.
@@ -42,6 +46,14 @@ unit and integration tests exist to make failures cheap to find and fix.
 E2E covers these sufficiently; adding unit tests would add maintenance cost
 without catching new failures.
 
+Maintainer- and developer-only tools — demos, generators, screenshot and
+showcase tooling, and CI hooks — expose no user-reachable path, so they get no
+E2E suite; the logic they carry ships with unit or integration tests
+(`scripts/tests/` for a script). The narrow exception is a change to
+`.github/workflows/` or `.github/actions/`, which owes the smoke suite `settings`
+(the answer `scripts/affected.py` already encodes), proof the harness runs — not
+every capability suite.
+
 ## Mandatory unit tests
 
 Logic with state or parsing **must** ship with a unit test. Concretely:
@@ -66,6 +78,9 @@ Pure rendering and wiring do not require unit tests.
 - `just test-e2e` — the E2E suites the change touches (`all`, or a capability name, for more).
   Two workers when the machine has 6 GB available, one below that (`NARRE_E2E_WORKERS`
   or the second argument overrides); each worker owns its own port pair and database.
+
+A CI-harness change runs the smoke suite `settings`; it does not owe every
+capability suite, because it can break the harness, not a capability's code.
 - `just test-e2e-file <path|node>` — one E2E file or node, with the suite's marker and
   timeout and no resolver: the inner loop for a browser test (`--lf` passes through;
   just joins the arguments unquoted, so a `-k` selection must be a single word).
@@ -131,6 +146,9 @@ When reviewing a change, check:
 - [ ] No database mock was introduced.
 - [ ] E2E still passes for touched capabilities.
 - [ ] Frontend changes that add state have corresponding vitest coverage.
+- [ ] No E2E was added for a maintainer- or developer-only tool; its proof is a
+      unit or integration test.
+- [ ] A CI-harness change ran the smoke suite, not every capability suite.
 
 ## Related
 
